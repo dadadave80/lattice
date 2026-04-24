@@ -1,0 +1,16 @@
+[profile.default]
+src = "src"
+out = "out"
+libs = ["lib"]
+remappings = [
+    '@lattice/=src/',
+    '@lattice-script/=script/',
+    '@lattice-test/=test/',
+]
+
+[profile.ci]
+optimizer_runs = 1_000_000
+via_ir = false
+
+[fmt]
+sort_imports = true
