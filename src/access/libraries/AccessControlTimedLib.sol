@@ -65,7 +65,27 @@ library AccessControlTimedLib {
 
     // ---- Mutations ----
 
-    function grantRoleTimed(bytes32 role, address account, uint48 start, uint48 expires) internal {
+    function grantRole(bytes32 _role, address _account) internal {
+        AccessControlLib.checkRole(AccessControlLib.getRoleAdmin(_role));
+        _grantRoleTimed(_role, _account, uint48(block.timestamp), 0);
+    }
+
+    function grantRoleTimed(bytes32 _role, address _account, uint48 _start, uint48 _expires) internal {
+        AccessControlLib.checkRole(AccessControlLib.getRoleAdmin(_role));
+        _grantRoleTimed(_role, _account, _start, _expires);
+    }
+
+    function extendRole(bytes32 _role, address _account, uint48 _newExpires) internal {
+        AccessControlLib.checkRole(AccessControlLib.getRoleAdmin(_role));
+        _extendRole(_role, _account, _newExpires);
+    }
+
+    function revokeRole(bytes32 _role, address _account) internal {
+        AccessControlLib.checkRole(AccessControlLib.getRoleAdmin(_role));
+        _revokeRole(_role, _account);
+    }
+
+    function _grantRoleTimed(bytes32 role, address account, uint48 start, uint48 expires) internal {
         if (expires != 0) {
             if (expires <= block.timestamp) revert IAccessControlTimed.AccessControlTimedExpiryInPast(expires);
             if (expires < start) revert IAccessControlTimed.AccessControlTimedInvalidWindow(start, expires);
@@ -75,7 +95,7 @@ library AccessControlTimedLib {
         emit IAccessControlTimed.RoleGrantedTimed(role, account, ContextLib.msgSender(), start, expires);
     }
 
-    function extendRole(bytes32 role, address account, uint48 newExpires) internal {
+    function _extendRole(bytes32 role, address account, uint48 newExpires) internal {
         if (!AccessControlLib.hasRole(role, account)) {
             revert IAccessControlTimed.AccessControlTimedRoleNotHeld(role, account);
         }
@@ -87,7 +107,7 @@ library AccessControlTimedLib {
         emit IAccessControlTimed.RoleExpiryUpdated(role, account, ContextLib.msgSender(), newExpires);
     }
 
-    function revokeRoleTimed(bytes32 role, address account) internal {
+    function _revokeRole(bytes32 role, address account) internal {
         AccessControlLib._revokeRole(role, account); // emits RoleRevoked if storage changed
         delete accessControlTimedStorage()._timings[role][account];
     }

@@ -46,13 +46,11 @@ contract AccessControlEnumerable is AccessControl, IAccessControlEnumerable {
 
     /// @inheritdoc IAccessControl
     function grantRole(bytes32 _role, address _account) public virtual override(AccessControl, IAccessControl) {
-        AccessControlLib.checkRole(AccessControlLib.getRoleAdmin(_role));
         AccessControlEnumerableLib.grantRole(_role, _account);
     }
 
     /// @inheritdoc IAccessControl
     function revokeRole(bytes32 _role, address _account) public virtual override(AccessControl, IAccessControl) {
-        AccessControlLib.checkRole(AccessControlLib.getRoleAdmin(_role));
         AccessControlEnumerableLib.revokeRole(_role, _account);
     }
 

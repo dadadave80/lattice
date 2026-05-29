@@ -61,14 +61,24 @@ library AccessControlEnumerableLib {
 
     // ---- Mutations ----
 
-    function grantRole(bytes32 role, address account) internal {
+    function grantRole(bytes32 _role, address _account) internal {
+        AccessControlLib.checkRole(AccessControlLib.getRoleAdmin(_role));
+        _grantRole(_role, _account);
+    }
+
+    function revokeRole(bytes32 _role, address _account) internal {
+        AccessControlLib.checkRole(AccessControlLib.getRoleAdmin(_role));
+        _revokeRole(_role, _account);
+    }
+
+    function _grantRole(bytes32 role, address account) internal {
         bool changed = AccessControlLib._grantRole(role, account); // emits RoleGranted if changed
         if (changed) {
             accessControlEnumerableStorage()._roleMembers[role].add(account);
         }
     }
 
-    function revokeRole(bytes32 role, address account) internal {
+    function _revokeRole(bytes32 role, address account) internal {
         bool changed = AccessControlLib._revokeRole(role, account); // emits RoleRevoked if changed
         if (changed) {
             accessControlEnumerableStorage()._roleMembers[role].remove(account);

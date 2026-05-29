@@ -12,13 +12,11 @@ import {IAccessControlTimed} from "@lattice/interfaces/IAccessControlTimed.sol";
 contract AccessControlTimed is AccessControl, IAccessControlTimed {
     /// @inheritdoc IAccessControlTimed
     function grantRoleTimed(bytes32 role, address account, uint48 start, uint48 expires) external virtual override {
-        AccessControlLib.checkRole(AccessControlLib.getRoleAdmin(role));
         AccessControlTimedLib.grantRoleTimed(role, account, start, expires);
     }
 
     /// @inheritdoc IAccessControlTimed
     function extendRole(bytes32 role, address account, uint48 newExpires) external virtual override {
-        AccessControlLib.checkRole(AccessControlLib.getRoleAdmin(role));
         AccessControlTimedLib.extendRole(role, account, newExpires);
     }
 
@@ -51,14 +49,12 @@ contract AccessControlTimed is AccessControl, IAccessControlTimed {
 
     /// @inheritdoc IAccessControl
     function grantRole(bytes32 _role, address _account) public virtual override(AccessControl, IAccessControl) {
-        AccessControlLib.checkRole(AccessControlLib.getRoleAdmin(_role));
-        AccessControlTimedLib.grantRoleTimed(_role, _account, uint48(block.timestamp), 0);
+        AccessControlTimedLib.grantRole(_role, _account);
     }
 
     /// @inheritdoc IAccessControl
     function revokeRole(bytes32 _role, address _account) public virtual override(AccessControl, IAccessControl) {
-        AccessControlLib.checkRole(AccessControlLib.getRoleAdmin(_role));
-        AccessControlTimedLib.revokeRoleTimed(_role, _account);
+        AccessControlTimedLib.revokeRole(_role, _account);
     }
 
     /// @inheritdoc IAccessControl
