@@ -3,7 +3,7 @@ pragma solidity ^0.8.30;
 
 import {ContextLib} from "@diamond/libraries/ContextLib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
-import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
+import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
 import {ITimelockController} from "@lattice/interfaces/ITimelockController.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
@@ -110,10 +110,13 @@ library TimelockControllerLib {
             AccessControlLib._grantRole(EXECUTOR_ROLE, executors[i]);
         }
 
-        // Optionally grant admin the DEFAULT_ADMIN_ROLE (may have been done in AccessControl init)
-        // We do NOT re-grant here; AccessControl init is responsible for setting DEFAULT_ADMIN_ROLE.
-        // This avoids double-granting when used with TimelockControllerStandalone.
-        (admin); // suppress unused parameter warning
+        // Unconditionally grant DEFAULT_ADMIN_ROLE to address(this) so the timelock can
+        // administer its own roles via a scheduled+executed proposal, even after any external
+        // admin renounces. This mirrors OZ TimelockController.constructor behavior.
+        AccessControlLib._grantRole(DEFAULT_ADMIN_ROLE, address(this));
+
+        // Suppress unused-parameter warning; admin is handled by the caller before this function.
+        (admin);
 
         registerInterface();
     }
@@ -302,7 +305,7 @@ library TimelockControllerLib {
     }
 
     /// @dev Check that id is ready and predecessor (if any) is done. Reverts otherwise.
-    function _beforeCall(bytes32 id, bytes32 predecessor) internal view {
+    function _beforeCall(bytes32 id, bytes32 predecessor) private view {
         if (!isOperationReady(id)) {
             revert ITimelockController.TimelockUnexpectedOperationState(
                 id, _encodeStateBitmap(ITimelockController.OperationState.Ready)
@@ -313,8 +316,13 @@ library TimelockControllerLib {
         }
     }
 
-    /// @dev Mark operation as done.
-    function _afterCall(bytes32 id) internal {
+    /// @dev Mark operation as done. Reverts if the operation is no longer Ready (re-entrancy guard).
+    function _afterCall(bytes32 id) private {
+        if (!isOperationReady(id)) {
+            revert ITimelockController.TimelockUnexpectedOperationState(
+                id, _encodeStateBitmap(ITimelockController.OperationState.Ready)
+            );
+        }
         timelockControllerStorage()._timestamps[id] = _DONE_TIMESTAMP;
     }
 

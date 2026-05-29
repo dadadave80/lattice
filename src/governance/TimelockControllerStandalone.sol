@@ -4,6 +4,7 @@ pragma solidity ^0.8.30;
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
+import {DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
 import {TimelockController} from "@lattice/governance/TimelockController.sol";
 import {TimelockControllerLib} from "@lattice/governance/libraries/TimelockControllerLib.sol";
 
@@ -22,7 +23,16 @@ contract TimelockControllerStandalone is TimelockController, AccessControl {
     constructor(uint256 minDelay, address[] memory proposers, address[] memory executors, address admin) {
         bytes32 s = InitializableLib.initializableSlot();
         InitializableLib.preInitializer(s);
-        AccessControlLib.__AccessControl_init(admin);
+        // Only grant DEFAULT_ADMIN_ROLE to a non-zero admin; a zero admin means
+        // "self-administered only" — address(this) receives the role unconditionally
+        // inside __TimelockController_init.
+        if (admin != address(0)) {
+            AccessControlLib.__AccessControl_init(admin);
+        } else {
+            // Still satisfy AccessControl's checkInitializing requirement and register interface
+            // without granting the role to address(0).
+            AccessControlLib.registerInterface();
+        }
         TimelockControllerLib.__TimelockController_init(minDelay, proposers, executors, admin);
         InitializableLib.postInitializer(s);
     }
