@@ -331,7 +331,7 @@ library TimelockControllerLib {
         // solhint-disable-next-line avoid-low-level-calls
         (bool success,) = target.call{value: value}(data);
         if (!success) {
-            // Bubble up revert data if present
+            // Bubble up revert data if present; otherwise emit a named error.
             assembly ("memory-safe") {
                 let returnDataSize := returndatasize()
                 if returnDataSize {
@@ -339,8 +339,9 @@ library TimelockControllerLib {
                     returndatacopy(ptr, 0, returnDataSize)
                     revert(ptr, returnDataSize)
                 }
-                revert(0, 0)
             }
+            // No return data — revert with a named, machine-readable error.
+            revert ITimelockController.TimelockCallFailed();
         }
         emit ITimelockController.CallExecuted(id, index, target, value, data);
     }

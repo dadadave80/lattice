@@ -88,6 +88,9 @@ interface ITimelockController {
     /// @param caller The caller address.
     error TimelockUnauthorizedCaller(address caller);
 
+    /// @dev Thrown when an executed call reverts with no return data.
+    error TimelockCallFailed();
+
     //*//////////////////////////////////////////////////////////////////////////
     //                              ROLE CONSTANTS
     //////////////////////////////////////////////////////////////////////////*//
