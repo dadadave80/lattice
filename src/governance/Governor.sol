@@ -39,7 +39,7 @@ contract Governor is IGovernor {
 
     /// @inheritdoc IGovernor
     // solhint-disable-next-line func-name-mixedcase
-    function CLOCK_MODE() external pure virtual override returns (string memory) {
+    function CLOCK_MODE() external view virtual override returns (string memory) {
         return GovernorLib.CLOCK_MODE();
     }
 

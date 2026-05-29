@@ -85,6 +85,13 @@ struct GovernorStorage {
     mapping(uint256 proposalId => bytes32 timelockId) _proposalTimelockIds;
 }
 
+/// @dev Minimal EIP-6372 interface used to delegate clock() and CLOCK_MODE() to the token.
+interface IERC6372 {
+    function clock() external view returns (uint48);
+    // solhint-disable-next-line func-name-mixedcase
+    function CLOCK_MODE() external view returns (string memory);
+}
+
 /// @title GovernorLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice Library implementing the full on-chain governance lifecycle: proposal creation,
@@ -184,14 +191,24 @@ library GovernorLib {
         return governorStorage()._timelock;
     }
 
-    /// @notice Returns the current clock value as uint48 (block.timestamp).
+    /// @notice Returns the current clock value, delegating to the token's EIP-6372 clock.
+    ///         Falls back to block.timestamp if the token does not implement IERC6372.
     function clock() internal view returns (uint48) {
-        return uint48(block.timestamp);
+        try IERC6372(governorStorage()._token).clock() returns (uint48 ts) {
+            return ts;
+        } catch {
+            return uint48(block.timestamp);
+        }
     }
 
-    /// @notice Returns the machine-readable clock mode string.
-    function CLOCK_MODE() internal pure returns (string memory) {
-        return "mode=timestamp";
+    /// @notice Returns the machine-readable clock mode string, delegating to the token's CLOCK_MODE.
+    ///         Falls back to "mode=timestamp" if the token does not implement IERC6372.
+    function CLOCK_MODE() internal view returns (string memory) {
+        try IERC6372(governorStorage()._token).CLOCK_MODE() returns (string memory mode) {
+            return mode;
+        } catch {
+            return "mode=timestamp";
+        }
     }
 
     /// @notice Returns the counting mode string (Bravo: For/Against/Abstain).
