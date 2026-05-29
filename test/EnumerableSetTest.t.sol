@@ -134,4 +134,59 @@ contract EnumerableSetTest is Test {
         vm.expectRevert();
         h.atBytes32(0);
     }
+
+    function test_RemoveExistingReturnsTrueAndShrinks() public {
+        h.addBytes32(bytes32(uint256(0xA)));
+        bool removed = h.removeBytes32(bytes32(uint256(0xA)));
+        assertTrue(removed);
+        assertEq(h.lengthBytes32(), 0);
+        assertFalse(h.containsBytes32(bytes32(uint256(0xA))));
+    }
+
+    function test_RemoveAbsentReturnsFalse() public {
+        bool removed = h.removeBytes32(bytes32(uint256(0xB)));
+        assertFalse(removed);
+        assertEq(h.lengthBytes32(), 0);
+    }
+
+    function test_RemoveMiddleElementSwapsAndPops() public {
+        bytes32 a = bytes32(uint256(0xA));
+        bytes32 b = bytes32(uint256(0xB));
+        bytes32 c = bytes32(uint256(0xC));
+        h.addBytes32(a);
+        h.addBytes32(b);
+        h.addBytes32(c);
+
+        h.removeBytes32(b);
+
+        assertEq(h.lengthBytes32(), 2);
+        assertTrue(h.containsBytes32(a));
+        assertFalse(h.containsBytes32(b));
+        assertTrue(h.containsBytes32(c));
+
+        assertEq(h.atBytes32(0), a);
+        assertEq(h.atBytes32(1), c);
+    }
+
+    function test_RemoveLastElementPopsWithoutSwap() public {
+        bytes32 a = bytes32(uint256(0xA));
+        bytes32 b = bytes32(uint256(0xB));
+        h.addBytes32(a);
+        h.addBytes32(b);
+
+        h.removeBytes32(b);
+
+        assertEq(h.lengthBytes32(), 1);
+        assertEq(h.atBytes32(0), a);
+    }
+
+    function test_ReAddAfterRemoveWorks() public {
+        bytes32 a = bytes32(uint256(0xA));
+        h.addBytes32(a);
+        h.removeBytes32(a);
+        bool addedAgain = h.addBytes32(a);
+        assertTrue(addedAgain);
+        assertEq(h.lengthBytes32(), 1);
+        assertTrue(h.containsBytes32(a));
+    }
 }
