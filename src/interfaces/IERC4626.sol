@@ -32,6 +32,9 @@ interface IERC4626 is IERC20 {
     /// @dev Emitted when mulDiv overflows (result exceeds uint256 or denominator is 0).
     error MathOverflowedMulDiv();
 
+    /// @dev A token transfer failed (covers tokens that return false or do not return a bool).
+    error SafeERC20FailedOperation(address token);
+
     /// @dev The deposit would exceed the maximum allowed for `receiver`.
     error ERC4626ExceededMaxDeposit(address receiver, uint256 assets, uint256 max);
 

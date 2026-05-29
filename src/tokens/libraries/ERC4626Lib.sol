@@ -232,8 +232,7 @@ library ERC4626Lib {
     /// @dev Transfers assets in, mints shares, emits Deposit.
     function _deposit(address caller, address receiver, uint256 assets, uint256 shares) internal {
         address asset_ = erc4626Storage()._asset;
-        bool ok = IERC20(asset_).transferFrom(caller, address(this), assets);
-        if (!ok) revert IERC20.ERC20InsufficientAllowance(caller, 0, assets);
+        _safeTransferFrom(asset_, caller, address(this), assets);
         ERC20Lib._mint(receiver, shares);
         emit IERC4626.Deposit(caller, receiver, assets, shares);
     }
@@ -244,9 +243,31 @@ library ERC4626Lib {
             ERC20Lib._spendAllowance(owner, caller, shares);
         }
         ERC20Lib._burn(owner, shares);
-        bool ok = IERC20(erc4626Storage()._asset).transfer(receiver, assets);
-        if (!ok) revert IERC20.ERC20InvalidReceiver(receiver);
+        _safeTransfer(erc4626Storage()._asset, receiver, assets);
         emit IERC4626.Withdraw(caller, receiver, owner, assets, shares);
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                         SAFE TRANSFER HELPERS
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @dev Calls `token.transfer(to, amount)` and reverts with SafeERC20FailedOperation if it fails or
+    ///      returns false. Handles tokens that do not return a bool (e.g. USDT).
+    function _safeTransfer(address token, address to, uint256 amount) private {
+        (bool ok, bytes memory ret) = token.call(abi.encodeWithSelector(IERC20.transfer.selector, to, amount));
+        if (!ok || (ret.length > 0 && !abi.decode(ret, (bool)))) {
+            revert IERC4626.SafeERC20FailedOperation(token);
+        }
+    }
+
+    /// @dev Calls `token.transferFrom(from, to, amount)` and reverts with SafeERC20FailedOperation if it
+    ///      fails or returns false. Handles tokens that do not return a bool (e.g. USDT).
+    function _safeTransferFrom(address token, address from, address to, uint256 amount) private {
+        (bool ok, bytes memory ret) =
+            token.call(abi.encodeWithSelector(IERC20.transferFrom.selector, from, to, amount));
+        if (!ok || (ret.length > 0 && !abi.decode(ret, (bool)))) {
+            revert IERC4626.SafeERC20FailedOperation(token);
+        }
     }
 
     // Ported from OpenZeppelin Math.mulDiv v5.1.0
