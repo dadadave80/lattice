@@ -27,6 +27,110 @@ contract Target {
     }
 }
 
+/// @notice Minimal ERC-721 mock for NFT-receiver tests.
+contract MockERC721 {
+    mapping(uint256 => address) private _owners;
+    mapping(address => mapping(address => bool)) private _operatorApprovals;
+
+    event Transfer(address indexed from, address indexed to, uint256 indexed tokenId);
+
+    function mint(address to, uint256 tokenId) external {
+        _owners[tokenId] = to;
+        emit Transfer(address(0), to, tokenId);
+    }
+
+    function ownerOf(uint256 tokenId) external view returns (address) {
+        return _owners[tokenId];
+    }
+
+    function safeTransferFrom(address from, address to, uint256 tokenId) external {
+        require(_owners[tokenId] == from, "not owner");
+        _owners[tokenId] = to;
+        emit Transfer(from, to, tokenId);
+        // Call onERC721Received on the recipient if it is a contract
+        if (to.code.length > 0) {
+            bytes4 retval = IOnERC721Received(to).onERC721Received(msg.sender, from, tokenId, "");
+            require(retval == IOnERC721Received.onERC721Received.selector, "ERC721: transfer rejected");
+        }
+    }
+}
+
+interface IOnERC721Received {
+    function onERC721Received(address operator, address from, uint256 tokenId, bytes calldata data)
+        external
+        returns (bytes4);
+}
+
+/// @notice Minimal ERC-1155 mock for NFT-receiver tests.
+contract MockERC1155 {
+    mapping(uint256 => mapping(address => uint256)) private _balances;
+
+    event TransferSingle(
+        address indexed operator, address indexed from, address indexed to, uint256 id, uint256 value
+    );
+
+    function mint(address to, uint256 id, uint256 amount) external {
+        _balances[id][to] += amount;
+        emit TransferSingle(msg.sender, address(0), to, id, amount);
+    }
+
+    function balanceOf(address account, uint256 id) external view returns (uint256) {
+        return _balances[id][account];
+    }
+
+    function safeTransferFrom(address from, address to, uint256 id, uint256 amount, bytes calldata data) external {
+        require(_balances[id][from] >= amount, "insufficient balance");
+        _balances[id][from] -= amount;
+        _balances[id][to] += amount;
+        emit TransferSingle(msg.sender, from, to, id, amount);
+        if (to.code.length > 0) {
+            bytes4 retval =
+                IOnERC1155Received(to).onERC1155Received(msg.sender, from, id, amount, data);
+            require(retval == IOnERC1155Received.onERC1155Received.selector, "ERC1155: transfer rejected");
+        }
+    }
+}
+
+interface IOnERC1155Received {
+    function onERC1155Received(
+        address operator,
+        address from,
+        uint256 id,
+        uint256 value,
+        bytes calldata data
+    ) external returns (bytes4);
+}
+
+/// @notice A target that, when called, re-entrantly cancels the operation currently being executed.
+contract ReentrantCanceller {
+    ITimelockController private _timelock;
+    bytes32 private _opId;
+    bool public triggered;
+
+    constructor(address timelock_) {
+        _timelock = ITimelockController(timelock_);
+    }
+
+    function setOpId(bytes32 opId) external {
+        _opId = opId;
+    }
+
+    /// @notice When called during execute(), re-enters cancel() on the timelock.
+    function doReentrantCancel() external {
+        triggered = true;
+        _timelock.cancel(_opId);
+    }
+}
+
+/// @notice A target that always reverts with no return data (for TimelockCallFailed tests).
+contract EmptyReverter {
+    fallback() external payable {
+        assembly {
+            revert(0, 0)
+        }
+    }
+}
+
 /// @title TimelockControllerTester
 /// @notice Comprehensive tests for the TimelockController module.
 contract TimelockControllerTester is Test {
@@ -692,6 +796,133 @@ contract TimelockControllerTester is Test {
         (bool ok,) = address(timelock).call{value: 1 ether}("");
         assertTrue(ok);
         assertEq(address(timelock).balance, 1 ether);
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                   TIMELOCK SELF-ADMIN ROLE TESTS (A2)
+    //////////////////////////////////////////////////////////////////////////*//
+
+    function test_TimelockItselfHasDefaultAdminRole() public view {
+        assertTrue(timelock.hasRole(DEFAULT_ADMIN_ROLE, address(timelock)));
+    }
+
+    function test_TimelockSelfAdminRoleWhenExternalAdminIsZero() public {
+        address[] memory proposers_ = new address[](0);
+        address[] memory executors_ = new address[](0);
+        // Deploy with admin = address(0) — self-administered only
+        TimelockControllerStandalone selfOnlyTimelock =
+            new TimelockControllerStandalone(MIN_DELAY, proposers_, executors_, address(0));
+        // address(0) should NOT have the role
+        assertFalse(selfOnlyTimelock.hasRole(DEFAULT_ADMIN_ROLE, address(0)));
+        // The timelock itself should have the role
+        assertTrue(selfOnlyTimelock.hasRole(DEFAULT_ADMIN_ROLE, address(selfOnlyTimelock)));
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                      REENTRY GUARD TESTS (A1)
+    //////////////////////////////////////////////////////////////////////////*//
+
+    function test_AfterCallReentryReverts() public {
+        // Deploy a reentrant canceller targeting our timelock
+        ReentrantCanceller reentrant = new ReentrantCanceller(address(timelock));
+
+        // Grant it CANCELLER_ROLE so the cancel call inside it won't revert on auth
+        vm.prank(admin);
+        timelock.grantRole(CANCELLER_ROLE, address(reentrant));
+
+        bytes memory data = abi.encodeCall(ReentrantCanceller.doReentrantCancel, ());
+        bytes32 id = timelock.hashOperation(address(reentrant), 0, data, bytes32(0), bytes32(0));
+
+        // Give the reentrant canceller the operation id so it knows what to cancel
+        reentrant.setOpId(id);
+
+        vm.prank(proposer);
+        timelock.schedule(address(reentrant), 0, data, bytes32(0), bytes32(0), MIN_DELAY);
+
+        vm.warp(block.timestamp + MIN_DELAY);
+
+        // Execute should revert because: target re-enters cancel() during execution,
+        // which sets timestamp to 0, then _afterCall finds !isOperationReady and reverts.
+        vm.prank(executor);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ITimelockController.TimelockUnexpectedOperationState.selector,
+                id,
+                bytes32(1 << uint8(ITimelockController.OperationState.Ready))
+            )
+        );
+        timelock.execute(address(reentrant), 0, data, bytes32(0), bytes32(0));
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                     NAMED ERROR ON EMPTY REVERT (A3)
+    //////////////////////////////////////////////////////////////////////////*//
+
+    function test_ExecuteFailedCallRevertsWithNamedError() public {
+        EmptyReverter emptyReverter = new EmptyReverter();
+
+        // Schedule a call to emptyReverter (any calldata — the fallback always reverts)
+        bytes memory data = "";
+        vm.prank(proposer);
+        timelock.schedule(address(emptyReverter), 0, data, bytes32(0), bytes32(0), MIN_DELAY);
+
+        vm.warp(block.timestamp + MIN_DELAY);
+
+        vm.prank(executor);
+        vm.expectRevert(ITimelockController.TimelockCallFailed.selector);
+        timelock.execute(address(emptyReverter), 0, data, bytes32(0), bytes32(0));
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                        NFT RECEIVER TESTS (A4)
+    //////////////////////////////////////////////////////////////////////////*//
+
+    function test_TimelockReceivesERC721() public {
+        MockERC721 nft = new MockERC721();
+        uint256 tokenId = 1;
+
+        // Mint to test contract (this)
+        nft.mint(address(this), tokenId);
+        assertEq(nft.ownerOf(tokenId), address(this));
+
+        // Transfer to timelock via safeTransferFrom
+        nft.safeTransferFrom(address(this), address(timelock), tokenId);
+        assertEq(nft.ownerOf(tokenId), address(timelock));
+    }
+
+    function test_TimelockReceivesERC1155() public {
+        MockERC1155 erc1155 = new MockERC1155();
+        uint256 tokenId = 7;
+        uint256 amount = 100;
+
+        // Mint to test contract
+        erc1155.mint(address(this), tokenId, amount);
+
+        // Transfer to timelock
+        erc1155.safeTransferFrom(address(this), address(timelock), tokenId, amount, "");
+        assertEq(erc1155.balanceOf(address(timelock), tokenId), amount);
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                    SELF-ADMINISTRATION VIA SCHEDULE (A2 integration)
+    //////////////////////////////////////////////////////////////////////////*//
+
+    function test_SelfAdministrationViaScheduledGrantRole() public {
+        address newProposer = address(0x99);
+        assertFalse(timelock.hasRole(PROPOSER_ROLE, newProposer));
+
+        // Build calldata for grantRole(PROPOSER_ROLE, newProposer) targeting the timelock itself
+        bytes memory data = abi.encodeWithSignature("grantRole(bytes32,address)", PROPOSER_ROLE, newProposer);
+
+        vm.prank(proposer);
+        timelock.schedule(address(timelock), 0, data, bytes32(0), bytes32(0), MIN_DELAY);
+
+        vm.warp(block.timestamp + MIN_DELAY);
+
+        vm.prank(executor);
+        timelock.execute(address(timelock), 0, data, bytes32(0), bytes32(0));
+
+        assertTrue(timelock.hasRole(PROPOSER_ROLE, newProposer));
     }
 
     //*//////////////////////////////////////////////////////////////////////////
