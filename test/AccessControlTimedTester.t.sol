@@ -86,4 +86,46 @@ contract AccessControlTimedTester is Test {
         vm.warp(block.timestamp + 365 days);
         assertTrue(ac.hasRole(MINTER_ROLE, alice));
     }
+
+    function test_GrantTimedExpiryInPastReverts() public {
+        uint48 expires = uint48(block.timestamp - 1);
+        vm.prank(admin);
+        vm.expectRevert(abi.encodeWithSelector(IAccessControlTimed.AccessControlTimedExpiryInPast.selector, expires));
+        ac.grantRoleTimed(MINTER_ROLE, alice, 0, expires);
+    }
+
+    function test_GrantTimedExpiryAtNowReverts() public {
+        uint48 expires = uint48(block.timestamp);
+        vm.prank(admin);
+        vm.expectRevert(abi.encodeWithSelector(IAccessControlTimed.AccessControlTimedExpiryInPast.selector, expires));
+        ac.grantRoleTimed(MINTER_ROLE, alice, 0, expires);
+    }
+
+    function test_GrantTimedInvalidWindowReverts() public {
+        uint48 start = uint48(block.timestamp + 1000);
+        uint48 expires = uint48(block.timestamp + 500);
+        vm.prank(admin);
+        vm.expectRevert(
+            abi.encodeWithSelector(IAccessControlTimed.AccessControlTimedInvalidWindow.selector, start, expires)
+        );
+        ac.grantRoleTimed(MINTER_ROLE, alice, start, expires);
+    }
+
+    function test_GrantTimedStartEqualsExpiresIsAllowed() public {
+        uint48 t = uint48(block.timestamp + 100);
+        vm.prank(admin);
+        ac.grantRoleTimed(MINTER_ROLE, alice, t, t);
+        vm.warp(t);
+        assertTrue(ac.hasRole(MINTER_ROLE, alice));
+        vm.warp(uint256(t) + 1);
+        assertFalse(ac.hasRole(MINTER_ROLE, alice));
+    }
+
+    function test_GrantTimedByNonAdminReverts() public {
+        vm.prank(alice);
+        vm.expectRevert(
+            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, alice, DEFAULT_ADMIN_ROLE)
+        );
+        ac.grantRoleTimed(MINTER_ROLE, alice, 0, 0);
+    }
 }
