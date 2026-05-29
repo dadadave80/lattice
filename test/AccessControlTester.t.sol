@@ -122,6 +122,7 @@ contract AccessControlTester is Test {
         assertEq(accessControl.getRoleAdmin(MINTER_ROLE), DEFAULT_ADMIN_ROLE);
 
         // setRoleAdmin operates on shared storage, so we just test via getRoleAdmin
+        vm.prank(admin);
         accessControl.setRoleAdminHelper(MINTER_ROLE, ADMIN_ROLE);
         // Now check via a new call to ensure it was set
         bytes32 actualAdmin = accessControl.getRoleAdmin(MINTER_ROLE);
@@ -185,6 +186,7 @@ contract AccessControlTester is Test {
         accessControl.grantRole(ADMIN_ROLE, user);
 
         // Set MINTER_ROLE admin to ADMIN_ROLE
+        vm.prank(admin);
         accessControl.setRoleAdminHelper(MINTER_ROLE, ADMIN_ROLE);
 
         // User should be able to grant MINTER_ROLE
@@ -257,6 +259,7 @@ contract AccessControlTester is Test {
         accessControl.grantRole(ADMIN_ROLE, user);
 
         // Set MINTER_ROLE admin to ADMIN_ROLE
+        vm.prank(admin);
         accessControl.setRoleAdminHelper(MINTER_ROLE, ADMIN_ROLE);
 
         // Grant MINTER_ROLE to other
@@ -374,6 +377,7 @@ contract AccessControlTester is Test {
     function test_SetRoleAdminEmitsEvent() public {
         bytes32 previousAdmin = accessControl.getRoleAdmin(MINTER_ROLE);
 
+        vm.prank(admin);
         vm.expectEmit(true, true, true, true);
         emit RoleAdminChanged(MINTER_ROLE, previousAdmin, ADMIN_ROLE);
         accessControl.setRoleAdminHelper(MINTER_ROLE, ADMIN_ROLE);
@@ -381,12 +385,24 @@ contract AccessControlTester is Test {
 
     /// @notice Role admin can be changed multiple times
     function test_RoleAdminCanBeChangedMultipleTimes() public {
+        vm.prank(admin);
         accessControl.setRoleAdminHelper(MINTER_ROLE, ADMIN_ROLE);
         assertEq(accessControl.getRoleAdmin(MINTER_ROLE), ADMIN_ROLE);
 
+        // Now MINTER_ROLE's admin is ADMIN_ROLE; admin has DEFAULT_ADMIN_ROLE but not ADMIN_ROLE.
+        // Grant admin the ADMIN_ROLE so they can change MINTER_ROLE's admin again.
+        vm.prank(admin);
+        accessControl.grantRole(ADMIN_ROLE, admin);
+
+        vm.prank(admin);
         accessControl.setRoleAdminHelper(MINTER_ROLE, BURNER_ROLE);
         assertEq(accessControl.getRoleAdmin(MINTER_ROLE), BURNER_ROLE);
 
+        // Grant admin the BURNER_ROLE so they can change MINTER_ROLE's admin again.
+        vm.prank(admin);
+        accessControl.grantRole(BURNER_ROLE, admin);
+
+        vm.prank(admin);
         accessControl.setRoleAdminHelper(MINTER_ROLE, DEFAULT_ADMIN_ROLE);
         assertEq(accessControl.getRoleAdmin(MINTER_ROLE), DEFAULT_ADMIN_ROLE);
     }
@@ -492,8 +508,15 @@ contract AccessControlTester is Test {
         bytes32 operatorRole = keccak256("OPERATOR");
 
         // Set up hierarchy: DEFAULT_ADMIN -> SUPER_ADMIN -> MANAGER -> OPERATOR
+        // admin has DEFAULT_ADMIN_ROLE which is the admin of all new roles by default.
+        vm.prank(admin);
         accessControl.setRoleAdminHelper(superAdminRole, DEFAULT_ADMIN_ROLE);
+        vm.prank(admin);
         accessControl.setRoleAdminHelper(managerRole, superAdminRole);
+        // Now managerRole's admin is superAdminRole; user must have superAdminRole to set operatorRole's admin.
+        vm.prank(admin);
+        accessControl.grantRole(superAdminRole, admin);
+        vm.prank(admin);
         accessControl.setRoleAdminHelper(operatorRole, managerRole);
 
         // Admin grants SUPER_ADMIN to user

@@ -50,9 +50,24 @@ contract AccessManagedTester is Test {
     }
 
     function test_SetAuthorityByAuthorityWorks() public {
+        AccessManagerStandalone newMgr = new AccessManagerStandalone(admin);
         vm.prank(address(mgr));
-        managed.setAuthority(address(0x123));
-        assertEq(managed.authority(), address(0x123));
+        managed.setAuthority(address(newMgr));
+        assertEq(managed.authority(), address(newMgr));
+    }
+
+    function test_SetAuthorityEOAReverts() public {
+        address eoa = address(0xDEAD);
+        vm.prank(address(mgr));
+        vm.expectRevert(abi.encodeWithSelector(IAccessManaged.AccessManagedInvalidAuthority.selector, eoa));
+        managed.setAuthority(eoa);
+    }
+
+    function test_InitWithEOAAuthorityReverts() public {
+        address eoa = address(0xBEEF);
+        MockAccessManagedContract m2 = new MockAccessManagedContract();
+        vm.expectRevert(abi.encodeWithSelector(IAccessManaged.AccessManagedInvalidAuthority.selector, eoa));
+        m2.initialize(eoa);
     }
 
     function test_RestrictedFnUnauthorizedReverts() public {

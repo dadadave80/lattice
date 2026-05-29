@@ -10,6 +10,7 @@ import {IAccessControl} from "@lattice/interfaces/IAccessControl.sol";
 import {IAccessControlDefaultAdminRules} from "@lattice/interfaces/IAccessControlDefaultAdminRules.sol";
 import {TimelockLib} from "@lattice/utils/libraries/TimelockLib.sol";
 import {Test} from "forge-std/Test.sol";
+import {Vm} from "forge-std/Vm.sol";
 
 contract MockDefaultAdminRulesContract is AccessControlDefaultAdminRules {
     function initialize(address _admin, uint48 _delay) external {
@@ -204,5 +205,28 @@ contract AccessControlDefaultAdminRulesTester is Test {
 
     function test_DefaultAdminDelayIncreaseWaitIsFiveDays() public view {
         assertEq(ac.defaultAdminDelayIncreaseWait(), uint48(5 days));
+    }
+
+    function test_AcceptDefaultAdminTransferEmitsRoleEvents() public {
+        vm.prank(admin);
+        ac.beginDefaultAdminTransfer(newAdmin);
+
+        vm.warp(block.timestamp + INITIAL_DELAY);
+
+        vm.recordLogs();
+        vm.prank(newAdmin);
+        ac.acceptDefaultAdminTransfer();
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+
+        bytes32 revokedSig = keccak256("RoleRevoked(bytes32,address,address)");
+        bytes32 grantedSig = keccak256("RoleGranted(bytes32,address,address)");
+        bool revokedFound = false;
+        bool grantedFound = false;
+        for (uint256 i = 0; i < logs.length; i++) {
+            if (logs[i].topics[0] == revokedSig) revokedFound = true;
+            if (logs[i].topics[0] == grantedSig) grantedFound = true;
+        }
+        assertTrue(revokedFound, "RoleRevoked event should be emitted");
+        assertTrue(grantedFound, "RoleGranted event should be emitted");
     }
 }

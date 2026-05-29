@@ -155,14 +155,19 @@ contract AccessManagerTester is Test {
         assertEq(mgr.getRoleGrantDelay(MINTER_ROLE), 3 days);
     }
 
-    function test_SetGrantDelayDecreaseIsImmediate() public {
+    function test_SetGrantDelayDecreaseUsesMinSetback() public {
         vm.prank(admin);
         mgr.setGrantDelay(MINTER_ROLE, 3 days);
-        vm.warp(block.timestamp + 1 weeks);
+        vm.warp(block.timestamp + 5 days);
         assertEq(mgr.getRoleGrantDelay(MINTER_ROLE), 3 days);
 
+        // Decrease from 3 days to 1 day: diff=2 days < MIN_SETBACK=5 days, so wait=5 days.
         vm.prank(admin);
         mgr.setGrantDelay(MINTER_ROLE, 1 days);
+        // Not yet effective
+        assertEq(mgr.getRoleGrantDelay(MINTER_ROLE), 3 days);
+        // After MIN_SETBACK
+        vm.warp(block.timestamp + 5 days);
         assertEq(mgr.getRoleGrantDelay(MINTER_ROLE), 1 days);
     }
 
@@ -359,5 +364,98 @@ contract AccessManagerTester is Test {
             abi.encodeWithSelector(IAccessManager.AccessManagerUnauthorizedAccount.selector, alice, MINTER_ROLE)
         );
         mgr.schedule(address(sink), data, uint48(block.timestamp + 1 days));
+    }
+
+    function test_ScheduleImmediateCallerReverts() public {
+        CallSink sink = new CallSink();
+        bytes4 sel = sink.ping.selector;
+        bytes4[] memory selectors = new bytes4[](1);
+        selectors[0] = sel;
+
+        // Grant alice immediate access (no execution delay)
+        vm.prank(admin);
+        mgr.setTargetFunctionRole(address(sink), selectors, MINTER_ROLE);
+        vm.prank(admin);
+        mgr.grantRole(MINTER_ROLE, alice, 0);
+
+        bytes memory data = abi.encodeCall(CallSink.ping, (42));
+        bytes32 opId = mgr.hashOperation(alice, address(sink), data);
+
+        // Alice has immediate access — schedule should revert
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(IAccessManager.AccessManagerNotScheduled.selector, opId));
+        mgr.schedule(address(sink), data, uint48(block.timestamp + 1 days));
+    }
+
+    function test_AdminCanCancelAnyOperation() public {
+        CallSink sink = new CallSink();
+        bytes4 sel = sink.ping.selector;
+        bytes4[] memory selectors = new bytes4[](1);
+        selectors[0] = sel;
+
+        vm.prank(admin);
+        mgr.setTargetFunctionRole(address(sink), selectors, MINTER_ROLE);
+        vm.prank(admin);
+        mgr.grantRole(MINTER_ROLE, alice, uint32(1 days));
+
+        bytes memory data = abi.encodeCall(CallSink.ping, (42));
+        vm.prank(alice);
+        mgr.schedule(address(sink), data, uint48(block.timestamp + 1 days));
+
+        // Admin (not the original caller) can cancel alice's operation
+        vm.prank(admin);
+        mgr.cancel(alice, address(sink), data);
+
+        bytes32 opId = mgr.hashOperation(alice, address(sink), data);
+        assertEq(mgr.getSchedule(opId), 0);
+    }
+
+    function test_GetScheduleReturns0ForExpired() public {
+        CallSink sink = new CallSink();
+        bytes4 sel = sink.ping.selector;
+        bytes4[] memory selectors = new bytes4[](1);
+        selectors[0] = sel;
+
+        vm.prank(admin);
+        mgr.setTargetFunctionRole(address(sink), selectors, MINTER_ROLE);
+        vm.prank(admin);
+        mgr.grantRole(MINTER_ROLE, alice, uint32(1 days));
+
+        bytes memory data = abi.encodeCall(CallSink.ping, (42));
+        vm.prank(alice);
+        (bytes32 opId,) = mgr.schedule(address(sink), data, uint48(block.timestamp + 1 days));
+
+        // Before expiration, getSchedule returns nonzero
+        vm.warp(block.timestamp + 1 days);
+        assertGt(mgr.getSchedule(opId), 0);
+
+        // After expiration (readyAt + 1 week), getSchedule returns 0
+        vm.warp(block.timestamp + 1 weeks + 1);
+        assertEq(mgr.getSchedule(opId), 0);
+    }
+
+    function test_RescheduleExpiredOperation() public {
+        CallSink sink = new CallSink();
+        bytes4 sel = sink.ping.selector;
+        bytes4[] memory selectors = new bytes4[](1);
+        selectors[0] = sel;
+
+        vm.prank(admin);
+        mgr.setTargetFunctionRole(address(sink), selectors, MINTER_ROLE);
+        vm.prank(admin);
+        mgr.grantRole(MINTER_ROLE, alice, uint32(1 days));
+
+        bytes memory data = abi.encodeCall(CallSink.ping, (42));
+        vm.prank(alice);
+        mgr.schedule(address(sink), data, uint48(block.timestamp + 1 days));
+
+        // Warp past expiration
+        vm.warp(block.timestamp + 1 days + 1 weeks + 1);
+
+        // Reschedule should succeed (expired = allowed)
+        vm.prank(alice);
+        (bytes32 opId, uint32 nonce) = mgr.schedule(address(sink), data, uint48(block.timestamp + 1 days));
+        assertGt(nonce, 1);
+        assertGt(uint256(opId), 0);
     }
 }
