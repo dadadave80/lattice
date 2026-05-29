@@ -65,9 +65,7 @@ interface IOnERC721Received {
 contract MockERC1155 {
     mapping(uint256 => mapping(address => uint256)) private _balances;
 
-    event TransferSingle(
-        address indexed operator, address indexed from, address indexed to, uint256 id, uint256 value
-    );
+    event TransferSingle(address indexed operator, address indexed from, address indexed to, uint256 id, uint256 value);
 
     function mint(address to, uint256 id, uint256 amount) external {
         _balances[id][to] += amount;
@@ -84,21 +82,16 @@ contract MockERC1155 {
         _balances[id][to] += amount;
         emit TransferSingle(msg.sender, from, to, id, amount);
         if (to.code.length > 0) {
-            bytes4 retval =
-                IOnERC1155Received(to).onERC1155Received(msg.sender, from, id, amount, data);
+            bytes4 retval = IOnERC1155Received(to).onERC1155Received(msg.sender, from, id, amount, data);
             require(retval == IOnERC1155Received.onERC1155Received.selector, "ERC1155: transfer rejected");
         }
     }
 }
 
 interface IOnERC1155Received {
-    function onERC1155Received(
-        address operator,
-        address from,
-        uint256 id,
-        uint256 value,
-        bytes calldata data
-    ) external returns (bytes4);
+    function onERC1155Received(address operator, address from, uint256 id, uint256 value, bytes calldata data)
+        external
+        returns (bytes4);
 }
 
 /// @notice A target that, when called, re-entrantly cancels the operation currently being executed.

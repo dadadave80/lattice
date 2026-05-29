@@ -2,8 +2,8 @@
 pragma solidity ^0.8.30;
 
 import {VotesLib} from "@lattice/governance/libraries/VotesLib.sol";
-import {ERC20Lib} from "@lattice/tokens/libraries/ERC20Lib.sol";
 import {IVotes} from "@lattice/interfaces/IVotes.sol";
+import {ERC20Lib} from "@lattice/tokens/libraries/ERC20Lib.sol";
 
 /// @title Votes
 /// @notice Stateless Diamond facet implementing ERC-5805 delegation + ERC-6372 clock.

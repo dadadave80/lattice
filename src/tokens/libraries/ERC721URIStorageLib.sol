@@ -2,16 +2,15 @@
 pragma solidity ^0.8.30;
 
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
-import {ERC721Lib} from "@lattice/tokens/libraries/ERC721Lib.sol";
 import {IERC721URIStorage} from "@lattice/interfaces/IERC721URIStorage.sol";
+import {ERC721Lib} from "@lattice/tokens/libraries/ERC721Lib.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
 //                                  STORAGE
 //////////////////////////////////////////////////////////////////////////*//
 
 /// @dev `keccak256(abi.encode(uint256(keccak256("lattice.storage.ERC721URIStorage")) - 1)) & ~bytes32(uint256(0xff))`.
-bytes32 constant ERC721URISTORAGE_STORAGE_SLOT =
-    0xcad0a180da252dc6d7fda719c706c048d7fcfbea8301125fec9b8527feaa7700;
+bytes32 constant ERC721URISTORAGE_STORAGE_SLOT = 0xcad0a180da252dc6d7fda719c706c048d7fcfbea8301125fec9b8527feaa7700;
 
 /// @dev ERC-165 storage location (same across all Lattice modules).
 /// `keccak256(abi.encode(uint256(keccak256("diamond.lib.storage.ERC165")) - 1)) & ~bytes32(uint256(0xff))`.

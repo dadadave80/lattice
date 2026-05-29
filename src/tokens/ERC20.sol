@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ERC20Lib} from "@lattice/tokens/libraries/ERC20Lib.sol";
 import {IERC20} from "@lattice/interfaces/IERC20.sol";
+import {ERC20Lib} from "@lattice/tokens/libraries/ERC20Lib.sol";
 
 /// @title ERC20
 /// @notice Stateless Diamond facet for the ERC-20 token standard.

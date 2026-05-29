@@ -3,16 +3,16 @@ pragma solidity ^0.8.30;
 
 import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
+import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
+import {VotesLib} from "@lattice/governance/libraries/VotesLib.sol";
+import {IERC20} from "@lattice/interfaces/IERC20.sol";
+import {IERC20Votes} from "@lattice/interfaces/IERC20Votes.sol";
+import {IVotes} from "@lattice/interfaces/IVotes.sol";
 import {ERC20Votes} from "@lattice/tokens/ERC20Votes.sol";
 import {ERC20Lib} from "@lattice/tokens/libraries/ERC20Lib.sol";
 import {ERC20VotesLib} from "@lattice/tokens/libraries/ERC20VotesLib.sol";
-import {VotesLib} from "@lattice/governance/libraries/VotesLib.sol";
 import {EIP712Lib} from "@lattice/utils/libraries/EIP712Lib.sol";
 import {NoncesLib} from "@lattice/utils/libraries/NoncesLib.sol";
-import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
-import {IERC20} from "@lattice/interfaces/IERC20.sol";
-import {IVotes} from "@lattice/interfaces/IVotes.sol";
-import {IERC20Votes} from "@lattice/interfaces/IERC20Votes.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @title MockERC20VotesContract
@@ -67,8 +67,7 @@ contract ERC20VotesTester is Test {
 
     uint256 constant INITIAL_SUPPLY = 1_000e18;
 
-    bytes32 constant DELEGATION_TYPEHASH =
-        keccak256("Delegation(address delegatee,uint256 nonce,uint256 expiry)");
+    bytes32 constant DELEGATION_TYPEHASH = keccak256("Delegation(address delegatee,uint256 nonce,uint256 expiry)");
 
     event DelegateChanged(address indexed delegator, address indexed fromDelegate, address indexed toDelegate);
     event DelegateVotesChanged(address indexed delegate, uint256 previousVotes, uint256 newVotes);
@@ -85,11 +84,7 @@ contract ERC20VotesTester is Test {
     //                          HELPER: build delegation digest
     //////////////////////////////////////////////////////////////////////////*//
 
-    function _delegationHash(address delegatee, uint256 nonce, uint256 expiry)
-        internal
-        view
-        returns (bytes32)
-    {
+    function _delegationHash(address delegatee, uint256 nonce, uint256 expiry) internal view returns (bytes32) {
         bytes32 structHash = keccak256(abi.encode(DELEGATION_TYPEHASH, delegatee, nonce, expiry));
         return keccak256(abi.encodePacked("\x19\x01", token.DOMAIN_SEPARATOR(), structHash));
     }
@@ -256,9 +251,7 @@ contract ERC20VotesTester is Test {
     }
 
     function test_GetPastVotes_FutureLookupReverts() public {
-        vm.expectRevert(
-            abi.encodeWithSelector(IVotes.ERC5805FutureLookup.selector, block.timestamp, block.timestamp)
-        );
+        vm.expectRevert(abi.encodeWithSelector(IVotes.ERC5805FutureLookup.selector, block.timestamp, block.timestamp));
         token.getPastVotes(alice, block.timestamp);
     }
 
@@ -305,9 +298,7 @@ contract ERC20VotesTester is Test {
     }
 
     function test_GetPastTotalSupply_FutureLookupReverts() public {
-        vm.expectRevert(
-            abi.encodeWithSelector(IVotes.ERC5805FutureLookup.selector, block.timestamp, block.timestamp)
-        );
+        vm.expectRevert(abi.encodeWithSelector(IVotes.ERC5805FutureLookup.selector, block.timestamp, block.timestamp));
         token.getPastTotalSupply(block.timestamp);
     }
 

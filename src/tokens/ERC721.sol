@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ERC721Lib} from "@lattice/tokens/libraries/ERC721Lib.sol";
 import {IERC721} from "@lattice/interfaces/IERC721.sol";
+import {ERC721Lib} from "@lattice/tokens/libraries/ERC721Lib.sol";
 
 /// @title ERC721
 /// @notice Stateless Diamond facet for the ERC-721 Non-Fungible Token standard.

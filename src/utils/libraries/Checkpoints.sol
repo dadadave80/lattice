@@ -156,11 +156,7 @@ library Checkpoints {
     }
 
     /// @notice Returns whether there is at least one checkpoint, and if so, its key and value.
-    function latestCheckpoint(Trace208 storage self)
-        internal
-        view
-        returns (bool exists, uint48 _key, uint208 _value)
-    {
+    function latestCheckpoint(Trace208 storage self) internal view returns (bool exists, uint48 _key, uint208 _value) {
         uint256 len = self._checkpoints.length;
         if (len == 0) return (false, 0, 0);
         Checkpoint208 storage last = self._checkpoints[len - 1];

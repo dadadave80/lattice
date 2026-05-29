@@ -160,12 +160,12 @@ contract Governor is IGovernor {
     }
 
     /// @inheritdoc IGovernor
-    function queue(
-        address[] memory targets,
-        uint256[] memory values,
-        bytes[] memory calldatas,
-        bytes32 descriptionHash
-    ) external virtual override returns (uint256) {
+    function queue(address[] memory targets, uint256[] memory values, bytes[] memory calldatas, bytes32 descriptionHash)
+        external
+        virtual
+        override
+        returns (uint256)
+    {
         return GovernorLib.queue(targets, values, calldatas, descriptionHash);
     }
 

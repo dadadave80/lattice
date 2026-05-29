@@ -3,11 +3,11 @@ pragma solidity ^0.8.30;
 
 import {ContextLib} from "@diamond/libraries/ContextLib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
+import {IVotes} from "@lattice/interfaces/IVotes.sol";
+import {Checkpoints} from "@lattice/utils/libraries/Checkpoints.sol";
 import {ECDSA} from "@lattice/utils/libraries/ECDSA.sol";
 import {EIP712Lib} from "@lattice/utils/libraries/EIP712Lib.sol";
 import {NoncesLib} from "@lattice/utils/libraries/NoncesLib.sol";
-import {Checkpoints} from "@lattice/utils/libraries/Checkpoints.sol";
-import {IVotes} from "@lattice/interfaces/IVotes.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
 //                                  STORAGE
@@ -156,14 +156,11 @@ library VotesLib {
     /// @notice Recovers the signer of a delegation EIP-712 signature and validates expiry.
     ///         Does NOT consume the nonce or delegate. Useful for callers needing the
     ///         signer address before deciding on voting units (e.g. ERC20VotesLib).
-    function _recoverDelegationSigner(
-        address delegatee,
-        uint256 nonce,
-        uint256 expiry,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    ) internal view returns (address signer) {
+    function _recoverDelegationSigner(address delegatee, uint256 nonce, uint256 expiry, uint8 v, bytes32 r, bytes32 s)
+        internal
+        view
+        returns (address signer)
+    {
         if (block.timestamp > expiry) {
             revert IVotes.VotesExpiredSignature(expiry);
         }

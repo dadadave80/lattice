@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ERC20Lib} from "@lattice/tokens/libraries/ERC20Lib.sol";
-import {ERC20VotesLib} from "@lattice/tokens/libraries/ERC20VotesLib.sol";
-import {VotesLib} from "@lattice/governance/libraries/VotesLib.sol";
-import {ERC20} from "@lattice/tokens/ERC20.sol";
 import {Votes} from "@lattice/governance/Votes.sol";
+import {VotesLib} from "@lattice/governance/libraries/VotesLib.sol";
 import {IERC20} from "@lattice/interfaces/IERC20.sol";
 import {IVotes} from "@lattice/interfaces/IVotes.sol";
+import {ERC20} from "@lattice/tokens/ERC20.sol";
+import {ERC20Lib} from "@lattice/tokens/libraries/ERC20Lib.sol";
+import {ERC20VotesLib} from "@lattice/tokens/libraries/ERC20VotesLib.sol";
 
 /// @title ERC20Votes
 /// @notice Stateless Diamond facet combining ERC-20 with checkpoint-based voting power.

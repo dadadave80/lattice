@@ -3,12 +3,12 @@ pragma solidity ^0.8.30;
 
 import {ContextLib} from "@diamond/libraries/ContextLib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
+import {IGovernor} from "@lattice/interfaces/IGovernor.sol";
+import {ITimelockController} from "@lattice/interfaces/ITimelockController.sol";
+import {IVotes} from "@lattice/interfaces/IVotes.sol";
 import {EIP712Lib} from "@lattice/utils/libraries/EIP712Lib.sol";
 import {NoncesLib} from "@lattice/utils/libraries/NoncesLib.sol";
 import {SignatureChecker} from "@lattice/utils/libraries/SignatureChecker.sol";
-import {IGovernor} from "@lattice/interfaces/IGovernor.sol";
-import {IVotes} from "@lattice/interfaces/IVotes.sol";
-import {ITimelockController} from "@lattice/interfaces/ITimelockController.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
 //                                  STORAGE
@@ -238,7 +238,13 @@ library GovernorLib {
 
     /// @notice Returns the quorum numerator at a given timepoint.
     /// @dev Simplified: returns the current numerator (no historical tracking).
-    function quorumNumeratorAt(uint256 /* timepoint */ ) internal view returns (uint256) {
+    function quorumNumeratorAt(
+        uint256 /* timepoint */
+    )
+        internal
+        view
+        returns (uint256)
+    {
         return governorStorage()._quorumNumerator;
     }
 
@@ -412,15 +418,7 @@ library GovernorLib {
         string[] memory signatures = new string[](targets.length);
 
         emit IGovernor.ProposalCreated(
-            proposalId,
-            proposer,
-            targets,
-            values,
-            signatures,
-            calldatas,
-            voteStart,
-            voteStart + voteDur,
-            description
+            proposalId, proposer, targets, values, signatures, calldatas, voteStart, voteStart + voteDur, description
         );
     }
 
@@ -430,12 +428,10 @@ library GovernorLib {
     /// @param calldatas Encoded calldata for each call.
     /// @param descriptionHash keccak256 hash of the description string.
     /// @return proposalId The proposal ID.
-    function queue(
-        address[] memory targets,
-        uint256[] memory values,
-        bytes[] memory calldatas,
-        bytes32 descriptionHash
-    ) internal returns (uint256) {
+    function queue(address[] memory targets, uint256[] memory values, bytes[] memory calldatas, bytes32 descriptionHash)
+        internal
+        returns (uint256)
+    {
         uint256 proposalId = hashProposal(targets, values, calldatas, descriptionHash);
 
         // Check for double-queue before the state check so we emit the correct error.
@@ -553,8 +549,7 @@ library GovernorLib {
         IGovernor.ProposalState currentState = state(proposalId);
         // Allow cancel in any non-terminal state: Pending, Active, Succeeded, Queued.
         bytes32 allowedStates = _encodeStateBitmap(IGovernor.ProposalState.Pending)
-            | _encodeStateBitmap(IGovernor.ProposalState.Active)
-            | _encodeStateBitmap(IGovernor.ProposalState.Succeeded)
+            | _encodeStateBitmap(IGovernor.ProposalState.Active) | _encodeStateBitmap(IGovernor.ProposalState.Succeeded)
             | _encodeStateBitmap(IGovernor.ProposalState.Queued);
         if (
             currentState != IGovernor.ProposalState.Pending && currentState != IGovernor.ProposalState.Active
@@ -600,10 +595,7 @@ library GovernorLib {
     /// @param support Vote type: 0=Against, 1=For, 2=Abstain.
     /// @param reason Human-readable reason for the vote.
     /// @return weight The voter's voting power at the proposal snapshot.
-    function castVoteWithReason(uint256 proposalId, uint8 support, string calldata reason)
-        internal
-        returns (uint256)
-    {
+    function castVoteWithReason(uint256 proposalId, uint8 support, string calldata reason) internal returns (uint256) {
         address voter = ContextLib.msgSender();
         return _castVote(proposalId, voter, support, reason, "");
     }
@@ -703,13 +695,10 @@ library GovernorLib {
     //////////////////////////////////////////////////////////////////////////*//
 
     /// @dev Internal implementation for all vote casting paths.
-    function _castVote(
-        uint256 proposalId,
-        address voter,
-        uint8 support,
-        string memory reason,
-        bytes memory params
-    ) internal returns (uint256 weight) {
+    function _castVote(uint256 proposalId, address voter, uint8 support, string memory reason, bytes memory params)
+        internal
+        returns (uint256 weight)
+    {
         IGovernor.ProposalState currentState = state(proposalId);
         if (currentState != IGovernor.ProposalState.Active) {
             revert IGovernor.GovernorUnexpectedProposalState(

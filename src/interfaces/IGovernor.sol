@@ -224,12 +224,9 @@ interface IGovernor {
     ) external returns (uint256);
 
     /// @notice Queue a succeeded proposal in the timelock.
-    function queue(
-        address[] memory targets,
-        uint256[] memory values,
-        bytes[] memory calldatas,
-        bytes32 descriptionHash
-    ) external returns (uint256);
+    function queue(address[] memory targets, uint256[] memory values, bytes[] memory calldatas, bytes32 descriptionHash)
+        external
+        returns (uint256);
 
     /// @notice Execute a succeeded (or queued+ready) proposal.
     function execute(

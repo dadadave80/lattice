@@ -1,22 +1,22 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
+import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
+import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
+import {GovernorStandalone} from "@lattice/governance/GovernorStandalone.sol";
+import {TimelockControllerStandalone} from "@lattice/governance/TimelockControllerStandalone.sol";
+import {BALLOT_TYPEHASH, GovernorLib} from "@lattice/governance/libraries/GovernorLib.sol";
+import {TimelockControllerLib} from "@lattice/governance/libraries/TimelockControllerLib.sol";
+import {VotesLib} from "@lattice/governance/libraries/VotesLib.sol";
+import {IGovernor} from "@lattice/interfaces/IGovernor.sol";
+import {ITimelockController} from "@lattice/interfaces/ITimelockController.sol";
+import {IVotes} from "@lattice/interfaces/IVotes.sol";
 import {ERC20Votes} from "@lattice/tokens/ERC20Votes.sol";
 import {ERC20Lib} from "@lattice/tokens/libraries/ERC20Lib.sol";
 import {ERC20VotesLib} from "@lattice/tokens/libraries/ERC20VotesLib.sol";
-import {VotesLib} from "@lattice/governance/libraries/VotesLib.sol";
 import {EIP712Lib} from "@lattice/utils/libraries/EIP712Lib.sol";
 import {NoncesLib} from "@lattice/utils/libraries/NoncesLib.sol";
-import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
-import {GovernorLib, BALLOT_TYPEHASH} from "@lattice/governance/libraries/GovernorLib.sol";
-import {GovernorStandalone} from "@lattice/governance/GovernorStandalone.sol";
-import {TimelockControllerStandalone} from "@lattice/governance/TimelockControllerStandalone.sol";
-import {TimelockControllerLib} from "@lattice/governance/libraries/TimelockControllerLib.sol";
-import {IGovernor} from "@lattice/interfaces/IGovernor.sol";
-import {IVotes} from "@lattice/interfaces/IVotes.sol";
-import {ITimelockController} from "@lattice/interfaces/ITimelockController.sol";
 import {Test, console} from "forge-std/Test.sol";
 import {Vm} from "forge-std/Vm.sol";
 
@@ -324,7 +324,15 @@ contract GovernorTester is Test {
         // The event has an indexed-equivalent proposalId — just check it fires
         vm.expectEmit(false, false, false, false, address(governor));
         emit ProposalCreated(
-            proposalId, alice, targets, values, sigs, calldatas, expectedStart, expectedStart + VOTING_PERIOD, description
+            proposalId,
+            alice,
+            targets,
+            values,
+            sigs,
+            calldatas,
+            expectedStart,
+            expectedStart + VOTING_PERIOD,
+            description
         );
 
         vm.prank(alice);
@@ -337,9 +345,7 @@ contract GovernorTester is Test {
             _buildProposal();
         vm.prank(charlie);
         vm.expectRevert(
-            abi.encodeWithSelector(
-                IGovernor.GovernorInsufficientProposerVotes.selector, charlie, 0, PROPOSAL_THRESHOLD
-            )
+            abi.encodeWithSelector(IGovernor.GovernorInsufficientProposerVotes.selector, charlie, 0, PROPOSAL_THRESHOLD)
         );
         governor.propose(targets, values, calldatas, description);
     }
@@ -350,9 +356,7 @@ contract GovernorTester is Test {
         bytes[] memory calldatas = new bytes[](2);
 
         vm.prank(alice);
-        vm.expectRevert(
-            abi.encodeWithSelector(IGovernor.GovernorInvalidProposalLength.selector, 2, 2, 1)
-        );
+        vm.expectRevert(abi.encodeWithSelector(IGovernor.GovernorInvalidProposalLength.selector, 2, 2, 1));
         governor.propose(targets, values, calldatas, "desc");
     }
 
@@ -1162,9 +1166,7 @@ contract GovernorTester is Test {
 
         // Should not revert and should emit VoteCastWithParams
         vm.prank(alice);
-        uint256 weight = governor.castVoteWithReasonAndParams(
-            proposalId, uint8(IGovernor.VoteType.For), reason, params
-        );
+        uint256 weight = governor.castVoteWithReasonAndParams(proposalId, uint8(IGovernor.VoteType.For), reason, params);
         assertEq(weight, INITIAL_SUPPLY);
         assertTrue(governor.hasVoted(proposalId, alice));
     }

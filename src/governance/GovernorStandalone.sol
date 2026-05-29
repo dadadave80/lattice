@@ -2,10 +2,10 @@
 pragma solidity ^0.8.30;
 
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
-import {EIP712Lib} from "@lattice/utils/libraries/EIP712Lib.sol";
-import {NoncesLib} from "@lattice/utils/libraries/NoncesLib.sol";
 import {Governor} from "@lattice/governance/Governor.sol";
 import {GovernorLib} from "@lattice/governance/libraries/GovernorLib.sol";
+import {EIP712Lib} from "@lattice/utils/libraries/EIP712Lib.sol";
+import {NoncesLib} from "@lattice/utils/libraries/NoncesLib.sol";
 
 /// @title GovernorStandalone
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
