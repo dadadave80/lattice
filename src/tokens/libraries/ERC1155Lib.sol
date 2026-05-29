@@ -243,7 +243,32 @@ library ERC1155Lib {
         _update(from, address(0), ids, values);
     }
 
+    /// @notice Updates balances then performs the ERC-1155 receiver acceptance check.
+    /// @dev Provides the OZ _updateWithAcceptanceCheck override hook layer. Extensions that
+    ///      need to intercept both state-update and receiver-check in one virtual point can
+    ///      wrap this function at the facet layer.
+    function _updateWithAcceptanceCheck(
+        address from,
+        address to,
+        uint256[] memory ids,
+        uint256[] memory values,
+        bytes memory data
+    ) internal {
+        _update(from, to, ids, values);
+        if (to != address(0)) {
+            address operator = ContextLib.msgSender();
+            if (ids.length == 1) {
+                _doSafeTransferAcceptanceCheck(operator, from, to, ids[0], values[0], data);
+            } else {
+                _doSafeBatchTransferAcceptanceCheck(operator, from, to, ids, values, data);
+            }
+        }
+    }
+
     /// @notice Calls IERC1155Receiver.onERC1155Received if `to` is a contract.
+    /// @dev Distinguishes between a non-implementor (empty revert) and a deliberate
+    ///      revert from the receiver (non-empty reason). Non-empty reasons are re-bubbled
+    ///      verbatim so callers see the actual error from the receiver contract.
     function _doSafeTransferAcceptanceCheck(
         address operator,
         address from,
@@ -257,13 +282,22 @@ library ERC1155Lib {
                 if (response != IERC1155Receiver.onERC1155Received.selector) {
                     revert IERC1155.ERC1155InvalidReceiver(to);
                 }
-            } catch {
-                revert IERC1155.ERC1155InvalidReceiver(to);
+            } catch (bytes memory reason) {
+                if (reason.length == 0) {
+                    revert IERC1155.ERC1155InvalidReceiver(to);
+                } else {
+                    assembly ("memory-safe") {
+                        revert(add(32, reason), mload(reason))
+                    }
+                }
             }
         }
     }
 
     /// @notice Calls IERC1155Receiver.onERC1155BatchReceived if `to` is a contract.
+    /// @dev Distinguishes between a non-implementor (empty revert) and a deliberate
+    ///      revert from the receiver (non-empty reason). Non-empty reasons are re-bubbled
+    ///      verbatim so callers see the actual error from the receiver contract.
     function _doSafeBatchTransferAcceptanceCheck(
         address operator,
         address from,
@@ -279,8 +313,14 @@ library ERC1155Lib {
                 if (response != IERC1155Receiver.onERC1155BatchReceived.selector) {
                     revert IERC1155.ERC1155InvalidReceiver(to);
                 }
-            } catch {
-                revert IERC1155.ERC1155InvalidReceiver(to);
+            } catch (bytes memory reason) {
+                if (reason.length == 0) {
+                    revert IERC1155.ERC1155InvalidReceiver(to);
+                } else {
+                    assembly ("memory-safe") {
+                        revert(add(32, reason), mload(reason))
+                    }
+                }
             }
         }
     }

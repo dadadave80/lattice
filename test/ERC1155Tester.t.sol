@@ -40,6 +40,23 @@ contract Bad1155Receiver {
     }
 }
 
+/// @notice ERC1155 receiver that deliberately reverts with a custom error on single transfer.
+contract Reverting1155Receiver {
+    error TransferBlocked();
+
+    function onERC1155Received(address, address, uint256, uint256, bytes calldata) external pure returns (bytes4) {
+        revert TransferBlocked();
+    }
+
+    function onERC1155BatchReceived(address, address, uint256[] calldata, uint256[] calldata, bytes calldata)
+        external
+        pure
+        returns (bytes4)
+    {
+        revert TransferBlocked();
+    }
+}
+
 /// @title MockERC1155Contract
 /// @notice Mock ERC-1155 multi-token for testing.
 contract MockERC1155Contract is ERC1155, AccessControl {
@@ -299,5 +316,43 @@ contract ERC1155Tester is Test {
 
     function test_SupportsERC1155MetadataURIInterface() public view {
         assertTrue(token.supportsInterface(0x0e89341c)); // IERC1155MetadataURI
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //       IMP-01: Receiver revert reason bubbles up (ERC1155 IMP-01)
+    //////////////////////////////////////////////////////////////////////////*//
+
+    function test_MintToRevertingReceiver_BubblesCustomError() public {
+        Reverting1155Receiver receiver = new Reverting1155Receiver();
+
+        vm.expectRevert(Reverting1155Receiver.TransferBlocked.selector);
+        vm.prank(admin);
+        token.mintHelper(address(receiver), ID_1, 100, "");
+    }
+
+    function test_MintBatchToRevertingReceiver_BubblesCustomError() public {
+        Reverting1155Receiver receiver = new Reverting1155Receiver();
+
+        uint256[] memory ids = new uint256[](2);
+        ids[0] = ID_1;
+        ids[1] = ID_2;
+        uint256[] memory values = new uint256[](2);
+        values[0] = 10;
+        values[1] = 20;
+
+        vm.expectRevert(Reverting1155Receiver.TransferBlocked.selector);
+        vm.prank(admin);
+        token.mintBatchHelper(address(receiver), ids, values, "");
+    }
+
+    function test_SafeTransferToRevertingReceiver_BubblesCustomError() public {
+        Reverting1155Receiver receiver = new Reverting1155Receiver();
+
+        vm.prank(admin);
+        token.mintHelper(alice, ID_1, 100, "");
+
+        vm.expectRevert(Reverting1155Receiver.TransferBlocked.selector);
+        vm.prank(alice);
+        token.safeTransferFrom(alice, address(receiver), ID_1, 50, "");
     }
 }
