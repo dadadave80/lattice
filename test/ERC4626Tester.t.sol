@@ -17,6 +17,51 @@ import {NoncesLib} from "@lattice/utils/libraries/NoncesLib.sol";
 import {Test} from "forge-std/Test.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
+//                    MOCK USDT-STYLE TOKEN (no return value)
+//////////////////////////////////////////////////////////////////////////*//
+
+/// @notice Mimics USDT / BNB: transferFrom and transfer do NOT return a bool.
+/// The ABI omits the return value so the encoded returndata length is 0.
+contract MockNoReturnERC20 {
+    mapping(address => uint256) public balanceOf;
+    mapping(address => mapping(address => uint256)) public allowance;
+
+    function mint(address to, uint256 amount) external {
+        balanceOf[to] += amount;
+    }
+
+    function approve(address spender, uint256 amount) external returns (bool) {
+        allowance[msg.sender][spender] = amount;
+        return true;
+    }
+
+    /// @dev Intentionally has no return value — just like USDT.
+    function transfer(address to, uint256 amount) external {
+        require(balanceOf[msg.sender] >= amount, "insufficient");
+        balanceOf[msg.sender] -= amount;
+        balanceOf[to] += amount;
+    }
+
+    /// @dev Intentionally has no return value — just like USDT.
+    function transferFrom(address from, address to, uint256 amount) external {
+        require(balanceOf[from] >= amount, "insufficient");
+        require(allowance[from][msg.sender] >= amount, "allowance");
+        allowance[from][msg.sender] -= amount;
+        balanceOf[from] -= amount;
+        balanceOf[to] += amount;
+    }
+
+    /// @dev Returns a uint256 larger than type(uint8).max so naive uint8-cast truncates.
+    function decimals() external pure returns (uint256) {
+        return 300;
+    }
+
+    function name() external pure returns (string memory) { return "NoReturn"; }
+    function symbol() external pure returns (string memory) { return "NRT"; }
+    function totalSupply() external pure returns (uint256) { return 0; }
+}
+
+//*//////////////////////////////////////////////////////////////////////////
 //                          MOCK UNDERLYING ERC20
 //////////////////////////////////////////////////////////////////////////*//
 
@@ -600,5 +645,94 @@ contract ERC4626Tester is Test {
     function test_SupportsIERC20() public view {
         // ERC4626Lib registers IERC4626, ERC20Lib registers IERC20
         assertTrue(vault.supportsInterface(type(IERC20).interfaceId));
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                      USDT-STYLE TOKEN COMPATIBILITY
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice Deposit must succeed with a token whose transferFrom() returns no bool (USDT-style).
+    function test_DepositWithUSDTStyleToken() public {
+        MockNoReturnERC20 usdtLike = new MockNoReturnERC20();
+        usdtLike.mint(alice, 1000e18);
+
+        MockVaultContract usdtVault = new MockVaultContract();
+        // The vault will call decimals() on usdtLike — it returns 300 so underlyingDecimals stays 18
+        usdtVault.initialize(address(usdtLike), "USDT Vault", "vUSDT", 0);
+        assertEq(usdtVault.decimals(), 18, "oversize decimals should default to 18");
+
+        vm.prank(alice);
+        usdtLike.approve(address(usdtVault), 100e18);
+
+        vm.prank(alice);
+        uint256 shares = usdtVault.deposit(100e18, alice);
+
+        assertEq(shares, 100e18);
+        assertEq(usdtVault.balanceOf(alice), shares);
+        assertEq(usdtLike.balanceOf(address(usdtVault)), 100e18);
+    }
+
+    /// @notice Withdraw must succeed with a token whose transfer() returns no bool (USDT-style).
+    function test_WithdrawWithUSDTStyleToken() public {
+        MockNoReturnERC20 usdtLike = new MockNoReturnERC20();
+        usdtLike.mint(alice, 1000e18);
+
+        MockVaultContract usdtVault = new MockVaultContract();
+        usdtVault.initialize(address(usdtLike), "USDT Vault", "vUSDT", 0);
+
+        // Deposit first
+        vm.prank(alice);
+        usdtLike.approve(address(usdtVault), 500e18);
+        vm.prank(alice);
+        usdtVault.deposit(500e18, alice);
+
+        // Now withdraw
+        vm.prank(alice);
+        uint256 burned = usdtVault.withdraw(200e18, alice, alice);
+
+        assertEq(burned, 200e18);
+        assertEq(usdtLike.balanceOf(alice), 1000e18 - 500e18 + 200e18);
+        assertEq(usdtVault.totalAssets(), 300e18);
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                        MULDIV OVERFLOW PROTECTION
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice convertToShares with large totalAssets must not wrap around (tests 512-bit path).
+    function test_MulDivOverflowProtection() public {
+        // Fund vault so totalAssets ~ type(uint128).max
+        uint256 bigAmount = type(uint128).max;
+        vm.prank(admin);
+        underlying.mint(alice, bigAmount);
+        vm.prank(alice);
+        underlying.approve(address(vault), bigAmount);
+        vm.prank(alice);
+        vault.deposit(bigAmount, alice);
+
+        // convertToShares(type(uint128).max) should return a sane value, not overflow-wrapped
+        // At 1:1 the answer is approximately type(uint128).max (with virtual offset correction)
+        uint256 result = vault.convertToShares(type(uint128).max);
+        // The correct answer is close to type(uint128).max (never 0 or wildly wrong)
+        assertGt(result, 0, "result must be > 0");
+        // With 512-bit path: result ~ bigAmount * (bigAmount+1) / (bigAmount+1) = bigAmount
+        // Allow a small tolerance for the virtual +1
+        assertApproxEqAbs(result, bigAmount, 1, "result must be close to input");
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                       OVERSIZE DECIMALS DEFAULT TO 18
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice A token whose decimals() returns uint256(300) must cause vault to default to 18.
+    function test_DecimalsTokenReturningOversizeValueDefaultsTo18() public {
+        MockNoReturnERC20 weirdToken = new MockNoReturnERC20();
+        // weirdToken.decimals() returns 300 — above type(uint8).max
+
+        MockVaultContract weirdVault = new MockVaultContract();
+        weirdVault.initialize(address(weirdToken), "Weird Vault", "vW", 0);
+
+        // Should default to 18, not truncate 300 to 44 (300 mod 256 = 44)
+        assertEq(weirdVault.decimals(), 18, "should default to 18 not truncate 300 to 44");
     }
 }
