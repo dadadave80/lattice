@@ -255,6 +255,14 @@ interface IGovernor {
         external
         returns (uint256);
 
+    /// @notice Cast a vote with a reason string and extra params.
+    function castVoteWithReasonAndParams(
+        uint256 proposalId,
+        uint8 support,
+        string calldata reason,
+        bytes calldata params
+    ) external returns (uint256);
+
     //*//////////////////////////////////////////////////////////////////////////
     //                             ADMIN SETTERS
     //////////////////////////////////////////////////////////////////////////*//

@@ -214,6 +214,16 @@ contract Governor is IGovernor {
         return GovernorLib.castVoteBySig(proposalId, support, voter, signature);
     }
 
+    /// @inheritdoc IGovernor
+    function castVoteWithReasonAndParams(
+        uint256 proposalId,
+        uint8 support,
+        string calldata reason,
+        bytes calldata params
+    ) external virtual override returns (uint256) {
+        return GovernorLib.castVoteWithReasonAndParams(proposalId, support, reason, params);
+    }
+
     //*//////////////////////////////////////////////////////////////////////////
     //                              ADMIN SETTERS
     //////////////////////////////////////////////////////////////////////////*//

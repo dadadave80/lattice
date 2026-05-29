@@ -602,6 +602,22 @@ library GovernorLib {
         return _castVote(proposalId, voter, support, reason, "");
     }
 
+    /// @notice Cast a vote with a reason string and extra params.
+    /// @param proposalId The proposal to vote on.
+    /// @param support Vote type: 0=Against, 1=For, 2=Abstain.
+    /// @param reason Human-readable reason for the vote.
+    /// @param params Extra encoded parameters (e.g. fractional voting split).
+    /// @return weight The voter's voting power at the proposal snapshot.
+    function castVoteWithReasonAndParams(
+        uint256 proposalId,
+        uint8 support,
+        string calldata reason,
+        bytes calldata params
+    ) internal returns (uint256) {
+        address voter = ContextLib.msgSender();
+        return _castVote(proposalId, voter, support, reason, params);
+    }
+
     /// @notice Cast a vote via an EIP-712 signature.
     /// @param proposalId The proposal to vote on.
     /// @param support Vote type: 0=Against, 1=For, 2=Abstain.
