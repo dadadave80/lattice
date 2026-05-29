@@ -12,15 +12,8 @@ interface IERC20Permit {
 
     /// @notice Sets `value` as the allowance of `spender` over `owner`'s tokens,
     ///         given a signed approval.
-    function permit(
-        address owner,
-        address spender,
-        uint256 value,
-        uint256 deadline,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    ) external;
+    function permit(address owner, address spender, uint256 value, uint256 deadline, uint8 v, bytes32 r, bytes32 s)
+        external;
 
     /// @notice Returns the current nonce for `owner` (for use in permit signatures).
     function nonces(address owner) external view returns (uint256);

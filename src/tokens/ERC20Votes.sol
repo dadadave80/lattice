@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ERC20Lib} from "@lattice/tokens/libraries/ERC20Lib.sol";
-import {ERC20VotesLib} from "@lattice/tokens/libraries/ERC20VotesLib.sol";
-import {VotesLib} from "@lattice/governance/libraries/VotesLib.sol";
-import {Checkpoints} from "@lattice/utils/libraries/Checkpoints.sol";
-import {ERC20} from "@lattice/tokens/ERC20.sol";
 import {Votes} from "@lattice/governance/Votes.sol";
+import {VotesLib} from "@lattice/governance/libraries/VotesLib.sol";
 import {IERC20} from "@lattice/interfaces/IERC20.sol";
 import {IVotes} from "@lattice/interfaces/IVotes.sol";
+import {ERC20} from "@lattice/tokens/ERC20.sol";
+import {ERC20Lib} from "@lattice/tokens/libraries/ERC20Lib.sol";
+import {ERC20VotesLib} from "@lattice/tokens/libraries/ERC20VotesLib.sol";
+import {Checkpoints} from "@lattice/utils/libraries/Checkpoints.sol";
 
 /// @title ERC20Votes
 /// @notice Stateless Diamond facet combining ERC-20 with checkpoint-based voting power.
@@ -70,12 +70,7 @@ contract ERC20Votes is ERC20, Votes {
 
     /// @notice Returns the checkpoint at position `pos` for `account` (0-indexed).
     /// @dev Used by governance frameworks and off-chain indexers to enumerate checkpoint history.
-    function checkpoints(address account, uint32 pos)
-        public
-        view
-        virtual
-        returns (Checkpoints.Checkpoint208 memory)
-    {
+    function checkpoints(address account, uint32 pos) public view virtual returns (Checkpoints.Checkpoint208 memory) {
         return ERC20VotesLib.checkpoints(account, pos);
     }
 }

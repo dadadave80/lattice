@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {IERC20Capped} from "@lattice/interfaces/IERC20Capped.sol";
+import {ERC20} from "@lattice/tokens/ERC20.sol";
 import {ERC20CappedLib} from "@lattice/tokens/libraries/ERC20CappedLib.sol";
 import {ERC20Lib} from "@lattice/tokens/libraries/ERC20Lib.sol";
-import {ERC20} from "@lattice/tokens/ERC20.sol";
-import {IERC20Capped} from "@lattice/interfaces/IERC20Capped.sol";
 
 /// @title ERC20Capped
 /// @notice Stateless Diamond facet for ERC-20 tokens with a capped total supply.

@@ -2,9 +2,9 @@
 pragma solidity ^0.8.30;
 
 import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
+import {IERC721URIStorage} from "@lattice/interfaces/IERC721URIStorage.sol";
 import {ERC721} from "@lattice/tokens/ERC721.sol";
 import {ERC721URIStorageLib} from "@lattice/tokens/libraries/ERC721URIStorageLib.sol";
-import {IERC721URIStorage} from "@lattice/interfaces/IERC721URIStorage.sol";
 
 /// @title ERC721URIStorage
 /// @notice Stateless Diamond facet for ERC-721 with per-token URI storage (EIP-4906).

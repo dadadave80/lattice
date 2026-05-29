@@ -3,23 +3,18 @@ pragma solidity ^0.8.30;
 
 import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
-import {ERC20Permit} from "@lattice/tokens/ERC20Permit.sol";
-import {ERC20PermitLib} from "@lattice/tokens/libraries/ERC20PermitLib.sol";
-import {ERC20Lib} from "@lattice/tokens/libraries/ERC20Lib.sol";
-import {EIP712Lib} from "@lattice/utils/libraries/EIP712Lib.sol";
-import {NoncesLib} from "@lattice/utils/libraries/NoncesLib.sol";
 import {IERC20} from "@lattice/interfaces/IERC20.sol";
 import {IERC20Permit} from "@lattice/interfaces/IERC20Permit.sol";
+import {ERC20Permit} from "@lattice/tokens/ERC20Permit.sol";
+import {ERC20Lib} from "@lattice/tokens/libraries/ERC20Lib.sol";
+import {ERC20PermitLib} from "@lattice/tokens/libraries/ERC20PermitLib.sol";
+import {EIP712Lib} from "@lattice/utils/libraries/EIP712Lib.sol";
+import {NoncesLib} from "@lattice/utils/libraries/NoncesLib.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @title MockERC20PermitContract
 contract MockERC20PermitContract is ERC20Permit {
-    function initialize(
-        string memory name_,
-        string memory symbol_,
-        address mintTo,
-        uint256 mintAmount
-    ) external {
+    function initialize(string memory name_, string memory symbol_, address mintTo, uint256 mintAmount) external {
         bytes32 s = InitializableLib.initializableSlot();
         InitializableLib.preInitializer(s);
         ERC20Lib.__ERC20_init(name_, symbol_);
@@ -65,8 +60,7 @@ contract ERC20PermitTester is Test {
         view
         returns (bytes32)
     {
-        bytes32 structHash =
-            keccak256(abi.encode(PERMIT_TYPEHASH(), owner_, spender_, value, nonce, deadline));
+        bytes32 structHash = keccak256(abi.encode(PERMIT_TYPEHASH(), owner_, spender_, value, nonce, deadline));
         return keccak256(abi.encodePacked("\x19\x01", token.DOMAIN_SEPARATOR(), structHash));
     }
 

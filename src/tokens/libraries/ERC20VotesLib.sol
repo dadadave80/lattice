@@ -3,12 +3,12 @@ pragma solidity ^0.8.30;
 
 import {ContextLib} from "@diamond/libraries/ContextLib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
-import {NoncesLib} from "@lattice/utils/libraries/NoncesLib.sol";
-import {Checkpoints} from "@lattice/utils/libraries/Checkpoints.sol";
-import {ERC20Lib} from "@lattice/tokens/libraries/ERC20Lib.sol";
 import {VotesLib} from "@lattice/governance/libraries/VotesLib.sol";
 import {IERC20} from "@lattice/interfaces/IERC20.sol";
 import {IERC20Votes} from "@lattice/interfaces/IERC20Votes.sol";
+import {ERC20Lib} from "@lattice/tokens/libraries/ERC20Lib.sol";
+import {Checkpoints} from "@lattice/utils/libraries/Checkpoints.sol";
+import {NoncesLib} from "@lattice/utils/libraries/NoncesLib.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
 //                                  STORAGE
@@ -21,8 +21,7 @@ bytes32 constant ERC20VOTES_ERC165_STORAGE_LOCATION =
 
 /// @dev IERC20Votes has only errors (no functions), so type(IERC20Votes).interfaceId == 0x00000000.
 /// `keccak256(abi.encode(bytes4(0x00000000), 0x9ca7f3e2e2bfb15fdf072b85dde92837cddacee6cf2f6b38cd06c9457c1c4200))`.
-bytes32 constant ERC165_MAP_IERC20VOTES_SLOT =
-    0x290decd9548b62a8d60345a988386fc84ba6bc95484008f6362f93160ef3e563;
+bytes32 constant ERC165_MAP_IERC20VOTES_SLOT = 0x290decd9548b62a8d60345a988386fc84ba6bc95484008f6362f93160ef3e563;
 
 /// @title ERC20VotesLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

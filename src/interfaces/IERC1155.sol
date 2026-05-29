@@ -5,9 +5,7 @@ pragma solidity >=0.8.4;
 /// @notice Interface for the ERC-1155 Multi-Token Standard, including metadata URI extension.
 interface IERC1155 {
     /// @dev Emitted when `value` tokens of token type `id` are transferred from `from` to `to` by `operator`.
-    event TransferSingle(
-        address indexed operator, address indexed from, address indexed to, uint256 id, uint256 value
-    );
+    event TransferSingle(address indexed operator, address indexed from, address indexed to, uint256 id, uint256 value);
 
     /// @dev Equivalent to multiple {TransferSingle} events, where `operator`, `from`, and `to` are the same for all.
     event TransferBatch(

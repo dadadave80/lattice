@@ -80,7 +80,13 @@ library ERC1155Lib {
 
     /// @notice Returns the URI for token type `id`.
     /// @dev Consumers can override to substitute `{id}` in the template.
-    function uri(uint256 /*id*/ ) internal view returns (string memory) {
+    function uri(
+        uint256 /*id*/
+    )
+        internal
+        view
+        returns (string memory)
+    {
         return erc1155Storage()._uri;
     }
 
@@ -90,11 +96,7 @@ library ERC1155Lib {
     }
 
     /// @notice Batched version of {balanceOf}.
-    function balanceOfBatch(address[] memory accounts, uint256[] memory ids)
-        internal
-        view
-        returns (uint256[] memory)
-    {
+    function balanceOfBatch(address[] memory accounts, uint256[] memory ids) internal view returns (uint256[] memory) {
         if (accounts.length != ids.length) {
             revert IERC1155.ERC1155InvalidArrayLength(ids.length, accounts.length);
         }

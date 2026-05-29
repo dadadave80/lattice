@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ERC20BurnableLib} from "@lattice/tokens/libraries/ERC20BurnableLib.sol";
-import {ERC20} from "@lattice/tokens/ERC20.sol";
 import {IERC20Burnable} from "@lattice/interfaces/IERC20Burnable.sol";
+import {ERC20} from "@lattice/tokens/ERC20.sol";
+import {ERC20BurnableLib} from "@lattice/tokens/libraries/ERC20BurnableLib.sol";
 
 /// @title ERC20Burnable
 /// @notice Stateless Diamond facet adding burn operations to ERC-20.

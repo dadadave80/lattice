@@ -5,9 +5,9 @@ import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
+import {IERC2981} from "@lattice/interfaces/IERC2981.sol";
 import {ERC2981} from "@lattice/tokens/ERC2981.sol";
 import {ERC2981Lib} from "@lattice/tokens/libraries/ERC2981Lib.sol";
-import {IERC2981} from "@lattice/interfaces/IERC2981.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @title MockERC2981Contract
@@ -85,9 +85,7 @@ contract ERC2981Tester is Test {
     }
 
     function test_SetDefaultRoyaltyWithZeroReceiverReverts() public {
-        vm.expectRevert(
-            abi.encodeWithSelector(IERC2981.ERC2981InvalidDefaultRoyaltyReceiver.selector, address(0))
-        );
+        vm.expectRevert(abi.encodeWithSelector(IERC2981.ERC2981InvalidDefaultRoyaltyReceiver.selector, address(0)));
         vm.prank(admin);
         royalty.setDefaultRoyalty(address(0), 500);
     }

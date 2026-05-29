@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ERC1155Lib} from "@lattice/tokens/libraries/ERC1155Lib.sol";
 import {IERC1155} from "@lattice/interfaces/IERC1155.sol";
+import {ERC1155Lib} from "@lattice/tokens/libraries/ERC1155Lib.sol";
 
 /// @title ERC1155
 /// @notice Stateless Diamond facet for the ERC-1155 Multi-Token Standard.
@@ -39,10 +39,7 @@ contract ERC1155 is IERC1155 {
     }
 
     /// @inheritdoc IERC1155
-    function safeTransferFrom(address from, address to, uint256 id, uint256 value, bytes calldata data)
-        public
-        virtual
-    {
+    function safeTransferFrom(address from, address to, uint256 id, uint256 value, bytes calldata data) public virtual {
         ERC1155Lib.safeTransferFrom(from, to, id, value, data);
     }
 

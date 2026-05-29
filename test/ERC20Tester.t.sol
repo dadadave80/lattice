@@ -3,9 +3,9 @@ pragma solidity ^0.8.30;
 
 import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
+import {IERC20} from "@lattice/interfaces/IERC20.sol";
 import {ERC20} from "@lattice/tokens/ERC20.sol";
 import {ERC20Lib} from "@lattice/tokens/libraries/ERC20Lib.sol";
-import {IERC20} from "@lattice/interfaces/IERC20.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @title MockERC20Contract
@@ -127,7 +127,9 @@ contract ERC20Tester is Test {
     function test_TransferInsufficientBalanceReverts() public {
         uint256 tooMuch = INITIAL_SUPPLY + 1;
         vm.prank(alice);
-        vm.expectRevert(abi.encodeWithSelector(IERC20.ERC20InsufficientBalance.selector, alice, INITIAL_SUPPLY, tooMuch));
+        vm.expectRevert(
+            abi.encodeWithSelector(IERC20.ERC20InsufficientBalance.selector, alice, INITIAL_SUPPLY, tooMuch)
+        );
         token.transfer(bob, tooMuch);
     }
 

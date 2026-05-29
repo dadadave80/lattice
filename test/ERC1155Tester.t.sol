@@ -5,9 +5,9 @@ import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
+import {IERC1155, IERC1155Receiver} from "@lattice/interfaces/IERC1155.sol";
 import {ERC1155} from "@lattice/tokens/ERC1155.sol";
 import {ERC1155Lib} from "@lattice/tokens/libraries/ERC1155Lib.sol";
-import {IERC1155, IERC1155Receiver} from "@lattice/interfaces/IERC1155.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @notice ERC1155 receiver that returns correct selectors.
@@ -100,9 +100,7 @@ contract ERC1155Tester is Test {
     uint256 constant ID_2 = 2;
     uint256 constant ID_3 = 3;
 
-    event TransferSingle(
-        address indexed operator, address indexed from, address indexed to, uint256 id, uint256 value
-    );
+    event TransferSingle(address indexed operator, address indexed from, address indexed to, uint256 id, uint256 value);
     event TransferBatch(
         address indexed operator, address indexed from, address indexed to, uint256[] ids, uint256[] values
     );

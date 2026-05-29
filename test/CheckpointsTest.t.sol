@@ -216,8 +216,8 @@ contract CheckpointsTest is Test {
         }
 
         // Test at various points
-        assertEq(harness.upperLookupRecent(5), harness.upperLookup(5));   // before first
-        assertEq(harness.upperLookupRecent(10), harness.upperLookup(10));  // exact first
+        assertEq(harness.upperLookupRecent(5), harness.upperLookup(5)); // before first
+        assertEq(harness.upperLookupRecent(10), harness.upperLookup(10)); // exact first
         assertEq(harness.upperLookupRecent(105), harness.upperLookup(105)); // middle
         assertEq(harness.upperLookupRecent(200), harness.upperLookup(200)); // exact middle
         assertEq(harness.upperLookupRecent(190), harness.upperLookup(190)); // near middle

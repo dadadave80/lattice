@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {EIP712Lib} from "@lattice/utils/libraries/EIP712Lib.sol";
-import {NoncesLib} from "@lattice/utils/libraries/NoncesLib.sol";
-import {ERC20PermitLib} from "@lattice/tokens/libraries/ERC20PermitLib.sol";
+import {IERC20Permit} from "@lattice/interfaces/IERC20Permit.sol";
 import {ERC20} from "@lattice/tokens/ERC20.sol";
+import {ERC20PermitLib} from "@lattice/tokens/libraries/ERC20PermitLib.sol";
 import {EIP712} from "@lattice/utils/EIP712.sol";
 import {Nonces} from "@lattice/utils/Nonces.sol";
-import {IERC20Permit} from "@lattice/interfaces/IERC20Permit.sol";
+import {EIP712Lib} from "@lattice/utils/libraries/EIP712Lib.sol";
+import {NoncesLib} from "@lattice/utils/libraries/NoncesLib.sol";
 
 /// @title ERC20Permit
 /// @notice Stateless Diamond facet adding ERC-2612 permit-based approvals to ERC-20.
