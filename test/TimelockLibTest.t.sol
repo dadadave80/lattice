@@ -83,4 +83,62 @@ contract TimelockLibTest is Test {
         assertTrue(h.isPendingSingle());
         assertFalse(h.isReadySingle());
     }
+
+    function test_SingleConsumeAfterDelayClearsReadyAt() public {
+        h.scheduleSingle(60);
+        vm.warp(block.timestamp + 60);
+        h.consumeSingle();
+        assertEq(h.readyAtSingle(), 0);
+        assertFalse(h.isPendingSingle());
+    }
+
+    function test_SingleConsumeBeforeReadyReverts() public {
+        h.scheduleSingle(60);
+        uint48 expectedReady = uint48(block.timestamp + 60);
+        vm.expectRevert(
+            abi.encodeWithSelector(TimelockLib.TimelockNotReady.selector, expectedReady, uint48(block.timestamp))
+        );
+        h.consumeSingle();
+    }
+
+    function test_SingleConsumeWithoutPendingReverts() public {
+        vm.expectRevert(TimelockLib.TimelockNotPending.selector);
+        h.consumeSingle();
+    }
+
+    function test_SingleCancelClearsReadyAt() public {
+        h.scheduleSingle(60);
+        h.cancelSingle();
+        assertEq(h.readyAtSingle(), 0);
+        assertFalse(h.isPendingSingle());
+    }
+
+    function test_SingleCancelWithoutPendingReverts() public {
+        vm.expectRevert(TimelockLib.TimelockNotPending.selector);
+        h.cancelSingle();
+    }
+
+    function test_SingleDoubleScheduleReverts() public {
+        uint48 firstReady = h.scheduleSingle(60);
+        vm.expectRevert(abi.encodeWithSelector(TimelockLib.TimelockAlreadyPending.selector, firstReady));
+        h.scheduleSingle(120);
+    }
+
+    function test_SingleRescheduleOverwritesReadyAt() public {
+        h.scheduleSingle(60);
+        uint48 newReady = uint48(block.timestamp + 5);
+        h.rescheduleSingle(newReady);
+        assertEq(h.readyAtSingle(), newReady);
+    }
+
+    function test_SingleRescheduleWithoutPendingReverts() public {
+        vm.expectRevert(TimelockLib.TimelockNotPending.selector);
+        h.rescheduleSingle(uint48(block.timestamp + 5));
+    }
+
+    function test_SingleIsReadyAtExactReadyAt() public {
+        h.scheduleSingle(60);
+        vm.warp(block.timestamp + 60);
+        assertTrue(h.isReadySingle());
+    }
 }
