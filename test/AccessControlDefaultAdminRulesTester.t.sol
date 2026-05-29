@@ -47,4 +47,28 @@ contract AccessControlDefaultAdminRulesTester is Test {
     function test_DefaultAdminDelayInitiallySet() public view {
         assertEq(ac.defaultAdminDelay(), INITIAL_DELAY);
     }
+
+    function test_GrantDefaultAdminRoleReverts() public {
+        vm.prank(admin);
+        vm.expectRevert(IAccessControlDefaultAdminRules.AccessControlDefaultAdminRulesUseAdminTransfer.selector);
+        ac.grantRole(DEFAULT_ADMIN_ROLE, alice);
+    }
+
+    function test_RevokeDefaultAdminRoleReverts() public {
+        vm.prank(admin);
+        vm.expectRevert(IAccessControlDefaultAdminRules.AccessControlDefaultAdminRulesUseAdminTransfer.selector);
+        ac.revokeRole(DEFAULT_ADMIN_ROLE, admin);
+    }
+
+    function test_RenounceDefaultAdminRoleReverts() public {
+        vm.prank(admin);
+        vm.expectRevert(IAccessControlDefaultAdminRules.AccessControlDefaultAdminRulesUseAdminTransfer.selector);
+        ac.renounceRole(DEFAULT_ADMIN_ROLE, admin);
+    }
+
+    function test_GrantOtherRoleStillWorks() public {
+        vm.prank(admin);
+        ac.grantRole(MINTER_ROLE, alice);
+        assertTrue(ac.hasRole(MINTER_ROLE, alice));
+    }
 }
