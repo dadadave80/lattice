@@ -69,4 +69,42 @@ contract AccessControlEnumerableTester is Test {
         address[] memory members = ac.getRoleMembers(MINTER_ROLE);
         assertEq(members.length, 0);
     }
+
+    function test_RevokeRoleRemovesMember() public {
+        vm.startPrank(admin);
+        ac.grantRole(MINTER_ROLE, alice);
+        ac.grantRole(MINTER_ROLE, bob);
+        ac.grantRole(MINTER_ROLE, carol);
+        ac.revokeRole(MINTER_ROLE, bob);
+        vm.stopPrank();
+
+        assertEq(ac.getRoleMemberCount(MINTER_ROLE), 2);
+        assertEq(ac.getRoleMember(MINTER_ROLE, 0), alice);
+        assertEq(ac.getRoleMember(MINTER_ROLE, 1), carol);
+        assertFalse(ac.hasRole(MINTER_ROLE, bob));
+    }
+
+    function test_GrantSameMemberTwiceDoesNotDuplicate() public {
+        vm.startPrank(admin);
+        ac.grantRole(MINTER_ROLE, alice);
+        ac.grantRole(MINTER_ROLE, alice);
+        vm.stopPrank();
+        assertEq(ac.getRoleMemberCount(MINTER_ROLE), 1);
+    }
+
+    function test_GetRoleMemberOutOfBoundsReverts() public {
+        vm.expectRevert();
+        ac.getRoleMember(MINTER_ROLE, 0);
+    }
+
+    function test_RenounceRoleRemovesMember() public {
+        vm.prank(admin);
+        ac.grantRole(MINTER_ROLE, alice);
+
+        vm.prank(alice);
+        ac.renounceRole(MINTER_ROLE, alice);
+
+        assertEq(ac.getRoleMemberCount(MINTER_ROLE), 0);
+        assertFalse(ac.hasRole(MINTER_ROLE, alice));
+    }
 }
