@@ -3,6 +3,7 @@ pragma solidity ^0.8.30;
 
 import {ContextLib} from "@diamond/libraries/ContextLib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
+import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
 import {IERC2981} from "@lattice/interfaces/IERC2981.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
@@ -92,6 +93,34 @@ library ERC2981Lib {
 
         uint256 royaltyAmount = (salePrice * royalty.royaltyFraction) / _feeDenominator();
         return (royalty.receiver, royaltyAmount);
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                          MUTATIONS (AUTH-CHECKED)
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice Sets the default royalty receiver and fraction. Admin-only.
+    function setDefaultRoyalty(address receiver, uint96 feeNumerator) internal {
+        AccessControlLib.checkRole(DEFAULT_ADMIN_ROLE);
+        _setDefaultRoyalty(receiver, feeNumerator);
+    }
+
+    /// @notice Deletes the default royalty configuration. Admin-only.
+    function deleteDefaultRoyalty() internal {
+        AccessControlLib.checkRole(DEFAULT_ADMIN_ROLE);
+        _deleteDefaultRoyalty();
+    }
+
+    /// @notice Sets a per-token royalty override. Admin-only.
+    function setTokenRoyalty(uint256 tokenId, address receiver, uint96 feeNumerator) internal {
+        AccessControlLib.checkRole(DEFAULT_ADMIN_ROLE);
+        _setTokenRoyalty(tokenId, receiver, feeNumerator);
+    }
+
+    /// @notice Removes the per-token royalty override, falling back to default. Admin-only.
+    function resetTokenRoyalty(uint256 tokenId) internal {
+        AccessControlLib.checkRole(DEFAULT_ADMIN_ROLE);
+        _resetTokenRoyalty(tokenId);
     }
 
     //*//////////////////////////////////////////////////////////////////////////
