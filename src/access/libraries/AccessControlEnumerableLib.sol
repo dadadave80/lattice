@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {ContextLib} from "@diamond/libraries/ContextLib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
+import {IAccessControl} from "@lattice/interfaces/IAccessControl.sol";
 import {EnumerableSet} from "@lattice/utils/libraries/EnumerableSet.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
@@ -69,6 +71,13 @@ library AccessControlEnumerableLib {
     function revokeRole(bytes32 _role, address _account) internal {
         AccessControlLib.checkRole(AccessControlLib.getRoleAdmin(_role));
         _revokeRole(_role, _account);
+    }
+
+    function renounceRole(bytes32 role, address callerConfirmation) internal {
+        if (callerConfirmation != ContextLib.msgSender()) {
+            revert IAccessControl.AccessControlBadConfirmation();
+        }
+        _revokeRole(role, callerConfirmation);
     }
 
     function _grantRole(bytes32 role, address account) internal {

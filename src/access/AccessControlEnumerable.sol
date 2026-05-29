@@ -60,8 +60,6 @@ contract AccessControlEnumerable is AccessControl, IAccessControlEnumerable {
         virtual
         override(AccessControl, IAccessControl)
     {
-        super.renounceRole(_role, _callerConfirmation);
-        // Clean up the member-set entry — `remove` returns false if absent, which is safe.
-        AccessControlEnumerableLib.accessControlEnumerableStorage()._roleMembers[_role].remove(_callerConfirmation);
+        AccessControlEnumerableLib.renounceRole(_role, _callerConfirmation);
     }
 }
