@@ -103,7 +103,7 @@ library ERC20Lib {
     }
 
     /// @notice Returns the number of decimals — always 18 unless overridden by the facet.
-    function decimals() internal pure returns (uint8) {
+    function decimals() internal view returns (uint8) {
         return 18;
     }
 
@@ -133,7 +133,7 @@ library ERC20Lib {
     /// @notice Sets `value` as the allowance of `spender` over the caller's tokens.
     function approve(address spender, uint256 value) internal returns (bool) {
         address owner = ContextLib.msgSender();
-        _approve(owner, spender, value, true);
+        _approve(owner, spender, value);
         return true;
     }
 
@@ -155,6 +155,7 @@ library ERC20Lib {
 
         if (from == address(0)) {
             // Mint
+            // Overflow check required: The rest of the code assumes that totalSupply never overflows
             $._totalSupply += value;
         } else {
             uint256 fromBalance = $._balances[from];
@@ -190,6 +191,14 @@ library ERC20Lib {
     function _burn(address from, uint256 value) internal {
         if (from == address(0)) revert IERC20.ERC20InvalidSender(address(0));
         _update(from, address(0), value);
+    }
+
+    /// @notice 3-arg entry-point for approve operations. Always emits the Approval event.
+    /// @dev This is the public hook-point for override chains (Permit, Votes extensions).
+    ///      Mirrors OZ's _approve(address,address,uint256) which delegates to the 4-arg variant.
+    ///      Extensions that need to intercept approval at the entry-point should shadow this.
+    function _approve(address owner, address spender, uint256 value) internal {
+        _approve(owner, spender, value, true);
     }
 
     /// @notice Sets the allowance and optionally emits Approval.
