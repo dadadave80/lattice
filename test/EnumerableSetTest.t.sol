@@ -114,4 +114,24 @@ contract EnumerableSetTest is Test {
     function test_EmptyLengthIsZero() public view {
         assertEq(h.lengthBytes32(), 0);
     }
+
+    function test_AtReturnsValueAtIndex() public {
+        h.addBytes32(bytes32(uint256(0x01)));
+        h.addBytes32(bytes32(uint256(0x02)));
+        h.addBytes32(bytes32(uint256(0x03)));
+        assertEq(h.atBytes32(0), bytes32(uint256(0x01)));
+        assertEq(h.atBytes32(1), bytes32(uint256(0x02)));
+        assertEq(h.atBytes32(2), bytes32(uint256(0x03)));
+    }
+
+    function test_AtOutOfBoundsReverts() public {
+        h.addBytes32(bytes32(uint256(0x01)));
+        vm.expectRevert();
+        h.atBytes32(1);
+    }
+
+    function test_AtOnEmptySetReverts() public {
+        vm.expectRevert();
+        h.atBytes32(0);
+    }
 }
