@@ -193,4 +193,31 @@ contract TimelockLibTest is Test {
         );
         h.consumeMulti(op);
     }
+
+    function testFuzz_SingleScheduleConsumeRoundTrip(uint40 delay, uint40 jitter) public {
+        vm.assume(delay > 0);
+        vm.assume(jitter < type(uint40).max - delay);
+
+        uint48 readyAt = h.scheduleSingle(uint48(delay));
+        vm.warp(block.timestamp + uint256(delay) + uint256(jitter));
+        h.consumeSingle();
+        assertEq(h.readyAtSingle(), 0);
+        assertEq(readyAt, uint48(block.timestamp - uint256(jitter)));
+    }
+
+    function testFuzz_SingleConsumeBeforeReadyAlwaysReverts(uint40 delay, uint40 jitter) public {
+        vm.assume(delay > 0);
+        vm.assume(jitter < delay);
+
+        uint48 readyAt = h.scheduleSingle(uint48(delay));
+        vm.warp(block.timestamp + uint256(jitter));
+        vm.expectRevert(abi.encodeWithSelector(TimelockLib.TimelockNotReady.selector, readyAt, uint48(block.timestamp)));
+        h.consumeSingle();
+    }
+
+    function test_SingleScheduleZeroDelayIsImmediatelyReady() public {
+        h.scheduleSingle(0);
+        assertTrue(h.isReadySingle());
+        h.consumeSingle();
+    }
 }
