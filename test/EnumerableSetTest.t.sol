@@ -99,4 +99,19 @@ contract EnumerableSetTest is Test {
         assertEq(h.lengthBytes32(), 1);
         assertTrue(h.containsBytes32(bytes32(uint256(0x42))));
     }
+
+    function test_AddDuplicateReturnsFalseAndLeavesLength() public {
+        h.addBytes32(bytes32(uint256(0x42)));
+        bool added = h.addBytes32(bytes32(uint256(0x42)));
+        assertFalse(added);
+        assertEq(h.lengthBytes32(), 1);
+    }
+
+    function test_ContainsAbsentReturnsFalse() public {
+        assertFalse(h.containsBytes32(bytes32(uint256(0x99))));
+    }
+
+    function test_EmptyLengthIsZero() public view {
+        assertEq(h.lengthBytes32(), 0);
+    }
 }
