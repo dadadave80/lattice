@@ -11,6 +11,8 @@ out/
 docs/*
 # But keep hand-authored docs under docs/superpowers/.
 !docs/superpowers/
+# Keep hand-authored audit reports.
+!docs/audit/
 
 # Dotenv file
 .env
