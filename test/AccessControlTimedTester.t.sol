@@ -44,4 +44,46 @@ contract AccessControlTimedTester is Test {
         assertEq(gotStart, start);
         assertEq(gotExpires, expires);
     }
+
+    function test_HasRoleBeforeStartIsFalse() public {
+        uint48 start = uint48(block.timestamp + 100);
+        uint48 expires = start + 1000;
+        vm.prank(admin);
+        ac.grantRoleTimed(MINTER_ROLE, alice, start, expires);
+        assertFalse(ac.hasRole(MINTER_ROLE, alice));
+    }
+
+    function test_HasRoleAtStartIsTrue() public {
+        uint48 start = uint48(block.timestamp + 100);
+        uint48 expires = start + 1000;
+        vm.prank(admin);
+        ac.grantRoleTimed(MINTER_ROLE, alice, start, expires);
+        vm.warp(start);
+        assertTrue(ac.hasRole(MINTER_ROLE, alice));
+    }
+
+    function test_HasRoleAtExpiresIsTrue() public {
+        uint48 start = uint48(block.timestamp);
+        uint48 expires = start + 1000;
+        vm.prank(admin);
+        ac.grantRoleTimed(MINTER_ROLE, alice, start, expires);
+        vm.warp(expires);
+        assertTrue(ac.hasRole(MINTER_ROLE, alice));
+    }
+
+    function test_HasRoleAfterExpiresIsFalse() public {
+        uint48 start = uint48(block.timestamp);
+        uint48 expires = start + 1000;
+        vm.prank(admin);
+        ac.grantRoleTimed(MINTER_ROLE, alice, start, expires);
+        vm.warp(uint256(expires) + 1);
+        assertFalse(ac.hasRole(MINTER_ROLE, alice));
+    }
+
+    function test_UntimedGrantIsTimeless() public {
+        vm.prank(admin);
+        ac.grantRoleTimed(MINTER_ROLE, alice, 0, 0);
+        vm.warp(block.timestamp + 365 days);
+        assertTrue(ac.hasRole(MINTER_ROLE, alice));
+    }
 }
