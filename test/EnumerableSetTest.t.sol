@@ -253,4 +253,26 @@ contract EnumerableSetTest is Test {
         assertEq(h.lengthUint(), 2);
         assertEq(h.atUint(1), 3);
     }
+
+    function testFuzz_AddThenContains(bytes32 v) public {
+        bool added = h.addBytes32(v);
+        assertTrue(added);
+        assertTrue(h.containsBytes32(v));
+        assertEq(h.lengthBytes32(), 1);
+    }
+
+    function testFuzz_LengthEqualsValuesLength(bytes32[16] memory vs) public {
+        for (uint256 i = 0; i < vs.length; i++) {
+            h.addBytes32(vs[i]);
+        }
+        assertEq(h.lengthBytes32(), h.valuesBytes32().length);
+    }
+
+    function testFuzz_RemoveAfterAddRestoresEmptiness(bytes32 v) public {
+        h.addBytes32(v);
+        bool removed = h.removeBytes32(v);
+        assertTrue(removed);
+        assertEq(h.lengthBytes32(), 0);
+        assertFalse(h.containsBytes32(v));
+    }
 }
