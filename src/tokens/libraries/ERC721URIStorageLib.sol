@@ -72,14 +72,22 @@ library ERC721URIStorageLib {
     //////////////////////////////////////////////////////////////////////////*//
 
     /// @notice Returns the URI for `tokenId`.
-    /// @dev If a per-token URI is set, returns `_baseURI() + uri`.
+    /// @dev Reverts with ERC721NonexistentToken for nonexistent tokens regardless of whether
+    ///      a per-token URI entry exists. This matches OZ ERC721URIStorage which calls
+    ///      _requireOwned first, before reading _tokenURIs.
+    ///      If a per-token URI is set, returns `_baseURI() + uri`.
     ///      Falls back to the base ERC721 tokenURI (base + tokenId) if no per-token URI is set.
     function tokenURI(uint256 tokenId) internal view returns (string memory) {
+        // Always check existence first — nonexistent tokens must revert (ERC-721 spec).
+        ERC721Lib._requireOwned(tokenId);
+
         string memory _tokenURI = erc721URIStorageStorage()._tokenURIs[tokenId];
         string memory base = ERC721Lib._baseURI();
 
         if (bytes(_tokenURI).length == 0) {
             // No per-token URI: fall back to base ERC721 tokenURI.
+            // _requireOwned already called above; ERC721Lib.tokenURI will call it again
+            // (harmless double-check, both resolve to the same storage read).
             return ERC721Lib.tokenURI(tokenId);
         }
 
