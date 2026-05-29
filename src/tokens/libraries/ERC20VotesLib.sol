@@ -85,15 +85,19 @@ library ERC20VotesLib {
     }
 
     /// @notice Mints `value` tokens to `to`, enforcing the uint208 supply cap.
+    /// @dev Follows OZ v5 order: update balances first, then check post-mint supply against cap.
+    ///      This matches OZ ERC20Votes._update which calls super._update before reading totalSupply().
     function _mint(address to, uint256 value) internal {
         if (to == address(0)) revert IERC20.ERC20InvalidReceiver(address(0));
-        uint256 newSupply = ERC20Lib.totalSupply() + value;
-        uint256 cap = _maxSupply();
-        if (newSupply > cap) {
-            revert IERC20Votes.ERC20ExceededSafeSupply(newSupply, cap);
-        }
-        // ERC20Lib._update handles balances + emits Transfer; no vote tracking.
+        // 1. Update balances and totalSupply first (matches OZ super._update order).
         ERC20Lib._update(address(0), to, value);
+        // 2. Check post-mint supply against cap (reads committed totalSupply, not a pre-mint estimate).
+        uint256 supply = ERC20Lib.totalSupply();
+        uint256 cap = _maxSupply();
+        if (supply > cap) {
+            revert IERC20Votes.ERC20ExceededSafeSupply(supply, cap);
+        }
+        // 3. Update vote checkpoints.
         VotesLib._transferVotingUnits(address(0), to, value);
     }
 

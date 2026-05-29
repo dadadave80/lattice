@@ -105,29 +105,22 @@ library Checkpoints {
         return self._checkpoints[low - 1]._value;
     }
 
-    /// @notice Same as `upperLookup` but starts with a linear scan from the tail.
-    /// @dev Gas-optimised for recent (near-latest) timepoints: the linear phase
-    ///      finds the right region fast; binary search handles older data.
+    /// @notice Same as `upperLookup` but optimised for recent (near-latest) timepoints.
+    /// @dev Uses OZ v5's sqrt-pivot: a single sqrt(len)-from-tail probe splits the array,
+    ///      then binary search handles the remainder. O(sqrt(N)) amortised for recent lookups.
     function upperLookupRecent(Trace208 storage self, uint48 key) internal view returns (uint208) {
         uint256 len = self._checkpoints.length;
         if (len == 0) return 0;
 
-        // Linear scan from the end — stops when we pass the target key
         uint256 low = 0;
         uint256 high = len;
 
         if (len > 5) {
-            // Start linear scan from the tail
-            uint256 window = 5;
-            while (window < len) {
-                uint256 idx = len - window;
-                if (self._checkpoints[idx]._key <= key) {
-                    low = idx;
-                    break;
-                }
-                // if the checkpoint at idx is still > key, shrink search space
-                high = idx;
-                window *= 2;
+            uint256 mid = len - _sqrt(len);
+            if (key < self._checkpoints[mid]._key) {
+                high = mid;
+            } else {
+                low = mid + 1;
             }
         }
 
@@ -142,6 +135,44 @@ library Checkpoints {
         }
         if (low == 0) return 0;
         return self._checkpoints[low - 1]._value;
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                            PRIVATE HELPERS
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @dev Integer square root (floor). Used by upperLookupRecent pivot.
+    ///      Matches the algorithm used in OZ Math.sqrt (Newton's method, rounded down).
+    function _sqrt(uint256 x) private pure returns (uint256 result) {
+        if (x == 0) return 0;
+        // Initial estimate — a rough upper bound using bit-length.
+        result = 1 << (((_log2(x) + 1)) / 2);
+        // Newton refinement
+        unchecked {
+            result = (result + x / result) >> 1;
+            result = (result + x / result) >> 1;
+            result = (result + x / result) >> 1;
+            result = (result + x / result) >> 1;
+            result = (result + x / result) >> 1;
+            result = (result + x / result) >> 1;
+            result = (result + x / result) >> 1;
+        }
+        // Round down
+        return result <= x / result ? result : result - 1;
+    }
+
+    /// @dev Floor log2 of x, used by _sqrt to seed the initial estimate.
+    function _log2(uint256 x) private pure returns (uint256 r) {
+        assembly {
+            r := shl(7, lt(0xffffffffffffffffffffffffffffffff, x))
+            r := or(r, shl(6, lt(0xffffffffffffffff, shr(r, x))))
+            r := or(r, shl(5, lt(0xffffffff, shr(r, x))))
+            r := or(r, shl(4, lt(0xffff, shr(r, x))))
+            r := or(r, shl(3, lt(0xff, shr(r, x))))
+            r := or(r, shl(2, lt(0xf, shr(r, x))))
+            r := or(r, shl(1, lt(0x3, shr(r, x))))
+            r := or(r, lt(0x1, shr(r, x)))
+        }
     }
 
     //*//////////////////////////////////////////////////////////////////////////
