@@ -39,4 +39,27 @@ contract TimelockControllerStandalone is TimelockController, AccessControl {
 
     /// @notice Accept ETH so the timelock can hold and forward value during executions.
     receive() external payable {}
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                          NFT RECEIVER HOOKS
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice Allows the timelock to receive ERC-721 tokens via safeTransferFrom.
+    function onERC721Received(address, address, uint256, bytes calldata) external pure returns (bytes4) {
+        return this.onERC721Received.selector;
+    }
+
+    /// @notice Allows the timelock to receive single ERC-1155 tokens via safeTransferFrom.
+    function onERC1155Received(address, address, uint256, uint256, bytes calldata) external pure returns (bytes4) {
+        return this.onERC1155Received.selector;
+    }
+
+    /// @notice Allows the timelock to receive batch ERC-1155 tokens via safeBatchTransferFrom.
+    function onERC1155BatchReceived(address, address, uint256[] calldata, uint256[] calldata, bytes calldata)
+        external
+        pure
+        returns (bytes4)
+    {
+        return this.onERC1155BatchReceived.selector;
+    }
 }
