@@ -163,4 +163,44 @@ contract AccessControlTimedTester is Test {
         );
         ac.extendRole(MINTER_ROLE, alice, uint48(block.timestamp + 1000));
     }
+
+    function test_RevokeClearsTiming() public {
+        uint48 start = uint48(block.timestamp);
+        uint48 expires = start + 1000;
+        vm.prank(admin);
+        ac.grantRoleTimed(MINTER_ROLE, alice, start, expires);
+
+        vm.prank(admin);
+        ac.revokeRole(MINTER_ROLE, alice);
+
+        assertFalse(ac.hasRole(MINTER_ROLE, alice));
+        (uint48 gotStart, uint48 gotExpires) = ac.roleExpiration(MINTER_ROLE, alice);
+        assertEq(gotStart, 0);
+        assertEq(gotExpires, 0);
+    }
+
+    function test_BaseGrantRoleIsAliasForUntimed() public {
+        vm.prank(admin);
+        ac.grantRole(MINTER_ROLE, alice);
+        (uint48 start, uint48 expires) = ac.roleExpiration(MINTER_ROLE, alice);
+        assertEq(start, uint48(block.timestamp));
+        assertEq(expires, 0);
+        assertTrue(ac.hasRole(MINTER_ROLE, alice));
+    }
+
+    function test_RegrantingResetsWindow() public {
+        uint48 firstStart = uint48(block.timestamp);
+        uint48 firstExpires = firstStart + 100;
+        vm.prank(admin);
+        ac.grantRoleTimed(MINTER_ROLE, alice, firstStart, firstExpires);
+
+        uint48 secondStart = uint48(block.timestamp + 50);
+        uint48 secondExpires = secondStart + 500;
+        vm.prank(admin);
+        ac.grantRoleTimed(MINTER_ROLE, alice, secondStart, secondExpires);
+
+        (uint48 gotStart, uint48 gotExpires) = ac.roleExpiration(MINTER_ROLE, alice);
+        assertEq(gotStart, secondStart);
+        assertEq(gotExpires, secondExpires);
+    }
 }
