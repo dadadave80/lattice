@@ -1,0 +1,18 @@
+// SPDX-License-Identifier: MIT
+pragma solidity >=0.8.4;
+
+import {IAccessControl} from "@lattice/interfaces/IAccessControl.sol";
+
+/// @title IAccessControlEnumerable
+/// @notice Extends IAccessControl with role-member enumeration.
+interface IAccessControlEnumerable is IAccessControl {
+    /// @notice Returns the i-th address holding `role`.
+    /// @dev Reverts (Solidity array OOB) if `i >= getRoleMemberCount(role)`.
+    function getRoleMember(bytes32 role, uint256 i) external view returns (address);
+
+    /// @notice Returns the number of addresses holding `role`.
+    function getRoleMemberCount(bytes32 role) external view returns (uint256);
+
+    /// @notice Returns all addresses holding `role`. Gas-heavy for large sets.
+    function getRoleMembers(bytes32 role) external view returns (address[] memory);
+}
