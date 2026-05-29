@@ -235,4 +235,22 @@ contract EnumerableSetTest is Test {
         assertFalse(h.containsAddress(bob));
         assertEq(h.atAddress(1), carol);
     }
+
+    function test_UintSetAddContainsRemoveCycle() public {
+        assertTrue(h.addUint(1));
+        assertTrue(h.addUint(2));
+        assertTrue(h.addUint(3));
+        assertEq(h.lengthUint(), 3);
+        assertTrue(h.containsUint(2));
+        assertEq(h.atUint(1), 2);
+
+        uint256[] memory snap = h.valuesUint();
+        assertEq(snap[0], 1);
+        assertEq(snap[1], 2);
+        assertEq(snap[2], 3);
+
+        assertTrue(h.removeUint(2));
+        assertEq(h.lengthUint(), 2);
+        assertEq(h.atUint(1), 3);
+    }
 }
