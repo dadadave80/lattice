@@ -364,7 +364,8 @@ library AccessManagerLib {
             uint64 roleId = $._targets[target].allowedRoles[selector];
             uint64 guardian = $._roles[roleId].guardian;
             (bool isGuardian,) = hasRole(guardian, msgSender);
-            if (!isGuardian) revert IAccessManager.AccessManagerUnauthorizedCancel(msgSender, target);
+            (bool isAdmin,) = hasRole(ADMIN_ROLE, msgSender);
+            if (!isGuardian && !isAdmin) revert IAccessManager.AccessManagerUnauthorizedCancel(msgSender, target);
         }
 
         $._operationQueue._readyAt[operationId] = 0;
