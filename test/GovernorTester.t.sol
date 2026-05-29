@@ -1030,4 +1030,189 @@ contract GovernorTester is Test {
         uint256 id2 = governor.hashProposal(targets, values, calldatas, descHash);
         assertEq(id1, id2);
     }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                   OZ-RECONCILIATION TESTS (B-SERIES)
+    //////////////////////////////////////////////////////////////////////////*//
+
+    // ---- B1: cancel scope expansion ----
+
+    function test_CancelActiveProposal() public {
+        // Proposer can cancel once voting has started (Active state).
+        uint256 proposalId = _propose();
+        _advanceToActive();
+        assertEq(uint8(governor.state(proposalId)), uint8(IGovernor.ProposalState.Active));
+
+        (address[] memory targets, uint256[] memory values, bytes[] memory calldatas, string memory description) =
+            _buildProposal();
+        vm.prank(alice);
+        governor.cancel(targets, values, calldatas, keccak256(bytes(description)));
+
+        assertEq(uint8(governor.state(proposalId)), uint8(IGovernor.ProposalState.Canceled));
+    }
+
+    function test_CancelQueuedProposalAlsoCancelsTimelockOp() public {
+        uint256 proposalId = _proposeVoteAndSucceed();
+
+        (address[] memory targets, uint256[] memory values, bytes[] memory calldatas, string memory description) =
+            _buildProposal();
+        bytes32 descHash = keccak256(bytes(description));
+
+        governor.queue(targets, values, calldatas, descHash);
+        assertEq(uint8(governor.state(proposalId)), uint8(IGovernor.ProposalState.Queued));
+
+        // Compute the expected timelock operation id
+        bytes32 salt = bytes32(proposalId);
+        bytes32 timelockId = timelock.hashOperationBatch(targets, values, calldatas, bytes32(0), salt);
+        assertTrue(timelock.isOperationPending(timelockId), "op should be pending before cancel");
+
+        vm.prank(alice);
+        governor.cancel(targets, values, calldatas, descHash);
+
+        assertEq(uint8(governor.state(proposalId)), uint8(IGovernor.ProposalState.Canceled));
+        assertFalse(timelock.isOperationPending(timelockId), "op should be cancelled in timelock");
+    }
+
+    // ---- B2: empty targets ----
+
+    function test_ProposeEmptyTargetsReverts() public {
+        address[] memory targets = new address[](0);
+        uint256[] memory values = new uint256[](0);
+        bytes[] memory calldatas = new bytes[](0);
+
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(IGovernor.GovernorInvalidProposalLength.selector, 0, 0, 0));
+        governor.propose(targets, values, calldatas, "empty");
+    }
+
+    // ---- B3: state() consults live timelock op status ----
+
+    function test_StateConsultsTimelockOnExternalCancel() public {
+        uint256 proposalId = _proposeVoteAndSucceed();
+
+        (address[] memory targets, uint256[] memory values, bytes[] memory calldatas, string memory description) =
+            _buildProposal();
+        bytes32 descHash = keccak256(bytes(description));
+
+        governor.queue(targets, values, calldatas, descHash);
+        assertEq(uint8(governor.state(proposalId)), uint8(IGovernor.ProposalState.Queued));
+
+        // Externally cancel the operation directly on the timelock (CANCELLER_ROLE held by governor)
+        bytes32 salt = bytes32(proposalId);
+        bytes32 timelockId = timelock.hashOperationBatch(targets, values, calldatas, bytes32(0), salt);
+
+        // Grant canceller role to admin so we can cancel on the timelock directly
+        vm.prank(admin);
+        timelock.grantRole(TimelockControllerLib.CANCELLER_ROLE, admin);
+        vm.prank(admin);
+        timelock.cancel(timelockId);
+
+        // state() should now return Canceled because the timelock op is no longer pending
+        assertEq(uint8(governor.state(proposalId)), uint8(IGovernor.ProposalState.Canceled));
+    }
+
+    // ---- B4: TimelockChange event ----
+
+    event TimelockChange(address indexed oldTimelock, address indexed newTimelock);
+
+    function test_TimelockChangeEventEmitted() public {
+        // Build and execute a proposal that calls governor.updateTimelock(address(0))
+        GovernorStandalone.Config memory cfg = GovernorStandalone.Config({
+            name: "Self Gov",
+            token: address(token),
+            timelock: address(0),
+            votingDelay: 0,
+            votingPeriod: 1 days,
+            proposalThreshold: 0,
+            quorumNumerator: 4
+        });
+        GovernorStandalone selfGov = new GovernorStandalone(cfg);
+
+        address newTimelock = address(0xBEEF);
+
+        address[] memory targets = new address[](1);
+        targets[0] = address(selfGov);
+        uint256[] memory values = new uint256[](1);
+        bytes[] memory calldatas = new bytes[](1);
+        calldatas[0] = abi.encodeCall(IGovernor.updateTimelock, (newTimelock));
+        string memory description = "Update timelock";
+
+        vm.prank(alice);
+        uint256 proposalId = selfGov.propose(targets, values, calldatas, description);
+        vm.warp(block.timestamp + 1);
+        vm.prank(alice);
+        selfGov.castVote(proposalId, uint8(IGovernor.VoteType.For));
+        vm.warp(block.timestamp + 1 days + 1);
+
+        vm.expectEmit(true, true, false, false, address(selfGov));
+        emit TimelockChange(address(0), newTimelock);
+        selfGov.execute(targets, values, calldatas, keccak256(bytes(description)));
+
+        assertEq(selfGov.timelock(), newTimelock);
+    }
+
+    // ---- B6: castVoteWithReasonAndParams ----
+
+    function test_CastVoteWithReasonAndParamsEmitsVoteCastWithParams() public {
+        uint256 proposalId = _propose();
+        _advanceToActive();
+
+        bytes memory params = abi.encode(uint256(500), uint256(300), uint256(200));
+        string memory reason = "fractional vote";
+
+        // Should not revert and should emit VoteCastWithParams
+        vm.prank(alice);
+        uint256 weight = governor.castVoteWithReasonAndParams(
+            proposalId, uint8(IGovernor.VoteType.For), reason, params
+        );
+        assertEq(weight, INITIAL_SUPPLY);
+        assertTrue(governor.hasVoted(proposalId, alice));
+    }
+
+    // ---- B7: duplicate-proposal bytes32(0) expectedStates ----
+
+    function test_DuplicateProposalRevertsWithZeroExpectedStates() public {
+        uint256 proposalId = _propose();
+        (address[] memory targets, uint256[] memory values, bytes[] memory calldatas, string memory description) =
+            _buildProposal();
+
+        vm.prank(alice);
+        // The expectedStates argument should be bytes32(0) for a duplicate-proposal revert
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IGovernor.GovernorUnexpectedProposalState.selector,
+                proposalId,
+                IGovernor.ProposalState.Pending, // current state (still pending)
+                bytes32(0) // expectedStates = 0 for "must not exist"
+            )
+        );
+        governor.propose(targets, values, calldatas, description);
+    }
+
+    // ---- B8: invalid vote type ----
+
+    function test_CastVoteInvalidTypeReverts() public {
+        uint256 proposalId = _propose();
+        _advanceToActive();
+
+        vm.prank(alice);
+        vm.expectRevert(IGovernor.GovernorInvalidVoteType.selector);
+        governor.castVote(proposalId, 3); // support=3 is invalid
+    }
+
+    // ---- B9: double-queue ----
+
+    function test_DoubleQueueRevertsWithAlreadyQueued() public {
+        uint256 proposalId = _proposeVoteAndSucceed();
+
+        (address[] memory targets, uint256[] memory values, bytes[] memory calldatas, string memory description) =
+            _buildProposal();
+        bytes32 descHash = keccak256(bytes(description));
+
+        governor.queue(targets, values, calldatas, descHash);
+        assertEq(uint8(governor.state(proposalId)), uint8(IGovernor.ProposalState.Queued));
+
+        vm.expectRevert(abi.encodeWithSelector(IGovernor.GovernorAlreadyQueuedProposal.selector, proposalId));
+        governor.queue(targets, values, calldatas, descHash);
+    }
 }
