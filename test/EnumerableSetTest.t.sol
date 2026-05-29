@@ -189,4 +189,21 @@ contract EnumerableSetTest is Test {
         assertEq(h.lengthBytes32(), 1);
         assertTrue(h.containsBytes32(a));
     }
+
+    function test_ValuesReturnsFullSnapshot() public {
+        h.addBytes32(bytes32(uint256(0xA)));
+        h.addBytes32(bytes32(uint256(0xB)));
+        h.addBytes32(bytes32(uint256(0xC)));
+
+        bytes32[] memory snap = h.valuesBytes32();
+        assertEq(snap.length, 3);
+        assertEq(snap[0], bytes32(uint256(0xA)));
+        assertEq(snap[1], bytes32(uint256(0xB)));
+        assertEq(snap[2], bytes32(uint256(0xC)));
+    }
+
+    function test_ValuesOnEmptySetReturnsEmpty() public view {
+        bytes32[] memory snap = h.valuesBytes32();
+        assertEq(snap.length, 0);
+    }
 }
