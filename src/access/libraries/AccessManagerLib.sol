@@ -227,8 +227,9 @@ library AccessManagerLib {
             revert IAccessManager.AccessManagerLockedRole(roleId);
         }
         Role storage r = accessManagerStorage()._roles[roleId];
+        uint32 currentDelay = getRoleGrantDelay(roleId);
         uint48 effectAt;
-        if (newDelay < r.grantDelay) {
+        if (newDelay < currentDelay) {
             r.grantDelay = newDelay;
             effectAt = uint48(block.timestamp);
             r.pendingGrantDelay = 0;
@@ -357,7 +358,7 @@ library AccessManagerLib {
         Access storage a = $._access[roleId][account];
         bool isNewMember = a.since == 0;
         if (isNewMember) {
-            uint48 since = uint48(block.timestamp) + uint48($._roles[roleId].grantDelay);
+            uint48 since = uint48(block.timestamp) + uint48(getRoleGrantDelay(roleId));
             a.since = since;
             a.delay.value = executionDelay;
             $._roleMembers[roleId].add(account);
