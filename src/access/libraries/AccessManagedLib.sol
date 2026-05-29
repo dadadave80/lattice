@@ -37,6 +37,7 @@ library AccessManagedLib {
     function __AccessManaged_init(address initialAuthority) internal {
         InitializableLib.checkInitializing(InitializableLib.initializableSlot());
         if (initialAuthority == address(0)) revert IAccessManaged.AccessManagedInvalidAuthority(address(0));
+        if (initialAuthority.code.length == 0) revert IAccessManaged.AccessManagedInvalidAuthority(initialAuthority);
         accessManagedStorage()._authority = initialAuthority;
         emit IAccessManaged.AuthorityUpdated(initialAuthority);
         registerInterface();
@@ -57,6 +58,7 @@ library AccessManagedLib {
             revert IAccessManaged.AccessManagedUnauthorized(ContextLib.msgSender());
         }
         if (newAuthority == address(0)) revert IAccessManaged.AccessManagedInvalidAuthority(address(0));
+        if (newAuthority.code.length == 0) revert IAccessManaged.AccessManagedInvalidAuthority(newAuthority);
         accessManagedStorage()._authority = newAuthority;
         emit IAccessManaged.AuthorityUpdated(newAuthority);
     }
