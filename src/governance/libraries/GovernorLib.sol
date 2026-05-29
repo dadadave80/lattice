@@ -81,6 +81,8 @@ struct GovernorStorage {
     mapping(uint256 proposalId => ProposalVote) _proposalVotes;
     /// @dev Maps timelock operation ID → proposal ID for cancel tracking.
     mapping(bytes32 timelockId => uint256 proposalId) _timelockIds;
+    /// @dev Maps proposal ID → timelock operation ID (reverse of _timelockIds).
+    mapping(uint256 proposalId => bytes32 timelockId) _proposalTimelockIds;
 }
 
 /// @title GovernorLib
@@ -307,7 +309,23 @@ library GovernorLib {
             return IGovernor.ProposalState.Defeated;
         }
         if (p.etaSeconds == 0) return IGovernor.ProposalState.Succeeded;
-        // Timelock-queued: check expiry (grace period = 14 days after eta)
+        // Proposal has been queued — consult the live timelock operation state.
+        address timelockAddr = governorStorage()._timelock;
+        if (timelockAddr != address(0)) {
+            bytes32 timelockId = governorStorage()._proposalTimelockIds[proposalId];
+            if (ITimelockController(timelockAddr).isOperationDone(timelockId)) {
+                // Timelock already executed the operation (defensive; execute() sets executed=true).
+                return IGovernor.ProposalState.Executed;
+            }
+            if (ITimelockController(timelockAddr).isOperationPending(timelockId)) {
+                // Still pending in timelock: check expiry grace period.
+                if (block.timestamp > uint256(p.etaSeconds) + 14 days) return IGovernor.ProposalState.Expired;
+                return IGovernor.ProposalState.Queued;
+            }
+            // Operation is no longer pending (was externally canceled in the timelock).
+            return IGovernor.ProposalState.Canceled;
+        }
+        // No timelock configured but etaSeconds is set — fallback grace period check.
         if (block.timestamp > uint256(p.etaSeconds) + 14 days) return IGovernor.ProposalState.Expired;
         return IGovernor.ProposalState.Queued;
     }
@@ -329,6 +347,9 @@ library GovernorLib {
         string memory description
     ) internal returns (uint256) {
         address proposer = ContextLib.msgSender();
+        if (targets.length == 0) {
+            revert IGovernor.GovernorInvalidProposalLength(0, 0, 0);
+        }
         if (targets.length != values.length || targets.length != calldatas.length) {
             revert IGovernor.GovernorInvalidProposalLength(targets.length, calldatas.length, values.length);
         }
@@ -421,6 +442,7 @@ library GovernorLib {
         uint48 eta = uint48(block.timestamp + minDelay);
         governorStorage()._proposals[proposalId].etaSeconds = eta;
         governorStorage()._timelockIds[timelockId] = proposalId;
+        governorStorage()._proposalTimelockIds[proposalId] = timelockId;
 
         emit IGovernor.ProposalQueued(proposalId, eta);
 
@@ -489,7 +511,9 @@ library GovernorLib {
         return proposalId;
     }
 
-    /// @notice Cancel a pending proposal. Only the proposer can cancel before voting starts.
+    /// @notice Cancel a proposal. Proposer can cancel in any non-terminal state
+    ///         (Pending, Active, Succeeded, or Queued). If the proposal is Queued, also
+    ///         cancels the corresponding timelock operation.
     /// @param targets Contract addresses for the proposal.
     /// @param values ETH values for the proposal.
     /// @param calldatas Calldata for the proposal.
@@ -504,10 +528,16 @@ library GovernorLib {
         uint256 proposalId = hashProposal(targets, values, calldatas, descriptionHash);
 
         IGovernor.ProposalState currentState = state(proposalId);
-        if (currentState != IGovernor.ProposalState.Pending) {
-            revert IGovernor.GovernorUnexpectedProposalState(
-                proposalId, currentState, _encodeStateBitmap(IGovernor.ProposalState.Pending)
-            );
+        // Allow cancel in any non-terminal state: Pending, Active, Succeeded, Queued.
+        bytes32 allowedStates = _encodeStateBitmap(IGovernor.ProposalState.Pending)
+            | _encodeStateBitmap(IGovernor.ProposalState.Active)
+            | _encodeStateBitmap(IGovernor.ProposalState.Succeeded)
+            | _encodeStateBitmap(IGovernor.ProposalState.Queued);
+        if (
+            currentState != IGovernor.ProposalState.Pending && currentState != IGovernor.ProposalState.Active
+                && currentState != IGovernor.ProposalState.Succeeded && currentState != IGovernor.ProposalState.Queued
+        ) {
+            revert IGovernor.GovernorUnexpectedProposalState(proposalId, currentState, allowedStates);
         }
 
         address caller = ContextLib.msgSender();
@@ -515,7 +545,18 @@ library GovernorLib {
             revert IGovernor.GovernorOnlyExecutor(caller);
         }
 
-        governorStorage()._proposals[proposalId].canceled = true;
+        // If the proposal is queued, cancel the corresponding timelock operation.
+        GovernorStorage storage $ = governorStorage();
+        ProposalCore storage p = $._proposals[proposalId];
+        if (p.etaSeconds != 0) {
+            address timelockAddr = $._timelock;
+            if (timelockAddr != address(0)) {
+                bytes32 timelockId = $._proposalTimelockIds[proposalId];
+                ITimelockController(timelockAddr).cancel(timelockId);
+            }
+        }
+
+        p.canceled = true;
 
         emit IGovernor.ProposalCanceled(proposalId);
 
