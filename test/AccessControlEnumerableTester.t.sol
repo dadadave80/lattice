@@ -39,4 +39,34 @@ contract AccessControlEnumerableTester is Test {
         assertEq(ac.getRoleMemberCount(MINTER_ROLE), 1);
         assertEq(ac.getRoleMember(MINTER_ROLE, 0), alice);
     }
+
+    function test_MultipleMembersOrderedByGrantOrder() public {
+        vm.startPrank(admin);
+        ac.grantRole(MINTER_ROLE, alice);
+        ac.grantRole(MINTER_ROLE, bob);
+        ac.grantRole(MINTER_ROLE, carol);
+        vm.stopPrank();
+
+        assertEq(ac.getRoleMemberCount(MINTER_ROLE), 3);
+        assertEq(ac.getRoleMember(MINTER_ROLE, 0), alice);
+        assertEq(ac.getRoleMember(MINTER_ROLE, 1), bob);
+        assertEq(ac.getRoleMember(MINTER_ROLE, 2), carol);
+    }
+
+    function test_GetRoleMembersReturnsAll() public {
+        vm.startPrank(admin);
+        ac.grantRole(MINTER_ROLE, alice);
+        ac.grantRole(MINTER_ROLE, bob);
+        vm.stopPrank();
+
+        address[] memory members = ac.getRoleMembers(MINTER_ROLE);
+        assertEq(members.length, 2);
+        assertEq(members[0], alice);
+        assertEq(members[1], bob);
+    }
+
+    function test_GetRoleMembersOnEmptyRoleReturnsEmpty() public view {
+        address[] memory members = ac.getRoleMembers(MINTER_ROLE);
+        assertEq(members.length, 0);
+    }
 }
