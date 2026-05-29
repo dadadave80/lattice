@@ -450,8 +450,12 @@ library AccessManagerLib {
         returns (uint32 nonce, uint48 effectiveWhen)
     {
         AccessManagerStorage storage $ = accessManagerStorage();
-        if ($._operationQueue.isPending(operationId)) {
-            revert IAccessManager.AccessManagerAlreadyScheduled(operationId);
+        uint48 existing = $._operationQueue._readyAt[operationId];
+        if (existing != 0) {
+            bool expired = block.timestamp > uint256(existing) + EXPIRATION;
+            if (!expired) revert IAccessManager.AccessManagerAlreadyScheduled(operationId);
+            // If expired, clear and allow reschedule
+            $._operationQueue._readyAt[operationId] = 0;
         }
         uint48 minWhen = uint48(block.timestamp) + delay;
         effectiveWhen = when < minWhen ? minWhen : when;
