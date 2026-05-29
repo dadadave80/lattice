@@ -155,6 +155,7 @@ library AccessControlLib {
     /// @param adminRole The new admin role that will control access to the target role.
     /// @dev Emits a {RoleAdminChanged} event.
     function setRoleAdmin(bytes32 role, bytes32 adminRole) internal {
+        checkRole(getRoleAdmin(role));
         AccessControlStorage storage $ = accessControlStorage();
         bytes32 previousAdminRole = getRoleAdmin(role);
         $._roles[role].adminRole = adminRole;
