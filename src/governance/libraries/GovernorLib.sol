@@ -379,11 +379,11 @@ library GovernorLib {
 
         uint256 proposalId = hashProposal(targets, values, calldatas, keccak256(bytes(description)));
         ProposalCore storage p = governorStorage()._proposals[proposalId];
-        // Revert if proposal already exists (voteStart would be non-zero)
+        // Revert if proposal already exists (voteStart would be non-zero).
+        // Pass bytes32(0) as expectedStates — there is no valid expected state when the
+        // proposal must not already exist (matches OZ behavior for duplicate proposals).
         if (p.voteStart != 0) {
-            revert IGovernor.GovernorUnexpectedProposalState(
-                proposalId, state(proposalId), _encodeStateBitmap(IGovernor.ProposalState.Pending)
-            );
+            revert IGovernor.GovernorUnexpectedProposalState(proposalId, state(proposalId), bytes32(0));
         }
 
         _storeAndEmitProposal(proposalId, proposer, targets, values, calldatas, description);
