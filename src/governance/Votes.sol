@@ -56,7 +56,7 @@ contract Votes is IVotes {
 
     /// @inheritdoc IVotes
     // solhint-disable-next-line func-name-mixedcase
-    function CLOCK_MODE() public pure virtual returns (string memory) {
+    function CLOCK_MODE() public view virtual returns (string memory) {
         return VotesLib.CLOCK_MODE();
     }
 }

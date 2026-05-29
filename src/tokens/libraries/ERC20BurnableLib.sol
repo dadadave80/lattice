@@ -21,6 +21,12 @@ bytes32 constant ERC165_MAP_IERC20BURNABLE_SLOT = 0x20898a14bb56c69b48cb37845539
 /// @title ERC20BurnableLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice Library implementing ERC-20 burn extensions. Adds no own storage.
+/// @dev Known limitation (IMP-1): OZ marks `_spendAllowance` as `virtual` to allow
+///      downstream extensions (e.g., Permit-based overrides) to intercept allowance
+///      consumption. Solidity libraries cannot declare `virtual` functions, so
+///      `burnFrom` is hardwired to `ERC20Lib._spendAllowance`. If permit-based
+///      allowance overriding is required in the future, an `_inner` delegate pattern
+///      or a hook in `ERC20Lib` will be needed to restore the override chain.
 library ERC20BurnableLib {
     //*//////////////////////////////////////////////////////////////////////////
     //                             INITIALIZATION

@@ -83,7 +83,10 @@ library VotesLib {
     }
 
     /// @notice Returns the ERC-6372 clock mode string.
-    function CLOCK_MODE() internal pure returns (string memory) {
+    /// @dev Declared as view (not pure) to allow future overrides to add a consistency
+    ///      check (e.g., assert clock() == expected_mode) without mutability narrowing.
+    ///      Timestamp mode is an intentional deviation from OZ's default block-number mode.
+    function CLOCK_MODE() internal view returns (string memory) {
         return "mode=timestamp";
     }
 
@@ -148,7 +151,8 @@ library VotesLib {
         bytes32 s,
         uint256 votingUnits
     ) internal {
-        address signer = _recoverAndValidateDelegationSig(delegatee, nonce, expiry, v, r, s);
+        // Re-use the shared _recoverDelegationSigner to avoid logic duplication.
+        address signer = _recoverDelegationSigner(delegatee, nonce, expiry, v, r, s);
         NoncesLib.useCheckedNonce(signer, nonce);
         _delegate(signer, delegatee, votingUnits);
     }
@@ -164,27 +168,6 @@ library VotesLib {
         bytes32 r,
         bytes32 s
     ) internal view returns (address signer) {
-        if (block.timestamp > expiry) {
-            revert IVotes.VotesExpiredSignature(expiry);
-        }
-        bytes32 structHash = keccak256(abi.encode(DELEGATION_TYPEHASH, delegatee, nonce, expiry));
-        bytes32 digest = EIP712Lib.hashTypedDataV4(structHash);
-        signer = ECDSA.recover(digest, v, r, s);
-    }
-
-    //*//////////////////////////////////////////////////////////////////////////
-    //                            PRIVATE HELPERS
-    //////////////////////////////////////////////////////////////////////////*//
-
-    /// @dev Validates expiry + recovers signer. Used by delegateBySig.
-    function _recoverAndValidateDelegationSig(
-        address delegatee,
-        uint256 nonce,
-        uint256 expiry,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    ) private view returns (address signer) {
         if (block.timestamp > expiry) {
             revert IVotes.VotesExpiredSignature(expiry);
         }
