@@ -241,7 +241,7 @@ library TimelockControllerLib {
                     | _encodeStateBitmap(ITimelockController.OperationState.Ready)
             );
         }
-        timelockControllerStorage()._timestamps[id] = 0;
+        delete timelockControllerStorage()._timestamps[id];
         emit ITimelockController.Cancelled(id);
     }
 
