@@ -5,10 +5,10 @@ import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
-import {Pausable} from "@lattice/security/Pausable.sol";
-import {PausableLib} from "@lattice/security/libraries/PausableLib.sol";
 import {IAccessControl} from "@lattice/interfaces/IAccessControl.sol";
 import {IPausable} from "@lattice/interfaces/IPausable.sol";
+import {Pausable} from "@lattice/security/Pausable.sol";
+import {PausableLib} from "@lattice/security/libraries/PausableLib.sol";
 import {Test} from "forge-std/Test.sol";
 import {Vm} from "forge-std/Vm.sol";
 
@@ -85,7 +85,9 @@ contract PausableTester is Test {
     function test_PauseRevertsForNonAdmin() public {
         vm.prank(nonAdmin);
         vm.expectRevert(
-            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, nonAdmin, DEFAULT_ADMIN_ROLE)
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector, nonAdmin, DEFAULT_ADMIN_ROLE
+            )
         );
         mock.pause();
     }
@@ -128,7 +130,9 @@ contract PausableTester is Test {
 
         vm.prank(nonAdmin);
         vm.expectRevert(
-            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, nonAdmin, DEFAULT_ADMIN_ROLE)
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector, nonAdmin, DEFAULT_ADMIN_ROLE
+            )
         );
         mock.unpause();
     }
@@ -194,5 +198,16 @@ contract PausableTester is Test {
         vm.prank(admin);
         mock.pause();
         assertTrue(mock.paused());
+    }
+
+    // -------------------------------------------------------------------------
+    // OZ-reconciliation: P-1 — explicit _paused = false in init
+    // -------------------------------------------------------------------------
+
+    /// @notice Verifies that the initializer leaves the paused state explicitly false,
+    /// matching OZ v5.1.0's defensive `_paused = false` write in the constructor.
+    function test_PauseInitialStateIsExplicitlyFalse() public view {
+        // After setUp() the contract is freshly initialised. The state must be false.
+        assertFalse(mock.paused());
     }
 }

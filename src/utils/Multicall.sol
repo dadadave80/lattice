@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {MulticallLib} from "@lattice/utils/libraries/MulticallLib.sol";
 import {IMulticall} from "@lattice/interfaces/IMulticall.sol";
+import {MulticallLib} from "@lattice/utils/libraries/MulticallLib.sol";
 
 /// @title Multicall
 /// @notice Thin Diamond facet that enables batched calls in a single transaction.

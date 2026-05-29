@@ -9,8 +9,7 @@ import {IReentrancyGuard} from "@lattice/interfaces/IReentrancyGuard.sol";
 //////////////////////////////////////////////////////////////////////////*//
 
 /// @dev `keccak256(abi.encode(uint256(keccak256("lattice.storage.ReentrancyGuard")) - 1)) & ~bytes32(uint256(0xff))`.
-bytes32 constant REENTRANCY_GUARD_STORAGE_SLOT =
-    0xd4429f8db30ab6cbe40e0e5546854bc12f64b5d4a4cfb0ec3f5b16a895cd0c00;
+bytes32 constant REENTRANCY_GUARD_STORAGE_SLOT = 0xd4429f8db30ab6cbe40e0e5546854bc12f64b5d4a4cfb0ec3f5b16a895cd0c00;
 
 /// @dev `keccak256(abi.encode(uint256(keccak256("diamond.lib.storage.ERC165")) - 1)) & ~bytes32(uint256(0xff))`.
 bytes32 constant REENTRANCY_GUARD_ERC165_STORAGE_LOCATION =
@@ -18,8 +17,7 @@ bytes32 constant REENTRANCY_GUARD_ERC165_STORAGE_LOCATION =
 
 /// @dev 0x00000000 is `type(IReentrancyGuard).interfaceId` (interface has no functions, only an error).
 /// `keccak256(abi.encode(bytes4(0x00000000), 0x9ca7f3e2e2bfb15fdf072b85dde92837cddacee6cf2f6b38cd06c9457c1c4200))`.
-bytes32 constant ERC165_MAP_IREENTRANCYGUARD_SLOT =
-    0xfb939cb1ca033f66389071014066e3ba51464fd8ec15c96518ea9663d9c0f494;
+bytes32 constant ERC165_MAP_IREENTRANCYGUARD_SLOT = 0xfb939cb1ca033f66389071014066e3ba51464fd8ec15c96518ea9663d9c0f494;
 
 /// @dev Sentinel value indicating no active call. Using 1 instead of 0 saves gas on the
 /// first call by avoiding a zero-to-nonzero SSTORE.
@@ -102,5 +100,12 @@ library ReentrancyGuardLib {
         nonReentrantBefore();
         fn();
         nonReentrantAfter();
+    }
+
+    /// @notice Returns `true` when a nonReentrant call is currently executing.
+    /// @dev Equivalent to OZ v5.1.0 `_reentrancyGuardEntered()`. Useful for `view` helpers
+    /// that must behave differently when called mid-execution inside a guarded function.
+    function reentrancyGuardEntered() internal view returns (bool) {
+        return reentrancyGuardStorage()._status == _ENTERED;
     }
 }

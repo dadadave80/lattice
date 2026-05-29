@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {PausableLib} from "@lattice/security/libraries/PausableLib.sol";
 import {IPausable} from "@lattice/interfaces/IPausable.sol";
+import {PausableLib} from "@lattice/security/libraries/PausableLib.sol";
 
 /// @title Pausable
 /// @notice Thin Diamond facet that exposes pause/unpause lifecycle control.

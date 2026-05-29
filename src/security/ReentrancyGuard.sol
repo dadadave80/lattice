@@ -18,6 +18,6 @@ import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib
 /// }
 /// ```
 abstract contract ReentrancyGuard {
-// All reentrancy logic lives in ReentrancyGuardLib.
-// Inheriting this contract signals intent and enables code navigation.
+    // All reentrancy logic lives in ReentrancyGuardLib.
+    // Inheriting this contract signals intent and enables code navigation.
 }
