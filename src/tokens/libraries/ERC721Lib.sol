@@ -206,7 +206,9 @@ library ERC721Lib {
         }
 
         if (from != address(0)) {
-            _approve(address(0), tokenId, from, false);
+            // Clear token approval on transfer. Pass address(0) as auth to skip authorization
+            // check (no validation needed here) — matches OZ's _approve call in _update.
+            _approve(address(0), tokenId, address(0), false);
             unchecked {
                 erc721Storage()._balances[from] -= 1;
             }
@@ -247,10 +249,12 @@ library ERC721Lib {
     }
 
     /// @notice Approves `to` for `tokenId`. Optionally emits Approval event.
+    /// @dev Guard matches OZ: enter owner-lookup block only when emitEvent OR auth != address(0).
+    ///      Uses _requireOwned (reverting) rather than _ownerOf to catch nonexistent tokens.
     function _approve(address to, uint256 tokenId, address auth, bool emitEvent) internal {
-        if (emitEvent || to != address(0)) {
-            address owner = _ownerOf(tokenId);
-            if (emitEvent && auth != address(0) && owner != auth && !isApprovedForAll(owner, auth)) {
+        if (emitEvent || auth != address(0)) {
+            address owner = _requireOwned(tokenId);
+            if (auth != address(0) && owner != auth && !isApprovedForAll(owner, auth)) {
                 revert IERC721.ERC721InvalidApprover(auth);
             }
             if (emitEvent) {
@@ -262,9 +266,33 @@ library ERC721Lib {
 
     /// @notice Sets or unsets the approval of `operator` by `owner`.
     function _setApprovalForAll(address owner, address operator, bool approved) internal {
-        if (operator == address(0)) revert IERC721.ERC721InvalidOperator(address(0));
+        if (operator == address(0)) revert IERC721.ERC721InvalidOperator(operator);
         erc721Storage()._operatorApprovals[owner][operator] = approved;
         emit IERC721.ApprovalForAll(owner, operator, approved);
+    }
+
+    /// @notice Increases the balance of `account` by `value` without minting a tracked token.
+    /// @dev Extension hook for ERC721Consecutive and similar patterns that synthesize ownership
+    ///      outside of the normal _owners mapping. Matches OZ's _increaseBalance.
+    function _increaseBalance(address account, uint128 value) internal {
+        unchecked {
+            erc721Storage()._balances[account] += value;
+        }
+    }
+
+    /// @notice Transfers `tokenId` from `from` to `to` bypassing msg.sender authorization.
+    /// @dev For permissioned or signature-based transfer mechanisms. Validates previous owner.
+    function _transfer(address from, address to, uint256 tokenId) internal {
+        if (to == address(0)) revert IERC721.ERC721InvalidReceiver(address(0));
+        address previousOwner = _update(to, tokenId, address(0));
+        if (previousOwner != from) revert IERC721.ERC721IncorrectOwner(from, tokenId, previousOwner);
+    }
+
+    /// @notice Safely transfers `tokenId` from `from` to `to` with `data`, bypassing authorization.
+    /// @dev Calls receiver hook if `to` is a contract.
+    function _safeTransfer(address from, address to, uint256 tokenId, bytes memory data) internal {
+        _transfer(from, to, tokenId);
+        _checkOnERC721Received(address(0), from, to, tokenId, data);
     }
 
     /// @notice Reverts if `tokenId` does not exist. Returns the owner.
@@ -275,6 +303,9 @@ library ERC721Lib {
     }
 
     /// @notice Calls IERC721Receiver.onERC721Received if `to` is a contract.
+    /// @dev Distinguishes between a non-implementor (empty revert) and a deliberate
+    ///      revert from the receiver (non-empty reason). Non-empty reasons are re-bubbled
+    ///      verbatim so callers see the actual error from the receiver contract.
     function _checkOnERC721Received(address operator, address from, address to, uint256 tokenId, bytes memory data)
         internal
     {
@@ -283,8 +314,14 @@ library ERC721Lib {
                 if (retval != IERC721Receiver.onERC721Received.selector) {
                     revert IERC721.ERC721InvalidReceiver(to);
                 }
-            } catch {
-                revert IERC721.ERC721InvalidReceiver(to);
+            } catch (bytes memory reason) {
+                if (reason.length == 0) {
+                    revert IERC721.ERC721InvalidReceiver(to);
+                } else {
+                    assembly ("memory-safe") {
+                        revert(add(32, reason), mload(reason))
+                    }
+                }
             }
         }
     }

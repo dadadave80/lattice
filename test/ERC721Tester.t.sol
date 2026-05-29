@@ -24,6 +24,15 @@ contract BadReceiver {
     }
 }
 
+/// @notice ERC721Receiver that deliberately reverts with a custom error.
+contract RevertingReceiver {
+    error MintNotOpen();
+
+    function onERC721Received(address, address, uint256, bytes calldata) external pure returns (bytes4) {
+        revert MintNotOpen();
+    }
+}
+
 /// @title MockERC721Contract
 /// @notice Mock ERC-721 token for testing.
 contract MockERC721Contract is ERC721, AccessControl {
@@ -41,6 +50,22 @@ contract MockERC721Contract is ERC721, AccessControl {
     function mintHelper(address to, uint256 tokenId) external {
         AccessControlLib.checkRole(DEFAULT_ADMIN_ROLE);
         ERC721Lib._mint(to, tokenId);
+    }
+
+    /// @notice Safe mint helper for testing receiver hooks.
+    function safeMintHelper(address to, uint256 tokenId) external {
+        AccessControlLib.checkRole(DEFAULT_ADMIN_ROLE);
+        ERC721Lib._safeMint(to, tokenId);
+    }
+
+    /// @notice Exposes internal _transfer for testing.
+    function transferHelper(address from, address to, uint256 tokenId) external {
+        ERC721Lib._transfer(from, to, tokenId);
+    }
+
+    /// @notice Exposes internal _safeTransfer for testing.
+    function safeTransferHelper(address from, address to, uint256 tokenId) external {
+        ERC721Lib._safeTransfer(from, to, tokenId, "");
     }
 
     function supportsInterface(bytes4 interfaceId) public view returns (bool) {
@@ -312,5 +337,89 @@ contract ERC721Tester is Test {
 
     function test_SupportsERC721MetadataInterface() public view {
         assertTrue(token.supportsInterface(0x5b5e139f)); // IERC721Metadata
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //            IMP-01: Receiver revert reason bubbles up (ERC721 IMP-01)
+    //////////////////////////////////////////////////////////////////////////*//
+
+    function test_SafeMintToRevertingReceiver_BubblesCustomError() public {
+        RevertingReceiver receiver = new RevertingReceiver();
+
+        vm.expectRevert(RevertingReceiver.MintNotOpen.selector);
+        vm.prank(admin);
+        token.safeMintHelper(address(receiver), TOKEN_1);
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //            IMP-02: _approve nonexistent token reverts (ERC721 IMP-02)
+    //////////////////////////////////////////////////////////////////////////*//
+
+    function test_ApproveNonexistentTokenReverts() public {
+        // approve() calls _approve(..., auth=sender, emitEvent=true)
+        // With auth != address(0), _requireOwned will revert for nonexistent token
+        vm.expectRevert(abi.encodeWithSelector(IERC721.ERC721NonexistentToken.selector, TOKEN_1));
+        vm.prank(alice);
+        token.approve(bob, TOKEN_1);
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //            MIN-02: _increaseBalance helper
+    //////////////////////////////////////////////////////////////////////////*//
+
+    function test_IncreaseBalance_IncreasesCount() public {
+        // Use transferHelper which internally calls _update → _increaseBalance path for to
+        vm.prank(admin);
+        token.mintHelper(alice, TOKEN_1);
+
+        // Initial balance is 1
+        assertEq(token.balanceOf(alice), 1);
+
+        // Transfer to bob increases bob's balance
+        vm.prank(alice);
+        token.transferFrom(alice, bob, TOKEN_1);
+        assertEq(token.balanceOf(bob), 1);
+        assertEq(token.balanceOf(alice), 0);
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //            MIN-03: _transfer and _safeTransfer internal helpers
+    //////////////////////////////////////////////////////////////////////////*//
+
+    function test_TransferHelper_MovesToken() public {
+        vm.prank(admin);
+        token.mintHelper(alice, TOKEN_1);
+
+        // transferHelper bypasses auth (no prank needed)
+        token.transferHelper(alice, bob, TOKEN_1);
+        assertEq(token.ownerOf(TOKEN_1), bob);
+    }
+
+    function test_TransferHelper_WrongFromReverts() public {
+        vm.prank(admin);
+        token.mintHelper(alice, TOKEN_1);
+
+        vm.expectRevert(abi.encodeWithSelector(IERC721.ERC721IncorrectOwner.selector, bob, TOKEN_1, alice));
+        token.transferHelper(bob, charlie, TOKEN_1);
+    }
+
+    function test_SafeTransferHelper_ToGoodReceiver() public {
+        GoodReceiver receiver = new GoodReceiver();
+
+        vm.prank(admin);
+        token.mintHelper(alice, TOKEN_1);
+
+        token.safeTransferHelper(alice, address(receiver), TOKEN_1);
+        assertEq(token.ownerOf(TOKEN_1), address(receiver));
+    }
+
+    function test_SafeTransferHelper_ToRevertingReceiver_Bubbles() public {
+        RevertingReceiver receiver = new RevertingReceiver();
+
+        vm.prank(admin);
+        token.mintHelper(alice, TOKEN_1);
+
+        vm.expectRevert(RevertingReceiver.MintNotOpen.selector);
+        token.safeTransferHelper(alice, address(receiver), TOKEN_1);
     }
 }
