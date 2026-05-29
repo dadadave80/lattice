@@ -141,4 +141,56 @@ contract TimelockLibTest is Test {
         vm.warp(block.timestamp + 60);
         assertTrue(h.isReadySingle());
     }
+
+    function test_MultiScheduleStoresIndependentReadyAts() public {
+        bytes32 op1 = keccak256("op1");
+        bytes32 op2 = keccak256("op2");
+
+        h.scheduleMulti(op1, 60);
+        h.scheduleMulti(op2, 120);
+
+        assertEq(h.readyAtMulti(op1), uint48(block.timestamp + 60));
+        assertEq(h.readyAtMulti(op2), uint48(block.timestamp + 120));
+    }
+
+    function test_MultiSameIdReschedulingBeforeConsumeReverts() public {
+        bytes32 op = keccak256("op");
+        uint48 firstReady = h.scheduleMulti(op, 60);
+        vm.expectRevert(abi.encodeWithSelector(TimelockLib.TimelockAlreadyPending.selector, firstReady));
+        h.scheduleMulti(op, 120);
+    }
+
+    function test_MultiConsumeOnlyClearsThatOperation() public {
+        bytes32 op1 = keccak256("op1");
+        bytes32 op2 = keccak256("op2");
+        h.scheduleMulti(op1, 60);
+        h.scheduleMulti(op2, 60);
+        vm.warp(block.timestamp + 60);
+        h.consumeMulti(op1);
+        assertFalse(h.isPendingMulti(op1));
+        assertTrue(h.isPendingMulti(op2));
+    }
+
+    function test_MultiCancelThenRescheduleWorks() public {
+        bytes32 op = keccak256("op");
+        h.scheduleMulti(op, 60);
+        h.cancelMulti(op);
+        uint48 secondReady = h.scheduleMulti(op, 120);
+        assertEq(h.readyAtMulti(op), secondReady);
+    }
+
+    function test_MultiConsumeWithoutPendingReverts() public {
+        vm.expectRevert(TimelockLib.TimelockNotPending.selector);
+        h.consumeMulti(keccak256("nope"));
+    }
+
+    function test_MultiConsumeBeforeReadyReverts() public {
+        bytes32 op = keccak256("op");
+        h.scheduleMulti(op, 60);
+        uint48 expectedReady = uint48(block.timestamp + 60);
+        vm.expectRevert(
+            abi.encodeWithSelector(TimelockLib.TimelockNotReady.selector, expectedReady, uint48(block.timestamp))
+        );
+        h.consumeMulti(op);
+    }
 }
