@@ -71,4 +71,91 @@ contract AccessControlDefaultAdminRulesTester is Test {
         ac.grantRole(MINTER_ROLE, alice);
         assertTrue(ac.hasRole(MINTER_ROLE, alice));
     }
+
+    function test_BeginAdminTransferScheduleStored() public {
+        vm.prank(admin);
+        ac.beginDefaultAdminTransfer(newAdmin);
+
+        (address pending, uint48 readyAt) = ac.pendingDefaultAdmin();
+        assertEq(pending, newAdmin);
+        assertEq(readyAt, uint48(block.timestamp + INITIAL_DELAY));
+    }
+
+    function test_BeginAdminTransferByNonOwnerReverts() public {
+        vm.prank(alice);
+        vm.expectRevert(OwnableLib.Unauthorized.selector);
+        ac.beginDefaultAdminTransfer(newAdmin);
+    }
+
+    function test_AcceptBeforeReadyReverts() public {
+        vm.prank(admin);
+        ac.beginDefaultAdminTransfer(newAdmin);
+
+        vm.prank(newAdmin);
+        uint48 expectedReady = uint48(block.timestamp + INITIAL_DELAY);
+        vm.expectRevert(
+            abi.encodeWithSelector(TimelockLib.TimelockNotReady.selector, expectedReady, uint48(block.timestamp))
+        );
+        ac.acceptDefaultAdminTransfer();
+    }
+
+    function test_AcceptByWrongAddressReverts() public {
+        vm.prank(admin);
+        ac.beginDefaultAdminTransfer(newAdmin);
+
+        vm.warp(block.timestamp + INITIAL_DELAY);
+        vm.prank(alice);
+        vm.expectRevert(IAccessControlDefaultAdminRules.AccessControlDefaultAdminRulesUnauthorizedAccept.selector);
+        ac.acceptDefaultAdminTransfer();
+    }
+
+    function test_AcceptTransfersOwnership() public {
+        vm.prank(admin);
+        ac.beginDefaultAdminTransfer(newAdmin);
+
+        vm.warp(block.timestamp + INITIAL_DELAY);
+        vm.prank(newAdmin);
+        ac.acceptDefaultAdminTransfer();
+
+        assertEq(ac.defaultAdmin(), newAdmin);
+        assertTrue(ac.hasRole(DEFAULT_ADMIN_ROLE, newAdmin));
+        assertFalse(ac.hasRole(DEFAULT_ADMIN_ROLE, admin));
+
+        (address pending, uint48 readyAt) = ac.pendingDefaultAdmin();
+        assertEq(pending, address(0));
+        assertEq(readyAt, 0);
+    }
+
+    function test_CancelClearsPending() public {
+        vm.prank(admin);
+        ac.beginDefaultAdminTransfer(newAdmin);
+
+        vm.prank(admin);
+        ac.cancelDefaultAdminTransfer();
+
+        (address pending, uint48 readyAt) = ac.pendingDefaultAdmin();
+        assertEq(pending, address(0));
+        assertEq(readyAt, 0);
+    }
+
+    function test_CancelByNonOwnerReverts() public {
+        vm.prank(admin);
+        ac.beginDefaultAdminTransfer(newAdmin);
+
+        vm.prank(alice);
+        vm.expectRevert(OwnableLib.Unauthorized.selector);
+        ac.cancelDefaultAdminTransfer();
+    }
+
+    function test_BeginOverwritesExistingPending() public {
+        address otherAdmin = address(0xA3);
+        vm.prank(admin);
+        ac.beginDefaultAdminTransfer(newAdmin);
+
+        vm.prank(admin);
+        ac.beginDefaultAdminTransfer(otherAdmin);
+
+        (address pending,) = ac.pendingDefaultAdmin();
+        assertEq(pending, otherAdmin);
+    }
 }
