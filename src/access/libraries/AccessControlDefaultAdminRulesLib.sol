@@ -4,6 +4,7 @@ pragma solidity ^0.8.30;
 import {ContextLib} from "@diamond/libraries/ContextLib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {OwnableLib} from "@diamond/libraries/OwnableLib.sol";
+import {IAccessControl} from "@lattice/interfaces/IAccessControl.sol";
 import {IAccessControlDefaultAdminRules} from "@lattice/interfaces/IAccessControlDefaultAdminRules.sol";
 import {TimelockLib} from "@lattice/utils/libraries/TimelockLib.sol";
 
@@ -124,7 +125,10 @@ library AccessControlDefaultAdminRulesLib {
         $._adminTransferSchedule.consume();
         address newAdmin = $._pendingDefaultAdmin;
         $._pendingDefaultAdmin = address(0);
+        address oldAdmin = defaultAdmin();
         OwnableLib.setOwner(newAdmin);
+        emit IAccessControl.RoleRevoked(DEFAULT_ADMIN_ROLE, oldAdmin, ContextLib.msgSender());
+        emit IAccessControl.RoleGranted(DEFAULT_ADMIN_ROLE, newAdmin, ContextLib.msgSender());
     }
 
     function changeDefaultAdminDelay(uint48 newDelay) internal {
