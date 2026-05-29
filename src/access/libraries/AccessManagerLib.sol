@@ -288,28 +288,16 @@ library AccessManagerLib {
         returns (bytes32 operationId, uint32 nonce)
     {
         address caller = ContextLib.msgSender();
-        bytes4 selector = bytes4(data[0:4]);
-        (bool immediate, uint32 delay) = canCall(caller, target, selector);
-        if (!immediate && delay == 0) {
-            revert IAccessManager.AccessManagerUnauthorizedAccount(caller, getTargetFunctionRole(target, selector));
-        }
+        uint32 delay = _checkCanSchedule(caller, target, data);
         operationId = hashOperation(caller, target, data);
-        AccessManagerStorage storage $ = accessManagerStorage();
-        if ($._operationQueue.isPending(operationId)) {
-            revert IAccessManager.AccessManagerAlreadyScheduled(operationId);
-        }
-        uint48 minWhen = uint48(block.timestamp) + delay;
-        if (when < minWhen) when = minWhen;
-        $._operationQueue._readyAt[operationId] = when;
-        nonce = ++$._nextNonce;
-        $._nonces[operationId] = nonce;
-        emit IAccessManager.OperationScheduled(operationId, nonce, when, caller, target, data);
+        uint48 effectiveWhen;
+        (nonce, effectiveWhen) = _writeSchedule(operationId, when, delay);
+        emit IAccessManager.OperationScheduled(operationId, nonce, effectiveWhen, caller, target, data);
     }
 
     function execute(address target, bytes calldata data) internal returns (uint32 nonce) {
         address caller = ContextLib.msgSender();
-        bytes4 selector = bytes4(data[0:4]);
-        (bool immediate, uint32 delay) = canCall(caller, target, selector);
+        (bool immediate, uint32 delay) = canCall(caller, target, bytes4(data[0:4]));
         bytes32 operationId = hashOperation(caller, target, data);
         AccessManagerStorage storage $ = accessManagerStorage();
         nonce = $._nonces[operationId];
@@ -325,7 +313,9 @@ library AccessManagerLib {
             }
             $._operationQueue._readyAt[operationId] = 0;
         } else {
-            revert IAccessManager.AccessManagerUnauthorizedAccount(caller, getTargetFunctionRole(target, selector));
+            revert IAccessManager.AccessManagerUnauthorizedAccount(
+                caller, getTargetFunctionRole(target, bytes4(data[0:4]))
+            );
         }
 
         emit IAccessManager.OperationExecuted(operationId, nonce);
@@ -401,5 +391,38 @@ library AccessManagerLib {
         uint64 adminRole = accessManagerStorage()._roles[roleId].admin;
         (bool isMember,) = hasRole(adminRole, ContextLib.msgSender());
         if (!isMember) revert IAccessManager.AccessManagerUnauthorizedAccount(ContextLib.msgSender(), adminRole);
+    }
+
+    /// @dev Validates that `caller` may schedule a call to `target` with `data` and returns
+    ///      the required execution delay. Reverts if the caller has no access at all.
+    function _checkCanSchedule(address caller, address target, bytes calldata data)
+        private
+        view
+        returns (uint32 delay)
+    {
+        (bool immediate, uint32 d) = canCall(caller, target, bytes4(data[0:4]));
+        if (!immediate && d == 0) {
+            revert IAccessManager.AccessManagerUnauthorizedAccount(
+                caller, getTargetFunctionRole(target, bytes4(data[0:4]))
+            );
+        }
+        delay = d;
+    }
+
+    /// @dev Writes the scheduled operation to storage and returns the assigned nonce and
+    ///      the effective (clamped) schedule timestamp.
+    function _writeSchedule(bytes32 operationId, uint48 when, uint32 delay)
+        private
+        returns (uint32 nonce, uint48 effectiveWhen)
+    {
+        AccessManagerStorage storage $ = accessManagerStorage();
+        if ($._operationQueue.isPending(operationId)) {
+            revert IAccessManager.AccessManagerAlreadyScheduled(operationId);
+        }
+        uint48 minWhen = uint48(block.timestamp) + delay;
+        effectiveWhen = when < minWhen ? minWhen : when;
+        $._operationQueue._readyAt[operationId] = effectiveWhen;
+        nonce = ++$._nextNonce;
+        $._nonces[operationId] = nonce;
     }
 }
