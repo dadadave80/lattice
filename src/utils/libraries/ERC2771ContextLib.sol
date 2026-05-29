@@ -14,8 +14,7 @@ bytes32 constant ERC2771_CONTEXT_STORAGE_SLOT = 0x8bfb6e7879de3cfcf53864e2a67576
 
 /// @dev 0xf0ffe65a is `type(IERC2771Context).interfaceId`.
 /// `keccak256(abi.encode(bytes4(0xf0ffe65a), 0x9ca7f3e2e2bfb15fdf072b85dde92837cddacee6cf2f6b38cd06c9457c1c4200))`.
-bytes32 constant ERC165_MAP_IERC2771CONTEXT_SLOT =
-    0x0397519133c7f71c66962d7c0c1ca2679c0037f00141c5e2808db9f02a0831ec;
+bytes32 constant ERC165_MAP_IERC2771CONTEXT_SLOT = 0x0397519133c7f71c66962d7c0c1ca2679c0037f00141c5e2808db9f02a0831ec;
 
 /// @custom:storage-location erc7201:lattice.storage.ERC2771Context
 struct ERC2771ContextStorage {

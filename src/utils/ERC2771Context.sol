@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ERC2771ContextLib} from "@lattice/utils/libraries/ERC2771ContextLib.sol";
 import {IERC2771Context} from "@lattice/interfaces/IERC2771Context.sol";
+import {ERC2771ContextLib} from "@lattice/utils/libraries/ERC2771ContextLib.sol";
 
 /// @title ERC2771Context
 /// @notice Diamond facet exposing ERC-2771 trusted forwarder management.

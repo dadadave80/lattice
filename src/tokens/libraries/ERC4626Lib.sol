@@ -3,9 +3,9 @@ pragma solidity ^0.8.30;
 
 import {ContextLib} from "@diamond/libraries/ContextLib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
-import {ERC20Lib} from "@lattice/tokens/libraries/ERC20Lib.sol";
 import {IERC20} from "@lattice/interfaces/IERC20.sol";
 import {IERC4626} from "@lattice/interfaces/IERC4626.sol";
+import {ERC20Lib} from "@lattice/tokens/libraries/ERC20Lib.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
 //                                  STORAGE
@@ -275,8 +275,7 @@ library ERC4626Lib {
     /// @dev Calls `token.transferFrom(from, to, amount)` and reverts with SafeERC20FailedOperation if it
     ///      fails or returns false. Handles tokens that do not return a bool (e.g. USDT).
     function _safeTransferFrom(address token, address from, address to, uint256 amount) private {
-        (bool ok, bytes memory ret) =
-            token.call(abi.encodeWithSelector(IERC20.transferFrom.selector, from, to, amount));
+        (bool ok, bytes memory ret) = token.call(abi.encodeWithSelector(IERC20.transferFrom.selector, from, to, amount));
         if (!ok || (ret.length > 0 && !abi.decode(ret, (bool)))) {
             revert IERC4626.SafeERC20FailedOperation(token);
         }
@@ -375,5 +374,4 @@ library ERC4626Lib {
         return result;
     }
 }
-
 

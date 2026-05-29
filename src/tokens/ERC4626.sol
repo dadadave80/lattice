@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ERC4626Lib} from "@lattice/tokens/libraries/ERC4626Lib.sol";
-import {ERC20} from "@lattice/tokens/ERC20.sol";
 import {IERC20} from "@lattice/interfaces/IERC20.sol";
 import {IERC4626} from "@lattice/interfaces/IERC4626.sol";
+import {ERC20} from "@lattice/tokens/ERC20.sol";
+import {ERC4626Lib} from "@lattice/tokens/libraries/ERC4626Lib.sol";
 
 /// @title ERC4626
 /// @notice Stateless Diamond facet for the ERC-4626 Tokenized Vault Standard.

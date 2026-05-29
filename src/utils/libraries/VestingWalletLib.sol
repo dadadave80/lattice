@@ -11,17 +11,14 @@ import {IERC20} from "forge-std/interfaces/IERC20.sol";
 //////////////////////////////////////////////////////////////////////////*//
 
 /// @dev `keccak256(abi.encode(uint256(keccak256("lattice.storage.VestingWallet")) - 1)) & ~bytes32(uint256(0xff))`.
-bytes32 constant VESTING_WALLET_STORAGE_SLOT =
-    0x6d3272be2f02b6d92080037a80b8780ee2896be455de43b32ab08d8adbdbbe00;
+bytes32 constant VESTING_WALLET_STORAGE_SLOT = 0x6d3272be2f02b6d92080037a80b8780ee2896be455de43b32ab08d8adbdbbe00;
 
 /// @dev `keccak256(abi.encode(uint256(keccak256("diamond.lib.storage.ERC165")) - 1)) & ~bytes32(uint256(0xff))`.
-bytes32 constant VESTING_ERC165_STORAGE_LOCATION =
-    0x9ca7f3e2e2bfb15fdf072b85dde92837cddacee6cf2f6b38cd06c9457c1c4200;
+bytes32 constant VESTING_ERC165_STORAGE_LOCATION = 0x9ca7f3e2e2bfb15fdf072b85dde92837cddacee6cf2f6b38cd06c9457c1c4200;
 
 /// @dev 0x1c3a25a8 is `type(IVestingWallet).interfaceId`.
 /// `keccak256(abi.encode(bytes4(0x1c3a25a8), 0x9ca7f3e2e2bfb15fdf072b85dde92837cddacee6cf2f6b38cd06c9457c1c4200))`.
-bytes32 constant ERC165_MAP_IVESTINGWALLET_SLOT =
-    0x30594729cb8d6a49998656680a715012a3392034ab2a6e4f69a94bf6b0450af9;
+bytes32 constant ERC165_MAP_IVESTINGWALLET_SLOT = 0x30594729cb8d6a49998656680a715012a3392034ab2a6e4f69a94bf6b0450af9;
 
 /// @notice Struct for storing VestingWallet state.
 /// @custom:storage-location erc7201:lattice.storage.VestingWallet

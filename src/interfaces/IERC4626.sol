@@ -24,11 +24,7 @@ interface IERC4626 is IERC20 {
     /// @dev Emitted when `shares` are redeemed from the vault by `sender` on behalf of `owner`,
     ///      transferring `assets` to `receiver`.
     event Withdraw(
-        address indexed sender,
-        address indexed receiver,
-        address indexed owner,
-        uint256 assets,
-        uint256 shares
+        address indexed sender, address indexed receiver, address indexed owner, uint256 assets, uint256 shares
     );
 
     //*//////////////////////////////////////////////////////////////////////////

@@ -3,15 +3,15 @@ pragma solidity ^0.8.30;
 
 import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
-import {ERC20Lib} from "@lattice/tokens/libraries/ERC20Lib.sol";
-import {ERC4626} from "@lattice/tokens/ERC4626.sol";
-import {ERC4626Lib} from "@lattice/tokens/libraries/ERC4626Lib.sol";
 import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
+import {VotesLib} from "@lattice/governance/libraries/VotesLib.sol";
 import {IERC20} from "@lattice/interfaces/IERC20.sol";
 import {IERC4626} from "@lattice/interfaces/IERC4626.sol";
 import {ERC20Votes} from "@lattice/tokens/ERC20Votes.sol";
+import {ERC4626} from "@lattice/tokens/ERC4626.sol";
+import {ERC20Lib} from "@lattice/tokens/libraries/ERC20Lib.sol";
 import {ERC20VotesLib} from "@lattice/tokens/libraries/ERC20VotesLib.sol";
-import {VotesLib} from "@lattice/governance/libraries/VotesLib.sol";
+import {ERC4626Lib} from "@lattice/tokens/libraries/ERC4626Lib.sol";
 import {EIP712Lib} from "@lattice/utils/libraries/EIP712Lib.sol";
 import {NoncesLib} from "@lattice/utils/libraries/NoncesLib.sol";
 import {Test} from "forge-std/Test.sol";
@@ -56,9 +56,17 @@ contract MockNoReturnERC20 {
         return 300;
     }
 
-    function name() external pure returns (string memory) { return "NoReturn"; }
-    function symbol() external pure returns (string memory) { return "NRT"; }
-    function totalSupply() external pure returns (uint256) { return 0; }
+    function name() external pure returns (string memory) {
+        return "NoReturn";
+    }
+
+    function symbol() external pure returns (string memory) {
+        return "NRT";
+    }
+
+    function totalSupply() external pure returns (uint256) {
+        return 0;
+    }
 }
 
 //*//////////////////////////////////////////////////////////////////////////
@@ -487,9 +495,7 @@ contract ERC4626Tester is Test {
 
         // Charlie tries to withdraw on behalf of alice without allowance
         vm.prank(charlie);
-        vm.expectRevert(
-            abi.encodeWithSelector(IERC20.ERC20InsufficientAllowance.selector, charlie, 0, depositAmount)
-        );
+        vm.expectRevert(abi.encodeWithSelector(IERC20.ERC20InsufficientAllowance.selector, charlie, 0, depositAmount));
         vault.withdraw(depositAmount, charlie, alice);
     }
 
@@ -501,9 +507,7 @@ contract ERC4626Tester is Test {
         vault.deposit(depositAmount, alice);
 
         vm.prank(charlie);
-        vm.expectRevert(
-            abi.encodeWithSelector(IERC20.ERC20InsufficientAllowance.selector, charlie, 0, depositAmount)
-        );
+        vm.expectRevert(abi.encodeWithSelector(IERC20.ERC20InsufficientAllowance.selector, charlie, 0, depositAmount));
         vault.redeem(depositAmount, charlie, alice);
     }
 
