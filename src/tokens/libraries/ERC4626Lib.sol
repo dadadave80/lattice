@@ -69,10 +69,16 @@ library ERC4626Lib {
         $._decimalsOffset = decimalsOffset_;
 
         // Try to fetch underlying decimals; default to 18 on failure.
+        // Uses a low-level staticcall with an explicit upper-bound check (per OZ v5.1.0) to avoid
+        // silent truncation when a token returns a uint256 value larger than type(uint8).max.
         uint8 underlyingDecimals_ = 18;
-        try IERC20Metadata(asset_).decimals() returns (uint8 d) {
-            underlyingDecimals_ = d;
-        } catch {}
+        (bool success, bytes memory encodedDecimals) = asset_.staticcall(abi.encodeWithSignature("decimals()"));
+        if (success && encodedDecimals.length >= 32) {
+            uint256 returnedDecimals = abi.decode(encodedDecimals, (uint256));
+            if (returnedDecimals <= type(uint8).max) {
+                underlyingDecimals_ = uint8(returnedDecimals);
+            }
+        }
         $._underlyingDecimals = underlyingDecimals_;
 
         registerInterface();
@@ -365,7 +371,3 @@ library ERC4626Lib {
 }
 
 
-/// @dev Minimal interface to call `decimals()` on the underlying token.
-interface IERC20Metadata {
-    function decimals() external view returns (uint8);
-}
