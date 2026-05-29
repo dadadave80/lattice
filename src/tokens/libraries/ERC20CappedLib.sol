@@ -70,7 +70,7 @@ library ERC20CappedLib {
     //                               VIEW FUNCTIONS
     //////////////////////////////////////////////////////////////////////////*//
 
-    /// @notice Returns the cap on the token's total supply.
+    /// @dev Returns the cap on the token's total supply.
     function cap() internal view returns (uint256) {
         return erc20CappedStorage()._cap;
     }

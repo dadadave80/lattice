@@ -106,6 +106,25 @@ contract ERC20CappedTester is Test {
     }
 
     //*//////////////////////////////////////////////////////////////////////////
+    //         MIN-02: boundary — minting exactly to cap in two steps succeeds
+    //////////////////////////////////////////////////////////////////////////*//
+
+    function test_MintExactlyToCapInTwoStepsSucceeds() public {
+        uint256 firstMint = CAP / 2;
+        uint256 secondMint = CAP - firstMint; // CAP - CAP/2 handles odd CAP values
+
+        vm.prank(minter);
+        token.mint(alice, firstMint);
+
+        vm.prank(minter);
+        token.mint(alice, secondMint);
+
+        // totalSupply == cap (check is >, not >=, so this must not revert)
+        assertEq(token.totalSupply(), CAP);
+        assertEq(token.totalSupply(), token.cap());
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
     //                          INVALID CAP ON INIT
     //////////////////////////////////////////////////////////////////////////*//
 
