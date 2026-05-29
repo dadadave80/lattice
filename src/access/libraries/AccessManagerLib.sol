@@ -67,6 +67,9 @@ library AccessManagerLib {
     /// @notice Scheduled operations expire after this many seconds past `readyAt`.
     uint32 internal constant EXPIRATION = 1 weeks;
 
+    /// @notice Minimum setback applied when changing delays.
+    uint32 internal constant MIN_SETBACK = 5 days;
+
     function accessManagerStorage() internal pure returns (AccessManagerStorage storage $) {
         assembly {
             $.slot := ACCESS_MANAGER_STORAGE_SLOT
@@ -227,16 +230,27 @@ library AccessManagerLib {
             revert IAccessManager.AccessManagerLockedRole(roleId);
         }
         Role storage r = accessManagerStorage()._roles[roleId];
-        uint32 currentDelay = getRoleGrantDelay(roleId);
-        uint48 effectAt;
-        if (newDelay < currentDelay) {
-            r.grantDelay = newDelay;
-            effectAt = uint48(block.timestamp);
+        // Consolidate any pending delay that has already become effective.
+        if (r.grantDelayEffectAt != 0 && block.timestamp >= r.grantDelayEffectAt) {
+            r.grantDelay = r.pendingGrantDelay;
             r.pendingGrantDelay = 0;
             r.grantDelayEffectAt = 0;
+        }
+        uint32 currentDelay = r.grantDelay;
+        uint48 effectAt;
+        if (newDelay == currentDelay) {
+            effectAt = uint48(block.timestamp);
+            r.pendingGrantDelay = newDelay;
+            r.grantDelayEffectAt = effectAt;
+        } else if (newDelay < currentDelay) {
+            uint32 diff = currentDelay - newDelay;
+            uint32 wait = diff > MIN_SETBACK ? diff : MIN_SETBACK;
+            r.pendingGrantDelay = newDelay;
+            effectAt = uint48(block.timestamp + wait);
+            r.grantDelayEffectAt = effectAt;
         } else {
             r.pendingGrantDelay = newDelay;
-            effectAt = uint48(block.timestamp + EXPIRATION);
+            effectAt = uint48(block.timestamp + MIN_SETBACK);
             r.grantDelayEffectAt = effectAt;
         }
         emit IAccessManager.RoleGrantDelayChanged(roleId, newDelay, effectAt);
@@ -262,15 +276,27 @@ library AccessManagerLib {
     function setTargetAdminDelay(address target, uint32 newDelay) internal {
         _checkAdmin();
         TargetConfig storage t = accessManagerStorage()._targets[target];
-        uint48 effectAt;
-        if (newDelay < t.adminDelay) {
-            t.adminDelay = newDelay;
-            effectAt = uint48(block.timestamp);
+        // Consolidate any pending delay that has already become effective.
+        if (t.adminDelayEffectAt != 0 && block.timestamp >= t.adminDelayEffectAt) {
+            t.adminDelay = t.pendingAdminDelay;
             t.pendingAdminDelay = 0;
             t.adminDelayEffectAt = 0;
+        }
+        uint32 currentDelay = t.adminDelay;
+        uint48 effectAt;
+        if (newDelay == currentDelay) {
+            effectAt = uint48(block.timestamp);
+            t.pendingAdminDelay = newDelay;
+            t.adminDelayEffectAt = effectAt;
+        } else if (newDelay < currentDelay) {
+            uint32 diff = currentDelay - newDelay;
+            uint32 wait = diff > MIN_SETBACK ? diff : MIN_SETBACK;
+            t.pendingAdminDelay = newDelay;
+            effectAt = uint48(block.timestamp + wait);
+            t.adminDelayEffectAt = effectAt;
         } else {
             t.pendingAdminDelay = newDelay;
-            effectAt = uint48(block.timestamp + EXPIRATION);
+            effectAt = uint48(block.timestamp + MIN_SETBACK);
             t.adminDelayEffectAt = effectAt;
         }
         emit IAccessManager.TargetAdminDelayUpdated(target, newDelay, effectAt);
