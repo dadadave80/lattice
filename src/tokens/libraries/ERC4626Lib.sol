@@ -58,6 +58,12 @@ library ERC4626Lib {
 
     /// @notice Initializes the ERC-4626 module with an underlying asset and virtual share offset.
     /// @dev Must be called inside a pre/postInitializer block, after ERC20Lib.__ERC20_init.
+    ///
+    ///      IMPORTANT: `decimalsOffset_` is stored once at init time and is immutable thereafter.
+    ///      Unlike OZ's `_decimalsOffset()` which is an overridable `internal view virtual` function,
+    ///      Lattice's Diamond-pattern constraint requires state to live in the ERC-7201 slot — there is
+    ///      no constructor and facets cannot hold mutable storage. Consumers who need a non-zero offset
+    ///      must supply it via this initializer. There is no upgrade path once set.
     /// @param asset_ The underlying ERC-20 token address.
     /// @param decimalsOffset_ Virtual share decimals offset for inflation-attack mitigation (usually 0).
     function __ERC4626_init(address asset_, uint8 decimalsOffset_) internal {
