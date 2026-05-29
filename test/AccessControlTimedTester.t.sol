@@ -128,4 +128,39 @@ contract AccessControlTimedTester is Test {
         );
         ac.grantRoleTimed(MINTER_ROLE, alice, 0, 0);
     }
+
+    function test_ExtendRoleUpdatesExpiry() public {
+        uint48 start = uint48(block.timestamp);
+        uint48 expires = start + 1000;
+        vm.prank(admin);
+        ac.grantRoleTimed(MINTER_ROLE, alice, start, expires);
+
+        uint48 newExpires = expires + 500;
+        vm.prank(admin);
+        ac.extendRole(MINTER_ROLE, alice, newExpires);
+
+        (, uint48 got) = ac.roleExpiration(MINTER_ROLE, alice);
+        assertEq(got, newExpires);
+    }
+
+    function test_ExtendRoleNotExtendedReverts() public {
+        uint48 start = uint48(block.timestamp);
+        uint48 expires = start + 1000;
+        vm.prank(admin);
+        ac.grantRoleTimed(MINTER_ROLE, alice, start, expires);
+
+        vm.prank(admin);
+        vm.expectRevert(
+            abi.encodeWithSelector(IAccessControlTimed.AccessControlTimedExpiryNotExtended.selector, expires, expires)
+        );
+        ac.extendRole(MINTER_ROLE, alice, expires);
+    }
+
+    function test_ExtendRoleNotHeldReverts() public {
+        vm.prank(admin);
+        vm.expectRevert(
+            abi.encodeWithSelector(IAccessControlTimed.AccessControlTimedRoleNotHeld.selector, MINTER_ROLE, alice)
+        );
+        ac.extendRole(MINTER_ROLE, alice, uint48(block.timestamp + 1000));
+    }
 }
