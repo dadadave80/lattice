@@ -4,6 +4,7 @@ pragma solidity ^0.8.30;
 import {ContextLib} from "@diamond/libraries/ContextLib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {NoncesLib} from "@lattice/utils/libraries/NoncesLib.sol";
+import {Checkpoints} from "@lattice/utils/libraries/Checkpoints.sol";
 import {ERC20Lib} from "@lattice/tokens/libraries/ERC20Lib.sol";
 import {VotesLib} from "@lattice/governance/libraries/VotesLib.sol";
 import {IERC20} from "@lattice/interfaces/IERC20.sol";
@@ -60,6 +61,22 @@ library ERC20VotesLib {
     /// @notice Returns the maximum supply that can be checkpointed safely (type(uint208).max).
     function _maxSupply() internal pure returns (uint256) {
         return type(uint208).max;
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                         CHECKPOINT ACCESSORS (E2V-03)
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice Returns the number of checkpoints stored for `account`.
+    /// @dev Matches OZ ERC20Votes.numCheckpoints — used by governance frameworks and indexers.
+    function numCheckpoints(address account) internal view returns (uint32) {
+        return uint32(Checkpoints.length(VotesLib.votesStorage()._delegateCheckpoints[account]));
+    }
+
+    /// @notice Returns the checkpoint at position `pos` for `account` (0-indexed).
+    /// @dev Matches OZ ERC20Votes.checkpoints — used by governance frameworks and indexers.
+    function checkpoints(address account, uint32 pos) internal view returns (Checkpoints.Checkpoint208 memory) {
+        return Checkpoints.at(VotesLib.votesStorage()._delegateCheckpoints[account], pos);
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -121,8 +138,11 @@ library ERC20VotesLib {
     }
 
     /// @notice Delegates votes via an EIP-712 signature, using the signer's ERC-20 balance.
-    /// @dev Two-step: first recover the signer (to read their balance), then delegate.
-    ///      The nonce is consumed inside the second call via VotesLib.delegateBySig.
+    /// @dev Two-step: recover signer first (to read their balance), then delegate.
+    ///      Nonce is consumed directly via NoncesLib.useCheckedNonce, bypassing
+    ///      VotesLib.delegateBySig to allow reading the signer's balance before delegation.
+    ///      IMPORTANT (E2V-05): This nonce consumption mirrors VotesLib.delegateBySig's nonce
+    ///      logic and MUST be kept in sync if VotesLib.delegateBySig's nonce scheme changes.
     function delegateBySig(address delegatee, uint256 nonce, uint256 expiry, uint8 v, bytes32 r, bytes32 s) internal {
         // Step 1: Recover the signer (validates expiry, but does NOT consume nonce yet).
         address signer = VotesLib._recoverDelegationSigner(delegatee, nonce, expiry, v, r, s);

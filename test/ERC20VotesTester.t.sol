@@ -421,4 +421,49 @@ contract ERC20VotesTester is Test {
     function test_SupportsIERC20() public view {
         assertTrue(token.supportsInterface(type(IERC20).interfaceId));
     }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //           E2V-03: numCheckpoints / checkpoints accessors
+    //////////////////////////////////////////////////////////////////////////*//
+
+    function test_NumCheckpoints_BeforeDelegate_IsZero() public view {
+        assertEq(token.numCheckpoints(alice), 0);
+    }
+
+    function test_NumCheckpoints_AfterDelegate_IsOne() public {
+        vm.prank(alice);
+        token.delegate(alice);
+
+        // One checkpoint pushed when voting units move
+        assertEq(token.numCheckpoints(alice), 1);
+    }
+
+    function test_NumCheckpoints_AfterTwoDelegations_IsTwo() public {
+        vm.prank(alice);
+        token.delegate(alice);
+
+        // Warp so second delegation lands on a different timestamp key
+        vm.warp(block.timestamp + 1);
+
+        vm.prank(alice);
+        token.delegate(bob);
+
+        // alice lost votes (one more checkpoint pushed for alice)
+        assertEq(token.numCheckpoints(alice), 2);
+    }
+
+    function test_Checkpoints_ReturnsCorrectEntry() public {
+        vm.prank(alice);
+        token.delegate(alice);
+
+        uint48 ts = uint48(block.timestamp);
+        // First checkpoint: key == current timestamp, value == INITIAL_SUPPLY
+        (bool exists, uint48 key, uint208 value) = type(uint48).max > 0
+            ? (true, token.checkpoints(alice, 0)._key, token.checkpoints(alice, 0)._value)
+            : (false, 0, 0);
+
+        assertTrue(exists);
+        assertEq(key, ts);
+        assertEq(value, uint208(INITIAL_SUPPLY));
+    }
 }

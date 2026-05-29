@@ -38,14 +38,15 @@ contract Votes is IVotes {
     }
 
     /// @inheritdoc IVotes
+    /// @dev WARNING (VOT-08): The base Votes facet passes 0 voting units. This means the nonce
+    ///      is consumed and DelegateChanged is emitted, but vote checkpoints are NOT updated.
+    ///      Token-bearing facets (e.g. ERC20Votes) MUST override this function to pass the
+    ///      signer's actual balance as voting units. Using this base implementation in a
+    ///      token context will silently leave voting power at zero after delegation.
     function delegateBySig(address delegatee, uint256 nonce, uint256 expiry, uint8 v, bytes32 r, bytes32 s)
         public
         virtual
     {
-        // The signer's voting units are read after signature verification inside VotesLib;
-        // we pass 0 here as a placeholder — ERC20Votes overrides this with the actual balance.
-        // For the base Votes facet, use the standard pattern: sig recovery + delegate.
-        // Actual balance is fetched after sig recovery — we rely on ERC20Votes override.
         VotesLib.delegateBySig(delegatee, nonce, expiry, v, r, s, 0);
     }
 

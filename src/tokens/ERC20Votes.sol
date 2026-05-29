@@ -4,6 +4,7 @@ pragma solidity ^0.8.30;
 import {ERC20Lib} from "@lattice/tokens/libraries/ERC20Lib.sol";
 import {ERC20VotesLib} from "@lattice/tokens/libraries/ERC20VotesLib.sol";
 import {VotesLib} from "@lattice/governance/libraries/VotesLib.sol";
+import {Checkpoints} from "@lattice/utils/libraries/Checkpoints.sol";
 import {ERC20} from "@lattice/tokens/ERC20.sol";
 import {Votes} from "@lattice/governance/Votes.sol";
 import {IERC20} from "@lattice/interfaces/IERC20.sol";
@@ -55,5 +56,26 @@ contract ERC20Votes is ERC20, Votes {
         override
     {
         ERC20VotesLib.delegateBySig(delegatee, nonce, expiry, v, r, s);
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                      CHECKPOINT ACCESSORS (OZ ERC20Votes)
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice Returns the number of checkpoints for `account`.
+    /// @dev Used by governance frameworks and off-chain indexers to enumerate checkpoint history.
+    function numCheckpoints(address account) public view virtual returns (uint32) {
+        return ERC20VotesLib.numCheckpoints(account);
+    }
+
+    /// @notice Returns the checkpoint at position `pos` for `account` (0-indexed).
+    /// @dev Used by governance frameworks and off-chain indexers to enumerate checkpoint history.
+    function checkpoints(address account, uint32 pos)
+        public
+        view
+        virtual
+        returns (Checkpoints.Checkpoint208 memory)
+    {
+        return ERC20VotesLib.checkpoints(account, pos);
     }
 }
