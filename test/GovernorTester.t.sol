@@ -676,23 +676,18 @@ contract GovernorTester is Test {
         governor.cancel(targets, values, calldatas, keccak256(bytes(description)));
     }
 
-    function test_CancelAfterVotingStartedReverts() public {
+    function test_CancelAfterVotingStartedSucceeds() public {
+        // Cancel is now allowed in Active state (OZ reconciliation)
         uint256 proposalId = _propose();
         _advanceToActive();
+        assertEq(uint8(governor.state(proposalId)), uint8(IGovernor.ProposalState.Active));
 
         (address[] memory targets, uint256[] memory values, bytes[] memory calldatas, string memory description) =
             _buildProposal();
 
         vm.prank(alice);
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                IGovernor.GovernorUnexpectedProposalState.selector,
-                proposalId,
-                IGovernor.ProposalState.Active,
-                bytes32(1 << uint8(IGovernor.ProposalState.Pending))
-            )
-        );
         governor.cancel(targets, values, calldatas, keccak256(bytes(description)));
+        assertEq(uint8(governor.state(proposalId)), uint8(IGovernor.ProposalState.Canceled));
     }
 
     //*//////////////////////////////////////////////////////////////////////////
