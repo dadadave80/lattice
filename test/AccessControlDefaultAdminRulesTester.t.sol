@@ -158,4 +158,51 @@ contract AccessControlDefaultAdminRulesTester is Test {
         (address pending,) = ac.pendingDefaultAdmin();
         assertEq(pending, otherAdmin);
     }
+
+    function test_ChangeDelayDecreaseAppliesImmediately() public {
+        uint48 newDelay = INITIAL_DELAY - 100;
+        vm.prank(admin);
+        ac.changeDefaultAdminDelay(newDelay);
+
+        // wait == 0 because newDelay < currentDelay; pending is "ready" at block.timestamp.
+        assertEq(ac.defaultAdminDelay(), newDelay);
+    }
+
+    function test_ChangeDelayIncreaseRequiresWait() public {
+        uint48 newDelay = INITIAL_DELAY + 100;
+        vm.prank(admin);
+        ac.changeDefaultAdminDelay(newDelay);
+
+        // Effective delay still old until DELAY_INCREASE_WAIT elapses.
+        assertEq(ac.defaultAdminDelay(), INITIAL_DELAY);
+
+        vm.warp(block.timestamp + 5 days);
+        assertEq(ac.defaultAdminDelay(), newDelay);
+    }
+
+    function test_PendingDelayReports() public {
+        uint48 newDelay = INITIAL_DELAY + 100;
+        vm.prank(admin);
+        ac.changeDefaultAdminDelay(newDelay);
+
+        (uint48 pending, uint48 readyAt) = ac.pendingDefaultAdminDelay();
+        assertEq(pending, newDelay);
+        assertEq(readyAt, uint48(block.timestamp + 5 days));
+    }
+
+    function test_RollbackClearsPendingDelay() public {
+        vm.prank(admin);
+        ac.changeDefaultAdminDelay(INITIAL_DELAY + 100);
+
+        vm.prank(admin);
+        ac.rollbackDefaultAdminDelay();
+
+        (uint48 pending, uint48 readyAt) = ac.pendingDefaultAdminDelay();
+        assertEq(pending, 0);
+        assertEq(readyAt, 0);
+    }
+
+    function test_DefaultAdminDelayIncreaseWaitIsFiveDays() public view {
+        assertEq(ac.defaultAdminDelayIncreaseWait(), uint48(5 days));
+    }
 }
