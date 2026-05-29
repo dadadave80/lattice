@@ -79,6 +79,9 @@ interface IGovernor {
     /// @dev Emitted when the quorum numerator is updated.
     event QuorumNumeratorUpdated(uint256 oldNumerator, uint256 newNumerator);
 
+    /// @dev Emitted when the timelock controller address is updated.
+    event TimelockChange(address indexed oldTimelock, address indexed newTimelock);
+
     //*//////////////////////////////////////////////////////////////////////////
     //                                  ERRORS
     //////////////////////////////////////////////////////////////////////////*//

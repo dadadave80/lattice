@@ -654,7 +654,9 @@ library GovernorLib {
     /// @param newTimelock The new TimelockController address (or address(0) to disable).
     function updateTimelock(address newTimelock) internal {
         _onlyGovernance();
+        address old = governorStorage()._timelock;
         governorStorage()._timelock = newTimelock;
+        emit IGovernor.TimelockChange(old, newTimelock);
     }
 
     //*//////////////////////////////////////////////////////////////////////////
