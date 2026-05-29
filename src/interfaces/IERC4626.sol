@@ -7,6 +7,12 @@ import {IERC20} from "@lattice/interfaces/IERC20.sol";
 /// @notice Interface for the ERC-4626 Tokenized Vault Standard.
 /// @dev Inherits IERC20 — the vault itself is an ERC-20 share token.
 ///      See https://eips.ethereum.org/EIPS/eip-4626
+///
+///      OZ v5.1.0 declares `interface IERC4626 is IERC20, IERC20Metadata` to expose the metadata
+///      surface (`name()`, `symbol()`, `decimals()`) through the interface. Lattice's IERC20 already
+///      includes the metadata surface, unlike OZ which splits IERC20 + IERC20Metadata — so inheriting
+///      IERC20Metadata separately would be redundant in this setup. The metadata functions are fully
+///      implemented in the ERC4626 facet and accessible on any vault.
 interface IERC4626 is IERC20 {
     //*//////////////////////////////////////////////////////////////////////////
     //                                  EVENTS
