@@ -438,6 +438,12 @@ library GovernorLib {
     ) internal returns (uint256) {
         uint256 proposalId = hashProposal(targets, values, calldatas, descriptionHash);
 
+        // Check for double-queue before the state check so we emit the correct error.
+        ProposalCore storage pCheck = governorStorage()._proposals[proposalId];
+        if (pCheck.etaSeconds != 0) {
+            revert IGovernor.GovernorAlreadyQueuedProposal(proposalId);
+        }
+
         IGovernor.ProposalState currentState = state(proposalId);
         if (currentState != IGovernor.ProposalState.Succeeded) {
             revert IGovernor.GovernorUnexpectedProposalState(
