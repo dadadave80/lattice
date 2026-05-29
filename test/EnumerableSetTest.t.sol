@@ -206,4 +206,33 @@ contract EnumerableSetTest is Test {
         bytes32[] memory snap = h.valuesBytes32();
         assertEq(snap.length, 0);
     }
+
+    function test_AddressSetAddContainsRemoveCycle() public {
+        address alice = address(0xA11CE);
+        address bob = address(0xB0B);
+        address carol = address(0xCA101);
+
+        assertTrue(h.addAddress(alice));
+        assertTrue(h.addAddress(bob));
+        assertTrue(h.addAddress(carol));
+        assertEq(h.lengthAddress(), 3);
+
+        assertTrue(h.containsAddress(alice));
+        assertTrue(h.containsAddress(bob));
+        assertTrue(h.containsAddress(carol));
+        assertFalse(h.containsAddress(address(0xDEAD)));
+
+        assertEq(h.atAddress(1), bob);
+
+        address[] memory snap = h.valuesAddress();
+        assertEq(snap.length, 3);
+        assertEq(snap[0], alice);
+        assertEq(snap[1], bob);
+        assertEq(snap[2], carol);
+
+        assertTrue(h.removeAddress(bob));
+        assertEq(h.lengthAddress(), 2);
+        assertFalse(h.containsAddress(bob));
+        assertEq(h.atAddress(1), carol);
+    }
 }
