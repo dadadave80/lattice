@@ -395,7 +395,8 @@ library AccessManagerLib {
     }
 
     /// @dev Validates that `caller` may schedule a call to `target` with `data` and returns
-    ///      the required execution delay. Reverts if the caller has no access at all.
+    ///      the required execution delay. Reverts if the caller has no access at all or has
+    ///      immediate access (no schedule needed).
     function _checkCanSchedule(address caller, address target, bytes calldata data)
         private
         view
@@ -406,6 +407,9 @@ library AccessManagerLib {
             revert IAccessManager.AccessManagerUnauthorizedAccount(
                 caller, getTargetFunctionRole(target, bytes4(data[0:4]))
             );
+        }
+        if (immediate && d == 0) {
+            revert IAccessManager.AccessManagerNotScheduled(hashOperation(caller, target, data));
         }
         delay = d;
     }
