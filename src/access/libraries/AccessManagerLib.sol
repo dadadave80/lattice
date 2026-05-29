@@ -171,7 +171,9 @@ library AccessManagerLib {
     }
 
     function getSchedule(bytes32 operationId) internal view returns (uint48) {
-        return accessManagerStorage()._operationQueue.readyAt(operationId);
+        uint48 r = accessManagerStorage()._operationQueue.readyAt(operationId);
+        if (r != 0 && block.timestamp > uint256(r) + EXPIRATION) return 0;
+        return r;
     }
 
     function getNonce(bytes32 operationId) internal view returns (uint32) {
