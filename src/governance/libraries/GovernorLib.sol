@@ -725,6 +725,8 @@ library GovernorLib {
             pv.forVotes += weight;
         } else if (support == uint8(IGovernor.VoteType.Abstain)) {
             pv.abstainVotes += weight;
+        } else {
+            revert IGovernor.GovernorInvalidVoteType();
         }
 
         if (params.length == 0) {

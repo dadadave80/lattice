@@ -125,6 +125,9 @@ interface IGovernor {
     /// @dev Thrown when an EIP-712 signature is invalid for the expected voter.
     error GovernorInvalidSignature(address voter);
 
+    /// @dev Thrown when a vote is cast with an unrecognized support value (> 2).
+    error GovernorInvalidVoteType();
+
     //*//////////////////////////////////////////////////////////////////////////
     //                              VIEW FUNCTIONS
     //////////////////////////////////////////////////////////////////////////*//
