@@ -203,4 +203,20 @@ contract AccessControlTimedTester is Test {
         assertEq(gotStart, secondStart);
         assertEq(gotExpires, secondExpires);
     }
+
+    function testFuzz_WindowEnforcement(uint40 startDelta, uint40 windowLen, uint40 probeDelta) public {
+        vm.assume(windowLen > 0);
+        vm.assume(uint256(startDelta) + uint256(windowLen) < type(uint40).max);
+
+        uint48 start = uint48(block.timestamp + startDelta);
+        uint48 expires = start + uint48(windowLen);
+
+        vm.prank(admin);
+        ac.grantRoleTimed(MINTER_ROLE, alice, start, expires);
+
+        uint256 probe = block.timestamp + probeDelta;
+        vm.warp(probe);
+        bool expected = probe >= start && probe <= expires;
+        assertEq(ac.hasRole(MINTER_ROLE, alice), expected);
+    }
 }
