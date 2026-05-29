@@ -15,5 +15,3 @@ docs/*
 
 # Dotenv file
 .env
-
-!docs/audit/
