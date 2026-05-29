@@ -35,6 +35,7 @@ interface IAccessManager {
     error AccessManagerUnauthorizedConsume(address target);
     error AccessManagerUnauthorizedCancel(address caller, address target);
     error AccessManagerInvalidInitialAdmin();
+    error AccessManagerTargetCallFailed(address target);
 
     // ---- Constants accessors ----
 

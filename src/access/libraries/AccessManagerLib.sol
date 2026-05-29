@@ -349,8 +349,17 @@ library AccessManagerLib {
 
         emit IAccessManager.OperationExecuted(operationId, nonce);
 
-        (bool ok,) = target.call{value: msg.value}(data);
-        require(ok, "AccessManager: target call failed");
+        (bool ok, bytes memory ret) = target.call{value: msg.value}(data);
+        if (!ok) {
+            // Bubble up the original revert reason if the target provided one;
+            // else fall back to our typed error so callers can decode it.
+            if (ret.length > 0) {
+                assembly ("memory-safe") {
+                    revert(add(32, ret), mload(ret))
+                }
+            }
+            revert IAccessManager.AccessManagerTargetCallFailed(target);
+        }
     }
 
     function cancel(address caller, address target, bytes calldata data) internal returns (uint32 nonce) {

@@ -20,8 +20,21 @@ contract MockAccessManagerContract is AccessManager {
 contract CallSink {
     event Hit(uint256 v);
 
+    error CustomTargetError(string what);
+
     function ping(uint256 v) external {
         emit Hit(v);
+    }
+
+    function alwaysReverts() external pure {
+        revert CustomTargetError("nope");
+    }
+
+    function alwaysRevertsEmpty() external pure {
+        // solidity 0.8 doesn't allow empty revert via `revert;`, use assembly to produce zero returndata
+        assembly {
+            revert(0, 0)
+        }
     }
 }
 
@@ -457,5 +470,33 @@ contract AccessManagerTester is Test {
         (bytes32 opId, uint32 nonce) = mgr.schedule(address(sink), data, uint48(block.timestamp + 1 days));
         assertGt(nonce, 1);
         assertGt(uint256(opId), 0);
+    }
+
+    function test_ExecuteBubblesUpTargetRevertReason() public {
+        CallSink sink = new CallSink();
+        bytes4 sel = sink.alwaysReverts.selector;
+        bytes4[] memory selectors = new bytes4[](1);
+        selectors[0] = sel;
+
+        vm.prank(admin);
+        mgr.setTargetFunctionRole(address(sink), selectors, PUBLIC_ROLE);
+
+        bytes memory data = abi.encodeCall(CallSink.alwaysReverts, ());
+        vm.expectRevert(abi.encodeWithSelector(CallSink.CustomTargetError.selector, "nope"));
+        mgr.execute(address(sink), data);
+    }
+
+    function test_ExecuteEmptyRevertUsesTypedTargetCallFailedError() public {
+        CallSink sink = new CallSink();
+        bytes4 sel = sink.alwaysRevertsEmpty.selector;
+        bytes4[] memory selectors = new bytes4[](1);
+        selectors[0] = sel;
+
+        vm.prank(admin);
+        mgr.setTargetFunctionRole(address(sink), selectors, PUBLIC_ROLE);
+
+        bytes memory data = abi.encodeCall(CallSink.alwaysRevertsEmpty, ());
+        vm.expectRevert(abi.encodeWithSelector(IAccessManager.AccessManagerTargetCallFailed.selector, address(sink)));
+        mgr.execute(address(sink), data);
     }
 }
