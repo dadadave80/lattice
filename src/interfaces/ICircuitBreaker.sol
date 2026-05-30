@@ -89,7 +89,13 @@ interface ICircuitBreaker {
     function recordObservation(bytes32 key, uint256 value) external;
 
     /// @notice Resets the tripped state and cumulative for `key`.
-    /// @dev Requires DEFAULT_ADMIN_ROLE. Emits `CircuitBreakerReset`.
+    /// @dev Requires DEFAULT_ADMIN_ROLE. Reverts with `CircuitBreakerNotConfigured` if the key
+    ///      has not been configured yet (windowSeconds == 0).
+    ///      Note: the `tripped` flag is sticky — it is NOT automatically cleared when the rolling
+    ///      window expires. An explicit `reset()` or `setThreshold()` call is required to untrip
+    ///      the circuit. This is intentional so that operational incidents are never silently
+    ///      resolved without a human action.
+    ///      Emits `CircuitBreakerReset`.
     /// @param key The circuit breaker key to reset.
     function reset(bytes32 key) external;
 }

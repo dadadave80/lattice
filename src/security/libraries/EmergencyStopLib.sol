@@ -100,6 +100,10 @@ library EmergencyStopLib {
 
     /// @notice Grants the guardian role to `guardian`.
     /// @dev Requires DEFAULT_ADMIN_ROLE. Emits `GuardianAdded` only if the role was not already held.
+    ///      Note: when a new guardian is successfully added, both `IAccessControl.RoleGranted`
+    ///      (from AccessControlLib._grantRole) and `IEmergencyStop.GuardianAdded` are emitted.
+    ///      Off-chain systems that track guardians should follow exactly one of these events
+    ///      to avoid double-counting.
     /// @param guardian The address to grant guardian status.
     function addGuardian(address guardian) internal {
         AccessControlLib.checkRole(0x00);
@@ -111,6 +115,8 @@ library EmergencyStopLib {
 
     /// @notice Revokes the guardian role from `guardian`.
     /// @dev Requires DEFAULT_ADMIN_ROLE. Emits `GuardianRemoved` only if the address held the role.
+    ///      Note: on successful removal both `IAccessControl.RoleRevoked` and
+    ///      `IEmergencyStop.GuardianRemoved` are emitted — follow exactly one for off-chain indexing.
     /// @param guardian The address to revoke guardian status from.
     function removeGuardian(address guardian) internal {
         AccessControlLib.checkRole(0x00);
