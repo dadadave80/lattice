@@ -43,6 +43,10 @@ interface IChainlinkAdapter {
     /// @param key The feed identifier.
     error ChainlinkRoundIncomplete(bytes32 key);
 
+    /// @notice `registerFeed` was called with an invalid parameter (zero feed address
+    ///         or zero maxStaleness).
+    error ChainlinkInvalidConfig();
+
     // -------------------------------------------------------------------------
     //                                   Reads
     // -------------------------------------------------------------------------
