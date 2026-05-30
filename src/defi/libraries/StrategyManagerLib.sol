@@ -260,7 +260,11 @@ library StrategyManagerLib {
 
             if (current > target) {
                 // Strategy holds too much — withdraw excess back to vault.
-                IStrategy(strategy).withdraw(current - target, vaultAddr);
+                uint256 requested = current - target;
+                uint256 withdrawn = IStrategy(strategy).withdraw(requested, vaultAddr);
+                if (withdrawn < requested) {
+                    revert IStrategyManager.StrategyManagerWithdrawShortfall(strategy, requested, withdrawn);
+                }
             } else if (current < target) {
                 // Vault has too little in strategy — allocate deficit.
                 IVaultCore(vaultAddr).allocateToStrategy(strategy, target - current);

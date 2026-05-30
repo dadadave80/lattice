@@ -117,6 +117,43 @@ contract MockStrategy {
 }
 
 //*//////////////////////////////////////////////////////////////////////////
+//                         PARTIAL WITHDRAW STRATEGY (H-3)
+//////////////////////////////////////////////////////////////////////////*//
+
+/// @notice Strategy that only delivers a fraction of the requested withdrawal amount.
+/// @dev Used to verify that rebalance() reverts on underdelivery (H-3).
+contract PartialWithdrawStrategy {
+    MockToken public token;
+    uint256 public managedBalance;
+    /// @dev Fraction of the requested amount to actually deliver (0–100).
+    uint8 public deliveryPct;
+
+    constructor(MockToken _token, uint8 _deliveryPct) {
+        token = _token;
+        deliveryPct = _deliveryPct;
+    }
+
+    function asset() external view returns (address) {
+        return address(token);
+    }
+
+    function setManagedBalance(uint256 amount) external {
+        managedBalance = amount;
+    }
+
+    function totalAssetsManaged() external view returns (uint256) {
+        return managedBalance;
+    }
+
+    function withdraw(uint256 amount, address to) external returns (uint256) {
+        uint256 actual = (amount * deliveryPct) / 100;
+        if (actual > 0) token.transfer(to, actual);
+        managedBalance -= actual;
+        return actual;
+    }
+}
+
+//*//////////////////////////////////////////////////////////////////////////
 //                       MOCK STRATEGY MANAGER CONTRACT
 //////////////////////////////////////////////////////////////////////////*//
 
@@ -435,6 +472,31 @@ contract StrategyManagerTester is Test {
     /// @notice rebalance reverts if vault is not set.
     function test_Rebalance_VaultNotSet_Reverts() public {
         vm.expectRevert(IStrategyManager.StrategyManagerVaultNotSet.selector);
+        mgr.rebalance();
+    }
+
+    /// @notice rebalance reverts when a strategy underdelivers on withdraw (H-3).
+    function test_Rebalance_StrategyWithdrawShortfall_Reverts() public {
+        vm.prank(admin);
+        mgr.setVault(address(mockVault));
+
+        // Deploy a strategy that only delivers 50% of the requested amount.
+        PartialWithdrawStrategy partialStrat = new PartialWithdrawStrategy(token, 50);
+
+        vm.prank(admin);
+        mgr.addStrategy(address(partialStrat), 5000); // 50% target
+
+        // Set strategy as over-allocated: holds 700, target is 500 of 1000 total.
+        mockVault.setTotalAssets(1000e18);
+        partialStrat.setManagedBalance(700e18);
+        token.mint(address(partialStrat), 700e18);
+
+        // Expected: requested = 200e18, actual = 100e18 → revert with shortfall.
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IStrategyManager.StrategyManagerWithdrawShortfall.selector, address(partialStrat), 200e18, 100e18
+            )
+        );
         mgr.rebalance();
     }
 

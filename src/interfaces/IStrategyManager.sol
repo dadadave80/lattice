@@ -50,6 +50,12 @@ interface IStrategyManager {
     /// @dev Reverts when a strategy's underlying asset does not match the vault's asset.
     error StrategyManagerAssetMismatch(address strategy);
 
+    /// @dev Reverts when a strategy delivers fewer assets than requested during rebalance.
+    /// @param strategy The strategy that underdelivered.
+    /// @param requested The amount requested from the strategy.
+    /// @param actual The amount the strategy actually transferred.
+    error StrategyManagerWithdrawShortfall(address strategy, uint256 requested, uint256 actual);
+
     //*//////////////////////////////////////////////////////////////////////////
     //                              VIEW FUNCTIONS
     //////////////////////////////////////////////////////////////////////////*//
