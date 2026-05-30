@@ -152,9 +152,13 @@ library RateLimiterLib {
 
     /// @notice Internal — computes refilled token count (min of capacity and tokens + accrued).
     /// @dev Does NOT write to storage.
+    ///      Saturates accrued at `capacity` before addition to prevent overflow when
+    ///      `elapsed * refillRate` would exceed `type(uint256).max`.
     function _currentTokens(RateLimiterBucket storage b) internal view returns (uint256) {
         uint256 elapsed = block.timestamp - uint256(b.lastRefill);
-        uint256 accrued = elapsed * b.refillRate;
+        // Saturate: if elapsed > capacity / refillRate, the bucket would overflow to above
+        // capacity anyway — clamp accrued to capacity directly.
+        uint256 accrued = b.refillRate != 0 && elapsed > b.capacity / b.refillRate ? b.capacity : elapsed * b.refillRate;
         uint256 total = b.tokens + accrued;
         return total > b.capacity ? b.capacity : total;
     }

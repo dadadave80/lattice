@@ -241,6 +241,28 @@ contract RateLimiterTester is Test {
     }
 
     // -------------------------------------------------------------------------
+    // refill saturation — overflow safety
+    // -------------------------------------------------------------------------
+
+    function test_RefillSaturatesAtCapacityNeverOverflows() public {
+        // Large refillRate: capacity / refillRate < elapsed would overflow without saturation.
+        uint256 hugeRate = type(uint256).max / 100;
+        vm.prank(admin);
+        mock.configure(KEY_A, 1000, hugeRate);
+
+        // Drain fully.
+        vm.prank(user);
+        mock.consume(KEY_A, 1000);
+
+        // Warp 200 seconds — elapsed * hugeRate >> capacity, would overflow without saturation.
+        vm.warp(block.timestamp + 200);
+
+        // Must not revert; must return exactly capacity (saturated).
+        uint256 available = mock.getAvailable(KEY_A);
+        assertEq(available, 1000);
+    }
+
+    // -------------------------------------------------------------------------
     // independent keys
     // -------------------------------------------------------------------------
 
