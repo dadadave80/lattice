@@ -210,8 +210,13 @@ library ConstantProductLib {
 
         // EFFECTS: mint LP shares and update reserves BEFORE external calls.
         _mintLp($, to, liquidity);
-        $._reserve0 = uint112(reserve0_ + amount0);
-        $._reserve1 = uint112(reserve1_ + amount1);
+        uint256 newReserve0 = reserve0_ + amount0;
+        uint256 newReserve1 = reserve1_ + amount1;
+        if (newReserve0 > type(uint112).max || newReserve1 > type(uint112).max) {
+            revert IConstantProduct.ConstantProductReserveOverflow();
+        }
+        $._reserve0 = uint112(newReserve0);
+        $._reserve1 = uint112(newReserve1);
         $._blockTimestampLast = uint32(block.timestamp);
 
         emit IConstantProduct.LiquidityAdded(caller, to, amount0, amount1, liquidity);
@@ -326,10 +331,12 @@ library ConstantProductLib {
 
         // EFFECTS: update reserves BEFORE any external token calls.
         if (zeroForOne) {
+            if (reserve0_ + amountIn > type(uint112).max) revert IConstantProduct.ConstantProductReserveOverflow();
             $._reserve0 = uint112(reserve0_ + amountIn);
             $._reserve1 = uint112(reserve1_ - amountOut);
             emit IConstantProduct.Swap(caller, to, amountIn, 0, 0, amountOut);
         } else {
+            if (reserve1_ + amountIn > type(uint112).max) revert IConstantProduct.ConstantProductReserveOverflow();
             $._reserve0 = uint112(reserve0_ - amountOut);
             $._reserve1 = uint112(reserve1_ + amountIn);
             emit IConstantProduct.Swap(caller, to, 0, amountIn, amountOut, 0);

@@ -82,6 +82,10 @@ interface IConstantProduct {
     /// @param token The token address that failed to transfer.
     error ConstantProductTransferFailed(address token);
 
+    /// @dev Raised when a reserve update would exceed the uint112 maximum (~5.19e33).
+    /// @dev This is only reachable for tokens with astronomically large supplies.
+    error ConstantProductReserveOverflow();
+
     //*//////////////////////////////////////////////////////////////////////////
     //                               VIEW FUNCTIONS
     //////////////////////////////////////////////////////////////////////////*//
