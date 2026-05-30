@@ -19,5 +19,10 @@ optimism = "${OPTIMISM_RPC_URL}"
 [etherscan]
 mainnet = { key = "${ETHERSCAN_API_KEY}" }
 
+[invariant]
+runs = 64
+depth = 32
+fail_on_revert = false
+
 [fmt]
 sort_imports = true
