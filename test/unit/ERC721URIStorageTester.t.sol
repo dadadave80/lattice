@@ -36,6 +36,12 @@ contract MockERC721URIStorageContract is ERC721URIStorage, AccessControl {
         ERC721URIStorageLib._setTokenURI(tokenId, uri);
     }
 
+    /// @notice Admin-gated burn helper (calls ERC721Lib._burn directly).
+    function burnHelper(uint256 tokenId) external {
+        AccessControlLib.checkRole(DEFAULT_ADMIN_ROLE);
+        ERC721Lib._burn(tokenId);
+    }
+
     function supportsInterface(bytes4 interfaceId) public view returns (bool) {
         return ERC165Lib.supportsInterface(interfaceId);
     }
@@ -160,16 +166,13 @@ contract ERC721URIStorageTester is Test {
         vm.prank(admin);
         token.mintHelper(alice, TOKEN_1);
         vm.prank(admin);
-        token.setTokenURIHelper(TOKEN_1, "ipfs://QmBeforeBurn");
+        token.setTokenURIHelper(TOKEN_1, "ipfs://Qm...");
 
-        // Confirm URI is readable before burn
-        assertEq(token.tokenURI(TOKEN_1), "ipfs://QmBeforeBurn");
+        vm.prank(admin);
+        token.burnHelper(TOKEN_1);
 
-        // Burn the token
-        vm.prank(alice);
-        token.transferFrom(alice, address(0xdead), TOKEN_1);
-        // Token is now owned by dead address (not actually burned via _burn, so it still exists)
-        // Test actual burn via internal helper would require exposing _burn; skip to next case
+        vm.expectRevert(abi.encodeWithSelector(IERC721.ERC721NonexistentToken.selector, TOKEN_1));
+        token.tokenURI(TOKEN_1);
     }
 
     //*//////////////////////////////////////////////////////////////////////////
