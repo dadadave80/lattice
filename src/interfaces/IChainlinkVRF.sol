@@ -48,6 +48,12 @@ interface IChainlinkVRF {
     ///         zero subscription ID, or zero key hash).
     error VRFInvalidConfig();
 
+    /// @notice `requestRandomWords` was called with a zero userKey.
+    /// @dev `bytes32(0)` is the sentinel used by `rawFulfillRandomWords` to
+    ///      detect a missing pending request. Allowing a zero userKey would make
+    ///      the fulfillment callback indistinguishable from an unknown request ID.
+    error VRFInvalidUserKey();
+
     // -------------------------------------------------------------------------
     //                                  Types
     // -------------------------------------------------------------------------
