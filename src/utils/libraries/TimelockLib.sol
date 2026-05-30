@@ -35,6 +35,7 @@ library TimelockLib {
 
     function reschedule(SingleSchedule storage s, uint48 newReadyAt) internal {
         if (s._readyAt == 0) revert TimelockNotPending();
+        if (newReadyAt == 0) revert TimelockNotPending();
         s._readyAt = newReadyAt;
     }
 
@@ -74,6 +75,7 @@ library TimelockLib {
 
     function reschedule(MultiSchedule storage s, bytes32 operationId, uint48 newReadyAt) internal {
         if (s._readyAt[operationId] == 0) revert TimelockNotPending();
+        if (newReadyAt == 0) revert TimelockNotPending();
         s._readyAt[operationId] = newReadyAt;
     }
 
