@@ -8,9 +8,6 @@ interface IERC2771Context {
     /// @notice Emitted when the trusted forwarder is updated.
     event TrustedForwarderUpdated(address indexed forwarder);
 
-    /// @notice The provided forwarder address is invalid.
-    error ERC2771ContextInvalidForwarder();
-
     /// @notice Returns whether the given address is the trusted forwarder.
     /// @param forwarder The address to check.
     /// @return bool True if the address is the trusted forwarder.
