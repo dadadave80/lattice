@@ -13,6 +13,10 @@ interface IVestingWallet {
     /// @param amount The amount of tokens released.
     event ERC20Released(address indexed token, uint256 amount);
 
+    /// @notice ERC20 transfer to the beneficiary failed.
+    /// @param token The token whose transfer failed.
+    error VestingWalletTransferFailed(address token);
+
     /// @notice Returns the start timestamp of the vesting schedule.
     /// @return The Unix timestamp at which vesting begins.
     function start() external view returns (uint256);

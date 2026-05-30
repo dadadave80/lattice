@@ -27,6 +27,21 @@ contract TestToken {
     }
 }
 
+/// @notice USDT-style token that does NOT return a bool from transfer().
+contract USDTStyleToken {
+    mapping(address => uint256) public balanceOf;
+
+    /// @dev Intentionally omits the bool return value, like USDT on mainnet.
+    function transfer(address to, uint256 amount) external {
+        balanceOf[msg.sender] -= amount;
+        balanceOf[to] += amount;
+    }
+
+    function mint(address to, uint256 amount) external {
+        balanceOf[to] += amount;
+    }
+}
+
 /// @notice Extended standalone that exposes owner transfer in tests without auth.
 contract MockVestingWalletStandalone is VestingWalletStandalone {
     constructor(address b, uint64 s, uint64 d) VestingWalletStandalone(b, s, d) {}
@@ -287,6 +302,18 @@ contract VestingWalletTester is Test {
     function test_ReleaseToken_BeforeStart_ReleasableIsZero() public {
         token.mint(address(wallet), DEPOSIT);
         assertEq(wallet.releasable(address(token)), 0);
+    }
+
+    function test_ReleaseTokenWorksWithUSDTStyleToken() public {
+        USDTStyleToken usdtLike = new USDTStyleToken();
+        usdtLike.mint(address(wallet), DEPOSIT);
+
+        vm.warp(START + DURATION);
+        wallet.release(address(usdtLike));
+
+        assertEq(usdtLike.balanceOf(beneficiary), DEPOSIT);
+        assertEq(wallet.released(address(usdtLike)), DEPOSIT);
+        assertEq(wallet.releasable(address(usdtLike)), 0);
     }
 
     //*//////////////////////////////////////////////////////////////////////////
