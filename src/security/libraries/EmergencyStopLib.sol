@@ -99,21 +99,25 @@ library EmergencyStopLib {
     }
 
     /// @notice Grants the guardian role to `guardian`.
-    /// @dev Requires DEFAULT_ADMIN_ROLE. Emits `GuardianAdded`.
+    /// @dev Requires DEFAULT_ADMIN_ROLE. Emits `GuardianAdded` only if the role was not already held.
     /// @param guardian The address to grant guardian status.
     function addGuardian(address guardian) internal {
         AccessControlLib.checkRole(0x00);
-        AccessControlLib._grantRole(EMERGENCY_GUARDIAN_ROLE, guardian);
-        emit IEmergencyStop.GuardianAdded(guardian);
+        bool changed = AccessControlLib._grantRole(EMERGENCY_GUARDIAN_ROLE, guardian);
+        if (changed) {
+            emit IEmergencyStop.GuardianAdded(guardian);
+        }
     }
 
     /// @notice Revokes the guardian role from `guardian`.
-    /// @dev Requires DEFAULT_ADMIN_ROLE. Emits `GuardianRemoved`.
+    /// @dev Requires DEFAULT_ADMIN_ROLE. Emits `GuardianRemoved` only if the address held the role.
     /// @param guardian The address to revoke guardian status from.
     function removeGuardian(address guardian) internal {
         AccessControlLib.checkRole(0x00);
-        AccessControlLib._revokeRole(EMERGENCY_GUARDIAN_ROLE, guardian);
-        emit IEmergencyStop.GuardianRemoved(guardian);
+        bool changed = AccessControlLib._revokeRole(EMERGENCY_GUARDIAN_ROLE, guardian);
+        if (changed) {
+            emit IEmergencyStop.GuardianRemoved(guardian);
+        }
     }
 
     /// @notice Reverts with `EmergencyStopActive` if the emergency stop is active.

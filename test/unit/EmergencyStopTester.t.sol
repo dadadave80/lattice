@@ -9,7 +9,7 @@ import {IAccessControl} from "@lattice/interfaces/IAccessControl.sol";
 import {IEmergencyStop} from "@lattice/interfaces/IEmergencyStop.sol";
 import {EmergencyStop} from "@lattice/security/EmergencyStop.sol";
 import {EMERGENCY_GUARDIAN_ROLE, EmergencyStopLib} from "@lattice/security/libraries/EmergencyStopLib.sol";
-import {Test} from "forge-std/Test.sol";
+import {Test, Vm} from "forge-std/Test.sol";
 
 /// @title MockEmergencyStopContract
 /// @notice Test double combining EmergencyStop + AccessControl.
@@ -96,6 +96,47 @@ contract EmergencyStopTester is Test {
         vm.expectEmit(true, true, true, true);
         emit IEmergencyStop.GuardianAdded(newGuardian);
         mock.addGuardian(newGuardian);
+    }
+
+    function test_AddGuardianTwiceEmitsOnlyOnce() public {
+        address newGuardian = address(0xD4);
+        vm.prank(admin);
+        mock.addGuardian(newGuardian);
+
+        // Second call on the same address — must NOT emit GuardianAdded.
+        vm.prank(admin);
+        vm.recordLogs();
+        mock.addGuardian(newGuardian);
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+
+        bool eventFound = false;
+        bytes32 guardianAddedTopic = keccak256("GuardianAdded(address)");
+        for (uint256 i; i < logs.length; i++) {
+            if (logs[i].topics[0] == guardianAddedTopic) {
+                eventFound = true;
+                break;
+            }
+        }
+        assertFalse(eventFound, "GuardianAdded must not emit on no-op addGuardian");
+    }
+
+    function test_RemoveNonGuardianEmitsNoEvent() public {
+        address notAGuardian = address(0xE5);
+        // notAGuardian was never granted the guardian role.
+        vm.prank(admin);
+        vm.recordLogs();
+        mock.removeGuardian(notAGuardian);
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+
+        bool eventFound = false;
+        bytes32 guardianRemovedTopic = keccak256("GuardianRemoved(address)");
+        for (uint256 i; i < logs.length; i++) {
+            if (logs[i].topics[0] == guardianRemovedTopic) {
+                eventFound = true;
+                break;
+            }
+        }
+        assertFalse(eventFound, "GuardianRemoved must not emit when address was not a guardian");
     }
 
     // -------------------------------------------------------------------------
