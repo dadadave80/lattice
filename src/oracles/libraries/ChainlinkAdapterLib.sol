@@ -99,7 +99,9 @@ library ChainlinkAdapterLib {
             revert IChainlinkAdapter.ChainlinkRoundIncomplete(key);
         }
         if (answer <= 0) revert IChainlinkAdapter.ChainlinkInvalidAnswer(key, answer);
-        if (block.timestamp - updatedAt > f.maxStaleness) {
+        // Guard against a future updatedAt to avoid an arithmetic underflow panic
+        // (Solidity 0.8 checked math). Treat a future timestamp the same as stale data.
+        if (updatedAt > block.timestamp || block.timestamp - updatedAt > f.maxStaleness) {
             revert IChainlinkAdapter.ChainlinkStaleData(key, updatedAt, f.maxStaleness);
         }
 
@@ -134,7 +136,8 @@ library ChainlinkAdapterLib {
     /// @param maxStaleness Maximum age (seconds) before an answer is stale.
     function registerFeed(bytes32 key, address feed, uint48 maxStaleness) internal {
         AccessControlLib.checkRole(DEFAULT_ADMIN_ROLE);
-        require(feed != address(0) && maxStaleness != 0);
+        if (feed == address(0)) revert IChainlinkAdapter.ChainlinkFeedNotRegistered(key);
+        if (maxStaleness == 0) revert IChainlinkAdapter.ChainlinkInvalidConfig();
 
         uint8 dec = IAggregatorV3(feed).decimals();
         chainlinkAdapterStorage()._feeds[key] = Feed({feed: feed, maxStaleness: maxStaleness, decimals: dec});

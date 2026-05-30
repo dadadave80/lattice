@@ -5,6 +5,7 @@ import {ContextLib} from "@diamond/libraries/ContextLib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {IConstantProduct} from "@lattice/interfaces/IConstantProduct.sol";
 import {IERC20} from "@lattice/interfaces/IERC20.sol";
+import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
 //                                  STORAGE
@@ -88,6 +89,7 @@ library ConstantProductLib {
         $._token1 = token1_;
         $._initialized = true;
 
+        ReentrancyGuardLib.__ReentrancyGuard_init();
         registerInterface();
     }
 
@@ -157,6 +159,8 @@ library ConstantProductLib {
         uint256 amount1Min,
         address to
     ) internal returns (uint256 amount0, uint256 amount1, uint256 liquidity) {
+        ReentrancyGuardLib.nonReentrantBefore();
+
         ConstantProductStorage storage $ = constantProductStorage();
         uint256 reserve0_ = uint256($._reserve0);
         uint256 reserve1_ = uint256($._reserve1);
@@ -184,9 +188,8 @@ library ConstantProductLib {
 
         address caller = ContextLib.msgSender();
 
-        // Pull tokens from caller.
-        _safeTransferFrom($._token0, caller, address(this), amount0);
-        _safeTransferFrom($._token1, caller, address(this), amount1);
+        // CHECKS-EFFECTS-INTERACTIONS: compute LP shares and update all storage
+        // BEFORE any external token calls to prevent reentrancy attacks.
 
         // Compute LP shares to mint.
         uint256 totalSupply_ = $._totalLpSupply;
@@ -205,15 +208,25 @@ library ConstantProductLib {
 
         if (liquidity == 0) revert IConstantProduct.ConstantProductInsufficientLiquidityMinted();
 
+        // EFFECTS: mint LP shares and update reserves BEFORE external calls.
         _mintLp($, to, liquidity);
-
-        // Update reserves.
-        $._reserve0 = uint112(reserve0_ + amount0);
-        $._reserve1 = uint112(reserve1_ + amount1);
+        uint256 newReserve0 = reserve0_ + amount0;
+        uint256 newReserve1 = reserve1_ + amount1;
+        if (newReserve0 > type(uint112).max || newReserve1 > type(uint112).max) {
+            revert IConstantProduct.ConstantProductReserveOverflow();
+        }
+        $._reserve0 = uint112(newReserve0);
+        $._reserve1 = uint112(newReserve1);
         $._blockTimestampLast = uint32(block.timestamp);
 
         emit IConstantProduct.LiquidityAdded(caller, to, amount0, amount1, liquidity);
         emit IConstantProduct.ReservesSync(uint256($._reserve0), uint256($._reserve1));
+
+        // INTERACTIONS: pull tokens from caller after all state is updated.
+        _safeTransferFrom($._token0, caller, address(this), amount0);
+        _safeTransferFrom($._token1, caller, address(this), amount1);
+
+        ReentrancyGuardLib.nonReentrantAfter();
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -231,6 +244,8 @@ library ConstantProductLib {
         internal
         returns (uint256 amount0, uint256 amount1)
     {
+        ReentrancyGuardLib.nonReentrantBefore();
+
         ConstantProductStorage storage $ = constantProductStorage();
         uint256 totalSupply_ = $._totalLpSupply;
         uint256 reserve0_ = uint256($._reserve0);
@@ -246,20 +261,20 @@ library ConstantProductLib {
 
         address caller = ContextLib.msgSender();
 
-        // Burn LP shares.
+        // EFFECTS: burn LP shares and update reserves BEFORE external transfers.
         _burnLp($, caller, liquidity);
-
-        // Transfer underlying tokens to recipient.
-        _safeTransfer($._token0, to, amount0);
-        _safeTransfer($._token1, to, amount1);
-
-        // Update reserves.
         $._reserve0 = uint112(reserve0_ - amount0);
         $._reserve1 = uint112(reserve1_ - amount1);
         $._blockTimestampLast = uint32(block.timestamp);
 
         emit IConstantProduct.LiquidityRemoved(caller, to, amount0, amount1, liquidity);
         emit IConstantProduct.ReservesSync(uint256($._reserve0), uint256($._reserve1));
+
+        // INTERACTIONS: transfer underlying tokens after all state is updated.
+        _safeTransfer($._token0, to, amount0);
+        _safeTransfer($._token1, to, amount1);
+
+        ReentrancyGuardLib.nonReentrantAfter();
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -278,13 +293,18 @@ library ConstantProductLib {
     {
         if (amountIn == 0) revert IConstantProduct.ConstantProductInsufficientInputAmount();
 
+        ReentrancyGuardLib.nonReentrantBefore();
+
         ConstantProductStorage storage $ = constantProductStorage();
 
         address caller = ContextLib.msgSender();
         amountOut = _executeSwap($, amountIn, amountOutMin, zeroForOne, caller, to);
+
+        ReentrancyGuardLib.nonReentrantAfter();
     }
 
     /// @dev Internal helper that carries out the swap to avoid stack-too-deep in the public entry point.
+    ///      CEI order: CHECKS → EFFECTS (reserve update) → INTERACTIONS (token transfers).
     function _executeSwap(
         ConstantProductStorage storage $,
         uint256 amountIn,
@@ -301,10 +321,7 @@ library ConstantProductLib {
         address tokenIn = zeroForOne ? $._token0 : $._token1;
         address tokenOut = zeroForOne ? $._token1 : $._token0;
 
-        // Pull input token from caller.
-        _safeTransferFrom(tokenIn, caller, address(this), amountIn);
-
-        // Compute output amount using x*y=k with fee.
+        // CHECKS: compute and validate output amount.
         amountOut = getAmountOut(amountIn, reserveIn, reserveOut);
 
         if (amountOut < amountOutMin) revert IConstantProduct.ConstantProductInsufficientOutputAmount();
@@ -312,15 +329,14 @@ library ConstantProductLib {
         // K invariant check.
         _checkK(amountIn, amountOut, reserveIn, reserveOut);
 
-        // Transfer output token to recipient.
-        _safeTransfer(tokenOut, to, amountOut);
-
-        // Update reserves.
+        // EFFECTS: update reserves BEFORE any external token calls.
         if (zeroForOne) {
+            if (reserve0_ + amountIn > type(uint112).max) revert IConstantProduct.ConstantProductReserveOverflow();
             $._reserve0 = uint112(reserve0_ + amountIn);
             $._reserve1 = uint112(reserve1_ - amountOut);
             emit IConstantProduct.Swap(caller, to, amountIn, 0, 0, amountOut);
         } else {
+            if (reserve1_ + amountIn > type(uint112).max) revert IConstantProduct.ConstantProductReserveOverflow();
             $._reserve0 = uint112(reserve0_ - amountOut);
             $._reserve1 = uint112(reserve1_ + amountIn);
             emit IConstantProduct.Swap(caller, to, 0, amountIn, amountOut, 0);
@@ -328,6 +344,10 @@ library ConstantProductLib {
         $._blockTimestampLast = uint32(block.timestamp);
 
         emit IConstantProduct.ReservesSync(uint256($._reserve0), uint256($._reserve1));
+
+        // INTERACTIONS: pull input, then push output.
+        _safeTransferFrom(tokenIn, caller, address(this), amountIn);
+        _safeTransfer(tokenOut, to, amountOut);
     }
 
     /// @dev Validates that the constant-product invariant holds after a swap.

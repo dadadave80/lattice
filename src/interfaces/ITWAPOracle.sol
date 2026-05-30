@@ -44,6 +44,11 @@ interface ITWAPOracle {
     /// @param oldest    The age (seconds ago) of the oldest stored observation.
     error TWAPWindowTooLarge(uint32 requested, uint32 oldest);
 
+    /// @notice `consult` was called with `windowSeconds == 0`.
+    /// @dev A zero window would divide by elapsed time which may itself be zero,
+    ///      producing a division-by-zero panic.
+    error TWAPZeroWindow();
+
     // -------------------------------------------------------------------------
     //                                  Types
     // -------------------------------------------------------------------------

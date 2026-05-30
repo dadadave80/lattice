@@ -257,6 +257,85 @@ contract TWAPOracleTester is Test {
     }
 
     //*//////////////////////////////////////////////////////////////////////////
+    //                       ZERO-WINDOW TESTS (T3 / M1)
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice consult with windowSeconds == 0 reverts TWAPZeroWindow (not a panic).
+    function test_ConsultRevertsOnZeroWindow() public {
+        vm.prank(admin);
+        oracle.registerPair(KEY_ETH_USD, address(pair));
+
+        // Add a second observation so consult is not stopped by insufficient history.
+        vm.warp(block.timestamp + 60);
+        pair.setValues(PRICE0_PER_SEC * 60, 0, uint32(block.timestamp));
+        oracle.recordObservation(KEY_ETH_USD);
+
+        vm.expectRevert(abi.encodeWithSelector(ITWAPOracle.TWAPZeroWindow.selector));
+        oracle.consult(KEY_ETH_USD, 0);
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                    SAME-BLOCK DEDUP TESTS (M2 / L2)
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice Calling recordObservation twice in the same block only stores one entry.
+    function test_SameBlockRecordObservationIsDeduped() public {
+        vm.prank(admin);
+        oracle.registerPair(KEY_ETH_USD, address(pair));
+        // After registerPair: 1 observation at current timestamp.
+
+        // Call recordObservation again in the same block (same pair state).
+        oracle.recordObservation(KEY_ETH_USD);
+        oracle.recordObservation(KEY_ETH_USD);
+
+        // Should still have only 1 observation (the initial one from registerPair).
+        // Verify: getLatestObservation still works but consult should still revert
+        // with insufficient history (only 1 unique observation).
+        vm.expectRevert(abi.encodeWithSelector(ITWAPOracle.TWAPInsufficientHistory.selector, KEY_ETH_USD));
+        oracle.consult(KEY_ETH_USD, 1);
+    }
+
+    /// @notice After advancing a block, a new observation is accepted normally.
+    function test_NewBlockObservationIsAccepted() public {
+        vm.prank(admin);
+        oracle.registerPair(KEY_ETH_USD, address(pair));
+        // Obs 0 at t=1_000_000.
+
+        // Same block: no-op.
+        oracle.recordObservation(KEY_ETH_USD);
+
+        // Advance block.
+        vm.warp(block.timestamp + 300);
+        pair.setValues(PRICE0_PER_SEC * 300, 0, uint32(block.timestamp));
+        oracle.recordObservation(KEY_ETH_USD);
+        // Now we have 2 observations: obs0 and obs1.
+
+        (uint256 twap0,) = oracle.consult(KEY_ETH_USD, 300);
+        assertEq(twap0, PRICE0_PER_SEC);
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                         BOUNDARY WINDOW TESTS
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice consult with a window exactly spanning to the oldest observation works.
+    function test_ConsultExactlyAtOldestObservationAge() public {
+        vm.prank(admin);
+        oracle.registerPair(KEY_ETH_USD, address(pair));
+        // Obs 0: t=1_000_000, cum=0
+
+        uint32 elapsed = 3600;
+        vm.warp(block.timestamp + elapsed);
+        pair.setValues(PRICE0_PER_SEC * elapsed, 0, uint32(block.timestamp));
+        oracle.recordObservation(KEY_ETH_USD);
+        // Obs 1: t=1_000_000+3600
+
+        // Requesting the exact window equal to oldest age should succeed (not revert).
+        (uint256 twap0,) = oracle.consult(KEY_ETH_USD, elapsed);
+        assertEq(twap0, PRICE0_PER_SEC, "TWAP at exact boundary should equal price per second");
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
     //                              ERC-165 TESTS
     //////////////////////////////////////////////////////////////////////////*//
 

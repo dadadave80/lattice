@@ -95,6 +95,7 @@ library TWAPOracleLib {
     /// @return price0Twap   TWAP of token0 in UQ112x112 fixed-point per second units.
     /// @return price1Twap   TWAP of token1 in UQ112x112 fixed-point per second units.
     function consult(bytes32 key, uint32 windowSeconds) internal view returns (uint256 price0Twap, uint256 price1Twap) {
+        if (windowSeconds == 0) revert ITWAPOracle.TWAPZeroWindow();
         TWAPOracleStorage storage $ = twapOracleStorage();
         if ($._pairs[key] == address(0)) revert ITWAPOracle.TWAPPairNotRegistered(key);
 
@@ -185,15 +186,25 @@ library TWAPOracleLib {
     //////////////////////////////////////////////////////////////////////////*//
 
     /// @notice Reads the current cumulatives from the pair and appends an observation.
+    /// @dev Skips the push if an observation with the same timestamp was already
+    ///      recorded (same-block deduplication). This prevents unbounded array
+    ///      growth from permissionless callers spamming recordObservation within
+    ///      a single block and avoids wasted gas on redundant SSTOREs.
     function _appendObservation(TWAPOracleStorage storage $, bytes32 key, address pair) internal {
         uint256 price0Cumulative = IUniswapV2Pair(pair).price0CumulativeLast();
         uint256 price1Cumulative = IUniswapV2Pair(pair).price1CumulativeLast();
         (,, uint32 blockTimestampLast) = IUniswapV2Pair(pair).getReserves();
 
-        ITWAPOracle.Observation memory obs = ITWAPOracle.Observation({
+        // Same-block deduplication: if the newest stored observation already has
+        // this timestamp, do nothing. Prevents griefing via repeated same-block
+        // recordObservation calls (M2) and skips wasteful identical entries (L2).
+        ITWAPOracle.Observation[] storage obs = $._observations[key];
+        if (obs.length > 0 && obs[obs.length - 1].timestamp == blockTimestampLast) return;
+
+        ITWAPOracle.Observation memory newObs = ITWAPOracle.Observation({
             timestamp: blockTimestampLast, price0Cumulative: price0Cumulative, price1Cumulative: price1Cumulative
         });
-        $._observations[key].push(obs);
+        obs.push(newObs);
         emit ITWAPOracle.ObservationRecorded(key, blockTimestampLast, price0Cumulative, price1Cumulative);
     }
 }

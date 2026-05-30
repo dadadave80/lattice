@@ -124,6 +124,9 @@ library ChainlinkVRFLib {
     /// @return vrfRequestId The coordinator-assigned request ID.
     function requestRandomWords(bytes32 userKey, uint32 numWords) internal returns (uint256 vrfRequestId) {
         AccessControlLib.checkRole(DEFAULT_ADMIN_ROLE);
+        // bytes32(0) is the sentinel used by rawFulfillRandomWords to detect a
+        // missing pending request. Reject it here to prevent silent sentinel collision.
+        if (userKey == bytes32(0)) revert IChainlinkVRF.VRFInvalidUserKey();
         ChainlinkVRFStorage storage $ = chainlinkVRFStorage();
         if ($._coordinator == address(0)) revert IChainlinkVRF.VRFNotConfigured();
 

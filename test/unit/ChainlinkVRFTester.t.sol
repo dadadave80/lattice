@@ -249,6 +249,37 @@ contract ChainlinkVRFTester is Test {
     }
 
     //*//////////////////////////////////////////////////////////////////////////
+    //                         ZERO USERKEY TESTS (T2 / H1)
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice requestRandomWords with bytes32(0) userKey reverts VRFInvalidUserKey.
+    /// @dev Prevents silent sentinel collision: bytes32(0) is used by
+    ///      rawFulfillRandomWords to detect a missing pending request.
+    function test_RequestRandomWordsRejectsZeroUserKey() public {
+        vm.prank(admin);
+        vrfContract.setConfig(validConfig);
+
+        vm.prank(admin);
+        vm.expectRevert(abi.encodeWithSelector(IChainlinkVRF.VRFInvalidUserKey.selector));
+        vrfContract.requestRandomWords(bytes32(0), 1);
+    }
+
+    /// @notice Fulfilling a request with a non-zero userKey still works after
+    ///         the zero-userKey guard is in place (regression test).
+    function test_FulfillmentUnaffectedByZeroKeyGuard() public {
+        vm.startPrank(admin);
+        vrfContract.setConfig(validConfig);
+        uint256 requestId = vrfContract.requestRandomWords(USER_KEY, 1);
+        vm.stopPrank();
+
+        uint256[] memory words = new uint256[](1);
+        words[0] = 42;
+        coordinator.fulfillRandomWords(address(vrfContract), requestId, words);
+
+        assertEq(vrfContract.getUserKey(requestId), bytes32(0), "pending entry should be cleared");
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
     //                              ERC-165 TESTS
     //////////////////////////////////////////////////////////////////////////*//
 
