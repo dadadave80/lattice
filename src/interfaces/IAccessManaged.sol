@@ -13,4 +13,10 @@ interface IAccessManaged {
     function authority() external view returns (address);
     function setAuthority(address newAuthority) external;
     function isConsumingScheduledOp() external view returns (bytes4);
+
+    /// @notice Called by the AccessManager before and after an execute() call.
+    ///         Setting `consuming` to `true` allows `restrictedCheck()` to bypass the
+    ///         canCall gate for the duration of the manager-driven execution.
+    /// @dev Only callable by the current authority.
+    function setConsumingScheduledOp(bool consuming) external;
 }

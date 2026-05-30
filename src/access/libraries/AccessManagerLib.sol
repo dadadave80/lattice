@@ -3,6 +3,7 @@ pragma solidity ^0.8.30;
 
 import {ContextLib} from "@diamond/libraries/ContextLib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
+import {IAccessManaged} from "@lattice/interfaces/IAccessManaged.sol";
 import {IAccessManager} from "@lattice/interfaces/IAccessManager.sol";
 import {EnumerableSet} from "@lattice/utils/libraries/EnumerableSet.sol";
 import {TimelockLib} from "@lattice/utils/libraries/TimelockLib.sol";
@@ -349,7 +350,21 @@ library AccessManagerLib {
 
         emit IAccessManager.OperationExecuted(operationId, nonce);
 
+        // Set the consuming flag on AccessManaged targets so restrictedCheck() passes.
+        // We use try/catch: if the target does not implement IAccessManaged, the call
+        // reverts and we skip silently (non-AccessManaged targets are unaffected).
+        bool isAccessManaged = false;
+        try IAccessManaged(target).setConsumingScheduledOp(true) {
+            isAccessManaged = true;
+        } catch {}
+
         (bool ok, bytes memory ret) = target.call{value: msg.value}(data);
+
+        // Always clear the flag, even if the call failed.
+        if (isAccessManaged) {
+            try IAccessManaged(target).setConsumingScheduledOp(false) {} catch {}
+        }
+
         if (!ok) {
             // Bubble up the original revert reason if the target provided one;
             // else fall back to our typed error so callers can decode it.

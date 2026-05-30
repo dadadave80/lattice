@@ -67,6 +67,17 @@ library AccessManagedLib {
         return accessManagedStorage()._consumingScheduledOp ? IS_CONSUMING_SCHEDULED_OP_SELECTOR : bytes4(0);
     }
 
+    /// @notice Sets the `_consumingScheduledOp` flag. Only callable by the authority.
+    /// @dev Called by AccessManager.execute() before and after invoking a restricted function,
+    ///      so that `restrictedCheck()` skips the canCall gate during manager-driven execution.
+    function setConsumingScheduledOp(bool consuming) internal {
+        AccessManagedStorage storage $ = accessManagedStorage();
+        if (ContextLib.msgSender() != $._authority) {
+            revert IAccessManaged.AccessManagedUnauthorized(ContextLib.msgSender());
+        }
+        $._consumingScheduledOp = consuming;
+    }
+
     /// @notice Library-call gate. Reverts unless the caller is authorized.
     function restrictedCheck() internal view {
         AccessManagedStorage storage $ = accessManagedStorage();
