@@ -369,6 +369,43 @@ contract StrategyManagerTester is Test {
         assertEq(mgr.getStrategyTarget(address(strategyA)), 0);
     }
 
+    /// @notice removeStrategy reverts when the strategy still holds live assets (M-3).
+    function test_RemoveStrategy_WithLiveAllocation_Reverts() public {
+        vm.prank(admin);
+        mgr.setVault(address(mockVault));
+
+        vm.prank(admin);
+        mgr.addStrategy(address(strategyA), 5000);
+
+        // Give the strategy a live balance.
+        strategyA.setManagedBalance(500e18);
+
+        vm.prank(admin);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IStrategyManager.StrategyManagerStrategyStillAllocated.selector, address(strategyA), 500e18
+            )
+        );
+        mgr.removeStrategy(address(strategyA));
+    }
+
+    /// @notice removeStrategy succeeds when the strategy has zero live assets (M-3).
+    function test_RemoveStrategy_WithZeroBalance_Succeeds() public {
+        vm.prank(admin);
+        mgr.setVault(address(mockVault));
+
+        vm.prank(admin);
+        mgr.addStrategy(address(strategyA), 5000);
+
+        // Ensure zero balance before removal.
+        strategyA.setManagedBalance(0);
+
+        vm.prank(admin);
+        mgr.removeStrategy(address(strategyA)); // should not revert
+
+        assertEq(mgr.getStrategies().length, 0);
+    }
+
     /// @notice Removing a non-existent strategy reverts.
     function test_RemoveStrategy_NotFound_Reverts() public {
         vm.prank(admin);

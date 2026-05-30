@@ -191,6 +191,16 @@ library StrategyManagerLib {
         uint256 idx = $._strategyIndex[strategy];
         if (idx == 0) revert IStrategyManager.StrategyManagerStrategyNotFound(strategy);
 
+        // Guard against removing a strategy that still holds vault assets (M-3).
+        // Removing a live strategy silently removes those assets from totalAllocated()
+        // accounting, immediately dropping the share price and stranding the capital.
+        // Operators must rebalance (or set targetBps to 0 and rebalance) to recall
+        // funds before removing a strategy.
+        uint256 liveBalance = IStrategy(strategy).totalAssetsManaged();
+        if (liveBalance > 0) {
+            revert IStrategyManager.StrategyManagerStrategyStillAllocated(strategy, liveBalance);
+        }
+
         uint256 arrIdx = idx - 1; // convert to 0-based
         uint256 lastIdx = $._strategies.length - 1;
 

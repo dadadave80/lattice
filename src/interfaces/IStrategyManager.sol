@@ -56,6 +56,10 @@ interface IStrategyManager {
     /// @param actual The amount the strategy actually transferred.
     error StrategyManagerWithdrawShortfall(address strategy, uint256 requested, uint256 actual);
 
+    /// @dev Reverts when attempting to remove a strategy that still holds vault assets.
+    ///      Use forceRemove (if provided) or recall assets first via rebalance().
+    error StrategyManagerStrategyStillAllocated(address strategy, uint256 balance);
+
     //*//////////////////////////////////////////////////////////////////////////
     //                              VIEW FUNCTIONS
     //////////////////////////////////////////////////////////////////////////*//
