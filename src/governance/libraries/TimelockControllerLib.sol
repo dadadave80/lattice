@@ -100,13 +100,13 @@ library TimelockControllerLib {
         emit ITimelockController.MinDelayChange(0, minDelay);
 
         // Grant proposers PROPOSER_ROLE + CANCELLER_ROLE
-        for (uint256 i = 0; i < proposers.length; ++i) {
+        for (uint256 i; i < proposers.length; ++i) {
             AccessControlLib._grantRole(PROPOSER_ROLE, proposers[i]);
             AccessControlLib._grantRole(CANCELLER_ROLE, proposers[i]);
         }
 
         // Grant executors EXECUTOR_ROLE (address(0) means open execution)
-        for (uint256 i = 0; i < executors.length; ++i) {
+        for (uint256 i; i < executors.length; ++i) {
             AccessControlLib._grantRole(EXECUTOR_ROLE, executors[i]);
         }
 
@@ -223,7 +223,7 @@ library TimelockControllerLib {
         }
         bytes32 id = hashOperationBatch(targets, values, payloads, predecessor, salt);
         _schedule(id, delay);
-        for (uint256 i = 0; i < targets.length; ++i) {
+        for (uint256 i; i < targets.length; ++i) {
             emit ITimelockController.CallScheduled(id, i, targets[i], values[i], payloads[i], predecessor, delay);
         }
         if (salt != bytes32(0)) {
@@ -268,7 +268,7 @@ library TimelockControllerLib {
         }
         bytes32 id = hashOperationBatch(targets, values, payloads, predecessor, salt);
         _beforeCall(id, predecessor);
-        for (uint256 i = 0; i < targets.length; ++i) {
+        for (uint256 i; i < targets.length; ++i) {
             _executeCall(id, i, targets[i], values[i], payloads[i]);
         }
         _afterCall(id);

@@ -262,7 +262,7 @@ contract EnumerableSetTest is Test {
     }
 
     function testFuzz_LengthEqualsValuesLength(bytes32[16] memory vs) public {
-        for (uint256 i = 0; i < vs.length; i++) {
+        for (uint256 i; i < vs.length; i++) {
             h.addBytes32(vs[i]);
         }
         assertEq(h.lengthBytes32(), h.valuesBytes32().length);

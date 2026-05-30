@@ -25,7 +25,7 @@ library MulticallLib {
     function multicall(bytes[] calldata data) internal returns (bytes[] memory results) {
         address sender = ContextLib.msgSender();
         results = new bytes[](data.length);
-        for (uint256 i = 0; i < data.length; i++) {
+        for (uint256 i; i < data.length; i++) {
             bytes memory callData;
             if (msg.sender != sender) {
                 // Trusted forwarder in use: append the original sender as ERC-2771 context suffix

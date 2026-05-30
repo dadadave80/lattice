@@ -222,7 +222,7 @@ contract AccessControlDefaultAdminRulesTester is Test {
         bytes32 grantedSig = keccak256("RoleGranted(bytes32,address,address)");
         bool revokedFound = false;
         bool grantedFound = false;
-        for (uint256 i = 0; i < logs.length; i++) {
+        for (uint256 i; i < logs.length; i++) {
             if (logs[i].topics[0] == revokedSig) revokedFound = true;
             if (logs[i].topics[0] == grantedSig) grantedFound = true;
         }

@@ -510,7 +510,7 @@ library GovernorLib {
             bytes32 salt = bytes32(proposalId);
             ITimelockController(timelockAddr).executeBatch(targets, values, calldatas, bytes32(0), salt);
         } else {
-            for (uint256 i = 0; i < targets.length; ++i) {
+            for (uint256 i; i < targets.length; ++i) {
                 // solhint-disable-next-line avoid-low-level-calls
                 (bool success,) = targets[i].call{value: values[i]}(calldatas[i]);
                 if (!success) {

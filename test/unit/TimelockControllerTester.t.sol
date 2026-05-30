@@ -323,7 +323,7 @@ contract TimelockControllerTester is Test {
 
         bytes32 callSaltTopic = keccak256("CallSalt(bytes32,bytes32)");
         bool saltEmitted = false;
-        for (uint256 i = 0; i < logs.length; ++i) {
+        for (uint256 i; i < logs.length; ++i) {
             if (logs[i].topics[0] == callSaltTopic) {
                 saltEmitted = true;
                 break;
@@ -368,7 +368,7 @@ contract TimelockControllerTester is Test {
 
         bytes32 callScheduledTopic = keccak256("CallScheduled(bytes32,uint256,address,uint256,bytes,bytes32,uint256)");
         uint256 count = 0;
-        for (uint256 i = 0; i < logs.length; ++i) {
+        for (uint256 i; i < logs.length; ++i) {
             if (logs[i].topics[0] == callScheduledTopic && logs[i].topics[1] == id) {
                 ++count;
             }
@@ -932,7 +932,7 @@ contract TimelockControllerTester is Test {
         targets_ = new address[](n);
         values = new uint256[](n);
         payloads = new bytes[](n);
-        for (uint256 i = 0; i < n; ++i) {
+        for (uint256 i; i < n; ++i) {
             targets_[i] = address(target);
             values[i] = 0;
             payloads[i] = abi.encodeCall(Target.setValue, (i));

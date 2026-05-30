@@ -101,7 +101,7 @@ library ERC1155Lib {
             revert IERC1155.ERC1155InvalidArrayLength(ids.length, accounts.length);
         }
         uint256[] memory batchBalances = new uint256[](accounts.length);
-        for (uint256 i = 0; i < accounts.length; ++i) {
+        for (uint256 i; i < accounts.length; ++i) {
             batchBalances[i] = balanceOf(accounts[i], ids[i]);
         }
         return batchBalances;
@@ -187,7 +187,7 @@ library ERC1155Lib {
         address operator = ContextLib.msgSender();
         ERC1155Storage storage $ = erc1155Storage();
 
-        for (uint256 i = 0; i < ids.length; ++i) {
+        for (uint256 i; i < ids.length; ++i) {
             uint256 id = ids[i];
             uint256 value = values[i];
 

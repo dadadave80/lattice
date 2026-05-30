@@ -116,7 +116,7 @@ library InvariantCheckerLib {
     /// @param keys The array of invariant keys to check sequentially.
     function checkInvariants(bytes32[] calldata keys) internal view {
         uint256 len = keys.length;
-        for (uint256 i = 0; i < len; ++i) {
+        for (uint256 i; i < len; ++i) {
             _checkInvariant(keys[i]);
         }
     }

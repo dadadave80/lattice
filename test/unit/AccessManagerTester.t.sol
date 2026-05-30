@@ -192,7 +192,7 @@ contract AccessManagerTester is Test {
         bytes32 sig = keccak256("RoleLabel(uint64,string)");
         bool found = false;
         Vm.Log[] memory logs = vm.getRecordedLogs();
-        for (uint256 i = 0; i < logs.length; i++) {
+        for (uint256 i; i < logs.length; i++) {
             if (logs[i].topics[0] == sig) found = true;
         }
         assertTrue(found);

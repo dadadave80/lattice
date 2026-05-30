@@ -269,7 +269,7 @@ library AccessManagerLib {
     function setTargetFunctionRole(address target, bytes4[] calldata selectors, uint64 roleId) internal {
         _checkAdmin();
         AccessManagerStorage storage $ = accessManagerStorage();
-        for (uint256 i = 0; i < selectors.length; i++) {
+        for (uint256 i; i < selectors.length; i++) {
             $._targets[target].allowedRoles[selectors[i]] = roleId;
             emit IAccessManager.TargetFunctionRoleUpdated(target, selectors[i], roleId);
         }
