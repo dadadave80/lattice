@@ -117,6 +117,33 @@ contract MockStrategy {
 }
 
 //*//////////////////////////////////////////////////////////////////////////
+//              REVERTING STRATEGY (T-1: DoS resilience test)
+//////////////////////////////////////////////////////////////////////////*//
+
+/// @notice Strategy whose totalAssetsManaged() always reverts.
+/// @dev Used to verify that the VaultCore's staticcall guard keeps the vault
+///      operational even when a registered strategy is bricked.
+contract RevertingStrategy {
+    MockToken public token;
+
+    constructor(MockToken _token) {
+        token = _token;
+    }
+
+    function asset() external view returns (address) {
+        return address(token);
+    }
+
+    function totalAssetsManaged() external pure returns (uint256) {
+        revert("strategy bricked");
+    }
+
+    function withdraw(uint256, address) external pure returns (uint256) {
+        revert("strategy bricked");
+    }
+}
+
+//*//////////////////////////////////////////////////////////////////////////
 //                         PARTIAL WITHDRAW STRATEGY (H-3)
 //////////////////////////////////////////////////////////////////////////*//
 
@@ -629,6 +656,71 @@ contract StrategyManagerTester is Test {
             )
         );
         mgr.rebalance();
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                     BOUNDARY / EDGE-CASE TESTS
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice rebalance is a no-op when vault total is zero (zero allocation boundary).
+    function test_Rebalance_ZeroVaultTotal_NoOp() public {
+        vm.prank(admin);
+        mgr.setVault(address(mockVault));
+
+        vm.prank(admin);
+        mgr.addStrategy(address(strategyA), 5000);
+
+        mockVault.setTotalAssets(0);
+        strategyA.setManagedBalance(0);
+
+        // No tokens in vault or strategy; rebalance should succeed silently with no transfers.
+        mgr.rebalance();
+
+        assertEq(token.balanceOf(address(strategyA)), 0);
+        assertEq(token.balanceOf(address(mockVault)), 0);
+    }
+
+    /// @notice Adding a strategy at exactly the strategy count cap reverts (L-2).
+    function test_AddStrategy_AtMaxStrategies_Reverts() public {
+        vm.prank(admin);
+        mgr.setVault(address(mockVault));
+
+        // Fill up to MAX_STRATEGIES (20) each with 0 bps (no allocation needed).
+        for (uint256 i = 0; i < 20; i++) {
+            // Deploy a fresh mock strategy for each slot.
+            MockStrategy s = new MockStrategy(token);
+            vm.prank(admin);
+            mgr.addStrategy(address(s), 0);
+        }
+
+        // The 21st addition must revert.
+        MockStrategy overflow = new MockStrategy(token);
+        vm.prank(admin);
+        vm.expectRevert(IStrategyManager.StrategyManagerTooManyStrategies.selector);
+        mgr.addStrategy(address(overflow), 0);
+    }
+
+    /// @notice rebalance with exact 100% allocation distributes all vault assets.
+    function test_Rebalance_ExactFullAllocation() public {
+        vm.prank(admin);
+        mgr.setVault(address(mockVault));
+
+        vm.startPrank(admin);
+        mgr.addStrategy(address(strategyA), 5000); // 50%
+        mgr.addStrategy(address(strategyB), 5000); // 50% — total 100%
+        vm.stopPrank();
+
+        // Vault holds 1000 tokens, no tokens in strategies.
+        token.mint(address(mockVault), 1000e18);
+        mockVault.setTotalAssets(1000e18);
+        strategyA.setManagedBalance(0);
+        strategyB.setManagedBalance(0);
+
+        mgr.rebalance();
+
+        assertApproxEqAbs(token.balanceOf(address(strategyA)), 500e18, 1, "stratA gets 50%");
+        assertApproxEqAbs(token.balanceOf(address(strategyB)), 500e18, 1, "stratB gets 50%");
+        assertApproxEqAbs(token.balanceOf(address(mockVault)), 0, 1, "vault idle ~0");
     }
 
     //*//////////////////////////////////////////////////////////////////////////

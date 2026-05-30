@@ -70,6 +70,14 @@ contract MockStrategyManager {
     }
 }
 
+/// @notice Strategy manager whose totalAllocated() always reverts (simulates bricked strategy).
+/// @dev Used for T-1: VaultCore.totalAssets() must fall back to idle when manager reverts.
+contract RevertingStrategyManager {
+    function totalAllocated() external pure returns (uint256) {
+        revert("manager bricked");
+    }
+}
+
 //*//////////////////////////////////////////////////////////////////////////
 //                           MOCK VAULT CONTRACT
 //////////////////////////////////////////////////////////////////////////*//
@@ -252,6 +260,52 @@ contract VaultCoreTester is Test {
         vm.expectEmit(true, false, false, true);
         emit IVaultCore.AssetsRecalled(strategy, 100e18);
         vault.recallFromStrategy(strategy, 100e18);
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                    T-1: REVERTING MANAGER DoS RESILIENCE
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice When the strategy manager's totalAllocated() reverts, vault falls back to idle (T-1).
+    /// @dev VaultCoreLib.totalAssets() wraps the staticcall in (bool ok, bytes data) and returns
+    ///      idle-only when the call fails. This ensures a bricked strategy/manager cannot DoS
+    ///      the vault's ERC-4626 operations.
+    function test_TotalAssets_RevertingManager_FallsBackToIdle() public {
+        RevertingStrategyManager badManager = new RevertingStrategyManager();
+        vm.prank(admin);
+        vault.setStrategyManager(address(badManager));
+
+        // Mint idle assets to vault.
+        underlying.mint(address(vault), 500e18);
+
+        // totalAssets() must not revert; it should return idle only.
+        uint256 total = vault.totalAssets();
+        assertEq(total, 500e18, "totalAssets must equal idle when manager reverts");
+        assertEq(vault.idleAssets(), 500e18, "idleAssets unaffected");
+    }
+
+    /// @notice Share price reflects idle-only total when manager is bricked (T-1).
+    function test_SharePrice_RevertingManager_UseIdleOnly() public {
+        RevertingStrategyManager badManager = new RevertingStrategyManager();
+
+        // Deposit before setting bricked manager so shares exist.
+        underlying.mint(user, 1000e18);
+        vm.startPrank(user);
+        underlying.approve(address(vault), 1000e18);
+        vault.deposit(1000e18, user);
+        vm.stopPrank();
+
+        // Install bricked manager.
+        vm.prank(admin);
+        vault.setStrategyManager(address(badManager));
+
+        // totalAssets falls back to idle = 1000.
+        assertEq(vault.totalAssets(), 1000e18, "totalAssets falls back to idle");
+
+        // previewRedeem reflects the idle-only share price correctly.
+        uint256 shares = vault.balanceOf(user);
+        uint256 preview = vault.previewRedeem(shares);
+        assertApproxEqAbs(preview, 1000e18, 1, "previewRedeem uses idle-only total");
     }
 
     //*//////////////////////////////////////////////////////////////////////////
