@@ -1,0 +1,119 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.30;
+
+/// @title InterestRate
+/// @notice Stateless utility library implementing the kinked (Aave/Compound-style) interest rate model.
+/// @dev No own ERC-7201 storage. The consumer module holds any storage that references this library.
+///      All rates are ray-scaled (1e27 = 100%).
+library InterestRate {
+    //*//////////////////////////////////////////////////////////////////////////
+    //                                 CONSTANTS
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice Ray scaling factor (1e27 = 100%).
+    uint256 internal constant RAY = 1e27;
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                                  STRUCTS
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice Configuration for the kinked interest rate model.
+    struct Config {
+        /// @dev Annualized borrow rate at 0% utilization, ray-scaled (1e27 = 100%).
+        uint256 baseRate;
+        /// @dev Slope of the rate curve below the kink, ray-scaled.
+        uint256 slope1;
+        /// @dev Slope of the rate curve above the kink, ray-scaled.
+        uint256 slope2;
+        /// @dev Utilization breakpoint where the slope changes, ray-scaled (e.g., 0.8e27 = 80%).
+        uint256 kink;
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                                  ERRORS
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @dev Reverts when a Config is structurally invalid (e.g., kink > RAY).
+    error InvalidConfig();
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                            CORE RATE FUNCTIONS
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice Computes the annualized borrow rate given current utilization.
+    /// @dev Uses a two-slope (kinked) model:
+    ///      - Below kink: `baseRate + utilization * slope1 / kink`
+    ///      - At or above kink: `baseRate + slope1 + (utilization - kink) * slope2 / (RAY - kink)`
+    ///      When kink == RAY the second slope never applies (denominator guard keeps the formula safe).
+    /// @param config Rate model parameters.
+    /// @param util Borrow/supply ratio, ray-scaled (1e27 = 100%).
+    /// @return borrowRate Annualized borrow rate, ray-scaled.
+    function getBorrowRate(Config memory config, uint256 util) internal pure returns (uint256 borrowRate) {
+        if (util <= config.kink) {
+            // Below or at kink: linear interpolation on slope1.
+            // Safe: kink > 0 enforced by validateConfig; util <= kink so numerator <= kink * slope1 which fits uint256.
+            borrowRate = config.baseRate + (util * config.slope1) / config.kink;
+        } else {
+            // Above kink: add slope1 fully, then linearly interpolate slope2 over the remaining range.
+            uint256 excess = util - config.kink;
+            uint256 remainingRange = RAY - config.kink; // > 0 because kink < RAY (validateConfig)
+            borrowRate = config.baseRate + config.slope1 + (excess * config.slope2) / remainingRange;
+        }
+    }
+
+    /// @notice Computes the annualized supply rate given utilization and reserve factor.
+    /// @dev Formula: `borrowRate * utilization * (RAY - reserveFactor) / RAY / RAY`.
+    ///      Uses two sequential full-precision mulDiv steps to avoid intermediate overflow
+    ///      without requiring 512-bit arithmetic.
+    /// @param config Rate model parameters.
+    /// @param util Borrow/supply ratio, ray-scaled.
+    /// @param reserveFactor Fraction of borrow interest kept as protocol reserves, ray-scaled.
+    ///        Must be <= RAY (i.e., at most 100% of interest goes to reserves).
+    /// @return supplyRate Annualized supply rate, ray-scaled.
+    function getSupplyRate(Config memory config, uint256 util, uint256 reserveFactor)
+        internal
+        pure
+        returns (uint256 supplyRate)
+    {
+        uint256 borrowRate = getBorrowRate(config, util);
+        // Step 1: borrowRate * util / RAY  (scales back from double-ray to single-ray)
+        uint256 intermediate = _rayMul(borrowRate, util);
+        // Step 2: intermediate * (RAY - reserveFactor) / RAY
+        uint256 lenderShare = RAY - reserveFactor; // safe: validateConfig ensures reserveFactor <= RAY
+        supplyRate = _rayMul(intermediate, lenderShare);
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                              HELPER FUNCTIONS
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice Computes borrow utilization as totalBorrows / totalSupply, ray-scaled.
+    /// @dev Returns 0 if totalSupply is 0 to avoid division by zero.
+    /// @param totalBorrows Total outstanding borrows denominated in the asset.
+    /// @param totalSupply Total supplied assets (may include idle + allocated).
+    /// @return util Utilization ratio, ray-scaled (1e27 = 100%).
+    function utilization(uint256 totalBorrows, uint256 totalSupply) internal pure returns (uint256 util) {
+        if (totalSupply == 0) return 0;
+        util = totalBorrows * RAY / totalSupply;
+    }
+
+    /// @notice Validates that a Config is well-formed; reverts with `InvalidConfig` otherwise.
+    /// @dev Checks:
+    ///      - kink must be <= RAY (utilization is always in [0, RAY])
+    ///      - kink must be > 0 (otherwise the first-slope formula divides by zero)
+    /// @param config The Config to validate.
+    function validateConfig(Config memory config) internal pure {
+        // kink must be in (0, RAY]
+        if (config.kink == 0 || config.kink > RAY) revert InvalidConfig();
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                            INTERNAL MATH HELPERS
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @dev Multiplies two ray-scaled values and divides by RAY, truncating (floor).
+    ///      Intermediate product can reach up to (1e27)^2 = 1e54 < 2^256, so no overflow.
+    function _rayMul(uint256 a, uint256 b) private pure returns (uint256) {
+        return (a * b) / RAY;
+    }
+}
