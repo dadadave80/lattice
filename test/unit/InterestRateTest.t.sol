@@ -173,6 +173,72 @@ contract InterestRateTest is Test {
     }
 
     //*//////////////////////////////////////////////////////////////////////////
+    //                   H-1: reserveFactor VALIDATION TESTS
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice getSupplyRate reverts when reserveFactor > RAY.
+    function test_GetSupplyRate_ReserveFactor_AboveRay_Reverts() public {
+        uint256 util = 50 * RAY / 100;
+        vm.expectRevert(InterestRate.InvalidConfig.selector);
+        harness.getSupplyRate(defaultConfig, util, RAY + 1);
+    }
+
+    /// @notice getSupplyRate reverts for any reserveFactor strictly above RAY (fuzz).
+    function testFuzz_GetSupplyRateRejectsInvalidReserveFactor(uint256 util, uint256 reserveFactor) public {
+        vm.assume(reserveFactor > RAY);
+        util = bound(util, 0, RAY);
+        vm.expectRevert(InterestRate.InvalidConfig.selector);
+        harness.getSupplyRate(defaultConfig, util, reserveFactor);
+    }
+
+    /// @notice getSupplyRate accepts reserveFactor == RAY (100% goes to reserves → supply rate is 0).
+    function test_GetSupplyRate_ReserveFactor_EqualRay_ZeroSupplyRate() public view {
+        uint256 util = 50 * RAY / 100;
+        uint256 supplyRate = harness.getSupplyRate(defaultConfig, util, RAY);
+        assertEq(supplyRate, 0, "100% reserve factor => supply rate is 0");
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                H-2: UTILIZATION CAP + KINK==RAY TESTS
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice getBorrowRate with kink == RAY and util == RAY does not divide by zero.
+    function test_KinkAtRAY_UtilAtRAY() public view {
+        InterestRate.Config memory cfg =
+            InterestRate.Config({baseRate: RAY / 100, slope1: 4 * RAY / 100, slope2: 0, kink: RAY});
+        // util == RAY == kink → below-or-at-kink branch, no division by zero.
+        uint256 rate = harness.getBorrowRate(cfg, RAY);
+        uint256 expected = cfg.baseRate + (RAY * cfg.slope1) / RAY;
+        assertEq(rate, expected, "kink==RAY, util==RAY should use slope1 branch");
+    }
+
+    /// @notice getBorrowRate caps util > RAY to RAY — no panic, deterministic result.
+    function test_BorrowRate_UtilAboveRAY_CappedAtRAY() public view {
+        uint256 rateAtRAY = harness.getBorrowRate(defaultConfig, RAY);
+        uint256 rateAboveRAY = harness.getBorrowRate(defaultConfig, RAY + 1e27);
+        assertEq(rateAtRAY, rateAboveRAY, "util > RAY must be capped to RAY");
+    }
+
+    /// @notice getBorrowRate with kink == RAY and util > RAY does not divide by zero (util capped).
+    function test_KinkAtRAY_UtilAboveRAY_CappedNoPanic() public view {
+        InterestRate.Config memory cfg =
+            InterestRate.Config({baseRate: RAY / 100, slope1: 4 * RAY / 100, slope2: 99 * RAY, kink: RAY});
+        // Without the cap, remainingRange == 0 → panic. With the cap, util == RAY == kink → safe.
+        uint256 rate = harness.getBorrowRate(cfg, RAY + 1);
+        // Should equal the rate at util==RAY (below-kink branch).
+        uint256 expected = harness.getBorrowRate(cfg, RAY);
+        assertEq(rate, expected, "kink==RAY, util>RAY must cap and not panic");
+    }
+
+    /// @notice Fuzz: getBorrowRate with kink==RAY never panics for any util.
+    function testFuzz_BorrowRateCapsUtilizationAtRAY(uint256 util) public view {
+        InterestRate.Config memory cfg =
+            InterestRate.Config({baseRate: RAY / 100, slope1: 4 * RAY / 100, slope2: 99 * RAY, kink: RAY});
+        // Should never revert/panic regardless of util.
+        harness.getBorrowRate(cfg, util);
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
     //                         FUZZ TESTS
     //////////////////////////////////////////////////////////////////////////*//
 
