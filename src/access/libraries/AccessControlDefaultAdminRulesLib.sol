@@ -109,6 +109,9 @@ library AccessControlDefaultAdminRulesLib {
 
     function beginDefaultAdminTransfer(address newAdmin) internal {
         OwnableLib.checkOwner();
+        if (newAdmin == address(0)) {
+            revert IAccessControlDefaultAdminRules.AccessControlDefaultAdminRulesInvalidNewAdmin(address(0));
+        }
         _consolidateDelay();
         AccessControlDefaultAdminRulesStorage storage $ = accessControlDefaultAdminRulesStorage();
         if ($._adminTransferSchedule.isPending()) {
