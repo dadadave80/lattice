@@ -292,6 +292,67 @@ contract ChainlinkAdapterTester is Test {
     }
 
     //*//////////////////////////////////////////////////////////////////////////
+    //                   FUTURE TIMESTAMP TESTS (T4 / M3)
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice A feed that returns updatedAt > block.timestamp reverts ChainlinkStaleData
+    ///         (not an arithmetic underflow panic).
+    function test_FutureUpdatedAtRevertsChainlinkStaleData() public {
+        vm.prank(admin);
+        adapter.registerFeed(KEY_ETH_USD, address(feed8), MAX_STALENESS);
+
+        // Set updatedAt to a future timestamp (100 seconds ahead).
+        uint256 futureTime = block.timestamp + 100;
+        feed8.setRoundData(ROUND_ID, PRICE_8DEC, futureTime - 10, futureTime, ROUND_ID);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IChainlinkAdapter.ChainlinkStaleData.selector, KEY_ETH_USD, futureTime, MAX_STALENESS
+            )
+        );
+        adapter.latestAnswer(KEY_ETH_USD);
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                   REGISTER FEED CUSTOM ERROR TESTS (M4)
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice registerFeed with zero feed address reverts ChainlinkFeedNotRegistered.
+    function test_RegisterFeedRevertsOnZeroFeedAddress() public {
+        vm.prank(admin);
+        vm.expectRevert(
+            abi.encodeWithSelector(IChainlinkAdapter.ChainlinkFeedNotRegistered.selector, KEY_ETH_USD)
+        );
+        adapter.registerFeed(KEY_ETH_USD, address(0), MAX_STALENESS);
+    }
+
+    /// @notice registerFeed with zero maxStaleness reverts ChainlinkInvalidConfig.
+    function test_RegisterFeedRevertsOnZeroMaxStaleness() public {
+        vm.prank(admin);
+        vm.expectRevert(abi.encodeWithSelector(IChainlinkAdapter.ChainlinkInvalidConfig.selector));
+        adapter.registerFeed(KEY_ETH_USD, address(feed8), 0);
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                   18-DECIMAL NO-NORMALIZATION TEST
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice A feed with exactly 18 decimals returns the raw answer without scaling.
+    function test_LatestAnswer18DecimalNoNormalization() public {
+        vm.prank(admin);
+        adapter.registerFeed(KEY_ETH_USD_18, address(feed18), MAX_STALENESS);
+
+        int256 wad = adapter.latestAnswer(KEY_ETH_USD_18);
+        // No up-scaling or down-scaling should occur: answer == answerWad.
+        assertEq(wad, PRICE_18DEC, "18-decimal feed should return raw answer unchanged");
+
+        // Verify via raw values as well.
+        (int256 rawAnswer,, uint8 dec) = adapter.latestAnswerRaw(KEY_ETH_USD_18);
+        assertEq(rawAnswer, PRICE_18DEC);
+        assertEq(dec, 18);
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
     //                              ERC-165 TESTS
     //////////////////////////////////////////////////////////////////////////*//
 

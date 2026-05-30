@@ -8,6 +8,7 @@ import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {ConstantProduct} from "@lattice/amm/ConstantProduct.sol";
 import {ConstantProductLib} from "@lattice/amm/libraries/ConstantProductLib.sol";
 import {IConstantProduct} from "@lattice/interfaces/IConstantProduct.sol";
+import {IReentrancyGuard} from "@lattice/interfaces/IReentrancyGuard.sol";
 import {Test} from "forge-std/Test.sol";
 import {Vm} from "forge-std/Vm.sol";
 
@@ -268,8 +269,8 @@ contract ConstantProductTester is Test {
         vm.startPrank(bob);
         token0.approve(address(pool), 10e18);
         token1.approve(address(pool), 20e18);
-        // amount0Min = 6e18 but optimal is 5e18 → should revert.
-        vm.expectRevert();
+        // amount0Min = 6e18 but optimal is 5e18 → should revert (Solidity builtin require).
+        vm.expectRevert(bytes(""));
         pool.addLiquidity(10e18, 20e18, 6e18, 0, bob);
         vm.stopPrank();
     }
@@ -285,8 +286,8 @@ contract ConstantProductTester is Test {
         vm.startPrank(bob);
         token0.approve(address(pool), 10e18);
         token1.approve(address(pool), 400e18); // provide way more than needed
-        // optimal amount1 = 40e18, amount1Min = 41e18 → revert.
-        vm.expectRevert();
+        // optimal amount1 = 40e18, amount1Min = 41e18 → revert (Solidity builtin require).
+        vm.expectRevert(bytes(""));
         pool.addLiquidity(10e18, 400e18, 0, 41e18, bob);
         vm.stopPrank();
     }
@@ -335,7 +336,7 @@ contract ConstantProductTester is Test {
         vm.stopPrank();
 
         vm.startPrank(alice);
-        vm.expectRevert();
+        vm.expectRevert(bytes(""));
         pool.removeLiquidity(lp, type(uint256).max, 0, alice);
         vm.stopPrank();
     }
@@ -349,7 +350,7 @@ contract ConstantProductTester is Test {
         vm.stopPrank();
 
         vm.startPrank(alice);
-        vm.expectRevert();
+        vm.expectRevert(bytes(""));
         pool.removeLiquidity(lp, 0, type(uint256).max, alice);
         vm.stopPrank();
     }
@@ -626,5 +627,294 @@ contract ConstantProductTester is Test {
 
         pool.addLiquidity(a0, a1, 0, 0, alice);
         vm.stopPrank();
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                           REENTRANCY TESTS (T1)
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice A malicious ERC-20 that tries to reenter swapExactTokensForTokens
+    ///         during its transfer callback must be blocked by the reentrancy guard.
+    function test_SwapReentrancyReverts() public {
+        // Deploy a malicious output token and a normal input token.
+        MaliciousReentrantToken malToken = new MaliciousReentrantToken("MAL", "MAL");
+        TestERC20 safeToken = new TestERC20("SAFE", "SAFE");
+
+        // Build a pool where safeToken is token0 and malToken is token1 (or vice versa).
+        // We need safeToken to be tokenIn (so the reentry fires on malToken transfer out).
+        address t0Addr = address(safeToken) < address(malToken) ? address(safeToken) : address(malToken);
+        address t1Addr = address(safeToken) < address(malToken) ? address(malToken) : address(safeToken);
+        bool safeIsToken0 = (t0Addr == address(safeToken));
+
+        MockConstantProduct malPool = new MockConstantProduct();
+        malPool.initialize(t0Addr, t1Addr, admin);
+
+        // Seed pool — no reentry armed yet.
+        safeToken.mint(alice, 200e18);
+        malToken.mint(alice, 200e18);
+        vm.startPrank(alice);
+        safeToken.approve(address(malPool), 200e18);
+        malToken.approve(address(malPool), 200e18);
+        malPool.addLiquidity(100e18, 100e18, 0, 0, alice);
+        vm.stopPrank();
+
+        // Arm the malicious token: it will try to swap again during the outgoing transfer.
+        malToken.setPool(address(malPool));
+        // zeroForOne for the reentry attempt should be the reverse direction so
+        // malToken can be the input; what matters is just that it calls back into swap.
+        malToken.setZeroForOne(!safeIsToken0);
+
+        // Bob swaps safeToken in → malToken out. During malToken.transfer(), the
+        // reentry fires and must be blocked.
+        safeToken.mint(bob, 10e18);
+        vm.startPrank(bob);
+        safeToken.approve(address(malPool), 10e18);
+        // Give malToken pool balance to itself for the reentry attempt.
+        vm.expectRevert(IReentrancyGuard.ReentrancyGuardReentrantCall.selector);
+        malPool.swapExactTokensForTokens(10e18, 0, safeIsToken0, bob);
+        vm.stopPrank();
+    }
+
+    /// @notice A malicious token that reenters addLiquidity during transferFrom must revert.
+    function test_AddLiquidityReentrancyReverts() public {
+        ReentrantOnTransferFrom malToken = new ReentrantOnTransferFrom("RMAL", "RMAL");
+        TestERC20 safeToken = new TestERC20("SAFE2", "SAFE2");
+
+        address t0Addr = address(safeToken) < address(malToken) ? address(safeToken) : address(malToken);
+        address t1Addr = address(safeToken) < address(malToken) ? address(malToken) : address(safeToken);
+
+        MockConstantProduct malPool = new MockConstantProduct();
+        malPool.initialize(t0Addr, t1Addr, admin);
+        malToken.setPool(address(malPool));
+
+        safeToken.mint(alice, 200e18);
+        malToken.mint(alice, 200e18);
+
+        vm.startPrank(alice);
+        safeToken.approve(address(malPool), 200e18);
+        malToken.approve(address(malPool), 200e18);
+        vm.expectRevert(IReentrancyGuard.ReentrancyGuardReentrantCall.selector);
+        malPool.addLiquidity(100e18, 100e18, 0, 0, alice);
+        vm.stopPrank();
+    }
+
+    /// @notice A malicious token that reenters removeLiquidity during transfer must revert.
+    function test_RemoveLiquidityReentrancyReverts() public {
+        ReentrantOnTransfer malToken2 = new ReentrantOnTransfer("RMAL2", "RMAL2");
+        TestERC20 safeToken = new TestERC20("SAFE3", "SAFE3");
+
+        address t0Addr = address(safeToken) < address(malToken2) ? address(safeToken) : address(malToken2);
+        address t1Addr = address(safeToken) < address(malToken2) ? address(malToken2) : address(safeToken);
+
+        MockConstantProduct malPool = new MockConstantProduct();
+        malPool.initialize(t0Addr, t1Addr, admin);
+
+        // Seed pool with honest tokens first (no reentry on first add).
+        safeToken.mint(alice, 300e18);
+        malToken2.mintHonest(alice, 300e18);
+
+        vm.startPrank(alice);
+        safeToken.approve(address(malPool), 200e18);
+        malToken2.approve(address(malPool), 200e18);
+        (,, uint256 lp) = malPool.addLiquidity(100e18, 100e18, 0, 0, alice);
+        vm.stopPrank();
+
+        // Now arm the reentry on remove.
+        malToken2.setPool(address(malPool));
+        malToken2.setLp(lp);
+
+        vm.startPrank(alice);
+        vm.expectRevert(IReentrancyGuard.ReentrancyGuardReentrantCall.selector);
+        malPool.removeLiquidity(lp, 0, 0, alice);
+        vm.stopPrank();
+    }
+}
+
+//*//////////////////////////////////////////////////////////////////////////
+//                        MALICIOUS TOKEN HELPERS
+//////////////////////////////////////////////////////////////////////////*//
+
+/// @notice Reenters swapExactTokensForTokens on transfer() (output token callback).
+contract MaliciousReentrantToken {
+    string public name;
+    string public symbol;
+    uint8 public constant decimals = 18;
+    uint256 public totalSupply;
+    mapping(address => uint256) public balanceOf;
+    mapping(address => mapping(address => uint256)) public allowance;
+    address public pool;
+    bool public zeroForOne;
+    bool private _inReentry;
+
+    event Transfer(address indexed from, address indexed to, uint256 value);
+    event Approval(address indexed owner, address indexed spender, uint256 value);
+
+    constructor(string memory name_, string memory symbol_) {
+        name = name_;
+        symbol = symbol_;
+    }
+
+    function setPool(address pool_) external {
+        pool = pool_;
+    }
+
+    function setZeroForOne(bool z) external {
+        zeroForOne = z;
+    }
+
+    function mint(address to, uint256 amount) external {
+        totalSupply += amount;
+        balanceOf[to] += amount;
+        emit Transfer(address(0), to, amount);
+    }
+
+    function approve(address spender, uint256 amount) external returns (bool) {
+        allowance[msg.sender][spender] = amount;
+        emit Approval(msg.sender, spender, amount);
+        return true;
+    }
+
+    function transfer(address to, uint256 amount) external returns (bool) {
+        balanceOf[msg.sender] -= amount;
+        balanceOf[to] += amount;
+        emit Transfer(msg.sender, to, amount);
+        // Reenter the pool during the outgoing transfer callback.
+        // Always attempt the reentry if pool is set and we're not already in one.
+        if (pool != address(0) && !_inReentry) {
+            _inReentry = true;
+            // This reentry attempt should be blocked by the reentrancy guard.
+            IConstantProduct(pool).swapExactTokensForTokens(1, 0, !zeroForOne, address(this));
+            _inReentry = false;
+        }
+        return true;
+    }
+
+    function transferFrom(address from, address to, uint256 amount) external returns (bool) {
+        allowance[from][msg.sender] -= amount;
+        balanceOf[from] -= amount;
+        balanceOf[to] += amount;
+        emit Transfer(from, to, amount);
+        return true;
+    }
+}
+
+/// @notice Reenters addLiquidity on transferFrom() (input token callback).
+contract ReentrantOnTransferFrom {
+    string public name;
+    string public symbol;
+    uint8 public constant decimals = 18;
+    uint256 public totalSupply;
+    mapping(address => uint256) public balanceOf;
+    mapping(address => mapping(address => uint256)) public allowance;
+    address public pool;
+    bool private _inReentry;
+
+    event Transfer(address indexed from, address indexed to, uint256 value);
+    event Approval(address indexed owner, address indexed spender, uint256 value);
+
+    constructor(string memory name_, string memory symbol_) {
+        name = name_;
+        symbol = symbol_;
+    }
+
+    function setPool(address pool_) external {
+        pool = pool_;
+    }
+
+    function mint(address to, uint256 amount) external {
+        totalSupply += amount;
+        balanceOf[to] += amount;
+        emit Transfer(address(0), to, amount);
+    }
+
+    function approve(address spender, uint256 amount) external returns (bool) {
+        allowance[msg.sender][spender] = amount;
+        emit Approval(msg.sender, spender, amount);
+        return true;
+    }
+
+    function transfer(address to, uint256 amount) external returns (bool) {
+        balanceOf[msg.sender] -= amount;
+        balanceOf[to] += amount;
+        emit Transfer(msg.sender, to, amount);
+        return true;
+    }
+
+    function transferFrom(address from, address to, uint256 amount) external returns (bool) {
+        allowance[from][msg.sender] -= amount;
+        balanceOf[from] -= amount;
+        balanceOf[to] += amount;
+        emit Transfer(from, to, amount);
+        // Reenter addLiquidity during the transferFrom callback.
+        if (pool != address(0) && !_inReentry) {
+            _inReentry = true;
+            IConstantProduct(pool).addLiquidity(1, 1, 0, 0, address(this));
+            _inReentry = false;
+        }
+        return true;
+    }
+}
+
+/// @notice Reenters removeLiquidity on transfer() (output token callback).
+contract ReentrantOnTransfer {
+    string public name;
+    string public symbol;
+    uint8 public constant decimals = 18;
+    uint256 public totalSupply;
+    mapping(address => uint256) public balanceOf;
+    mapping(address => mapping(address => uint256)) public allowance;
+    address public pool;
+    uint256 public lpToRemove;
+    bool private _inReentry;
+    bool private _honest;
+
+    event Transfer(address indexed from, address indexed to, uint256 value);
+    event Approval(address indexed owner, address indexed spender, uint256 value);
+
+    constructor(string memory name_, string memory symbol_) {
+        name = name_;
+        symbol = symbol_;
+    }
+
+    function setPool(address pool_) external {
+        pool = pool_;
+    }
+
+    function setLp(uint256 lp) external {
+        lpToRemove = lp;
+    }
+
+    /// @notice Mint without triggering reentry (for seeding the pool).
+    function mintHonest(address to, uint256 amount) external {
+        totalSupply += amount;
+        balanceOf[to] += amount;
+        emit Transfer(address(0), to, amount);
+    }
+
+    function approve(address spender, uint256 amount) external returns (bool) {
+        allowance[msg.sender][spender] = amount;
+        emit Approval(msg.sender, spender, amount);
+        return true;
+    }
+
+    function transfer(address to, uint256 amount) external returns (bool) {
+        balanceOf[msg.sender] -= amount;
+        balanceOf[to] += amount;
+        emit Transfer(msg.sender, to, amount);
+        // Reenter removeLiquidity during the outgoing transfer callback.
+        if (pool != address(0) && !_inReentry && lpToRemove > 0) {
+            _inReentry = true;
+            IConstantProduct(pool).removeLiquidity(lpToRemove, 0, 0, address(this));
+            _inReentry = false;
+        }
+        return true;
+    }
+
+    function transferFrom(address from, address to, uint256 amount) external returns (bool) {
+        allowance[from][msg.sender] -= amount;
+        balanceOf[from] -= amount;
+        balanceOf[to] += amount;
+        emit Transfer(from, to, amount);
+        return true;
     }
 }
