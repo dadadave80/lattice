@@ -320,9 +320,7 @@ contract ChainlinkAdapterTester is Test {
     /// @notice registerFeed with zero feed address reverts ChainlinkFeedNotRegistered.
     function test_RegisterFeedRevertsOnZeroFeedAddress() public {
         vm.prank(admin);
-        vm.expectRevert(
-            abi.encodeWithSelector(IChainlinkAdapter.ChainlinkFeedNotRegistered.selector, KEY_ETH_USD)
-        );
+        vm.expectRevert(abi.encodeWithSelector(IChainlinkAdapter.ChainlinkFeedNotRegistered.selector, KEY_ETH_USD));
         adapter.registerFeed(KEY_ETH_USD, address(0), MAX_STALENESS);
     }
 
