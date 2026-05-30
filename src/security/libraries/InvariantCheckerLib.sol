@@ -87,7 +87,8 @@ library InvariantCheckerLib {
     }
 
     /// @notice Removes a registered invariant.
-    /// @dev Requires DEFAULT_ADMIN_ROLE. Emits `InvariantUnregistered`.
+    /// @dev Requires DEFAULT_ADMIN_ROLE. Reverts `InvariantNotRegistered` if key is not registered.
+    ///      Emits `InvariantUnregistered`.
     /// @param key The invariant key to remove.
     function unregisterInvariant(bytes32 key) internal {
         AccessControlLib.checkRole(0x00);
@@ -134,6 +135,8 @@ library InvariantCheckerLib {
 
     /// @notice Internal — removes an invariant entry.
     function _unregisterInvariant(bytes32 key) internal {
+        Invariant storage inv = invariantCheckerStorage()._invariants[key];
+        if (inv.target == address(0)) revert IInvariantChecker.InvariantNotRegistered(key);
         delete invariantCheckerStorage()._invariants[key];
         emit IInvariantChecker.InvariantUnregistered(key);
     }

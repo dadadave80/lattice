@@ -77,7 +77,8 @@ interface IInvariantChecker {
     function registerInvariant(bytes32 key, address target, bytes4 selector) external;
 
     /// @notice Removes a registered invariant.
-    /// @dev Requires DEFAULT_ADMIN_ROLE. Emits `InvariantUnregistered`.
+    /// @dev Requires DEFAULT_ADMIN_ROLE. Reverts with `InvariantNotRegistered` if key is not registered.
+    ///      Emits `InvariantUnregistered`.
     /// @param key The invariant key to remove.
     function unregisterInvariant(bytes32 key) external;
 }

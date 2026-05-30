@@ -140,6 +140,23 @@ contract InvariantCheckerTester is Test {
     }
 
     // -------------------------------------------------------------------------
+    // registerInvariant — overwrite existing
+    // -------------------------------------------------------------------------
+
+    function test_RegisterInvariantOverwritesSilently() public {
+        vm.prank(admin);
+        mock.registerInvariant(KEY_TRUE, address(trueInv), AlwaysTrueInvariant.alwaysTrue.selector);
+
+        // Overwrite with a different target — should succeed silently and update the entry.
+        vm.prank(admin);
+        mock.registerInvariant(KEY_TRUE, address(falseInv), AlwaysFalseInvariant.alwaysFalse.selector);
+
+        (address t, bytes4 sel) = mock.getInvariant(KEY_TRUE);
+        assertEq(t, address(falseInv));
+        assertEq(sel, AlwaysFalseInvariant.alwaysFalse.selector);
+    }
+
+    // -------------------------------------------------------------------------
     // unregisterInvariant — access control
     // -------------------------------------------------------------------------
 
@@ -154,6 +171,18 @@ contract InvariantCheckerTester is Test {
             )
         );
         mock.unregisterInvariant(KEY_TRUE);
+    }
+
+    // -------------------------------------------------------------------------
+    // unregisterInvariant — never-registered key
+    // -------------------------------------------------------------------------
+
+    function test_UnregisterNeverRegisteredKeyReverts() public {
+        vm.prank(admin);
+        vm.expectRevert(
+            abi.encodeWithSelector(IInvariantChecker.InvariantNotRegistered.selector, KEY_UNREGISTERED)
+        );
+        mock.unregisterInvariant(KEY_UNREGISTERED);
     }
 
     // -------------------------------------------------------------------------
