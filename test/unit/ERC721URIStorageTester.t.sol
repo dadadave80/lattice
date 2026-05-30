@@ -5,6 +5,7 @@ import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
+import {IAccessControl} from "@lattice/interfaces/IAccessControl.sol";
 import {IERC721} from "@lattice/interfaces/IERC721.sol";
 import {IERC721URIStorage} from "@lattice/interfaces/IERC721URIStorage.sol";
 import {ERC721URIStorage} from "@lattice/tokens/ERC721URIStorage.sol";
@@ -34,6 +35,12 @@ contract MockERC721URIStorageContract is ERC721URIStorage, AccessControl {
     function setTokenURIHelper(uint256 tokenId, string memory uri) external {
         AccessControlLib.checkRole(DEFAULT_ADMIN_ROLE);
         ERC721URIStorageLib._setTokenURI(tokenId, uri);
+    }
+
+    /// @notice Admin-gated burn helper (calls ERC721Lib._burn directly).
+    function burnHelper(uint256 tokenId) external {
+        AccessControlLib.checkRole(DEFAULT_ADMIN_ROLE);
+        ERC721Lib._burn(tokenId);
     }
 
     function supportsInterface(bytes4 interfaceId) public view returns (bool) {
@@ -122,7 +129,9 @@ contract ERC721URIStorageTester is Test {
         token.mintHelper(alice, TOKEN_1);
 
         // Non-admin call to setTokenURI on the facet should revert
-        vm.expectRevert();
+        vm.expectRevert(
+            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, alice, DEFAULT_ADMIN_ROLE)
+        );
         vm.prank(alice);
         token.setTokenURI(TOKEN_1, "ipfs://QmHash1");
     }
@@ -160,16 +169,13 @@ contract ERC721URIStorageTester is Test {
         vm.prank(admin);
         token.mintHelper(alice, TOKEN_1);
         vm.prank(admin);
-        token.setTokenURIHelper(TOKEN_1, "ipfs://QmBeforeBurn");
+        token.setTokenURIHelper(TOKEN_1, "ipfs://Qm...");
 
-        // Confirm URI is readable before burn
-        assertEq(token.tokenURI(TOKEN_1), "ipfs://QmBeforeBurn");
+        vm.prank(admin);
+        token.burnHelper(TOKEN_1);
 
-        // Burn the token
-        vm.prank(alice);
-        token.transferFrom(alice, address(0xdead), TOKEN_1);
-        // Token is now owned by dead address (not actually burned via _burn, so it still exists)
-        // Test actual burn via internal helper would require exposing _burn; skip to next case
+        vm.expectRevert(abi.encodeWithSelector(IERC721.ERC721NonexistentToken.selector, TOKEN_1));
+        token.tokenURI(TOKEN_1);
     }
 
     //*//////////////////////////////////////////////////////////////////////////

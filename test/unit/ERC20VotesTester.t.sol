@@ -7,6 +7,7 @@ import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/Ac
 import {VotesLib} from "@lattice/governance/libraries/VotesLib.sol";
 import {IERC20} from "@lattice/interfaces/IERC20.sol";
 import {IERC20Votes} from "@lattice/interfaces/IERC20Votes.sol";
+import {INonces} from "@lattice/interfaces/INonces.sol";
 import {IVotes} from "@lattice/interfaces/IVotes.sol";
 import {ERC20Votes} from "@lattice/tokens/ERC20Votes.sol";
 import {ERC20Lib} from "@lattice/tokens/libraries/ERC20Lib.sol";
@@ -349,7 +350,7 @@ contract ERC20VotesTester is Test {
         bytes32 digest = _delegationHash(bob, wrongNonce, expiry);
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(aliceKey, digest);
 
-        vm.expectRevert(); // InvalidAccountNonce
+        vm.expectRevert(abi.encodeWithSelector(INonces.InvalidAccountNonce.selector, alice, uint256(0)));
         token.delegateBySig(bob, wrongNonce, expiry, v, r, s);
     }
 
@@ -362,8 +363,8 @@ contract ERC20VotesTester is Test {
 
         token.delegateBySig(bob, nonce, expiry, v, r, s);
 
-        // Replay
-        vm.expectRevert();
+        // Replay: nonce is now 1, passing old nonce=0 triggers InvalidAccountNonce(alice, 1)
+        vm.expectRevert(abi.encodeWithSelector(INonces.InvalidAccountNonce.selector, alice, uint256(1)));
         token.delegateBySig(bob, nonce, expiry, v, r, s);
     }
 

@@ -1007,19 +1007,11 @@ contract GovernorTester is Test {
 
     function test_SupportsIGovernorInterface() public view {
         bytes4 iface = type(IGovernor).interfaceId;
-        // Access ERC165 storage directly — GovernorLib.registerInterface() sets the slot
-        bytes32 slot = 0x1721450696844f78c528c7efd225c94c965fc94f208ba0b176ffddc2587dcbe1;
-        bytes32 val;
-        assembly {
-            val := sload(slot)
-        }
-        // The slot is in GovernorStandalone's storage namespace
-        // Since this is a standalone contract (not a diamond), we load the slot from the
-        // governor's storage directly via vm.load
+        // ERC-165 registration writes `true` to the slot keccak256(abi.encode(iface, ERC165_STORAGE_LOCATION))
+        bytes32 erc165StorageLocation = 0x9ca7f3e2e2bfb15fdf072b85dde92837cddacee6cf2f6b38cd06c9457c1c4200;
+        bytes32 slot = keccak256(abi.encode(iface, erc165StorageLocation));
         bytes32 stored = vm.load(address(governor), slot);
-        assertTrue(stored != bytes32(0), "IGovernor interface not registered");
-        // Suppress unused variable warning
-        (iface);
+        assertEq(uint256(stored), 1, "IGovernor should be registered for ERC-165");
     }
 
     //*//////////////////////////////////////////////////////////////////////////

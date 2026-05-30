@@ -269,8 +269,8 @@ contract ConstantProductTester is Test {
         vm.startPrank(bob);
         token0.approve(address(pool), 10e18);
         token1.approve(address(pool), 20e18);
-        // amount0Min = 6e18 but optimal is 5e18 → should revert (Solidity builtin require).
-        vm.expectRevert(bytes(""));
+        // amount0Min = 6e18 but optimal is 5e18 → should revert.
+        vm.expectRevert(IConstantProduct.ConstantProductSlippageExceeded.selector);
         pool.addLiquidity(10e18, 20e18, 6e18, 0, bob);
         vm.stopPrank();
     }
@@ -286,8 +286,8 @@ contract ConstantProductTester is Test {
         vm.startPrank(bob);
         token0.approve(address(pool), 10e18);
         token1.approve(address(pool), 400e18); // provide way more than needed
-        // optimal amount1 = 40e18, amount1Min = 41e18 → revert (Solidity builtin require).
-        vm.expectRevert(bytes(""));
+        // optimal amount1 = 40e18, amount1Min = 41e18 → revert.
+        vm.expectRevert(IConstantProduct.ConstantProductSlippageExceeded.selector);
         pool.addLiquidity(10e18, 400e18, 0, 41e18, bob);
         vm.stopPrank();
     }
@@ -336,7 +336,7 @@ contract ConstantProductTester is Test {
         vm.stopPrank();
 
         vm.startPrank(alice);
-        vm.expectRevert(bytes(""));
+        vm.expectRevert(IConstantProduct.ConstantProductSlippageExceeded.selector);
         pool.removeLiquidity(lp, type(uint256).max, 0, alice);
         vm.stopPrank();
     }
@@ -350,7 +350,7 @@ contract ConstantProductTester is Test {
         vm.stopPrank();
 
         vm.startPrank(alice);
-        vm.expectRevert(bytes(""));
+        vm.expectRevert(IConstantProduct.ConstantProductSlippageExceeded.selector);
         pool.removeLiquidity(lp, 0, type(uint256).max, alice);
         vm.stopPrank();
     }

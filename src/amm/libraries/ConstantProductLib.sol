@@ -184,7 +184,9 @@ library ConstantProductLib {
         }
 
         // Slippage checks.
-        require(amount0 >= amount0Min && amount1 >= amount1Min);
+        if (amount0 < amount0Min || amount1 < amount1Min) {
+            revert IConstantProduct.ConstantProductSlippageExceeded();
+        }
 
         address caller = ContextLib.msgSender();
 
@@ -257,7 +259,9 @@ library ConstantProductLib {
         if (amount0 == 0 || amount1 == 0) revert IConstantProduct.ConstantProductInsufficientLiquidityBurned();
 
         // Slippage checks.
-        require(amount0 >= amount0Min && amount1 >= amount1Min);
+        if (amount0 < amount0Min || amount1 < amount1Min) {
+            revert IConstantProduct.ConstantProductSlippageExceeded();
+        }
 
         address caller = ContextLib.msgSender();
 

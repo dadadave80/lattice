@@ -162,12 +162,16 @@ contract ERC20PermitTester is Test {
         bytes32 digest = _permitHash(owner, spender, value, nonce, deadline);
         (uint8 v, bytes32 r, bytes32 s) = _sign(digest, ownerKey);
 
-        // First use succeeds
+        // First use succeeds (increments nonce to 1)
         token.permit(owner, spender, value, deadline, v, r, s);
 
-        // Replay with the same signature now has a stale nonce — signer mismatch
-        // because the recovered address won't match `owner` with the wrong nonce baked in
-        vm.expectRevert(); // ERC2612InvalidSigner (nonce now 1, digest was built with nonce 0)
+        // For the replay the permit function will compute a new digest with nonce=1,
+        // so ecrecover returns a different (stale) signer. Compute that digest to derive
+        // the recovered address deterministically.
+        bytes32 staleDigest = _permitHash(owner, spender, value, nonce + 1, deadline);
+        address staleSigner = ecrecover(staleDigest, v, r, s);
+
+        vm.expectRevert(abi.encodeWithSelector(IERC20Permit.ERC2612InvalidSigner.selector, staleSigner, owner));
         token.permit(owner, spender, value, deadline, v, r, s);
     }
 

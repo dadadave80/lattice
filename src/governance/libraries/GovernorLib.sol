@@ -21,9 +21,9 @@ bytes32 constant GOVERNOR_STORAGE_SLOT = 0x20a7901cc1c78eb01d63d9c1875355513c3da
 /// `keccak256(abi.encode(uint256(keccak256("diamond.lib.storage.ERC165")) - 1)) & ~bytes32(uint256(0xff))`.
 bytes32 constant GOVERNOR_ERC165_STORAGE_LOCATION = 0x9ca7f3e2e2bfb15fdf072b85dde92837cddacee6cf2f6b38cd06c9457c1c4200;
 
-/// @dev 0x7d3554af is `type(IGovernor).interfaceId`.
-/// `keccak256(abi.encode(bytes4(0x7d3554af), 0x9ca7f3e2e2bfb15fdf072b85dde92837cddacee6cf2f6b38cd06c9457c1c4200))`.
-bytes32 constant ERC165_MAP_IGOVERNOR_SLOT = 0x1721450696844f78c528c7efd225c94c965fc94f208ba0b176ffddc2587dcbe1;
+/// @dev 0x220cdebb is `type(IGovernor).interfaceId`.
+/// `keccak256(abi.encode(bytes4(0x220cdebb), 0x9ca7f3e2e2bfb15fdf072b85dde92837cddacee6cf2f6b38cd06c9457c1c4200))`.
+bytes32 constant ERC165_MAP_IGOVERNOR_SLOT = 0x16d0785b1b0d3d2d988cff60fd273da31ad0fc5acccec3792316ca40dcc33977;
 
 /// @dev EIP-712 typehash for the Ballot struct.
 bytes32 constant BALLOT_TYPEHASH = keccak256("Ballot(uint256 proposalId,uint8 support,address voter,uint256 nonce)");

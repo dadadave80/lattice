@@ -86,6 +86,9 @@ interface IConstantProduct {
     /// @dev This is only reachable for tokens with astronomically large supplies.
     error ConstantProductReserveOverflow();
 
+    /// @dev Raised when the actual amounts deposited or received fall below the caller's minimums.
+    error ConstantProductSlippageExceeded();
+
     //*//////////////////////////////////////////////////////////////////////////
     //                               VIEW FUNCTIONS
     //////////////////////////////////////////////////////////////////////////*//

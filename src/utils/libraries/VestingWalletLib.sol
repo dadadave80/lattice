@@ -157,11 +157,16 @@ library VestingWalletLib {
     /// @notice Releases all currently releasable tokens of an ERC20 to the beneficiary (owner).
     /// @param token The ERC20 token contract address.
     /// @dev Anyone may call; funds always go to the owner.
+    ///      Uses a low-level call to support non-returning ERC20 tokens (e.g. USDT, BNB, OMG)
+    ///      that omit the bool return value from transfer().
     function release(address token) internal {
         uint256 amount = releasable(token);
         vestingWalletStorage()._erc20Released[token] += amount;
-        bool ok = IERC20(token).transfer(OwnableLib.owner(), amount);
-        require(ok, "VestingWallet: ERC20 transfer failed");
+        (bool ok, bytes memory ret) =
+            token.call(abi.encodeWithSelector(IERC20.transfer.selector, OwnableLib.owner(), amount));
+        if (!ok || (ret.length > 0 && !abi.decode(ret, (bool)))) {
+            revert IVestingWallet.VestingWalletTransferFailed(token);
+        }
         emit IVestingWallet.ERC20Released(token, amount);
     }
 
