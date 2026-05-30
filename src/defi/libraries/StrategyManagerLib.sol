@@ -8,6 +8,7 @@ import {IERC4626} from "@lattice/interfaces/IERC4626.sol";
 import {IStrategyManager} from "@lattice/interfaces/IStrategyManager.sol";
 import {IVaultCore} from "@lattice/interfaces/IVaultCore.sol";
 import {IStrategy} from "@lattice/interfaces/external/IStrategy.sol";
+import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
 //                                  STORAGE
@@ -241,11 +242,26 @@ library StrategyManagerLib {
     }
 
     /// @notice Rebalances the vault's asset distribution to match strategy target allocations.
-    /// @dev For each strategy:
-    ///      - If current > target: calls IStrategy.withdraw to push excess back to vault.
-    ///      - If current < target: calls IVaultCore.allocateToStrategy to push deficit to strategy.
-    ///      No-op if vault is not set. Anyone can call.
+    /// @dev Uses a two-pass approach to avoid order-dependent atomicity failures (M-1):
+    ///      Pass 1 — process all over-allocated strategies (withdrawals back to vault) first.
+    ///      Pass 2 — process all under-allocated strategies (allocations from vault) second.
+    ///      This guarantees the vault holds maximum idle balance before any allocation is
+    ///      attempted, regardless of strategy registration order.
+    ///
+    ///      For each strategy in pass 1:
+    ///      - If current > target: calls IStrategy.withdraw, reverts on underdelivery.
+    ///      For each strategy in pass 2:
+    ///      - If current < target: calls IVaultCore.allocateToStrategy.
+    ///
+    ///      Anyone can call. Protected against reentrancy (M-2).
     function rebalance() internal {
+        ReentrancyGuardLib.nonReentrantBefore();
+        _rebalance();
+        ReentrancyGuardLib.nonReentrantAfter();
+    }
+
+    /// @dev Inner rebalance logic (called after reentrancy lock is acquired).
+    function _rebalance() private {
         StrategyManagerStorage storage $ = strategyManagerStorage();
         address vaultAddr = $._vault;
         if (vaultAddr == address(0)) revert IStrategyManager.StrategyManagerVaultNotSet();
@@ -253,20 +269,28 @@ library StrategyManagerLib {
         uint256 vaultTotal = IERC4626(vaultAddr).totalAssets();
         uint256 len = $._strategies.length;
 
+        // Pass 1: withdraw excess from over-allocated strategies.
         for (uint256 i; i < len; i++) {
             address strategy = $._strategies[i];
             uint256 current = IStrategy(strategy).totalAssetsManaged();
             uint256 target = (vaultTotal * $._targets[strategy]) / 10_000;
 
             if (current > target) {
-                // Strategy holds too much — withdraw excess back to vault.
                 uint256 requested = current - target;
                 uint256 withdrawn = IStrategy(strategy).withdraw(requested, vaultAddr);
                 if (withdrawn < requested) {
                     revert IStrategyManager.StrategyManagerWithdrawShortfall(strategy, requested, withdrawn);
                 }
-            } else if (current < target) {
-                // Vault has too little in strategy — allocate deficit.
+            }
+        }
+
+        // Pass 2: allocate deficit to under-allocated strategies.
+        for (uint256 i; i < len; i++) {
+            address strategy = $._strategies[i];
+            uint256 current = IStrategy(strategy).totalAssetsManaged();
+            uint256 target = (vaultTotal * $._targets[strategy]) / 10_000;
+
+            if (current < target) {
                 IVaultCore(vaultAddr).allocateToStrategy(strategy, target - current);
             }
         }

@@ -154,6 +154,44 @@ contract PartialWithdrawStrategy {
 }
 
 //*//////////////////////////////////////////////////////////////////////////
+//                       REENTRANT STRATEGY (M-2 reentrancy test)
+//////////////////////////////////////////////////////////////////////////*//
+
+/// @notice Strategy that re-enters rebalance() during its withdraw() call.
+/// @dev Used to verify that the reentrancy guard on rebalance() blocks the attack.
+contract ReentrantStrategy {
+    MockToken public token;
+    uint256 public managedBalance;
+    address public manager;
+
+    constructor(MockToken _token, address _manager) {
+        token = _token;
+        manager = _manager;
+    }
+
+    function asset() external view returns (address) {
+        return address(token);
+    }
+
+    function setManagedBalance(uint256 amount) external {
+        managedBalance = amount;
+    }
+
+    function totalAssetsManaged() external view returns (uint256) {
+        return managedBalance;
+    }
+
+    function withdraw(uint256 amount, address to) external returns (uint256) {
+        // Attempt to re-enter rebalance() while a rebalance is already in progress.
+        // The reentrancy guard must block this call.
+        IStrategyManager(manager).rebalance();
+        token.transfer(to, amount);
+        managedBalance -= amount;
+        return amount;
+    }
+}
+
+//*//////////////////////////////////////////////////////////////////////////
 //                       MOCK STRATEGY MANAGER CONTRACT
 //////////////////////////////////////////////////////////////////////////*//
 
@@ -472,6 +510,62 @@ contract StrategyManagerTester is Test {
     /// @notice rebalance reverts if vault is not set.
     function test_Rebalance_VaultNotSet_Reverts() public {
         vm.expectRevert(IStrategyManager.StrategyManagerVaultNotSet.selector);
+        mgr.rebalance();
+    }
+
+    /// @notice rebalance succeeds regardless of strategy registration order (M-1).
+    /// @dev Over-allocated strategy B is registered AFTER under-allocated strategy A.
+    ///      Without the two-pass fix, rebalancing A first would fail (no idle) because
+    ///      B hasn't returned its excess yet. With two-pass, B's excess is recalled in
+    ///      pass 1 before A is funded in pass 2.
+    function test_Rebalance_OrderIndependent_TwoPass() public {
+        vm.prank(admin);
+        mgr.setVault(address(mockVault));
+
+        // strategyA: 60% target. strategyB: 40% target. Total = 100%.
+        vm.startPrank(admin);
+        mgr.addStrategy(address(strategyA), 6000);
+        mgr.addStrategy(address(strategyB), 4000);
+        vm.stopPrank();
+
+        // Vault total = 1000 tokens.
+        // strategyA current = 0   → target = 600 → under-allocated by 600.
+        // strategyB current = 800 → target = 400 → over-allocated by 400.
+        // Vault idle = 200 (insufficient alone to fund strategyA's +600 deficit).
+        mockVault.setTotalAssets(1000e18);
+        strategyA.setManagedBalance(0);
+        strategyB.setManagedBalance(800e18);
+        token.mint(address(mockVault), 200e18);
+        token.mint(address(strategyB), 800e18);
+
+        // With single-pass: allocate strategyA (+600) would fail — vault only has 200 idle.
+        // With two-pass: pass 1 recalls 400 from strategyB → vault has 600 idle → pass 2 funds strategyA.
+        mgr.rebalance();
+
+        assertApproxEqAbs(token.balanceOf(address(strategyA)), 600e18, 1, "stratA should hold 600");
+        assertApproxEqAbs(strategyB.managedBalance(), 400e18, 1, "stratB should hold 400");
+    }
+
+    /// @notice rebalance is protected against reentrancy (M-2).
+    /// @dev A malicious strategy that calls rebalance() from within its withdraw() must be blocked.
+    function test_Rebalance_ReentrancyBlocked() public {
+        vm.prank(admin);
+        mgr.setVault(address(mockVault));
+
+        // Register reentrant strategy as over-allocated.
+        ReentrantStrategy reentrant = new ReentrantStrategy(token, address(mgr));
+
+        vm.prank(admin);
+        mgr.addStrategy(address(reentrant), 5000);
+
+        mockVault.setTotalAssets(1000e18);
+        reentrant.setManagedBalance(700e18);
+        token.mint(address(reentrant), 700e18);
+
+        // The outer rebalance triggers reentrant.withdraw(), which re-enters rebalance().
+        // The inner rebalance() call must revert with ReentrancyGuardReentrantCall.
+        // The outer rebalance() will then also revert (the inner revert propagates).
+        vm.expectRevert();
         mgr.rebalance();
     }
 
