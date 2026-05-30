@@ -5,6 +5,7 @@ import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
+import {IAccessControl} from "@lattice/interfaces/IAccessControl.sol";
 import {IERC2981} from "@lattice/interfaces/IERC2981.sol";
 import {ERC2981} from "@lattice/tokens/ERC2981.sol";
 import {ERC2981Lib} from "@lattice/tokens/libraries/ERC2981Lib.sol";
@@ -91,7 +92,9 @@ contract ERC2981Tester is Test {
     }
 
     function test_NonAdminSetDefaultRoyaltyReverts() public {
-        vm.expectRevert();
+        vm.expectRevert(
+            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, alice, DEFAULT_ADMIN_ROLE)
+        );
         vm.prank(alice);
         royalty.setDefaultRoyalty(treasury, 500);
     }
@@ -163,7 +166,9 @@ contract ERC2981Tester is Test {
     }
 
     function test_NonAdminSetTokenRoyaltyReverts() public {
-        vm.expectRevert();
+        vm.expectRevert(
+            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, alice, DEFAULT_ADMIN_ROLE)
+        );
         vm.prank(alice);
         royalty.setTokenRoyalty(TOKEN_1, treasury, 500);
     }

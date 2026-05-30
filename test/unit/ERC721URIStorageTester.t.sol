@@ -5,6 +5,7 @@ import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
+import {IAccessControl} from "@lattice/interfaces/IAccessControl.sol";
 import {IERC721} from "@lattice/interfaces/IERC721.sol";
 import {IERC721URIStorage} from "@lattice/interfaces/IERC721URIStorage.sol";
 import {ERC721URIStorage} from "@lattice/tokens/ERC721URIStorage.sol";
@@ -128,7 +129,9 @@ contract ERC721URIStorageTester is Test {
         token.mintHelper(alice, TOKEN_1);
 
         // Non-admin call to setTokenURI on the facet should revert
-        vm.expectRevert();
+        vm.expectRevert(
+            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, alice, DEFAULT_ADMIN_ROLE)
+        );
         vm.prank(alice);
         token.setTokenURI(TOKEN_1, "ipfs://QmHash1");
     }

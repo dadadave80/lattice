@@ -93,7 +93,7 @@ contract AccessControlEnumerableTester is Test {
     }
 
     function test_GetRoleMemberOutOfBoundsReverts() public {
-        vm.expectRevert();
+        vm.expectRevert(abi.encodeWithSignature("Panic(uint256)", 0x32));
         ac.getRoleMember(MINTER_ROLE, 0);
     }
 

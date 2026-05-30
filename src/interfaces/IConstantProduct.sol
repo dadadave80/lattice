@@ -82,6 +82,9 @@ interface IConstantProduct {
     /// @param token The token address that failed to transfer.
     error ConstantProductTransferFailed(address token);
 
+    /// @dev Raised when the actual amounts deposited or received fall below the caller's minimums.
+    error ConstantProductSlippageExceeded();
+
     //*//////////////////////////////////////////////////////////////////////////
     //                               VIEW FUNCTIONS
     //////////////////////////////////////////////////////////////////////////*//
