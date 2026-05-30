@@ -1,0 +1,449 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.30;
+
+import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
+import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
+import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
+import {StrategyManager} from "@lattice/defi/StrategyManager.sol";
+import {StrategyManagerLib} from "@lattice/defi/libraries/StrategyManagerLib.sol";
+import {IERC4626} from "@lattice/interfaces/IERC4626.sol";
+import {IStrategyManager} from "@lattice/interfaces/IStrategyManager.sol";
+import {IVaultCore} from "@lattice/interfaces/IVaultCore.sol";
+import {Test} from "forge-std/Test.sol";
+
+//*//////////////////////////////////////////////////////////////////////////
+//                          MOCK UNDERLYING ERC20
+//////////////////////////////////////////////////////////////////////////*//
+
+/// @notice Minimal ERC-20 used by mock vault and strategies.
+contract MockToken {
+    string public name = "Mock Token";
+    string public symbol = "MTK";
+    uint8 public decimals = 18;
+    uint256 public totalSupply;
+    mapping(address => uint256) public balanceOf;
+    mapping(address => mapping(address => uint256)) public allowance;
+
+    function mint(address to, uint256 amount) external {
+        totalSupply += amount;
+        balanceOf[to] += amount;
+    }
+
+    function transfer(address to, uint256 amount) external returns (bool) {
+        require(balanceOf[msg.sender] >= amount, "insufficient");
+        balanceOf[msg.sender] -= amount;
+        balanceOf[to] += amount;
+        return true;
+    }
+
+    function transferFrom(address from, address to, uint256 amount) external returns (bool) {
+        require(balanceOf[from] >= amount, "insufficient");
+        require(allowance[from][msg.sender] >= amount, "allowance");
+        allowance[from][msg.sender] -= amount;
+        balanceOf[from] -= amount;
+        balanceOf[to] += amount;
+        return true;
+    }
+
+    function approve(address spender, uint256 amount) external returns (bool) {
+        allowance[msg.sender][spender] = amount;
+        return true;
+    }
+}
+
+//*//////////////////////////////////////////////////////////////////////////
+//                              MOCK VAULT
+//////////////////////////////////////////////////////////////////////////*//
+
+/// @notice Minimal vault mock: implements asset() and totalAssets() and
+///         allocateToStrategy() (which transfers token to strategy).
+contract MockVault {
+    MockToken public token;
+    uint256 public mockedTotalAssets;
+
+    constructor(MockToken _token) {
+        token = _token;
+    }
+
+    function asset() external view returns (address) {
+        return address(token);
+    }
+
+    function totalAssets() external view returns (uint256) {
+        return mockedTotalAssets > 0 ? mockedTotalAssets : token.balanceOf(address(this));
+    }
+
+    function setTotalAssets(uint256 amount) external {
+        mockedTotalAssets = amount;
+    }
+
+    /// @dev Simulates IVaultCore.allocateToStrategy by transferring tokens.
+    function allocateToStrategy(address strategy, uint256 amount) external {
+        token.transfer(strategy, amount);
+    }
+}
+
+//*//////////////////////////////////////////////////////////////////////////
+//                              MOCK STRATEGY
+//////////////////////////////////////////////////////////////////////////*//
+
+/// @notice Mock strategy: reports a settable balance and accepts withdrawals.
+contract MockStrategy {
+    MockToken public token;
+    uint256 public managedBalance;
+
+    constructor(MockToken _token) {
+        token = _token;
+    }
+
+    function asset() external view returns (address) {
+        return address(token);
+    }
+
+    function setManagedBalance(uint256 amount) external {
+        managedBalance = amount;
+    }
+
+    function totalAssetsManaged() external view returns (uint256) {
+        return managedBalance;
+    }
+
+    function withdraw(uint256 amount, address to) external returns (uint256) {
+        // Simulate returning assets to vault.
+        token.transfer(to, amount);
+        managedBalance -= amount;
+        return amount;
+    }
+}
+
+//*//////////////////////////////////////////////////////////////////////////
+//                       MOCK STRATEGY MANAGER CONTRACT
+//////////////////////////////////////////////////////////////////////////*//
+
+/// @notice StrategyManager mock that exposes init.
+contract MockStrategyManagerContract is StrategyManager {
+    function initialize(address admin_) external {
+        bytes32 s = InitializableLib.initializableSlot();
+        InitializableLib.preInitializer(s);
+        AccessControlLib.__AccessControl_init(admin_);
+        StrategyManagerLib.__StrategyManager_init();
+        InitializableLib.postInitializer(s);
+    }
+
+    function supportsInterface(bytes4 interfaceId) public view returns (bool) {
+        return ERC165Lib.supportsInterface(interfaceId);
+    }
+}
+
+//*//////////////////////////////////////////////////////////////////////////
+//                                 TESTS
+//////////////////////////////////////////////////////////////////////////*//
+
+/// @title StrategyManagerTester
+/// @notice Tests for the StrategyManager three-layer module.
+contract StrategyManagerTester is Test {
+    MockStrategyManagerContract mgr;
+    MockToken token;
+    MockVault mockVault;
+    MockStrategy strategyA;
+    MockStrategy strategyB;
+
+    address admin = address(0xAD);
+    address user = address(0xA1);
+
+    function setUp() public {
+        token = new MockToken();
+        mockVault = new MockVault(token);
+        strategyA = new MockStrategy(token);
+        strategyB = new MockStrategy(token);
+
+        mgr = new MockStrategyManagerContract();
+        vm.prank(admin);
+        mgr.initialize(admin);
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                           SET VAULT TESTS
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice Admin can set vault.
+    function test_SetVault_Admin() public {
+        vm.prank(admin);
+        mgr.setVault(address(mockVault));
+        assertEq(mgr.vault(), address(mockVault));
+    }
+
+    /// @notice Non-admin cannot set vault.
+    function test_SetVault_NonAdmin_Reverts() public {
+        vm.prank(user);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                bytes4(keccak256("AccessControlUnauthorizedAccount(address,bytes32)")), user, DEFAULT_ADMIN_ROLE
+            )
+        );
+        mgr.setVault(address(mockVault));
+    }
+
+    /// @notice setVault(address(0)) reverts.
+    function test_SetVault_ZeroAddress_Reverts() public {
+        vm.prank(admin);
+        vm.expectRevert(IStrategyManager.StrategyManagerVaultNotSet.selector);
+        mgr.setVault(address(0));
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                          ADD STRATEGY TESTS
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice Admin can add a strategy.
+    function test_AddStrategy_Admin() public {
+        vm.prank(admin);
+        mgr.setVault(address(mockVault));
+
+        vm.prank(admin);
+        mgr.addStrategy(address(strategyA), 5000);
+
+        assertEq(mgr.getStrategies().length, 1);
+        assertEq(mgr.getStrategyTarget(address(strategyA)), 5000);
+        assertEq(mgr.totalTargetBps(), 5000);
+    }
+
+    /// @notice Non-admin cannot add a strategy.
+    function test_AddStrategy_NonAdmin_Reverts() public {
+        vm.prank(admin);
+        mgr.setVault(address(mockVault));
+
+        vm.prank(user);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                bytes4(keccak256("AccessControlUnauthorizedAccount(address,bytes32)")), user, DEFAULT_ADMIN_ROLE
+            )
+        );
+        mgr.addStrategy(address(strategyA), 5000);
+    }
+
+    /// @notice Adding a strategy with total bps > 10000 reverts.
+    function test_AddStrategy_ExceedsTotalBps_Reverts() public {
+        vm.prank(admin);
+        mgr.setVault(address(mockVault));
+
+        vm.prank(admin);
+        mgr.addStrategy(address(strategyA), 6000);
+
+        vm.prank(admin);
+        vm.expectRevert(
+            abi.encodeWithSelector(IStrategyManager.StrategyManagerInvalidAllocation.selector, uint256(11_000))
+        );
+        mgr.addStrategy(address(strategyB), 5000);
+    }
+
+    /// @notice Adding a strategy whose asset doesn't match vault asset reverts.
+    function test_AddStrategy_AssetMismatch_Reverts() public {
+        vm.prank(admin);
+        mgr.setVault(address(mockVault));
+
+        // Deploy a strategy with a different token.
+        MockToken otherToken = new MockToken();
+        MockStrategy badStrategy = new MockStrategy(otherToken);
+
+        vm.prank(admin);
+        vm.expectRevert(
+            abi.encodeWithSelector(IStrategyManager.StrategyManagerAssetMismatch.selector, address(badStrategy))
+        );
+        mgr.addStrategy(address(badStrategy), 1000);
+    }
+
+    /// @notice Adding a duplicate strategy reverts.
+    function test_AddStrategy_Duplicate_Reverts() public {
+        vm.prank(admin);
+        mgr.setVault(address(mockVault));
+
+        vm.prank(admin);
+        mgr.addStrategy(address(strategyA), 3000);
+
+        vm.prank(admin);
+        vm.expectRevert(
+            abi.encodeWithSelector(IStrategyManager.StrategyManagerStrategyAlreadyAdded.selector, address(strategyA))
+        );
+        mgr.addStrategy(address(strategyA), 1000);
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                         REMOVE STRATEGY TESTS
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice Remove strategy uses swap-and-pop; array and indexes are correct after removal.
+    function test_RemoveStrategy_SwapAndPop() public {
+        vm.prank(admin);
+        mgr.setVault(address(mockVault));
+
+        vm.startPrank(admin);
+        mgr.addStrategy(address(strategyA), 3000);
+        mgr.addStrategy(address(strategyB), 2000);
+        vm.stopPrank();
+
+        assertEq(mgr.getStrategies().length, 2);
+        assertEq(mgr.totalTargetBps(), 5000);
+
+        vm.prank(admin);
+        mgr.removeStrategy(address(strategyA));
+
+        assertEq(mgr.getStrategies().length, 1);
+        assertEq(mgr.getStrategies()[0], address(strategyB));
+        assertEq(mgr.totalTargetBps(), 2000);
+        assertEq(mgr.getStrategyTarget(address(strategyA)), 0);
+    }
+
+    /// @notice Removing a non-existent strategy reverts.
+    function test_RemoveStrategy_NotFound_Reverts() public {
+        vm.prank(admin);
+        vm.expectRevert(
+            abi.encodeWithSelector(IStrategyManager.StrategyManagerStrategyNotFound.selector, address(strategyA))
+        );
+        mgr.removeStrategy(address(strategyA));
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                     UPDATE STRATEGY TARGET TESTS
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice Admin can update strategy target within bounds.
+    function test_UpdateStrategyTarget_WithinBounds() public {
+        vm.prank(admin);
+        mgr.setVault(address(mockVault));
+
+        vm.prank(admin);
+        mgr.addStrategy(address(strategyA), 3000);
+
+        vm.prank(admin);
+        mgr.updateStrategyTarget(address(strategyA), 5000);
+
+        assertEq(mgr.getStrategyTarget(address(strategyA)), 5000);
+        assertEq(mgr.totalTargetBps(), 5000);
+    }
+
+    /// @notice Updating a strategy target that would exceed 10000 reverts.
+    function test_UpdateStrategyTarget_ExceedsBps_Reverts() public {
+        vm.prank(admin);
+        mgr.setVault(address(mockVault));
+
+        vm.startPrank(admin);
+        mgr.addStrategy(address(strategyA), 5000);
+        mgr.addStrategy(address(strategyB), 3000);
+        vm.stopPrank();
+
+        vm.prank(admin);
+        vm.expectRevert(
+            abi.encodeWithSelector(IStrategyManager.StrategyManagerInvalidAllocation.selector, uint256(11_000))
+        );
+        mgr.updateStrategyTarget(address(strategyA), 8000);
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                         TOTAL ALLOCATED TESTS
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice totalAllocated sums all strategy balances.
+    function test_TotalAllocated_SumsBalances() public {
+        vm.prank(admin);
+        mgr.setVault(address(mockVault));
+
+        vm.startPrank(admin);
+        mgr.addStrategy(address(strategyA), 5000);
+        mgr.addStrategy(address(strategyB), 3000);
+        vm.stopPrank();
+
+        strategyA.setManagedBalance(400e18);
+        strategyB.setManagedBalance(200e18);
+
+        assertEq(mgr.totalAllocated(), 600e18);
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                           HARVEST TESTS
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice harvest emits Harvested event with total allocated.
+    function test_Harvest_EmitsEvent() public {
+        vm.prank(admin);
+        mgr.setVault(address(mockVault));
+
+        vm.prank(admin);
+        mgr.addStrategy(address(strategyA), 5000);
+        strategyA.setManagedBalance(300e18);
+
+        vm.expectEmit(false, false, false, true);
+        emit IStrategyManager.Harvested(300e18);
+        mgr.harvest();
+    }
+
+    /// @notice harvest can be called by anyone.
+    function test_Harvest_AnyoneCan_Call() public {
+        vm.prank(user);
+        mgr.harvest(); // should not revert
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                          REBALANCE TESTS
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice rebalance pushes assets to strategy when under-allocated.
+    function test_Rebalance_UnderAllocated_AllocatesAssets() public {
+        vm.prank(admin);
+        mgr.setVault(address(mockVault));
+
+        vm.prank(admin);
+        mgr.addStrategy(address(strategyA), 5000); // 50% target
+
+        // Vault holds 1000 tokens, strategy holds 0 → target = 500
+        token.mint(address(mockVault), 1000e18);
+        mockVault.setTotalAssets(1000e18);
+        strategyA.setManagedBalance(0);
+
+        // StrategyManager needs tokens in vault to allocate; grant it the manager role
+        // by making mgr the "strategy manager" on the vault mock.
+        // In our simplified MockVault.allocateToStrategy we just need to ensure token is available.
+
+        vm.expectEmit(false, false, false, false);
+        emit IStrategyManager.Rebalanced();
+        mgr.rebalance();
+
+        // strategy should have received 500 tokens
+        assertEq(token.balanceOf(address(strategyA)), 500e18);
+    }
+
+    /// @notice rebalance withdraws excess from over-allocated strategy.
+    function test_Rebalance_OverAllocated_WithdrawsAssets() public {
+        vm.prank(admin);
+        mgr.setVault(address(mockVault));
+
+        vm.prank(admin);
+        mgr.addStrategy(address(strategyA), 5000); // 50% target
+
+        // Vault total = 1000, strategy manages 700 → over by 200
+        mockVault.setTotalAssets(1000e18);
+        strategyA.setManagedBalance(700e18);
+        token.mint(address(strategyA), 700e18);
+
+        mgr.rebalance();
+
+        // strategy should have returned 200 to vault
+        assertEq(strategyA.managedBalance(), 500e18);
+        assertEq(token.balanceOf(address(mockVault)), 200e18);
+    }
+
+    /// @notice rebalance reverts if vault is not set.
+    function test_Rebalance_VaultNotSet_Reverts() public {
+        vm.expectRevert(IStrategyManager.StrategyManagerVaultNotSet.selector);
+        mgr.rebalance();
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                           ERC-165 TESTS
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice StrategyManager registers its interface.
+    function test_SupportsInterface_IStrategyManager() public view {
+        assertTrue(mgr.supportsInterface(type(IStrategyManager).interfaceId));
+    }
+}
