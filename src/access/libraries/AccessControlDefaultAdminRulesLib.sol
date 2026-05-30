@@ -51,9 +51,18 @@ library AccessControlDefaultAdminRulesLib {
         }
     }
 
+    /// @notice Initializes the AccessControlDefaultAdminRules module.
+    /// @dev Must be called AFTER OwnableLib.initializeOwner() and AccessControlLib.__AccessControl_init()
+    ///      so that the initial owner is already set and base ACL storage is in sync.
     function __AccessControlDefaultAdminRules_init(uint48 initialDelay) internal {
         InitializableLib.checkInitializing(InitializableLib.initializableSlot());
         accessControlDefaultAdminRulesStorage()._currentDelay = initialDelay;
+        // Ensure base ACL storage reflects the initial owner as DEFAULT_ADMIN_ROLE holder.
+        // AccessControlLib.__AccessControl_init already granted this; the call is idempotent.
+        address initialAdmin = defaultAdmin();
+        if (initialAdmin != address(0)) {
+            AccessControlLib._grantRole(DEFAULT_ADMIN_ROLE, initialAdmin);
+        }
         registerInterface();
     }
 
