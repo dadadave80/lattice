@@ -12,5 +12,10 @@ remappings = [
 optimizer_runs = 1_000_000
 via_ir = false
 
+[invariant]
+runs = 64
+depth = 32
+fail_on_revert = false
+
 [fmt]
 sort_imports = true
