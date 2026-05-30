@@ -60,6 +60,9 @@ interface IStrategyManager {
     ///      Use forceRemove (if provided) or recall assets first via rebalance().
     error StrategyManagerStrategyStillAllocated(address strategy, uint256 balance);
 
+    /// @dev Reverts when adding a strategy would exceed the MAX_STRATEGIES cap.
+    error StrategyManagerTooManyStrategies();
+
     //*//////////////////////////////////////////////////////////////////////////
     //                              VIEW FUNCTIONS
     //////////////////////////////////////////////////////////////////////////*//

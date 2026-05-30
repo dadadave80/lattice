@@ -99,6 +99,12 @@ library InterestRate {
 
     /// @notice Computes borrow utilization as totalBorrows / totalSupply, ray-scaled.
     /// @dev Returns 0 if totalSupply is 0 to avoid division by zero.
+    ///
+    ///      Overflow note (L-4): `totalBorrows * RAY` overflows uint256 when
+    ///      `totalBorrows > type(uint256).max / 1e27 ≈ 1.16e50`. This is an
+    ///      astronomically large token amount (far beyond any real protocol's TVL),
+    ///      but callers should ensure `totalBorrows` is within this bound.
+    ///      If overflow-safe math is required, use `mulDiv(totalBorrows, RAY, totalSupply)`.
     /// @param totalBorrows Total outstanding borrows denominated in the asset.
     /// @param totalSupply Total supplied assets (may include idle + allocated).
     /// @return util Utilization ratio, ray-scaled (1e27 = 100%).
@@ -111,6 +117,13 @@ library InterestRate {
     /// @dev Checks:
     ///      - kink must be <= RAY (utilization is always in [0, RAY])
     ///      - kink must be > 0 (otherwise the first-slope formula divides by zero)
+    ///
+    ///      Note on overflow (L-3): `baseRate`, `slope1`, and `slope2` are not bounded here.
+    ///      The two-slope formula can produce a borrowRate larger than RAY for extreme configs
+    ///      (e.g. slope2 >> RAY). If borrowRate > type(uint256).max / RAY, the intermediate
+    ///      product in _rayMul silently overflows. Consumers MUST ensure that
+    ///      `baseRate + slope1 + slope2 <= type(uint256).max / RAY` (~1.16e50) for safety.
+    ///      Practical lending protocols use rates well below this bound (e.g., all fields <= 10*RAY).
     /// @param config The Config to validate.
     function validateConfig(Config memory config) internal pure {
         // kink must be in (0, RAY]

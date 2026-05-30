@@ -27,6 +27,11 @@ bytes32 constant STRATEGY_MANAGER_ERC165_STORAGE_LOCATION =
 /// `keccak256(abi.encode(bytes4(0xcce4011b), 0x9ca7f3e2e2bfb15fdf072b85dde92837cddacee6cf2f6b38cd06c9457c1c4200))`.
 bytes32 constant ERC165_MAP_ISTRATEGYMANAGER_SLOT = 0x3d05027e9ebc1daac4235d8ac5fc59b9acea5ece08ff307b79ab5b69ad569930;
 
+/// @dev Maximum number of strategies that can be registered simultaneously.
+/// Limits the iteration cost of totalAllocated() (called on every ERC-4626 operation
+/// via VaultCore.totalAssets()) and rebalance(), preventing gas-based DoS.
+uint256 constant MAX_STRATEGIES = 20;
+
 /// @notice Storage struct for StrategyManager module.
 /// @custom:storage-location erc7201:lattice.storage.StrategyManager
 struct StrategyManagerStorage {
@@ -156,6 +161,7 @@ library StrategyManagerLib {
 
         if (strategy == address(0)) revert IStrategyManager.StrategyManagerInvalidStrategy(strategy);
         if ($._strategyIndex[strategy] != 0) revert IStrategyManager.StrategyManagerStrategyAlreadyAdded(strategy);
+        if ($._strategies.length >= MAX_STRATEGIES) revert IStrategyManager.StrategyManagerTooManyStrategies();
 
         // Verify asset compatibility.
         address vaultAddr = $._vault;
