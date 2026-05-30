@@ -74,6 +74,12 @@ library AccessControlDefaultAdminRulesLib {
 
     // ---- Views ----
 
+    /// @notice Returns the current default admin (the Ownable owner).
+    /// @dev Reads the owner slot directly with a 20-byte AND mask so that:
+    ///      - an uninitialized slot (0) returns address(0), and
+    ///      - the zero-owner sentinel used by OwnableLib (bit 255 set) is stripped to address(0).
+    ///      This differs from OwnableLib.owner() which returns the raw slot value without masking.
+    ///      Both interpretations agree for a valid non-zero owner (top 96 bits are zero for addresses).
     function defaultAdmin() internal view returns (address ownerAddr) {
         bytes32 slot = OwnableLib._OWNER_SLOT;
         assembly {

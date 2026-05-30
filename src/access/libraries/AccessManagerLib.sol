@@ -171,6 +171,13 @@ library AccessManagerLib {
         return (false, executionDelay);
     }
 
+    /// @notice Returns the timestamp at which `operationId` becomes (or became) executable.
+    /// @dev Returns 0 in three distinct cases:
+    ///      1. The operation was never scheduled (`getNonce(operationId) == 0`).
+    ///      2. The operation was consumed (executed successfully).
+    ///      3. The operation was scheduled but has since expired (`readyAt + EXPIRATION < now`).
+    ///      Callers that need to distinguish case 1 from cases 2/3 should additionally call
+    ///      `getNonce(operationId)`: a non-zero nonce means the operation existed at some point.
     function getSchedule(bytes32 operationId) internal view returns (uint48) {
         uint48 r = accessManagerStorage()._operationQueue.readyAt(operationId);
         if (r != 0 && block.timestamp > uint256(r) + EXPIRATION) return 0;
