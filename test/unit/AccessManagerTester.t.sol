@@ -86,7 +86,8 @@ contract AccessManagerTester is Test {
         vm.prank(admin);
         mgr.setGrantDelay(MINTER_ROLE, 1 days);
 
-        // Wait for grant delay change to take effect (1 week per EXPIRATION constant).
+        // Wait for grant delay change to take effect (MIN_SETBACK = 5 days for increases;
+        // we warp 1 week to comfortably clear the setback).
         vm.warp(block.timestamp + 1 weeks);
 
         vm.prank(admin);

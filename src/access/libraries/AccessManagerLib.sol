@@ -240,12 +240,9 @@ library AccessManagerLib {
             r.grantDelayEffectAt = 0;
         }
         uint32 currentDelay = r.grantDelay;
+        if (newDelay == currentDelay) return; // No-op: avoid unnecessary storage writes.
         uint48 effectAt;
-        if (newDelay == currentDelay) {
-            effectAt = uint48(block.timestamp);
-            r.pendingGrantDelay = newDelay;
-            r.grantDelayEffectAt = effectAt;
-        } else if (newDelay < currentDelay) {
+        if (newDelay < currentDelay) {
             uint32 diff = currentDelay - newDelay;
             uint32 wait = diff > MIN_SETBACK ? diff : MIN_SETBACK;
             r.pendingGrantDelay = newDelay;
