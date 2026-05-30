@@ -12,5 +12,12 @@ remappings = [
 optimizer_runs = 1_000_000
 via_ir = false
 
+[rpc_endpoints]
+mainnet = "${MAINNET_RPC_URL}"
+optimism = "${OPTIMISM_RPC_URL}"
+
+[etherscan]
+mainnet = { key = "${ETHERSCAN_API_KEY}" }
+
 [fmt]
 sort_imports = true
