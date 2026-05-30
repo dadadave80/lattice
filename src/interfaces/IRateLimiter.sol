@@ -39,6 +39,9 @@ interface IRateLimiter {
     /// @dev Thrown when `configure` is called with a zero capacity or zero refill rate.
     error RateLimitInvalidConfig();
 
+    /// @dev Thrown when `consume` is called with `amount == 0`.
+    error RateLimitInvalidAmount();
+
     // -------------------------------------------------------------------------
     // View functions
     // -------------------------------------------------------------------------
@@ -70,10 +73,11 @@ interface IRateLimiter {
 
     /// @notice Consumes `amount` tokens from the bucket for `key`.
     /// @dev Refills the bucket first based on elapsed time, then deducts `amount`.
+    ///      Reverts with `RateLimitInvalidAmount` if `amount == 0`.
     ///      Reverts with `RateLimitNotConfigured` if the key has no configuration.
     ///      Reverts with `RateLimitExceeded` if fewer than `amount` tokens are available.
     ///      Emits `RateLimitConsumed`.
     /// @param key    The rate limit key.
-    /// @param amount The number of tokens to consume.
+    /// @param amount The number of tokens to consume (must be > 0).
     function consume(bytes32 key, uint256 amount) external;
 }

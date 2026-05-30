@@ -111,6 +111,19 @@ contract RateLimiterTester is Test {
     }
 
     // -------------------------------------------------------------------------
+    // consume — zero amount
+    // -------------------------------------------------------------------------
+
+    function test_ConsumeZeroAmountReverts() public {
+        vm.prank(admin);
+        mock.configure(KEY_A, 100, 10);
+
+        vm.prank(user);
+        vm.expectRevert(abi.encodeWithSelector(IRateLimiter.RateLimitInvalidAmount.selector));
+        mock.consume(KEY_A, 0);
+    }
+
+    // -------------------------------------------------------------------------
     // consume — unconfigured key
     // -------------------------------------------------------------------------
 

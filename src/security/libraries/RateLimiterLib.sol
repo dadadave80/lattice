@@ -92,11 +92,12 @@ library RateLimiterLib {
 
     /// @notice Consumes `amount` tokens from the bucket for `key`.
     /// @dev Refills the bucket based on elapsed time, then deducts `amount`.
+    ///      Reverts `RateLimitInvalidAmount` if `amount == 0`.
     ///      Reverts `RateLimitNotConfigured` if the key has no configuration (capacity == 0).
     ///      Reverts `RateLimitExceeded` if fewer than `amount` tokens are available.
     ///      Emits `RateLimitConsumed`.
     /// @param key    The rate limit key.
-    /// @param amount The number of tokens to consume.
+    /// @param amount The number of tokens to consume (must be > 0).
     function consume(bytes32 key, uint256 amount) internal {
         _consume(key, amount);
     }
@@ -138,6 +139,7 @@ library RateLimiterLib {
 
     /// @notice Internal — refills and deducts tokens, reverts on insufficient balance.
     function _consume(bytes32 key, uint256 amount) internal {
+        if (amount == 0) revert IRateLimiter.RateLimitInvalidAmount();
         RateLimiterBucket storage b = rateLimiterStorage()._buckets[key];
         if (b.capacity == 0) revert IRateLimiter.RateLimitNotConfigured(key);
 
