@@ -27,6 +27,10 @@ interface IAccessControlTimed is IAccessControl {
     /// @notice `extendRole` was called for an account that does not hold the role.
     error AccessControlTimedRoleNotHeld(bytes32 role, address account);
 
+    /// @notice `extendRole` was called on a timeless grant (`expires == 0`).
+    ///         Use `grantRoleTimed` to convert a timeless grant to a timed one explicitly.
+    error AccessControlTimedRoleIsTimeless(bytes32 role, address account);
+
     function grantRoleTimed(bytes32 role, address account, uint48 start, uint48 expires) external;
     function extendRole(bytes32 role, address account, uint48 newExpires) external;
     function roleExpiration(bytes32 role, address account) external view returns (uint48 start, uint48 expires);
