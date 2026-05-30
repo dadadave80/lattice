@@ -4,6 +4,7 @@ pragma solidity ^0.8.30;
 import {ContextLib} from "@diamond/libraries/ContextLib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {OwnableLib} from "@diamond/libraries/OwnableLib.sol";
+import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {IAccessControl} from "@lattice/interfaces/IAccessControl.sol";
 import {IAccessControlDefaultAdminRules} from "@lattice/interfaces/IAccessControlDefaultAdminRules.sol";
 import {TimelockLib} from "@lattice/utils/libraries/TimelockLib.sol";
@@ -127,8 +128,11 @@ library AccessControlDefaultAdminRulesLib {
         $._pendingDefaultAdmin = address(0);
         address oldAdmin = defaultAdmin();
         OwnableLib.setOwner(newAdmin);
-        emit IAccessControl.RoleRevoked(DEFAULT_ADMIN_ROLE, oldAdmin, ContextLib.msgSender());
-        emit IAccessControl.RoleGranted(DEFAULT_ADMIN_ROLE, newAdmin, ContextLib.msgSender());
+        // Sync base ACL storage so checkRole(DEFAULT_ADMIN_ROLE) and grantRole/revokeRole
+        // reflect the new admin. Without this, old admin retains power in base storage
+        // while hasRole() (which reads Ownable) correctly shows new admin — H-2.
+        AccessControlLib._revokeRole(DEFAULT_ADMIN_ROLE, oldAdmin);
+        AccessControlLib._grantRole(DEFAULT_ADMIN_ROLE, newAdmin);
     }
 
     function changeDefaultAdminDelay(uint48 newDelay) internal {
