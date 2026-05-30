@@ -279,9 +279,11 @@ contract VaultStrategyTest is Test {
         assertEq(asset.balanceOf(user), DEPOSIT_AMOUNT / 2, "user receives asset");
     }
 
-    /// @notice After rebalance, if we need to recall from strategies then rebalance
-    ///         back to idle first (strategy.withdraw) before user redemption.
-    /// @dev Demonstrates full round-trip: deposit → rebalance → recall → redeem.
+    /// @notice After rebalance, assets are recalled via rebalance before strategy removal.
+    /// @dev Demonstrates full round-trip: deposit → rebalance → set target 0 → rebalance
+    ///      (recalls) → removeStrategy → redeem.  The strategy recall is driven through
+    ///      the real rebalance() path (IStrategy.withdraw), not a direct token transfer.
+    ///      This validates T-3: the previous test bypassed recallFromStrategy entirely.
     function test_VaultStrategy_FullRoundTrip() public {
         // User deposits.
         asset.mint(user, DEPOSIT_AMOUNT);
@@ -292,30 +294,43 @@ contract VaultStrategyTest is Test {
 
         assertEq(shares, DEPOSIT_AMOUNT);
 
-        // Rebalance pushes to strategies.
+        // Rebalance pushes 50/50 to both strategies.
         mgr.rebalance();
 
-        // Manager removes one strategy (which returns its assets to vault via withdraw).
-        uint256 stratABalance = stratA.totalAssetsManaged();
+        uint256 stratABalanceBefore = stratA.totalAssetsManaged();
+        assertApproxEqAbs(stratABalanceBefore, DEPOSIT_AMOUNT / 2, 1, "stratA holds 50%");
+
+        // To remove stratA: first set its target to 0, then rebalance to recall all assets.
+        vm.prank(admin);
+        mgr.updateStrategyTarget(address(stratA), 0);
+
+        // Second rebalance: stratA is over-allocated (current > 0, target = 0),
+        // so its entire balance is recalled to the vault via IStrategy.withdraw().
+        mgr.rebalance();
+
+        // stratA should now hold 0 assets.
+        assertEq(stratA.totalAssetsManaged(), 0, "stratA fully recalled");
+
+        // Now it is safe to remove stratA (live balance is 0).
         vm.prank(admin);
         mgr.removeStrategy(address(stratA));
 
-        // Strategy A's assets are gone from the manager's view but still in stratA.
-        // Simulate the recall: strategy A transfers back to vault directly.
-        vm.prank(address(stratA));
-        asset.transfer(address(vault), stratABalance);
+        assertEq(mgr.getStrategies().length, 1, "only stratB remains");
 
-        // Now vault has idle = stratA's old balance, and stratB still holds stratB's balance.
-        uint256 expectedIdle = stratABalance;
-        assertApproxEqAbs(vault.idleAssets(), expectedIdle, 1);
+        // Vault idle now holds the recalled stratA assets; stratB still holds its 50%.
+        uint256 idleAfterRecall = vault.idleAssets();
+        assertApproxEqAbs(idleAfterRecall, DEPOSIT_AMOUNT / 2, 1, "recalled funds are in vault");
 
-        // User redeems all shares.
+        // User redeems all shares — vault's totalAssets covers idle + stratB.
+        uint256 totalBefore = vault.totalAssets();
+        assertApproxEqAbs(totalBefore, DEPOSIT_AMOUNT, 1, "total assets still equals deposit");
+
         vm.prank(user);
         uint256 withdrawn = vault.redeem(shares, user, user);
 
-        // User should get back close to original deposit.
-        // (stratB still holds its half, so user gets stratABalance worth from idle)
-        assertGt(withdrawn, 0);
+        // Vault can only give idle (stratB balance still locked in strategy).
+        // ERC-4626 redeem uses the idle balance; user gets back the idle portion.
+        assertGt(withdrawn, 0, "user received tokens");
     }
 
     //*//////////////////////////////////////////////////////////////////////////

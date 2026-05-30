@@ -44,19 +44,28 @@ library InterestRate {
     /// @dev Uses a two-slope (kinked) model:
     ///      - Below kink: `baseRate + utilization * slope1 / kink`
     ///      - At or above kink: `baseRate + slope1 + (utilization - kink) * slope2 / (RAY - kink)`
-    ///      When kink == RAY the second slope never applies (denominator guard keeps the formula safe).
+    ///      Utilization is capped at RAY (100%) on entry; values above RAY are physically impossible
+    ///      and would cause division-by-zero when `kink == RAY` (remainingRange == 0).
+    ///      When kink == RAY, capping util to RAY means `util <= kink` is always true, so the
+    ///      second slope never applies and the denominator is never zero.
     /// @param config Rate model parameters.
-    /// @param util Borrow/supply ratio, ray-scaled (1e27 = 100%).
+    /// @param util Borrow/supply ratio, ray-scaled (1e27 = 100%). Values above RAY are capped to RAY.
     /// @return borrowRate Annualized borrow rate, ray-scaled.
     function getBorrowRate(Config memory config, uint256 util) internal pure returns (uint256 borrowRate) {
+        // Cap utilization at 100% — values above RAY are physically impossible and would cause
+        // division-by-zero in the above-kink branch when kink == RAY (remainingRange == 0).
+        if (util > RAY) util = RAY;
         if (util <= config.kink) {
             // Below or at kink: linear interpolation on slope1.
             // Safe: kink > 0 enforced by validateConfig; util <= kink so numerator <= kink * slope1 which fits uint256.
             borrowRate = config.baseRate + (util * config.slope1) / config.kink;
         } else {
             // Above kink: add slope1 fully, then linearly interpolate slope2 over the remaining range.
+            // util is already capped at RAY, so excess is bounded. remainingRange > 0 because
+            // validateConfig enforces kink > 0 and kink <= RAY, and when kink == RAY this branch
+            // is unreachable (util <= RAY == kink, so the above condition is always true).
             uint256 excess = util - config.kink;
-            uint256 remainingRange = RAY - config.kink; // > 0 because kink < RAY (validateConfig)
+            uint256 remainingRange = RAY - config.kink;
             borrowRate = config.baseRate + config.slope1 + (excess * config.slope2) / remainingRange;
         }
     }
@@ -75,11 +84,12 @@ library InterestRate {
         pure
         returns (uint256 supplyRate)
     {
+        if (reserveFactor > RAY) revert InvalidConfig();
         uint256 borrowRate = getBorrowRate(config, util);
         // Step 1: borrowRate * util / RAY  (scales back from double-ray to single-ray)
         uint256 intermediate = _rayMul(borrowRate, util);
         // Step 2: intermediate * (RAY - reserveFactor) / RAY
-        uint256 lenderShare = RAY - reserveFactor; // safe: validateConfig ensures reserveFactor <= RAY
+        uint256 lenderShare = RAY - reserveFactor;
         supplyRate = _rayMul(intermediate, lenderShare);
     }
 
@@ -89,6 +99,12 @@ library InterestRate {
 
     /// @notice Computes borrow utilization as totalBorrows / totalSupply, ray-scaled.
     /// @dev Returns 0 if totalSupply is 0 to avoid division by zero.
+    ///
+    ///      Overflow note (L-4): `totalBorrows * RAY` overflows uint256 when
+    ///      `totalBorrows > type(uint256).max / 1e27 ≈ 1.16e50`. This is an
+    ///      astronomically large token amount (far beyond any real protocol's TVL),
+    ///      but callers should ensure `totalBorrows` is within this bound.
+    ///      If overflow-safe math is required, use `mulDiv(totalBorrows, RAY, totalSupply)`.
     /// @param totalBorrows Total outstanding borrows denominated in the asset.
     /// @param totalSupply Total supplied assets (may include idle + allocated).
     /// @return util Utilization ratio, ray-scaled (1e27 = 100%).
@@ -101,6 +117,13 @@ library InterestRate {
     /// @dev Checks:
     ///      - kink must be <= RAY (utilization is always in [0, RAY])
     ///      - kink must be > 0 (otherwise the first-slope formula divides by zero)
+    ///
+    ///      Note on overflow (L-3): `baseRate`, `slope1`, and `slope2` are not bounded here.
+    ///      The two-slope formula can produce a borrowRate larger than RAY for extreme configs
+    ///      (e.g. slope2 >> RAY). If borrowRate > type(uint256).max / RAY, the intermediate
+    ///      product in _rayMul silently overflows. Consumers MUST ensure that
+    ///      `baseRate + slope1 + slope2 <= type(uint256).max / RAY` (~1.16e50) for safety.
+    ///      Practical lending protocols use rates well below this bound (e.g., all fields <= 10*RAY).
     /// @param config The Config to validate.
     function validateConfig(Config memory config) internal pure {
         // kink must be in (0, RAY]

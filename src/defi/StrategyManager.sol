@@ -13,8 +13,10 @@ import {IStrategyManager} from "@lattice/interfaces/IStrategyManager.sol";
 ///        2. StrategyManagerLib.__StrategyManager_init()
 ///        3. (Optional) StrategyManagerLib._setVault(vault)
 ///
-///      The StrategyManager must be granted DEFAULT_ADMIN_ROLE on the vault in order
-///      to call `IVaultCore.allocateToStrategy` during `rebalance()`.
+///      The StrategyManager must be configured as the vault's strategy manager via
+///      `IVaultCore.setStrategyManager(address(this))` before calling `rebalance()`.
+///      `allocateToStrategy` is guarded by `_checkManager()` which checks the caller
+///      address, not any role — granting DEFAULT_ADMIN_ROLE is neither necessary nor sufficient.
 contract StrategyManager is IStrategyManager {
     //*//////////////////////////////////////////////////////////////////////////
     //                              VIEW FUNCTIONS
