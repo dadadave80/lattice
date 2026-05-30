@@ -6,6 +6,7 @@ import {AccessManaged} from "@lattice/access/AccessManaged.sol";
 import {AccessManagerStandalone} from "@lattice/access/AccessManagerStandalone.sol";
 import {AccessManagedLib} from "@lattice/access/libraries/AccessManagedLib.sol";
 import {IAccessManaged} from "@lattice/interfaces/IAccessManaged.sol";
+import {IAccessManager} from "@lattice/interfaces/IAccessManager.sol";
 import {Test} from "forge-std/Test.sol";
 
 contract MockAccessManagedContract is AccessManaged {
@@ -26,6 +27,7 @@ contract AccessManagedTester is Test {
     MockAccessManagedContract internal managed;
     address internal admin = address(0xA1);
     address internal alice = address(0xA11CE);
+    uint64 constant CALLER_ROLE = 1;
 
     function setUp() public {
         mgr = new AccessManagerStandalone(admin);
@@ -84,5 +86,65 @@ contract AccessManagedTester is Test {
 
         vm.prank(alice);
         managed.restrictedFn();
+    }
+
+    /// @notice T-1 / H-1 regression: a caller with an execution delay gets
+    ///         AccessManagedRequiredDelay when calling directly (without schedule+execute).
+    function test_RestrictedFnWithDelayRevertsDirectly() public {
+        bytes4[] memory selectors = new bytes4[](1);
+        selectors[0] = managed.restrictedFn.selector;
+
+        vm.prank(admin);
+        mgr.setTargetFunctionRole(address(managed), selectors, CALLER_ROLE);
+        vm.prank(admin);
+        mgr.grantRole(CALLER_ROLE, alice, uint32(1 days)); // execution delay
+
+        vm.prank(alice);
+        vm.expectRevert(
+            abi.encodeWithSelector(IAccessManaged.AccessManagedRequiredDelay.selector, alice, uint32(1 days))
+        );
+        managed.restrictedFn();
+    }
+
+    /// @notice T-1 / H-1 regression: a caller with an execution delay can succeed through
+    ///         AccessManager.execute() after the delay matures. Verifies the _consumingScheduledOp
+    ///         bypass is working end-to-end.
+    function test_RestrictedFnViaManagerExecuteAfterDelaySucceeds() public {
+        bytes4[] memory selectors = new bytes4[](1);
+        selectors[0] = managed.restrictedFn.selector;
+
+        vm.prank(admin);
+        mgr.setTargetFunctionRole(address(managed), selectors, CALLER_ROLE);
+        vm.prank(admin);
+        mgr.grantRole(CALLER_ROLE, alice, uint32(1 days)); // execution delay
+
+        bytes memory data = abi.encodeCall(MockAccessManagedContract.restrictedFn, ());
+
+        // Schedule the operation
+        vm.prank(alice);
+        (bytes32 opId,) = mgr.schedule(address(managed), data, uint48(block.timestamp + 1 days));
+
+        // Before delay: execute must fail
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(IAccessManager.AccessManagerNotReady.selector, opId));
+        mgr.execute(address(managed), data);
+
+        // After delay: execute must succeed (isConsumingScheduledOp bypass active)
+        vm.warp(block.timestamp + 1 days);
+        vm.prank(alice);
+        mgr.execute(address(managed), data);
+
+        // Operation consumed: schedule cleared
+        assertEq(mgr.getSchedule(opId), 0);
+
+        // isConsumingScheduledOp flag must be cleared after execution
+        assertEq(managed.isConsumingScheduledOp(), bytes4(0));
+    }
+
+    /// @notice setConsumingScheduledOp must revert for non-authority callers.
+    function test_SetConsumingScheduledOpByNonAuthorityReverts() public {
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(IAccessManaged.AccessManagedUnauthorized.selector, alice));
+        managed.setConsumingScheduledOp(true);
     }
 }

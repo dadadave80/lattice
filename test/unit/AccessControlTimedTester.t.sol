@@ -204,6 +204,42 @@ contract AccessControlTimedTester is Test {
         assertEq(gotExpires, secondExpires);
     }
 
+    /// @notice T-2 / M-1 regression: extendRole on a timeless grant must revert.
+    function test_ExtendRoleOnTimelessGrantReverts() public {
+        // Plain grantRole gives a timeless grant (expires == 0)
+        vm.prank(admin);
+        ac.grantRole(MINTER_ROLE, alice);
+        (, uint48 expires) = ac.roleExpiration(MINTER_ROLE, alice);
+        assertEq(expires, 0, "should be timeless");
+
+        // extendRole should revert with AccessControlTimedRoleIsTimeless
+        vm.prank(admin);
+        vm.expectRevert(
+            abi.encodeWithSelector(IAccessControlTimed.AccessControlTimedRoleIsTimeless.selector, MINTER_ROLE, alice)
+        );
+        ac.extendRole(MINTER_ROLE, alice, uint48(block.timestamp + 1000));
+    }
+
+    /// @notice T-2 / M-1: extendRole on an expired (but not revoked) grant must revert
+    ///         because the time-aware hasRole returns false.
+    function test_ExtendExpiredGrantReverts() public {
+        uint48 start = uint48(block.timestamp);
+        uint48 expires = start + 100;
+        vm.prank(admin);
+        ac.grantRoleTimed(MINTER_ROLE, alice, start, expires);
+
+        // Warp past expiry
+        vm.warp(uint256(expires) + 1);
+        assertFalse(ac.hasRole(MINTER_ROLE, alice));
+
+        // extendRole should see alice as not holding the role
+        vm.prank(admin);
+        vm.expectRevert(
+            abi.encodeWithSelector(IAccessControlTimed.AccessControlTimedRoleNotHeld.selector, MINTER_ROLE, alice)
+        );
+        ac.extendRole(MINTER_ROLE, alice, expires + 1000);
+    }
+
     function testFuzz_WindowEnforcement(uint40 startDelta, uint40 windowLen, uint40 probeDelta) public {
         vm.assume(windowLen > 0);
         vm.assume(uint256(startDelta) + uint256(windowLen) < type(uint40).max);

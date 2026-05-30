@@ -229,4 +229,109 @@ contract AccessControlDefaultAdminRulesTester is Test {
         assertTrue(revokedFound, "RoleRevoked event should be emitted");
         assertTrue(grantedFound, "RoleGranted event should be emitted");
     }
+
+    /// @notice T-3 / H-2 regression: after a completed admin transfer the new admin must be
+    ///         able to call grantRole and revokeRole, and the old admin must lose that power.
+    function test_AfterAcceptTransferNewAdminCanGrantOtherRoles() public {
+        // Give admin the MINTER_ROLE first (proves old admin had power)
+        vm.prank(admin);
+        ac.grantRole(MINTER_ROLE, alice);
+        assertTrue(ac.hasRole(MINTER_ROLE, alice));
+
+        // Perform admin transfer: admin → newAdmin
+        vm.prank(admin);
+        ac.beginDefaultAdminTransfer(newAdmin);
+        vm.warp(block.timestamp + INITIAL_DELAY);
+        vm.prank(newAdmin);
+        ac.acceptDefaultAdminTransfer();
+
+        // Confirm ownership switched
+        assertEq(ac.defaultAdmin(), newAdmin);
+        assertTrue(ac.hasRole(DEFAULT_ADMIN_ROLE, newAdmin));
+        assertFalse(ac.hasRole(DEFAULT_ADMIN_ROLE, admin));
+
+        // New admin can grant a role
+        address carol = address(0xCA401);
+        vm.prank(newAdmin);
+        ac.grantRole(MINTER_ROLE, carol);
+        assertTrue(ac.hasRole(MINTER_ROLE, carol));
+
+        // New admin can revoke a role
+        vm.prank(newAdmin);
+        ac.revokeRole(MINTER_ROLE, alice);
+        assertFalse(ac.hasRole(MINTER_ROLE, alice));
+
+        // Old admin can no longer grant roles
+        vm.prank(admin);
+        vm.expectRevert(
+            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, admin, DEFAULT_ADMIN_ROLE)
+        );
+        ac.grantRole(MINTER_ROLE, alice);
+    }
+
+    function test_BeginDefaultAdminTransferToZeroAddressReverts() public {
+        vm.prank(admin);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControlDefaultAdminRules.AccessControlDefaultAdminRulesInvalidNewAdmin.selector, address(0)
+            )
+        );
+        ac.beginDefaultAdminTransfer(address(0));
+    }
+
+    /// @notice T-5: Fuzz the delay-change mechanics. Verify that a delay increase always
+    ///         requires DELAY_INCREASE_WAIT and a decrease is immediately effective.
+    function testFuzz_DelayChangeMechanics(uint48 baseDelay, uint48 newDelay, uint48 jitter) public {
+        // Keep values sane
+        vm.assume(baseDelay < 365 days);
+        vm.assume(newDelay < 365 days);
+        vm.assume(jitter < 10 days);
+
+        // Initialize with baseDelay
+        MockDefaultAdminRulesContract ac2 = new MockDefaultAdminRulesContract();
+        ac2.initialize(admin, baseDelay);
+
+        vm.prank(admin);
+        ac2.changeDefaultAdminDelay(newDelay);
+
+        if (newDelay > baseDelay) {
+            // Increase: must NOT be effective immediately
+            assertEq(ac2.defaultAdminDelay(), baseDelay, "delay increase should not be immediate");
+            // After DELAY_INCREASE_WAIT it becomes effective
+            vm.warp(block.timestamp + 5 days);
+            assertEq(ac2.defaultAdminDelay(), newDelay, "delay increase should be effective after 5 days");
+        } else {
+            // Decrease (or same): effective immediately
+            assertEq(ac2.defaultAdminDelay(), newDelay, "delay decrease should be immediate");
+        }
+    }
+
+    /// @notice T-5: Fuzz admin transfer delay — verify that a transfer cannot be accepted
+    ///         before the configured delay matures.
+    function testFuzz_AdminTransferDelay(uint48 transferDelay, uint48 earlyWarp) public {
+        vm.assume(transferDelay > 0 && transferDelay < 365 days);
+        vm.assume(earlyWarp < transferDelay);
+
+        MockDefaultAdminRulesContract ac2 = new MockDefaultAdminRulesContract();
+        ac2.initialize(admin, transferDelay);
+
+        vm.prank(admin);
+        ac2.beginDefaultAdminTransfer(newAdmin);
+
+        uint48 expectedReady = uint48(block.timestamp) + transferDelay;
+
+        // Early warp: accept must fail
+        vm.warp(block.timestamp + earlyWarp);
+        vm.prank(newAdmin);
+        vm.expectRevert(
+            abi.encodeWithSelector(TimelockLib.TimelockNotReady.selector, expectedReady, uint48(block.timestamp))
+        );
+        ac2.acceptDefaultAdminTransfer();
+
+        // Exact ready: accept must succeed
+        vm.warp(expectedReady);
+        vm.prank(newAdmin);
+        ac2.acceptDefaultAdminTransfer();
+        assertEq(ac2.defaultAdmin(), newAdmin);
+    }
 }
