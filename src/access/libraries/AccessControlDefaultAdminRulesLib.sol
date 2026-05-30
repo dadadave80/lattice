@@ -4,6 +4,7 @@ pragma solidity ^0.8.30;
 import {ContextLib} from "@diamond/libraries/ContextLib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {OwnableLib} from "@diamond/libraries/OwnableLib.sol";
+import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {IAccessControl} from "@lattice/interfaces/IAccessControl.sol";
 import {IAccessControlDefaultAdminRules} from "@lattice/interfaces/IAccessControlDefaultAdminRules.sol";
 import {TimelockLib} from "@lattice/utils/libraries/TimelockLib.sol";
@@ -50,9 +51,18 @@ library AccessControlDefaultAdminRulesLib {
         }
     }
 
+    /// @notice Initializes the AccessControlDefaultAdminRules module.
+    /// @dev Must be called AFTER OwnableLib.initializeOwner() and AccessControlLib.__AccessControl_init()
+    ///      so that the initial owner is already set and base ACL storage is in sync.
     function __AccessControlDefaultAdminRules_init(uint48 initialDelay) internal {
         InitializableLib.checkInitializing(InitializableLib.initializableSlot());
         accessControlDefaultAdminRulesStorage()._currentDelay = initialDelay;
+        // Ensure base ACL storage reflects the initial owner as DEFAULT_ADMIN_ROLE holder.
+        // AccessControlLib.__AccessControl_init already granted this; the call is idempotent.
+        address initialAdmin = defaultAdmin();
+        if (initialAdmin != address(0)) {
+            AccessControlLib._grantRole(DEFAULT_ADMIN_ROLE, initialAdmin);
+        }
         registerInterface();
     }
 
@@ -64,6 +74,12 @@ library AccessControlDefaultAdminRulesLib {
 
     // ---- Views ----
 
+    /// @notice Returns the current default admin (the Ownable owner).
+    /// @dev Reads the owner slot directly with a 20-byte AND mask so that:
+    ///      - an uninitialized slot (0) returns address(0), and
+    ///      - the zero-owner sentinel used by OwnableLib (bit 255 set) is stripped to address(0).
+    ///      This differs from OwnableLib.owner() which returns the raw slot value without masking.
+    ///      Both interpretations agree for a valid non-zero owner (top 96 bits are zero for addresses).
     function defaultAdmin() internal view returns (address ownerAddr) {
         bytes32 slot = OwnableLib._OWNER_SLOT;
         assembly {
@@ -99,6 +115,9 @@ library AccessControlDefaultAdminRulesLib {
 
     function beginDefaultAdminTransfer(address newAdmin) internal {
         OwnableLib.checkOwner();
+        if (newAdmin == address(0)) {
+            revert IAccessControlDefaultAdminRules.AccessControlDefaultAdminRulesInvalidNewAdmin(address(0));
+        }
         _consolidateDelay();
         AccessControlDefaultAdminRulesStorage storage $ = accessControlDefaultAdminRulesStorage();
         if ($._adminTransferSchedule.isPending()) {
@@ -127,8 +146,11 @@ library AccessControlDefaultAdminRulesLib {
         $._pendingDefaultAdmin = address(0);
         address oldAdmin = defaultAdmin();
         OwnableLib.setOwner(newAdmin);
-        emit IAccessControl.RoleRevoked(DEFAULT_ADMIN_ROLE, oldAdmin, ContextLib.msgSender());
-        emit IAccessControl.RoleGranted(DEFAULT_ADMIN_ROLE, newAdmin, ContextLib.msgSender());
+        // Sync base ACL storage so checkRole(DEFAULT_ADMIN_ROLE) and grantRole/revokeRole
+        // reflect the new admin. Without this, old admin retains power in base storage
+        // while hasRole() (which reads Ownable) correctly shows new admin — H-2.
+        AccessControlLib._revokeRole(DEFAULT_ADMIN_ROLE, oldAdmin);
+        AccessControlLib._grantRole(DEFAULT_ADMIN_ROLE, newAdmin);
     }
 
     function changeDefaultAdminDelay(uint48 newDelay) internal {

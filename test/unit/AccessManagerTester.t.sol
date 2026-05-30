@@ -38,6 +38,36 @@ contract CallSink {
     }
 }
 
+/// @notice T-4: Reentrant target used to confirm CEI ordering in execute().
+///         Attempts to call execute() again with the same operationId from within the
+///         first execute() call. The second attempt must fail because the schedule was
+///         already cleared before the external call.
+contract ReentrantTarget {
+    address public manager;
+    bytes public reentrantData;
+    address public caller;
+    bool public reentered;
+
+    error ReentrantCallFailed();
+
+    function configure(address _manager, bytes calldata _data, address _caller) external {
+        manager = _manager;
+        reentrantData = _data;
+        caller = _caller;
+    }
+
+    /// @notice Called by AccessManager.execute(). Tries to re-enter execute() with the same data.
+    function reentrantFn() external {
+        // The schedule should already be cleared; the re-execution must revert.
+        try IAccessManager(manager).execute(address(this), reentrantData) {
+            // If we get here, CEI was violated — mark as erroneously reentered
+            reentered = true;
+        } catch {
+            // Expected: revert because schedule is cleared
+        }
+    }
+}
+
 contract AccessManagerTester is Test {
     uint64 constant ADMIN_ROLE = 0;
     uint64 constant PUBLIC_ROLE = type(uint64).max;
@@ -86,7 +116,8 @@ contract AccessManagerTester is Test {
         vm.prank(admin);
         mgr.setGrantDelay(MINTER_ROLE, 1 days);
 
-        // Wait for grant delay change to take effect (1 week per EXPIRATION constant).
+        // Wait for grant delay change to take effect (MIN_SETBACK = 5 days for increases;
+        // we warp 1 week to comfortably clear the setback).
         vm.warp(block.timestamp + 1 weeks);
 
         vm.prank(admin);
@@ -498,5 +529,85 @@ contract AccessManagerTester is Test {
         bytes memory data = abi.encodeCall(CallSink.alwaysRevertsEmpty, ());
         vm.expectRevert(abi.encodeWithSelector(IAccessManager.AccessManagerTargetCallFailed.selector, address(sink)));
         mgr.execute(address(sink), data);
+    }
+
+    /// @notice T-4: CEI ordering — a reentrant target that tries to re-call execute() with
+    ///         the same operationId cannot double-execute because the schedule is cleared before
+    ///         the external call.
+    function test_ReentrantExecuteCannotDoubleExecute() public {
+        ReentrantTarget rt = new ReentrantTarget();
+        bytes4 sel = rt.reentrantFn.selector;
+        bytes4[] memory selectors = new bytes4[](1);
+        selectors[0] = sel;
+
+        vm.prank(admin);
+        mgr.setTargetFunctionRole(address(rt), selectors, MINTER_ROLE);
+        vm.prank(admin);
+        mgr.grantRole(MINTER_ROLE, alice, uint32(1 days));
+
+        bytes memory data = abi.encodeCall(ReentrantTarget.reentrantFn, ());
+
+        // Configure the reentrant target with the manager, data, and caller
+        rt.configure(address(mgr), data, alice);
+
+        // Schedule
+        vm.prank(alice);
+        (bytes32 opId,) = mgr.schedule(address(rt), data, uint48(block.timestamp + 1 days));
+
+        vm.warp(block.timestamp + 1 days);
+
+        // Execute: the reentrant attempt inside reentrantFn() must fail silently
+        vm.prank(alice);
+        mgr.execute(address(rt), data);
+
+        // The schedule must be cleared (consumed, not double-executed)
+        assertEq(mgr.getSchedule(opId), 0);
+
+        // The reentrant call must have been rejected (reentered == false)
+        assertFalse(rt.reentered(), "CEI violated: reentrant execute succeeded");
+    }
+
+    /// @notice M-5 regression: setGrantDelay with no change is a no-op and emits no event.
+    function test_SetGrantDelaySameValueIsNoop() public {
+        vm.prank(admin);
+        mgr.setGrantDelay(MINTER_ROLE, 1 days);
+        vm.warp(block.timestamp + 1 weeks); // let delay take effect
+        assertEq(mgr.getRoleGrantDelay(MINTER_ROLE), 1 days);
+
+        // Set same delay — should be a no-op
+        vm.recordLogs();
+        vm.prank(admin);
+        mgr.setGrantDelay(MINTER_ROLE, 1 days);
+
+        // No RoleGrantDelayChanged event should be emitted
+        bytes32 sig = keccak256("RoleGrantDelayChanged(uint64,uint32,uint48)");
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        bool found = false;
+        for (uint256 i; i < logs.length; i++) {
+            if (logs[i].topics[0] == sig) found = true;
+        }
+        assertFalse(found, "RoleGrantDelayChanged should not be emitted for no-op");
+    }
+
+    /// @notice TimelockLib.reschedule M-3 regression: reschedule with 0 must revert.
+    function test_TimelockRescheduleZeroIsRejected() public {
+        // Create a scheduled operation
+        CallSink sink = new CallSink();
+        bytes4 sel = sink.ping.selector;
+        bytes4[] memory selectors = new bytes4[](1);
+        selectors[0] = sel;
+
+        vm.prank(admin);
+        mgr.setTargetFunctionRole(address(sink), selectors, MINTER_ROLE);
+        vm.prank(admin);
+        mgr.grantRole(MINTER_ROLE, alice, uint32(1 days));
+
+        bytes memory data = abi.encodeCall(CallSink.ping, (1));
+        vm.prank(alice);
+        mgr.schedule(address(sink), data, uint48(block.timestamp + 1 days));
+
+        // AccessManager does not expose reschedule; TimelockLib tested directly in TimelockLibTest
+        // This test documents the gap — the unit coverage lives in TimelockLibTest.t.sol.
+        // See test_RescheduleZeroReadyAtReverts in TimelockLibTest.
     }
 }

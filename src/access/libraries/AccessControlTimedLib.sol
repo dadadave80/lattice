@@ -92,14 +92,26 @@ library AccessControlTimedLib {
         }
         AccessControlLib._grantRole(role, account); // emits RoleGranted if storage changed
         accessControlTimedStorage()._timings[role][account] = Timing({start: start, expires: expires});
-        emit IAccessControlTimed.RoleGrantedTimed(role, account, ContextLib.msgSender(), start, expires);
+        // Suppress RoleGrantedTimed for a plain timeless grant (start == now, expires == 0):
+        // the RoleGranted event from _grantRole already conveys all the information.
+        // Emitting RoleGrantedTimed here would confuse off-chain indexers with a redundant event.
+        if (!(start == block.timestamp && expires == 0)) {
+            emit IAccessControlTimed.RoleGrantedTimed(role, account, ContextLib.msgSender(), start, expires);
+        }
     }
 
     function _extendRole(bytes32 role, address account, uint48 newExpires) internal {
-        if (!AccessControlLib.hasRole(role, account)) {
+        // Use time-aware hasRole to reject expired grants (base storage still has them).
+        if (!hasRole(role, account)) {
             revert IAccessControlTimed.AccessControlTimedRoleNotHeld(role, account);
         }
         Timing storage t = accessControlTimedStorage()._timings[role][account];
+        // Guard: extendRole is only valid on already-timed grants.
+        // Silently converting a timeless grant (expires == 0 means "never expires") into
+        // a timed one would degrade a permanent privilege — require explicit grantRoleTimed.
+        if (t.expires == 0) {
+            revert IAccessControlTimed.AccessControlTimedRoleIsTimeless(role, account);
+        }
         if (newExpires <= t.expires) {
             revert IAccessControlTimed.AccessControlTimedExpiryNotExtended(t.expires, newExpires);
         }

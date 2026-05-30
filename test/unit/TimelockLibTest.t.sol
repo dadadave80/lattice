@@ -220,4 +220,30 @@ contract TimelockLibTest is Test {
         assertTrue(h.isReadySingle());
         h.consumeSingle();
     }
+
+    /// @notice M-3 regression: reschedule with newReadyAt == 0 must revert.
+    function test_RescheduleZeroReadyAtReverts_Single() public {
+        h.scheduleSingle(100);
+        vm.expectRevert(TimelockLib.TimelockNotPending.selector);
+        h.rescheduleSingle(0);
+    }
+
+    function test_RescheduleZeroReadyAtReverts_Multi() public {
+        bytes32 op = keccak256("op");
+        h.scheduleMulti(op, 100);
+        vm.expectRevert(TimelockLib.TimelockNotPending.selector);
+        h.rescheduleMulti(op, 0);
+    }
+
+    /// @notice M-3: reschedule on a non-pending operation must revert (both shapes).
+    function test_RescheduleNotPendingReverts_Single() public {
+        vm.expectRevert(TimelockLib.TimelockNotPending.selector);
+        h.rescheduleSingle(uint48(block.timestamp + 100));
+    }
+
+    function test_RescheduleNotPendingReverts_Multi() public {
+        bytes32 op = keccak256("op2");
+        vm.expectRevert(TimelockLib.TimelockNotPending.selector);
+        h.rescheduleMulti(op, uint48(block.timestamp + 100));
+    }
 }

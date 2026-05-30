@@ -15,6 +15,7 @@ interface IAccessControlDefaultAdminRules is IAccessControl {
 
     error AccessControlDefaultAdminRulesUseAdminTransfer();
     error AccessControlDefaultAdminRulesUnauthorizedAccept();
+    error AccessControlDefaultAdminRulesInvalidNewAdmin(address newAdmin);
 
     function defaultAdmin() external view returns (address);
     function pendingDefaultAdmin() external view returns (address newAdmin, uint48 readyAt);

@@ -3,6 +3,7 @@ pragma solidity ^0.8.30;
 
 import {ContextLib} from "@diamond/libraries/ContextLib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
+import {IAccessManaged} from "@lattice/interfaces/IAccessManaged.sol";
 import {IAccessManager} from "@lattice/interfaces/IAccessManager.sol";
 import {EnumerableSet} from "@lattice/utils/libraries/EnumerableSet.sol";
 import {TimelockLib} from "@lattice/utils/libraries/TimelockLib.sol";
@@ -170,6 +171,13 @@ library AccessManagerLib {
         return (false, executionDelay);
     }
 
+    /// @notice Returns the timestamp at which `operationId` becomes (or became) executable.
+    /// @dev Returns 0 in three distinct cases:
+    ///      1. The operation was never scheduled (`getNonce(operationId) == 0`).
+    ///      2. The operation was consumed (executed successfully).
+    ///      3. The operation was scheduled but has since expired (`readyAt + EXPIRATION < now`).
+    ///      Callers that need to distinguish case 1 from cases 2/3 should additionally call
+    ///      `getNonce(operationId)`: a non-zero nonce means the operation existed at some point.
     function getSchedule(bytes32 operationId) internal view returns (uint48) {
         uint48 r = accessManagerStorage()._operationQueue.readyAt(operationId);
         if (r != 0 && block.timestamp > uint256(r) + EXPIRATION) return 0;
@@ -239,12 +247,9 @@ library AccessManagerLib {
             r.grantDelayEffectAt = 0;
         }
         uint32 currentDelay = r.grantDelay;
+        if (newDelay == currentDelay) return; // No-op: avoid unnecessary storage writes.
         uint48 effectAt;
-        if (newDelay == currentDelay) {
-            effectAt = uint48(block.timestamp);
-            r.pendingGrantDelay = newDelay;
-            r.grantDelayEffectAt = effectAt;
-        } else if (newDelay < currentDelay) {
+        if (newDelay < currentDelay) {
             uint32 diff = currentDelay - newDelay;
             uint32 wait = diff > MIN_SETBACK ? diff : MIN_SETBACK;
             r.pendingGrantDelay = newDelay;
@@ -349,7 +354,21 @@ library AccessManagerLib {
 
         emit IAccessManager.OperationExecuted(operationId, nonce);
 
+        // Set the consuming flag on AccessManaged targets so restrictedCheck() passes.
+        // We use try/catch: if the target does not implement IAccessManaged, the call
+        // reverts and we skip silently (non-AccessManaged targets are unaffected).
+        bool isAccessManaged = false;
+        try IAccessManaged(target).setConsumingScheduledOp(true) {
+            isAccessManaged = true;
+        } catch {}
+
         (bool ok, bytes memory ret) = target.call{value: msg.value}(data);
+
+        // Always clear the flag, even if the call failed.
+        if (isAccessManaged) {
+            try IAccessManaged(target).setConsumingScheduledOp(false) {} catch {}
+        }
+
         if (!ok) {
             // Bubble up the original revert reason if the target provided one;
             // else fall back to our typed error so callers can decode it.

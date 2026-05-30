@@ -18,4 +18,8 @@ contract AccessManaged is IAccessManaged {
     function isConsumingScheduledOp() external view virtual override returns (bytes4) {
         return AccessManagedLib.isConsumingScheduledOp();
     }
+
+    function setConsumingScheduledOp(bool consuming) external virtual override {
+        AccessManagedLib.setConsumingScheduledOp(consuming);
+    }
 }
