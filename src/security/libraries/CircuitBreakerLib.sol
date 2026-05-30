@@ -83,9 +83,10 @@ library CircuitBreakerLib {
     /// @notice Configures or updates the threshold and rolling window for `key`.
     /// @dev Requires DEFAULT_ADMIN_ROLE. Resets cumulative and tripped state on reconfiguration.
     ///      Emits `CircuitBreakerThresholdSet`.
+    ///      Reverts `CircuitBreakerInvalidThreshold` if `threshold == 0`.
     ///      Reverts `CircuitBreakerInvalidWindow` if `windowSeconds == 0`.
     /// @param key           The circuit breaker key to configure.
-    /// @param threshold     The trip threshold value.
+    /// @param threshold     The trip threshold value (must be > 0).
     /// @param windowSeconds The rolling window duration in seconds (must be > 0).
     function setThreshold(bytes32 key, uint256 threshold, uint48 windowSeconds) internal {
         AccessControlLib.checkRole(0x00);
@@ -151,6 +152,7 @@ library CircuitBreakerLib {
 
     /// @notice Internal — sets threshold + window, resets cumulative and tripped state.
     function _setThreshold(bytes32 key, uint256 threshold, uint48 windowSeconds) internal {
+        if (threshold == 0) revert ICircuitBreaker.CircuitBreakerInvalidThreshold();
         if (windowSeconds == 0) revert ICircuitBreaker.CircuitBreakerInvalidWindow();
         CircuitBreakerBucket storage b = circuitBreakerStorage()._buckets[key];
         b.threshold = threshold;

@@ -72,8 +72,14 @@ contract CircuitBreakerTester is Test {
     }
 
     // -------------------------------------------------------------------------
-    // setThreshold — invalid window
+    // setThreshold — invalid threshold / invalid window
     // -------------------------------------------------------------------------
+
+    function test_SetThresholdZeroReverts() public {
+        vm.prank(admin);
+        vm.expectRevert(abi.encodeWithSelector(ICircuitBreaker.CircuitBreakerInvalidThreshold.selector));
+        mock.setThreshold(KEY_A, 0, 3600);
+    }
 
     function test_SetThresholdWithZeroWindowReverts() public {
         vm.prank(admin);

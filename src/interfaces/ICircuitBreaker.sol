@@ -40,6 +40,9 @@ interface ICircuitBreaker {
     /// @dev Thrown when `windowSeconds == 0` is passed to `setThreshold`.
     error CircuitBreakerInvalidWindow();
 
+    /// @dev Thrown when `threshold == 0` is passed to `setThreshold`.
+    error CircuitBreakerInvalidThreshold();
+
     // -------------------------------------------------------------------------
     // View functions
     // -------------------------------------------------------------------------
@@ -67,9 +70,10 @@ interface ICircuitBreaker {
 
     /// @notice Configures or updates the threshold and rolling window for `key`.
     /// @dev Requires DEFAULT_ADMIN_ROLE. Resets cumulative and tripped state.
+    ///      Reverts with `CircuitBreakerInvalidThreshold` if `threshold == 0`.
     ///      Reverts with `CircuitBreakerInvalidWindow` if `windowSeconds == 0`.
     /// @param key           The circuit breaker key to configure.
-    /// @param threshold     The trip threshold value.
+    /// @param threshold     The trip threshold value (must be > 0).
     /// @param windowSeconds The rolling window duration in seconds (must be > 0).
     function setThreshold(bytes32 key, uint256 threshold, uint48 windowSeconds) external;
 
