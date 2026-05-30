@@ -9,7 +9,7 @@ import {IAccessControl} from "@lattice/interfaces/IAccessControl.sol";
 import {ICircuitBreaker} from "@lattice/interfaces/ICircuitBreaker.sol";
 import {CircuitBreaker} from "@lattice/security/CircuitBreaker.sol";
 import {CircuitBreakerLib} from "@lattice/security/libraries/CircuitBreakerLib.sol";
-import {Test} from "forge-std/Test.sol";
+import {Test, Vm} from "forge-std/Test.sol";
 
 /// @title MockCircuitBreakerContract
 /// @notice Test double combining CircuitBreaker + AccessControl.
@@ -294,6 +294,100 @@ contract CircuitBreakerTester is Test {
 
         assertTrue(mock.isTripped(KEY_A));
         assertFalse(mock.isTripped(KEY_B)); // KEY_B unaffected
+    }
+
+    // -------------------------------------------------------------------------
+    // recordObservation — exact threshold boundary
+    // -------------------------------------------------------------------------
+
+    function test_RecordObservationAtExactThresholdTrips() public {
+        // cumulative == threshold should trip (>= check).
+        vm.prank(admin);
+        mock.setThreshold(KEY_A, 100, 3600);
+
+        vm.prank(admin);
+        mock.recordObservation(KEY_A, 99); // one below — must not trip
+        assertFalse(mock.isTripped(KEY_A));
+
+        vm.prank(admin);
+        mock.recordObservation(KEY_A, 1); // cumulative == threshold → trips
+        assertTrue(mock.isTripped(KEY_A));
+    }
+
+    function test_RecordObservationOneBelowThresholdDoesNotTrip() public {
+        vm.prank(admin);
+        mock.setThreshold(KEY_A, 100, 3600);
+
+        vm.prank(admin);
+        mock.recordObservation(KEY_A, 99);
+        assertFalse(mock.isTripped(KEY_A));
+
+        (uint256 cum,) = mock.getCumulative(KEY_A);
+        assertEq(cum, 99);
+    }
+
+    // -------------------------------------------------------------------------
+    // recordObservation — already-tripped circuit reverts
+    // -------------------------------------------------------------------------
+
+    function test_RecordObservationOnTrippedCircuitReverts() public {
+        vm.prank(admin);
+        mock.setThreshold(KEY_A, 10, 3600);
+        vm.prank(admin);
+        mock.recordObservation(KEY_A, 10); // trip
+        assertTrue(mock.isTripped(KEY_A));
+
+        // Subsequent observation must revert, not silently accumulate.
+        vm.prank(admin);
+        vm.expectRevert(abi.encodeWithSelector(ICircuitBreaker.CircuitBreakerTrippedError.selector, KEY_A));
+        mock.recordObservation(KEY_A, 1);
+    }
+
+    function test_RecordObservationAfterResetSucceeds() public {
+        vm.prank(admin);
+        mock.setThreshold(KEY_A, 10, 3600);
+        vm.prank(admin);
+        mock.recordObservation(KEY_A, 10); // trip
+
+        vm.prank(admin);
+        mock.reset(KEY_A); // clear
+
+        // Must succeed after reset.
+        vm.prank(admin);
+        mock.recordObservation(KEY_A, 5);
+        assertFalse(mock.isTripped(KEY_A));
+    }
+
+    // -------------------------------------------------------------------------
+    // recordObservation — window rollover edge
+    // -------------------------------------------------------------------------
+
+    function test_WindowRolloverAtExactBoundaryResetsCumulative() public {
+        vm.prank(admin);
+        mock.setThreshold(KEY_A, 1000, 3600);
+
+        vm.prank(admin);
+        mock.recordObservation(KEY_A, 500);
+
+        // Warp to exactly the window boundary (windowStart + windowSeconds).
+        vm.warp(block.timestamp + 3600);
+
+        vm.prank(admin);
+        mock.recordObservation(KEY_A, 1);
+
+        // Cumulative should be the fresh value only (window rolled).
+        (uint256 cum,) = mock.getCumulative(KEY_A);
+        assertEq(cum, 1);
+    }
+
+    // -------------------------------------------------------------------------
+    // reset — unconfigured key
+    // -------------------------------------------------------------------------
+
+    function test_ResetOnUnconfiguredKeyReverts() public {
+        vm.prank(admin);
+        vm.expectRevert(abi.encodeWithSelector(ICircuitBreaker.CircuitBreakerNotConfigured.selector, KEY_A));
+        mock.reset(KEY_A);
     }
 
     // -------------------------------------------------------------------------

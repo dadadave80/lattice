@@ -82,6 +82,8 @@ interface ICircuitBreaker {
     ///      the window resets before accumulating. If the new cumulative value meets or exceeds
     ///      the threshold the circuit trips and emits `CircuitBreakerTripped`.
     ///      Reverts with `CircuitBreakerNotConfigured` if the key has not been set up.
+    ///      Reverts with `CircuitBreakerTrippedError` if the circuit is already tripped;
+    ///      call `reset()` to clear the tripped state before recording further observations.
     /// @param key   The circuit breaker key.
     /// @param value The value to add to the current window's cumulative.
     function recordObservation(bytes32 key, uint256 value) external;

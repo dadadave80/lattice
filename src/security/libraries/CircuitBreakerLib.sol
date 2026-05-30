@@ -97,6 +97,7 @@ library CircuitBreakerLib {
     /// @dev Requires DEFAULT_ADMIN_ROLE. Rolls the window if `block.timestamp >= windowStart + windowSeconds`.
     ///      Accumulates `value` and trips the breaker if cumulative >= threshold.
     ///      Reverts `CircuitBreakerNotConfigured` if threshold == 0.
+    ///      Reverts `CircuitBreakerTrippedError` if the circuit is already tripped; call `reset()` first.
     /// @param key   The circuit breaker key.
     /// @param value The value to add to the current window's cumulative.
     function recordObservation(bytes32 key, uint256 value) internal {
@@ -164,9 +165,12 @@ library CircuitBreakerLib {
     }
 
     /// @notice Internal — records observation, rolls window if needed, trips if threshold crossed.
+    /// @dev Reverts with `CircuitBreakerTrippedError` if the circuit is already tripped — callers
+    ///      must invoke `reset()` before submitting new observations after a trip.
     function _recordObservation(bytes32 key, uint256 value) internal {
         CircuitBreakerBucket storage b = circuitBreakerStorage()._buckets[key];
         if (b.threshold == 0) revert ICircuitBreaker.CircuitBreakerNotConfigured(key);
+        if (b.tripped) revert ICircuitBreaker.CircuitBreakerTrippedError(key);
 
         // Roll the window if the current window has expired.
         if (block.timestamp >= uint256(b.windowStart) + uint256(b.windowSeconds)) {
@@ -176,7 +180,7 @@ library CircuitBreakerLib {
 
         b.cumulative += value;
 
-        if (!b.tripped && b.cumulative >= b.threshold) {
+        if (b.cumulative >= b.threshold) {
             b.tripped = true;
             emit ICircuitBreaker.CircuitBreakerTripped(key, b.cumulative, b.threshold);
         }
@@ -185,6 +189,7 @@ library CircuitBreakerLib {
     /// @notice Internal — clears tripped flag and cumulative, emits reset event.
     function _reset(bytes32 key) internal {
         CircuitBreakerBucket storage b = circuitBreakerStorage()._buckets[key];
+        if (b.windowSeconds == 0) revert ICircuitBreaker.CircuitBreakerNotConfigured(key);
         b.tripped = false;
         b.cumulative = 0;
         emit ICircuitBreaker.CircuitBreakerReset(key);
