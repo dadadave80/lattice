@@ -8,6 +8,7 @@ import {IAccessControl} from "@lattice/interfaces/IAccessControl.sol";
 import {IAccessControlTimed} from "@lattice/interfaces/IAccessControlTimed.sol";
 
 /// @title AccessControlTimed
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/access/AccessControl.sol)
 /// @notice Diamond facet exposing AccessControl + per-grant (start, expires) windows.
 contract AccessControlTimed is AccessControl, IAccessControlTimed {
     /// @inheritdoc IAccessControlTimed

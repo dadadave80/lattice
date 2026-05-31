@@ -5,6 +5,7 @@ import {IRateLimiter} from "@lattice/interfaces/IRateLimiter.sol";
 import {RateLimiterLib} from "@lattice/security/libraries/RateLimiterLib.sol";
 
 /// @title RateLimiter
+/// @author Modified from Chainlink CCIP (https://github.com/smartcontractkit/ccip/blob/ccip-develop/contracts/src/v0.8/ccip/libraries/RateLimiter.sol)
 /// @notice Thin Diamond facet that exposes token-bucket rate limiting keyed by bytes32.
 /// @dev All logic lives in {RateLimiterLib}. This contract is stateless and forwards
 ///      every call to the library. Inherit this in your Diamond facet to add rate limiting.

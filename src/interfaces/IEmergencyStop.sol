@@ -2,6 +2,7 @@
 pragma solidity >=0.8.4;
 
 /// @title IEmergencyStop
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/utils/Pausable.sol)
 /// @notice Interface for the EmergencyStop module — a multi-guardian emergency pause where
 ///         any guardian can trip the stop, but only an admin can resume operations.
 interface IEmergencyStop {

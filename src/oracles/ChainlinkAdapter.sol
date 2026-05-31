@@ -6,6 +6,7 @@ import {ChainlinkAdapterLib} from "@lattice/oracles/libraries/ChainlinkAdapterLi
 
 /// @title ChainlinkAdapter
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from Chainlink (https://github.com/smartcontractkit/chainlink/blob/develop/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol)
 /// @notice Diamond facet that exposes Chainlink AggregatorV3 price feeds with
 ///         per-feed staleness configuration and WAD-normalised answers.
 /// @dev Stateless delegator — all logic and storage live in ChainlinkAdapterLib.

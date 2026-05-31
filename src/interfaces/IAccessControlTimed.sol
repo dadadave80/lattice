@@ -4,6 +4,7 @@ pragma solidity >=0.8.4;
 import {IAccessControl} from "@lattice/interfaces/IAccessControl.sol";
 
 /// @title IAccessControlTimed
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/access/IAccessControl.sol)
 /// @notice Extends IAccessControl with per-grant (start, expires) windows.
 ///         `hasRole` returns false outside the window.
 interface IAccessControlTimed is IAccessControl {

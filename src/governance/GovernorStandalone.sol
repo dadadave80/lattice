@@ -9,6 +9,7 @@ import {NoncesLib} from "@lattice/utils/libraries/NoncesLib.sol";
 
 /// @title GovernorStandalone
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/governance/Governor.sol)
 /// @notice Non-Diamond deployable Governor. Runs the full initialization dance in
 ///         the constructor and accepts ETH for value-bearing proposal execution.
 /// @dev Initializes EIP-712 (for castVoteBySig), Nonces (for signature replay-protection),

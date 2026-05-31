@@ -2,6 +2,7 @@
 pragma solidity >=0.8.4;
 
 /// @title IRateLimiter
+/// @author Modified from Chainlink CCIP (https://github.com/smartcontractkit/ccip/blob/ccip-develop/contracts/src/v0.8/ccip/libraries/RateLimiter.sol)
 /// @notice Interface for the RateLimiter module — a token-bucket rate limiter keyed by `bytes32`.
 ///         Each key has a `capacity` (max bucket size) and `refillRate` (tokens per second).
 interface IRateLimiter {

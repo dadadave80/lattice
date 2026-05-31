@@ -9,6 +9,7 @@ import {TimelockController} from "@lattice/governance/TimelockController.sol";
 import {TimelockControllerLib} from "@lattice/governance/libraries/TimelockControllerLib.sol";
 
 /// @title TimelockControllerStandalone
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/governance/TimelockController.sol)
 /// @notice Non-Diamond deployable variant. Inherits all logic from {TimelockController} and
 ///         {AccessControl}; runs the pre/init/post initializer dance in the constructor.
 /// @dev Consumers who need a Diamond-proxy deployment should use {TimelockController} as a

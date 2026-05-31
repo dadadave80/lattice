@@ -6,6 +6,7 @@ import {AccessManager} from "@lattice/access/AccessManager.sol";
 import {AccessManagerLib} from "@lattice/access/libraries/AccessManagerLib.sol";
 
 /// @title AccessManagerStandalone
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/access/manager/AccessManager.sol)
 /// @notice Non-Diamond deployable. Inherits all logic from `AccessManager`;
 ///         adds a constructor-based initializer for direct deployment.
 contract AccessManagerStandalone is AccessManager {

@@ -2,6 +2,7 @@
 pragma solidity >=0.8.4;
 
 /// @title IChainlinkAdapter
+/// @author Modified from Chainlink (https://github.com/smartcontractkit/chainlink/blob/develop/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol)
 /// @notice Interface for the ChainlinkAdapter Diamond facet.
 /// @dev Price feeds are identified by an arbitrary `bytes32` key chosen by the
 ///      administrator.  All answers returned by `latestAnswer` are normalised to

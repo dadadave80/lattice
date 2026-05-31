@@ -37,6 +37,7 @@ struct RateLimiterStorage {
 
 /// @title RateLimiter Library
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from Chainlink CCIP (https://github.com/smartcontractkit/ccip/blob/ccip-develop/contracts/src/v0.8/ccip/libraries/RateLimiter.sol)
 /// @notice Library implementing a token-bucket rate limiter for Diamond facets.
 /// @dev Each key has an independent bucket with a `capacity` (max tokens) and
 ///      `refillRate` (tokens per second). Tokens are lazily refilled on each

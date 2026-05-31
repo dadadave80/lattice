@@ -34,6 +34,7 @@ struct EmergencyStopStorage {
 
 /// @title EmergencyStop Library
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/utils/Pausable.sol)
 /// @notice Library implementing a multi-guardian emergency stop for Diamond facets.
 /// @dev Any address holding the `EMERGENCY_GUARDIAN_ROLE` can activate the stop.
 ///      Only an address holding `DEFAULT_ADMIN_ROLE` can resume operations.

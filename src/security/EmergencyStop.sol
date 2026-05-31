@@ -5,6 +5,7 @@ import {IEmergencyStop} from "@lattice/interfaces/IEmergencyStop.sol";
 import {EmergencyStopLib} from "@lattice/security/libraries/EmergencyStopLib.sol";
 
 /// @title EmergencyStop
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/utils/Pausable.sol)
 /// @notice Thin Diamond facet that exposes multi-guardian emergency stop functionality.
 /// @dev All logic lives in {EmergencyStopLib}. This contract is stateless and forwards
 ///      every call to the library. Inherit this in your Diamond facet to add emergency-stop.

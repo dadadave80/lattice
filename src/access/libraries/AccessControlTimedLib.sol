@@ -29,6 +29,7 @@ struct AccessControlTimedStorage {
 }
 
 /// @title AccessControlTimedLib
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/access/AccessControl.sol)
 /// @notice Extension of AccessControlLib: per-grant (start, expires) windows.
 library AccessControlTimedLib {
     function accessControlTimedStorage() internal pure returns (AccessControlTimedStorage storage $) {

@@ -7,6 +7,7 @@ import {VestingWallet} from "@lattice/utils/VestingWallet.sol";
 import {VestingWalletLib} from "@lattice/utils/libraries/VestingWalletLib.sol";
 
 /// @title VestingWalletStandalone
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/finance/VestingWallet.sol)
 /// @notice A non-Diamond deployable VestingWallet that can be used as a standalone contract.
 /// @dev Combines VestingWallet functionality with direct ownership via OwnableLib.
 /// The beneficiary is the Ownable owner; to change the beneficiary transfer ownership.
