@@ -125,7 +125,7 @@ library StrategyManagerLib {
     function totalAllocated() internal view returns (uint256 total) {
         StrategyManagerStorage storage $ = strategyManagerStorage();
         uint256 len = $._strategies.length;
-        for (uint256 i; i < len; i++) {
+        for (uint256 i; i < len; ++i) {
             total += IStrategy($._strategies[i]).totalAssetsManaged();
         }
     }
@@ -287,7 +287,7 @@ library StrategyManagerLib {
         uint256 len = $._strategies.length;
 
         // Pass 1: withdraw excess from over-allocated strategies.
-        for (uint256 i; i < len; i++) {
+        for (uint256 i; i < len; ++i) {
             address strategy = $._strategies[i];
             uint256 current = IStrategy(strategy).totalAssetsManaged();
             uint256 target = (vaultTotal * $._targets[strategy]) / 10_000;
@@ -302,7 +302,7 @@ library StrategyManagerLib {
         }
 
         // Pass 2: allocate deficit to under-allocated strategies.
-        for (uint256 i; i < len; i++) {
+        for (uint256 i; i < len; ++i) {
             address strategy = $._strategies[i];
             uint256 current = IStrategy(strategy).totalAssetsManaged();
             uint256 target = (vaultTotal * $._targets[strategy]) / 10_000;

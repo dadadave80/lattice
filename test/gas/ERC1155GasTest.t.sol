@@ -59,7 +59,7 @@ contract ERC1155GasTest is Test {
     function test_Gas_MintBatch() public {
         uint256[] memory ids = new uint256[](5);
         uint256[] memory amounts = new uint256[](5);
-        for (uint256 i; i < 5; i++) {
+        for (uint256 i; i < 5; ++i) {
             ids[i] = i + 1;
             amounts[i] = 100e18;
         }
@@ -75,7 +75,7 @@ contract ERC1155GasTest is Test {
     function test_Gas_SafeBatchTransferFrom() public {
         uint256[] memory ids = new uint256[](5);
         uint256[] memory amounts = new uint256[](5);
-        for (uint256 i; i < 5; i++) {
+        for (uint256 i; i < 5; ++i) {
             ids[i] = i + 1;
             amounts[i] = 100e18;
         }

@@ -211,7 +211,7 @@ contract CheckpointsTest is Test {
 
     function test_UpperLookupRecent_ManyCheckpointsMatchesUpperLookup() public {
         // Push enough to exercise the window-doubling path (> 5 checkpoints)
-        for (uint48 i = 1; i <= 20; i++) {
+        for (uint48 i = 1; i <= 20; ++i) {
             harness.push(i * 10, uint208(i * 100));
         }
 

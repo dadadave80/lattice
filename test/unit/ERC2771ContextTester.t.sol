@@ -216,7 +216,7 @@ contract ERC2771ContextTester is Test {
         Vm.Log[] memory logs = vm.getRecordedLogs();
         bytes32 topic = keccak256("TrustedForwarderUpdated(address)");
         bool found;
-        for (uint256 i; i < logs.length; i++) {
+        for (uint256 i; i < logs.length; ++i) {
             if (logs[i].topics.length > 0 && logs[i].topics[0] == topic) {
                 found = true;
                 break;

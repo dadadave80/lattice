@@ -111,7 +111,7 @@ contract EmergencyStopTester is Test {
 
         bool eventFound = false;
         bytes32 guardianAddedTopic = keccak256("GuardianAdded(address)");
-        for (uint256 i; i < logs.length; i++) {
+        for (uint256 i; i < logs.length; ++i) {
             if (logs[i].topics[0] == guardianAddedTopic) {
                 eventFound = true;
                 break;
@@ -130,7 +130,7 @@ contract EmergencyStopTester is Test {
 
         bool eventFound = false;
         bytes32 guardianRemovedTopic = keccak256("GuardianRemoved(address)");
-        for (uint256 i; i < logs.length; i++) {
+        for (uint256 i; i < logs.length; ++i) {
             if (logs[i].topics[0] == guardianRemovedTopic) {
                 eventFound = true;
                 break;

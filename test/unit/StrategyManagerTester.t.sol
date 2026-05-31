@@ -686,7 +686,7 @@ contract StrategyManagerTester is Test {
         mgr.setVault(address(mockVault));
 
         // Fill up to MAX_STRATEGIES (20) each with 0 bps (no allocation needed).
-        for (uint256 i = 0; i < 20; i++) {
+        for (uint256 i = 0; i < 20; ++i) {
             // Deploy a fresh mock strategy for each slot.
             MockStrategy s = new MockStrategy(token);
             vm.prank(admin);

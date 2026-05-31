@@ -131,8 +131,8 @@ contract StorageSlotVerificationTest is Test {
             ACCESS_MANAGER_STORAGE_SLOT,
             ACCESS_MANAGED_STORAGE_SLOT
         ];
-        for (uint256 i; i < slots.length; i++) {
-            for (uint256 j = i + 1; j < slots.length; j++) {
+        for (uint256 i; i < slots.length; ++i) {
+            for (uint256 j = i + 1; j < slots.length; ++j) {
                 assertTrue(slots[i] != slots[j], "Duplicate ERC-7201 storage slot detected");
             }
         }

@@ -223,7 +223,7 @@ contract AccessManagerTester is Test {
         bytes32 sig = keccak256("RoleLabel(uint64,string)");
         bool found = false;
         Vm.Log[] memory logs = vm.getRecordedLogs();
-        for (uint256 i; i < logs.length; i++) {
+        for (uint256 i; i < logs.length; ++i) {
             if (logs[i].topics[0] == sig) found = true;
         }
         assertTrue(found);
@@ -583,7 +583,7 @@ contract AccessManagerTester is Test {
         bytes32 sig = keccak256("RoleGrantDelayChanged(uint64,uint32,uint48)");
         Vm.Log[] memory logs = vm.getRecordedLogs();
         bool found = false;
-        for (uint256 i; i < logs.length; i++) {
+        for (uint256 i; i < logs.length; ++i) {
             if (logs[i].topics[0] == sig) found = true;
         }
         assertFalse(found, "RoleGrantDelayChanged should not be emitted for no-op");

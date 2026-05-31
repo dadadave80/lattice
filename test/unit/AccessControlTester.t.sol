@@ -170,7 +170,7 @@ contract AccessControlTester is Test {
 
         // Verify no RoleGranted event was emitted
         bool eventFound = false;
-        for (uint256 i; i < logs.length; i++) {
+        for (uint256 i; i < logs.length; ++i) {
             if (logs[i].topics[0] == keccak256("RoleGranted(bytes32,address,address)")) {
                 eventFound = true;
                 break;
@@ -243,7 +243,7 @@ contract AccessControlTester is Test {
 
         // Verify no RoleRevoked event was emitted
         bool eventFound = false;
-        for (uint256 i; i < logs.length; i++) {
+        for (uint256 i; i < logs.length; ++i) {
             if (logs[i].topics[0] == keccak256("RoleRevoked(bytes32,address,address)")) {
                 eventFound = true;
                 break;
@@ -337,7 +337,7 @@ contract AccessControlTester is Test {
 
         // Verify no RoleRevoked event was emitted
         bool eventFound = false;
-        for (uint256 i; i < logs.length; i++) {
+        for (uint256 i; i < logs.length; ++i) {
             if (logs[i].topics[0] == keccak256("RoleRevoked(bytes32,address,address)")) {
                 eventFound = true;
                 break;
@@ -493,7 +493,7 @@ contract AccessControlTester is Test {
     function test_MultipleRapidGrants() public {
         bytes32 role = keccak256("TEST_ROLE");
 
-        for (uint256 i; i < 10; i++) {
+        for (uint256 i; i < 10; ++i) {
             address testAddr = address(uint160(0x100 + i));
             vm.prank(admin);
             accessControl.grantRole(role, testAddr);

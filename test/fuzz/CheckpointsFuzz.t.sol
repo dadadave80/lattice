@@ -41,18 +41,18 @@ contract CheckpointsFuzz is Test {
     ///         and `latest()` always reflects the last pushed value.
     function testFuzz_PushMonotonicTimestamps(uint48[8] memory keys, uint208[8] memory values) public {
         // Sort keys to be non-decreasing; use bound to keep them in a sane range.
-        for (uint256 i; i < 8; i++) {
+        for (uint256 i; i < 8; ++i) {
             keys[i] = uint48(bound(uint256(keys[i]), 0, type(uint48).max));
         }
         // Make keys non-decreasing.
-        for (uint256 i = 1; i < 8; i++) {
+        for (uint256 i = 1; i < 8; ++i) {
             if (keys[i] < keys[i - 1]) {
                 keys[i] = keys[i - 1];
             }
         }
 
         // Push all 8 checkpoints — none should revert.
-        for (uint256 i; i < 8; i++) {
+        for (uint256 i; i < 8; ++i) {
             harness.push(keys[i], values[i]);
         }
 
