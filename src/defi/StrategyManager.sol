@@ -5,6 +5,7 @@ import {StrategyManagerLib} from "@lattice/defi/libraries/StrategyManagerLib.sol
 import {IStrategyManager} from "@lattice/interfaces/IStrategyManager.sol";
 
 /// @title StrategyManager
+/// @author Modified from Yearn V3 (https://github.com/yearn/yearn-vaults-v3/blob/master/contracts/VaultV3.vy)
 /// @notice Diamond facet managing yield strategy allocations for a single ERC-4626 vault.
 /// @dev All logic lives in StrategyManagerLib. This contract is a pure delegator.
 ///

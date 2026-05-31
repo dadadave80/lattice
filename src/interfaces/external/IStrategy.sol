@@ -2,6 +2,7 @@
 pragma solidity >=0.8.4;
 
 /// @title IStrategy
+/// @author Modified from Yearn V3 (https://github.com/yearn/tokenized-strategy/blob/master/src/interfaces/ITokenizedStrategy.sol)
 /// @notice Minimal interface for an external yield strategy managed by a StrategyManager.
 /// @dev Strategies are trusted external contracts that accept asset deposits and report
 ///      their current managed balance. The vault PUSHES assets to a strategy via a direct

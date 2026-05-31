@@ -45,6 +45,7 @@ struct StrategyManagerStorage {
 
 /// @title StrategyManagerLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from Yearn V3 (https://github.com/yearn/yearn-vaults-v3/blob/master/contracts/VaultV3.vy)
 /// @notice Library implementing yield strategy management for a single ERC-4626 vault.
 /// @dev All logic lives here; the StrategyManager facet is a pure delegator.
 ///
