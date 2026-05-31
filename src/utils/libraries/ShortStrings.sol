@@ -7,6 +7,7 @@ pragma solidity ^0.8.30;
 type ShortString is bytes32;
 
 /// @title ShortStrings
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/utils/ShortStrings.sol)
 /// @notice Pack strings of up to 31 bytes into a single bytes32 word.
 /// @dev Mirrors OpenZeppelin's ShortStrings. Strings longer than 31 bytes
 ///      fall back to a `string storage` variable held by the caller.

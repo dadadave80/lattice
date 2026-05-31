@@ -4,6 +4,7 @@ pragma solidity >=0.8.4;
 import {IERC20} from "@lattice/interfaces/IERC20.sol";
 
 /// @title IERC4626
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/interfaces/IERC4626.sol)
 /// @notice Interface for the ERC-4626 Tokenized Vault Standard.
 /// @dev Inherits IERC20 — the vault itself is an ERC-20 share token.
 ///      See https://eips.ethereum.org/EIPS/eip-4626

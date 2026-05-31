@@ -57,6 +57,7 @@ struct AccessManagerStorage {
 }
 
 /// @title AccessManagerLib
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/access/manager/AccessManager.sol)
 /// @notice Logic for IAccessManager.
 library AccessManagerLib {
     using EnumerableSet for EnumerableSet.AddressSet;

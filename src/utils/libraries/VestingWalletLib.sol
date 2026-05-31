@@ -31,6 +31,7 @@ struct VestingWalletStorage {
 
 /// @title VestingWallet Library
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/finance/VestingWallet.sol)
 /// @notice Library implementing linear vesting of ETH and ERC20 tokens to a beneficiary.
 /// @dev The beneficiary is the Ownable owner of the contract. To change the beneficiary,
 /// transfer ownership via OwnableLib.

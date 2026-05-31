@@ -5,6 +5,7 @@ import {IVestingWallet} from "@lattice/interfaces/IVestingWallet.sol";
 import {VestingWalletLib} from "@lattice/utils/libraries/VestingWalletLib.sol";
 
 /// @title VestingWallet
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/finance/VestingWallet.sol)
 /// @notice A Diamond facet that holds ETH/ERC20 tokens and releases them linearly over time
 /// to the Ownable beneficiary.
 /// @dev Stateless delegator — all logic and storage live in VestingWalletLib.

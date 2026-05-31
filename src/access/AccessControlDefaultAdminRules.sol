@@ -8,6 +8,7 @@ import {IAccessControl} from "@lattice/interfaces/IAccessControl.sol";
 import {IAccessControlDefaultAdminRules} from "@lattice/interfaces/IAccessControlDefaultAdminRules.sol";
 
 /// @title AccessControlDefaultAdminRules
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/access/extensions/AccessControlDefaultAdminRules.sol)
 /// @notice Diamond facet: timelocked DEFAULT_ADMIN_ROLE transfer + configurable delay.
 ///         REQUIRES the consumer Diamond to also include `OwnableFacet` from diamond-lib.
 contract AccessControlDefaultAdminRules is AccessControl, IAccessControlDefaultAdminRules {

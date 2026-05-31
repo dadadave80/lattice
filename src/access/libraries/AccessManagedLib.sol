@@ -24,6 +24,7 @@ struct AccessManagedStorage {
 }
 
 /// @title AccessManagedLib
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/access/manager/AccessManaged.sol)
 /// @notice Companion library for contracts gated by an external AccessManager.
 library AccessManagedLib {
     /// @notice `bytes4(keccak256("isConsumingScheduledOp()"))`.

@@ -2,6 +2,7 @@
 pragma solidity ^0.8.30;
 
 /// @title InterestRate
+/// @author Modified from Compound (https://github.com/compound-finance/compound-protocol/blob/master/contracts/JumpRateModelV2.sol)
 /// @notice Stateless utility library implementing the kinked (Aave/Compound-style) interest rate model.
 /// @dev No own ERC-7201 storage. The consumer module holds any storage that references this library.
 ///      All rates are ray-scaled (1e27 = 100%).

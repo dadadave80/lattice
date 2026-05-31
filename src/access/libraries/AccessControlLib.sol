@@ -38,7 +38,7 @@ struct AccessControlStorage {
 
 /// @title Access Control Library
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
-/// @author Modified from OpenZeppelin
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/access/AccessControl.sol)
 /// @notice A library for implementing access control in smart contracts.
 library AccessControlLib {
     //*//////////////////////////////////////////////////////////////////////////

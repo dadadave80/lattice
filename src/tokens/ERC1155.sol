@@ -5,6 +5,7 @@ import {IERC1155} from "@lattice/interfaces/IERC1155.sol";
 import {ERC1155Lib} from "@lattice/tokens/libraries/ERC1155Lib.sol";
 
 /// @title ERC1155
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC1155/ERC1155.sol)
 /// @notice Stateless Diamond facet for the ERC-1155 Multi-Token Standard.
 /// @dev All logic lives in ERC1155Lib. This contract is a pure delegator.
 contract ERC1155 is IERC1155 {

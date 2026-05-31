@@ -31,7 +31,7 @@ struct TimelockControllerStorage {
 
 /// @title TimelockController Library
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
-/// @author Modified from OpenZeppelin
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/governance/TimelockController.sol)
 /// @notice A library for scheduling and executing governance actions after a minimum delay.
 /// @dev Implements the OZ v5 TimelockController pattern as a stateless library with ERC-7201 storage.
 ///      All authentication is performed via AccessControlLib roles that are expected to reside in

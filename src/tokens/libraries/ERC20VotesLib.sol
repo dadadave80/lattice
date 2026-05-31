@@ -25,6 +25,7 @@ bytes32 constant ERC165_MAP_IERC20VOTES_SLOT = 0x290decd9548b62a8d60345a988386fc
 
 /// @title ERC20VotesLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/extensions/ERC20Votes.sol)
 /// @notice Library adding checkpoint-based voting power to ERC-20 tokens.
 /// @dev No own storage — uses ERC20 and Votes slots already present in Diamond storage.
 ///      Max token supply is capped at type(uint208).max so checkpoint values never overflow.

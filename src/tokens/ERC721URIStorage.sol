@@ -7,6 +7,7 @@ import {ERC721} from "@lattice/tokens/ERC721.sol";
 import {ERC721URIStorageLib} from "@lattice/tokens/libraries/ERC721URIStorageLib.sol";
 
 /// @title ERC721URIStorage
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC721/extensions/ERC721URIStorage.sol)
 /// @notice Stateless Diamond facet for ERC-721 with per-token URI storage (EIP-4906).
 /// @dev Inherits ERC721 and overrides tokenURI to use per-token URI storage.
 ///      Implements IERC721URIStorage for EIP-4906 events. Pure delegator pattern.

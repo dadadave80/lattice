@@ -35,6 +35,7 @@ struct ERC1155Storage {
 
 /// @title ERC1155Lib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC1155/ERC1155.sol)
 /// @notice Library implementing the ERC-1155 Multi-Token Standard.
 /// @dev Mirrors OpenZeppelin v5 ERC1155 logic. All state lives in an ERC-7201 slot.
 library ERC1155Lib {

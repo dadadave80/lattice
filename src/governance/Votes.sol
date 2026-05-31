@@ -7,6 +7,7 @@ import {IVotes} from "@lattice/interfaces/IVotes.sol";
 import {ERC20Lib} from "@lattice/tokens/libraries/ERC20Lib.sol";
 
 /// @title Votes
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/governance/utils/Votes.sol)
 /// @notice Stateless Diamond facet implementing ERC-5805 delegation + ERC-6372 clock.
 /// @dev All logic lives in VotesLib. This contract is a pure delegator.
 ///      When used standalone, voting units default to 0 (no token balance).

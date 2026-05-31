@@ -28,6 +28,7 @@ struct NoncesStorage {
 
 /// @title NoncesLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/utils/Nonces.sol)
 /// @notice Library for tracking per-account nonces used in replay-protection schemes.
 library NoncesLib {
     //*//////////////////////////////////////////////////////////////////////////

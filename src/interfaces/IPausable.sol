@@ -2,6 +2,7 @@
 pragma solidity >=0.8.4;
 
 /// @title IPausable
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/utils/Pausable.sol)
 /// @notice Interface for the Pausable module, providing pause/unpause lifecycle control.
 interface IPausable {
     /// @dev Emitted when the contract is paused by `account`.

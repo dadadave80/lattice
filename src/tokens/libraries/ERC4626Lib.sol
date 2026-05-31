@@ -38,6 +38,7 @@ enum Rounding {
 
 /// @title ERC4626Lib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/extensions/ERC4626.sol)
 /// @notice Library implementing the ERC-4626 Tokenized Vault Standard.
 /// @dev Mirrors OpenZeppelin v5 ERC4626 logic. All state lives in an ERC-7201 slot.
 ///      The vault IS an ERC-20 share token — callers must also initialize ERC20Lib.

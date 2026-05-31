@@ -4,6 +4,7 @@ pragma solidity ^0.8.30;
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 
 /// @title AccessControl
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/access/AccessControl.sol)
 /// @notice AccessControl is a contract module that allows children to implement role-based access
 /// control mechanisms. This is a lightweight version that doesn't include enumeration of role members.
 /// @dev See {AccessControlEnumerable} if you need to enumerate role members.

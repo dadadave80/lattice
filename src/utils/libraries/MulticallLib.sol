@@ -5,6 +5,7 @@ import {ContextLib} from "@diamond/libraries/ContextLib.sol";
 
 /// @title Multicall Library
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/utils/Multicall.sol)
 /// @notice Utility library for batching multiple calls to the same contract in one transaction.
 /// @dev This is a stateless utility library with no ERC-7201 storage slot or initializer.
 /// Each call is executed as a `delegatecall` from the calling contract's context, so it

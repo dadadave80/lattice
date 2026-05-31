@@ -37,6 +37,7 @@ struct VotesStorage {
 
 /// @title VotesLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/governance/utils/Votes.sol)
 /// @notice Library implementing delegation + checkpoint tracking for ERC-5805 / ERC-6372 voting.
 /// @dev Abstract building block: `_getVotingUnits` must be overridden by submodules (e.g. ERC20VotesLib).
 library VotesLib {

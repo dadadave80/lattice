@@ -37,6 +37,7 @@ struct ERC721Storage {
 
 /// @title ERC721Lib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC721/ERC721.sol)
 /// @notice Library implementing the ERC-721 Non-Fungible Token standard.
 /// @dev Mirrors OpenZeppelin v5 ERC721 logic. All state lives in an ERC-7201 slot.
 library ERC721Lib {

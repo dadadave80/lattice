@@ -34,6 +34,7 @@ struct ReentrancyGuardStorage {
 
 /// @title ReentrancyGuard Library
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/utils/ReentrancyGuard.sol)
 /// @notice Library providing reentrant call protection for Diamond facets.
 /// @dev Use `nonReentrantBefore()` at the start and `nonReentrantAfter()` at the end of
 /// guarded functions. The pair must always be called together.

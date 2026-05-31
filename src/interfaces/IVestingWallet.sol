@@ -2,6 +2,7 @@
 pragma solidity >=0.8.4;
 
 /// @title IVestingWallet
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/finance/VestingWallet.sol)
 /// @dev External interface of VestingWallet for ERC-165 detection and consumer ABI.
 interface IVestingWallet {
     /// @dev Emitted when ETH is released to the beneficiary.

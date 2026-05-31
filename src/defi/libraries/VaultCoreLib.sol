@@ -34,6 +34,7 @@ struct VaultCoreStorage {
 
 /// @title VaultCoreLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/extensions/ERC4626.sol)
 /// @notice Library extending ERC-4626 vaults with strategy hooks for yield aggregation.
 /// @dev All logic lives here; the VaultCore facet is a pure delegator. Storage is accessed
 ///      via ERC-7201 namespaced slot to avoid collisions in the Diamond proxy.

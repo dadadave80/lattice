@@ -10,6 +10,7 @@ import {EIP712Lib} from "@lattice/utils/libraries/EIP712Lib.sol";
 import {NoncesLib} from "@lattice/utils/libraries/NoncesLib.sol";
 
 /// @title ERC20Permit
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/extensions/ERC20Permit.sol)
 /// @notice Stateless Diamond facet adding ERC-2612 permit-based approvals to ERC-20.
 /// @dev Inherits ERC20, EIP712, and Nonces. Delegates permit logic to ERC20PermitLib.
 ///      EIP712 and Nonces modules must be initialized separately in the initializer.

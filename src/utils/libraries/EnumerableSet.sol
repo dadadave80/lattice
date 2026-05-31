@@ -2,6 +2,7 @@
 pragma solidity ^0.8.30;
 
 /// @title EnumerableSet
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/utils/structs/EnumerableSet.sol)
 /// @notice Generic enumerable sets with O(1) add, remove, contains, length, at.
 ///         Backed by an array plus a 1-based index map (swap-and-pop on removal).
 /// @dev Storage layout, error semantics, and method names match OpenZeppelin's

@@ -2,6 +2,7 @@
 pragma solidity >=0.8.4;
 
 /// @title IVotes
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/governance/utils/IVotes.sol)
 /// @notice Standard voting-power interface (ERC-5805 + ERC-6372).
 interface IVotes {
     //*//////////////////////////////////////////////////////////////////////////

@@ -32,6 +32,7 @@ struct ERC20Storage {
 
 /// @title ERC20Lib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/ERC20.sol)
 /// @notice Library implementing the ERC-20 token standard.
 /// @dev Mirrors OpenZeppelin v5 ERC20 logic. All state lives in an ERC-7201 slot.
 library ERC20Lib {

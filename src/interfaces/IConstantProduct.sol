@@ -2,6 +2,7 @@
 pragma solidity >=0.8.4;
 
 /// @title IConstantProduct
+/// @author Modified from Uniswap V2 (https://github.com/Uniswap/v2-core/blob/master/contracts/interfaces/IUniswapV2Pair.sol)
 /// @notice Interface for the Constant Product AMM (Uniswap V2 style) Diamond facet.
 /// @dev Manages a single x*y=k pool with two ERC-20 reserves and LP token accounting.
 interface IConstantProduct {

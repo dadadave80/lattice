@@ -2,6 +2,7 @@
 pragma solidity >=0.8.4;
 
 /// @title IAccessManaged
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/access/manager/IAccessManaged.sol)
 /// @notice Companion interface for contracts gated by an external AccessManager.
 interface IAccessManaged {
     event AuthorityUpdated(address indexed newAuthority);

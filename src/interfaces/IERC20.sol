@@ -2,6 +2,7 @@
 pragma solidity >=0.8.4;
 
 /// @title IERC20
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/IERC20.sol)
 /// @notice Interface for the ERC-20 token standard plus ERC-20 metadata extension.
 interface IERC20 {
     /// @dev Emitted when `value` tokens are moved from `from` to `to`.

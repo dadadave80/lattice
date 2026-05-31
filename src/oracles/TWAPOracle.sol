@@ -6,6 +6,7 @@ import {TWAPOracleLib} from "@lattice/oracles/libraries/TWAPOracleLib.sol";
 
 /// @title TWAPOracle
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from Uniswap V2 (https://github.com/Uniswap/v2-periphery/blob/master/contracts/examples/ExampleSlidingWindowOracle.sol)
 /// @notice Diamond facet for a Uniswap V2-style time-weighted average price oracle.
 /// @dev Stateless delegator — all logic and storage live in TWAPOracleLib.
 ///      Consumers inherit this contract and add AccessControl + an initializer.

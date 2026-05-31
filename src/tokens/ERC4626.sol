@@ -7,6 +7,7 @@ import {ERC20} from "@lattice/tokens/ERC20.sol";
 import {ERC4626Lib} from "@lattice/tokens/libraries/ERC4626Lib.sol";
 
 /// @title ERC4626
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/extensions/ERC4626.sol)
 /// @notice Stateless Diamond facet for the ERC-4626 Tokenized Vault Standard.
 /// @dev All logic lives in ERC4626Lib. This contract is a pure delegator.
 ///      Inherits ERC20 (the vault's share token) and implements IERC4626.

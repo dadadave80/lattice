@@ -22,6 +22,7 @@ struct ERC2771ContextStorage {
 }
 
 /// @title ERC2771ContextLib
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/metatx/ERC2771Context.sol)
 /// @notice Library implementing ERC-2771 meta-transaction context support.
 ///         Allows a trusted forwarder to relay calls on behalf of the original signer.
 /// @dev The `msgSender()` and `msgData()` functions are utilities for consumers who want

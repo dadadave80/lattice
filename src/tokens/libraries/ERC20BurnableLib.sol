@@ -20,6 +20,7 @@ bytes32 constant ERC165_MAP_IERC20BURNABLE_SLOT = 0x20898a14bb56c69b48cb37845539
 
 /// @title ERC20BurnableLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/extensions/ERC20Burnable.sol)
 /// @notice Library implementing ERC-20 burn extensions. Adds no own storage.
 /// @dev Known limitation (IMP-1): OZ marks `_spendAllowance` as `virtual` to allow
 ///      downstream extensions (e.g., Permit-based overrides) to intercept allowance

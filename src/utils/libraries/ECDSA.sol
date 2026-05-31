@@ -2,6 +2,7 @@
 pragma solidity ^0.8.30;
 
 /// @title ECDSA
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/utils/cryptography/ECDSA.sol)
 /// @notice Elliptic Curve Digital Signature Algorithm (ECDSA) operations.
 /// @dev Utility library for verifying and recovering signers from compact signatures.
 ///      High-S signatures are rejected to prevent signature malleability.

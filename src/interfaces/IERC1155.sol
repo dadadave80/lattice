@@ -2,6 +2,7 @@
 pragma solidity >=0.8.4;
 
 /// @title IERC1155
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC1155/IERC1155.sol)
 /// @notice Interface for the ERC-1155 Multi-Token Standard, including metadata URI extension.
 interface IERC1155 {
     /// @dev Emitted when `value` tokens of token type `id` are transferred from `from` to `to` by `operator`.

@@ -4,6 +4,7 @@ pragma solidity >=0.8.4;
 import {IAccessControl} from "@lattice/interfaces/IAccessControl.sol";
 
 /// @title IAccessControlEnumerable
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/access/extensions/IAccessControlEnumerable.sol)
 /// @notice Extends IAccessControl with role-member enumeration.
 interface IAccessControlEnumerable is IAccessControl {
     /// @notice Returns the i-th address holding `role`.

@@ -2,6 +2,7 @@
 pragma solidity >=0.8.4;
 
 /// @title IERC2981
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/interfaces/IERC2981.sol)
 /// @notice Interface for the ERC-2981 NFT Royalty Standard.
 interface IERC2981 {
     /// @dev `numerator` is greater than `denominator` (royalty exceeds 100%).

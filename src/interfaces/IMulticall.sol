@@ -2,6 +2,7 @@
 pragma solidity >=0.8.4;
 
 /// @title IMulticall
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/utils/Multicall.sol)
 /// @notice Interface for the Multicall module, enabling batched calls in a single transaction.
 interface IMulticall {
     /// @notice Batch multiple calls to this contract in a single transaction.

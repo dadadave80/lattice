@@ -2,6 +2,7 @@
 pragma solidity >=0.8.4;
 
 /// @title IAccessManager
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/access/manager/IAccessManager.sol)
 /// @notice Centralized authority: roles, hierarchies, grant/execution delays,
 ///         per-target function-selector permissions, operation scheduling.
 ///         Mirrors OpenZeppelin v5 AccessManager.

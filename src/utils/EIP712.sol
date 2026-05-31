@@ -4,6 +4,7 @@ pragma solidity ^0.8.30;
 import {EIP712Lib} from "@lattice/utils/libraries/EIP712Lib.sol";
 
 /// @title EIP712
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/utils/cryptography/EIP712.sol)
 /// @notice Thin facet that exposes the ERC-5267 `eip712Domain()` view.
 /// @dev All signing helpers (domainSeparatorV4, hashTypedDataV4) are internal
 ///      functions in EIP712Lib and consumed by other modules (e.g. Permit variants).

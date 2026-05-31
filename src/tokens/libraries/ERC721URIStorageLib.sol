@@ -29,6 +29,7 @@ struct ERC721URIStorageStorage {
 
 /// @title ERC721URIStorageLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC721/extensions/ERC721URIStorage.sol)
 /// @notice Library implementing per-token URI storage for ERC-721 tokens (EIP-4906).
 /// @dev Designed to be composed with ERC721Lib. All state lives in an ERC-7201 slot.
 library ERC721URIStorageLib {

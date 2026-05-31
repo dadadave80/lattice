@@ -5,6 +5,7 @@ import {TimelockControllerLib} from "@lattice/governance/libraries/TimelockContr
 import {ITimelockController} from "@lattice/interfaces/ITimelockController.sol";
 
 /// @title TimelockController
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/governance/TimelockController.sol)
 /// @notice A Diamond-compatible facet that schedules and executes governance actions after
 ///         a minimum delay. All state lives in ERC-7201 namespaced storage via
 ///         TimelockControllerLib; authentication uses AccessControlLib roles.

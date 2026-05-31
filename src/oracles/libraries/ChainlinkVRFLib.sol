@@ -30,6 +30,7 @@ struct ChainlinkVRFStorage {
 
 /// @title ChainlinkVRFLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from Chainlink (https://github.com/smartcontractkit/chainlink/blob/develop/contracts/src/v0.8/vrf/dev/VRFConsumerBaseV2Plus.sol)
 /// @notice Library that wraps Chainlink VRF V2.5 (subscription-funded) random
 ///         word requests.  This is the request/track layer only — fulfillment
 ///         bookkeeping is handled here, but consumer facets inheriting

@@ -11,6 +11,7 @@ import {ERC20VotesLib} from "@lattice/tokens/libraries/ERC20VotesLib.sol";
 import {Checkpoints} from "@lattice/utils/libraries/Checkpoints.sol";
 
 /// @title ERC20Votes
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/extensions/ERC20Votes.sol)
 /// @notice Stateless Diamond facet combining ERC-20 with checkpoint-based voting power.
 /// @dev Inherits ERC20 (delegates IERC20 calls to ERC20Lib) and Votes (delegates IVotes calls
 ///      to VotesLib). Overrides transfer/transferFrom/delegate/delegateBySig to route through

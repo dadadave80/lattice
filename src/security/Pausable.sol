@@ -5,6 +5,7 @@ import {IPausable} from "@lattice/interfaces/IPausable.sol";
 import {PausableLib} from "@lattice/security/libraries/PausableLib.sol";
 
 /// @title Pausable
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/utils/Pausable.sol)
 /// @notice Thin Diamond facet that exposes pause/unpause lifecycle control.
 /// @dev All logic lives in {PausableLib}. This contract is stateless and forwards
 /// every call to the library. Inherit this in your Diamond facet to add pausability.

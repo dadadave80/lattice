@@ -40,6 +40,7 @@ struct EIP712Storage {
 
 /// @title EIP712Lib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/utils/cryptography/EIP712.sol)
 /// @notice Library implementing EIP-712 typed structured data hashing.
 ///         Supports ERC-5267 domain discovery and caches the domain separator
 ///         for the current chain ID + contract address to save gas.

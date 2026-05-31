@@ -7,6 +7,7 @@ import {IVaultCore} from "@lattice/interfaces/IVaultCore.sol";
 import {ERC4626} from "@lattice/tokens/ERC4626.sol";
 
 /// @title VaultCore
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/extensions/ERC4626.sol)
 /// @notice Diamond facet extending ERC-4626 with strategy hooks for yield aggregation.
 /// @dev All logic lives in VaultCoreLib. This contract is a pure delegator.
 ///

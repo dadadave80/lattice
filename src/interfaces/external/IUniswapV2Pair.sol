@@ -2,6 +2,7 @@
 pragma solidity >=0.8.4;
 
 /// @title IUniswapV2Pair
+/// @author Modified from Uniswap V2 (https://github.com/Uniswap/v2-core/blob/master/contracts/interfaces/IUniswapV2Pair.sol)
 /// @notice Minimal interface for Uniswap V2 pair contracts.
 /// @dev Vendored subset covering cumulative prices and reserves — do not add a
 ///      uniswap-v2-core dependency.

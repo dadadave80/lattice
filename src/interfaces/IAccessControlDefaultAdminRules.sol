@@ -4,6 +4,7 @@ pragma solidity >=0.8.4;
 import {IAccessControl} from "@lattice/interfaces/IAccessControl.sol";
 
 /// @title IAccessControlDefaultAdminRules
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/access/extensions/IAccessControlDefaultAdminRules.sol)
 /// @notice Timelocked transfer of DEFAULT_ADMIN_ROLE. The admin identity is sourced from
 ///         `OwnableLib.owner()`; grant/revoke of DEFAULT_ADMIN_ROLE is disabled in favor of
 ///         the begin/accept flow guarded by a configurable delay.

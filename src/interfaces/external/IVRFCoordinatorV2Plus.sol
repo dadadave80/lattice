@@ -2,6 +2,7 @@
 pragma solidity >=0.8.4;
 
 /// @title IVRFCoordinatorV2Plus
+/// @author Modified from Chainlink (https://github.com/smartcontractkit/chainlink/blob/develop/contracts/src/v0.8/vrf/dev/interfaces/IVRFCoordinatorV2Plus.sol)
 /// @notice Minimal interface for Chainlink VRF Coordinator V2.5 (subscription-funded).
 /// @dev Vendored subset — do not add a chainlink dependency.
 interface IVRFCoordinatorV2Plus {

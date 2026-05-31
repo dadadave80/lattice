@@ -27,6 +27,7 @@ bytes32 constant PERMIT_TYPEHASH =
 
 /// @title ERC20PermitLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/extensions/ERC20Permit.sol)
 /// @notice Library implementing ERC-2612 permit-based approvals for ERC-20 tokens.
 /// @dev No own storage — relies on EIP712 and Nonces slots already present.
 library ERC20PermitLib {

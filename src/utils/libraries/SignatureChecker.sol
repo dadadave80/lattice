@@ -4,6 +4,7 @@ pragma solidity ^0.8.30;
 import {ECDSA} from "@lattice/utils/libraries/ECDSA.sol";
 
 /// @title SignatureChecker
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/utils/cryptography/SignatureChecker.sol)
 /// @notice Utility library for verifying signatures from both EOAs and ERC-1271 contracts.
 /// @dev Implements the ERC-1271 magic value check with a safe `staticcall` fallback so
 ///      non-1271 contracts (or EOAs) never revert unexpectedly.

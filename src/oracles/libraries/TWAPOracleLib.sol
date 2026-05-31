@@ -26,6 +26,7 @@ struct TWAPOracleStorage {
 
 /// @title TWAPOracleLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from Uniswap V2 (https://github.com/Uniswap/v2-periphery/blob/master/contracts/examples/ExampleSlidingWindowOracle.sol)
 /// @notice Library implementing a Uniswap V2-style time-weighted average price
 ///         oracle.  Any address may call `recordObservation` to push a cumulative
 ///         price snapshot; `consult` computes the TWAP over a requested window.

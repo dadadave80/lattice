@@ -2,6 +2,7 @@
 pragma solidity >=0.8.4;
 
 /// @title IGovernor
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/governance/IGovernor.sol)
 /// @notice Interface for the Governor module, implementing on-chain governance with
 ///         proposal lifecycle, voting, quorum, and optional TimelockController integration.
 /// @dev Mirrors the OpenZeppelin v5 Governor interface combined with GovernorSettings,

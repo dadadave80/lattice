@@ -4,6 +4,7 @@ pragma solidity >=0.8.4;
 import {IERC721} from "@lattice/interfaces/IERC721.sol";
 
 /// @title IERC721URIStorage
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC721/extensions/ERC721URIStorage.sol)
 /// @notice Interface for ERC-721 with per-token URI storage (EIP-4906 metadata update events).
 interface IERC721URIStorage is IERC721 {
     /// @dev Emitted when the metadata of `_tokenId` is updated.

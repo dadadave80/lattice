@@ -38,6 +38,7 @@ struct ConstantProductStorage {
 
 /// @title ConstantProductLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from Uniswap V2 (https://github.com/Uniswap/v2-core/blob/master/contracts/UniswapV2Pair.sol)
 /// @notice Library implementing a Uniswap V2-style constant-product AMM (x*y=k) as a stateless Diamond facet.
 /// @dev All state lives in a single ERC-7201 namespaced slot. LP shares are tracked internally
 ///      (not as a separate ERC-20 token) to avoid an extra facet dependency. 0.3% swap fee (30 bps).

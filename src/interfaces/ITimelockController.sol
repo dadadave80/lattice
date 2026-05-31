@@ -2,6 +2,7 @@
 pragma solidity >=0.8.4;
 
 /// @title ITimelockController
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/governance/TimelockController.sol)
 /// @notice Interface for the TimelockController module, which schedules and executes
 ///         governance actions after a minimum delay.
 /// @dev Mirrors the OpenZeppelin v5 TimelockController interface.

@@ -28,6 +28,7 @@ struct PausableStorage {
 
 /// @title Pausable Library
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/utils/Pausable.sol)
 /// @notice Library implementing pausable lifecycle control for Diamond facets.
 /// @dev Pause/unpause is restricted to the DEFAULT_ADMIN_ROLE via AccessControlLib.
 library PausableLib {

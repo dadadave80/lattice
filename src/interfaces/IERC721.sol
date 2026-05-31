@@ -2,6 +2,7 @@
 pragma solidity >=0.8.4;
 
 /// @title IERC721
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC721/IERC721.sol)
 /// @notice Interface for the ERC-721 Non-Fungible Token standard, including metadata extension.
 interface IERC721 {
     /// @dev Emitted when `tokenId` is transferred from `from` to `to`.

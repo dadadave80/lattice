@@ -6,6 +6,7 @@ import {IGovernor} from "@lattice/interfaces/IGovernor.sol";
 
 /// @title Governor
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/governance/Governor.sol)
 /// @notice Diamond-compatible stateless facet that delegates all governance logic to
 ///         {GovernorLib}. No state is held here — all state lives in ERC-7201 namespaced
 ///         storage accessed through the library.

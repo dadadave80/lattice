@@ -28,6 +28,7 @@ struct ERC20CappedStorage {
 
 /// @title ERC20CappedLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/extensions/ERC20Capped.sol)
 /// @notice Library implementing a capped total supply for ERC-20 tokens.
 library ERC20CappedLib {
     //*//////////////////////////////////////////////////////////////////////////

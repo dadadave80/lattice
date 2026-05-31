@@ -4,6 +4,7 @@
 pragma solidity >=0.8.4;
 
 /// @title IAccessControl
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/access/IAccessControl.sol)
 /// @dev External interface of AccessControl declared to support ERC-165 detection.
 interface IAccessControl {
     /// @dev Thrown when an account is missing a required role.

@@ -26,6 +26,7 @@ struct AccessControlEnumerableStorage {
 }
 
 /// @title AccessControlEnumerableLib
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/access/extensions/AccessControlEnumerable.sol)
 /// @notice Extension of AccessControlLib: per-role address enumeration.
 library AccessControlEnumerableLib {
     using EnumerableSet for EnumerableSet.AddressSet;

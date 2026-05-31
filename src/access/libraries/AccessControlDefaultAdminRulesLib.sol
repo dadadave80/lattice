@@ -37,6 +37,7 @@ struct AccessControlDefaultAdminRulesStorage {
 }
 
 /// @title AccessControlDefaultAdminRulesLib
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/access/extensions/AccessControlDefaultAdminRules.sol)
 /// @notice Timelocked admin transfer + configurable delay, sourcing admin from Ownable.
 library AccessControlDefaultAdminRulesLib {
     using TimelockLib for TimelockLib.SingleSchedule;

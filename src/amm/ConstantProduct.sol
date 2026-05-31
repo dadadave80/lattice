@@ -6,6 +6,7 @@ import {IConstantProduct} from "@lattice/interfaces/IConstantProduct.sol";
 
 /// @title ConstantProduct
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from Uniswap V2 (https://github.com/Uniswap/v2-core/blob/master/contracts/UniswapV2Pair.sol)
 /// @notice Stateless Diamond facet for a Uniswap V2-style constant-product AMM.
 /// @dev All logic lives in ConstantProductLib. This contract is a pure delegator.
 ///      Deploy as a facet in a Diamond proxy. Initialize via ConstantProductLib.__ConstantProduct_init.

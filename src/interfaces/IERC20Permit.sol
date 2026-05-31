@@ -2,6 +2,7 @@
 pragma solidity >=0.8.4;
 
 /// @title IERC20Permit
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/extensions/IERC20Permit.sol)
 /// @notice Interface for ERC-2612 permit-based approvals (EIP-20 + EIP-712 signed approvals).
 interface IERC20Permit {
     /// @dev The signature's deadline has expired.

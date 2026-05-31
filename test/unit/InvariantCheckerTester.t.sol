@@ -179,9 +179,7 @@ contract InvariantCheckerTester is Test {
 
     function test_UnregisterNeverRegisteredKeyReverts() public {
         vm.prank(admin);
-        vm.expectRevert(
-            abi.encodeWithSelector(IInvariantChecker.InvariantNotRegistered.selector, KEY_UNREGISTERED)
-        );
+        vm.expectRevert(abi.encodeWithSelector(IInvariantChecker.InvariantNotRegistered.selector, KEY_UNREGISTERED));
         mock.unregisterInvariant(KEY_UNREGISTERED);
     }
 

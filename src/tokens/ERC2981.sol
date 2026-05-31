@@ -5,6 +5,7 @@ import {IERC2981} from "@lattice/interfaces/IERC2981.sol";
 import {ERC2981Lib} from "@lattice/tokens/libraries/ERC2981Lib.sol";
 
 /// @title ERC2981
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/common/ERC2981.sol)
 /// @notice Stateless Diamond facet for the ERC-2981 NFT Royalty Standard.
 /// @dev All logic — including admin auth — lives in `ERC2981Lib`. Pure delegator.
 contract ERC2981 is IERC2981 {

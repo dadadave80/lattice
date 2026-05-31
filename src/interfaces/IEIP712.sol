@@ -2,6 +2,7 @@
 pragma solidity >=0.8.4;
 
 /// @title IEIP712
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/utils/cryptography/EIP712.sol)
 /// @notice Interface for EIP-712 typed structured data hashing and signing,
 ///         including ERC-5267 domain discovery.
 interface IEIP712 {

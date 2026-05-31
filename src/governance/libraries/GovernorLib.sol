@@ -94,6 +94,7 @@ interface IERC6372 {
 
 /// @title GovernorLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/governance/Governor.sol)
 /// @notice Library implementing the full on-chain governance lifecycle: proposal creation,
 ///         voting (For/Against/Abstain with quorum), optional timelock queuing, execution,
 ///         and cancellation. Includes EIP-712 `castVoteBySig` support.

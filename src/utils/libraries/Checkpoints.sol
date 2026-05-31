@@ -2,6 +2,7 @@
 pragma solidity ^0.8.30;
 
 /// @title Checkpoints
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/utils/structs/Checkpoints.sol)
 /// @notice Utility library for checkpointed uint208 values keyed by uint48 timepoints.
 /// @dev Mirrors OpenZeppelin v5 Checkpoints (Trace208 variant).
 library Checkpoints {

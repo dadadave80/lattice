@@ -7,6 +7,7 @@ import {ERC20CappedLib} from "@lattice/tokens/libraries/ERC20CappedLib.sol";
 import {ERC20Lib} from "@lattice/tokens/libraries/ERC20Lib.sol";
 
 /// @title ERC20Capped
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/extensions/ERC20Capped.sol)
 /// @notice Stateless Diamond facet for ERC-20 tokens with a capped total supply.
 /// @dev Inherits ERC20. Exposes a `mint` function (access-controlled externally)
 ///      that enforces the cap before delegating to ERC20Lib._mint.

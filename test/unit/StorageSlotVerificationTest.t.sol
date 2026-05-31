@@ -5,6 +5,19 @@ import {Test} from "forge-std/Test.sol";
 
 // ERC-7201 storage slot constants under test
 import {
+    ACCESS_CONTROL_DEFAULT_ADMIN_RULES_STORAGE_SLOT,
+    ERC165_MAP_IACCESSCONTROLDEFAULTADMINRULES_SLOT
+} from "@lattice/access/libraries/AccessControlDefaultAdminRulesLib.sol";
+import {
+    ACCESS_CONTROL_STORAGE_SLOT,
+    ERC165_MAP_IACCESSCONTROL_SLOT,
+    ERC165_STORAGE_LOCATION
+} from "@lattice/access/libraries/AccessControlLib.sol";
+import {
+    ACCESS_CONTROL_TIMED_STORAGE_SLOT,
+    ERC165_MAP_IACCESSCONTROLTIMED_SLOT
+} from "@lattice/access/libraries/AccessControlTimedLib.sol";
+import {
     ACCESS_MANAGED_STORAGE_SLOT,
     ERC165_MAP_IACCESSMANAGED_SLOT
 } from "@lattice/access/libraries/AccessManagedLib.sol";
@@ -12,25 +25,12 @@ import {
     ACCESS_MANAGER_STORAGE_SLOT,
     ERC165_MAP_IACCESSMANAGER_SLOT
 } from "@lattice/access/libraries/AccessManagerLib.sol";
-import {
-    ACCESS_CONTROL_DEFAULT_ADMIN_RULES_STORAGE_SLOT,
-    ERC165_MAP_IACCESSCONTROLDEFAULTADMINRULES_SLOT
-} from "@lattice/access/libraries/AccessControlDefaultAdminRulesLib.sol";
-import {
-    ACCESS_CONTROL_TIMED_STORAGE_SLOT,
-    ERC165_MAP_IACCESSCONTROLTIMED_SLOT
-} from "@lattice/access/libraries/AccessControlTimedLib.sol";
-import {
-    ACCESS_CONTROL_STORAGE_SLOT,
-    ERC165_STORAGE_LOCATION,
-    ERC165_MAP_IACCESSCONTROL_SLOT
-} from "@lattice/access/libraries/AccessControlLib.sol";
 
-import {IAccessManaged} from "@lattice/interfaces/IAccessManaged.sol";
-import {IAccessManager} from "@lattice/interfaces/IAccessManager.sol";
+import {IAccessControl} from "@lattice/interfaces/IAccessControl.sol";
 import {IAccessControlDefaultAdminRules} from "@lattice/interfaces/IAccessControlDefaultAdminRules.sol";
 import {IAccessControlTimed} from "@lattice/interfaces/IAccessControlTimed.sol";
-import {IAccessControl} from "@lattice/interfaces/IAccessControl.sol";
+import {IAccessManaged} from "@lattice/interfaces/IAccessManaged.sol";
+import {IAccessManager} from "@lattice/interfaces/IAccessManager.sol";
 
 /// @title StorageSlotVerificationTest
 /// @notice Re-derives every ERC-7201 storage slot and ERC-165 map slot from first principles
