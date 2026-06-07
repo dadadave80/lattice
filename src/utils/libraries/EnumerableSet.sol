@@ -26,6 +26,11 @@ library EnumerableSet {
         Set _inner;
     }
 
+    struct Bytes4Set {
+        bytes4[] _values;
+        mapping(bytes4 value => uint256 position) _positions;
+    }
+
     // ---- Internal core operating on `Set` directly ----
 
     function _add(Set storage set, bytes32 value) private returns (bool) {
@@ -145,6 +150,49 @@ library EnumerableSet {
 
     function values(UintSet storage set) internal view returns (uint256[] memory result) {
         bytes32[] memory raw = _values(set._inner);
+        assembly ("memory-safe") {
+            result := raw
+        }
+    }
+
+    // ---- Typed wrappers: Bytes4Set ----
+
+    function add(Bytes4Set storage set, bytes4 value) internal returns (bool) {
+        if (set._positions[value] != 0) return false;
+        set._values.push(value);
+        set._positions[value] = set._values.length;
+        return true;
+    }
+
+    function remove(Bytes4Set storage set, bytes4 value) internal returns (bool) {
+        uint256 position = set._positions[value];
+        if (position == 0) return false;
+        uint256 lastIndex = set._values.length - 1;
+        uint256 valueIndex = position - 1;
+        if (valueIndex != lastIndex) {
+            bytes4 lastValue = set._values[lastIndex];
+            set._values[valueIndex] = lastValue;
+            set._positions[lastValue] = position;
+        }
+        set._values.pop();
+        delete set._positions[value];
+        return true;
+    }
+
+    function contains(Bytes4Set storage set, bytes4 value) internal view returns (bool) {
+        return set._positions[value] != 0;
+    }
+
+    function length(Bytes4Set storage set) internal view returns (uint256) {
+        return set._values.length;
+    }
+
+    function at(Bytes4Set storage set, uint256 index) internal view returns (bytes4) {
+        return set._values[index];
+    }
+
+    function values(Bytes4Set storage set) internal view returns (bytes4[] memory result) {
+        bytes4[] memory raw = set._values;
         assembly ("memory-safe") {
             result := raw
         }
