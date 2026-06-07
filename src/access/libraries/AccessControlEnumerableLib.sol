@@ -50,8 +50,8 @@ library AccessControlEnumerableLib {
 
     // ---- Reads ----
 
-    function getRoleMember(bytes32 role, uint256 i) internal view returns (address) {
-        return accessControlEnumerableStorage()._roleMembers[role].at(i);
+    function getRoleMember(bytes32 role, uint256 index) internal view returns (address) {
+        return accessControlEnumerableStorage()._roleMembers[role].at(index);
     }
 
     function getRoleMemberCount(bytes32 role) internal view returns (uint256) {
@@ -81,16 +81,16 @@ library AccessControlEnumerableLib {
         _revokeRole(role, callerConfirmation);
     }
 
-    function _grantRole(bytes32 role, address account) internal {
-        bool changed = AccessControlLib._grantRole(role, account); // emits RoleGranted if changed
-        if (changed) {
+    function _grantRole(bytes32 role, address account) internal returns (bool granted) {
+        granted = AccessControlLib._grantRole(role, account); // emits RoleGranted if changed
+        if (granted) {
             accessControlEnumerableStorage()._roleMembers[role].add(account);
         }
     }
 
-    function _revokeRole(bytes32 role, address account) internal {
-        bool changed = AccessControlLib._revokeRole(role, account); // emits RoleRevoked if changed
-        if (changed) {
+    function _revokeRole(bytes32 role, address account) internal returns (bool revoked) {
+        revoked = AccessControlLib._revokeRole(role, account); // emits RoleRevoked if changed
+        if (revoked) {
             accessControlEnumerableStorage()._roleMembers[role].remove(account);
         }
     }

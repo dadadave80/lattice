@@ -9,6 +9,10 @@ import {
     ERC165_MAP_IACCESSCONTROLDEFAULTADMINRULES_SLOT
 } from "@lattice/access/libraries/AccessControlDefaultAdminRulesLib.sol";
 import {
+    ACCESS_CONTROL_ENUMERABLE_STORAGE_SLOT,
+    ERC165_MAP_IACCESSCONTROLENUMERABLE_SLOT
+} from "@lattice/access/libraries/AccessControlEnumerableLib.sol";
+import {
     ACCESS_CONTROL_STORAGE_SLOT,
     ERC165_MAP_IACCESSCONTROL_SLOT,
     ERC165_STORAGE_LOCATION
@@ -28,6 +32,7 @@ import {
 
 import {IAccessControl} from "@lattice/interfaces/IAccessControl.sol";
 import {IAccessControlDefaultAdminRules} from "@lattice/interfaces/IAccessControlDefaultAdminRules.sol";
+import {IAccessControlEnumerable} from "@lattice/interfaces/IAccessControlEnumerable.sol";
 import {IAccessControlTimed} from "@lattice/interfaces/IAccessControlTimed.sol";
 import {IAccessManaged} from "@lattice/interfaces/IAccessManaged.sol";
 import {IAccessManager} from "@lattice/interfaces/IAccessManager.sol";
@@ -54,6 +59,11 @@ contract StorageSlotVerificationTest is Test {
     function test_AccessControlStorageSlot() public pure {
         bytes32 expected = _erc7201Slot("openzeppelin.storage.AccessControl");
         assertEq(ACCESS_CONTROL_STORAGE_SLOT, expected, "AccessControl storage slot mismatch");
+    }
+
+    function test_AccessControlEnumerableStorageSlot() public pure {
+        bytes32 expected = _erc7201Slot("lattice.storage.AccessControlEnumerable");
+        assertEq(ACCESS_CONTROL_ENUMERABLE_STORAGE_SLOT, expected, "AccessControlEnumerable storage slot mismatch");
     }
 
     function test_AccessControlTimedStorageSlot() public pure {
@@ -93,6 +103,15 @@ contract StorageSlotVerificationTest is Test {
         assertEq(ERC165_MAP_IACCESSCONTROL_SLOT, expected, "ERC165 IAccessControl map slot mismatch");
     }
 
+    function test_Erc165MapIAccessControlEnumerableSlot() public pure {
+        bytes4 interfaceId = type(IAccessControlEnumerable).interfaceId;
+        assertEq(interfaceId, bytes4(0xf92172dc), "IAccessControlEnumerable interfaceId comment is stale");
+        bytes32 expected = _erc165MapSlot(interfaceId, ERC165_STORAGE_LOCATION);
+        assertEq(
+            ERC165_MAP_IACCESSCONTROLENUMERABLE_SLOT, expected, "ERC165 IAccessControlEnumerable map slot mismatch"
+        );
+    }
+
     function test_Erc165MapIAccessControlTimedSlot() public pure {
         bytes4 interfaceId = type(IAccessControlTimed).interfaceId;
         bytes32 expected = _erc165MapSlot(interfaceId, ERC165_STORAGE_LOCATION);
@@ -124,8 +143,9 @@ contract StorageSlotVerificationTest is Test {
     // ======================== Uniqueness Check ========================
 
     function test_AllErc7201SlotsAreUnique() public pure {
-        bytes32[5] memory slots = [
+        bytes32[6] memory slots = [
             ACCESS_CONTROL_STORAGE_SLOT,
+            ACCESS_CONTROL_ENUMERABLE_STORAGE_SLOT,
             ACCESS_CONTROL_TIMED_STORAGE_SLOT,
             ACCESS_CONTROL_DEFAULT_ADMIN_RULES_STORAGE_SLOT,
             ACCESS_MANAGER_STORAGE_SLOT,

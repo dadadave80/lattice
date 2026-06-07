@@ -2,10 +2,8 @@
 pragma solidity ^0.8.30;
 
 import {AccessControl} from "@lattice/access/AccessControl.sol";
-import {AccessControlEnumerableLib} from "@lattice/access/libraries/AccessControlEnumerableLib.sol";
-import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
-import {IAccessControl} from "@lattice/interfaces/IAccessControl.sol";
-import {IAccessControlEnumerable} from "@lattice/interfaces/IAccessControlEnumerable.sol";
+import {AccessControlEnumerableLib, AccessControlLib} from "@lattice/access/libraries/AccessControlEnumerableLib.sol";
+import {IAccessControl, IAccessControlEnumerable} from "@lattice/interfaces/IAccessControlEnumerable.sol";
 import {EnumerableSet} from "@lattice/utils/libraries/EnumerableSet.sol";
 
 /// @title AccessControlEnumerable
@@ -15,17 +13,17 @@ contract AccessControlEnumerable is AccessControl, IAccessControlEnumerable {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     /// @inheritdoc IAccessControlEnumerable
-    function getRoleMember(bytes32 role, uint256 i) external view virtual override returns (address) {
-        return AccessControlEnumerableLib.getRoleMember(role, i);
+    function getRoleMember(bytes32 role, uint256 index) public view virtual override returns (address) {
+        return AccessControlEnumerableLib.getRoleMember(role, index);
     }
 
     /// @inheritdoc IAccessControlEnumerable
-    function getRoleMemberCount(bytes32 role) external view virtual override returns (uint256) {
+    function getRoleMemberCount(bytes32 role) public view virtual override returns (uint256) {
         return AccessControlEnumerableLib.getRoleMemberCount(role);
     }
 
     /// @inheritdoc IAccessControlEnumerable
-    function getRoleMembers(bytes32 role) external view virtual override returns (address[] memory) {
+    function getRoleMembers(bytes32 role) public view virtual override returns (address[] memory) {
         return AccessControlEnumerableLib.getRoleMembers(role);
     }
 
