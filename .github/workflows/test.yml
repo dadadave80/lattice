@@ -37,6 +37,12 @@ jobs:
       - name: Build with via_ir (IR-pipeline parity)
         run: forge build --via-ir --sizes
 
+      # Append-only ERC-7201 storage-struct guard (CLAUDE.md "Append-only storage struct rule").
+      # Fails if any guarded module struct's namespaced layout drifts from its committed baseline
+      # (reorder/retype/shrink/removal). `jq` is preinstalled on ubuntu-latest runners.
+      - name: Check ERC-7201 storage layout (append-only)
+        run: ./script/upgrades/check-storage-layout.sh
+
       - name: Run Forge tests
         run: forge test -vvv
 
