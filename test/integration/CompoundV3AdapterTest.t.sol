@@ -5,9 +5,15 @@ import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {CompoundV3Adapter} from "@lattice/defi/CompoundV3Adapter.sol";
+import {StrategyManager} from "@lattice/defi/StrategyManager.sol";
+import {VaultCore} from "@lattice/defi/VaultCore.sol";
 import {CompoundV3AdapterLib} from "@lattice/defi/libraries/CompoundV3AdapterLib.sol";
+import {StrategyManagerLib} from "@lattice/defi/libraries/StrategyManagerLib.sol";
+import {VaultCoreLib} from "@lattice/defi/libraries/VaultCoreLib.sol";
 import {IProtocolAdapter} from "@lattice/interfaces/IProtocolAdapter.sol";
 import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib.sol";
+import {ERC20Lib} from "@lattice/tokens/libraries/ERC20Lib.sol";
+import {ERC4626Lib} from "@lattice/tokens/libraries/ERC4626Lib.sol";
 import {Test} from "forge-std/Test.sol";
 
 import {MockAsset} from "./AaveV3AdapterSupplyTest.t.sol";
@@ -166,5 +172,104 @@ contract CompoundV3AdapterTest is Test {
     function test_Deploy_RevertsWhenNothingToDeploy() public {
         vm.expectRevert(IProtocolAdapter.ProtocolAdapterNothingToDeploy.selector);
         adapter.deploy();
+    }
+}
+
+//*//////////////////////////////////////////////////////////////////////////
+//                    VAULT-SPINE NAV INVARIANT (the HIGH fix)
+//////////////////////////////////////////////////////////////////////////*//
+
+contract CompoundVaultMock is VaultCore {
+    function initialize(address asset_, address admin_) external {
+        bytes32 s = InitializableLib.initializableSlot();
+        InitializableLib.preInitializer(s);
+        AccessControlLib.__AccessControl_init(admin_);
+        ERC20Lib.__ERC20_init("Vault Share", "vSHARE");
+        ERC4626Lib.__ERC4626_init(asset_, 0);
+        VaultCoreLib.__VaultCore_init();
+        InitializableLib.postInitializer(s);
+    }
+
+    function supportsInterface(bytes4 id) external view returns (bool) {
+        return ERC165Lib.supportsInterface(id);
+    }
+}
+
+contract CompoundManagerMock is StrategyManager {
+    function initialize(address admin_) external {
+        bytes32 s = InitializableLib.initializableSlot();
+        InitializableLib.preInitializer(s);
+        AccessControlLib.__AccessControl_init(admin_);
+        StrategyManagerLib.__StrategyManager_init();
+        InitializableLib.postInitializer(s);
+    }
+}
+
+/// @title CompoundV3AdapterVaultNavTest
+/// @notice Second adapter (Compound v3) proving the NAV-stability invariant through the unchanged
+///         VaultCore + StrategyManager spine: `allocateToStrategy` moves idle vault assets into the
+///         adapter via a bare ERC-20 transfer that does NOT call `deploy()`; because the adapter's
+///         `totalAssetsManaged()` now counts its idle base-asset balance, the vault's share price is
+///         UNCHANGED across BOTH the allocate (no deploy) step AND the subsequent deploy().
+contract CompoundV3AdapterVaultNavTest is Test {
+    MockAsset asset;
+    MockComet comet;
+    MockCompoundAdapter adapter;
+    CompoundVaultMock vault;
+    CompoundManagerMock mgr;
+
+    address admin = address(0xAD);
+    address user = address(0xA1);
+    address treasury = address(0x7E0);
+    uint256 constant DEPOSIT = 1_000e6;
+
+    function setUp() public {
+        asset = new MockAsset();
+        comet = new MockComet(asset);
+
+        vault = new CompoundVaultMock();
+        vault.initialize(address(asset), admin);
+
+        mgr = new CompoundManagerMock();
+        mgr.initialize(admin);
+
+        adapter = new MockCompoundAdapter();
+        adapter.initialize(admin, address(comet), address(asset), address(vault), treasury);
+
+        vm.startPrank(admin);
+        vault.setStrategyManager(address(mgr));
+        mgr.setVault(address(vault));
+        mgr.addStrategy(address(adapter), 10_000); // 100% target
+        // The StrategyManager is the adapter's authorized operator (deploy/withdraw/harvest).
+        adapter.setOperator(address(mgr));
+        vm.stopPrank();
+    }
+
+    /// @notice NAV is invariant across allocate (no deploy) AND deploy — no theft window, no
+    ///         double-count. Pre-fix the Comet adapter reported 0 the instant funds were allocated
+    ///         to it (idle, undeployed), cratering the vault's share price until a keeper deployed.
+    function test_NavStableAcrossAllocateAndDeploy() public {
+        asset.mint(user, DEPOSIT);
+        vm.startPrank(user);
+        asset.approve(address(vault), DEPOSIT);
+        vault.deposit(DEPOSIT, user);
+        vm.stopPrank();
+
+        uint256 navBefore = vault.totalAssets();
+        assertEq(navBefore, DEPOSIT, "NAV == deposit at rest");
+
+        // Allocate: vault idle -> adapter idle (bare transfer, NO supply to Comet).
+        mgr.rebalance();
+        assertEq(asset.balanceOf(address(adapter)), DEPOSIT, "funds idle in adapter, not supplied");
+        assertEq(comet.balanceOf(address(adapter)), 0, "nothing supplied to Comet yet");
+        assertEq(adapter.totalAssetsManaged(), DEPOSIT, "adapter counts its idle");
+        assertEq(vault.totalAssets(), navBefore, "NAV UNCHANGED across allocate (no deploy)");
+
+        // Deploy: adapter idle -> Comet position. idle->0, Comet balance grows by the same amount.
+        vm.prank(address(mgr));
+        adapter.deploy();
+        assertEq(asset.balanceOf(address(adapter)), 0, "adapter idle now supplied");
+        assertEq(comet.balanceOf(address(adapter)), DEPOSIT, "supplied to Comet 1:1");
+        assertEq(vault.totalAssets(), navBefore, "NAV STILL UNCHANGED across deploy (no double-count)");
     }
 }

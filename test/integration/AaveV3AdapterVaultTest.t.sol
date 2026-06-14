@@ -129,9 +129,10 @@ contract AaveV3AdapterVaultTest is Test {
         // Rebalance pushes the bare transfer to the adapter (adapter now holds idle asset).
         mgr.rebalance();
         assertEq(asset.balanceOf(address(adapter)), DEPOSIT, "pushed to adapter, not yet supplied");
-        // Before deploy(), the adapter reports 0 managed (nothing supplied yet) — this is why
-        // the deploy() sweep hook is required.
-        assertEq(adapter.totalAssetsManaged(), 0, "no aTokens until deploy()");
+        // Before deploy(), the funds sit idle in the adapter (not yet supplied to Aave). The
+        // adapter's `totalAssetsManaged()` MUST still count that idle balance so NAV does not drop
+        // in the allocate→(no deploy) window — the supplied aToken leg is 0, the idle leg is DEPOSIT.
+        assertEq(adapter.totalAssetsManaged(), DEPOSIT, "idle counted before deploy() (no NAV gap)");
 
         // Keeper sweeps idle into Aave (the StrategyManager is the authorized operator).
         vm.prank(address(mgr));
@@ -142,6 +143,37 @@ contract AaveV3AdapterVaultTest is Test {
 
         // Vault accounting: idle (0) + allocated (adapter.totalAssetsManaged) == deposit.
         assertEq(vault.totalAssets(), DEPOSIT, "share price intact across the route");
+    }
+
+    /// @notice NAV-stability invariant (the HIGH fix). `allocateToStrategy` moves idle vault assets
+    ///         into the adapter via a bare ERC-20 transfer that does NOT call `deploy()`. Because the
+    ///         adapter's `totalAssetsManaged()` includes its own idle underlying balance, the vault's
+    ///         share price (`totalAssets()`) is UNCHANGED across BOTH the allocate (no deploy) step
+    ///         AND the subsequent deploy() — proving allocated-but-undeployed funds never leave NAV
+    ///         (no theft window) and that adding idle does not double-count (invariant across deploy).
+    function test_NavStableAcrossAllocateAndDeploy() public {
+        asset.mint(user, DEPOSIT);
+        vm.startPrank(user);
+        asset.approve(address(vault), DEPOSIT);
+        vault.deposit(DEPOSIT, user);
+        vm.stopPrank();
+
+        uint256 navBefore = vault.totalAssets();
+        assertEq(navBefore, DEPOSIT, "NAV == deposit at rest (all idle in vault)");
+
+        // Allocate: vault idle -> adapter idle (bare transfer, NO deploy). Pre-fix the adapter
+        // reported 0 here and NAV cratered to 0 (the attacker's cheap-share window). Post-fix the
+        // adapter counts its idle, so NAV is invariant.
+        mgr.rebalance();
+        assertEq(asset.balanceOf(address(adapter)), DEPOSIT, "funds now idle in adapter, not deployed");
+        assertEq(vault.totalAssets(), navBefore, "NAV UNCHANGED across allocate (no deploy)");
+
+        // Deploy: adapter idle -> Aave aToken position. idle drops to ~0, the position grows by the
+        // same amount, so the sum (and NAV) is invariant — proving no double-count.
+        vm.prank(address(mgr));
+        adapter.deploy();
+        assertEq(asset.balanceOf(address(adapter)), 0, "adapter idle now deployed");
+        assertEq(vault.totalAssets(), navBefore, "NAV STILL UNCHANGED across deploy (no double-count)");
     }
 
     /// @notice Dropping the target to 0 and rebalancing recalls funds from the mock Aave Pool back

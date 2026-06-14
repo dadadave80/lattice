@@ -147,12 +147,21 @@ library ERC4626AdapterLib {
         return PausableLib.paused() || EmergencyStopLib.isStopped();
     }
 
-    /// @notice NAV = convertToAssets(shareBalance). No oracle — ERC4626 1:1 accounting.
+    /// @notice NAV = convertToAssets(shareBalance) + idle underlying. No oracle — ERC4626 1:1.
+    /// @dev **Idle leg (NAV-gap fix):** adds the adapter's idle underlying balance to the
+    ///      share-priced position. `IVaultCore.allocateToStrategy` pushes funds here with a bare
+    ///      transfer that does NOT deposit into the target vault, so undeployed funds sit idle until
+    ///      `deploy()` (and `shares` can be 0 while idle is non-zero — exactly the allocate-before-
+    ///      deploy state). Counting that idle keeps the vault's share price flat across the
+    ///      allocate→deploy window. No double-count: the idle is in neither the vault's idle nor the
+    ///      target shares, and after `deploy()` idle→~0 while shares grow by the same value, so the
+    ///      sum is invariant across deploy.
     function totalAssetsManaged() internal view returns (uint256) {
         ERC4626AdapterStorage storage $ = erc4626AdapterStorage();
+        uint256 idle = AdapterBaseLib.balanceOfSelf($._asset);
         uint256 shares = IERC4626($._targetVault).balanceOf(address(this));
-        if (shares == 0) return 0;
-        return IERC4626($._targetVault).convertToAssets(shares);
+        if (shares == 0) return idle;
+        return IERC4626($._targetVault).convertToAssets(shares) + idle;
     }
 
     //*//////////////////////////////////////////////////////////////////////////

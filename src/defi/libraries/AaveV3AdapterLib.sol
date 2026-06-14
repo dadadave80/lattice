@@ -318,16 +318,28 @@ library AaveV3AdapterLib {
     /// @notice Total assets managed (vault accounting / share price input).
     /// @dev Supply-only: the 1:1 aToken balance. When debt exists (leverage), Task 8 replaces
     ///      this with oracle-priced net equity. Rewards are NEVER counted here.
+    ///
+    ///      **Idle leg (NAV-gap fix):** in BOTH branches we add the adapter's idle underlying
+    ///      balance. `IVaultCore.allocateToStrategy` pushes vault funds here with a bare ERC-20
+    ///      transfer that does NOT call `deploy()`, so between allocate and the keeper's `deploy()`
+    ///      the funds sit idle in the adapter. Counting that idle keeps the vault's share price flat
+    ///      across the allocate→deploy window (otherwise NAV would understate by the idle amount,
+    ///      letting a depositor mint cheap shares and redeem after `deploy()` re-materializes it).
+    ///      No double-count: the idle is in NEITHER the vault's idle (it was transferred out) NOR the
+    ///      aToken/net-equity position, and after `deploy()` idle→~0 while the position grows by the
+    ///      same amount — so the sum is invariant across deploy. Unencumbered idle underlying is
+    ///      equity either way, so it is added to the levered net-equity return too.
     function totalAssetsManaged() internal view returns (uint256) {
         AaveV3AdapterStorage storage $ = aaveV3AdapterStorage();
+        uint256 idle = AdapterBaseLib.balanceOfSelf($._asset);
         (, uint256 totalDebtBase,,,,) = _pool().getUserAccountData(address(this));
         uint256 supplied = IAToken(aToken()).balanceOf(address(this));
         if (totalDebtBase == 0) {
-            // No debt: 1:1 supply value, no oracle needed.
-            return supplied;
+            // No debt: 1:1 supply value, no oracle needed. Plus any not-yet-deployed idle.
+            return supplied + idle;
         }
-        // Debt present: net equity is computed by the leverage valuation (Task 8).
-        return _netEquityAssets();
+        // Debt present: net equity is computed by the leverage valuation (Task 8). Plus idle.
+        return _netEquityAssets() + idle;
     }
 
     //*//////////////////////////////////////////////////////////////////////////

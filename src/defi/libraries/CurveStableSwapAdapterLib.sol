@@ -231,11 +231,21 @@ library CurveStableSwapAdapterLib {
     ///      add a self-reentrant valuation. `get_virtual_price` is monotone non-decreasing as the
     ///      pool earns fees, so `lp * vp / 1e18` is a safe lower bound on the single-coin redeemable
     ///      value of an over-collateralized stable pool.
+    /// @dev **Idle leg (NAV-gap fix):** adds the adapter's idle underlying-asset balance to the
+    ///      LP-valued position. `IVaultCore.allocateToStrategy` pushes funds here with a bare transfer
+    ///      that does NOT add liquidity, so undeployed funds sit idle until `deploy()` (and `lp` can
+    ///      be 0 while idle is non-zero — exactly the allocate-before-deploy state). Counting that
+    ///      idle keeps the vault's share price flat across the allocate→deploy window. No
+    ///      double-count: the idle is in neither the vault's idle nor the LP position, and after
+    ///      `deploy()` idle→~0 while LP grows by the same value, so the sum is invariant across
+    ///      deploy. The idle asset is held loose by the adapter (not in the pool), so reading it is
+    ///      free of the `get_virtual_price` read-only-reentrancy concern.
     function totalAssetsManaged() internal view returns (uint256) {
         CurveStableSwapAdapterStorage storage $ = curveStableSwapAdapterStorage();
+        uint256 idle = AdapterBaseLib.balanceOfSelf($._asset);
         uint256 lp = _lpHeld($);
-        if (lp == 0) return 0;
-        return (lp * ICurveStableSwapPool($._pool).get_virtual_price()) / 1e18;
+        if (lp == 0) return idle;
+        return ((lp * ICurveStableSwapPool($._pool).get_virtual_price()) / 1e18) + idle;
     }
 
     //*//////////////////////////////////////////////////////////////////////////

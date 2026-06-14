@@ -152,9 +152,15 @@ library CompoundV3AdapterLib {
     /// @notice 1:1 base-asset accounting. Comet's `balanceOf` is present-value and already reflects
     ///         accrued interest, so no pre-accrue is needed and this stays `view` (matching the
     ///         `IStrategy.totalAssetsManaged()` `view` signature). No oracle.
+    /// @dev **Idle leg (NAV-gap fix):** adds the adapter's idle base-asset balance to the Comet
+    ///      position. `IVaultCore.allocateToStrategy` pushes funds here with a bare transfer that does
+    ///      NOT supply to Comet, so undeployed funds sit idle until `deploy()`. Counting that idle
+    ///      keeps the vault's share price flat across the allocate→deploy window. No double-count: the
+    ///      idle is in neither the vault's idle nor the Comet balance, and after `deploy()` idle→~0
+    ///      while the Comet balance rises by the same amount, so the sum is invariant across deploy.
     function totalAssetsManaged() internal view returns (uint256) {
         CompoundV3AdapterStorage storage $ = compoundV3AdapterStorage();
-        return IComet($._comet).balanceOf(address(this));
+        return IComet($._comet).balanceOf(address(this)) + AdapterBaseLib.balanceOfSelf($._asset);
     }
 
     //*//////////////////////////////////////////////////////////////////////////
