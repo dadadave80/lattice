@@ -46,7 +46,13 @@ and a row here.
   identical to `IDiamondCut`. It reuses diamond-lib's `ERC165_MAP_ICUT_SLOT`
   (`0xa0f80413692945aab97c6ef0328381ebb94e4b17a84d11ebf6b61f73435b6d7e`) — already registered by
   `DiamondLib.registerInterface()` — rather than minting a new ERC-165 map slot. It therefore has a
-  unique ERC-7201 storage slot but **no** standalone ERC-165 row in the uniqueness arrays.
+  unique ERC-7201 storage slot but **no** standalone ERC-165 row in the uniqueness arrays. Its
+  frozen-selector protection layer (`IFrozenSelectors`: `freezeSelectors` / `isSelectorFrozen` /
+  `frozenSelectors` / `previewCut` / `verifyInterfaceRegistered`) and the append-only upgrade registry
+  (`IUpgradeRegistry`) are plain facet admin/view functions sharing this same ERC-7201 slot — they add
+  **no** new ERC-165 id (the pinned `0x1f931c1c` is unchanged) and **no** new storage slot (the
+  `_frozenSelectors` set is APPENDED to the existing `GovernedDiamondCutStorage`, leaving the namespace
+  string and slot untouched).
 - Utility libraries that hold no own ERC-7201 storage slot (`EnumerableSet`, `TimelockLib`) and
   token-extension libraries that declare no `*_STORAGE_SLOT` (`ERC20Burnable`, `ERC20Permit`,
   `ERC20Votes`) are intentionally **not** listed here. (`ERC20Permit`, `ERC20Votes`, and

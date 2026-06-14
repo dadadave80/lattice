@@ -14,6 +14,7 @@ import {
 } from "@lattice/governance/libraries/GovernedDiamondCutLib.sol";
 import {IAccessControl} from "@lattice/interfaces/IAccessControl.sol";
 import {IEmergencyStop} from "@lattice/interfaces/IEmergencyStop.sol";
+import {IFrozenSelectors} from "@lattice/interfaces/IFrozenSelectors.sol";
 import {IGovernedDiamondCut} from "@lattice/interfaces/IGovernedDiamondCut.sol";
 import {IUpgradeRegistry} from "@lattice/interfaces/IUpgradeRegistry.sol";
 import {EmergencyStop} from "@lattice/security/EmergencyStop.sol";
@@ -337,6 +338,214 @@ contract GovernedDiamondCutTester is Test {
 
         assertEq(diamond.cutCount(), 0, "unauthorized cut must not record a version");
         assertEq(diamond.getCutRecord(1).executor, address(0));
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                          FROZEN SELECTORS
+    //////////////////////////////////////////////////////////////////////////*//
+
+    bytes4 internal constant PING_SEL = DummyFacet.ping.selector;
+    bytes4 internal constant OTHER_SEL = bytes4(0xDEADBEEF);
+
+    /// @dev A remove cut: facetAddress MUST be address(0) per EIP-2535 remove semantics.
+    function _removeCut(bytes4 _sel) internal pure returns (FacetCut[] memory cuts) {
+        bytes4[] memory sels = new bytes4[](1);
+        sels[0] = _sel;
+        cuts = new FacetCut[](1);
+        cuts[0] = FacetCut({facetAddress: address(0), action: FacetCutAction.Remove, functionSelectors: sels});
+    }
+
+    /// @dev A replace cut targeting `_sel` (re-points it at `dummy`).
+    function _replaceCut(bytes4 _sel) internal view returns (FacetCut[] memory cuts) {
+        bytes4[] memory sels = new bytes4[](1);
+        sels[0] = _sel;
+        cuts = new FacetCut[](1);
+        cuts[0] = FacetCut({facetAddress: address(dummy), action: FacetCutAction.Replace, functionSelectors: sels});
+    }
+
+    function _freeze(bytes4 _sel) internal {
+        bytes4[] memory sels = new bytes4[](1);
+        sels[0] = _sel;
+        vm.prank(address(diamond));
+        diamond.freezeSelectors(sels);
+    }
+
+    /// @notice Freezing reflects in isSelectorFrozen / frozenSelectors and is idempotent.
+    function test_FreezeReflectsInViews() public {
+        assertFalse(diamond.isSelectorFrozen(PING_SEL), "not frozen initially");
+        assertEq(diamond.frozenSelectors().length, 0, "set empty initially");
+
+        _freeze(PING_SEL);
+
+        assertTrue(diamond.isSelectorFrozen(PING_SEL), "must be frozen after freeze");
+        bytes4[] memory frozen = diamond.frozenSelectors();
+        assertEq(frozen.length, 1, "one frozen selector");
+        assertEq(frozen[0], PING_SEL, "frozen selector recorded");
+
+        // Re-freezing the same selector is an idempotent no-op (no duplicate entry).
+        _freeze(PING_SEL);
+        assertEq(diamond.frozenSelectors().length, 1, "no duplicate on re-freeze");
+    }
+
+    /// @notice freezeSelectors is governance-gated: a stranger without the role reverts.
+    function test_FreezeSelectorsGovernanceGated() public {
+        bytes4[] memory sels = new bytes4[](1);
+        sels[0] = PING_SEL;
+        vm.prank(stranger);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector, stranger, UPGRADE_EXECUTOR_ROLE
+            )
+        );
+        diamond.freezeSelectors(sels);
+
+        // Even the admin cannot freeze (role lives only on the diamond identity).
+        vm.prank(admin);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector, admin, UPGRADE_EXECUTOR_ROLE
+            )
+        );
+        diamond.freezeSelectors(sels);
+    }
+
+    /// @notice freezeSelectors emits SelectorsFrozen with the caller + argument array.
+    function test_FreezeSelectorsEmitsEvent() public {
+        bytes4[] memory sels = new bytes4[](2);
+        sels[0] = PING_SEL;
+        sels[1] = OTHER_SEL;
+        vm.expectEmit(true, false, false, true, address(diamond));
+        emit IFrozenSelectors.SelectorsFrozen(address(diamond), sels);
+        vm.prank(address(diamond));
+        diamond.freezeSelectors(sels);
+        assertTrue(diamond.isSelectorFrozen(PING_SEL));
+        assertTrue(diamond.isSelectorFrozen(OTHER_SEL));
+    }
+
+    /// @notice A governed cut that REMOVES a frozen selector reverts FrozenSelectorProtected,
+    ///         BEFORE diamond-lib runs (so the selector need not even be bound).
+    function test_FrozenSelectorBlocksRemove() public {
+        _freeze(PING_SEL);
+        FacetCut[] memory cuts = _removeCut(PING_SEL);
+        vm.prank(address(diamond));
+        vm.expectRevert(abi.encodeWithSelector(IFrozenSelectors.FrozenSelectorProtected.selector, PING_SEL));
+        diamond.diamondCut(cuts, address(0), "");
+    }
+
+    /// @notice A governed cut that REPLACES a frozen selector reverts FrozenSelectorProtected.
+    function test_FrozenSelectorBlocksReplace() public {
+        _freeze(PING_SEL);
+        FacetCut[] memory cuts = _replaceCut(PING_SEL);
+        vm.prank(address(diamond));
+        vm.expectRevert(abi.encodeWithSelector(IFrozenSelectors.FrozenSelectorProtected.selector, PING_SEL));
+        diamond.diamondCut(cuts, address(0), "");
+    }
+
+    /// @notice The frozen guard fires even when the frozen selector is one entry in a multi-cut batch.
+    function test_FrozenSelectorBlocksReplaceWithinBatch() public {
+        _freeze(OTHER_SEL);
+        // First cut Adds ping (fine), second cut Replaces the frozen OTHER_SEL (must revert).
+        FacetCut[] memory cuts = new FacetCut[](2);
+        cuts[0] = _addPingCut()[0];
+        cuts[1] = _replaceCut(OTHER_SEL)[0];
+        vm.prank(address(diamond));
+        vm.expectRevert(abi.encodeWithSelector(IFrozenSelectors.FrozenSelectorProtected.selector, OTHER_SEL));
+        diamond.diamondCut(cuts, address(0), "");
+        // The whole cut reverted: ping was NOT added.
+        assertEq(diamond.facetOf(PING_SEL), address(0), "reverted cut applies nothing");
+    }
+
+    /// @notice ADD of a frozen selector is unaffected: only Replace/Remove are protected.
+    function test_FrozenSelectorDoesNotBlockAdd() public {
+        _freeze(PING_SEL);
+        // Adding the (frozen) ping selector still works — Add is not a protected action.
+        FacetCut[] memory cuts = _addPingCut();
+        vm.prank(address(diamond));
+        diamond.diamondCut(cuts, address(0), "");
+        assertEq(diamond.facetOf(PING_SEL), address(dummy), "Add of a frozen selector must succeed");
+    }
+
+    /// @notice An Add of an UNRELATED selector still works while another selector is frozen.
+    function test_UnrelatedAddWorksWhileFrozen() public {
+        _freeze(OTHER_SEL);
+        FacetCut[] memory cuts = _addPingCut();
+        vm.prank(address(diamond));
+        diamond.diamondCut(cuts, address(0), "");
+        assertEq(diamond.facetOf(PING_SEL), address(dummy), "unrelated Add must succeed while frozen");
+    }
+
+    /// @notice A non-frozen Remove proceeds (and reaches diamond-lib): removing a bound, non-frozen
+    ///         selector succeeds and unbinds it.
+    function test_NonFrozenRemoveWorks() public {
+        // Bind ping first.
+        FacetCut[] memory addCut = _addPingCut();
+        vm.prank(address(diamond));
+        diamond.diamondCut(addCut, address(0), "");
+        assertEq(diamond.facetOf(PING_SEL), address(dummy), "ping bound");
+
+        // Freeze an unrelated selector, then remove the (non-frozen) ping — must succeed.
+        _freeze(OTHER_SEL);
+        FacetCut[] memory removeCut = _removeCut(PING_SEL);
+        vm.prank(address(diamond));
+        diamond.diamondCut(removeCut, address(0), "");
+        assertEq(diamond.facetOf(PING_SEL), address(0), "non-frozen remove must unbind selector");
+    }
+
+    /// @notice previewCut returns ok=false + the offending selector for a frozen-touching Replace.
+    function test_PreviewCutDetectsFrozenReplace() public {
+        _freeze(PING_SEL);
+        FacetCut[] memory cuts = _replaceCut(PING_SEL);
+        (bool ok, bytes4 offending) = diamond.previewCut(cuts);
+        assertFalse(ok, "preview must flag a frozen Replace");
+        assertEq(offending, PING_SEL, "preview must return the offending selector");
+    }
+
+    /// @notice previewCut returns ok=false + the offending selector for a frozen-touching Remove.
+    function test_PreviewCutDetectsFrozenRemove() public {
+        _freeze(PING_SEL);
+        FacetCut[] memory cuts = _removeCut(PING_SEL);
+        (bool ok, bytes4 offending) = diamond.previewCut(cuts);
+        assertFalse(ok);
+        assertEq(offending, PING_SEL);
+    }
+
+    /// @notice previewCut returns ok=true (zero offending) for a clean cut (Add, or non-frozen).
+    function test_PreviewCutCleanReturnsOk() public {
+        _freeze(OTHER_SEL);
+        // An Add of the frozen selector is still ok (Add unaffected).
+        (bool okAdd, bytes4 offAdd) = diamond.previewCut(_addPingCut());
+        assertTrue(okAdd, "Add must preview ok");
+        assertEq(offAdd, bytes4(0), "no offending selector for ok preview");
+
+        // A Remove of a NON-frozen selector is ok.
+        (bool okRm, bytes4 offRm) = diamond.previewCut(_removeCut(PING_SEL));
+        assertTrue(okRm, "non-frozen Remove must preview ok");
+        assertEq(offRm, bytes4(0));
+    }
+
+    /// @notice previewCut is a pure read: it does NOT mutate the frozen set or apply the cut.
+    function test_PreviewCutDoesNotMutate() public {
+        _freeze(PING_SEL);
+        diamond.previewCut(_replaceCut(PING_SEL));
+        // State unchanged: still exactly one frozen selector, ping still unbound.
+        assertEq(diamond.frozenSelectors().length, 1, "preview must not mutate frozen set");
+        assertEq(diamond.facetOf(PING_SEL), address(0), "preview must not apply the cut");
+    }
+
+    /// @notice verifyInterfaceRegistered is true for a registered interface and false otherwise.
+    function test_VerifyInterfaceRegistered() public view {
+        // IDiamondCut (0x1f931c1c) is registered by DiamondLib.registerInterface() in init.
+        assertTrue(diamond.verifyInterfaceRegistered(bytes4(0x1f931c1c)), "IDiamondCut must be advertised");
+        // IDiamondLoupe (0x48e2b093) is also registered.
+        assertTrue(diamond.verifyInterfaceRegistered(bytes4(0x48e2b093)), "IDiamondLoupe must be advertised");
+        // An arbitrary unregistered id is not advertised.
+        assertFalse(diamond.verifyInterfaceRegistered(bytes4(0x12345678)), "unknown interface must be false");
+        // Mirrors supportsInterface exactly.
+        assertEq(
+            diamond.verifyInterfaceRegistered(bytes4(0x1f931c1c)),
+            diamond.supportsInterface(bytes4(0x1f931c1c)),
+            "must mirror supportsInterface"
+        );
     }
 }
 
