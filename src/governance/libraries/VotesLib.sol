@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ContextLib} from "@diamond/libraries/ContextLib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {IVotes} from "@lattice/interfaces/IVotes.sol";
 import {Checkpoints} from "@lattice/utils/libraries/Checkpoints.sol";
@@ -136,7 +135,7 @@ library VotesLib {
     /// @notice Delegates votes from the caller to `delegatee`, using the provided voting units.
     /// @dev Submodules pass their token balance as `votingUnits`.
     function delegate(address delegatee, uint256 votingUnits) internal {
-        _delegate(ContextLib.msgSender(), delegatee, votingUnits);
+        _delegate(msg.sender, delegatee, votingUnits);
     }
 
     /// @notice Delegates votes via an EIP-712 signature.
@@ -195,13 +194,13 @@ library VotesLib {
         if (from != to && amount > 0) {
             if (from != address(0)) {
                 uint208 prev = Checkpoints.latest($._delegateCheckpoints[from]);
-                uint208 newWeight = _subtract(prev, uint208(amount));
+                uint208 newWeight = _subtract(prev, _toUint208(amount));
                 Checkpoints.push($._delegateCheckpoints[from], clock(), newWeight);
                 emit IVotes.DelegateVotesChanged(from, prev, newWeight);
             }
             if (to != address(0)) {
                 uint208 prev = Checkpoints.latest($._delegateCheckpoints[to]);
-                uint208 newWeight = _add(prev, uint208(amount));
+                uint208 newWeight = _add(prev, _toUint208(amount));
                 Checkpoints.push($._delegateCheckpoints[to], clock(), newWeight);
                 emit IVotes.DelegateVotesChanged(to, prev, newWeight);
             }
@@ -217,12 +216,12 @@ library VotesLib {
         if (from == address(0)) {
             // Mint: increase total supply checkpoint
             uint208 prev = Checkpoints.latest($._totalCheckpoints);
-            Checkpoints.push($._totalCheckpoints, clock(), _add(prev, uint208(amount)));
+            Checkpoints.push($._totalCheckpoints, clock(), _add(prev, _toUint208(amount)));
         }
         if (to == address(0)) {
             // Burn: decrease total supply checkpoint
             uint208 prev = Checkpoints.latest($._totalCheckpoints);
-            Checkpoints.push($._totalCheckpoints, clock(), _subtract(prev, uint208(amount)));
+            Checkpoints.push($._totalCheckpoints, clock(), _subtract(prev, _toUint208(amount)));
         }
         _moveDelegateVotes(delegates(from), delegates(to), amount);
     }
@@ -230,6 +229,13 @@ library VotesLib {
     //*//////////////////////////////////////////////////////////////////////////
     //                              SAFE MATH HELPERS
     //////////////////////////////////////////////////////////////////////////*//
+
+    /// @dev Casts `value` to uint208, reverting with {IVotes.VotesOverflowedVotingUnits} on overflow.
+    ///      Voting-unit checkpoints are uint208; silently truncating would corrupt vote accounting.
+    function _toUint208(uint256 value) private pure returns (uint208) {
+        if (value > type(uint208).max) revert IVotes.VotesOverflowedVotingUnits(value);
+        return uint208(value);
+    }
 
     function _add(uint208 a, uint208 b) private pure returns (uint208) {
         return a + b;

@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ContextLib} from "@diamond/libraries/ContextLib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {IAccessControl} from "@lattice/interfaces/IAccessControl.sol";
 
@@ -9,8 +8,8 @@ import {IAccessControl} from "@lattice/interfaces/IAccessControl.sol";
 //                                  STORAGE
 //////////////////////////////////////////////////////////////////////////*//
 
-/// @dev `keccak256(abi.encode(uint256(keccak256("openzeppelin.storage.AccessControl")) - 1)) & ~bytes32(uint256(0xff))`.
-bytes32 constant ACCESS_CONTROL_STORAGE_SLOT = 0x02dd7bc7dec4dceedda775e58dd541e08a116c6c53815c0bd028192f7b626800;
+/// @dev `keccak256(abi.encode(uint256(keccak256("lattice.storage.AccessControl")) - 1)) & ~bytes32(uint256(0xff))`.
+bytes32 constant ACCESS_CONTROL_STORAGE_SLOT = 0xb914f813e2d49e02dd5aa794466aa4a74f9c100c2b1e98e29e7267020b834d00;
 
 /// @dev `keccak256(abi.encode(uint256(keccak256("diamond.lib.storage.ERC165")) - 1)) & ~bytes32(uint256(0xff))`.
 bytes32 constant ERC165_STORAGE_LOCATION = 0x9ca7f3e2e2bfb15fdf072b85dde92837cddacee6cf2f6b38cd06c9457c1c4200;
@@ -31,7 +30,7 @@ struct RoleData {
 
 /// @notice Struct for storing Access Control information
 /// @dev Implements storage layout for role-based access control, including role membership and admin roles.
-/// @custom:storage-location erc7201:openzeppelin.storage.AccessControl
+/// @custom:storage-location erc7201:lattice.storage.AccessControl
 struct AccessControlStorage {
     mapping(bytes32 role => RoleData) _roles;
 }
@@ -92,9 +91,9 @@ library AccessControlLib {
 
     /// @notice Checks if the caller has a specific role and reverts if not.
     /// @param _role The required role identifier.
-    /// @dev Uses ContextLib.msgSender() to get the caller. Reverts with AccessControlUnauthorizedAccount if not authorized.
+    /// @dev Uses msg.sender to get the caller. Reverts with AccessControlUnauthorizedAccount if not authorized.
     function checkRole(bytes32 _role) internal view {
-        checkRole(_role, ContextLib.msgSender());
+        checkRole(_role, msg.sender);
     }
 
     /// @notice Checks if a specific account has a role and reverts if not.
@@ -143,7 +142,7 @@ library AccessControlLib {
     /// May emit a {RoleRevoked} event if the caller currently holds the role.
     /// Requirements: the callerConfirmation parameter must match the msg.sender for security.
     function renounceRole(bytes32 role, address callerConfirmation) internal {
-        if (callerConfirmation != ContextLib.msgSender()) {
+        if (callerConfirmation != msg.sender) {
             revert IAccessControl.AccessControlBadConfirmation();
         }
 
@@ -172,7 +171,7 @@ library AccessControlLib {
         AccessControlStorage storage $ = accessControlStorage();
         if (!hasRole(role, account)) {
             $._roles[role].hasRole[account] = true;
-            emit IAccessControl.RoleGranted(role, account, ContextLib.msgSender());
+            emit IAccessControl.RoleGranted(role, account, msg.sender);
             return true;
         } else {
             return false;
@@ -189,7 +188,7 @@ library AccessControlLib {
         AccessControlStorage storage $ = accessControlStorage();
         if (hasRole(role, account)) {
             $._roles[role].hasRole[account] = false;
-            emit IAccessControl.RoleRevoked(role, account, ContextLib.msgSender());
+            emit IAccessControl.RoleRevoked(role, account, msg.sender);
             return true;
         } else {
             return false;

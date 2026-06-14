@@ -3,6 +3,7 @@ pragma solidity ^0.8.30;
 
 import {StrategyManagerLib} from "@lattice/defi/libraries/StrategyManagerLib.sol";
 import {IStrategyManager} from "@lattice/interfaces/IStrategyManager.sol";
+import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib.sol";
 
 /// @title StrategyManager
 /// @author Modified from Yearn V3 (https://github.com/yearn/yearn-vaults-v3/blob/master/contracts/VaultV3.vy)
@@ -46,6 +47,14 @@ contract StrategyManager is IStrategyManager {
     /// @inheritdoc IStrategyManager
     function totalTargetBps() external view virtual override returns (uint256) {
         return StrategyManagerLib.totalTargetBps();
+    }
+
+    /// @notice Returns true while a `rebalance()` is in progress (the reentrancy guard is held).
+    /// @dev Consumed by VaultCore to reject share-price-sensitive operations (deposit/mint/
+    ///      withdraw/redeem) mid-rebalance, defeating read-only reentrancy via a strategy callback.
+    ///      Deliberately NOT part of IStrategyManager, so the interface's ERC-165 id is unchanged.
+    function reentrancyGuardEntered() external view virtual returns (bool) {
+        return ReentrancyGuardLib.reentrancyGuardEntered();
     }
 
     //*//////////////////////////////////////////////////////////////////////////

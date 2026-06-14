@@ -56,11 +56,15 @@ library ShortStrings {
     /// @return The byte length.
     function byteLength(ShortString sstr) internal pure returns (uint256) {
         bytes32 raw = ShortString.unwrap(sstr);
-        if (raw == FALLBACK_SENTINEL) {
+        // length is in the lowest byte
+        uint256 len = uint256(raw) & 0xff;
+        // A valid packed ShortString holds 0..31 data bytes. Any other length byte (including
+        // the all-0xff fallback sentinel, whose length byte is 255) is invalid — reject it so
+        // toString never mstore's an oversized length over its 32-byte buffer.
+        if (len > 31) {
             revert InvalidShortString();
         }
-        // length is in the lowest byte
-        return uint256(raw) & 0xff;
+        return len;
     }
 
     /// @notice Converts a string to a ShortString, falling back to storage for long strings.
@@ -74,22 +78,11 @@ library ShortStrings {
         if (bytes(value).length < 32) {
             return toShortString(value);
         }
-        // Store the full string in the storage fallback slot using assembly
-        bytes memory bvalue = bytes(value);
-        uint256 len = bvalue.length;
-        assembly ("memory-safe") {
-            let storeSlot := store.slot
-            // Encode as long string: length*2+1 in the base slot, data in keccak(slot)
-            sstore(storeSlot, add(mul(len, 2), 1))
-            let dataSlot := keccak256(add(mload(0x40), 0), 32)
-            // compute keccak256(storeSlot) for data start
-            mstore(0x00, storeSlot)
-            dataSlot := keccak256(0x00, 0x20)
-            let words := div(add(len, 31), 32)
-            for { let i := 0 } lt(i, words) { i := add(i, 1) } {
-                sstore(add(dataSlot, i), mload(add(add(bvalue, 0x20), mul(i, 32))))
-            }
-        }
+        // Store the full string in the storage fallback slot. Routing through a storage-slot
+        // wrapper performs the correct native long-string encoding (length*2+1 in the base slot,
+        // data words at keccak(slot)) with no hand-rolled word copy and no trailing-garbage
+        // writes — matching OpenZeppelin's StorageSlot-based approach.
+        _stringSlot(store).value = value;
         return ShortString.wrap(FALLBACK_SENTINEL);
     }
 
@@ -107,6 +100,19 @@ library ShortStrings {
     // -------------------------------------------------------------------------
     // Internal helpers
     // -------------------------------------------------------------------------
+
+    /// @dev Mirror of OpenZeppelin's `StorageSlot.StringSlot`. Wrapping a slot in this struct lets
+    ///      us copy a memory string into a `string storage` reference via a native assignment.
+    struct StringSlot {
+        string value;
+    }
+
+    /// @dev Returns a {StringSlot} pointing at the same storage slot as `store`.
+    function _stringSlot(string storage store) private pure returns (StringSlot storage ptr) {
+        assembly ("memory-safe") {
+            ptr.slot := store.slot
+        }
+    }
 
     /// @dev Packs bytes into the upper bytes of a bytes32 word, length in the lowest byte.
     function _pack(bytes memory bstr) private pure returns (bytes32 result) {

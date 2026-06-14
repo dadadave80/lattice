@@ -67,4 +67,45 @@ contract VaultCore is ERC4626, IVaultCore {
     function recallFromStrategy(address strategy, uint256 amount) external virtual override {
         VaultCoreLib.recallFromStrategy(strategy, amount);
     }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                    ERC-4626 ENTRY GUARDS (READ-ONLY REENTRANCY)
+    //////////////////////////////////////////////////////////////////////////*//
+    // Share-price-sensitive entry points are rejected while the strategy manager is mid-rebalance,
+    // when totalAssets() (idle + strategy-reported) is transiently inconsistent. This closes the
+    // read-only-reentrancy window where a strategy callback re-enters the vault during rebalance().
+
+    /// @inheritdoc IERC4626
+    function deposit(uint256 assets, address receiver) public virtual override(ERC4626, IERC4626) returns (uint256) {
+        VaultCoreLib.requireManagerNotRebalancing();
+        return super.deposit(assets, receiver);
+    }
+
+    /// @inheritdoc IERC4626
+    function mint(uint256 shares, address receiver) public virtual override(ERC4626, IERC4626) returns (uint256) {
+        VaultCoreLib.requireManagerNotRebalancing();
+        return super.mint(shares, receiver);
+    }
+
+    /// @inheritdoc IERC4626
+    function withdraw(uint256 assets, address receiver, address owner)
+        public
+        virtual
+        override(ERC4626, IERC4626)
+        returns (uint256)
+    {
+        VaultCoreLib.requireManagerNotRebalancing();
+        return super.withdraw(assets, receiver, owner);
+    }
+
+    /// @inheritdoc IERC4626
+    function redeem(uint256 shares, address receiver, address owner)
+        public
+        virtual
+        override(ERC4626, IERC4626)
+        returns (uint256)
+    {
+        VaultCoreLib.requireManagerNotRebalancing();
+        return super.redeem(shares, receiver, owner);
+    }
 }

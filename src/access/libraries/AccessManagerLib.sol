@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ContextLib} from "@diamond/libraries/ContextLib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {IAccessManaged} from "@lattice/interfaces/IAccessManaged.sol";
 import {IAccessManager} from "@lattice/interfaces/IAccessManager.sol";
@@ -208,7 +207,7 @@ library AccessManagerLib {
     }
 
     function renounceRole(uint64 roleId, address callerConfirmation) internal {
-        if (callerConfirmation != ContextLib.msgSender()) {
+        if (callerConfirmation != msg.sender) {
             revert IAccessManager.AccessManagerBadConfirmation();
         }
         if (roleId == ADMIN_ROLE || roleId == PUBLIC_ROLE) {
@@ -322,7 +321,7 @@ library AccessManagerLib {
         internal
         returns (bytes32 operationId, uint32 nonce)
     {
-        address caller = ContextLib.msgSender();
+        address caller = msg.sender;
         uint32 delay = _checkCanSchedule(caller, target, data);
         operationId = hashOperation(caller, target, data);
         uint48 effectiveWhen;
@@ -331,7 +330,7 @@ library AccessManagerLib {
     }
 
     function execute(address target, bytes calldata data) internal returns (uint32 nonce) {
-        address caller = ContextLib.msgSender();
+        address caller = msg.sender;
         (bool immediate, uint32 delay) = canCall(caller, target, bytes4(data[0:4]));
         bytes32 operationId = hashOperation(caller, target, data);
         AccessManagerStorage storage $ = accessManagerStorage();
@@ -383,7 +382,7 @@ library AccessManagerLib {
     }
 
     function cancel(address caller, address target, bytes calldata data) internal returns (uint32 nonce) {
-        address msgSender = ContextLib.msgSender();
+        address msgSender = msg.sender;
         bytes32 operationId = hashOperation(caller, target, data);
         AccessManagerStorage storage $ = accessManagerStorage();
         if (!$._operationQueue.isPending(operationId)) {
@@ -442,14 +441,14 @@ library AccessManagerLib {
     }
 
     function _checkAdmin() private view {
-        (bool isMember,) = hasRole(ADMIN_ROLE, ContextLib.msgSender());
-        if (!isMember) revert IAccessManager.AccessManagerUnauthorizedAccount(ContextLib.msgSender(), ADMIN_ROLE);
+        (bool isMember,) = hasRole(ADMIN_ROLE, msg.sender);
+        if (!isMember) revert IAccessManager.AccessManagerUnauthorizedAccount(msg.sender, ADMIN_ROLE);
     }
 
     function _checkRoleAdmin(uint64 roleId) private view {
         uint64 adminRole = accessManagerStorage()._roles[roleId].admin;
-        (bool isMember,) = hasRole(adminRole, ContextLib.msgSender());
-        if (!isMember) revert IAccessManager.AccessManagerUnauthorizedAccount(ContextLib.msgSender(), adminRole);
+        (bool isMember,) = hasRole(adminRole, msg.sender);
+        if (!isMember) revert IAccessManager.AccessManagerUnauthorizedAccount(msg.sender, adminRole);
     }
 
     /// @dev Validates that `caller` may schedule a call to `target` with `data` and returns

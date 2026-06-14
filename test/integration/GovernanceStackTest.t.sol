@@ -379,6 +379,74 @@ contract GovernanceStackTest is Test {
         assertEq(selfGov.quorumNumerator(), 10);
     }
 
+    /// @notice quorumNumerator can be updated via a proposal executed THROUGH the timelock.
+    /// @dev Regression: with a timelock configured, the governor's own admin setters are
+    ///      invoked by the timelock (msg.sender == timelock), so `_checkGovernance` must
+    ///      accept the configured executor — not only `address(this)`. Previously this
+    ///      reverted with GovernorOnlyExecutor, bricking self-reconfiguration.
+    function test_GovStack_UpdateQuorumViaTimelockProposal() public {
+        assertEq(governor.quorumNumerator(), QUORUM_NUMERATOR);
+
+        address[] memory targets = new address[](1);
+        targets[0] = address(governor);
+        uint256[] memory values = new uint256[](1);
+        bytes[] memory calldatas = new bytes[](1);
+        calldatas[0] = abi.encodeCall(IGovernor.updateQuorumNumerator, (10));
+        string memory description = "Update quorum to 10% via timelock";
+        bytes32 descHash = keccak256(bytes(description));
+
+        vm.prank(alice);
+        uint256 proposalId = governor.propose(targets, values, calldatas, description);
+
+        _advanceToActive();
+        vm.prank(alice);
+        governor.castVote(proposalId, uint8(IGovernor.VoteType.For));
+        vm.prank(bob);
+        governor.castVote(proposalId, uint8(IGovernor.VoteType.For));
+        _advancePastVoting();
+
+        assertEq(uint8(governor.state(proposalId)), uint8(IGovernor.ProposalState.Succeeded));
+
+        governor.queue(targets, values, calldatas, descHash);
+        vm.warp(block.timestamp + TIMELOCK_DELAY + 1);
+        governor.execute(targets, values, calldatas, descHash);
+
+        assertEq(uint8(governor.state(proposalId)), uint8(IGovernor.ProposalState.Executed));
+        assertEq(governor.quorumNumerator(), 10);
+    }
+
+    /// @notice The timelock cannot be used to invoke the governor's admin setters via a
+    ///         queued operation that did NOT originate from a governor `execute()` call.
+    /// @dev Defends the `_governanceCall` authorization: a timelock proposer scheduling
+    ///      `updateQuorumNumerator` directly on the timelock must not be able to reconfigure
+    ///      the governor when the timelock relays the call back.
+    function test_GovStack_TimelockCannotForgeGovernanceCall() public {
+        // admin holds no PROPOSER_ROLE for arbitrary ops by default, so grant the stranger
+        // PROPOSER + EXECUTOR to simulate a timelock controlled outside the governor.
+        vm.startPrank(admin);
+        timelock.grantRole(TimelockControllerLib.PROPOSER_ROLE, stranger);
+        timelock.grantRole(TimelockControllerLib.EXECUTOR_ROLE, stranger);
+        vm.stopPrank();
+
+        address[] memory targets = new address[](1);
+        targets[0] = address(governor);
+        uint256[] memory values = new uint256[](1);
+        bytes[] memory calldatas = new bytes[](1);
+        calldatas[0] = abi.encodeCall(IGovernor.updateQuorumNumerator, (99));
+        bytes32 salt = bytes32(uint256(0xBEEF));
+
+        vm.startPrank(stranger);
+        timelock.scheduleBatch(targets, values, calldatas, bytes32(0), salt, TIMELOCK_DELAY);
+        vm.warp(block.timestamp + TIMELOCK_DELAY + 1);
+        // The timelock relays the call to the governor, but it was never authorized by a
+        // governor execute(), so `_checkGovernance` must reject it.
+        vm.expectRevert();
+        timelock.executeBatch(targets, values, calldatas, bytes32(0), salt);
+        vm.stopPrank();
+
+        assertEq(governor.quorumNumerator(), QUORUM_NUMERATOR);
+    }
+
     //*//////////////////////////////////////////////////////////////////////////
     //                         MULTI-VOTER QUORUM MATH
     //////////////////////////////////////////////////////////////////////////*//

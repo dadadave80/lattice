@@ -60,6 +60,18 @@ contract GovTarget {
     }
 }
 
+/// @notice Standalone Governor that also exposes ERC-165 `supportsInterface`.
+/// @dev `GovernorStandalone` registers `IGovernor` into ERC-165 storage but does not
+///      surface a public reader; this mock adds the standard facade so the ERC-165
+///      test can use the same `supportsInterface(...)` call shape as every other module.
+contract MockGovernorStandalone is GovernorStandalone {
+    constructor(Config memory cfg) GovernorStandalone(cfg) {}
+
+    function supportsInterface(bytes4 interfaceId) public view returns (bool) {
+        return ERC165Lib.supportsInterface(interfaceId);
+    }
+}
+
 //*//////////////////////////////////////////////////////////////////////////
 //                              TEST SUITE
 //////////////////////////////////////////////////////////////////////////*//
@@ -69,7 +81,7 @@ contract GovTarget {
 contract GovernorTester is Test {
     MockERC20VotesContract token;
     TimelockControllerStandalone timelock;
-    GovernorStandalone governor;
+    MockGovernorStandalone governor;
     GovTarget govTarget;
 
     // Test accounts
@@ -150,7 +162,7 @@ contract GovernorTester is Test {
             proposalThreshold: PROPOSAL_THRESHOLD,
             quorumNumerator: QUORUM_NUMERATOR
         });
-        governor = new GovernorStandalone(cfg);
+        governor = new MockGovernorStandalone(cfg);
 
         // Grant governor PROPOSER_ROLE + CANCELLER_ROLE on timelock
         vm.startPrank(admin);
@@ -1006,12 +1018,7 @@ contract GovernorTester is Test {
     //////////////////////////////////////////////////////////////////////////*//
 
     function test_SupportsIGovernorInterface() public view {
-        bytes4 iface = type(IGovernor).interfaceId;
-        // ERC-165 registration writes `true` to the slot keccak256(abi.encode(iface, ERC165_STORAGE_LOCATION))
-        bytes32 erc165StorageLocation = 0x9ca7f3e2e2bfb15fdf072b85dde92837cddacee6cf2f6b38cd06c9457c1c4200;
-        bytes32 slot = keccak256(abi.encode(iface, erc165StorageLocation));
-        bytes32 stored = vm.load(address(governor), slot);
-        assertEq(uint256(stored), 1, "IGovernor should be registered for ERC-165");
+        assertTrue(governor.supportsInterface(type(IGovernor).interfaceId), "IGovernor not registered");
     }
 
     //*//////////////////////////////////////////////////////////////////////////

@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ContextLib} from "@diamond/libraries/ContextLib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {IERC20} from "@lattice/interfaces/IERC20.sol";
 import {IERC4626} from "@lattice/interfaces/IERC4626.sol";
@@ -183,7 +182,7 @@ library ERC4626Lib {
             revert IERC4626.ERC4626ExceededMaxDeposit(receiver, assets, maxAssets);
         }
         shares = previewDeposit(assets);
-        _deposit(ContextLib.msgSender(), receiver, assets, shares);
+        _deposit(msg.sender, receiver, assets, shares);
     }
 
     /// @notice Mints exactly `shares` to `receiver`, pulling the required assets.
@@ -193,7 +192,7 @@ library ERC4626Lib {
             revert IERC4626.ERC4626ExceededMaxMint(receiver, shares, maxShares);
         }
         assets = previewMint(shares);
-        _deposit(ContextLib.msgSender(), receiver, assets, shares);
+        _deposit(msg.sender, receiver, assets, shares);
     }
 
     /// @notice Withdraws `assets` from the vault, burning the required shares from `owner`.
@@ -203,7 +202,7 @@ library ERC4626Lib {
             revert IERC4626.ERC4626ExceededMaxWithdraw(owner, assets, maxAssets);
         }
         shares = previewWithdraw(assets);
-        _withdraw(ContextLib.msgSender(), receiver, owner, assets, shares);
+        _withdraw(msg.sender, receiver, owner, assets, shares);
     }
 
     /// @notice Redeems `shares` from `owner`, transferring assets to `receiver`.
@@ -213,7 +212,7 @@ library ERC4626Lib {
             revert IERC4626.ERC4626ExceededMaxRedeem(owner, shares, maxShares);
         }
         assets = previewRedeem(shares);
-        _withdraw(ContextLib.msgSender(), receiver, owner, assets, shares);
+        _withdraw(msg.sender, receiver, owner, assets, shares);
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -268,7 +267,10 @@ library ERC4626Lib {
     ///      returns false. Handles tokens that do not return a bool (e.g. USDT).
     function _safeTransfer(address token, address to, uint256 amount) private {
         (bool ok, bytes memory ret) = token.call(abi.encodeWithSelector(IERC20.transfer.selector, to, amount));
-        if (!ok || (ret.length > 0 && !abi.decode(ret, (bool)))) {
+        // Success requires the call to succeed AND either (a) return a truthy bool, or (b) return
+        // no data but be a contract. A no-code address returns ok=true with empty data, which must
+        // NOT be treated as a successful transfer (matches OpenZeppelin SafeERC20).
+        if (!ok || (ret.length == 0 ? token.code.length == 0 : !abi.decode(ret, (bool)))) {
             revert IERC4626.SafeERC20FailedOperation(token);
         }
     }
@@ -277,7 +279,10 @@ library ERC4626Lib {
     ///      fails or returns false. Handles tokens that do not return a bool (e.g. USDT).
     function _safeTransferFrom(address token, address from, address to, uint256 amount) private {
         (bool ok, bytes memory ret) = token.call(abi.encodeWithSelector(IERC20.transferFrom.selector, from, to, amount));
-        if (!ok || (ret.length > 0 && !abi.decode(ret, (bool)))) {
+        // Success requires the call to succeed AND either (a) return a truthy bool, or (b) return
+        // no data but be a contract. A no-code address returns ok=true with empty data, which must
+        // NOT be treated as a successful transfer (matches OpenZeppelin SafeERC20).
+        if (!ok || (ret.length == 0 ? token.code.length == 0 : !abi.decode(ret, (bool)))) {
             revert IERC4626.SafeERC20FailedOperation(token);
         }
     }

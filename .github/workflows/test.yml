@@ -34,5 +34,27 @@ jobs:
       - name: Run Forge build
         run: forge build --sizes
 
+      - name: Build with via_ir (IR-pipeline parity)
+        run: forge build --via-ir --sizes
+
       - name: Run Forge tests
         run: forge test -vvv
+
+  slither:
+    name: Slither (advisory)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+          submodules: recursive
+
+      # Advisory for now (continue-on-error + fail-on: none). Triage findings, then make this
+      # a hard gate per the architecture spec's "0 high/medium" target.
+      - name: Run Slither
+        uses: crytic/slither-action@v0.4.0
+        continue-on-error: true
+        with:
+          fail-on: none

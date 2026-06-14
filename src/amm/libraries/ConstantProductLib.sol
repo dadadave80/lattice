@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ContextLib} from "@diamond/libraries/ContextLib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {IConstantProduct} from "@lattice/interfaces/IConstantProduct.sol";
 import {IERC20} from "@lattice/interfaces/IERC20.sol";
@@ -184,17 +183,23 @@ library ConstantProductLib {
             }
         }
 
-        // Slippage checks.
+        // Slippage checks on the intended deposit amounts.
         if (amount0 < amount0Min || amount1 < amount1Min) {
             revert IConstantProduct.ConstantProductSlippageExceeded();
         }
 
-        address caller = ContextLib.msgSender();
+        address caller = msg.sender;
 
-        // CHECKS-EFFECTS-INTERACTIONS: compute LP shares and update all storage
-        // BEFORE any external token calls to prevent reentrancy attacks.
+        // INTERACTION (pull): pull both tokens first and measure the ACTUAL received
+        // balance deltas. Fee-on-transfer tokens deliver less than requested, so LP
+        // shares and reserves must be computed from the real amounts to keep
+        // `reserve <= balanceOf(pool)`. The reentrancy guard is engaged for the whole
+        // call, so pulling before the state update cannot be exploited. From here on
+        // `amount0` / `amount1` are the actually deposited (effective) amounts.
+        amount0 = _safeTransferFromReceived($._token0, caller, amount0);
+        amount1 = _safeTransferFromReceived($._token1, caller, amount1);
 
-        // Compute LP shares to mint.
+        // Compute LP shares to mint from the effective deposit.
         uint256 totalSupply_ = $._totalLpSupply;
         if (totalSupply_ == 0) {
             uint256 raw = _sqrt(amount0 * amount1);
@@ -211,7 +216,7 @@ library ConstantProductLib {
 
         if (liquidity == 0) revert IConstantProduct.ConstantProductInsufficientLiquidityMinted();
 
-        // EFFECTS: mint LP shares and update reserves BEFORE external calls.
+        // EFFECTS: mint LP shares and update reserves from the effective deposit.
         _mintLp($, to, liquidity);
         uint256 newReserve0 = reserve0_ + amount0;
         uint256 newReserve1 = reserve1_ + amount1;
@@ -224,10 +229,6 @@ library ConstantProductLib {
 
         emit IConstantProduct.LiquidityAdded(caller, to, amount0, amount1, liquidity);
         emit IConstantProduct.ReservesSync(uint256($._reserve0), uint256($._reserve1));
-
-        // INTERACTIONS: pull tokens from caller after all state is updated.
-        _safeTransferFrom($._token0, caller, address(this), amount0);
-        _safeTransferFrom($._token1, caller, address(this), amount1);
 
         ReentrancyGuardLib.nonReentrantAfter();
     }
@@ -264,7 +265,7 @@ library ConstantProductLib {
             revert IConstantProduct.ConstantProductSlippageExceeded();
         }
 
-        address caller = ContextLib.msgSender();
+        address caller = msg.sender;
 
         // EFFECTS: burn LP shares and update reserves BEFORE external transfers.
         _burnLp($, caller, liquidity);
@@ -302,14 +303,18 @@ library ConstantProductLib {
 
         ConstantProductStorage storage $ = constantProductStorage();
 
-        address caller = ContextLib.msgSender();
+        address caller = msg.sender;
         amountOut = _executeSwap($, amountIn, amountOutMin, zeroForOne, caller, to);
 
         ReentrancyGuardLib.nonReentrantAfter();
     }
 
     /// @dev Internal helper that carries out the swap to avoid stack-too-deep in the public entry point.
-    ///      CEI order: CHECKS → EFFECTS (reserve update) → INTERACTIONS (token transfers).
+    ///      Fee-on-transfer safe: the input is pulled first and the ACTUAL received
+    ///      balance delta (`effectiveAmountIn`) drives the output, K-invariant,
+    ///      slippage and reserve math. For standard tokens the delta equals the
+    ///      requested amount, preserving existing behavior. The reentrancy guard in
+    ///      the caller protects the pull-before-update ordering.
     function _executeSwap(
         ConstantProductStorage storage $,
         uint256 amountIn,
@@ -326,32 +331,41 @@ library ConstantProductLib {
         address tokenIn = zeroForOne ? $._token0 : $._token1;
         address tokenOut = zeroForOne ? $._token1 : $._token0;
 
-        // CHECKS: compute and validate output amount.
-        amountOut = getAmountOut(amountIn, reserveIn, reserveOut);
+        // INTERACTION (pull): pull the input first so we can measure the real
+        // received amount. The reentrancy guard is already engaged, so reentrant
+        // swaps revert and reserves cannot be observed mid-update.
+        uint256 effectiveAmountIn = _safeTransferFromReceived(tokenIn, caller, amountIn);
+        if (effectiveAmountIn == 0) revert IConstantProduct.ConstantProductInsufficientInputAmount();
+
+        // CHECKS: compute and validate output amount against the effective input.
+        amountOut = getAmountOut(effectiveAmountIn, reserveIn, reserveOut);
 
         if (amountOut < amountOutMin) revert IConstantProduct.ConstantProductInsufficientOutputAmount();
 
-        // K invariant check.
-        _checkK(amountIn, amountOut, reserveIn, reserveOut);
+        // K invariant check on the effective input.
+        _checkK(effectiveAmountIn, amountOut, reserveIn, reserveOut);
 
-        // EFFECTS: update reserves BEFORE any external token calls.
+        // EFFECTS: update reserves using the actual received input.
         if (zeroForOne) {
-            if (reserve0_ + amountIn > type(uint112).max) revert IConstantProduct.ConstantProductReserveOverflow();
-            $._reserve0 = uint112(reserve0_ + amountIn);
+            if (reserve0_ + effectiveAmountIn > type(uint112).max) {
+                revert IConstantProduct.ConstantProductReserveOverflow();
+            }
+            $._reserve0 = uint112(reserve0_ + effectiveAmountIn);
             $._reserve1 = uint112(reserve1_ - amountOut);
-            emit IConstantProduct.Swap(caller, to, amountIn, 0, 0, amountOut);
+            emit IConstantProduct.Swap(caller, to, effectiveAmountIn, 0, 0, amountOut);
         } else {
-            if (reserve1_ + amountIn > type(uint112).max) revert IConstantProduct.ConstantProductReserveOverflow();
+            if (reserve1_ + effectiveAmountIn > type(uint112).max) {
+                revert IConstantProduct.ConstantProductReserveOverflow();
+            }
             $._reserve0 = uint112(reserve0_ - amountOut);
-            $._reserve1 = uint112(reserve1_ + amountIn);
-            emit IConstantProduct.Swap(caller, to, 0, amountIn, amountOut, 0);
+            $._reserve1 = uint112(reserve1_ + effectiveAmountIn);
+            emit IConstantProduct.Swap(caller, to, 0, effectiveAmountIn, amountOut, 0);
         }
         $._blockTimestampLast = uint32(block.timestamp);
 
         emit IConstantProduct.ReservesSync(uint256($._reserve0), uint256($._reserve1));
 
-        // INTERACTIONS: pull input, then push output.
-        _safeTransferFrom(tokenIn, caller, address(this), amountIn);
+        // INTERACTION (push): send output after reserves are updated.
         _safeTransfer(tokenOut, to, amountOut);
     }
 
@@ -445,10 +459,21 @@ library ConstantProductLib {
         $._totalLpSupply -= amount;
     }
 
-    /// @notice Calls `transferFrom` on `token`, reverts with ConstantProductTransferFailed on false return.
-    function _safeTransferFrom(address token, address from, address to, uint256 amount) private {
-        bool ok = IERC20(token).transferFrom(from, to, amount);
+    /// @notice Pulls `amount` of `token` from `from` into the pool and returns the
+    ///         ACTUAL received amount (the pool balance delta).
+    /// @dev Fee-on-transfer / deflationary tokens deliver less than `amount`; the
+    ///      measured delta is the effective input used for reserve, LP and K math.
+    ///      For standard tokens the delta equals `amount`, preserving existing
+    ///      behavior. Reverts ConstantProductTransferFailed on a false return.
+    /// @param token  The token to pull.
+    /// @param from   The address to pull from.
+    /// @param amount The requested transfer amount.
+    /// @return received The actual amount credited to the pool (post-fee).
+    function _safeTransferFromReceived(address token, address from, uint256 amount) private returns (uint256 received) {
+        uint256 balanceBefore = IERC20(token).balanceOf(address(this));
+        bool ok = IERC20(token).transferFrom(from, address(this), amount);
         if (!ok) revert IConstantProduct.ConstantProductTransferFailed(token);
+        received = IERC20(token).balanceOf(address(this)) - balanceBefore;
     }
 
     /// @notice Calls `transfer` on `token`, reverts with ConstantProductTransferFailed on false return.

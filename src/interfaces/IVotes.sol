@@ -28,6 +28,10 @@ interface IVotes {
     /// @notice Attempted to look up a future timepoint.
     error ERC5805FutureLookup(uint256 timepoint, uint48 clock);
 
+    /// @notice A voting-units amount exceeded the uint208 checkpoint range.
+    /// @param value The amount that could not be safely cast to uint208.
+    error VotesOverflowedVotingUnits(uint256 value);
+
     //*//////////////////////////////////////////////////////////////////////////
     //                           VOTING POWER VIEWS
     //////////////////////////////////////////////////////////////////////////*//

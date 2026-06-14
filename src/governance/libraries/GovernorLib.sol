@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ContextLib} from "@diamond/libraries/ContextLib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {IGovernor} from "@lattice/interfaces/IGovernor.sol";
 import {ITimelockController} from "@lattice/interfaces/ITimelockController.sol";
@@ -83,6 +82,10 @@ struct GovernorStorage {
     mapping(bytes32 timelockId => uint256 proposalId) _timelockIds;
     /// @dev Maps proposal ID → timelock operation ID (reverse of _timelockIds).
     mapping(uint256 proposalId => bytes32 timelockId) _proposalTimelockIds;
+    /// @dev Authorized self-call hashes during timelock execution (keccak256(calldata) → count).
+    ///      Lets {_onlyGovernance} accept admin setters relayed by the timelock, but only when
+    ///      they were part of a proposal executed through this governor's {execute}.
+    mapping(bytes32 callHash => uint256 count) _governanceCall;
 }
 
 /// @dev Minimal EIP-6372 interface used to delegate clock() and CLOCK_MODE() to the token.
@@ -326,9 +329,12 @@ library GovernorLib {
         if (p.canceled) return IGovernor.ProposalState.Canceled;
         uint256 snapshot = p.voteStart;
         if (snapshot == 0) revert IGovernor.GovernorNonexistentProposal(proposalId);
-        if (snapshot >= block.timestamp) return IGovernor.ProposalState.Pending;
+        // Compare voting-window bounds against the token's clock (EIP-6372), not block.timestamp,
+        // so a block-number-mode IVotes token is handled consistently with `voteStart`/`deadline`.
+        uint256 currentClock = clock();
+        if (snapshot >= currentClock) return IGovernor.ProposalState.Pending;
         uint256 deadline = snapshot + p.voteDuration;
-        if (deadline >= block.timestamp) return IGovernor.ProposalState.Active;
+        if (deadline >= currentClock) return IGovernor.ProposalState.Active;
         if (!_voteSucceeded(proposalId) || !_quorumReached(proposalId)) {
             return IGovernor.ProposalState.Defeated;
         }
@@ -370,7 +376,7 @@ library GovernorLib {
         bytes[] memory calldatas,
         string memory description
     ) internal returns (uint256) {
-        address proposer = ContextLib.msgSender();
+        address proposer = msg.sender;
         if (targets.length == 0) {
             revert IGovernor.GovernorInvalidProposalLength(0, 0, 0);
         }
@@ -509,7 +515,19 @@ library GovernorLib {
 
         if (timelockAddr != address(0)) {
             bytes32 salt = bytes32(proposalId);
+            // Authorize any self-calls (target == this governor) so {_onlyGovernance} accepts
+            // them when the timelock relays the call back. Without this, admin setters bundled
+            // into a passed proposal would revert (msg.sender == timelock, not address(this)).
+            GovernorStorage storage $ = governorStorage();
+            for (uint256 i; i < targets.length; ++i) {
+                if (targets[i] == address(this)) ++$._governanceCall[keccak256(calldatas[i])];
+            }
             ITimelockController(timelockAddr).executeBatch(targets, values, calldatas, bytes32(0), salt);
+            // Defensive cleanup: clear any authorization not consumed during execution so it
+            // cannot leak into a later transaction.
+            for (uint256 i; i < targets.length; ++i) {
+                if (targets[i] == address(this)) delete $._governanceCall[keccak256(calldatas[i])];
+            }
         } else {
             for (uint256 i; i < targets.length; ++i) {
                 // solhint-disable-next-line avoid-low-level-calls
@@ -559,7 +577,7 @@ library GovernorLib {
             revert IGovernor.GovernorUnexpectedProposalState(proposalId, currentState, allowedStates);
         }
 
-        address caller = ContextLib.msgSender();
+        address caller = msg.sender;
         if (caller != governorStorage()._proposals[proposalId].proposer) {
             revert IGovernor.GovernorOnlyExecutor(caller);
         }
@@ -587,7 +605,7 @@ library GovernorLib {
     /// @param support Vote type: 0=Against, 1=For, 2=Abstain.
     /// @return weight The voter's voting power at the proposal snapshot.
     function castVote(uint256 proposalId, uint8 support) internal returns (uint256) {
-        address voter = ContextLib.msgSender();
+        address voter = msg.sender;
         return _castVote(proposalId, voter, support, "", "");
     }
 
@@ -597,7 +615,7 @@ library GovernorLib {
     /// @param reason Human-readable reason for the vote.
     /// @return weight The voter's voting power at the proposal snapshot.
     function castVoteWithReason(uint256 proposalId, uint8 support, string calldata reason) internal returns (uint256) {
-        address voter = ContextLib.msgSender();
+        address voter = msg.sender;
         return _castVote(proposalId, voter, support, reason, "");
     }
 
@@ -613,7 +631,7 @@ library GovernorLib {
         string calldata reason,
         bytes calldata params
     ) internal returns (uint256) {
-        address voter = ContextLib.msgSender();
+        address voter = msg.sender;
         return _castVote(proposalId, voter, support, reason, params);
     }
 
@@ -745,10 +763,29 @@ library GovernorLib {
         return pv.forVotes + pv.abstainVotes >= quorum(snapshot);
     }
 
-    /// @dev Reverts unless the caller is address(this) (i.e., the governor contract executing a proposal).
-    function _onlyGovernance() internal view {
-        address caller = ContextLib.msgSender();
-        if (caller != address(this)) revert IGovernor.GovernorOnlyExecutor(caller);
+    /// @dev Reverts unless the caller is the configured executor: the timelock when one is set,
+    ///      otherwise this governor (direct execution). When a timelock relays the call, the exact
+    ///      calldata must have been authorized by a governor {execute} (see the `_governanceCall`
+    ///      bookkeeping) — this prevents the timelock from being used to invoke governor admin
+    ///      functions outside a passed proposal.
+    function _onlyGovernance() internal {
+        address caller = msg.sender;
+        address exec = _executor();
+        if (caller != exec) revert IGovernor.GovernorOnlyExecutor(caller);
+        if (exec != address(this)) {
+            GovernorStorage storage $ = governorStorage();
+            bytes32 callHash = keccak256(msg.data);
+            uint256 authorized = $._governanceCall[callHash];
+            if (authorized == 0) revert IGovernor.GovernorOnlyExecutor(caller);
+            $._governanceCall[callHash] = authorized - 1;
+        }
+    }
+
+    /// @dev Returns the address responsible for executing passed proposals: the configured
+    ///      timelock if set, otherwise this governor.
+    function _executor() internal view returns (address) {
+        address timelockAddr = governorStorage()._timelock;
+        return timelockAddr == address(0) ? address(this) : timelockAddr;
     }
 
     /// @dev Encodes a single ProposalState as a 1-bit bitmask for error reporting.

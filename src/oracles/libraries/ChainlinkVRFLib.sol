@@ -146,11 +146,8 @@ library ChainlinkVRFLib {
     }
 
     /// @notice Called by the VRF coordinator to deliver random words.
-    /// @dev Verifies the caller is the configured coordinator via `msg.sender`
-    ///      (ContextLib is not used here because the coordinator calls this
-    ///      directly and meta-transaction forwarding must not be able to spoof it).
-    ///      Looks up the user key, clears the pending entry, and emits
-    ///      `RandomWordsFulfilled`.
+    /// @dev Verifies the caller is the configured VRF coordinator by its address (`msg.sender`),
+    ///      looks up the user key, clears the pending entry, and emits `RandomWordsFulfilled`.
     ///
     ///      NOTE: This function only manages bookkeeping.  Consumer facets that
     ///      inherit `ChainlinkVRF` should override `rawFulfillRandomWords` (or
@@ -160,8 +157,7 @@ library ChainlinkVRFLib {
     function rawFulfillRandomWords(uint256 requestId, uint256[] calldata randomWords) internal {
         ChainlinkVRFStorage storage $ = chainlinkVRFStorage();
 
-        // Coordinator authentication uses msg.sender, not ContextLib.msgSender(),
-        // to prevent meta-transaction relayers from spoofing the coordinator.
+        // Authenticate the VRF coordinator by its address.
         if (msg.sender != $._coordinator) revert IChainlinkVRF.VRFOnlyCoordinator(msg.sender);
 
         bytes32 userKey = $._pendingRequests[requestId];

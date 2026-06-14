@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ContextLib} from "@diamond/libraries/ContextLib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {IAccessControlTimed} from "@lattice/interfaces/IAccessControlTimed.sol";
@@ -97,7 +96,7 @@ library AccessControlTimedLib {
         // the RoleGranted event from _grantRole already conveys all the information.
         // Emitting RoleGrantedTimed here would confuse off-chain indexers with a redundant event.
         if (!(start == block.timestamp && expires == 0)) {
-            emit IAccessControlTimed.RoleGrantedTimed(role, account, ContextLib.msgSender(), start, expires);
+            emit IAccessControlTimed.RoleGrantedTimed(role, account, msg.sender, start, expires);
         }
     }
 
@@ -117,7 +116,7 @@ library AccessControlTimedLib {
             revert IAccessControlTimed.AccessControlTimedExpiryNotExtended(t.expires, newExpires);
         }
         t.expires = newExpires;
-        emit IAccessControlTimed.RoleExpiryUpdated(role, account, ContextLib.msgSender(), newExpires);
+        emit IAccessControlTimed.RoleExpiryUpdated(role, account, msg.sender, newExpires);
     }
 
     function _revokeRole(bytes32 role, address account) internal {

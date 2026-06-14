@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ContextLib} from "@diamond/libraries/ContextLib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {IERC1155, IERC1155Receiver} from "@lattice/interfaces/IERC1155.sol";
 
@@ -119,7 +118,7 @@ library ERC1155Lib {
 
     /// @notice Grants or revokes permission to `operator`.
     function setApprovalForAll(address operator, bool approved) internal {
-        address owner = ContextLib.msgSender();
+        address owner = msg.sender;
         if (operator == address(0)) revert IERC1155.ERC1155InvalidOperator(address(0));
         erc1155Storage()._operatorApprovals[owner][operator] = approved;
         emit IERC1155.ApprovalForAll(owner, operator, approved);
@@ -127,7 +126,7 @@ library ERC1155Lib {
 
     /// @notice Transfers `value` of token `id` from `from` to `to`.
     function safeTransferFrom(address from, address to, uint256 id, uint256 value, bytes memory data) internal {
-        address sender = ContextLib.msgSender();
+        address sender = msg.sender;
         if (from != sender && !isApprovedForAll(from, sender)) {
             revert IERC1155.ERC1155MissingApprovalForAll(sender, from);
         }
@@ -142,7 +141,7 @@ library ERC1155Lib {
         uint256[] memory values,
         bytes memory data
     ) internal {
-        address sender = ContextLib.msgSender();
+        address sender = msg.sender;
         if (from != sender && !isApprovedForAll(from, sender)) {
             revert IERC1155.ERC1155MissingApprovalForAll(sender, from);
         }
@@ -159,7 +158,7 @@ library ERC1155Lib {
         if (from == address(0)) revert IERC1155.ERC1155InvalidSender(address(0));
         uint256[] memory ids = _asSingletonArray(id);
         uint256[] memory values = _asSingletonArray(value);
-        address operator = ContextLib.msgSender();
+        address operator = msg.sender;
         _update(from, to, ids, values);
         _doSafeTransferAcceptanceCheck(operator, from, to, id, value, data);
     }
@@ -174,7 +173,7 @@ library ERC1155Lib {
     ) internal {
         if (to == address(0)) revert IERC1155.ERC1155InvalidReceiver(address(0));
         if (from == address(0)) revert IERC1155.ERC1155InvalidSender(address(0));
-        address operator = ContextLib.msgSender();
+        address operator = msg.sender;
         _update(from, to, ids, values);
         _doSafeBatchTransferAcceptanceCheck(operator, from, to, ids, values, data);
     }
@@ -185,7 +184,7 @@ library ERC1155Lib {
             revert IERC1155.ERC1155InvalidArrayLength(ids.length, values.length);
         }
 
-        address operator = ContextLib.msgSender();
+        address operator = msg.sender;
         ERC1155Storage storage $ = erc1155Storage();
 
         for (uint256 i; i < ids.length; ++i) {
@@ -222,14 +221,14 @@ library ERC1155Lib {
         uint256[] memory ids = _asSingletonArray(id);
         uint256[] memory values = _asSingletonArray(value);
         _update(address(0), to, ids, values);
-        _doSafeTransferAcceptanceCheck(ContextLib.msgSender(), address(0), to, id, value, data);
+        _doSafeTransferAcceptanceCheck(msg.sender, address(0), to, id, value, data);
     }
 
     /// @notice Batch mints tokens to `to`.
     function _mintBatch(address to, uint256[] memory ids, uint256[] memory values, bytes memory data) internal {
         if (to == address(0)) revert IERC1155.ERC1155InvalidReceiver(address(0));
         _update(address(0), to, ids, values);
-        _doSafeBatchTransferAcceptanceCheck(ContextLib.msgSender(), address(0), to, ids, values, data);
+        _doSafeBatchTransferAcceptanceCheck(msg.sender, address(0), to, ids, values, data);
     }
 
     /// @notice Burns `value` of token `id` from `from`.
@@ -259,7 +258,7 @@ library ERC1155Lib {
     ) internal {
         _update(from, to, ids, values);
         if (to != address(0)) {
-            address operator = ContextLib.msgSender();
+            address operator = msg.sender;
             if (ids.length == 1) {
                 _doSafeTransferAcceptanceCheck(operator, from, to, ids[0], values[0], data);
             } else {

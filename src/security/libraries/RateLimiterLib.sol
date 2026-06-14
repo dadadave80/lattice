@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ContextLib} from "@diamond/libraries/ContextLib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {IRateLimiter} from "@lattice/interfaces/IRateLimiter.sol";
@@ -150,7 +149,7 @@ library RateLimiterLib {
         uint256 remaining = available - amount;
         b.tokens = remaining;
 
-        emit IRateLimiter.RateLimitConsumed(key, ContextLib.msgSender(), amount, remaining);
+        emit IRateLimiter.RateLimitConsumed(key, msg.sender, amount, remaining);
     }
 
     /// @notice Internal — computes refilled token count (min of capacity and tokens + accrued).

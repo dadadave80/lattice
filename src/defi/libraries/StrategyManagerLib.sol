@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ContextLib} from "@diamond/libraries/ContextLib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
 import {IERC4626} from "@lattice/interfaces/IERC4626.sol";
@@ -270,7 +269,17 @@ library StrategyManagerLib {
     ///      For each strategy in pass 2:
     ///      - If current < target: calls IVaultCore.allocateToStrategy.
     ///
-    ///      Anyone can call. Protected against reentrancy (M-2).
+    ///      Anyone can call. Protected against reentrancy (M-2): the guard is held for the whole
+    ///      rebalance, and VaultCore rejects deposit/mint/withdraw/redeem while it is held
+    ///      (`reentrancyGuardEntered()`), closing the read-only-reentrancy window.
+    ///
+    ///      `vaultTotal` is read once and intentionally includes the vault's idle balance (a raw
+    ///      ERC-20 balance). A direct token donation to the vault therefore raises every target —
+    ///      this is correct: a donation is NAV that belongs to share holders and is simply deployed
+    ///      per the configured allocation. Funds only move to pre-vetted strategies (trust model:
+    ///      add audited strategies only), and share-price manipulation from donations is bounded by
+    ///      ERC-4626's virtual-shares offset. AUM is conserved across idle<->strategy moves, so the
+    ///      single `vaultTotal` snapshot stays valid across both passes.
     function rebalance() internal {
         ReentrancyGuardLib.nonReentrantBefore();
         _rebalance();

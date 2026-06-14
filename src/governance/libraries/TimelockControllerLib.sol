@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ContextLib} from "@diamond/libraries/ContextLib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
 import {ITimelockController} from "@lattice/interfaces/ITimelockController.sol";
@@ -277,7 +276,7 @@ library TimelockControllerLib {
     /// @notice Update the minimum delay.
     /// @dev Only callable from the timelock contract itself.
     function updateDelay(uint256 newDelay) internal {
-        address sender = ContextLib.msgSender();
+        address sender = msg.sender;
         if (sender != address(this)) {
             revert ITimelockController.TimelockUnauthorizedCaller(sender);
         }

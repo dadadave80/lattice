@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ContextLib} from "@diamond/libraries/ContextLib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
 import {IERC20} from "@lattice/interfaces/IERC20.sol";
@@ -167,8 +166,23 @@ library VaultCoreLib {
 
     /// @dev Reverts with VaultCoreUnauthorizedManager if the caller is not the strategy manager.
     function _checkManager() internal view {
-        address caller = ContextLib.msgSender();
+        address caller = msg.sender;
         address manager = vaultCoreStorage()._strategyManager;
         if (caller != manager) revert IVaultCore.VaultCoreUnauthorizedManager(caller);
+    }
+
+    /// @notice Reverts if the configured strategy manager is currently executing `rebalance()`.
+    /// @dev During a rebalance the vault's idle balance and the strategies' reported balances are
+    ///      transiently inconsistent, so `totalAssets()` (and therefore the share price) cannot be
+    ///      trusted. The vault's deposit/mint/withdraw/redeem entry points call this to reject
+    ///      read-only reentrancy via a strategy callback. The manager is an external contract, so we
+    ///      query its reentrancy status by staticcall — mirroring how `totalAssets()` reads it.
+    function requireManagerNotRebalancing() internal view {
+        address manager = vaultCoreStorage()._strategyManager;
+        if (manager == address(0)) return;
+        (bool ok, bytes memory data) = manager.staticcall(abi.encodeWithSignature("reentrancyGuardEntered()"));
+        if (ok && data.length >= 32 && abi.decode(data, (bool))) {
+            revert IVaultCore.VaultCoreManagerRebalancing();
+        }
     }
 }

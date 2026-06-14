@@ -3,60 +3,49 @@ pragma solidity ^0.8.30;
 
 /// @title AccessControlSuiteTest
 /// @notice Integration test composing AccessControl + AccessControlTimed +
-///         AccessControlEnumerable + AccessControlDefaultAdminRules + Ownable
-///         in a single mock Diamond.
+///         AccessControlEnumerable + Ownable in a single mock Diamond.
 ///
 /// Scenario:
-///  1. Deploy a Diamond with all four AccessControl flavors.
-///  2. Owner (DEFAULT_ADMIN_ROLE source via Ownable) grants a custom role to
-///     alice with a 1-hour timed window.
-///  3. Verify alice has the role via both enumerable and timed.
+///  1. Deploy a Diamond stacking the three AccessControl flavors + Ownable.
+///  2. Admin grants a custom role to alice with a 1-hour timed window.
+///  3. Verify alice has the role via both the enumerable and timed views.
 ///  4. Warp past expiry → hasRole returns false.
-///  5. Owner initiates a default-admin transfer to bob (timelocked).
-///  6. Verify transfer cannot complete before the delay elapses.
-///  7. Warp + accept → bob is now the owner AND default admin.
-///  8. Bob grants alice a non-timed role; enumerable picks it up.
+///  5. Admin grants alice a non-timed role; enumerable picks it up.
+///  6. Revoking a timed role also removes it from the enumerable set.
+///
+/// @dev This suite doubles as the rationale for why the library ships no
+///      AccessControlDefaultAdminRules facet: `Ownable` (owner()) and
+///      `AccessControl` (DEFAULT_ADMIN_ROLE) compose directly in one Diamond, so the
+///      opinionated admin-rules layer is unnecessary. See test_Suite_OwnableAndAccessControlCoexist.
 
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {OwnableLib} from "@diamond/libraries/OwnableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
-import {AccessControlDefaultAdminRules} from "@lattice/access/AccessControlDefaultAdminRules.sol";
 import {AccessControlEnumerable} from "@lattice/access/AccessControlEnumerable.sol";
 import {AccessControlTimed} from "@lattice/access/AccessControlTimed.sol";
 import {Ownable} from "@lattice/access/Ownable.sol";
-import {AccessControlDefaultAdminRulesLib} from "@lattice/access/libraries/AccessControlDefaultAdminRulesLib.sol";
 import {AccessControlEnumerableLib} from "@lattice/access/libraries/AccessControlEnumerableLib.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {AccessControlTimedLib} from "@lattice/access/libraries/AccessControlTimedLib.sol";
-import {IAccessControlDefaultAdminRules} from "@lattice/interfaces/IAccessControlDefaultAdminRules.sol";
-import {TimelockLib} from "@lattice/utils/libraries/TimelockLib.sol";
 import {Test} from "forge-std/Test.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
 //                           MOCK DIAMOND CONTRACT
 //////////////////////////////////////////////////////////////////////////*//
 
-/// @notice Mock Diamond stacking all four AccessControl flavors + Ownable.
-/// @dev Multiple inheritance requires explicit overrides for the functions
-///      redefined in AccessControlEnumerable and AccessControlDefaultAdminRules.
-///      We delegate to the "most derived" semantics: DefaultAdminRules guards
-///      DEFAULT_ADMIN_ROLE mutations; Enumerable hooks grantRole/revokeRole/renounceRole;
-///      DefaultAdminRules hasRole checks owner() for DEFAULT_ADMIN_ROLE.
-contract MockAccessSuiteDiamond is
-    AccessControl,
-    AccessControlTimed,
-    AccessControlEnumerable,
-    AccessControlDefaultAdminRules,
-    Ownable
-{
-    function initialize(address _admin, uint48 _defaultAdminDelay) external {
+/// @notice Mock Diamond stacking the three AccessControl flavors + Ownable.
+/// @dev Multiple inheritance requires explicit overrides for the functions redefined
+///      across AccessControl, AccessControlTimed, and AccessControlEnumerable. We delegate
+///      to the "most derived" semantics: Enumerable hooks grantRole/revokeRole/renounceRole
+///      (member-set maintenance); Timed governs hasRole (time-windowed membership).
+contract MockAccessSuiteDiamond is AccessControl, AccessControlTimed, AccessControlEnumerable, Ownable {
+    function initialize(address _admin) external {
         bytes32 s = InitializableLib.initializableSlot();
         InitializableLib.preInitializer(s);
         OwnableLib.initializeOwner(_admin);
         AccessControlLib.__AccessControl_init(_admin);
         AccessControlTimedLib.__AccessControlTimed_init();
         AccessControlEnumerableLib.__AccessControlEnumerable_init();
-        AccessControlDefaultAdminRulesLib.__AccessControlDefaultAdminRules_init(_defaultAdminDelay);
         InitializableLib.postInitializer(s);
     }
 
@@ -65,20 +54,17 @@ contract MockAccessSuiteDiamond is
     function hasRole(bytes32 _role, address _account)
         public
         view
-        override(AccessControl, AccessControlTimed, AccessControlEnumerable, AccessControlDefaultAdminRules)
+        override(AccessControl, AccessControlTimed, AccessControlEnumerable)
         returns (bool)
     {
-        // DefaultAdminRules semantics: DEFAULT_ADMIN_ROLE is held by owner().
-        if (_role == 0x00) {
-            return _account == AccessControlDefaultAdminRulesLib.defaultAdmin();
-        }
+        // Timed semantics: membership is gated by the active (start, expires) window.
         return AccessControlTimedLib.hasRole(_role, _account);
     }
 
     function getRoleAdmin(bytes32 _role)
         public
         view
-        override(AccessControl, AccessControlTimed, AccessControlEnumerable, AccessControlDefaultAdminRules)
+        override(AccessControl, AccessControlTimed, AccessControlEnumerable)
         returns (bytes32)
     {
         return AccessControlLib.getRoleAdmin(_role);
@@ -86,31 +72,22 @@ contract MockAccessSuiteDiamond is
 
     function grantRole(bytes32 _role, address _account)
         public
-        override(AccessControl, AccessControlTimed, AccessControlEnumerable, AccessControlDefaultAdminRules)
+        override(AccessControl, AccessControlTimed, AccessControlEnumerable)
     {
-        if (_role == 0x00) {
-            revert IAccessControlDefaultAdminRules.AccessControlDefaultAdminRulesUseAdminTransfer();
-        }
         AccessControlEnumerableLib.grantRole(_role, _account);
     }
 
     function revokeRole(bytes32 _role, address _account)
         public
-        override(AccessControl, AccessControlTimed, AccessControlEnumerable, AccessControlDefaultAdminRules)
+        override(AccessControl, AccessControlTimed, AccessControlEnumerable)
     {
-        if (_role == 0x00) {
-            revert IAccessControlDefaultAdminRules.AccessControlDefaultAdminRulesUseAdminTransfer();
-        }
         AccessControlEnumerableLib.revokeRole(_role, _account);
     }
 
     function renounceRole(bytes32 _role, address _callerConfirmation)
         public
-        override(AccessControl, AccessControlTimed, AccessControlEnumerable, AccessControlDefaultAdminRules)
+        override(AccessControl, AccessControlTimed, AccessControlEnumerable)
     {
-        if (_role == 0x00) {
-            revert IAccessControlDefaultAdminRules.AccessControlDefaultAdminRulesUseAdminTransfer();
-        }
         AccessControlEnumerableLib.renounceRole(_role, _callerConfirmation);
     }
 
@@ -140,35 +117,29 @@ contract AccessControlSuiteTest is Test {
     bytes32 constant OPERATOR_ROLE = keccak256("OPERATOR_ROLE");
     bytes32 constant WORKER_ROLE = keccak256("WORKER_ROLE");
 
-    uint48 constant ADMIN_DELAY = 2 days;
     uint48 constant ROLE_DURATION = 1 hours;
 
     MockAccessSuiteDiamond diamond;
 
     address admin = address(0xAD);
     address alice = address(0xA11CE);
-    address bob = address(0xB0B);
 
     function setUp() public {
         vm.warp(1_000_000);
         diamond = new MockAccessSuiteDiamond();
-        diamond.initialize(admin, ADMIN_DELAY);
+        diamond.initialize(admin);
     }
 
     // -------------------------------------------------------------------------
-    // Step 1 — Initialization checks
+    // Step 1 — Ownable and AccessControl coexist (no DefaultAdminRules needed)
     // -------------------------------------------------------------------------
 
-    /// @notice After initialization, the owner and default admin point to `admin`.
-    function test_Suite_InitialOwnerIsAdmin() public view {
+    /// @notice After init, `admin` is both the Ownable owner and the holder of
+    ///         DEFAULT_ADMIN_ROLE. The two mechanisms are independent and compose
+    ///         directly — which is why no AccessControlDefaultAdminRules facet is shipped.
+    function test_Suite_OwnableAndAccessControlCoexist() public view {
         assertEq(diamond.owner(), admin);
-        assertEq(diamond.defaultAdmin(), admin);
         assertTrue(diamond.hasRole(DEFAULT_ADMIN_ROLE, admin));
-    }
-
-    /// @notice The configured admin-transfer delay is stored correctly.
-    function test_Suite_DefaultAdminDelayIsSet() public view {
-        assertEq(diamond.defaultAdminDelay(), ADMIN_DELAY);
     }
 
     // -------------------------------------------------------------------------
@@ -225,78 +196,8 @@ contract AccessControlSuiteTest is Test {
     }
 
     // -------------------------------------------------------------------------
-    // Step 5 — Begin default-admin transfer
+    // Step 5 — Non-timed grant is enumerable
     // -------------------------------------------------------------------------
-
-    /// @notice Admin initiates a default-admin transfer to bob.
-    function test_Suite_BeginDefaultAdminTransfer() public {
-        vm.prank(admin);
-        diamond.beginDefaultAdminTransfer(bob);
-
-        (address pendingAdmin, uint48 readyAt) = diamond.pendingDefaultAdmin();
-        assertEq(pendingAdmin, bob);
-        assertGt(readyAt, uint48(block.timestamp));
-    }
-
-    // -------------------------------------------------------------------------
-    // Step 6 — Cannot accept before delay
-    // -------------------------------------------------------------------------
-
-    /// @notice Accepting before the delay elapses must revert with TimelockNotReady.
-    function test_Suite_CannotAcceptAdminTransferBeforeDelay() public {
-        vm.prank(admin);
-        diamond.beginDefaultAdminTransfer(bob);
-
-        (, uint48 readyAt) = diamond.pendingDefaultAdmin();
-        // Still before readyAt — should revert.
-        vm.warp(readyAt - 1);
-        vm.prank(bob);
-        vm.expectRevert(abi.encodeWithSelector(TimelockLib.TimelockNotReady.selector, readyAt, uint48(block.timestamp)));
-        diamond.acceptDefaultAdminTransfer();
-    }
-
-    // -------------------------------------------------------------------------
-    // Step 7 — Warp + accept → bob becomes owner + admin
-    // -------------------------------------------------------------------------
-
-    /// @notice After the delay, bob can accept and becomes the new owner/admin.
-    function test_Suite_AcceptAfterDelay() public {
-        vm.prank(admin);
-        diamond.beginDefaultAdminTransfer(bob);
-
-        (, uint48 readyAt) = diamond.pendingDefaultAdmin();
-        vm.warp(readyAt + 1);
-
-        vm.prank(bob);
-        diamond.acceptDefaultAdminTransfer();
-
-        assertEq(diamond.owner(), bob);
-        assertEq(diamond.defaultAdmin(), bob);
-        assertTrue(diamond.hasRole(DEFAULT_ADMIN_ROLE, bob));
-    }
-
-    // -------------------------------------------------------------------------
-    // Step 8 — After transfer, owner check reflects new admin
-    // -------------------------------------------------------------------------
-
-    /// @notice After transfer, bob is the owner and hasRole(DEFAULT_ADMIN_ROLE, bob) is true.
-    /// @dev Note: AccessControlLib.checkRole() checks the raw ACL storage (not OwnableLib),
-    ///      so operations that go through AccessControlLib.checkRole() still require the
-    ///      storage-mapped admin. The facet's public hasRole override correctly reflects owner().
-    function test_Suite_NewAdminHasRole() public {
-        vm.prank(admin);
-        diamond.beginDefaultAdminTransfer(bob);
-        (, uint48 readyAt) = diamond.pendingDefaultAdmin();
-        vm.warp(readyAt + 1);
-        vm.prank(bob);
-        diamond.acceptDefaultAdminTransfer();
-
-        // Public hasRole (via the overridden facet method) correctly returns true for bob.
-        assertTrue(diamond.hasRole(DEFAULT_ADMIN_ROLE, bob));
-        assertFalse(diamond.hasRole(DEFAULT_ADMIN_ROLE, admin));
-        assertEq(diamond.defaultAdmin(), bob);
-        assertEq(diamond.owner(), bob);
-    }
 
     /// @notice Admin grants alice WORKER_ROLE without a time limit;
     ///         enumerable reflects the grant.
@@ -310,7 +211,7 @@ contract AccessControlSuiteTest is Test {
     }
 
     // -------------------------------------------------------------------------
-    // Regression: standard grant/revoke/enumerate cycle across flavors
+    // Step 6 — Revoke removes from enumerable
     // -------------------------------------------------------------------------
 
     /// @notice Revoking a timed role also removes it from enumerable.
@@ -325,13 +226,5 @@ contract AccessControlSuiteTest is Test {
         vm.prank(admin);
         diamond.revokeRole(OPERATOR_ROLE, alice);
         assertEq(diamond.getRoleMemberCount(OPERATOR_ROLE), 0);
-    }
-
-    /// @notice Cannot use grantRole/revokeRole on DEFAULT_ADMIN_ROLE — must use
-    ///         the admin-transfer workflow.
-    function test_Suite_GrantDefaultAdminRoleDirectlyReverts() public {
-        vm.prank(admin);
-        vm.expectRevert(IAccessControlDefaultAdminRules.AccessControlDefaultAdminRulesUseAdminTransfer.selector);
-        diamond.grantRole(DEFAULT_ADMIN_ROLE, alice);
     }
 }

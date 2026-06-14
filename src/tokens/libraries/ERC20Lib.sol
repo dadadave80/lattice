@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ContextLib} from "@diamond/libraries/ContextLib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {IERC20} from "@lattice/interfaces/IERC20.sol";
 
@@ -114,14 +113,14 @@ library ERC20Lib {
 
     /// @notice Moves `value` tokens from the caller to `to`.
     function transfer(address to, uint256 value) internal returns (bool) {
-        address owner = ContextLib.msgSender();
+        address owner = msg.sender;
         _transfer(owner, to, value);
         return true;
     }
 
     /// @notice Moves `value` tokens from `from` to `to` using the caller's allowance.
     function transferFrom(address from, address to, uint256 value) internal returns (bool) {
-        address spender = ContextLib.msgSender();
+        address spender = msg.sender;
         _spendAllowance(from, spender, value);
         _transfer(from, to, value);
         return true;
@@ -133,7 +132,7 @@ library ERC20Lib {
 
     /// @notice Sets `value` as the allowance of `spender` over the caller's tokens.
     function approve(address spender, uint256 value) internal returns (bool) {
-        address owner = ContextLib.msgSender();
+        address owner = msg.sender;
         _approve(owner, spender, value);
         return true;
     }

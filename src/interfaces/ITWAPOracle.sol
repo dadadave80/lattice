@@ -49,6 +49,22 @@ interface ITWAPOracle {
     ///      producing a division-by-zero panic.
     error TWAPZeroWindow();
 
+    /// @notice The newest stored observation is too old to satisfy the request.
+    /// @dev Guards against returning a confidently-priced but stale TWAP when
+    ///      recording stopped long ago. `consult` reverts when
+    ///      `block.timestamp - newestTimestamp > windowSeconds`, i.e. the freshest
+    ///      data point does not even fall within the requested window.
+    /// @param newestTimestamp Timestamp of the most recent observation.
+    /// @param currentTimestamp The current block timestamp.
+    error TWAPStaleObservation(uint32 newestTimestamp, uint32 currentTimestamp);
+
+    /// @notice The usable time span between the selected observations is zero.
+    /// @dev Prevents a division-by-zero panic (0x12) when the newest and the base
+    ///      observation share a timestamp (e.g. the oldest and newest observations
+    ///      carry the same timestamp). Reverts with a clear error instead.
+    /// @param key The pair identifier.
+    error TWAPElapsedZero(bytes32 key);
+
     // -------------------------------------------------------------------------
     //                                  Types
     // -------------------------------------------------------------------------

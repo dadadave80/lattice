@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ContextLib} from "@diamond/libraries/ContextLib.sol";
 import {VotesLib} from "@lattice/governance/libraries/VotesLib.sol";
 import {IVotes} from "@lattice/interfaces/IVotes.sol";
 import {ERC20Lib} from "@lattice/tokens/libraries/ERC20Lib.sol";
@@ -35,7 +34,7 @@ contract Votes is IVotes {
 
     /// @inheritdoc IVotes
     function delegate(address delegatee) public virtual {
-        VotesLib.delegate(delegatee, ERC20Lib.balanceOf(ContextLib.msgSender()));
+        VotesLib.delegate(delegatee, ERC20Lib.balanceOf(msg.sender));
     }
 
     /// @inheritdoc IVotes

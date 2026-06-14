@@ -112,9 +112,23 @@ library TWAPOracleLib {
         // Use the oldest such observation so the TWAP covers the full window.
         uint32 newestTs = newest.timestamp;
 
-        // Check that any observation is old enough.
+        // Freshness guard: if recording stopped long ago, the newest observation
+        // may be stale even though the stored span is wide enough. Reject when the
+        // freshest data point does not fall within the requested window, so callers
+        // never receive a confidently-priced but stale TWAP.
+        uint256 nowTs = block.timestamp;
+        if (nowTs - newestTs > windowSeconds) {
+            revert ITWAPOracle.TWAPStaleObservation(newestTs, uint32(nowTs));
+        }
+
+        // Check that the stored history spans a usable, sufficient period.
         uint32 oldestTs = obs[0].timestamp;
         uint32 oldestAge = newestTs - oldestTs; // safe: uint32 wraps correctly
+        if (oldestAge == 0) {
+            // Oldest and newest share a timestamp: zero usable span. Reverting here
+            // with a clear error avoids the division-by-zero panic below.
+            revert ITWAPOracle.TWAPElapsedZero(key);
+        }
         if (oldestAge < windowSeconds) {
             revert ITWAPOracle.TWAPWindowTooLarge(windowSeconds, oldestAge);
         }
@@ -134,6 +148,11 @@ library TWAPOracleLib {
 
         ITWAPOracle.Observation storage base = obs[lo];
         uint32 elapsed = newestTs - base.timestamp;
+
+        // Defense-in-depth: the guards above make this unreachable today, but keep an
+        // explicit check so a future change to the dedup / window logic (or a uint32
+        // timestamp wraparound) reverts cleanly instead of panicking (0x12).
+        if (elapsed == 0) revert ITWAPOracle.TWAPElapsedZero(key);
 
         price0Twap = (newest.price0Cumulative - base.price0Cumulative) / elapsed;
         price1Twap = (newest.price1Cumulative - base.price1Cumulative) / elapsed;

@@ -1,12 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ContextLib} from "@diamond/libraries/ContextLib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {IAccessControl} from "@lattice/interfaces/IAccessControl.sol";
-import {IMulticall} from "@lattice/interfaces/IMulticall.sol";
 import {Multicall} from "@lattice/utils/Multicall.sol";
 import {Test} from "forge-std/Test.sol";
 
@@ -23,20 +21,9 @@ contract MockMulticallContract is Multicall, AccessControl {
         InitializableLib.postInitializer(s);
     }
 
-    /// @notice Exposes ContextLib.msgSender() for test inspection.
+    /// @notice Exposes the resolved caller (`msg.sender`) for test inspection.
     function currentSender() external view returns (address) {
-        return ContextLib.msgSender();
-    }
-}
-
-/// @title MockForwarder
-/// @notice Simulates an ERC-2771 trusted forwarder that relays a multicall on behalf of a user.
-/// In production a real forwarder would append the original sender to msg.data; here we relay
-/// the call so that `msg.sender` inside the target is the forwarder, not the user.
-contract MockForwarder {
-    /// @notice Calls `multicall` on `target` forwarding `data` as `msg.sender = address(this)`.
-    function forward(address target, bytes[] calldata data) external returns (bytes[] memory) {
-        return IMulticall(target).multicall(data);
+        return msg.sender;
     }
 }
 
@@ -46,7 +33,6 @@ contract MulticallTester is Test {
     bytes32 private constant DEFAULT_ADMIN_ROLE = 0x00;
 
     MockMulticallContract internal mock;
-    MockForwarder internal forwarder;
     address internal admin = address(0xA1);
     address internal alice = address(0xA11CE);
     address internal bob = address(0xB0B);
@@ -54,7 +40,6 @@ contract MulticallTester is Test {
     function setUp() public {
         mock = new MockMulticallContract();
         mock.initialize(admin);
-        forwarder = new MockForwarder();
     }
 
     // -------------------------------------------------------------------------
@@ -140,10 +125,7 @@ contract MulticallTester is Test {
         // First two calls succeed
         data[0] = abi.encodeWithSelector(mock.grantRole.selector, mock.OPERATOR_ROLE(), alice);
         data[1] = abi.encodeWithSelector(mock.grantRole.selector, mock.OPERATOR_ROLE(), bob);
-        // Third call: revokeRole for an account that won't cause a revert itself, but
-        // let's trigger an auth failure by revoking DEFAULT_ADMIN_ROLE without proper auth chain.
-        // Actually easiest: pass invalid calldata that decodes to a failing grantRole from a bad account.
-        // We'll use a hasRole call to a non-existent selector to cause a revert.
+        // Third call: an unrecognised selector forces the whole batch to revert.
         data[2] = abi.encodeWithSelector(bytes4(keccak256("nonExistentFunction()")));
 
         vm.prank(admin);
@@ -177,45 +159,12 @@ contract MulticallTester is Test {
     }
 
     // -------------------------------------------------------------------------
-    // OZ-reconciliation: MC-1 — ERC-2771 context-suffix propagation
+    // Caller resolution: delegatecall sub-calls preserve the outer msg.sender
     // -------------------------------------------------------------------------
 
-    /// @notice Verifies that access-controlled subcalls inside multicall correctly
-    /// resolve the caller even when the call arrives through an intermediary (forwarder).
-    ///
-    /// In the current diamond-lib, ContextLib.msgSender() returns msg.sender unconditionally
-    /// (contextSuffixLength == 0), so msg.sender == ContextLib.msgSender() always holds and
-    /// no context suffix is appended. This test exercises the non-suffix path end-to-end:
-    /// the forwarder calls multicall on behalf of admin, but since the forwarder IS the
-    /// msg.sender at that point and ContextLib reflects that, the subcall correctly identifies
-    /// the forwarder as the caller — role grants must therefore be pre-set on the forwarder.
-    ///
-    /// When diamond-lib ships a trusted-forwarder-aware ContextLib (contextSuffixLength > 0),
-    /// the suffix branch in MulticallLib will fire and the original EOA will be correctly
-    /// propagated to each subcall without needing a role on the forwarder.
-    function test_MulticallPreservesERC2771Sender() public {
-        // Grant the forwarder admin role so it can act as the caller in the current
-        // no-suffix context (forwarder is msg.sender inside the delegatecall).
-        vm.prank(admin);
-        mock.grantRole(DEFAULT_ADMIN_ROLE, address(forwarder));
-
-        // Build a batch: grant OPERATOR_ROLE to alice, then read it back.
-        bytes[] memory data = new bytes[](2);
-        data[0] = abi.encodeWithSelector(mock.grantRole.selector, mock.OPERATOR_ROLE(), alice);
-        data[1] = abi.encodeWithSelector(mock.hasRole.selector, mock.OPERATOR_ROLE(), alice);
-
-        // The forwarder calls multicall — msg.sender inside the library is address(forwarder).
-        bytes[] memory results = forwarder.forward(address(mock), data);
-
-        assertEq(results.length, 2);
-        bool aliceHasRole = abi.decode(results[1], (bool));
-        assertTrue(aliceHasRole, "alice should have OPERATOR_ROLE after forwarder-relayed multicall");
-    }
-
-    /// @notice Verifies that when there is no forwarder in use (direct call path),
-    /// access-controlled subcalls in multicall see the true original caller and succeed.
-    function test_MulticallDirectCallPreservesOriginalSender() public {
-        // admin calls multicall directly — no forwarder involved.
+    /// @notice Each sub-call is a `delegatecall`, so access-controlled sub-calls see the original
+    ///         caller and `msg.sender` resolves to the outer caller throughout the batch.
+    function test_MulticallSubcallsSeeOriginalSender() public {
         bytes[] memory data = new bytes[](2);
         data[0] = abi.encodeWithSelector(mock.grantRole.selector, mock.OPERATOR_ROLE(), bob);
         data[1] = abi.encodeWithSelector(mock.currentSender.selector);
@@ -223,11 +172,11 @@ contract MulticallTester is Test {
         vm.prank(admin);
         bytes[] memory results = mock.multicall(data);
 
-        // bob received the role
+        // bob received the role (admin was correctly recognised as the caller).
         assertTrue(mock.hasRole(mock.OPERATOR_ROLE(), bob));
 
-        // currentSender inside the subcall should resolve to admin (the original msg.sender).
+        // currentSender inside the sub-call resolves to admin (the outer msg.sender).
         address resolvedSender = abi.decode(results[1], (address));
-        assertEq(resolvedSender, admin, "ContextLib.msgSender() should return admin in non-forwarder path");
+        assertEq(resolvedSender, admin, "sub-call msg.sender should be the outer caller (admin)");
     }
 }

@@ -336,6 +336,84 @@ contract TWAPOracleTester is Test {
     }
 
     //*//////////////////////////////////////////////////////////////////////////
+    //                    STALE-NEWEST FRESHNESS TESTS (T8a)
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice consult reverts TWAPStaleObservation when the newest observation is
+    ///         older than the requested window (recording stopped long ago).
+    function test_ConsultRevertsWhenNewestObservationStale() public {
+        vm.prank(admin);
+        oracle.registerPair(KEY_ETH_USD, address(pair));
+
+        // Record a second observation 300s after registration.
+        vm.warp(block.timestamp + 300);
+        uint32 newestTs = uint32(block.timestamp);
+        pair.setValues(PRICE0_PER_SEC * 300, 0, newestTs);
+        oracle.recordObservation(KEY_ETH_USD);
+        // History now spans 300s (t0 .. newestTs), enough for a 300s window normally.
+
+        // Recording stops; a long time passes. The newest observation is now stale.
+        vm.warp(block.timestamp + 10_000);
+
+        // Requesting a 300s window: oldest age (300) satisfies the span, but the
+        // newest observation is 10_000s old — far outside the window — so the TWAP
+        // would be entirely historical. Must revert as stale.
+        vm.expectRevert(
+            abi.encodeWithSelector(ITWAPOracle.TWAPStaleObservation.selector, newestTs, uint32(block.timestamp))
+        );
+        oracle.consult(KEY_ETH_USD, 300);
+    }
+
+    /// @notice consult succeeds when the newest observation is fresh (within window).
+    function test_ConsultSucceedsWhenNewestFresh() public {
+        vm.prank(admin);
+        oracle.registerPair(KEY_ETH_USD, address(pair));
+
+        uint32 elapsed = 3600;
+        vm.warp(block.timestamp + elapsed);
+        pair.setValues(PRICE0_PER_SEC * elapsed, 0, uint32(block.timestamp));
+        oracle.recordObservation(KEY_ETH_USD);
+
+        // Newest is fresh (recorded this block); a window covering the span works.
+        (uint256 twap0,) = oracle.consult(KEY_ETH_USD, elapsed);
+        assertEq(twap0, PRICE0_PER_SEC);
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                    ELAPSED-ZERO GUARD TESTS (T8b)
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice consult reverts TWAPElapsedZero (not a panic, not the misleading
+    ///         TWAPWindowTooLarge) when the oldest and newest observations share a
+    ///         timestamp, leaving zero usable elapsed time for the division.
+    /// @dev The dedup only blocks ADJACENT duplicate timestamps, so a non-monotonic
+    ///      pair timestamp sequence [T, T+300, T] is storable; here obs[0] and the
+    ///      newest obs[2] both carry timestamp T (anchored at the current block so
+    ///      the freshness guard passes), making elapsed == 0.
+    function test_ConsultRevertsOnZeroElapsedSpan() public {
+        uint32 t = uint32(block.timestamp);
+
+        // obs0 at timestamp T.
+        pair.setValues(0, 0, t);
+        vm.prank(admin);
+        oracle.registerPair(KEY_ETH_USD, address(pair));
+
+        // obs1 at timestamp T+300 (distinct from obs0 -> stored).
+        pair.setValues(PRICE0_PER_SEC * 300, 0, t + 300);
+        oracle.recordObservation(KEY_ETH_USD);
+
+        // obs2 back at timestamp T (distinct from the *adjacent* obs1 -> stored).
+        // Now the newest (obs2) and the oldest (obs0) share timestamp T.
+        pair.setValues(PRICE0_PER_SEC * 600, 0, t);
+        oracle.recordObservation(KEY_ETH_USD);
+
+        // Newest timestamp == current block, so the freshness guard passes; the
+        // span between oldest and newest is zero -> must revert TWAPElapsedZero.
+        vm.expectRevert(abi.encodeWithSelector(ITWAPOracle.TWAPElapsedZero.selector, KEY_ETH_USD));
+        oracle.consult(KEY_ETH_USD, 1);
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
     //                              ERC-165 TESTS
     //////////////////////////////////////////////////////////////////////////*//
 

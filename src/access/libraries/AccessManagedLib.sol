@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ContextLib} from "@diamond/libraries/ContextLib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {IAccessManaged} from "@lattice/interfaces/IAccessManaged.sol";
 import {IAccessManager} from "@lattice/interfaces/IAccessManager.sol";
@@ -56,8 +55,8 @@ library AccessManagedLib {
     }
 
     function setAuthority(address newAuthority) internal {
-        if (ContextLib.msgSender() != accessManagedStorage()._authority) {
-            revert IAccessManaged.AccessManagedUnauthorized(ContextLib.msgSender());
+        if (msg.sender != accessManagedStorage()._authority) {
+            revert IAccessManaged.AccessManagedUnauthorized(msg.sender);
         }
         if (newAuthority == address(0)) revert IAccessManaged.AccessManagedInvalidAuthority(address(0));
         if (newAuthority.code.length == 0) revert IAccessManaged.AccessManagedInvalidAuthority(newAuthority);
@@ -74,8 +73,8 @@ library AccessManagedLib {
     ///      so that `restrictedCheck()` skips the canCall gate during manager-driven execution.
     function setConsumingScheduledOp(bool consuming) internal {
         AccessManagedStorage storage $ = accessManagedStorage();
-        if (ContextLib.msgSender() != $._authority) {
-            revert IAccessManaged.AccessManagedUnauthorized(ContextLib.msgSender());
+        if (msg.sender != $._authority) {
+            revert IAccessManaged.AccessManagedUnauthorized(msg.sender);
         }
         $._consumingScheduledOp = consuming;
     }
@@ -83,7 +82,7 @@ library AccessManagedLib {
     /// @notice Library-call gate. Reverts unless the caller is authorized.
     function restrictedCheck() internal view {
         AccessManagedStorage storage $ = accessManagedStorage();
-        address caller = ContextLib.msgSender();
+        address caller = msg.sender;
         address target = address(this);
         bytes4 selector = msg.sig;
 

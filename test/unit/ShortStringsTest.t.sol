@@ -147,4 +147,26 @@ contract ShortStringsTest is Test {
         vm.expectRevert(ShortStrings.InvalidShortString.selector);
         harness.byteLength(sentinel);
     }
+
+    // -------------------------------------------------------------------------
+    // Malformed length byte (> 31) must revert, not return a bogus length
+    // -------------------------------------------------------------------------
+
+    /// @dev A raw-wrapped word whose length byte is in 32..254 is not a valid packed
+    ///      ShortString (only 0..31 bytes fit). byteLength must reject it; otherwise
+    ///      toString would mstore an oversized length over a 32-byte buffer (OOB read).
+    function test_ByteLengthRevertsOnOversizedLengthByte() public {
+        // length byte = 0xAB (171), data bytes arbitrary; not the all-0xff sentinel.
+        ShortString malformed = ShortString.wrap(
+            bytes32(uint256(0x1122330000000000000000000000000000000000000000000000000000000000) | 0xAB)
+        );
+        vm.expectRevert(ShortStrings.InvalidShortString.selector);
+        harness.byteLength(malformed);
+    }
+
+    function test_ByteLengthAcceptsExactly31() public pure {
+        // length byte = 31 is the maximum valid packed length.
+        ShortString maxValid = ShortString.wrap(bytes32(uint256(31)));
+        assertEq(ShortStrings.byteLength(maxValid), 31);
+    }
 }

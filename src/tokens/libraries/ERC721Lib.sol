@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ContextLib} from "@diamond/libraries/ContextLib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {IERC721, IERC721Receiver} from "@lattice/interfaces/IERC721.sol";
 
@@ -139,7 +138,7 @@ library ERC721Lib {
 
     /// @notice Approves `to` to transfer `tokenId`. Caller must be owner or approved operator.
     function approve(address to, uint256 tokenId) internal {
-        address sender = ContextLib.msgSender();
+        address sender = msg.sender;
         address owner = _requireOwned(tokenId);
         if (sender != owner && !isApprovedForAll(owner, sender)) {
             revert IERC721.ERC721InvalidApprover(sender);
@@ -149,21 +148,21 @@ library ERC721Lib {
 
     /// @notice Enables or disables approval for `operator` to manage all of the caller's assets.
     function setApprovalForAll(address operator, bool approved) internal {
-        address owner = ContextLib.msgSender();
+        address owner = msg.sender;
         _setApprovalForAll(owner, operator, approved);
     }
 
     /// @notice Transfers `tokenId` from `from` to `to` without safety checks.
     function transferFrom(address from, address to, uint256 tokenId) internal {
         if (to == address(0)) revert IERC721.ERC721InvalidReceiver(address(0));
-        address previousOwner = _update(to, tokenId, ContextLib.msgSender());
+        address previousOwner = _update(to, tokenId, msg.sender);
         if (previousOwner != from) revert IERC721.ERC721IncorrectOwner(from, tokenId, previousOwner);
     }
 
     /// @notice Safely transfers `tokenId` from `from` to `to` with additional `data`.
     function safeTransferFrom(address from, address to, uint256 tokenId, bytes memory data) internal {
         transferFrom(from, to, tokenId);
-        _checkOnERC721Received(ContextLib.msgSender(), from, to, tokenId, data);
+        _checkOnERC721Received(msg.sender, from, to, tokenId, data);
     }
 
     //*//////////////////////////////////////////////////////////////////////////

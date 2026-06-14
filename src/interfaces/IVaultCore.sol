@@ -34,6 +34,13 @@ interface IVaultCore is IERC4626 {
     /// @dev Reverts when attempting to set an invalid manager address (e.g., address(0)).
     error VaultCoreInvalidManager();
 
+    /// @dev Reverts when a share-price-sensitive entry point (deposit/mint/withdraw/redeem) is
+    ///      called while the configured strategy manager is mid-`rebalance()`. During a rebalance
+    ///      the vault's idle balance and the strategies' reported balances are transiently
+    ///      inconsistent, so `totalAssets()` (and therefore the share price) cannot be trusted.
+    ///      Blocking these entries defeats read-only reentrancy via a strategy callback.
+    error VaultCoreManagerRebalancing();
+
     //*//////////////////////////////////////////////////////////////////////////
     //                              VIEW FUNCTIONS
     //////////////////////////////////////////////////////////////////////////*//

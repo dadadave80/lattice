@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ContextLib} from "@diamond/libraries/ContextLib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {IPausable} from "@lattice/interfaces/IPausable.sol";
@@ -112,13 +111,13 @@ library PausableLib {
     /// @dev No auth check; callers must enforce authorization before calling this.
     function _pause() internal {
         pausableStorage()._paused = true;
-        emit IPausable.Paused(ContextLib.msgSender());
+        emit IPausable.Paused(msg.sender);
     }
 
     /// @notice Raw unpause — sets paused state to false and emits `Unpaused`.
     /// @dev No auth check; callers must enforce authorization before calling this.
     function _unpause() internal {
         pausableStorage()._paused = false;
-        emit IPausable.Unpaused(ContextLib.msgSender());
+        emit IPausable.Unpaused(msg.sender);
     }
 }

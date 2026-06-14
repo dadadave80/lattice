@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ContextLib} from "@diamond/libraries/ContextLib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {ERC20Lib} from "@lattice/tokens/libraries/ERC20Lib.sol";
 
@@ -58,12 +57,12 @@ library ERC20BurnableLib {
 
     /// @notice Destroys `value` tokens from the caller's balance.
     function burn(uint256 value) internal {
-        ERC20Lib._burn(ContextLib.msgSender(), value);
+        ERC20Lib._burn(msg.sender, value);
     }
 
     /// @notice Destroys `value` tokens from `account`, using the caller's allowance.
     function burnFrom(address account, uint256 value) internal {
-        ERC20Lib._spendAllowance(account, ContextLib.msgSender(), value);
+        ERC20Lib._spendAllowance(account, msg.sender, value);
         ERC20Lib._burn(account, value);
     }
 }

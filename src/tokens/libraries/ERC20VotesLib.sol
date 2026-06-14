@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ContextLib} from "@diamond/libraries/ContextLib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {VotesLib} from "@lattice/governance/libraries/VotesLib.sol";
 import {IERC20} from "@lattice/interfaces/IERC20.sol";
@@ -84,9 +83,9 @@ library ERC20VotesLib {
     //////////////////////////////////////////////////////////////////////////*//
 
     /// @notice ERC-20 transfer with vote-checkpoint update.
-    /// @dev Uses ContextLib.msgSender() for Diamond-compatible caller resolution.
+    /// @dev Uses msg.sender for Diamond-compatible caller resolution.
     function transfer(address to, uint256 value) internal returns (bool) {
-        address owner = ContextLib.msgSender();
+        address owner = msg.sender;
         ERC20Lib._transfer(owner, to, value);
         VotesLib._transferVotingUnits(owner, to, value);
         return true;
@@ -94,7 +93,7 @@ library ERC20VotesLib {
 
     /// @notice ERC-20 transferFrom with vote-checkpoint update.
     function transferFrom(address from, address to, uint256 value) internal returns (bool) {
-        address spender = ContextLib.msgSender();
+        address spender = msg.sender;
         ERC20Lib._spendAllowance(from, spender, value);
         ERC20Lib._transfer(from, to, value);
         VotesLib._transferVotingUnits(from, to, value);
@@ -132,7 +131,7 @@ library ERC20VotesLib {
     /// @notice Delegates votes from the caller to `delegatee`.
     /// @dev Reads caller's ERC-20 balance as voting units before delegating.
     function delegate(address delegatee) internal {
-        address sender = ContextLib.msgSender();
+        address sender = msg.sender;
         uint256 units = ERC20Lib.balanceOf(sender);
         VotesLib.delegate(delegatee, units);
     }

@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ContextLib} from "@diamond/libraries/ContextLib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {IAccessControl} from "@lattice/interfaces/IAccessControl.sol";
@@ -84,7 +83,7 @@ library EmergencyStopLib {
     ///      Emits `EmergencyStopped`.
     /// @param reason A human-readable description of why the stop is triggered.
     function emergencyStop(string calldata reason) internal {
-        address caller = ContextLib.msgSender();
+        address caller = msg.sender;
         if (!AccessControlLib.hasRole(EMERGENCY_GUARDIAN_ROLE, caller)) {
             revert IEmergencyStop.EmergencyStopUnauthorizedGuardian(caller);
         }
@@ -171,6 +170,6 @@ library EmergencyStopLib {
         if (!emergencyStopStorage()._stopped) revert IEmergencyStop.EmergencyStopNotActive();
         emergencyStopStorage()._stopped = false;
         delete emergencyStopStorage()._reason;
-        emit IEmergencyStop.EmergencyResumed(ContextLib.msgSender());
+        emit IEmergencyStop.EmergencyResumed(msg.sender);
     }
 }
