@@ -70,6 +70,10 @@ import {
     ERC165_MAP_ICOMPOUNDV3ADAPTER_SLOT
 } from "@lattice/defi/libraries/CompoundV3AdapterLib.sol";
 import {
+    ERC165_MAP_IERC4626ADAPTER_SLOT,
+    ERC4626_ADAPTER_STORAGE_SLOT
+} from "@lattice/defi/libraries/ERC4626AdapterLib.sol";
+import {
     ERC165_MAP_ISTRATEGYMANAGER_SLOT,
     STRATEGY_MANAGER_STORAGE_SLOT
 } from "@lattice/defi/libraries/StrategyManagerLib.sol";
@@ -140,6 +144,7 @@ import {IERC20} from "@lattice/interfaces/IERC20.sol";
 import {IERC20Capped} from "@lattice/interfaces/IERC20Capped.sol";
 import {IERC2981} from "@lattice/interfaces/IERC2981.sol";
 import {IERC4626} from "@lattice/interfaces/IERC4626.sol";
+import {IERC4626Adapter} from "@lattice/interfaces/IERC4626Adapter.sol";
 import {IEmergencyStop} from "@lattice/interfaces/IEmergencyStop.sol";
 import {IGovernor} from "@lattice/interfaces/IGovernor.sol";
 import {IInvariantChecker} from "@lattice/interfaces/IInvariantChecker.sol";
@@ -323,6 +328,14 @@ contract StorageSlotVerificationTest is Test {
             COMPOUND_V3_ADAPTER_STORAGE_SLOT,
             _erc7201Slot("lattice.storage.CompoundV3Adapter"),
             "CompoundV3Adapter storage slot mismatch"
+        );
+    }
+
+    function test_ERC4626AdapterStorageSlot() public pure {
+        assertEq(
+            ERC4626_ADAPTER_STORAGE_SLOT,
+            _erc7201Slot("lattice.storage.ERC4626Adapter"),
+            "ERC4626Adapter storage slot mismatch"
         );
     }
 
@@ -618,6 +631,16 @@ contract StorageSlotVerificationTest is Test {
         );
     }
 
+    function test_Erc165MapIERC4626AdapterSlot() public pure {
+        bytes4 interfaceId = type(IERC4626Adapter).interfaceId;
+        assertEq(interfaceId, bytes4(0x6189942b), "IERC4626Adapter interfaceId comment is stale");
+        assertEq(
+            ERC165_MAP_IERC4626ADAPTER_SLOT,
+            _erc165MapSlot(interfaceId, ERC165_STORAGE_LOCATION),
+            "ERC165 IERC4626Adapter map slot mismatch"
+        );
+    }
+
     // ---- amm ----
 
     function test_Erc165MapIConstantProductSlot() public pure {
@@ -760,7 +783,7 @@ contract StorageSlotVerificationTest is Test {
     // ======================== Slot inventories ========================
 
     function _allStorageSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](33);
+        slots = new bytes32[](34);
         uint256 i;
         // access
         slots[i++] = ACCESS_CONTROL_STORAGE_SLOT;
@@ -786,6 +809,7 @@ contract StorageSlotVerificationTest is Test {
         slots[i++] = STRATEGY_MANAGER_STORAGE_SLOT;
         slots[i++] = AAVE_V3_ADAPTER_STORAGE_SLOT;
         slots[i++] = COMPOUND_V3_ADAPTER_STORAGE_SLOT;
+        slots[i++] = ERC4626_ADAPTER_STORAGE_SLOT;
         // amm
         slots[i++] = CONSTANT_PRODUCT_STORAGE_SLOT;
         // oracles
@@ -806,7 +830,7 @@ contract StorageSlotVerificationTest is Test {
     }
 
     function _allErc165MapSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](35);
+        slots = new bytes32[](36);
         uint256 i;
         // access
         slots[i++] = ERC165_MAP_IACCESSCONTROL_SLOT;
@@ -836,6 +860,9 @@ contract StorageSlotVerificationTest is Test {
         // CompoundV3Adapter reuses the shared ERC165_MAP_IPROTOCOLADAPTER_SLOT (already counted
         // above under AaveV3Adapter) and only adds its protocol-specific ICompoundV3Adapter slot.
         slots[i++] = ERC165_MAP_ICOMPOUNDV3ADAPTER_SLOT;
+        // ERC4626Adapter likewise reuses the shared ERC165_MAP_IPROTOCOLADAPTER_SLOT and only adds
+        // its protocol-specific IERC4626Adapter slot.
+        slots[i++] = ERC165_MAP_IERC4626ADAPTER_SLOT;
         // amm
         slots[i++] = ERC165_MAP_ICONSTANTPRODUCT_SLOT;
         // oracles
