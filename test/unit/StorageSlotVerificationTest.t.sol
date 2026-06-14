@@ -77,6 +77,7 @@ import {
     ERC165_MAP_IERC4626ADAPTER_SLOT,
     ERC4626_ADAPTER_STORAGE_SLOT
 } from "@lattice/defi/libraries/ERC4626AdapterLib.sol";
+import {ERC165_MAP_ILIDOADAPTER_SLOT, LIDO_ADAPTER_STORAGE_SLOT} from "@lattice/defi/libraries/LidoAdapterLib.sol";
 import {
     ERC165_MAP_ISTRATEGYMANAGER_SLOT,
     STRATEGY_MANAGER_STORAGE_SLOT
@@ -153,6 +154,7 @@ import {IERC4626Adapter} from "@lattice/interfaces/IERC4626Adapter.sol";
 import {IEmergencyStop} from "@lattice/interfaces/IEmergencyStop.sol";
 import {IGovernor} from "@lattice/interfaces/IGovernor.sol";
 import {IInvariantChecker} from "@lattice/interfaces/IInvariantChecker.sol";
+import {ILidoAdapter} from "@lattice/interfaces/ILidoAdapter.sol";
 import {INonces} from "@lattice/interfaces/INonces.sol";
 import {IPausable} from "@lattice/interfaces/IPausable.sol";
 import {IProtocolAdapter} from "@lattice/interfaces/IProtocolAdapter.sol";
@@ -349,6 +351,12 @@ contract StorageSlotVerificationTest is Test {
             CURVE_STABLE_SWAP_ADAPTER_STORAGE_SLOT,
             _erc7201Slot("lattice.storage.CurveStableSwapAdapter"),
             "CurveStableSwapAdapter storage slot mismatch"
+        );
+    }
+
+    function test_LidoAdapterStorageSlot() public pure {
+        assertEq(
+            LIDO_ADAPTER_STORAGE_SLOT, _erc7201Slot("lattice.storage.LidoAdapter"), "LidoAdapter storage slot mismatch"
         );
     }
 
@@ -664,6 +672,16 @@ contract StorageSlotVerificationTest is Test {
         );
     }
 
+    function test_Erc165MapILidoAdapterSlot() public pure {
+        bytes4 interfaceId = type(ILidoAdapter).interfaceId;
+        assertEq(interfaceId, bytes4(0x83d0afd2), "ILidoAdapter interfaceId comment is stale");
+        assertEq(
+            ERC165_MAP_ILIDOADAPTER_SLOT,
+            _erc165MapSlot(interfaceId, ERC165_STORAGE_LOCATION),
+            "ERC165 ILidoAdapter map slot mismatch"
+        );
+    }
+
     // ---- amm ----
 
     function test_Erc165MapIConstantProductSlot() public pure {
@@ -806,7 +824,7 @@ contract StorageSlotVerificationTest is Test {
     // ======================== Slot inventories ========================
 
     function _allStorageSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](35);
+        slots = new bytes32[](36);
         uint256 i;
         // access
         slots[i++] = ACCESS_CONTROL_STORAGE_SLOT;
@@ -834,6 +852,7 @@ contract StorageSlotVerificationTest is Test {
         slots[i++] = COMPOUND_V3_ADAPTER_STORAGE_SLOT;
         slots[i++] = ERC4626_ADAPTER_STORAGE_SLOT;
         slots[i++] = CURVE_STABLE_SWAP_ADAPTER_STORAGE_SLOT;
+        slots[i++] = LIDO_ADAPTER_STORAGE_SLOT;
         // amm
         slots[i++] = CONSTANT_PRODUCT_STORAGE_SLOT;
         // oracles
@@ -854,7 +873,7 @@ contract StorageSlotVerificationTest is Test {
     }
 
     function _allErc165MapSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](37);
+        slots = new bytes32[](38);
         uint256 i;
         // access
         slots[i++] = ERC165_MAP_IACCESSCONTROL_SLOT;
@@ -890,6 +909,9 @@ contract StorageSlotVerificationTest is Test {
         // CurveStableSwapAdapter likewise reuses the shared ERC165_MAP_IPROTOCOLADAPTER_SLOT and only
         // adds its protocol-specific ICurveStableSwapAdapter slot.
         slots[i++] = ERC165_MAP_ICURVESTABLESWAPADAPTER_SLOT;
+        // LidoAdapter likewise reuses the shared ERC165_MAP_IPROTOCOLADAPTER_SLOT and only adds its
+        // protocol-specific ILidoAdapter slot.
+        slots[i++] = ERC165_MAP_ILIDOADAPTER_SLOT;
         // amm
         slots[i++] = ERC165_MAP_ICONSTANTPRODUCT_SLOT;
         // oracles
