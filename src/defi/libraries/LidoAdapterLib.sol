@@ -211,10 +211,22 @@ library LidoAdapterLib {
     }
 
     /// @notice NAV in WETH/ETH units = idle WETH buffer + wstETH valued in stETH + pending in-queue stETH.
-    /// @dev stETH is valued 1:1 with ETH/WETH per Lido's accounting (`getStETHByWstETH`). The pending
-    ///      term keeps funds-in-flight through the async withdrawal queue from disappearing from
-    ///      accounting between `requestWithdrawal` and `claimWithdrawal`. NOT oracle-corrected for a
-    ///      stETH/ETH de-peg (documented limitation; a future oracle hook is a follow-up).
+    /// @dev stETH is valued 1:1 with ETH/WETH using Lido's PROTOCOL-REDEMPTION rate (`getStETHByWstETH`),
+    ///      a monotone, protocol-controlled exchange rate — NOT a secondary-market price. The pending term
+    ///      keeps funds-in-flight through the async withdrawal queue from disappearing from accounting
+    ///      between `requestWithdrawal` and `claimWithdrawal`.
+    ///
+    ///      KNOWN LIMITATION — stETH/ETH de-peg (not corrected here; this NAV is intentionally
+    ///      market-price-blind). During a stress event stETH can trade at a discount to ETH while this
+    ///      function still values the staked + queued legs at par. Consequence: a holder who redeems
+    ///      against the synchronous WETH buffer is paid at the (inflated) par NAV, while the staked leg
+    ///      must exit slowly through the Lido queue at the eventual realized (discounted) value — the
+    ///      difference is socialized onto the remaining shareholders. This is a valuation-vs-realizable
+    ///      mismatch, not an on-chain-manipulable bug (the redemption rate is monotone and not attacker-
+    ///      controlled). MITIGATION until corrected: bound exposure by capping this strategy's vault
+    ///      allocation target and the WETH buffer so the par-priced synchronous-exit surface stays small.
+    ///      FUTURE FIX: apply a haircut to `stakedValue + _pendingAssets` from a Chainlink stETH/ETH feed
+    ///      (via the existing `ChainlinkAdapter`) whenever stETH is below peg.
     function totalAssetsManaged() internal view returns (uint256) {
         LidoAdapterStorage storage $ = lidoAdapterStorage();
         uint256 buffer = AdapterBaseLib.balanceOfSelf($._weth);
