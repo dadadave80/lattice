@@ -270,4 +270,53 @@ library AaveV3AdapterLib {
         withdrawn = IERC20(asset_).balanceOf(to) - beforeBal;
         ReentrancyGuardLib.nonReentrantAfter();
     }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                              VALUATION
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice Total assets managed (vault accounting / share price input).
+    /// @dev Supply-only: the 1:1 aToken balance. When debt exists (leverage), Task 8 replaces
+    ///      this with oracle-priced net equity. Rewards are NEVER counted here.
+    function totalAssetsManaged() internal view returns (uint256) {
+        AaveV3AdapterStorage storage $ = aaveV3AdapterStorage();
+        (, uint256 totalDebtBase,,,,) = _pool().getUserAccountData(address(this));
+        uint256 supplied = IAToken(aToken()).balanceOf(address(this));
+        if (totalDebtBase == 0) {
+            // No debt: 1:1 supply value, no oracle needed.
+            return supplied;
+        }
+        // Debt present: net equity is computed by the leverage valuation (Task 8).
+        return _netEquityAssets();
+    }
+
+    // ---- Stubs filled in by later tasks (compile placeholders) ----
+
+    /// @dev Net-equity valuation (collateral − debt) priced via the Lattice oracle. Task 8.
+    function _netEquityAssets() internal view returns (uint256) {
+        // Temporary: until Task 8, fall back to supply minus debt at 1:1 (asset == base ccy).
+        (uint256 c, uint256 d,,,,) = _pool().getUserAccountData(address(this));
+        // c, d are base-ccy 8-decimals; for the supply-only suite this branch is never hit.
+        return c >= d ? IAToken(aToken()).balanceOf(address(this)) : 0;
+    }
+
+    /// @dev Claims + forwards rewards raw. Real body in Task 7.
+    function harvest() internal {
+        // Task 7 wires the rewards controller claim; supply-only path has nothing to claim.
+    }
+
+    /// @dev Increases leverage (borrow + re-supply). Real body in Task 8.
+    function lever(uint256) internal {
+        revert IAaveV3Adapter.AaveV3AdapterZeroLeverAmount(); // replaced in Task 8
+    }
+
+    /// @dev Decreases leverage (withdraw collateral + repay). Real body in Task 8.
+    function delever(uint256) internal returns (uint256) {
+        return 0; // replaced in Task 8
+    }
+
+    /// @dev Full exit to vault. Real body in Task 9.
+    function emergencyWithdraw() internal returns (uint256) {
+        return 0; // replaced in Task 9
+    }
 }
