@@ -232,6 +232,10 @@ contract AaveV3AdapterSupplyTest is Test {
         adapter = new MockAaveAdapter();
         // provider == pool (the mock doubles as the provider).
         adapter.initialize(admin, address(pool), address(asset), vault, treasury, FEED_KEY, 1.05e18);
+        // Authorize this test contract as the operator so the direct deploy/withdraw/harvest calls
+        // (which the StrategyManager would make in production) pass the operator gate.
+        vm.prank(admin);
+        adapter.setOperator(address(this));
     }
 
     function test_AssetAndConfig() public view {

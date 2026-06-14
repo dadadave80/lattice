@@ -120,6 +120,10 @@ contract ERC4626AdapterTest is Test {
         target = new MockERC4626(asset);
         adapter = new MockERC4626Adapter();
         adapter.initialize(admin, address(target), address(asset), vault, treasury);
+        // Authorize this test contract as the operator so the direct deploy/withdraw/harvest calls
+        // (which the StrategyManager would make in production) pass the operator gate.
+        vm.prank(admin);
+        adapter.setOperator(address(this));
     }
 
     function test_Deploy_DepositsIntoTargetVault() public {

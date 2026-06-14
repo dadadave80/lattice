@@ -2,6 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {UniswapV3AdapterLib} from "@lattice/defi/libraries/UniswapV3AdapterLib.sol";
+import {IAdapterOperator} from "@lattice/interfaces/IAdapterOperator.sol";
 import {IProtocolAdapter} from "@lattice/interfaces/IProtocolAdapter.sol";
 import {IUniswapV3Adapter} from "@lattice/interfaces/IUniswapV3Adapter.sol";
 import {IStrategy} from "@lattice/interfaces/external/IStrategy.sol";
@@ -22,7 +23,7 @@ import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib
 ///      `onERC721Received` so the NFPM can safe-mint the position NFT to it.
 /// @custom:lattice-version 0.1.0
 /// @custom:lattice-source Lattice original
-contract UniswapV3Adapter is IStrategy, IProtocolAdapter, IUniswapV3Adapter {
+contract UniswapV3Adapter is IStrategy, IProtocolAdapter, IAdapterOperator, IUniswapV3Adapter {
     //*//////////////////////////////////////////////////////////////////////////
     //                              IStrategy
     //////////////////////////////////////////////////////////////////////////*//
@@ -79,6 +80,20 @@ contract UniswapV3Adapter is IStrategy, IProtocolAdapter, IUniswapV3Adapter {
     /// @inheritdoc IProtocolAdapter
     function rewardRecipient() external view virtual override returns (address) {
         return UniswapV3AdapterLib.rewardRecipient();
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                            IAdapterOperator
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @inheritdoc IAdapterOperator
+    function setOperator(address operator_) external virtual override {
+        UniswapV3AdapterLib.setOperator(operator_);
+    }
+
+    /// @inheritdoc IAdapterOperator
+    function operator() external view virtual override returns (address) {
+        return UniswapV3AdapterLib.operator();
     }
 
     /// @notice True while a guarded op is executing — mirrors StrategyManager so VaultCore can

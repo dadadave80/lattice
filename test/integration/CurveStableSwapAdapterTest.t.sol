@@ -223,6 +223,9 @@ contract CurveStableSwapAdapterTest is Test {
         vm.startPrank(admin);
         adapter.addGuardian(guardian);
         adapter.setCrvToken(address(crv));
+        // Authorize this test contract as the operator so the direct deploy/withdraw/harvest calls
+        // (which the StrategyManager would make in production) pass the operator gate.
+        adapter.setOperator(address(this));
         vm.stopPrank();
     }
 
@@ -231,8 +234,11 @@ contract CurveStableSwapAdapterTest is Test {
         adapter.initialize(
             admin, address(pool), address(lp), address(0), address(asset), COIN_INDEX, vault, treasury, SLIPPAGE_BPS
         );
-        vm.prank(admin);
+        vm.startPrank(admin);
         adapter.addGuardian(guardian);
+        // Authorize this test contract as the operator (see _deployStaked).
+        adapter.setOperator(address(this));
+        vm.stopPrank();
     }
 
     function setUp() public {
@@ -364,7 +370,9 @@ contract CurveStableSwapAdapterTest is Test {
     function test_Withdraw_RevertsZeroRecipient() public {
         asset.mint(address(adapter), 1_000e6);
         adapter.deploy();
-        vm.expectRevert(IProtocolAdapter.ProtocolAdapterZeroAddress.selector);
+        // The recipient is now pinned to the adapter's vault, so any non-vault recipient (incl. the
+        // zero address) is rejected with ProtocolAdapterInvalidRecipient.
+        vm.expectRevert(abi.encodeWithSelector(IProtocolAdapter.ProtocolAdapterInvalidRecipient.selector, address(0)));
         adapter.withdraw(100e6, address(0));
     }
 

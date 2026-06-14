@@ -107,6 +107,10 @@ contract AaveV3AdapterVaultTest is Test {
         vault.setStrategyManager(address(mgr));
         mgr.setVault(address(vault));
         mgr.addStrategy(address(adapter), 10_000); // 100% target
+        // The StrategyManager is the adapter's authorized operator: it is the only caller permitted
+        // to invoke deploy/withdraw/harvest. The rebalance() recall path runs as `mgr`, and the
+        // explicit deploy() sweeps below are pranked as `mgr` to mirror the keeper-relayed call.
+        adapter.setOperator(address(mgr));
         vm.stopPrank();
     }
 
@@ -129,7 +133,8 @@ contract AaveV3AdapterVaultTest is Test {
         // the deploy() sweep hook is required.
         assertEq(adapter.totalAssetsManaged(), 0, "no aTokens until deploy()");
 
-        // Keeper sweeps idle into Aave.
+        // Keeper sweeps idle into Aave (the StrategyManager is the authorized operator).
+        vm.prank(address(mgr));
         uint256 deployed = adapter.deploy();
         assertEq(deployed, DEPOSIT, "swept all");
         assertEq(adapter.totalAssetsManaged(), DEPOSIT, "now supplied 1:1");
@@ -149,6 +154,7 @@ contract AaveV3AdapterVaultTest is Test {
         vm.stopPrank();
 
         mgr.rebalance();
+        vm.prank(address(mgr));
         adapter.deploy();
         assertEq(adapter.totalAssetsManaged(), DEPOSIT);
 

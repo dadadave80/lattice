@@ -2,6 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {ERC4626AdapterLib} from "@lattice/defi/libraries/ERC4626AdapterLib.sol";
+import {IAdapterOperator} from "@lattice/interfaces/IAdapterOperator.sol";
 import {IERC4626Adapter} from "@lattice/interfaces/IERC4626Adapter.sol";
 import {IProtocolAdapter} from "@lattice/interfaces/IProtocolAdapter.sol";
 import {IStrategy} from "@lattice/interfaces/external/IStrategy.sol";
@@ -15,7 +16,7 @@ import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib
 ///         (no leverage). All logic lives in ERC4626AdapterLib.
 /// @custom:lattice-version 0.1.0
 /// @custom:lattice-source Lattice original
-contract ERC4626Adapter is IStrategy, IProtocolAdapter, IERC4626Adapter {
+contract ERC4626Adapter is IStrategy, IProtocolAdapter, IAdapterOperator, IERC4626Adapter {
     //*//////////////////////////////////////////////////////////////////////////
     //                              IStrategy
     //////////////////////////////////////////////////////////////////////////*//
@@ -72,6 +73,20 @@ contract ERC4626Adapter is IStrategy, IProtocolAdapter, IERC4626Adapter {
     /// @inheritdoc IProtocolAdapter
     function rewardRecipient() external view virtual override returns (address) {
         return ERC4626AdapterLib.rewardRecipient();
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                            IAdapterOperator
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @inheritdoc IAdapterOperator
+    function setOperator(address operator_) external virtual override {
+        ERC4626AdapterLib.setOperator(operator_);
+    }
+
+    /// @inheritdoc IAdapterOperator
+    function operator() external view virtual override returns (address) {
+        return ERC4626AdapterLib.operator();
     }
 
     /// @notice True while a guarded op is executing — mirrors StrategyManager so VaultCore can

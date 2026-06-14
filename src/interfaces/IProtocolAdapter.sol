@@ -29,6 +29,10 @@ interface IProtocolAdapter {
     /// @notice Emitted when the reward recipient is set or changed.
     event RewardRecipientSet(address indexed recipient);
 
+    /// @notice Emitted when the authorized operator (the only caller permitted to invoke the
+    ///         `deploy`/`withdraw`/`harvest` trio) is set or changed.
+    event OperatorSet(address indexed operator);
+
     /// @notice Emitted when the adapter fully exits its position in an emergency.
     /// @param asset      The underlying asset recovered.
     /// @param toVault    The vault the funds were returned to.
@@ -60,6 +64,11 @@ interface IProtocolAdapter {
 
     /// @notice Caller is not authorized for this operation.
     error ProtocolAdapterUnauthorized(address caller);
+
+    /// @notice `withdraw` was called with a recipient other than the adapter's stored vault.
+    /// @dev The recipient of a recall is pinned to the vault the adapter was initialized with, so an
+    ///      attacker who somehow reaches `withdraw` can never redirect the position to themselves.
+    error ProtocolAdapterInvalidRecipient(address to);
 
     // -------------------------------------------------------------------------
     //                            Lifecycle (sidecar)

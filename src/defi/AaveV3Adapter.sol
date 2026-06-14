@@ -3,6 +3,7 @@ pragma solidity ^0.8.30;
 
 import {AaveV3AdapterLib} from "@lattice/defi/libraries/AaveV3AdapterLib.sol";
 import {IAaveV3Adapter} from "@lattice/interfaces/IAaveV3Adapter.sol";
+import {IAdapterOperator} from "@lattice/interfaces/IAdapterOperator.sol";
 import {IProtocolAdapter} from "@lattice/interfaces/IProtocolAdapter.sol";
 import {IStrategy} from "@lattice/interfaces/external/IStrategy.sol";
 import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib.sol";
@@ -14,7 +15,7 @@ import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib
 ///         and `IAaveV3Adapter` (Aave config). All logic lives in AaveV3AdapterLib.
 /// @custom:lattice-version 0.1.0
 /// @custom:lattice-source Lattice original
-contract AaveV3Adapter is IStrategy, IProtocolAdapter, IAaveV3Adapter {
+contract AaveV3Adapter is IStrategy, IProtocolAdapter, IAdapterOperator, IAaveV3Adapter {
     //*//////////////////////////////////////////////////////////////////////////
     //                              IStrategy
     //////////////////////////////////////////////////////////////////////////*//
@@ -71,6 +72,20 @@ contract AaveV3Adapter is IStrategy, IProtocolAdapter, IAaveV3Adapter {
     /// @inheritdoc IProtocolAdapter
     function rewardRecipient() external view virtual override returns (address) {
         return AaveV3AdapterLib.rewardRecipient();
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                            IAdapterOperator
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @inheritdoc IAdapterOperator
+    function setOperator(address operator_) external virtual override {
+        AaveV3AdapterLib.setOperator(operator_);
+    }
+
+    /// @inheritdoc IAdapterOperator
+    function operator() external view virtual override returns (address) {
+        return AaveV3AdapterLib.operator();
     }
 
     /// @notice True while a guarded op is executing — mirrors StrategyManager so VaultCore can

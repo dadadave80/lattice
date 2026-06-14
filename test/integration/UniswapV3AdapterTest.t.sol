@@ -344,8 +344,12 @@ contract UniswapV3AdapterTest is Test {
 
         adapter = new MockUniV3Adapter();
         adapter.initialize(admin, address(npm), address(pool), vault, treasury, TWAP_WINDOW, SLIPPAGE_BPS);
-        vm.prank(admin);
+        vm.startPrank(admin);
         adapter.addGuardian(guardian);
+        // Authorize this test contract as the operator so the direct deploy/withdraw/harvest calls
+        // (which the StrategyManager would make in production) pass the operator gate.
+        adapter.setOperator(address(this));
+        vm.stopPrank();
     }
 
     /// @dev Fund the adapter with balanced token0/token1 (the keeper's job — swap-free adapter).
@@ -512,7 +516,9 @@ contract UniswapV3AdapterTest is Test {
     function test_Withdraw_RevertsZeroRecipient() public {
         _fund(1_000e18, 1_000e18);
         adapter.deploy();
-        vm.expectRevert(IProtocolAdapter.ProtocolAdapterZeroAddress.selector);
+        // The recipient is now pinned to the adapter's vault, so any non-vault recipient (incl. the
+        // zero address) is rejected with ProtocolAdapterInvalidRecipient.
+        vm.expectRevert(abi.encodeWithSelector(IProtocolAdapter.ProtocolAdapterInvalidRecipient.selector, address(0)));
         adapter.withdraw(100e18, address(0));
     }
 

@@ -59,6 +59,10 @@ struct LidoAdapterStorage {
     EnumerableSet.UintSet _pendingRequests;
     /// @dev Per-request stETH amount, used to decrement `_pendingAssets` on claim.
     mapping(uint256 => uint256) _requestAssets;
+    /// @dev Authorized operator: the SOLE caller permitted to invoke `deploy`/`withdraw`/`harvest`
+    ///      (the StrategyManager in the live system). Zero until wired ⇒ that trio reverts.
+    ///      APPENDED last (append-only ERC-7201 rule — never reorder/insert).
+    address _operator;
 }
 
 /// @title LidoAdapterLib
@@ -161,6 +165,19 @@ library LidoAdapterLib {
         return lidoAdapterStorage()._rewardRecipient;
     }
 
+    function operator() internal view returns (address) {
+        return lidoAdapterStorage()._operator;
+    }
+
+    /// @dev Reverts `ProtocolAdapterUnauthorized` unless the caller is the wired operator. Placed at
+    ///      the very top of `deploy`/`withdraw`/`harvest` — BEFORE the reentrancy guard — so an
+    ///      unauthorized call never leaves the guard latched. Zero operator ⇒ always reverts.
+    function _checkOperator() private view {
+        if (msg.sender != lidoAdapterStorage()._operator) {
+            revert IProtocolAdapter.ProtocolAdapterUnauthorized(msg.sender);
+        }
+    }
+
     function bufferBalance() internal view returns (uint256) {
         return AdapterBaseLib.balanceOfSelf(lidoAdapterStorage()._weth);
     }
@@ -218,6 +235,15 @@ library LidoAdapterLib {
         emit IProtocolAdapter.RewardRecipientSet(recipient);
     }
 
+    /// @notice Sets the authorized operator for `deploy`/`withdraw`/`harvest` (admin-only). Rejects
+    ///         `address(0)` so the trio cannot be opened to an unauthenticated default.
+    function setOperator(address operator_) internal {
+        AccessControlLib.checkRole(DEFAULT_ADMIN_ROLE);
+        if (operator_ == address(0)) revert IProtocolAdapter.ProtocolAdapterZeroAddress();
+        lidoAdapterStorage()._operator = operator_;
+        emit IProtocolAdapter.OperatorSet(operator_);
+    }
+
     //*//////////////////////////////////////////////////////////////////////////
     //                               STAKING LEG
     //////////////////////////////////////////////////////////////////////////*//
@@ -227,6 +253,7 @@ library LidoAdapterLib {
     ///      hits the facet's `receive()` (a self-call that only accepts ETH — no guarded state), so
     ///      it is safe inside the `nonReentrant` window.
     function deploy() internal returns (uint256 deployed) {
+        _checkOperator();
         ReentrancyGuardLib.nonReentrantBefore();
         if (isPaused()) {
             ReentrancyGuardLib.nonReentrantAfter();
@@ -269,14 +296,18 @@ library LidoAdapterLib {
     ///      shortfall check turns the under-delivery into a recorded shortfall upstream. The staked
     ///      wstETH position is intentionally never touched here.
     function withdraw(uint256 amount, address to) internal returns (uint256 withdrawn) {
+        _checkOperator();
         ReentrancyGuardLib.nonReentrantBefore();
-        if (to == address(0)) {
+        LidoAdapterStorage storage $ = lidoAdapterStorage();
+        // Recipient pin: a recall may ONLY land in the adapter's own vault. The legit caller (the
+        // StrategyManager) already passes the vault; this makes redirecting the buffer impossible.
+        if (to != $._vault) {
             ReentrancyGuardLib.nonReentrantAfter();
-            revert IProtocolAdapter.ProtocolAdapterZeroAddress();
+            revert IProtocolAdapter.ProtocolAdapterInvalidRecipient(to);
         }
         // transferHonest already caps at the adapter's WETH balance (== the buffer) and reports the
         // real amount sent, so a buffer shortfall returns less without reverting.
-        withdrawn = AdapterBaseLib.transferHonest(lidoAdapterStorage()._weth, to, amount);
+        withdrawn = AdapterBaseLib.transferHonest($._weth, to, amount);
         ReentrancyGuardLib.nonReentrantAfter();
     }
 
@@ -335,10 +366,11 @@ library LidoAdapterLib {
 
     /// @notice No-op: Lido yield accrues in the wstETH→stETH exchange rate (reflected in NAV), NOT a
     ///         claimable reward token, so there is nothing to claim or forward on the standard
-    ///         `IProtocolAdapter.harvest()` path. Kept as a graceful no-op so `rebalance()` never
-    ///         reverts. Use `harvestToken` to forward a specific stray (airdropped) token.
-    function harvest() internal pure {
-        return;
+    ///         `IProtocolAdapter.harvest()` path. Kept as a graceful no-op (for an authorized
+    ///         operator) so a keeper sweep never reverts. Use `harvestToken` to forward a specific
+    ///         stray (airdropped) token. Operator-gated for parity with the other adapters' trio.
+    function harvest() internal view {
+        _checkOperator();
     }
 
     /// @notice Forwards the adapter's entire balance of a stray `token` raw to the reward recipient

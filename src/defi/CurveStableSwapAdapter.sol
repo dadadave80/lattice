@@ -2,6 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {CurveStableSwapAdapterLib} from "@lattice/defi/libraries/CurveStableSwapAdapterLib.sol";
+import {IAdapterOperator} from "@lattice/interfaces/IAdapterOperator.sol";
 import {ICurveStableSwapAdapter} from "@lattice/interfaces/ICurveStableSwapAdapter.sol";
 import {IProtocolAdapter} from "@lattice/interfaces/IProtocolAdapter.sol";
 import {IStrategy} from "@lattice/interfaces/external/IStrategy.sol";
@@ -19,7 +20,7 @@ import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib
 ///      Curve LiquidityGauge (https://github.com/curvefi/curve-dao-contracts).
 /// @custom:lattice-version 0.1.0
 /// @custom:lattice-source Lattice original
-contract CurveStableSwapAdapter is IStrategy, IProtocolAdapter, ICurveStableSwapAdapter {
+contract CurveStableSwapAdapter is IStrategy, IProtocolAdapter, IAdapterOperator, ICurveStableSwapAdapter {
     //*//////////////////////////////////////////////////////////////////////////
     //                              IStrategy
     //////////////////////////////////////////////////////////////////////////*//
@@ -76,6 +77,20 @@ contract CurveStableSwapAdapter is IStrategy, IProtocolAdapter, ICurveStableSwap
     /// @inheritdoc IProtocolAdapter
     function rewardRecipient() external view virtual override returns (address) {
         return CurveStableSwapAdapterLib.rewardRecipient();
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                            IAdapterOperator
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @inheritdoc IAdapterOperator
+    function setOperator(address operator_) external virtual override {
+        CurveStableSwapAdapterLib.setOperator(operator_);
+    }
+
+    /// @inheritdoc IAdapterOperator
+    function operator() external view virtual override returns (address) {
+        return CurveStableSwapAdapterLib.operator();
     }
 
     /// @notice True while a guarded op is executing — mirrors StrategyManager so VaultCore can

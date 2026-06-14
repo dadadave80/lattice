@@ -67,6 +67,10 @@ contract AaveV3AdapterFork is Test {
 
         adapter = new ForkAaveAdapter();
         adapter.initialize(admin, AAVE_V3_PROVIDER, USDC, vault, treasury, FEED_KEY, 1.05e18);
+        // Authorize this test contract as the operator so the direct deploy/withdraw calls
+        // (which the StrategyManager would make in production) pass the operator gate.
+        vm.prank(admin);
+        adapter.setOperator(address(this));
     }
 
     function test_Fork_SupplyAndWithdrawUSDC() public {

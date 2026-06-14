@@ -60,6 +60,10 @@ struct CurveStableSwapAdapterStorage {
     int128 _coinIndex;
     /// @dev Slippage tolerance in basis points applied to add/remove min-out floors.
     uint256 _slippageBps;
+    /// @dev Authorized operator: the SOLE caller permitted to invoke `deploy`/`withdraw`/`harvest`
+    ///      (the StrategyManager in the live system). Zero until wired ⇒ that trio reverts.
+    ///      APPENDED last (append-only ERC-7201 rule — never reorder/insert).
+    address _operator;
 }
 
 /// @title CurveStableSwapAdapterLib
@@ -182,6 +186,19 @@ library CurveStableSwapAdapterLib {
         return curveStableSwapAdapterStorage()._rewardRecipient;
     }
 
+    function operator() internal view returns (address) {
+        return curveStableSwapAdapterStorage()._operator;
+    }
+
+    /// @dev Reverts `ProtocolAdapterUnauthorized` unless the caller is the wired operator. Placed at
+    ///      the very top of `deploy`/`withdraw`/`harvest` — BEFORE the reentrancy guard — so an
+    ///      unauthorized call never leaves the guard latched. Zero operator ⇒ always reverts.
+    function _checkOperator() private view {
+        if (msg.sender != curveStableSwapAdapterStorage()._operator) {
+            revert IProtocolAdapter.ProtocolAdapterUnauthorized(msg.sender);
+        }
+    }
+
     function minHealthFactor() internal pure returns (uint256) {
         return type(uint256).max; // LP-only, no debt
     }
@@ -252,11 +269,21 @@ library CurveStableSwapAdapterLib {
         emit IProtocolAdapter.RewardRecipientSet(recipient);
     }
 
+    /// @notice Sets the authorized operator for `deploy`/`withdraw`/`harvest` (admin-only). Rejects
+    ///         `address(0)` so the trio cannot be opened to an unauthenticated default.
+    function setOperator(address operator_) internal {
+        AccessControlLib.checkRole(DEFAULT_ADMIN_ROLE);
+        if (operator_ == address(0)) revert IProtocolAdapter.ProtocolAdapterZeroAddress();
+        curveStableSwapAdapterStorage()._operator = operator_;
+        emit IProtocolAdapter.OperatorSet(operator_);
+    }
+
     //*//////////////////////////////////////////////////////////////////////////
     //                                  LP LEG
     //////////////////////////////////////////////////////////////////////////*//
 
     function deploy() internal returns (uint256 deployed) {
+        _checkOperator();
         ReentrancyGuardLib.nonReentrantBefore();
         if (isPaused()) {
             ReentrancyGuardLib.nonReentrantAfter();
@@ -296,12 +323,15 @@ library CurveStableSwapAdapterLib {
     }
 
     function withdraw(uint256 amount, address to) internal returns (uint256 withdrawn) {
+        _checkOperator();
         ReentrancyGuardLib.nonReentrantBefore();
-        if (to == address(0)) {
-            ReentrancyGuardLib.nonReentrantAfter();
-            revert IProtocolAdapter.ProtocolAdapterZeroAddress();
-        }
         CurveStableSwapAdapterStorage storage $ = curveStableSwapAdapterStorage();
+        // Recipient pin: a recall may ONLY land in the adapter's own vault. The legit caller (the
+        // StrategyManager) already passes the vault; this makes redirecting the position impossible.
+        if (to != $._vault) {
+            ReentrancyGuardLib.nonReentrantAfter();
+            revert IProtocolAdapter.ProtocolAdapterInvalidRecipient(to);
+        }
         address asset_ = $._asset;
         address pool_ = $._pool;
         int128 idx = $._coinIndex;
@@ -341,6 +371,7 @@ library CurveStableSwapAdapterLib {
     }
 
     function harvest() internal {
+        _checkOperator();
         ReentrancyGuardLib.nonReentrantBefore();
         CurveStableSwapAdapterStorage storage $ = curveStableSwapAdapterStorage();
         address g = $._gauge;

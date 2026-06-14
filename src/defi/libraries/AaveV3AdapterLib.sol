@@ -60,6 +60,10 @@ struct AaveV3AdapterStorage {
     uint8 _eModeCategory;
     /// @dev Aave rewards controller; `harvest()` claims incentives for the aToken from it.
     address _rewardsController;
+    /// @dev Authorized operator: the SOLE caller permitted to invoke `deploy`/`withdraw`/`harvest`
+    ///      (the StrategyManager in the live system). Zero until wired ⇒ that trio reverts.
+    ///      APPENDED last (append-only ERC-7201 rule — never reorder/insert).
+    address _operator;
 }
 
 /// @title AaveV3AdapterLib
@@ -169,6 +173,19 @@ library AaveV3AdapterLib {
         return aaveV3AdapterStorage()._rewardRecipient;
     }
 
+    function operator() internal view returns (address) {
+        return aaveV3AdapterStorage()._operator;
+    }
+
+    /// @dev Reverts `ProtocolAdapterUnauthorized` unless the caller is the wired operator. Placed at
+    ///      the very top of `deploy`/`withdraw`/`harvest` — BEFORE the reentrancy guard — so an
+    ///      unauthorized call never leaves the guard latched. Zero operator ⇒ always reverts.
+    function _checkOperator() private view {
+        if (msg.sender != aaveV3AdapterStorage()._operator) {
+            revert IProtocolAdapter.ProtocolAdapterUnauthorized(msg.sender);
+        }
+    }
+
     function eModeCategory() internal view returns (uint8) {
         return aaveV3AdapterStorage()._eModeCategory;
     }
@@ -217,6 +234,15 @@ library AaveV3AdapterLib {
         emit IProtocolAdapter.RewardRecipientSet(recipient);
     }
 
+    /// @notice Sets the authorized operator for `deploy`/`withdraw`/`harvest` (admin-only). Rejects
+    ///         `address(0)` so the trio cannot be opened to an unauthenticated default.
+    function setOperator(address operator_) internal {
+        AccessControlLib.checkRole(DEFAULT_ADMIN_ROLE);
+        if (operator_ == address(0)) revert IProtocolAdapter.ProtocolAdapterZeroAddress();
+        aaveV3AdapterStorage()._operator = operator_;
+        emit IProtocolAdapter.OperatorSet(operator_);
+    }
+
     function rewardsController() internal view returns (address) {
         return aaveV3AdapterStorage()._rewardsController;
     }
@@ -236,6 +262,7 @@ library AaveV3AdapterLib {
     /// @dev Reentrancy-gated. Reverts if paused/stopped or if there is nothing to deploy. Uses
     ///      exact-amount `forceApprove` to the freshly-resolved Pool (never infinite).
     function deploy() internal returns (uint256 deployed) {
+        _checkOperator();
         ReentrancyGuardLib.nonReentrantBefore();
         if (isPaused()) {
             ReentrancyGuardLib.nonReentrantAfter();
@@ -262,12 +289,15 @@ library AaveV3AdapterLib {
     ///      liquidation / insufficient liquidity) — the StrategyManager raises
     ///      `StrategyManagerWithdrawShortfall` upstream if under-delivered.
     function withdraw(uint256 amount, address to) internal returns (uint256 withdrawn) {
+        _checkOperator();
         ReentrancyGuardLib.nonReentrantBefore();
-        if (to == address(0)) {
-            ReentrancyGuardLib.nonReentrantAfter();
-            revert IProtocolAdapter.ProtocolAdapterZeroAddress();
-        }
         AaveV3AdapterStorage storage $ = aaveV3AdapterStorage();
+        // Recipient pin: a recall may ONLY land in the adapter's own vault. The legit caller (the
+        // StrategyManager) already passes the vault; this makes redirecting the position impossible.
+        if (to != $._vault) {
+            ReentrancyGuardLib.nonReentrantAfter();
+            revert IProtocolAdapter.ProtocolAdapterInvalidRecipient(to);
+        }
         address asset_ = $._asset;
         // Aave sends the underlying directly to `to`; capture `to`'s delta to report honestly.
         uint256 beforeBal = IERC20(asset_).balanceOf(to);
@@ -402,6 +432,7 @@ library AaveV3AdapterLib {
     ///         token RAW to the configured recipient. Zero-claim / fee-on-transfer safe; never
     ///         reverts the rebalance/withdraw path. Rewards are not part of `totalAssetsManaged()`.
     function harvest() internal {
+        _checkOperator();
         ReentrancyGuardLib.nonReentrantBefore();
         AaveV3AdapterStorage storage $ = aaveV3AdapterStorage();
         address controller = $._rewardsController;

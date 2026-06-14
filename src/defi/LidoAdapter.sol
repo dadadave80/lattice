@@ -2,6 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {LidoAdapterLib} from "@lattice/defi/libraries/LidoAdapterLib.sol";
+import {IAdapterOperator} from "@lattice/interfaces/IAdapterOperator.sol";
 import {ILidoAdapter} from "@lattice/interfaces/ILidoAdapter.sol";
 import {IProtocolAdapter} from "@lattice/interfaces/IProtocolAdapter.sol";
 import {IStrategy} from "@lattice/interfaces/external/IStrategy.sol";
@@ -22,7 +23,7 @@ import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib
 ///      `receive()` so it can take native ETH from `WETH.withdraw` and from the Lido queue's claim.
 /// @custom:lattice-version 0.1.0
 /// @custom:lattice-source Lattice original
-contract LidoAdapter is IStrategy, IProtocolAdapter, ILidoAdapter {
+contract LidoAdapter is IStrategy, IProtocolAdapter, IAdapterOperator, ILidoAdapter {
     //*//////////////////////////////////////////////////////////////////////////
     //                              IStrategy
     //////////////////////////////////////////////////////////////////////////*//
@@ -81,6 +82,20 @@ contract LidoAdapter is IStrategy, IProtocolAdapter, ILidoAdapter {
     /// @inheritdoc IProtocolAdapter
     function rewardRecipient() external view virtual override returns (address) {
         return LidoAdapterLib.rewardRecipient();
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                            IAdapterOperator
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @inheritdoc IAdapterOperator
+    function setOperator(address operator_) external virtual override {
+        LidoAdapterLib.setOperator(operator_);
+    }
+
+    /// @inheritdoc IAdapterOperator
+    function operator() external view virtual override returns (address) {
+        return LidoAdapterLib.operator();
     }
 
     /// @notice True while a guarded op is executing — mirrors StrategyManager so VaultCore can

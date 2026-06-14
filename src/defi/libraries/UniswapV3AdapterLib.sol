@@ -65,6 +65,10 @@ struct UniswapV3AdapterStorage {
     int24 _tickUpper;
     /// @dev Slippage tolerance in basis points applied to add/remove min-amount floors.
     uint256 _slippageBps;
+    /// @dev Authorized operator: the SOLE caller permitted to invoke `deploy`/`withdraw`/`harvest`
+    ///      (the StrategyManager in the live system). Zero until wired ⇒ that trio reverts.
+    ///      APPENDED last (append-only ERC-7201 rule — never reorder/insert).
+    address _operator;
 }
 
 /// @title UniswapV3AdapterLib
@@ -213,6 +217,19 @@ library UniswapV3AdapterLib {
         return uniswapV3AdapterStorage()._rewardRecipient;
     }
 
+    function operator() internal view returns (address) {
+        return uniswapV3AdapterStorage()._operator;
+    }
+
+    /// @dev Reverts `ProtocolAdapterUnauthorized` unless the caller is the wired operator. Placed at
+    ///      the very top of `deploy`/`withdraw`/`harvest` — BEFORE the reentrancy guard — so an
+    ///      unauthorized call never leaves the guard latched. Zero operator ⇒ always reverts.
+    function _checkOperator() private view {
+        if (msg.sender != uniswapV3AdapterStorage()._operator) {
+            revert IProtocolAdapter.ProtocolAdapterUnauthorized(msg.sender);
+        }
+    }
+
     function minHealthFactor() internal pure returns (uint256) {
         return type(uint256).max; // LP-only, no debt
     }
@@ -321,6 +338,15 @@ library UniswapV3AdapterLib {
         emit IProtocolAdapter.RewardRecipientSet(recipient);
     }
 
+    /// @notice Sets the authorized operator for `deploy`/`withdraw`/`harvest` (admin-only). Rejects
+    ///         `address(0)` so the trio cannot be opened to an unauthenticated default.
+    function setOperator(address operator_) internal {
+        AccessControlLib.checkRole(DEFAULT_ADMIN_ROLE);
+        if (operator_ == address(0)) revert IProtocolAdapter.ProtocolAdapterZeroAddress();
+        uniswapV3AdapterStorage()._operator = operator_;
+        emit IProtocolAdapter.OperatorSet(operator_);
+    }
+
     //*//////////////////////////////////////////////////////////////////////////
     //                                  LP LEG
     //////////////////////////////////////////////////////////////////////////*//
@@ -332,6 +358,7 @@ library UniswapV3AdapterLib {
     ///      "deployed" is reported in token0 units (the amount0 actually consumed) for parity with the
     ///      single-asset adapters; token1 consumption is incidental to building the position.
     function deploy() internal returns (uint256 deployed) {
+        _checkOperator();
         ReentrancyGuardLib.nonReentrantBefore();
         if (isPaused()) {
             ReentrancyGuardLib.nonReentrantAfter();
@@ -422,12 +449,15 @@ library UniswapV3AdapterLib {
     ///      token1). That is the documented two-token caveat — we report the honest token0 delta and
     ///      forward the token1 to `to` as well so no value is stranded in the adapter.
     function withdraw(uint256 amount, address to) internal returns (uint256 withdrawn) {
+        _checkOperator();
         ReentrancyGuardLib.nonReentrantBefore();
-        if (to == address(0)) {
-            ReentrancyGuardLib.nonReentrantAfter();
-            revert IProtocolAdapter.ProtocolAdapterZeroAddress();
-        }
         UniswapV3AdapterStorage storage $ = uniswapV3AdapterStorage();
+        // Recipient pin: a recall may ONLY land in the adapter's own vault. The legit caller (the
+        // StrategyManager) already passes the vault; this makes redirecting the position impossible.
+        if (to != $._vault) {
+            ReentrancyGuardLib.nonReentrantAfter();
+            revert IProtocolAdapter.ProtocolAdapterInvalidRecipient(to);
+        }
         uint128 liquidity = _positionLiquidity($);
         if (liquidity == 0 || amount == 0) {
             ReentrancyGuardLib.nonReentrantAfter();
@@ -454,6 +484,7 @@ library UniswapV3AdapterLib {
     ///      the idle component of NAV by that amount. The keeper should `deploy()` idle funds before
     ///      `harvest()` so only genuine fees are distributed; the LP principal is never at risk.
     function harvest() internal {
+        _checkOperator();
         ReentrancyGuardLib.nonReentrantBefore();
         UniswapV3AdapterStorage storage $ = uniswapV3AdapterStorage();
         uint256 id = $._tokenId;

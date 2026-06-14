@@ -64,6 +64,10 @@ contract AaveV3AdapterEmergencyTest is Test {
         adapter.initialize(admin, address(pool), address(asset), vault, treasury, FEED_KEY, 1.05e18);
         vm.prank(admin);
         adapter.addGuardian(guardian);
+        // Authorize this test contract as the operator so the direct deploy/withdraw/harvest calls
+        // (which the StrategyManager would make in production) pass the operator gate.
+        vm.prank(admin);
+        adapter.setOperator(address(this));
 
         asset.mint(address(adapter), 1_000e6);
         adapter.deploy();

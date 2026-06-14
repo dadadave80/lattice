@@ -102,6 +102,10 @@ contract AaveV3AdapterLeverageTest is Test {
 
         vm.prank(admin);
         adapter.registerFeed(FEED_KEY, address(feed), 3600);
+        // Authorize this test contract as the operator so the direct deploy/withdraw/harvest calls
+        // (which the StrategyManager would make in production) pass the operator gate.
+        vm.prank(admin);
+        adapter.setOperator(address(this));
 
         // Supply initial collateral.
         asset.mint(address(adapter), 1_000e6);

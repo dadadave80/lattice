@@ -58,6 +58,15 @@ and a row here.
   `ERC20Votes`) are intentionally **not** listed here. (`ERC20Permit`, `ERC20Votes`, and
   `ERC20Burnable` do register ERC-165 ids but reuse the underlying `ERC20`/`Votes`/`Nonces`
   storage, so they have no row of their own.)
+- **IAdapterOperator** (`setOperator` / `operator`) is the authorized-operator surface co-implemented
+  by **every** protocol adapter facet alongside `IProtocolAdapter`. It is a **separate** interface on
+  purpose: adding its two functions to `IProtocolAdapter` would change that interface's pinned id
+  (`0x8f7783e6`, the shared adapter ERC-165 map slot). `IAdapterOperator` is **not registered** for
+  ERC-165 (no `registerInterface` write, no map slot) and adds **no** new ERC-7201 storage slot — the
+  `_operator` field it reads/writes is **APPENDED** to each adapter's existing `*Storage` struct,
+  leaving every namespace string and storage slot below untouched. (Errors/events added to
+  `IProtocolAdapter` in the same change — `ProtocolAdapterUnauthorized`, `ProtocolAdapterInvalidRecipient`,
+  `OperatorSet` — do not affect a Solidity `interfaceId`, so `0x8f7783e6` is unchanged.)
 
 ## Registry
 

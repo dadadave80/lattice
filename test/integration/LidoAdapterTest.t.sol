@@ -243,8 +243,12 @@ contract LidoAdapterTest is Test {
 
         adapter = new MockLidoAdapter();
         adapter.initialize(admin, address(weth), address(stETH), address(wstETH), address(queue), vault, treasury);
-        vm.prank(admin);
+        vm.startPrank(admin);
         adapter.addGuardian(guardian);
+        // Authorize this test contract as the operator so the direct deploy/withdraw/harvest calls
+        // (which the StrategyManager would make in production) pass the operator gate.
+        adapter.setOperator(address(this));
+        vm.stopPrank();
     }
 
     // Helper: mint `a` WETH to `to` AND back it with real ETH in the WETH contract, so a later
@@ -363,7 +367,9 @@ contract LidoAdapterTest is Test {
     function test_Withdraw_RevertsZeroRecipient() public {
         _fundAndDeploy(10 ether);
         weth.mint(address(adapter), 1 ether);
-        vm.expectRevert(IProtocolAdapter.ProtocolAdapterZeroAddress.selector);
+        // The recipient is now pinned to the adapter's vault, so any non-vault recipient (incl. the
+        // zero address) is rejected with ProtocolAdapterInvalidRecipient.
+        vm.expectRevert(abi.encodeWithSelector(IProtocolAdapter.ProtocolAdapterInvalidRecipient.selector, address(0)));
         adapter.withdraw(1 ether, address(0));
     }
 

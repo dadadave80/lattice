@@ -118,8 +118,12 @@ contract CompoundV3AdapterTest is Test {
         rewards = new MockCometRewards(comp);
         adapter = new MockCompoundAdapter();
         adapter.initialize(admin, address(comet), address(asset), vault, treasury);
-        vm.prank(admin);
+        vm.startPrank(admin);
         adapter.setCometRewards(address(rewards));
+        // Authorize this test contract as the operator so the direct deploy/withdraw/harvest calls
+        // below (which the StrategyManager would make in production) pass the operator gate.
+        adapter.setOperator(address(this));
+        vm.stopPrank();
     }
 
     function test_Deploy_SuppliesToComet() public {

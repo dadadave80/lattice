@@ -642,6 +642,10 @@ contract StorageSlotVerificationTest is Test {
     }
 
     function test_Erc165MapIProtocolAdapterSlot() public pure {
+        // Pin the interfaceId: the operator surface (setOperator/operator) is deliberately in the
+        // separate IAdapterOperator interface so this id stays 0x8f7783e6 and the shared map slot
+        // below is unaffected. (Errors/events added to IProtocolAdapter do not change the id.)
+        assertEq(type(IProtocolAdapter).interfaceId, bytes4(0x8f7783e6), "IProtocolAdapter interfaceId moved");
         assertEq(
             ERC165_MAP_IPROTOCOLADAPTER_SLOT,
             _erc165MapSlot(type(IProtocolAdapter).interfaceId, ERC165_STORAGE_LOCATION),

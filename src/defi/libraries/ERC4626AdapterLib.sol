@@ -46,6 +46,10 @@ struct ERC4626AdapterStorage {
     address _rewardRecipient;
     /// @dev Optional side-reward token forwarded raw on `harvest()`; address(0) if none.
     address _sideRewardToken;
+    /// @dev Authorized operator: the SOLE caller permitted to invoke `deploy`/`withdraw`/`harvest`
+    ///      (the StrategyManager in the live system). Zero until wired ⇒ that trio reverts.
+    ///      APPENDED last (append-only ERC-7201 rule — never reorder/insert).
+    address _operator;
 }
 
 /// @title ERC4626AdapterLib
@@ -118,6 +122,19 @@ library ERC4626AdapterLib {
         return erc4626AdapterStorage()._rewardRecipient;
     }
 
+    function operator() internal view returns (address) {
+        return erc4626AdapterStorage()._operator;
+    }
+
+    /// @dev Reverts `ProtocolAdapterUnauthorized` unless the caller is the wired operator. Placed at
+    ///      the very top of `deploy`/`withdraw`/`harvest` — BEFORE the reentrancy guard — so an
+    ///      unauthorized call never leaves the guard latched. Zero operator ⇒ always reverts.
+    function _checkOperator() private view {
+        if (msg.sender != erc4626AdapterStorage()._operator) {
+            revert IProtocolAdapter.ProtocolAdapterUnauthorized(msg.sender);
+        }
+    }
+
     function healthFactor() internal pure returns (uint256) {
         return type(uint256).max; // no debt
     }
@@ -154,11 +171,21 @@ library ERC4626AdapterLib {
         emit IProtocolAdapter.RewardRecipientSet(recipient);
     }
 
+    /// @notice Sets the authorized operator for `deploy`/`withdraw`/`harvest` (admin-only). Rejects
+    ///         `address(0)` so the trio cannot be opened to an unauthenticated default.
+    function setOperator(address operator_) internal {
+        AccessControlLib.checkRole(DEFAULT_ADMIN_ROLE);
+        if (operator_ == address(0)) revert IProtocolAdapter.ProtocolAdapterZeroAddress();
+        erc4626AdapterStorage()._operator = operator_;
+        emit IProtocolAdapter.OperatorSet(operator_);
+    }
+
     //*//////////////////////////////////////////////////////////////////////////
     //                                SUPPLY LEG
     //////////////////////////////////////////////////////////////////////////*//
 
     function deploy() internal returns (uint256 deployed) {
+        _checkOperator();
         ReentrancyGuardLib.nonReentrantBefore();
         if (isPaused()) {
             ReentrancyGuardLib.nonReentrantAfter();
@@ -179,12 +206,15 @@ library ERC4626AdapterLib {
     }
 
     function withdraw(uint256 amount, address to) internal returns (uint256 withdrawn) {
+        _checkOperator();
         ReentrancyGuardLib.nonReentrantBefore();
-        if (to == address(0)) {
-            ReentrancyGuardLib.nonReentrantAfter();
-            revert IProtocolAdapter.ProtocolAdapterZeroAddress();
-        }
         ERC4626AdapterStorage storage $ = erc4626AdapterStorage();
+        // Recipient pin: a recall may ONLY land in the adapter's own vault. The legit caller (the
+        // StrategyManager) already passes the vault; this makes redirecting the position impossible.
+        if (to != $._vault) {
+            ReentrancyGuardLib.nonReentrantAfter();
+            revert IProtocolAdapter.ProtocolAdapterInvalidRecipient(to);
+        }
         IERC4626 t = IERC4626($._targetVault);
         // Shares needed for `amount` assets, capped at our share balance and the vault's maxRedeem.
         uint256 ourShares = t.balanceOf(address(this));
@@ -201,6 +231,7 @@ library ERC4626AdapterLib {
     /// @notice Forwards an optional side-reward token raw. Most ERC4626 vaults auto-compound, so
     ///         this is usually a no-op. Never reverts the withdraw path.
     function harvest() internal {
+        _checkOperator();
         ReentrancyGuardLib.nonReentrantBefore();
         ERC4626AdapterStorage storage $ = erc4626AdapterStorage();
         address side = $._sideRewardToken;
