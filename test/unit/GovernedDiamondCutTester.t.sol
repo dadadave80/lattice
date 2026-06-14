@@ -100,6 +100,12 @@ contract GovernedDiamondCutTester is Test {
         );
     }
 
+    /// @notice The facet's `diamondCut` selector is the canonical EIP-2535 cut selector, so it
+    ///         occupies the same selector slot as diamond-lib's stock `DiamondCutFacet`.
+    function test_FacetSelectorIsCutSelector() public pure {
+        assertEq(GovernedDiamondCut.diamondCut.selector, bytes4(0x1f931c1c), "facet selector mismatch");
+    }
+
     function _erc7201Slot(string memory id) internal pure returns (bytes32) {
         return keccak256(abi.encode(uint256(keccak256(bytes(id))) - 1)) & ~bytes32(uint256(0xff));
     }
