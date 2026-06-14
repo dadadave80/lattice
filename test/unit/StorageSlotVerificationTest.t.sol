@@ -51,6 +51,7 @@ import {
 } from "@lattice/tokens/libraries/ERC721URIStorageLib.sol";
 
 // governance
+import {GOVERNED_DIAMOND_CUT_STORAGE_SLOT} from "@lattice/governance/libraries/GovernedDiamondCutLib.sol";
 import {ERC165_MAP_IGOVERNOR_SLOT, GOVERNOR_STORAGE_SLOT} from "@lattice/governance/libraries/GovernorLib.sol";
 import {
     ERC165_MAP_ITIMELOCKCONTROLLER_SLOT,
@@ -272,6 +273,14 @@ contract StorageSlotVerificationTest is Test {
             TIMELOCK_CONTROLLER_STORAGE_SLOT,
             _erc7201Slot("lattice.storage.TimelockController"),
             "TimelockController storage slot mismatch"
+        );
+    }
+
+    function test_GovernedDiamondCutStorageSlot() public pure {
+        assertEq(
+            GOVERNED_DIAMOND_CUT_STORAGE_SLOT,
+            _erc7201Slot("lattice.storage.GovernedDiamondCut"),
+            "GovernedDiamondCut storage slot mismatch"
         );
     }
 
@@ -699,7 +708,7 @@ contract StorageSlotVerificationTest is Test {
     // ======================== Slot inventories ========================
 
     function _allStorageSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](30);
+        slots = new bytes32[](31);
         uint256 i;
         // access
         slots[i++] = ACCESS_CONTROL_STORAGE_SLOT;
@@ -719,6 +728,7 @@ contract StorageSlotVerificationTest is Test {
         slots[i++] = VOTES_STORAGE_SLOT;
         slots[i++] = GOVERNOR_STORAGE_SLOT;
         slots[i++] = TIMELOCK_CONTROLLER_STORAGE_SLOT;
+        slots[i++] = GOVERNED_DIAMOND_CUT_STORAGE_SLOT;
         // defi
         slots[i++] = VAULT_CORE_STORAGE_SLOT;
         slots[i++] = STRATEGY_MANAGER_STORAGE_SLOT;

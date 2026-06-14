@@ -42,6 +42,11 @@ and a row here.
     `interfaceId` is `0x00000000`.
   - **ERC4626** / **VaultCore** ids are the XOR of their vault-specific selectors only
     (inherited `IERC20` excluded), as declared in the Lattice interfaces.
+- **GovernedDiamondCut** exposes only `diamondCut`, so `type(IGovernedDiamondCut).interfaceId == 0x1f931c1c`,
+  identical to `IDiamondCut`. It reuses diamond-lib's `ERC165_MAP_ICUT_SLOT`
+  (`0xa0f80413692945aab97c6ef0328381ebb94e4b17a84d11ebf6b61f73435b6d7e`) — already registered by
+  `DiamondLib.registerInterface()` — rather than minting a new ERC-165 map slot. It therefore has a
+  unique ERC-7201 storage slot but **no** standalone ERC-165 row in the uniqueness arrays.
 - Utility libraries that hold no own ERC-7201 storage slot (`EnumerableSet`, `TimelockLib`) and
   token-extension libraries that declare no `*_STORAGE_SLOT` (`ERC20Burnable`, `ERC20Permit`,
   `ERC20Votes`) are intentionally **not** listed here. (`ERC20Permit`, `ERC20Votes`, and
@@ -81,6 +86,7 @@ and a row here.
 | Votes | `lattice.storage.Votes` | `0x51efe794a829d7992f137137b94eec0d37b1c5be45aa8cf9431c145ea39c0600` | `IVotes` | `0x3327c9eb` | `0x61ade9dd9a8b94d6fecab99fabf41cc4bf0b14d40172852668cf26dba0f52f49` |
 | Governor | `lattice.storage.Governor` | `0x20a7901cc1c78eb01d63d9c1875355513c3dabc82d8607ad0f82e1312f750c00` | `IGovernor` | `0x220cdebb` | `0x16d0785b1b0d3d2d988cff60fd273da31ad0fc5acccec3792316ca40dcc33977` |
 | TimelockController | `lattice.storage.TimelockController` | `0x87f5daf40fea2daee0a93658693902d7cd9e07fa1a4f16f2e8eb4a4e9d433000` | `ITimelockController` | `0xd826478e` | `0xc0a085cd59634eff50a01907a25e03eb6a55bd6279462a3ac6a99ce44b9c2f08` |
+| GovernedDiamondCut | `lattice.storage.GovernedDiamondCut` | `0x9a46da229426897da8e8df190858c430564a988584235445fd229e2bef8a8700` | `IDiamondCut` (reused, EIP-2535) | `0x1f931c1c` | `0xa0f80413692945aab97c6ef0328381ebb94e4b17a84d11ebf6b61f73435b6d7e` (shared) |
 
 ### DeFi
 
@@ -124,6 +130,6 @@ and a row here.
 
 ---
 
-**Counts:** 30 storage-bearing modules (30 unique ERC-7201 slots) and 32 ERC-165 interface
-map slots (each module registers one interface, plus the ERC721 metadata, ERC1155 metadata-URI,
-and ERC721URIStorage / ERC-4906 secondary registrations).
+**Counts:** 31 storage-bearing modules (31 unique ERC-7201 slots) and 32 ERC-165 interface
+map slots (GovernedDiamondCut reuses IDiamondCut's `0x1f931c1c` ERC-165 slot, so it adds an
+ERC-7201 slot but no new ERC-165 map slot).
