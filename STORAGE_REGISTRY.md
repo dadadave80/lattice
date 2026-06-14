@@ -99,6 +99,7 @@ and a row here.
 | ERC4626Adapter | `lattice.storage.ERC4626Adapter` | `0x8e54862d9117c02647004a257ec52ba4f4c6ce02a01e23235ed8d34a2127c500` | `IProtocolAdapter` + `IERC4626Adapter` | `0x8f7783e6` / `0x6189942b` | `0x789387b95720f4aa713e912bc377a2f999f1310b69003727d9c01b7ea1494c77` / `0x84ec7ed953664aca1f16de58454031d5ee56bdfdc133c3183893a830a7b1c08b` |
 | CurveStableSwapAdapter | `lattice.storage.CurveStableSwapAdapter` | `0x9a875cb7e904ab3576fe7e6b7405b28b9f810acb5bf4def0fec57c5e754def00` | `IProtocolAdapter` + `ICurveStableSwapAdapter` | `0x8f7783e6` / `0xfa38ccb7` | `0x789387b95720f4aa713e912bc377a2f999f1310b69003727d9c01b7ea1494c77` / `0x5d7c390f2f6bf0ca6f51b6ea0940c100b21726e3e202811c94c2ff39040d4299` |
 | LidoAdapter | `lattice.storage.LidoAdapter` | `0x3d4dff0246f0af54636d62603e75b921d2876c293bb97376b20bb8265ecb3900` | `IProtocolAdapter` + `ILidoAdapter` | `0x8f7783e6` / `0x83d0afd2` | `0x789387b95720f4aa713e912bc377a2f999f1310b69003727d9c01b7ea1494c77` / `0x6167b6f3924e213fbc2c85ec2d6ca3e7f5267a73935588adb9fb05f57a52b315` |
+| UniswapV3Adapter | `lattice.storage.UniswapV3Adapter` | `0x6f3c1f877b0bf340477364a294f77f49bff3a5479f70012a0fb5cb2803b61e00` | `IProtocolAdapter` + `IUniswapV3Adapter` | `0x8f7783e6` / `0xf723aa17` | `0x789387b95720f4aa713e912bc377a2f999f1310b69003727d9c01b7ea1494c77` / `0x18cf2bfdc937c75408cba5cf015af2a2f8d21a881c553ac382a288bcae5dc1c8` |
 
 ### AMM
 
@@ -135,7 +136,7 @@ and a row here.
 
 ---
 
-**Counts:** 36 storage-bearing modules (36 unique ERC-7201 slots) and 38 ERC-165 interface
+**Counts:** 37 storage-bearing modules (37 unique ERC-7201 slots) and 39 ERC-165 interface
 map slots (GovernedDiamondCut reuses IDiamondCut's `0x1f931c1c` ERC-165 slot, so it adds an
 ERC-7201 slot but no new ERC-165 map slot; AaveV3Adapter registers two interfaces —
 the generic `IProtocolAdapter` plus its protocol-specific `IAaveV3Adapter` — so it adds two
@@ -146,4 +147,6 @@ adds only its protocol-specific `IERC4626Adapter` slot — one ERC-7201 slot and
 map slot; CurveStableSwapAdapter likewise reuses the shared `IProtocolAdapter` map slot and adds
 only its protocol-specific `ICurveStableSwapAdapter` slot — one ERC-7201 slot and one new ERC-165
 map slot; LidoAdapter likewise reuses the shared `IProtocolAdapter` map slot and adds only its
-protocol-specific `ILidoAdapter` slot — one ERC-7201 slot and one new ERC-165 map slot).
+protocol-specific `ILidoAdapter` slot — one ERC-7201 slot and one new ERC-165 map slot;
+UniswapV3Adapter likewise reuses the shared `IProtocolAdapter` map slot and adds only its
+protocol-specific `IUniswapV3Adapter` slot — one ERC-7201 slot and one new ERC-165 map slot).
