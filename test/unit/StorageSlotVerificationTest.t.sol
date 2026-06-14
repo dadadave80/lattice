@@ -66,6 +66,10 @@ import {
     ERC165_MAP_IPROTOCOLADAPTER_SLOT
 } from "@lattice/defi/libraries/AaveV3AdapterLib.sol";
 import {
+    COMPOUND_V3_ADAPTER_STORAGE_SLOT,
+    ERC165_MAP_ICOMPOUNDV3ADAPTER_SLOT
+} from "@lattice/defi/libraries/CompoundV3AdapterLib.sol";
+import {
     ERC165_MAP_ISTRATEGYMANAGER_SLOT,
     STRATEGY_MANAGER_STORAGE_SLOT
 } from "@lattice/defi/libraries/StrategyManagerLib.sol";
@@ -129,6 +133,7 @@ import {IAccessManager} from "@lattice/interfaces/IAccessManager.sol";
 import {IChainlinkAdapter} from "@lattice/interfaces/IChainlinkAdapter.sol";
 import {IChainlinkVRF} from "@lattice/interfaces/IChainlinkVRF.sol";
 import {ICircuitBreaker} from "@lattice/interfaces/ICircuitBreaker.sol";
+import {ICompoundV3Adapter} from "@lattice/interfaces/ICompoundV3Adapter.sol";
 import {IConstantProduct} from "@lattice/interfaces/IConstantProduct.sol";
 import {IEIP712} from "@lattice/interfaces/IEIP712.sol";
 import {IERC20} from "@lattice/interfaces/IERC20.sol";
@@ -310,6 +315,14 @@ contract StorageSlotVerificationTest is Test {
             AAVE_V3_ADAPTER_STORAGE_SLOT,
             _erc7201Slot("lattice.storage.AaveV3Adapter"),
             "AaveV3Adapter storage slot mismatch"
+        );
+    }
+
+    function test_CompoundV3AdapterStorageSlot() public pure {
+        assertEq(
+            COMPOUND_V3_ADAPTER_STORAGE_SLOT,
+            _erc7201Slot("lattice.storage.CompoundV3Adapter"),
+            "CompoundV3Adapter storage slot mismatch"
         );
     }
 
@@ -597,6 +610,14 @@ contract StorageSlotVerificationTest is Test {
         );
     }
 
+    function test_Erc165MapICompoundV3AdapterSlot() public pure {
+        assertEq(
+            ERC165_MAP_ICOMPOUNDV3ADAPTER_SLOT,
+            _erc165MapSlot(type(ICompoundV3Adapter).interfaceId, ERC165_STORAGE_LOCATION),
+            "ERC165 ICompoundV3Adapter map slot mismatch"
+        );
+    }
+
     // ---- amm ----
 
     function test_Erc165MapIConstantProductSlot() public pure {
@@ -739,7 +760,7 @@ contract StorageSlotVerificationTest is Test {
     // ======================== Slot inventories ========================
 
     function _allStorageSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](32);
+        slots = new bytes32[](33);
         uint256 i;
         // access
         slots[i++] = ACCESS_CONTROL_STORAGE_SLOT;
@@ -764,6 +785,7 @@ contract StorageSlotVerificationTest is Test {
         slots[i++] = VAULT_CORE_STORAGE_SLOT;
         slots[i++] = STRATEGY_MANAGER_STORAGE_SLOT;
         slots[i++] = AAVE_V3_ADAPTER_STORAGE_SLOT;
+        slots[i++] = COMPOUND_V3_ADAPTER_STORAGE_SLOT;
         // amm
         slots[i++] = CONSTANT_PRODUCT_STORAGE_SLOT;
         // oracles
@@ -784,7 +806,7 @@ contract StorageSlotVerificationTest is Test {
     }
 
     function _allErc165MapSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](34);
+        slots = new bytes32[](35);
         uint256 i;
         // access
         slots[i++] = ERC165_MAP_IACCESSCONTROL_SLOT;
@@ -811,6 +833,9 @@ contract StorageSlotVerificationTest is Test {
         slots[i++] = ERC165_MAP_ISTRATEGYMANAGER_SLOT;
         slots[i++] = ERC165_MAP_IPROTOCOLADAPTER_SLOT;
         slots[i++] = ERC165_MAP_IAAVEV3ADAPTER_SLOT;
+        // CompoundV3Adapter reuses the shared ERC165_MAP_IPROTOCOLADAPTER_SLOT (already counted
+        // above under AaveV3Adapter) and only adds its protocol-specific ICompoundV3Adapter slot.
+        slots[i++] = ERC165_MAP_ICOMPOUNDV3ADAPTER_SLOT;
         // amm
         slots[i++] = ERC165_MAP_ICONSTANTPRODUCT_SLOT;
         // oracles
