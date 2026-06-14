@@ -286,33 +286,109 @@ library AaveV3AdapterLib {
         return _netEquityAssets();
     }
 
+    //*//////////////////////////////////////////////////////////////////////////
+    //                          LEVERAGE LEG (state-changing)
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice Borrows `borrowAmount` of the asset (variable rate) then re-supplies it, looping
+    ///         leverage. Reverts if the resulting health factor would fall below the floor.
+    function lever(uint256 borrowAmount) internal {
+        ReentrancyGuardLib.nonReentrantBefore();
+        if (isPaused()) {
+            ReentrancyGuardLib.nonReentrantAfter();
+            revert IProtocolAdapter.ProtocolAdapterPaused();
+        }
+        if (borrowAmount == 0) {
+            ReentrancyGuardLib.nonReentrantAfter();
+            revert IAaveV3Adapter.AaveV3AdapterZeroLeverAmount();
+        }
+        AaveV3AdapterStorage storage $ = aaveV3AdapterStorage();
+        address asset_ = $._asset;
+        IAaveV3Pool pool = _pool();
+
+        // Borrow the asset to this adapter.
+        pool.borrow(asset_, borrowAmount, AAVE_VARIABLE_RATE, 0, address(this));
+        // Re-supply the borrowed asset as additional collateral.
+        AdapterBaseLib.forceApprove(asset_, address(pool), borrowAmount);
+        pool.supply(asset_, borrowAmount, address(this), 0);
+
+        // Enforce the HF floor on the resulting position.
+        _assertHealthFactorAboveFloor();
+
+        emit IAaveV3Adapter.Levered(borrowAmount);
+        ReentrancyGuardLib.nonReentrantAfter();
+    }
+
+    /// @notice Withdraws `collateralToPull` of the asset from supply and repays that much debt,
+    ///         decreasing leverage. Returns the amount of debt actually repaid.
+    function delever(uint256 collateralToPull) internal returns (uint256 repaid) {
+        ReentrancyGuardLib.nonReentrantBefore();
+        AaveV3AdapterStorage storage $ = aaveV3AdapterStorage();
+        address asset_ = $._asset;
+        IAaveV3Pool pool = _pool();
+
+        // Pull collateral to this adapter (Aave sends underlying here).
+        uint256 pulled = pool.withdraw(asset_, collateralToPull, address(this));
+        // Repay debt with the pulled collateral (capped at outstanding debt inside the Pool).
+        AdapterBaseLib.forceApprove(asset_, address(pool), pulled);
+        repaid = pool.repay(asset_, pulled, AAVE_VARIABLE_RATE, address(this));
+
+        // Any over-pull beyond the debt stays as idle in the adapter; re-supply it to avoid drag.
+        uint256 leftover = AdapterBaseLib.balanceOfSelf(asset_);
+        if (leftover > 0) {
+            AdapterBaseLib.forceApprove(asset_, address(pool), leftover);
+            pool.supply(asset_, leftover, address(this), 0);
+        }
+
+        emit IAaveV3Adapter.Delevered(repaid);
+        ReentrancyGuardLib.nonReentrantAfter();
+    }
+
+    /// @dev Reverts `ProtocolAdapterHealthFactorBreached` if the live HF is below the floor.
+    function _assertHealthFactorAboveFloor() internal view {
+        (,,,,, uint256 hf) = _pool().getUserAccountData(address(this));
+        uint256 floor = aaveV3AdapterStorage()._minHealthFactorWad;
+        if (hf < floor) {
+            revert IProtocolAdapter.ProtocolAdapterHealthFactorBreached(hf, floor);
+        }
+    }
+
+    /// @notice Oracle-priced net equity (collateral − debt) expressed in asset units (WAD-safe).
+    /// @dev Aave reports collateral/debt in base ccy with 8 decimals. We convert the net base
+    ///      amount to asset units using the Lattice oracle's asset/USD price (WAD), which enforces
+    ///      staleness/positivity. NEVER reads spot. Single-asset looping: collateral and debt are
+    ///      the same token, so the base→asset conversion divides by the same oracle price.
+    function _netEquityAssets() internal view returns (uint256) {
+        (uint256 collateralBase, uint256 debtBase,,,,) = _pool().getUserAccountData(address(this));
+        if (collateralBase <= debtBase) return 0; // underwater => zero equity (honest)
+        uint256 netBase8 = collateralBase - debtBase; // base ccy, 8 decimals
+
+        // Oracle price asset/USD in WAD (reverts on stale/zero). Base ccy is USD (8 dp) on Aave.
+        int256 priceWad = ChainlinkAdapterLib.latestAnswer(aaveV3AdapterStorage()._assetUsdFeedKey);
+        // priceWad > 0 guaranteed by ChainlinkAdapterLib (reverts otherwise).
+        uint256 price = uint256(priceWad);
+
+        // netBase8 is USD * 1e8. Convert to asset units:
+        //   netUsdWad = netBase8 * 1e10               (USD in WAD)
+        //   assetWad  = netUsdWad * 1e18 / priceWad    (asset amount in WAD)
+        //   assetUnits = assetWad / 1e(18 - assetDecimals)
+        // Combine and scale to the asset's own decimals.
+        uint8 assetDec = IERC20(aaveV3AdapterStorage()._asset).decimals();
+        // assetUnits = netBase8 * 1e10 * 1e18 / price / 1e(18-assetDec)
+        //            = netBase8 * 1e10 * 10^assetDec / price
+        uint256 numerator = netBase8 * 1e10 * (10 ** assetDec);
+        return numerator / price;
+    }
+
     // ---- Stubs filled in by later tasks (compile placeholders) ----
 
-    /// @dev Net-equity valuation (collateral − debt) priced via the Lattice oracle. Task 8.
-    function _netEquityAssets() internal view returns (uint256) {
-        // Temporary: until Task 8, fall back to supply minus debt at 1:1 (asset == base ccy).
-        (uint256 c, uint256 d,,,,) = _pool().getUserAccountData(address(this));
-        // c, d are base-ccy 8-decimals; for the supply-only suite this branch is never hit.
-        return c >= d ? IAToken(aToken()).balanceOf(address(this)) : 0;
-    }
-
-    /// @dev Claims + forwards rewards raw. Real body in Task 7.
+    /// @dev Claims + forwards rewards raw. Real body in Task 9.
     function harvest() internal {
-        // Task 7 wires the rewards controller claim; supply-only path has nothing to claim.
+        // Task 9 wires the rewards controller claim; supply-only path has nothing to claim.
     }
 
-    /// @dev Increases leverage (borrow + re-supply). Real body in Task 8.
-    function lever(uint256) internal {
-        revert IAaveV3Adapter.AaveV3AdapterZeroLeverAmount(); // replaced in Task 8
-    }
-
-    /// @dev Decreases leverage (withdraw collateral + repay). Real body in Task 8.
-    function delever(uint256) internal returns (uint256) {
-        return 0; // replaced in Task 8
-    }
-
-    /// @dev Full exit to vault. Real body in Task 9.
+    /// @dev Full exit to vault. Real body in Task 10.
     function emergencyWithdraw() internal returns (uint256) {
-        return 0; // replaced in Task 9
+        return 0; // replaced in a later task
     }
 }
