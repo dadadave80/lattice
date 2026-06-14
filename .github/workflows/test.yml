@@ -31,11 +31,15 @@ jobs:
       - name: Run Forge fmt
         run: forge fmt --check
 
+      # --sizes gates EIP-170 (24,576 B) on deployable contracts only. Test/script fixtures
+      # (e.g. the SelfGovDiamond E2E harness that inherits every facet at once) legitimately
+      # exceed the limit and are never deployed; `--skip test script` excludes them. Tests are
+      # still compiled by the `forge test` step below, so compile errors remain caught.
       - name: Run Forge build
-        run: forge build --sizes
+        run: forge build --sizes --skip test script
 
       - name: Build with via_ir (IR-pipeline parity)
-        run: forge build --via-ir --sizes
+        run: forge build --via-ir --sizes --skip test script
 
       # Append-only ERC-7201 storage-struct guard (CLAUDE.md "Append-only storage struct rule").
       # Fails if any guarded module struct's namespaced layout drifts from its committed baseline
