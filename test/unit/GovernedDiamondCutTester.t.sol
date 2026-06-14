@@ -13,12 +13,13 @@ import {
     UPGRADE_EXECUTOR_ROLE
 } from "@lattice/governance/libraries/GovernedDiamondCutLib.sol";
 import {IAccessControl} from "@lattice/interfaces/IAccessControl.sol";
+import {IEmergencyCut} from "@lattice/interfaces/IEmergencyCut.sol";
 import {IEmergencyStop} from "@lattice/interfaces/IEmergencyStop.sol";
 import {IFrozenSelectors} from "@lattice/interfaces/IFrozenSelectors.sol";
 import {IGovernedDiamondCut} from "@lattice/interfaces/IGovernedDiamondCut.sol";
 import {IUpgradeRegistry} from "@lattice/interfaces/IUpgradeRegistry.sol";
 import {EmergencyStop} from "@lattice/security/EmergencyStop.sol";
-import {EmergencyStopLib} from "@lattice/security/libraries/EmergencyStopLib.sol";
+import {EMERGENCY_GUARDIAN_ROLE, EmergencyStopLib} from "@lattice/security/libraries/EmergencyStopLib.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @notice A minimal self-contained Diamond used to exercise the governed cut wrapper.
@@ -546,6 +547,246 @@ contract GovernedDiamondCutTester is Test {
             diamond.supportsInterface(bytes4(0x1f931c1c)),
             "must mirror supportsInterface"
         );
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                       EMERGENCY REMOVAL-ONLY CUT
+    //////////////////////////////////////////////////////////////////////////*//
+
+    address internal guardian = address(0x6044D1A11);
+
+    /// @dev Makes `guardian` an EMERGENCY_GUARDIAN_ROLE holder (the same role the emergency-stop
+    ///      panic button uses). Granted by the admin via EmergencyStop's addGuardian.
+    function _makeGuardian(address _who) internal {
+        vm.prank(admin);
+        diamond.addGuardian(_who);
+    }
+
+    /// @dev Binds the ping selector via a normal governed cut so an emergency removal has something
+    ///      live to rip out (and routing can be proven to stop).
+    function _bindPing() internal {
+        FacetCut[] memory cuts = _addPingCut();
+        vm.prank(address(diamond));
+        diamond.diamondCut(cuts, address(0), "");
+    }
+
+    /// @dev An Add cut (forbidden on the emergency path).
+    function _addCut(bytes4 _sel) internal view returns (FacetCut[] memory cuts) {
+        bytes4[] memory sels = new bytes4[](1);
+        sels[0] = _sel;
+        cuts = new FacetCut[](1);
+        cuts[0] = FacetCut({facetAddress: address(dummy), action: FacetCutAction.Add, functionSelectors: sels});
+    }
+
+    /// @notice The emergency guardian role constant in the lib equals keccak256("EMERGENCY_GUARDIAN_ROLE")
+    ///         and is the SAME role the EmergencyStop panic button uses.
+    function test_EmergencyGuardianRoleConstant() public pure {
+        assertEq(EMERGENCY_GUARDIAN_ROLE, keccak256("EMERGENCY_GUARDIAN_ROLE"), "guardian role constant mismatch");
+    }
+
+    /// @notice ZERO-DELAY REMOVE: a guardian fires emergencyRemoveCut and the live selector instantly
+    ///         stops routing (unbound), with no governance round and no timelock delay.
+    function test_EmergencyRemove_ZeroDelayUnbindsLiveSelector() public {
+        _bindPing();
+        assertEq(diamond.facetOf(PING_SEL), address(dummy), "ping must be live before emergency removal");
+        // ping() routes before the emergency cut.
+        (bool okBefore,) = address(diamond).call(abi.encodeWithSelector(DummyFacet.ping.selector));
+        assertTrue(okBefore, "ping must route before emergency removal");
+
+        _makeGuardian(guardian);
+        FacetCut[] memory cuts = _removeCut(PING_SEL);
+        vm.prank(guardian);
+        diamond.emergencyRemoveCut(cuts);
+
+        assertEq(diamond.facetOf(PING_SEL), address(0), "ping must be unbound after emergency removal");
+        // ping() no longer routes (no facet for the selector).
+        (bool okAfter,) = address(diamond).call(abi.encodeWithSelector(DummyFacet.ping.selector));
+        assertFalse(okAfter, "ping must stop routing after emergency removal");
+    }
+
+    /// @notice AUTH GATE (stranger): a non-guardian reverts AccessControlUnauthorizedAccount for the
+    ///         guardian role.
+    function test_EmergencyRemove_StrangerReverts() public {
+        _bindPing();
+        FacetCut[] memory cuts = _removeCut(PING_SEL);
+        vm.prank(stranger);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector, stranger, EMERGENCY_GUARDIAN_ROLE
+            )
+        );
+        diamond.emergencyRemoveCut(cuts);
+    }
+
+    /// @notice AUTH GATE (wrong role): a holder of ONLY UPGRADE_EXECUTOR_ROLE (the diamond identity)
+    ///         is NOT a guardian, so it cannot fire the emergency removal — proving the emergency path
+    ///         is a distinct, guardian-only authority, not the governance authority.
+    function test_EmergencyRemove_UpgradeExecutorWithoutGuardianReverts() public {
+        _bindPing();
+        FacetCut[] memory cuts = _removeCut(PING_SEL);
+        // address(diamond) holds UPGRADE_EXECUTOR_ROLE but was never granted EMERGENCY_GUARDIAN_ROLE.
+        assertTrue(diamond.hasRole(UPGRADE_EXECUTOR_ROLE, address(diamond)), "diamond holds executor role");
+        assertFalse(diamond.hasRole(EMERGENCY_GUARDIAN_ROLE, address(diamond)), "diamond is not a guardian");
+        vm.prank(address(diamond));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector, address(diamond), EMERGENCY_GUARDIAN_ROLE
+            )
+        );
+        diamond.emergencyRemoveCut(cuts);
+    }
+
+    /// @notice REMOVE-ONLY rejects Add: an emergency cut containing an Add reverts
+    ///         EmergencyCutMustBeRemoveOnly(0) — a guardian can never add code.
+    function test_EmergencyRemove_RejectsAdd() public {
+        _makeGuardian(guardian);
+        FacetCut[] memory cuts = _addCut(PING_SEL);
+        vm.prank(guardian);
+        vm.expectRevert(
+            abi.encodeWithSelector(IEmergencyCut.EmergencyCutMustBeRemoveOnly.selector, uint8(FacetCutAction.Add))
+        );
+        diamond.emergencyRemoveCut(cuts);
+    }
+
+    /// @notice REMOVE-ONLY rejects Replace: an emergency cut containing a Replace reverts
+    ///         EmergencyCutMustBeRemoveOnly(1) — a guardian can never replace code.
+    function test_EmergencyRemove_RejectsReplace() public {
+        _makeGuardian(guardian);
+        FacetCut[] memory cuts = _replaceCut(PING_SEL);
+        vm.prank(guardian);
+        vm.expectRevert(
+            abi.encodeWithSelector(IEmergencyCut.EmergencyCutMustBeRemoveOnly.selector, uint8(FacetCutAction.Replace))
+        );
+        diamond.emergencyRemoveCut(cuts);
+    }
+
+    /// @notice REMOVE-ONLY rejects a mixed batch: a Remove followed by an Add still reverts on the Add,
+    ///         and nothing is applied (the prior Remove does not take effect).
+    function test_EmergencyRemove_RejectsMixedBatch() public {
+        _bindPing();
+        _makeGuardian(guardian);
+        FacetCut[] memory cuts = new FacetCut[](2);
+        cuts[0] = _removeCut(PING_SEL)[0]; // valid Remove
+        cuts[1] = _addCut(OTHER_SEL)[0]; // invalid Add -> whole call must revert
+        vm.prank(guardian);
+        vm.expectRevert(
+            abi.encodeWithSelector(IEmergencyCut.EmergencyCutMustBeRemoveOnly.selector, uint8(FacetCutAction.Add))
+        );
+        diamond.emergencyRemoveCut(cuts);
+        // Reverted atomically: ping is still bound (the valid Remove never committed).
+        assertEq(diamond.facetOf(PING_SEL), address(dummy), "mixed-batch revert must apply nothing");
+    }
+
+    /// @notice FROZEN PROTECTED: a guardian cannot rip out a frozen (load-bearing) selector — the
+    ///         emergency removal reverts FrozenSelectorProtected just like a governed Replace/Remove.
+    function test_EmergencyRemove_FrozenSelectorProtected() public {
+        _bindPing();
+        _freeze(PING_SEL);
+        _makeGuardian(guardian);
+        FacetCut[] memory cuts = _removeCut(PING_SEL);
+        vm.prank(guardian);
+        vm.expectRevert(abi.encodeWithSelector(IFrozenSelectors.FrozenSelectorProtected.selector, PING_SEL));
+        diamond.emergencyRemoveCut(cuts);
+        // Frozen selector survived: still bound.
+        assertEq(diamond.facetOf(PING_SEL), address(dummy), "frozen selector must survive emergency removal");
+    }
+
+    /// @notice WORKS DURING STOP: with EmergencyStop engaged the normal diamondCut reverts
+    ///         EmergencyStopActive, but emergencyRemoveCut INTENTIONALLY goes through — it is the panic
+    ///         button that must work precisely when upgrades are halted.
+    function test_EmergencyRemove_WorksWhileEmergencyStopped() public {
+        _bindPing();
+        // admin becomes a guardian (so it can both trip the stop AND fire the emergency cut).
+        _makeGuardian(admin);
+        vm.prank(admin);
+        diamond.emergencyStop("incident: facet compromised");
+        assertTrue(diamond.isStopped(), "stop must be engaged");
+
+        // The NORMAL governed cut is blocked while stopped.
+        FacetCut[] memory addCut = _addPingCut();
+        vm.prank(address(diamond));
+        vm.expectRevert(abi.encodeWithSelector(IEmergencyStop.EmergencyStopActive.selector));
+        diamond.diamondCut(addCut, address(0), "");
+
+        // The EMERGENCY removal goes through DESPITE the stop.
+        FacetCut[] memory cuts = _removeCut(PING_SEL);
+        vm.prank(admin);
+        diamond.emergencyRemoveCut(cuts);
+        assertEq(diamond.facetOf(PING_SEL), address(0), "emergency removal must work during a stop");
+    }
+
+    /// @notice RECORDED + EVENT: an emergency removal is recorded in the SAME append-only registry
+    ///         (cutCount increments, record fields sane: removal-only so init == address(0), the
+    ///         cutHash binds the removal cut) and emits EmergencyCutExecuted(version, guardian, count).
+    function test_EmergencyRemove_RecordedAndEmitsEvent() public {
+        vm.warp(987_654);
+        _bindPing(); // version 1 (the binding governed cut)
+        assertEq(diamond.cutCount(), 1, "binding cut is version 1");
+
+        _makeGuardian(guardian);
+        FacetCut[] memory cuts = _removeCut(PING_SEL);
+        bytes32 expectedHash = keccak256(abi.encode(cuts, address(0), bytes("")));
+
+        // EmergencyCutExecuted(version=2, guardian, selectorCount=1) — version & guardian indexed.
+        vm.expectEmit(true, true, false, true, address(diamond));
+        emit IEmergencyCut.EmergencyCutExecuted(2, guardian, 1);
+        vm.prank(guardian);
+        diamond.emergencyRemoveCut(cuts);
+
+        // Registry bumped to version 2 and the record reflects the emergency removal.
+        assertEq(diamond.cutCount(), 2, "emergency removal must bump the registry version");
+        IUpgradeRegistry.CutRecord memory rec = diamond.getCutRecord(2);
+        assertEq(rec.cutHash, expectedHash, "emergency cutHash must bind the removal cut");
+        assertEq(rec.executor, guardian, "executor must be the guardian");
+        assertEq(rec.executedAt, uint48(987_654), "executedAt must be block.timestamp");
+        assertEq(rec.facetCutCount, uint32(1), "facetCutCount must equal cuts.length");
+        assertEq(rec.init, address(0), "emergency removal records no init (removal-only)");
+    }
+
+    /// @notice The emergency registry record also surfaces via CutRecorded (shared registry), so an
+    ///         emergency removal appears in cut history exactly like a governed cut.
+    function test_EmergencyRemove_AlsoEmitsCutRecorded() public {
+        _bindPing();
+        _makeGuardian(guardian);
+        FacetCut[] memory cuts = _removeCut(PING_SEL);
+        bytes32 expectedHash = keccak256(abi.encode(cuts, address(0), bytes("")));
+        vm.expectEmit(true, true, false, true, address(diamond));
+        emit IUpgradeRegistry.CutRecorded(2, expectedHash, guardian);
+        vm.prank(guardian);
+        diamond.emergencyRemoveCut(cuts);
+    }
+
+    /// @notice selectorCount in EmergencyCutExecuted sums selectors across multiple Remove entries.
+    function test_EmergencyRemove_SelectorCountAcrossBatch() public {
+        // Bind ping, and bind a second selector on a second facet so we can remove two selectors.
+        _bindPing();
+        DummyFacet dummy2 = new DummyFacet();
+        // Bind OTHER_SEL by adding it on dummy2 (a distinct selector mapping to ping's body is fine for
+        // routing purposes; we only need it bound so a Remove succeeds in diamond-lib).
+        bytes4[] memory sels2 = new bytes4[](1);
+        sels2[0] = OTHER_SEL;
+        FacetCut[] memory addOther = new FacetCut[](1);
+        addOther[0] = FacetCut({facetAddress: address(dummy2), action: FacetCutAction.Add, functionSelectors: sels2});
+        vm.prank(address(diamond));
+        diamond.diamondCut(addOther, address(0), "");
+
+        _makeGuardian(guardian);
+        // One emergency cut removing BOTH selectors (two Remove entries -> selectorCount == 2).
+        bytes4[] memory rmA = new bytes4[](1);
+        rmA[0] = PING_SEL;
+        bytes4[] memory rmB = new bytes4[](1);
+        rmB[0] = OTHER_SEL;
+        FacetCut[] memory cuts = new FacetCut[](2);
+        cuts[0] = FacetCut({facetAddress: address(0), action: FacetCutAction.Remove, functionSelectors: rmA});
+        cuts[1] = FacetCut({facetAddress: address(0), action: FacetCutAction.Remove, functionSelectors: rmB});
+
+        vm.expectEmit(true, true, false, true, address(diamond));
+        emit IEmergencyCut.EmergencyCutExecuted(3, guardian, 2);
+        vm.prank(guardian);
+        diamond.emergencyRemoveCut(cuts);
+
+        assertEq(diamond.facetOf(PING_SEL), address(0), "ping removed");
+        assertEq(diamond.facetOf(OTHER_SEL), address(0), "other removed");
     }
 }
 

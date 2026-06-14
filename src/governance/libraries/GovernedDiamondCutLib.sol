@@ -5,10 +5,11 @@ import {DiamondLib, FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLi
 import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
+import {IEmergencyCut} from "@lattice/interfaces/IEmergencyCut.sol";
 import {IFrozenSelectors} from "@lattice/interfaces/IFrozenSelectors.sol";
 import {IGovernedDiamondCut} from "@lattice/interfaces/IGovernedDiamondCut.sol";
 import {IUpgradeRegistry} from "@lattice/interfaces/IUpgradeRegistry.sol";
-import {EmergencyStopLib} from "@lattice/security/libraries/EmergencyStopLib.sol";
+import {EMERGENCY_GUARDIAN_ROLE, EmergencyStopLib} from "@lattice/security/libraries/EmergencyStopLib.sol";
 import {EnumerableSet} from "@lattice/utils/libraries/EnumerableSet.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
@@ -36,6 +37,16 @@ bytes32 constant ERC165_MAP_ICUT_SLOT = 0xa0f80413692945aab97c6ef0328381ebb94e4b
 ///      sole legitimate caller is a timelock relaying a passed governance proposal back into the
 ///      diamond. `keccak256("UPGRADE_EXECUTOR_ROLE")`.
 bytes32 constant UPGRADE_EXECUTOR_ROLE = keccak256("UPGRADE_EXECUTOR_ROLE");
+
+/// @dev Role required to fire the zero-delay, REMOVAL-ONLY emergency cut (`emergencyRemoveCut`). This
+///      is DELIBERATELY the very same role that arms the EmergencyStop panic button — the operator who
+///      can halt the diamond is the operator who can amputate a compromised facet — so the literal is
+///      imported from `EmergencyStopLib` (single source of truth) rather than re-declared here.
+///      `keccak256("EMERGENCY_GUARDIAN_ROLE") == 0x93a9ea60add98726fcd12f31bd91d98faf4378bac52abb4f48e807756ced77a1`
+///      (verify: `cast keccak "EMERGENCY_GUARDIAN_ROLE"`). It is intentionally DISTINCT from
+///      `UPGRADE_EXECUTOR_ROLE`: a guardian can ONLY remove code (never add/replace — those still
+///      require a full governance round) and can never remove a frozen selector. Consumers/tests import
+///      the constant from `EmergencyStopLib`.
 
 /// @notice ERC-7201 namespaced storage for the GovernedDiamondCut module.
 /// @dev Authority itself lives in AccessControl + EmergencyStop storage; this slot holds the
@@ -139,6 +150,95 @@ library GovernedDiamondCutLib {
         });
 
         emit IGovernedDiamondCut.UpgradeExecuted(msg.sender, _diamondCut.length, _init);
+        emit IUpgradeRegistry.CutRecorded(version, cutHash, msg.sender);
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                       EMERGENCY REMOVAL-ONLY CUT
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice Zero-delay, REMOVAL-ONLY escape hatch: lets a guardian instantly unbind a compromised
+    ///         or buggy facet's selectors WITHOUT a governance round — and, by design, even while the
+    ///         normal cut path is halted by EmergencyStop. Deliberately constrained so a rogue guardian
+    ///         can only AMPUTATE code (every entry must be `Remove`), never add or replace it (that
+    ///         still requires `diamondCut` under full governance), and can never remove a frozen
+    ///         load-bearing selector (the loupe or the cut path itself).
+    /// @dev Guard ordering and rationale:
+    ///      1) Authority FIRST: only an EMERGENCY_GUARDIAN_ROLE holder may proceed.
+    ///      2) NO `EmergencyStopLib.checkNotStopped()` — INTENTIONAL. This is the panic button; it MUST
+    ///         remain usable precisely when upgrades are stopped (the same guardian who tripped the stop
+    ///         uses it to surgically remove the offending facet). The governed `diamondCut` keeps the
+    ///         stop gate; only this removal-only path bypasses it.
+    ///      3) Removal-only: every FacetCut action must be `Remove`; an `Add`/`Replace` reverts
+    ///         {IEmergencyCut.EmergencyCutMustBeRemoveOnly} with the offending action. diamond-lib
+    ///         additionally enforces `facetAddress == address(0)` for `Remove`.
+    ///      4) Frozen protection: reuses {_enforceNotFrozen} so a guardian cannot rip out a frozen
+    ///         selector (reverts {IFrozenSelectors.FrozenSelectorProtected}).
+    ///      5) NO init delegatecall: applied as `DiamondLib.diamondCut(cuts, address(0), "")`. A pure
+    ///         removal has nothing to initialize, and forbidding init denies a rogue guardian any
+    ///         arbitrary-delegatecall vector.
+    ///      The removal is recorded in the SAME append-only registry as governed cuts (so it appears in
+    ///      cut history) and additionally emits {IEmergencyCut.EmergencyCutExecuted} so it is auditable
+    ///      as an emergency action.
+    /// @param _cuts The facet cuts to apply; every entry MUST be a `Remove` (facetAddress == address(0)).
+    function emergencyRemoveCut(FacetCut[] calldata _cuts) internal {
+        // 1) Authority: guardian-only. Reverts AccessControlUnauthorizedAccount(caller, role).
+        AccessControlLib.checkRole(EMERGENCY_GUARDIAN_ROLE);
+
+        // NOTE: `EmergencyStopLib.checkNotStopped()` is DELIBERATELY NOT called here. This path is the
+        // panic button and must function while the diamond is emergency-stopped.
+
+        GovernedDiamondCutStorage storage $ = governedDiamondCutStorage();
+
+        // 2) Removal-only + 3) frozen protection, fused in a single pass over the cuts so we also
+        //    accumulate the total selector count for the audit event.
+        uint256 cutsLength = _cuts.length;
+        uint256 selectorCount;
+        EnumerableSet.Bytes4Set storage frozen = $._frozenSelectors;
+        for (uint256 i; i < cutsLength; ++i) {
+            FacetCutAction action = _cuts[i].action;
+            // Reject any non-Remove action with the offending action value (Add == 0, Replace == 1).
+            if (action != FacetCutAction.Remove) {
+                revert IEmergencyCut.EmergencyCutMustBeRemoveOnly(uint8(action));
+            }
+            bytes4[] calldata selectors = _cuts[i].functionSelectors;
+            uint256 selectorsLength = selectors.length;
+            for (uint256 j; j < selectorsLength; ++j) {
+                // A guardian must NOT be able to remove a frozen, load-bearing selector.
+                if (frozen.contains(selectors[j])) {
+                    revert IFrozenSelectors.FrozenSelectorProtected(selectors[j]);
+                }
+            }
+            unchecked {
+                selectorCount += selectorsLength;
+            }
+        }
+
+        // 4) Apply the removal via diamond-lib. NO init callback — removal-only. `DiamondLib.diamondCut`
+        //    wants `bytes calldata`; `msg.data[:0]` is the canonical zero-length calldata slice (an
+        //    empty `init` payload, equivalent to passing `bytes("")`). If diamond-lib reverts (e.g.
+        //    removing an unbound or immutable selector), nothing below records.
+        bytes calldata emptyCalldata = msg.data[:0];
+        DiamondLib.diamondCut(_cuts, address(0), emptyCalldata);
+
+        uint256 version;
+        unchecked {
+            version = ++$._cutCount;
+        }
+
+        // 5) Record in the SAME append-only registry so emergency removals appear in cut history.
+        //    The hash binds the empty init payload (matches `keccak256(abi.encode(cuts, 0, bytes("")))`).
+        bytes32 cutHash = keccak256(abi.encode(_cuts, address(0), emptyCalldata));
+        $._cutRegistry[version] = IUpgradeRegistry.CutRecord({
+            cutHash: cutHash,
+            executor: msg.sender,
+            executedAt: uint48(block.timestamp),
+            facetCutCount: uint32(cutsLength),
+            init: address(0)
+        });
+
+        // Distinct emergency-audit event PLUS the shared registry event (so it appears in cut history).
+        emit IEmergencyCut.EmergencyCutExecuted(version, msg.sender, selectorCount);
         emit IUpgradeRegistry.CutRecorded(version, cutHash, msg.sender);
     }
 

@@ -3,6 +3,7 @@ pragma solidity ^0.8.30;
 
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {GovernedDiamondCutLib} from "@lattice/governance/libraries/GovernedDiamondCutLib.sol";
+import {IEmergencyCut} from "@lattice/interfaces/IEmergencyCut.sol";
 import {IFrozenSelectors} from "@lattice/interfaces/IFrozenSelectors.sol";
 import {IGovernedDiamondCut} from "@lattice/interfaces/IGovernedDiamondCut.sol";
 import {IUpgradeRegistry} from "@lattice/interfaces/IUpgradeRegistry.sol";
@@ -18,7 +19,7 @@ import {IUpgradeRegistry} from "@lattice/interfaces/IUpgradeRegistry.sol";
 ///      getters plus the frozen-selector / preview / verify surface are plain facet functions and are
 ///      NOT advertised as a distinct ERC-165 interface, so the facet's advertised id stays the
 ///      canonical cut selector `0x1f931c1c`.
-contract GovernedDiamondCut is IGovernedDiamondCut, IUpgradeRegistry, IFrozenSelectors {
+contract GovernedDiamondCut is IGovernedDiamondCut, IUpgradeRegistry, IFrozenSelectors, IEmergencyCut {
     /// @inheritdoc IGovernedDiamondCut
     function diamondCut(FacetCut[] calldata _diamondCut, address _init, bytes calldata _calldata)
         external
@@ -26,6 +27,11 @@ contract GovernedDiamondCut is IGovernedDiamondCut, IUpgradeRegistry, IFrozenSel
         virtual
     {
         GovernedDiamondCutLib.diamondCut(_diamondCut, _init, _calldata);
+    }
+
+    /// @inheritdoc IEmergencyCut
+    function emergencyRemoveCut(FacetCut[] calldata _cuts) external virtual {
+        GovernedDiamondCutLib.emergencyRemoveCut(_cuts);
     }
 
     /// @inheritdoc IUpgradeRegistry
