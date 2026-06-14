@@ -28,17 +28,13 @@ bytes32 constant AAVE_V3_ADAPTER_STORAGE_SLOT = 0x78e1f0849c8352c9588d407dc28e99
 bytes32 constant AAVE_V3_ADAPTER_ERC165_STORAGE_LOCATION =
     0x9ca7f3e2e2bfb15fdf072b85dde92837cddacee6cf2f6b38cd06c9457c1c4200;
 
-/// @dev <IFACE_ID_PROTOCOL> is `type(IProtocolAdapter).interfaceId` (compute via the recipe in
-///      "Conventions"). `keccak256(abi.encode(bytes4(<IFACE_ID_PROTOCOL>), 0x9ca7...4200))`.
-///      STUBBED sentinel (literal so inline assembly accepts it); replaced with the real derived
-///      slot in Task 6, Step 1.
-bytes32 constant ERC165_MAP_IPROTOCOLADAPTER_SLOT = 0x0000000000000000000000000000000000000000000000000000000000000001;
+/// @dev 0x8f7783e6 is `type(IProtocolAdapter).interfaceId`.
+/// `keccak256(abi.encode(bytes4(0x8f7783e6), 0x9ca7f3e2e2bfb15fdf072b85dde92837cddacee6cf2f6b38cd06c9457c1c4200))`.
+bytes32 constant ERC165_MAP_IPROTOCOLADAPTER_SLOT = 0x789387b95720f4aa713e912bc377a2f999f1310b69003727d9c01b7ea1494c77;
 
-/// @dev <IFACE_ID_AAVE> is `type(IAaveV3Adapter).interfaceId`.
-///      `keccak256(abi.encode(bytes4(<IFACE_ID_AAVE>), 0x9ca7...4200))`.
-///      STUBBED sentinel (literal so inline assembly accepts it); replaced with the real derived
-///      slot in Task 6, Step 1.
-bytes32 constant ERC165_MAP_IAAVEV3ADAPTER_SLOT = 0x0000000000000000000000000000000000000000000000000000000000000002;
+/// @dev 0x358066bd is `type(IAaveV3Adapter).interfaceId`.
+/// `keccak256(abi.encode(bytes4(0x358066bd), 0x9ca7f3e2e2bfb15fdf072b85dde92837cddacee6cf2f6b38cd06c9457c1c4200))`.
+bytes32 constant ERC165_MAP_IAAVEV3ADAPTER_SLOT = 0xe468d72a593ceecc9e0a362a31920ed641375c6a53da65d4526c31d16027629c;
 
 /// @dev Aave variable interest-rate mode (1 == stable, deprecated; 2 == variable).
 uint256 constant AAVE_VARIABLE_RATE = 2;

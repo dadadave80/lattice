@@ -6,6 +6,7 @@ import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {AaveV3Adapter} from "@lattice/defi/AaveV3Adapter.sol";
 import {AaveV3AdapterLib} from "@lattice/defi/libraries/AaveV3AdapterLib.sol";
+import {IAaveV3Adapter} from "@lattice/interfaces/IAaveV3Adapter.sol";
 import {IProtocolAdapter} from "@lattice/interfaces/IProtocolAdapter.sol";
 import {IAaveV3Pool} from "@lattice/interfaces/external/IAaveV3Pool.sol";
 import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib.sol";
@@ -286,5 +287,10 @@ contract AaveV3AdapterSupplyTest is Test {
         asset.mint(address(adapter), 100e6);
         adapter.deploy();
         assertEq(adapter.healthFactor(), type(uint256).max, "no debt => max HF");
+    }
+
+    function test_SupportsInterface_ProtocolAndAaveAdapter() public view {
+        assertTrue(adapter.supportsInterface(type(IProtocolAdapter).interfaceId), "IProtocolAdapter");
+        assertTrue(adapter.supportsInterface(type(IAaveV3Adapter).interfaceId), "IAaveV3Adapter");
     }
 }
