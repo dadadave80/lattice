@@ -10,7 +10,8 @@ interface IPoolAddressesProvider {
     /// @notice Returns the address of the Pool proxy.
     function getPool() external view returns (address);
 
-    /// @notice Returns the address of the price oracle (Aave's own; unused for valuation —
-    ///         Lattice prices net equity via its own oracle).
+    /// @notice Returns the address of Aave's own price oracle (`IAaveOracle`). Used by the adapter to
+    ///         convert Aave's base-ccy account data into asset units with a single self-consistent
+    ///         price source (no cross-oracle divergence with the levered net-equity valuation).
     function getPriceOracle() external view returns (address);
 }

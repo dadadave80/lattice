@@ -8,10 +8,10 @@ import {IAaveV3Adapter} from "@lattice/interfaces/IAaveV3Adapter.sol";
 import {IERC20} from "@lattice/interfaces/IERC20.sol";
 import {IProtocolAdapter} from "@lattice/interfaces/IProtocolAdapter.sol";
 import {IAToken} from "@lattice/interfaces/external/IAToken.sol";
+import {IAaveOracle} from "@lattice/interfaces/external/IAaveOracle.sol";
 import {IAaveRewardsController} from "@lattice/interfaces/external/IAaveRewardsController.sol";
 import {IAaveV3Pool} from "@lattice/interfaces/external/IAaveV3Pool.sol";
 import {IPoolAddressesProvider} from "@lattice/interfaces/external/IPoolAddressesProvider.sol";
-import {ChainlinkAdapterLib} from "@lattice/oracles/libraries/ChainlinkAdapterLib.sol";
 import {EmergencyStopLib} from "@lattice/security/libraries/EmergencyStopLib.sol";
 import {PausableLib} from "@lattice/security/libraries/PausableLib.sol";
 import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib.sol";
@@ -51,8 +51,10 @@ struct AaveV3AdapterStorage {
     address _vault;
     /// @dev Reward recipient for raw-forwarded incentive tokens.
     address _rewardRecipient;
-    /// @dev Chainlink feed key (in the Lattice ChainlinkAdapter) pricing the asset in USD (WAD).
-    ///      Only consumed by the leverage valuation path.
+    /// @dev Legacy Chainlink feed key (in the Lattice ChainlinkAdapter) for the asset/USD price.
+    ///      NO LONGER consumed by the net-equity valuation — leverage NAV is now priced by Aave's OWN
+    ///      oracle for self-consistency (see `_netEquityAssets`). Retained for append-only storage
+    ///      safety; still written at init. Unused elsewhere; a future migration may drop it.
     bytes32 _assetUsdFeedKey;
     /// @dev Minimum health factor (WAD). Lever/deploy must not push HF below this.
     uint256 _minHealthFactorWad;
@@ -69,8 +71,9 @@ struct AaveV3AdapterStorage {
 /// @title AaveV3AdapterLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice All logic for the Aave v3 adapter facet. Supply leg values 1:1 via aToken.balanceOf;
-///         leverage leg values net equity via the Lattice oracle (Task 8). Reentrancy-gated,
-///         pause/emergency-aware, shortfall-honest.
+///         leverage leg values net equity via Aave's OWN price oracle (single self-consistent source
+///         with `getUserAccountData`, no cross-oracle drift). Reentrancy-gated, pause/emergency-aware,
+///         shortfall-honest.
 library AaveV3AdapterLib {
     //*//////////////////////////////////////////////////////////////////////////
     //                              STORAGE ACCESS
@@ -92,7 +95,8 @@ library AaveV3AdapterLib {
     /// @param asset_            Underlying asset (must equal the vault's asset).
     /// @param vault_            Vault to return funds to.
     /// @param rewardRecipient_  Recipient for raw-forwarded rewards.
-    /// @param assetUsdFeedKey   ChainlinkAdapter feed key for asset/USD (leverage valuation).
+    /// @param assetUsdFeedKey   Legacy ChainlinkAdapter feed key for asset/USD. No longer used by the
+    ///                          net-equity valuation (now Aave-oracle-priced); stored for compatibility.
     /// @param minHealthFactorWad Initial HF floor (>= 1e18).
     function __AaveV3Adapter_init(
         address provider,
@@ -348,7 +352,13 @@ library AaveV3AdapterLib {
 
     /// @notice Borrows `borrowAmount` of the asset (variable rate) then re-supplies it, looping
     ///         leverage. Reverts if the resulting health factor would fall below the floor.
+    /// @dev Operator-gated (same authorization class as `deploy`/`withdraw`/`harvest`): leverage is a
+    ///      keeper-cadence position action run by the StrategyManager, not a config change. Ungated, a
+    ///      permissionless caller could force leverage up at a chosen moment (risk/timing griefing —
+    ///      push toward liquidation / fight the keeper). The operator check is FIRST, before the
+    ///      reentrancy guard, so an unauthorized call never leaves the guard latched.
     function lever(uint256 borrowAmount) internal {
+        _checkOperator();
         ReentrancyGuardLib.nonReentrantBefore();
         if (isPaused()) {
             ReentrancyGuardLib.nonReentrantAfter();
@@ -377,7 +387,11 @@ library AaveV3AdapterLib {
 
     /// @notice Withdraws `collateralToPull` of the asset from supply and repays that much debt,
     ///         decreasing leverage. Returns the amount of debt actually repaid.
+    /// @dev Operator-gated, matching `lever` (see its note): a permissionless caller could otherwise
+    ///      force-unwind the position at a chosen moment (realize loss / fight the keeper). The
+    ///      operator check is FIRST, before the reentrancy guard.
     function delever(uint256 collateralToPull) internal returns (uint256 repaid) {
+        _checkOperator();
         ReentrancyGuardLib.nonReentrantBefore();
         AaveV3AdapterStorage storage $ = aaveV3AdapterStorage();
         address asset_ = $._asset;
@@ -409,31 +423,37 @@ library AaveV3AdapterLib {
         }
     }
 
-    /// @notice Oracle-priced net equity (collateral − debt) expressed in asset units (WAD-safe).
-    /// @dev Aave reports collateral/debt in base ccy with 8 decimals. We convert the net base
-    ///      amount to asset units using the Lattice oracle's asset/USD price (WAD), which enforces
-    ///      staleness/positivity. NEVER reads spot. Single-asset looping: collateral and debt are
-    ///      the same token, so the base→asset conversion divides by the same oracle price.
+    /// @notice Oracle-priced net equity (collateral − debt) expressed in asset units.
+    /// @dev Aave reports collateral/debt in its OWN base currency (USD, 8 decimals) via
+    ///      `getUserAccountData`. We convert the net base amount back to asset units using AAVE'S OWN
+    ///      price oracle (`PoolAddressesProvider.getPriceOracle().getAssetPrice(asset)`), which returns
+    ///      the asset price in the SAME 8-decimal base. Numerator and denominator therefore come from a
+    ///      single self-consistent source — no cross-oracle divergence (a Chainlink heartbeat/depeg/
+    ///      mis-registered feed key can no longer silently mis-state the levered NAV). NEVER reads spot.
+    ///      Single-asset looping: collateral and debt are the same token, so the conversion divides by
+    ///      the one Aave price and equity is invariant under a price move (only the spread matters).
+    ///
+    ///      Note: the legacy `_assetUsdFeedKey` (Lattice ChainlinkAdapter) is NO LONGER read here and is
+    ///      now unused for net-equity. The storage field is retained (append-only/upgrade-safety); a
+    ///      future migration may drop it if nothing else consumes it.
     function _netEquityAssets() internal view returns (uint256) {
         (uint256 collateralBase, uint256 debtBase,,,,) = _pool().getUserAccountData(address(this));
         if (collateralBase <= debtBase) return 0; // underwater => zero equity (honest)
         uint256 netBase8 = collateralBase - debtBase; // base ccy, 8 decimals
 
-        // Oracle price asset/USD in WAD (reverts on stale/zero). Base ccy is USD (8 dp) on Aave.
-        int256 priceWad = ChainlinkAdapterLib.latestAnswer(aaveV3AdapterStorage()._assetUsdFeedKey);
-        // priceWad > 0 guaranteed by ChainlinkAdapterLib (reverts otherwise).
-        uint256 price = uint256(priceWad);
+        // Aave's own oracle: asset price in the SAME 8-decimal base as getUserAccountData.
+        AaveV3AdapterStorage storage $ = aaveV3AdapterStorage();
+        address oracle = IPoolAddressesProvider($._provider).getPriceOracle();
+        uint256 aaveAssetPrice8 = IAaveOracle(oracle).getAssetPrice($._asset);
+        if (aaveAssetPrice8 == 0) revert IProtocolAdapter.ProtocolAdapterInvalidOraclePrice();
 
-        // netBase8 is USD * 1e8. Convert to asset units:
-        //   netUsdWad = netBase8 * 1e10               (USD in WAD)
-        //   assetWad  = netUsdWad * 1e18 / priceWad    (asset amount in WAD)
-        //   assetUnits = assetWad / 1e(18 - assetDecimals)
-        // Combine and scale to the asset's own decimals.
-        uint8 assetDec = IERC20(aaveV3AdapterStorage()._asset).decimals();
-        // assetUnits = netBase8 * 1e10 * 1e18 / price / 1e(18-assetDec)
-        //            = netBase8 * 1e10 * 10^assetDec / price
-        uint256 numerator = netBase8 * 1e10 * (10 ** assetDec);
-        return numerator / price;
+        // Both netBase8 and aaveAssetPrice8 are in USD * 1e8, so the 1e8 base cancels:
+        //   netUsd       = netBase8 / 1e8                 (USD)
+        //   assetPrice   = aaveAssetPrice8 / 1e8          (USD per whole asset)
+        //   assetWhole   = netUsd / assetPrice = netBase8 / aaveAssetPrice8
+        //   assetUnits   = assetWhole * 10^assetDecimals = netBase8 * 10^assetDec / aaveAssetPrice8
+        uint8 assetDec = IERC20($._asset).decimals();
+        return netBase8 * (10 ** assetDec) / aaveAssetPrice8;
     }
 
     //*//////////////////////////////////////////////////////////////////////////

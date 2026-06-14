@@ -70,6 +70,11 @@ interface IProtocolAdapter {
     ///      attacker who somehow reaches `withdraw` can never redirect the position to themselves.
     error ProtocolAdapterInvalidRecipient(address to);
 
+    /// @notice The protocol's price oracle returned a non-positive (zero) asset price, which would
+    ///         make a valuation divide-by-zero or mis-state NAV. The valuation reverts rather than
+    ///         report a bogus figure.
+    error ProtocolAdapterInvalidOraclePrice();
+
     // -------------------------------------------------------------------------
     //                            Lifecycle (sidecar)
     // -------------------------------------------------------------------------

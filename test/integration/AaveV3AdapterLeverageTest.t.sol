@@ -114,7 +114,7 @@ contract AaveV3AdapterLeverageTest is Test {
 
     function test_Lever_BorrowsAndResupplies_IncreasingCollateral() public {
         // Borrow 500, re-supply: collateral 1500, debt 500. HF = 1500*0.8/500 = 2.4 >= 1.10.
-        vm.prank(admin);
+        // lever/delever are operator-gated (this test contract is the wired operator).
         adapter.lever(500e6);
 
         assertEq(aToken.balanceOf(address(adapter)), 1_500e6, "collateral grew by borrow");
@@ -124,9 +124,8 @@ contract AaveV3AdapterLeverageTest is Test {
     }
 
     function test_NetEquityValuation_WhenLevered() public {
-        vm.prank(admin);
         adapter.lever(500e6);
-        // Net equity = collateral - debt = 1500 - 500 = 1000 (in asset units, price $1).
+        // Net equity = collateral - debt = 1500 - 500 = 1000 (in asset units, Aave price $1).
         assertApproxEqAbs(adapter.totalAssetsManaged(), 1_000e6, 1, "net equity == initial capital");
     }
 
@@ -134,18 +133,15 @@ contract AaveV3AdapterLeverageTest is Test {
         // Floor 1.10. To breach: borrow so much that HF < 1.10.
         // collateral after = 1000 + b; debt = b; HF = (1000+b)*0.8 / b.
         // Solve HF=1.10 -> 0.8*(1000+b) = 1.10*b -> 800 = 0.30*b -> b ~= 2666. Borrow 5000 => HF<1.10.
-        vm.prank(admin);
         vm.expectRevert(); // ProtocolAdapterHealthFactorBreached (resulting < floor)
         adapter.lever(5_000e6);
     }
 
     function test_Delever_RepaysDebtAndRestoresHealthFactor() public {
-        vm.prank(admin);
         adapter.lever(500e6);
         uint256 hfBefore = adapter.healthFactor();
 
         // Pull 300 collateral and repay 300 debt.
-        vm.prank(admin);
         uint256 repaid = adapter.delever(300e6);
         assertEq(repaid, 300e6, "repaid the pulled amount");
         assertEq(pool.debt(address(adapter)), 200e6, "debt reduced");
@@ -153,7 +149,6 @@ contract AaveV3AdapterLeverageTest is Test {
     }
 
     function test_LiquidationTolerance_TotalAssetsDropsAndWithdrawHonest() public {
-        vm.prank(admin);
         adapter.lever(500e6); // collateral 1500, debt 500, net 1000
 
         // Simulate an external partial liquidation: the protocol seizes 400 collateral
@@ -171,12 +166,97 @@ contract AaveV3AdapterLeverageTest is Test {
         assertGt(got, 0, "some funds returned");
     }
 
-    function test_NetEquityValuation_RevertsOnStaleOracle() public {
-        vm.prank(admin);
+    //*//////////////////////////////////////////////////////////////////////////
+    //         ITEM 1 — NET EQUITY USES AAVE'S OWN ORACLE (no cross-oracle drift)
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice Levered net-equity valuation must be priced by Aave's OWN oracle (the same source that
+    ///         denominates getUserAccountData), NOT the separate Lattice ChainlinkAdapter feed. Here
+    ///         the Lattice feed and Aave's price DIVERGE while debt > 0: post-fix `totalAssetsManaged`
+    ///         tracks Aave's self-consistent figure and is INDEPENDENT of the Lattice feed.
+    ///
+    ///         Pre-fix (Lattice-feed divisor): netBase8 = (collat-debt) priced by Aave's price; the
+    ///         divisor was the Lattice feed, so moving the Lattice feed moved NAV. Post-fix the divisor
+    ///         is Aave's price, so the Lattice feed has zero effect on the levered NAV.
+    function test_NetEquity_UsesAaveOracle_IndependentOfLatticeFeed() public {
+        adapter.lever(500e6); // collateral 1500, debt 500 (both at Aave price $1) => net equity 1000
+
+        // Baseline: Aave price $1, Lattice feed $1 -> 1000 asset units.
+        assertApproxEqAbs(adapter.totalAssetsManaged(), 1_000e6, 1, "baseline net equity 1000");
+
+        // Diverge ONLY the Lattice feed (e.g. depeg/mis-registered key): $1.00 -> $1.25. Aave's price
+        // is unchanged. Post-fix this MUST NOT move the levered NAV (Aave oracle is the sole source).
+        feed.setAnswer(1.25e8);
+        assertApproxEqAbs(
+            adapter.totalAssetsManaged(), 1_000e6, 1, "NAV independent of Lattice feed (Aave oracle is the source)"
+        );
+
+        // Now move AAVE's price the same way: $1.00 -> $1.25 for BOTH legs. Net base = (1500-500)*1.25
+        // = 1250 base8; assetUnits = netBase8 * 10^6 / 1.25e8 = 1000e6 (single-asset loop: price
+        // cancels, equity stays 1000 asset units). This proves the conversion divides by Aave's price.
+        pool.setPrice(1.25e8);
+        assertApproxEqAbs(
+            adapter.totalAssetsManaged(), 1_000e6, 1, "single-asset loop: equity invariant under Aave price move"
+        );
+    }
+
+    /// @notice The levered valuation no longer reads the Lattice feed, so an externally STALE Lattice
+    ///         feed does not affect (or revert) `totalAssetsManaged()`. (Pre-fix this reverted with
+    ///         ChainlinkStaleData; post-fix the Aave oracle is the only price source.)
+    function test_NetEquity_DoesNotRevertOnStaleLatticeFeed() public {
         adapter.lever(500e6);
-        // Warp far past staleness; the oracle read inside totalAssetsManaged must revert.
+        // Warp far past the Lattice feed's staleness window. The Aave-oracle path ignores it.
         vm.warp(block.timestamp + 7200);
-        vm.expectRevert(); // ChainlinkStaleData
-        adapter.totalAssetsManaged();
+        assertApproxEqAbs(adapter.totalAssetsManaged(), 1_000e6, 1, "valuation unaffected by stale Lattice feed");
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //              ITEM 2 — lever/delever ARE OPERATOR-GATED
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice `lever` is operator-gated: a permissionless caller (here even `admin`, who is NOT the
+    ///         operator) cannot force leverage up. Pre-fix this was ungated (risk/timing griefing).
+    function test_Lever_RevertsForNonOperator() public {
+        vm.prank(admin); // admin is NOT the operator (operator == this test contract)
+        vm.expectRevert(abi.encodeWithSelector(IProtocolAdapter.ProtocolAdapterUnauthorized.selector, admin));
+        adapter.lever(500e6);
+
+        assertEq(pool.debt(address(adapter)), 0, "no leverage taken by unauthorized caller");
+    }
+
+    /// @notice `delever` is operator-gated: a permissionless caller cannot force-unwind leverage.
+    function test_Delever_RevertsForNonOperator() public {
+        adapter.lever(500e6); // operator opens a position
+        assertEq(pool.debt(address(adapter)), 500e6, "position open");
+
+        address attacker = address(0xBAD);
+        vm.prank(attacker);
+        vm.expectRevert(abi.encodeWithSelector(IProtocolAdapter.ProtocolAdapterUnauthorized.selector, attacker));
+        adapter.delever(300e6);
+
+        assertEq(pool.debt(address(adapter)), 500e6, "debt unchanged: unauthorized delever rejected");
+    }
+
+    /// @notice With NO operator wired, lever/delever revert for everyone (secure default).
+    function test_LeverDelever_RevertWhenOperatorUnset() public {
+        // Fresh adapter with no operator set.
+        MockLeverAdapter fresh = new MockLeverAdapter();
+        fresh.initialize(admin, address(pool), address(asset), vault, treasury, FEED_KEY, 1.1e18);
+
+        vm.expectRevert(abi.encodeWithSelector(IProtocolAdapter.ProtocolAdapterUnauthorized.selector, address(this)));
+        fresh.lever(100e6);
+
+        vm.expectRevert(abi.encodeWithSelector(IProtocolAdapter.ProtocolAdapterUnauthorized.selector, address(this)));
+        fresh.delever(100e6);
+    }
+
+    /// @notice The authorized operator can lever AND delever, with the position changing as before.
+    function test_Authorized_LeverAndDelever_Succeed() public {
+        adapter.lever(500e6);
+        assertEq(pool.debt(address(adapter)), 500e6, "operator levered");
+
+        uint256 repaid = adapter.delever(200e6);
+        assertEq(repaid, 200e6, "operator delevered");
+        assertEq(pool.debt(address(adapter)), 300e6, "debt reduced by operator");
     }
 }

@@ -116,6 +116,13 @@ contract MockAaveV3Pool {
         return address(this);
     }
 
+    // --- IAaveOracle (this contract doubles as the price oracle) ---
+    // Returns the asset price in base ccy (8 decimals) — the SAME `priceBase8` that drives
+    // getUserAccountData, so the adapter's Aave-oracle net-equity path is self-consistent.
+    function getAssetPrice(address) external view returns (uint256) {
+        return priceBase8;
+    }
+
     // --- IAaveV3Pool ---
     function getReserveData(address) external view returns (IAaveV3Pool.ReserveData memory d) {
         d.aTokenAddress = address(aToken);
