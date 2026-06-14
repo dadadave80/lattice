@@ -15,6 +15,7 @@ import {
 import {IAccessControl} from "@lattice/interfaces/IAccessControl.sol";
 import {IEmergencyStop} from "@lattice/interfaces/IEmergencyStop.sol";
 import {IGovernedDiamondCut} from "@lattice/interfaces/IGovernedDiamondCut.sol";
+import {IUpgradeRegistry} from "@lattice/interfaces/IUpgradeRegistry.sol";
 import {EmergencyStop} from "@lattice/security/EmergencyStop.sol";
 import {EmergencyStopLib} from "@lattice/security/libraries/EmergencyStopLib.sol";
 import {Test} from "forge-std/Test.sol";
@@ -208,4 +209,138 @@ contract GovernedDiamondCutTester is Test {
         vm.prank(address(diamond));
         diamond.diamondCut(cuts, address(0), "");
     }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                          UPGRADE REGISTRY
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice Adds a `replace` cut that re-points the ping selector to a second facet, so we can
+    ///         apply a *second* distinct cut (Add then Replace) and assert monotonic versioning.
+    function _replacePingCut(address _facet) internal pure returns (FacetCut[] memory cuts) {
+        bytes4[] memory sels = new bytes4[](1);
+        sels[0] = DummyFacet.ping.selector;
+        cuts = new FacetCut[](1);
+        cuts[0] = FacetCut({facetAddress: _facet, action: FacetCutAction.Replace, functionSelectors: sels});
+    }
+
+    /// @notice Before any cut, the registry is empty: cutCount() == 0 and version 1 is unwritten.
+    function test_RegistryEmptyBeforeAnyCut() public view {
+        assertEq(diamond.cutCount(), 0, "cutCount must start at 0");
+        IUpgradeRegistry.CutRecord memory rec = diamond.getCutRecord(1);
+        assertEq(rec.cutHash, bytes32(0));
+        assertEq(rec.executor, address(0));
+        assertEq(rec.executedAt, 0);
+        assertEq(rec.facetCutCount, 0);
+        assertEq(rec.init, address(0));
+    }
+
+    /// @notice An authorized cut records version 1 with the exact cutHash / executor / timestamp /
+    ///         facetCutCount / init. cutHash == keccak256(abi.encode(cuts, init, calldata)).
+    function test_RegistryRecordsVersionOne() public {
+        vm.warp(123_456);
+        FacetCut[] memory cuts = _addPingCut();
+        bytes memory cd = bytes("");
+        bytes32 expectedHash = keccak256(abi.encode(cuts, address(0), cd));
+
+        vm.prank(address(diamond));
+        diamond.diamondCut(cuts, address(0), cd);
+
+        assertEq(diamond.cutCount(), 1, "cutCount must be 1 after first cut");
+        IUpgradeRegistry.CutRecord memory rec = diamond.getCutRecord(1);
+        assertEq(rec.cutHash, expectedHash, "cutHash mismatch");
+        assertEq(rec.executor, address(diamond), "executor must be the caller");
+        assertEq(rec.executedAt, uint48(123_456), "executedAt must be block.timestamp");
+        assertEq(rec.facetCutCount, uint32(1), "facetCutCount must equal cuts.length");
+        assertEq(rec.init, address(0), "init must be recorded");
+    }
+
+    /// @notice The init address (non-zero) is captured in the record.
+    function test_RegistryRecordsInitAddress() public {
+        // Init that adds ping AND delegatecalls a self-call doing nothing harmful: use the diamond
+        // itself as init with empty calldata is rejected by diamond-lib (non-empty calldata required
+        // for non-zero init), so use a no-op init contract.
+        NoopInit noop = new NoopInit();
+        FacetCut[] memory cuts = _addPingCut();
+        bytes memory cd = abi.encodeWithSelector(NoopInit.run.selector);
+
+        vm.prank(address(diamond));
+        diamond.diamondCut(cuts, address(noop), cd);
+
+        IUpgradeRegistry.CutRecord memory rec = diamond.getCutRecord(1);
+        assertEq(rec.init, address(noop), "init address must be recorded");
+        assertEq(rec.cutHash, keccak256(abi.encode(cuts, address(noop), cd)), "cutHash must bind init+calldata");
+    }
+
+    /// @notice A second cut records version 2 (monotonic), distinct from version 1, and both records
+    ///         persist independently.
+    function test_RegistryMonotonicSecondVersion() public {
+        FacetCut[] memory addCut = _addPingCut();
+        vm.prank(address(diamond));
+        diamond.diamondCut(addCut, address(0), "");
+
+        // Second cut: replace ping with a fresh facet.
+        DummyFacet dummy2 = new DummyFacet();
+        FacetCut[] memory replaceCut = _replacePingCut(address(dummy2));
+        bytes32 expectedHash2 = keccak256(abi.encode(replaceCut, address(0), bytes("")));
+        vm.prank(address(diamond));
+        diamond.diamondCut(replaceCut, address(0), "");
+
+        assertEq(diamond.cutCount(), 2, "cutCount must be 2 after second cut");
+
+        IUpgradeRegistry.CutRecord memory rec1 = diamond.getCutRecord(1);
+        IUpgradeRegistry.CutRecord memory rec2 = diamond.getCutRecord(2);
+        assertEq(rec1.cutHash, keccak256(abi.encode(addCut, address(0), bytes(""))), "v1 hash preserved");
+        assertEq(rec2.cutHash, expectedHash2, "v2 hash mismatch");
+        assertTrue(rec1.cutHash != rec2.cutHash, "the two versions must differ");
+        assertEq(rec2.facetCutCount, uint32(1));
+    }
+
+    /// @notice The CutRecorded event fires with (version, cutHash, executor) on a successful cut.
+    function test_RegistryCutRecordedEventEmitted() public {
+        FacetCut[] memory cuts = _addPingCut();
+        bytes32 expectedHash = keccak256(abi.encode(cuts, address(0), bytes("")));
+        // version indexed, executor indexed; cutHash is in data.
+        vm.expectEmit(true, true, false, true, address(diamond));
+        emit IUpgradeRegistry.CutRecorded(1, expectedHash, address(diamond));
+        vm.prank(address(diamond));
+        diamond.diamondCut(cuts, address(0), "");
+    }
+
+    /// @notice A blocked cut (emergency-stopped) records NOTHING — no phantom version, cutCount stays 0.
+    function test_RegistryBlockedCutRecordsNothing() public {
+        vm.prank(admin);
+        diamond.addGuardian(admin);
+        vm.prank(admin);
+        diamond.emergencyStop("freeze");
+
+        FacetCut[] memory cuts = _addPingCut();
+        vm.prank(address(diamond));
+        vm.expectRevert(abi.encodeWithSelector(IEmergencyStop.EmergencyStopActive.selector));
+        diamond.diamondCut(cuts, address(0), "");
+
+        assertEq(diamond.cutCount(), 0, "blocked cut must not bump the version counter");
+        IUpgradeRegistry.CutRecord memory rec = diamond.getCutRecord(1);
+        assertEq(rec.executor, address(0), "blocked cut must leave version 1 unwritten");
+        assertEq(rec.cutHash, bytes32(0));
+    }
+
+    /// @notice An unauthorized cut (no role) records NOTHING — no phantom version.
+    function test_RegistryUnauthorizedCutRecordsNothing() public {
+        FacetCut[] memory cuts = _addPingCut();
+        vm.prank(stranger);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector, stranger, UPGRADE_EXECUTOR_ROLE
+            )
+        );
+        diamond.diamondCut(cuts, address(0), "");
+
+        assertEq(diamond.cutCount(), 0, "unauthorized cut must not record a version");
+        assertEq(diamond.getCutRecord(1).executor, address(0));
+    }
+}
+
+/// @notice A no-op init target for exercising the recorded `init` address on a cut.
+contract NoopInit {
+    function run() external pure {}
 }

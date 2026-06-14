@@ -5,6 +5,7 @@ import {DiamondLib, FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {IGovernedDiamondCut} from "@lattice/interfaces/IGovernedDiamondCut.sol";
+import {IUpgradeRegistry} from "@lattice/interfaces/IUpgradeRegistry.sol";
 import {EmergencyStopLib} from "@lattice/security/libraries/EmergencyStopLib.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
@@ -34,13 +35,18 @@ bytes32 constant ERC165_MAP_ICUT_SLOT = 0xa0f80413692945aab97c6ef0328381ebb94e4b
 bytes32 constant UPGRADE_EXECUTOR_ROLE = keccak256("UPGRADE_EXECUTOR_ROLE");
 
 /// @notice ERC-7201 namespaced storage for the GovernedDiamondCut module.
-/// @dev Reserved for future upgrade-policy fields. The module is functionally stateless today
-///      (authority lives in AccessControl + EmergencyStop storage), but it owns a namespaced slot
-///      so it is independently composable and append-only-extensible.
+/// @dev Authority itself lives in AccessControl + EmergencyStop storage; this slot holds the
+///      module's own append-only upgrade audit trail. APPEND-ONLY: fields are only ever added at
+///      the end — never reordered, retyped, or removed — so the ERC-7201 slot stays stable across
+///      upgrades. The slot constant is unchanged because the namespace string is unchanged.
 /// @custom:storage-location erc7201:lattice.storage.GovernedDiamondCut
 struct GovernedDiamondCutStorage {
-    /// @dev Monotonic counter of governed cuts applied (audit aid; not consensus-critical).
+    /// @dev Monotonic counter of governed cuts applied; doubles as the latest registry version.
+    ///      The value assigned to a cut (post-increment) IS that cut's `version`.
     uint256 _cutCount;
+    /// @dev Append-only registry: version (1-indexed) => immutable {IUpgradeRegistry.CutRecord}.
+    ///      Written once per successful cut and never mutated thereafter.
+    mapping(uint256 version => IUpgradeRegistry.CutRecord record) _cutRegistry;
 }
 
 /// @title GovernedDiamondCut Library
@@ -94,22 +100,45 @@ library GovernedDiamondCutLib {
         // 2) Authority: only address(this) holds the role, so only a timelock-relayed governance
         //    proposal can reach here. Reverts AccessControlUnauthorizedAccount(caller, role).
         AccessControlLib.checkRole(UPGRADE_EXECUTOR_ROLE);
-        // 3) Apply the cut via diamond-lib (untouched core).
+        // 3) Apply the cut via diamond-lib (untouched core). If it reverts (e.g. selector clash),
+        //    execution never reaches the registry write below — so a failed cut records NOTHING.
         DiamondLib.diamondCut(_diamondCut, _init, _calldata);
 
         GovernedDiamondCutStorage storage $ = governedDiamondCutStorage();
+        uint256 version;
         unchecked {
-            ++$._cutCount;
+            // Post-increment value is this cut's 1-indexed version (registry is 1-indexed).
+            version = ++$._cutCount;
         }
+
+        // 4) Append the immutable audit record under `version` (append-only registry).
+        bytes32 cutHash = keccak256(abi.encode(_diamondCut, _init, _calldata));
+        $._cutRegistry[version] = IUpgradeRegistry.CutRecord({
+            cutHash: cutHash,
+            executor: msg.sender,
+            executedAt: uint48(block.timestamp),
+            facetCutCount: uint32(_diamondCut.length),
+            init: _init
+        });
+
         emit IGovernedDiamondCut.UpgradeExecuted(msg.sender, _diamondCut.length, _init);
+        emit IUpgradeRegistry.CutRecorded(version, cutHash, msg.sender);
     }
 
     //*//////////////////////////////////////////////////////////////////////////
     //                               VIEW FUNCTIONS
     //////////////////////////////////////////////////////////////////////////*//
 
-    /// @notice Returns the number of governed cuts applied so far.
+    /// @notice Returns the number of governed cuts applied so far (also the latest registry version).
     function cutCount() internal view returns (uint256) {
         return governedDiamondCutStorage()._cutCount;
+    }
+
+    /// @notice Returns the immutable audit record for a given registry `version`.
+    /// @dev Versions are 1-indexed; an unwritten version (0, or any value > {cutCount}) returns a
+    ///      zero-valued {IUpgradeRegistry.CutRecord}.
+    /// @param _version The registry version to look up.
+    function getCutRecord(uint256 _version) internal view returns (IUpgradeRegistry.CutRecord memory) {
+        return governedDiamondCutStorage()._cutRegistry[_version];
     }
 }
