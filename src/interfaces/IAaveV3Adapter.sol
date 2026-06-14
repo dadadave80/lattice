@@ -26,6 +26,9 @@ interface IAaveV3Adapter {
     /// @notice Emitted after a delever op (withdraw collateral then repay debt).
     event Delevered(uint256 repaid);
 
+    /// @notice Emitted when the Aave rewards controller is set.
+    event RewardsControllerSet(address indexed controller);
+
     // ------------------------------- Errors ---------------------------------
 
     /// @notice The configured asset's reserve has no aToken (asset not listed on Aave).
@@ -51,6 +54,9 @@ interface IAaveV3Adapter {
     /// @notice Returns the current eMode category id set on the Pool for this adapter.
     function eModeCategory() external view returns (uint8);
 
+    /// @notice Returns the configured Aave rewards controller (address(0) if unset).
+    function rewardsController() external view returns (address);
+
     // ---------------------------- Config writes -----------------------------
 
     /// @notice Sets the Aave eMode category (admin only). Used to enable correlated-asset looping.
@@ -61,6 +67,9 @@ interface IAaveV3Adapter {
 
     /// @notice Sets the reward recipient (admin only).
     function setRewardRecipient(address recipient) external;
+
+    /// @notice Sets the Aave rewards controller (admin only).
+    function setRewardsController(address controller) external;
 
     // ------------------------------ Leverage --------------------------------
 

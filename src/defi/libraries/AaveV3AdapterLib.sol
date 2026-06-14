@@ -8,6 +8,7 @@ import {IAaveV3Adapter} from "@lattice/interfaces/IAaveV3Adapter.sol";
 import {IERC20} from "@lattice/interfaces/IERC20.sol";
 import {IProtocolAdapter} from "@lattice/interfaces/IProtocolAdapter.sol";
 import {IAToken} from "@lattice/interfaces/external/IAToken.sol";
+import {IAaveRewardsController} from "@lattice/interfaces/external/IAaveRewardsController.sol";
 import {IAaveV3Pool} from "@lattice/interfaces/external/IAaveV3Pool.sol";
 import {IPoolAddressesProvider} from "@lattice/interfaces/external/IPoolAddressesProvider.sol";
 import {ChainlinkAdapterLib} from "@lattice/oracles/libraries/ChainlinkAdapterLib.sol";
@@ -32,9 +33,9 @@ bytes32 constant AAVE_V3_ADAPTER_ERC165_STORAGE_LOCATION =
 /// `keccak256(abi.encode(bytes4(0x8f7783e6), 0x9ca7f3e2e2bfb15fdf072b85dde92837cddacee6cf2f6b38cd06c9457c1c4200))`.
 bytes32 constant ERC165_MAP_IPROTOCOLADAPTER_SLOT = 0x789387b95720f4aa713e912bc377a2f999f1310b69003727d9c01b7ea1494c77;
 
-/// @dev 0x358066bd is `type(IAaveV3Adapter).interfaceId`.
-/// `keccak256(abi.encode(bytes4(0x358066bd), 0x9ca7f3e2e2bfb15fdf072b85dde92837cddacee6cf2f6b38cd06c9457c1c4200))`.
-bytes32 constant ERC165_MAP_IAAVEV3ADAPTER_SLOT = 0xe468d72a593ceecc9e0a362a31920ed641375c6a53da65d4526c31d16027629c;
+/// @dev 0xe0d5525d is `type(IAaveV3Adapter).interfaceId`.
+/// `keccak256(abi.encode(bytes4(0xe0d5525d), 0x9ca7f3e2e2bfb15fdf072b85dde92837cddacee6cf2f6b38cd06c9457c1c4200))`.
+bytes32 constant ERC165_MAP_IAAVEV3ADAPTER_SLOT = 0x262752a3af13c9a5ddea1c5915891d611ab5f872b74fae046923437d05fcf120;
 
 /// @dev Aave variable interest-rate mode (1 == stable, deprecated; 2 == variable).
 uint256 constant AAVE_VARIABLE_RATE = 2;
@@ -57,6 +58,8 @@ struct AaveV3AdapterStorage {
     uint256 _minHealthFactorWad;
     /// @dev Current eMode category set on the Pool (cached for views).
     uint8 _eModeCategory;
+    /// @dev Aave rewards controller; `harvest()` claims incentives for the aToken from it.
+    address _rewardsController;
 }
 
 /// @title AaveV3AdapterLib
@@ -212,6 +215,17 @@ library AaveV3AdapterLib {
         if (recipient == address(0)) revert IProtocolAdapter.ProtocolAdapterZeroAddress();
         aaveV3AdapterStorage()._rewardRecipient = recipient;
         emit IProtocolAdapter.RewardRecipientSet(recipient);
+    }
+
+    function rewardsController() internal view returns (address) {
+        return aaveV3AdapterStorage()._rewardsController;
+    }
+
+    function setRewardsController(address controller) internal {
+        AccessControlLib.checkRole(DEFAULT_ADMIN_ROLE);
+        if (controller == address(0)) revert IProtocolAdapter.ProtocolAdapterZeroAddress();
+        aaveV3AdapterStorage()._rewardsController = controller;
+        emit IAaveV3Adapter.RewardsControllerSet(controller);
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -380,12 +394,38 @@ library AaveV3AdapterLib {
         return numerator / price;
     }
 
-    // ---- Stubs filled in by later tasks (compile placeholders) ----
+    //*//////////////////////////////////////////////////////////////////////////
+    //                                  REWARDS
+    //////////////////////////////////////////////////////////////////////////*//
 
-    /// @dev Claims + forwards rewards raw. Real body in Task 9.
+    /// @notice Claims all Aave incentive rewards for the adapter's aToken and forwards each reward
+    ///         token RAW to the configured recipient. Zero-claim / fee-on-transfer safe; never
+    ///         reverts the rebalance/withdraw path. Rewards are not part of `totalAssetsManaged()`.
     function harvest() internal {
-        // Task 9 wires the rewards controller claim; supply-only path has nothing to claim.
+        ReentrancyGuardLib.nonReentrantBefore();
+        AaveV3AdapterStorage storage $ = aaveV3AdapterStorage();
+        address controller = $._rewardsController;
+        address recipient = $._rewardRecipient;
+        if (controller == address(0)) {
+            ReentrancyGuardLib.nonReentrantAfter();
+            return; // nothing to claim from
+        }
+        address[] memory assets = new address[](1);
+        assets[0] = aToken();
+        // Claim rewards to this adapter, then forward each raw.
+        (address[] memory rewardsList,) = IAaveRewardsController(controller).claimAllRewards(assets, address(this));
+        for (uint256 i; i < rewardsList.length; ++i) {
+            address rt = rewardsList[i];
+            if (rt == address(0)) continue;
+            uint256 forwarded = AdapterBaseLib.forwardRewardRaw(rt, recipient);
+            if (forwarded > 0) {
+                emit IProtocolAdapter.RewardsForwarded(rt, recipient, forwarded);
+            }
+        }
+        ReentrancyGuardLib.nonReentrantAfter();
     }
+
+    // ---- Stubs filled in by later tasks (compile placeholders) ----
 
     /// @dev Full exit to vault. Real body in Task 10.
     function emergencyWithdraw() internal returns (uint256) {

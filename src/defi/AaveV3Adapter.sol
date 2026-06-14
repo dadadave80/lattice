@@ -102,6 +102,11 @@ contract AaveV3Adapter is IStrategy, IProtocolAdapter, IAaveV3Adapter {
     }
 
     /// @inheritdoc IAaveV3Adapter
+    function rewardsController() external view virtual override returns (address) {
+        return AaveV3AdapterLib.rewardsController();
+    }
+
+    /// @inheritdoc IAaveV3Adapter
     function setEMode(uint8 categoryId) external virtual override {
         AaveV3AdapterLib.setEMode(categoryId);
     }
@@ -114,6 +119,11 @@ contract AaveV3Adapter is IStrategy, IProtocolAdapter, IAaveV3Adapter {
     /// @inheritdoc IAaveV3Adapter
     function setRewardRecipient(address recipient) external virtual override {
         AaveV3AdapterLib.setRewardRecipient(recipient);
+    }
+
+    /// @inheritdoc IAaveV3Adapter
+    function setRewardsController(address controller) external virtual override {
+        AaveV3AdapterLib.setRewardsController(controller);
     }
 
     /// @inheritdoc IAaveV3Adapter
