@@ -78,6 +78,33 @@ library GovernedDiamondCutLib {
     }
 
     //*//////////////////////////////////////////////////////////////////////////
+    //                            GOVERNED CUT
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice Guarded diamond cut: reverts if emergency-stopped, then requires the caller to hold
+    ///         UPGRADE_EXECUTOR_ROLE, then delegates to `DiamondLib.diamondCut`. Introduces no new
+    ///         cut logic — all selector-collision, immutable-function, bytecode-existence, and
+    ///         init-delegatecall handling is diamond-lib's.
+    /// @param _diamondCut The facet addresses, cut actions, and function selectors.
+    /// @param _init The address delegatecalled after the cut (address(0) to skip).
+    /// @param _calldata The calldata passed to `_init`.
+    function diamondCut(FacetCut[] calldata _diamondCut, address _init, bytes calldata _calldata) internal {
+        // 1) Outer guard: a guardian can halt ALL upgrades without a governance round.
+        EmergencyStopLib.checkNotStopped();
+        // 2) Authority: only address(this) holds the role, so only a timelock-relayed governance
+        //    proposal can reach here. Reverts AccessControlUnauthorizedAccount(caller, role).
+        AccessControlLib.checkRole(UPGRADE_EXECUTOR_ROLE);
+        // 3) Apply the cut via diamond-lib (untouched core).
+        DiamondLib.diamondCut(_diamondCut, _init, _calldata);
+
+        GovernedDiamondCutStorage storage $ = governedDiamondCutStorage();
+        unchecked {
+            ++$._cutCount;
+        }
+        emit IGovernedDiamondCut.UpgradeExecuted(msg.sender, _diamondCut.length, _init);
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
     //                               VIEW FUNCTIONS
     //////////////////////////////////////////////////////////////////////////*//
 
