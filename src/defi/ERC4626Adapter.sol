@@ -13,6 +13,8 @@ import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib
 ///         Implements `IStrategy` (funds routing), `IProtocolAdapter` (sidecar), and
 ///         `IERC4626Adapter` (wrap config). NAV via `convertToAssets` (no oracle); supply-only
 ///         (no leverage). All logic lives in ERC4626AdapterLib.
+/// @custom:lattice-version 0.1.0
+/// @custom:lattice-source Lattice original
 contract ERC4626Adapter is IStrategy, IProtocolAdapter, IERC4626Adapter {
     //*//////////////////////////////////////////////////////////////////////////
     //                              IStrategy

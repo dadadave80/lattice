@@ -10,6 +10,8 @@ import {VestingWalletLib} from "@lattice/utils/libraries/VestingWalletLib.sol";
 /// to the Ownable beneficiary.
 /// @dev Stateless delegator — all logic and storage live in VestingWalletLib.
 /// Consumers should deploy this as a facet within a Diamond proxy alongside OwnableFacet.
+/// @custom:lattice-version 0.1.0
+/// @custom:lattice-source OpenZeppelin v5.1.0
 contract VestingWallet is IVestingWallet {
     /// @inheritdoc IVestingWallet
     function start() public view virtual returns (uint256) {

@@ -23,6 +23,8 @@ import {Checkpoints} from "@lattice/utils/libraries/Checkpoints.sol";
 ///        - NoncesLib.__Nonces_init()
 ///        - VotesLib.__Votes_init()
 ///        - ERC20VotesLib.__ERC20Votes_init()
+/// @custom:lattice-version 0.1.0
+/// @custom:lattice-source OpenZeppelin v5.1.0
 contract ERC20Votes is ERC20, Votes {
     //*//////////////////////////////////////////////////////////////////////////
     //                        IERC20 — TRANSFER OVERRIDES

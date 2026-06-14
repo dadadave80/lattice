@@ -17,6 +17,8 @@ import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib
 ///         CurveStableSwapAdapterLib.
 /// @dev Provenance: Curve StableSwap (https://github.com/curvefi/curve-contract) +
 ///      Curve LiquidityGauge (https://github.com/curvefi/curve-dao-contracts).
+/// @custom:lattice-version 0.1.0
+/// @custom:lattice-source Lattice original
 contract CurveStableSwapAdapter is IStrategy, IProtocolAdapter, ICurveStableSwapAdapter {
     //*//////////////////////////////////////////////////////////////////////////
     //                              IStrategy

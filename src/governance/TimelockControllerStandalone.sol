@@ -14,6 +14,8 @@ import {TimelockControllerLib} from "@lattice/governance/libraries/TimelockContr
 ///         {AccessControl}; runs the pre/init/post initializer dance in the constructor.
 /// @dev Consumers who need a Diamond-proxy deployment should use {TimelockController} as a
 ///      facet and call initializers separately.
+/// @custom:lattice-version 0.1.0
+/// @custom:lattice-source OpenZeppelin v5.1.0
 contract TimelockControllerStandalone is TimelockController, AccessControl {
     /// @param minDelay The initial minimum delay for operations.
     /// @param proposers The addresses to grant PROPOSER_ROLE + CANCELLER_ROLE.

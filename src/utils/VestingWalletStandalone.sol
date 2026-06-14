@@ -11,6 +11,8 @@ import {VestingWalletLib} from "@lattice/utils/libraries/VestingWalletLib.sol";
 /// @notice A non-Diamond deployable VestingWallet that can be used as a standalone contract.
 /// @dev Combines VestingWallet functionality with direct ownership via OwnableLib.
 /// The beneficiary is the Ownable owner; to change the beneficiary transfer ownership.
+/// @custom:lattice-version 0.1.0
+/// @custom:lattice-source OpenZeppelin v5.1.0
 contract VestingWalletStandalone is VestingWallet {
     /// @param beneficiary The initial beneficiary (owner) who will receive vested tokens.
     /// @param startTimestamp The Unix timestamp at which vesting begins.

@@ -13,6 +13,8 @@ import {ChainlinkVRFLib} from "@lattice/oracles/libraries/ChainlinkVRFLib.sol";
 ///      This facet handles the request/track layer only.  Consumer facets that
 ///      inherit this contract should override `rawFulfillRandomWords` to act on
 ///      delivered randomness after calling `super.rawFulfillRandomWords`.
+/// @custom:lattice-version 0.1.0
+/// @custom:lattice-source Chainlink
 contract ChainlinkVRF is IChainlinkVRF {
     /// @inheritdoc IChainlinkVRF
     function getConfig() external view virtual override returns (VRFConfig memory) {

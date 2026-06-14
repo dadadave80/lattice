@@ -9,6 +9,8 @@ import {EIP712Lib} from "@lattice/utils/libraries/EIP712Lib.sol";
 /// @dev All signing helpers (domainSeparatorV4, hashTypedDataV4) are internal
 ///      functions in EIP712Lib and consumed by other modules (e.g. Permit variants).
 ///      Only the ERC-5267 discovery function needs a public entry point.
+/// @custom:lattice-version 0.1.0
+/// @custom:lattice-source OpenZeppelin v5.1.0
 contract EIP712 {
     /// @notice Returns the ERC-5267 domain descriptor for this contract.
     /// @dev Delegates to EIP712Lib.eip712Domain().

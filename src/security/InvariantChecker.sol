@@ -8,6 +8,8 @@ import {InvariantCheckerLib} from "@lattice/security/libraries/InvariantCheckerL
 /// @notice Thin Diamond facet that exposes a registry of named on-chain invariants.
 /// @dev All logic lives in {InvariantCheckerLib}. This contract is stateless and forwards
 ///      every call to the library. Inherit this in your Diamond facet to add invariant checking.
+/// @custom:lattice-version 0.1.0
+/// @custom:lattice-source Lattice original
 contract InvariantChecker is IInvariantChecker {
     /// @inheritdoc IInvariantChecker
     function getInvariant(bytes32 key) public view virtual returns (address target, bytes4 selector) {

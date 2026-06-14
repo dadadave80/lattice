@@ -12,6 +12,8 @@ import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib
 /// @notice Diamond facet adapting an Aave v3 supply (+ optional leverage) position into a Lattice
 ///         vault strategy. Implements `IStrategy` (funds routing), `IProtocolAdapter` (sidecar),
 ///         and `IAaveV3Adapter` (Aave config). All logic lives in AaveV3AdapterLib.
+/// @custom:lattice-version 0.1.0
+/// @custom:lattice-source Lattice original
 contract AaveV3Adapter is IStrategy, IProtocolAdapter, IAaveV3Adapter {
     //*//////////////////////////////////////////////////////////////////////////
     //                              IStrategy

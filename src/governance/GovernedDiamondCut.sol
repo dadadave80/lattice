@@ -19,6 +19,8 @@ import {IUpgradeRegistry} from "@lattice/interfaces/IUpgradeRegistry.sol";
 ///      getters plus the frozen-selector / preview / verify surface are plain facet functions and are
 ///      NOT advertised as a distinct ERC-165 interface, so the facet's advertised id stays the
 ///      canonical cut selector `0x1f931c1c`.
+/// @custom:lattice-version 0.1.0
+/// @custom:lattice-source Lattice original
 contract GovernedDiamondCut is IGovernedDiamondCut, IUpgradeRegistry, IFrozenSelectors, IEmergencyCut {
     /// @inheritdoc IGovernedDiamondCut
     function diamondCut(FacetCut[] calldata _diamondCut, address _init, bytes calldata _calldata)

@@ -20,6 +20,8 @@ import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib
 /// @dev Provenance: Lido stETH / wstETH / WithdrawalQueue (https://github.com/lidofinance/lido-dao) +
 ///      canonical WETH9 (https://github.com/gnosis/canonical-weth). The facet exposes a payable
 ///      `receive()` so it can take native ETH from `WETH.withdraw` and from the Lido queue's claim.
+/// @custom:lattice-version 0.1.0
+/// @custom:lattice-source Lattice original
 contract LidoAdapter is IStrategy, IProtocolAdapter, ILidoAdapter {
     //*//////////////////////////////////////////////////////////////////////////
     //                              IStrategy

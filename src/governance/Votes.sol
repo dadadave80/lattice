@@ -11,6 +11,8 @@ import {ERC20Lib} from "@lattice/tokens/libraries/ERC20Lib.sol";
 /// @dev All logic lives in VotesLib. This contract is a pure delegator.
 ///      When used standalone, voting units default to 0 (no token balance).
 ///      Use ERC20Votes instead to combine ERC-20 balances with voting power.
+/// @custom:lattice-version 0.1.0
+/// @custom:lattice-source OpenZeppelin v5.1.0
 contract Votes is IVotes {
     /// @inheritdoc IVotes
     function getVotes(address account) public view virtual returns (uint256) {

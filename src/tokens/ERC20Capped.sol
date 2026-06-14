@@ -11,6 +11,8 @@ import {ERC20Lib} from "@lattice/tokens/libraries/ERC20Lib.sol";
 /// @notice Stateless Diamond facet for ERC-20 tokens with a capped total supply.
 /// @dev Inherits ERC20. Exposes a `mint` function (access-controlled externally)
 ///      that enforces the cap before delegating to ERC20Lib._mint.
+/// @custom:lattice-version 0.1.0
+/// @custom:lattice-source OpenZeppelin v5.1.0
 contract ERC20Capped is ERC20, IERC20Capped {
     /// @inheritdoc IERC20Capped
     function cap() public view virtual returns (uint256) {

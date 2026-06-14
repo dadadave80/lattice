@@ -19,6 +19,8 @@ import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib
 ///      `IVaultCore.setStrategyManager(address(this))` before calling `rebalance()`.
 ///      `allocateToStrategy` is guarded by `_checkManager()` which checks the caller
 ///      address, not any role — granting DEFAULT_ADMIN_ROLE is neither necessary nor sufficient.
+/// @custom:lattice-version 0.1.0
+/// @custom:lattice-source Yearn V3
 contract StrategyManager is IStrategyManager {
     //*//////////////////////////////////////////////////////////////////////////
     //                              VIEW FUNCTIONS

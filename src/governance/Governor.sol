@@ -13,6 +13,8 @@ import {IGovernor} from "@lattice/interfaces/IGovernor.sol";
 /// @dev Consumers targeting a Diamond proxy should deploy this as a facet and call
 ///      {GovernorLib.__Governor_init} (wrapped in pre/postInitializer) from the diamond's
 ///      initializer. For standalone deployment use {GovernorStandalone}.
+/// @custom:lattice-version 0.1.0
+/// @custom:lattice-source OpenZeppelin v5.1.0
 contract Governor is IGovernor {
     //*//////////////////////////////////////////////////////////////////////////
     //                               VIEW FUNCTIONS

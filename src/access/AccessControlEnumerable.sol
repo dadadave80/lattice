@@ -9,6 +9,8 @@ import {EnumerableSet} from "@lattice/utils/libraries/EnumerableSet.sol";
 /// @title AccessControlEnumerable
 /// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/access/extensions/AccessControlEnumerable.sol)
 /// @notice Diamond facet exposing AccessControl + per-role address enumeration.
+/// @custom:lattice-version 0.1.0
+/// @custom:lattice-source OpenZeppelin v5.1.0
 contract AccessControlEnumerable is AccessControl, IAccessControlEnumerable {
     using EnumerableSet for EnumerableSet.AddressSet;
 

@@ -8,6 +8,8 @@ import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 /// @notice AccessControl is a contract module that allows children to implement role-based access
 /// control mechanisms. This is a lightweight version that doesn't include enumeration of role members.
 /// @dev See {AccessControlEnumerable} if you need to enumerate role members.
+/// @custom:lattice-version 0.1.0
+/// @custom:lattice-source OpenZeppelin v5.1.0
 contract AccessControl {
     /// @notice Checks whether an account has a specific role.
     /// @param _role The role identifier to check.

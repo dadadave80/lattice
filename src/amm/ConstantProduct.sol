@@ -10,6 +10,8 @@ import {IConstantProduct} from "@lattice/interfaces/IConstantProduct.sol";
 /// @notice Stateless Diamond facet for a Uniswap V2-style constant-product AMM.
 /// @dev All logic lives in ConstantProductLib. This contract is a pure delegator.
 ///      Deploy as a facet in a Diamond proxy. Initialize via ConstantProductLib.__ConstantProduct_init.
+/// @custom:lattice-version 0.1.0
+/// @custom:lattice-source Uniswap V2
 contract ConstantProduct is IConstantProduct {
     //*//////////////////////////////////////////////////////////////////////////
     //                               VIEW FUNCTIONS

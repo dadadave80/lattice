@@ -10,6 +10,8 @@ import {TWAPOracleLib} from "@lattice/oracles/libraries/TWAPOracleLib.sol";
 /// @notice Diamond facet for a Uniswap V2-style time-weighted average price oracle.
 /// @dev Stateless delegator — all logic and storage live in TWAPOracleLib.
 ///      Consumers inherit this contract and add AccessControl + an initializer.
+/// @custom:lattice-version 0.1.0
+/// @custom:lattice-source Uniswap V2
 contract TWAPOracle is ITWAPOracle {
     /// @inheritdoc ITWAPOracle
     function getPair(bytes32 key) external view virtual override returns (address pair) {

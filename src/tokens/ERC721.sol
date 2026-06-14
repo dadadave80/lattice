@@ -8,6 +8,8 @@ import {ERC721Lib} from "@lattice/tokens/libraries/ERC721Lib.sol";
 /// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC721/ERC721.sol)
 /// @notice Stateless Diamond facet for the ERC-721 Non-Fungible Token standard.
 /// @dev All logic lives in ERC721Lib. This contract is a pure delegator.
+/// @custom:lattice-version 0.1.0
+/// @custom:lattice-source OpenZeppelin v5.1.0
 contract ERC721 is IERC721 {
     /// @inheritdoc IERC721
     function name() public view virtual returns (string memory) {

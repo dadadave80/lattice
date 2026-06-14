@@ -8,6 +8,8 @@ import {CircuitBreakerLib} from "@lattice/security/libraries/CircuitBreakerLib.s
 /// @notice Thin Diamond facet that exposes multi-key threshold-based circuit breaking.
 /// @dev All logic lives in {CircuitBreakerLib}. This contract is stateless and forwards
 ///      every call to the library. Inherit this in your Diamond facet to add circuit-breaking.
+/// @custom:lattice-version 0.1.0
+/// @custom:lattice-source Lattice original
 contract CircuitBreaker is ICircuitBreaker {
     /// @inheritdoc ICircuitBreaker
     function isTripped(bytes32 key) public view virtual returns (bool) {

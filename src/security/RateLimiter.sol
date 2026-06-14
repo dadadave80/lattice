@@ -9,6 +9,8 @@ import {RateLimiterLib} from "@lattice/security/libraries/RateLimiterLib.sol";
 /// @notice Thin Diamond facet that exposes token-bucket rate limiting keyed by bytes32.
 /// @dev All logic lives in {RateLimiterLib}. This contract is stateless and forwards
 ///      every call to the library. Inherit this in your Diamond facet to add rate limiting.
+/// @custom:lattice-version 0.1.0
+/// @custom:lattice-source Chainlink CCIP
 contract RateLimiter is IRateLimiter {
     /// @inheritdoc IRateLimiter
     function getConfig(bytes32 key) public view virtual returns (uint256 capacity, uint256 refillRate) {

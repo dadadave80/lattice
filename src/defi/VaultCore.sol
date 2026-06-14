@@ -19,6 +19,8 @@ import {ERC4626} from "@lattice/tokens/ERC4626.sol";
 ///
 ///      `totalAssets()` is overridden to include assets held by registered strategies
 ///      so that ERC-4626 share pricing reflects the full vault balance.
+/// @custom:lattice-version 0.1.0
+/// @custom:lattice-source OpenZeppelin v5.1.0
 contract VaultCore is ERC4626, IVaultCore {
     //*//////////////////////////////////////////////////////////////////////////
     //                           ERC-4626 OVERRIDE

@@ -9,6 +9,8 @@ import {ERC20Lib} from "@lattice/tokens/libraries/ERC20Lib.sol";
 /// @notice Stateless Diamond facet for the ERC-20 token standard.
 /// @dev All logic lives in ERC20Lib. This contract is a pure delegator.
 ///      Subclasses (Burnable, Capped, Permit) override `virtual` methods.
+/// @custom:lattice-version 0.1.0
+/// @custom:lattice-source OpenZeppelin v5.1.0
 contract ERC20 is IERC20 {
     /// @inheritdoc IERC20
     function totalSupply() public view virtual returns (uint256) {

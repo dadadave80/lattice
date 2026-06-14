@@ -7,6 +7,8 @@ import {IAccessManager} from "@lattice/interfaces/IAccessManager.sol";
 /// @title AccessManager
 /// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/access/manager/AccessManager.sol)
 /// @notice Diamond facet exposing AccessManagerLib.
+/// @custom:lattice-version 0.1.0
+/// @custom:lattice-source OpenZeppelin v5.1.0
 contract AccessManager is IAccessManager {
     function ADMIN_ROLE() external pure virtual override returns (uint64) {
         return AccessManagerLib.ADMIN_ROLE;

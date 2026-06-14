@@ -11,6 +11,8 @@ import {ITimelockController} from "@lattice/interfaces/ITimelockController.sol";
 ///         TimelockControllerLib; authentication uses AccessControlLib roles.
 /// @dev This is a thin, stateless façade. Deploy it as a Diamond facet or inherit it
 ///      (together with AccessControl) in a standalone contract.
+/// @custom:lattice-version 0.1.0
+/// @custom:lattice-source OpenZeppelin v5.1.0
 contract TimelockController is ITimelockController {
     //*//////////////////////////////////////////////////////////////////////////
     //                              ROLE CONSTANTS

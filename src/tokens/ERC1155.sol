@@ -8,6 +8,8 @@ import {ERC1155Lib} from "@lattice/tokens/libraries/ERC1155Lib.sol";
 /// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC1155/ERC1155.sol)
 /// @notice Stateless Diamond facet for the ERC-1155 Multi-Token Standard.
 /// @dev All logic lives in ERC1155Lib. This contract is a pure delegator.
+/// @custom:lattice-version 0.1.0
+/// @custom:lattice-source OpenZeppelin v5.1.0
 contract ERC1155 is IERC1155 {
     /// @inheritdoc IERC1155
     function uri(uint256 id) public view virtual returns (string memory) {
