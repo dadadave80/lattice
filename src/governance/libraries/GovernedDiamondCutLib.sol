@@ -33,9 +33,13 @@ bytes32 constant GOVERNED_DIAMOND_CUT_ERC165_STORAGE_LOCATION =
 ///      second time: `DiamondLib.registerInterface()` already sets this flag in any 2535 deployment.
 bytes32 constant ERC165_MAP_ICUT_SLOT = 0xa0f80413692945aab97c6ef0328381ebb94e4b17a84d11ebf6b61f73435b6d7e;
 
-/// @dev Role required to execute a governed cut. Granted ONLY to `address(this)` at init, so the
-///      sole legitimate caller is a timelock relaying a passed governance proposal back into the
-///      diamond. `keccak256("UPGRADE_EXECUTOR_ROLE")`.
+/// @dev Role required to execute a governed cut. Granted ONLY to `address(this)` at init AND pinned to
+///      administer ITSELF (`__GovernedDiamondCut_init` calls `_setRoleAdmin(role, role)`), so the sole
+///      legitimate caller is a timelock relaying a passed governance proposal back into the diamond.
+///      Self-administration is essential: it removes `DEFAULT_ADMIN_ROLE` (0x00, the unset default) as
+///      the role's admin, so a live `DEFAULT_ADMIN_ROLE` holder can NOT `grantRole` it to an attacker
+///      and skip the Governor/Timelock path. Only an existing holder — `address(this)`, via a passed
+///      proposal — can grant a new executor. `keccak256("UPGRADE_EXECUTOR_ROLE")`.
 bytes32 constant UPGRADE_EXECUTOR_ROLE = keccak256("UPGRADE_EXECUTOR_ROLE");
 
 /// @dev Role required to fire the zero-delay, REMOVAL-ONLY emergency cut (`emergencyRemoveCut`). This
@@ -46,7 +50,10 @@ bytes32 constant UPGRADE_EXECUTOR_ROLE = keccak256("UPGRADE_EXECUTOR_ROLE");
 ///      (verify: `cast keccak "EMERGENCY_GUARDIAN_ROLE"`). It is intentionally DISTINCT from
 ///      `UPGRADE_EXECUTOR_ROLE`: a guardian can ONLY remove code (never add/replace — those still
 ///      require a full governance round) and can never remove a frozen selector. Consumers/tests import
-///      the constant from `EmergencyStopLib`.
+///      the constant from `EmergencyStopLib`. NOTE: unlike `UPGRADE_EXECUTOR_ROLE`, this role is
+///      intentionally left admin-managed (its admin stays `DEFAULT_ADMIN_ROLE`) BY DESIGN — it is a
+///      trusted, removal-only-bounded role that the admin must be able to grant/rotate; pinning it is
+///      out of scope (and undesirable) here.
 
 /// @notice ERC-7201 namespaced storage for the GovernedDiamondCut module.
 /// @dev Authority itself lives in AccessControl + EmergencyStop storage; this slot holds the
@@ -93,15 +100,27 @@ library GovernedDiamondCutLib {
     //////////////////////////////////////////////////////////////////////////*//
 
     /// @notice Initializes the GovernedDiamondCut module.
-    /// @dev Grants UPGRADE_EXECUTOR_ROLE to `address(this)` so only a timelock-relayed governance
-    ///      call can pass the role gate. Must be called inside the preInitializer/postInitializer
-    ///      window; AccessControl must already be initialized (the role write targets its storage).
-    ///      Does NOT register an ERC-165 interface: `0x1f931c1c` is already registered by
-    ///      `DiamondLib.registerInterface()` (see the ERC165_MAP_ICUT_SLOT note above).
+    /// @dev Grants UPGRADE_EXECUTOR_ROLE to `address(this)` AND pins that role to administer ITSELF, so
+    ///      the role is held solely by `address(this)` and cannot be granted by anyone else. The
+    ///      self-administration step is load-bearing: without it the role's admin defaults to
+    ///      `DEFAULT_ADMIN_ROLE` (0x00), which would let any DEFAULT_ADMIN_ROLE holder (e.g. a live
+    ///      `admin` EOA) `grantRole(UPGRADE_EXECUTOR_ROLE, attacker)` and then `diamondCut` directly,
+    ///      bypassing the entire Governor + TimelockController + vote + delay path. With the role
+    ///      self-administered, only an *existing* holder can grant it — and the only holder is
+    ///      `address(this)`, reachable solely via a timelock-relayed passed proposal. `_setRoleAdmin` is
+    ///      the UNGATED setter (the gated `setRoleAdmin` would require the initializer to itself hold the
+    ///      current admin role, which is not guaranteed during bootstrap). Must be called inside the
+    ///      preInitializer/postInitializer window; AccessControl must already be initialized (the role
+    ///      writes target its storage). Does NOT register an ERC-165 interface: `0x1f931c1c` is already
+    ///      registered by `DiamondLib.registerInterface()` (see the ERC165_MAP_ICUT_SLOT note above).
     function __GovernedDiamondCut_init() internal {
         bytes32 s = InitializableLib.initializableSlot();
         InitializableLib.checkInitializing(s);
         AccessControlLib._grantRole(UPGRADE_EXECUTOR_ROLE, address(this));
+        // Pin UPGRADE_EXECUTOR_ROLE to administer itself so DEFAULT_ADMIN_ROLE can no longer
+        // grant/revoke it (OZ AccessManager adminless pattern). Only an existing holder
+        // (i.e. address(this), via a passed governance proposal) can grant a new executor.
+        AccessControlLib._setRoleAdmin(UPGRADE_EXECUTOR_ROLE, UPGRADE_EXECUTOR_ROLE);
     }
 
     //*//////////////////////////////////////////////////////////////////////////

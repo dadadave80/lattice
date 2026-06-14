@@ -25,7 +25,9 @@ interface IGovernedDiamondCut {
 
     /// @notice Add/replace/remove any number of functions and optionally execute a function with
     ///         delegatecall — but only when not emergency-stopped and the caller holds
-    ///         UPGRADE_EXECUTOR_ROLE (held solely by `address(this)`).
+    ///         UPGRADE_EXECUTOR_ROLE. That role is granted solely to `address(this)` at init AND is
+    ///         pinned to administer itself, so `DEFAULT_ADMIN_ROLE` cannot grant it out-of-band: the
+    ///         only way to reach this function is a timelock-relayed passed governance proposal.
     /// @param _diamondCut The facet addresses, cut actions, and function selectors.
     /// @param _init The address of the contract or facet to delegatecall after the cut (0 to skip).
     /// @param _calldata The calldata passed to `_init`.

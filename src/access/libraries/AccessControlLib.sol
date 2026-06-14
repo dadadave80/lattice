@@ -149,12 +149,24 @@ library AccessControlLib {
         _revokeRole(role, callerConfirmation);
     }
 
-    /// @notice Sets a new admin role for a specific role.
+    /// @notice Sets a new admin role for a specific role, gated on the role's *current* admin.
     /// @param role The role identifier to modify.
     /// @param adminRole The new admin role that will control access to the target role.
-    /// @dev Emits a {RoleAdminChanged} event.
+    /// @dev Reverts {AccessControlUnauthorizedAccount} unless the caller holds the role's current admin
+    /// role, then delegates to {_setRoleAdmin}. Emits a {RoleAdminChanged} event.
     function setRoleAdmin(bytes32 role, bytes32 adminRole) internal {
         checkRole(getRoleAdmin(role));
+        _setRoleAdmin(role, adminRole);
+    }
+
+    /// @notice Internal, UNGATED admin-role setter (mirrors OpenZeppelin's `_setRoleAdmin`).
+    /// @param role The role identifier to modify.
+    /// @param adminRole The new admin role that will control access to the target role.
+    /// @dev Has no access restrictions — callers are responsible for gating (e.g. the public
+    /// {setRoleAdmin} wrapper, or a module initializer running in a privileged bootstrap window).
+    /// Used during initialization to pin a role's admin (e.g. making a role self-administered) before
+    /// any external grant/revoke is possible. Emits a {RoleAdminChanged} event.
+    function _setRoleAdmin(bytes32 role, bytes32 adminRole) internal {
         AccessControlStorage storage $ = accessControlStorage();
         bytes32 previousAdminRole = getRoleAdmin(role);
         $._roles[role].adminRole = adminRole;

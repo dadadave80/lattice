@@ -5,7 +5,7 @@ import {DiamondLib, FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLi
 import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
-import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
+import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
 import {GovernedDiamondCut} from "@lattice/governance/GovernedDiamondCut.sol";
 import {
     GOVERNED_DIAMOND_CUT_STORAGE_SLOT,
@@ -123,6 +123,87 @@ contract GovernedDiamondCutTester is Test {
 
     function test_UpgradeExecutorRoleConstant() public pure {
         assertEq(UPGRADE_EXECUTOR_ROLE, keccak256("UPGRADE_EXECUTOR_ROLE"), "role constant mismatch");
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //               UPGRADE_EXECUTOR_ROLE ADMIN PINNING (self-administered)
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice The admin of UPGRADE_EXECUTOR_ROLE is pinned to ITSELF at init (not DEFAULT_ADMIN_ROLE).
+    ///         This is the core invariant that prevents a DEFAULT_ADMIN_ROLE holder from minting new
+    ///         executors out-of-band and bypassing the Governor + Timelock path.
+    function test_UpgradeExecutorRoleIsSelfAdministered() public view {
+        assertEq(
+            diamond.getRoleAdmin(UPGRADE_EXECUTOR_ROLE),
+            UPGRADE_EXECUTOR_ROLE,
+            "UPGRADE_EXECUTOR_ROLE must administer itself, not DEFAULT_ADMIN_ROLE"
+        );
+        // Explicitly NOT the zero (DEFAULT_ADMIN_ROLE) value — the vulnerable default.
+        assertTrue(diamond.getRoleAdmin(UPGRADE_EXECUTOR_ROLE) != DEFAULT_ADMIN_ROLE, "must not default to 0x00");
+    }
+
+    /// @notice PROOF-OF-VULNERABILITY (now secured): a DEFAULT_ADMIN_ROLE holder (the live `admin`
+    ///         EOA) must NOT be able to grant UPGRADE_EXECUTOR_ROLE to an arbitrary attacker. Before
+    ///         the fix the role defaulted to DEFAULT_ADMIN_ROLE admin, so this grant SUCCEEDED and the
+    ///         attacker could then `diamondCut` directly — bypassing the entire governance/timelock
+    ///         path. With the role self-administered, `admin` lacks the admin role and the grant now
+    ///         reverts AccessControlUnauthorizedAccount(admin, UPGRADE_EXECUTOR_ROLE).
+    function test_AdminCannotGrantUpgradeExecutorRole() public {
+        assertTrue(diamond.hasRole(DEFAULT_ADMIN_ROLE, admin), "admin holds DEFAULT_ADMIN_ROLE");
+        vm.prank(admin);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector, admin, UPGRADE_EXECUTOR_ROLE
+            )
+        );
+        diamond.grantRole(UPGRADE_EXECUTOR_ROLE, stranger);
+
+        // The attacker never received the role, so it still cannot cut.
+        assertFalse(diamond.hasRole(UPGRADE_EXECUTOR_ROLE, stranger), "attacker must not hold the role");
+    }
+
+    /// @notice Closes the loop on the bypass: even after the admin ATTEMPTS the (now-reverting) grant,
+    ///         the attacker still cannot reach `diamondCut`. Demonstrates the governance gate holds.
+    function test_AdminGrantBypassFullyBlocked() public {
+        FacetCut[] memory cuts = _addPingCut();
+
+        // 1) Admin's attempt to mint a new executor reverts.
+        vm.prank(admin);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector, admin, UPGRADE_EXECUTOR_ROLE
+            )
+        );
+        diamond.grantRole(UPGRADE_EXECUTOR_ROLE, stranger);
+
+        // 2) Therefore the would-be executor still cannot cut.
+        vm.prank(stranger);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector, stranger, UPGRADE_EXECUTOR_ROLE
+            )
+        );
+        diamond.diamondCut(cuts, address(0), "");
+    }
+
+    /// @notice Governance STILL works: because `address(this)` holds UPGRADE_EXECUTOR_ROLE and the role
+    ///         administers itself, a timelock-relayed (self) call CAN grant the role to a new executor.
+    ///         This proves the fix does not break the legitimate governance grant path. The prank as
+    ///         `address(diamond)` models exactly the timelock relaying a passed proposal back in.
+    function test_GovernanceCanStillGrantNewExecutor() public {
+        address newExecutor = address(0xE0E0);
+        assertFalse(diamond.hasRole(UPGRADE_EXECUTOR_ROLE, newExecutor), "not an executor yet");
+
+        // The diamond (holding the now-self-administering role) grants it to a new executor.
+        vm.prank(address(diamond));
+        diamond.grantRole(UPGRADE_EXECUTOR_ROLE, newExecutor);
+        assertTrue(diamond.hasRole(UPGRADE_EXECUTOR_ROLE, newExecutor), "governance must be able to add an executor");
+
+        // And that newly-anointed executor can now actually cut.
+        FacetCut[] memory cuts = _addPingCut();
+        vm.prank(newExecutor);
+        diamond.diamondCut(cuts, address(0), "");
+        assertEq(diamond.facetOf(DummyFacet.ping.selector), address(dummy), "new executor's cut must apply");
     }
 
     //*//////////////////////////////////////////////////////////////////////////
