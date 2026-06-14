@@ -97,6 +97,7 @@ and a row here.
 | AaveV3Adapter | `lattice.storage.AaveV3Adapter` | `0x78e1f0849c8352c9588d407dc28e9981715ac638a0aa753fc1ecf5191c1f8200` | `IProtocolAdapter` + `IAaveV3Adapter` | `0x8f7783e6` / `0xe0d5525d` | `0x789387b95720f4aa713e912bc377a2f999f1310b69003727d9c01b7ea1494c77` / `0x262752a3af13c9a5ddea1c5915891d611ab5f872b74fae046923437d05fcf120` |
 | CompoundV3Adapter | `lattice.storage.CompoundV3Adapter` | `0x96f5f0ff446cccea8e0037b1046912f9609bac8e9b25707c9fadf78bc2d9fe00` | `IProtocolAdapter` + `ICompoundV3Adapter` | `0x8f7783e6` / `0xa01f1203` | `0x789387b95720f4aa713e912bc377a2f999f1310b69003727d9c01b7ea1494c77` / `0x02c9afc8b129398c559418de4825ac6d2670e884630d5a02557a9dcecd0b40e1` |
 | ERC4626Adapter | `lattice.storage.ERC4626Adapter` | `0x8e54862d9117c02647004a257ec52ba4f4c6ce02a01e23235ed8d34a2127c500` | `IProtocolAdapter` + `IERC4626Adapter` | `0x8f7783e6` / `0x6189942b` | `0x789387b95720f4aa713e912bc377a2f999f1310b69003727d9c01b7ea1494c77` / `0x84ec7ed953664aca1f16de58454031d5ee56bdfdc133c3183893a830a7b1c08b` |
+| CurveStableSwapAdapter | `lattice.storage.CurveStableSwapAdapter` | `0x9a875cb7e904ab3576fe7e6b7405b28b9f810acb5bf4def0fec57c5e754def00` | `IProtocolAdapter` + `ICurveStableSwapAdapter` | `0x8f7783e6` / `0xfa38ccb7` | `0x789387b95720f4aa713e912bc377a2f999f1310b69003727d9c01b7ea1494c77` / `0x5d7c390f2f6bf0ca6f51b6ea0940c100b21726e3e202811c94c2ff39040d4299` |
 
 ### AMM
 
@@ -133,7 +134,7 @@ and a row here.
 
 ---
 
-**Counts:** 34 storage-bearing modules (34 unique ERC-7201 slots) and 36 ERC-165 interface
+**Counts:** 35 storage-bearing modules (35 unique ERC-7201 slots) and 37 ERC-165 interface
 map slots (GovernedDiamondCut reuses IDiamondCut's `0x1f931c1c` ERC-165 slot, so it adds an
 ERC-7201 slot but no new ERC-165 map slot; AaveV3Adapter registers two interfaces —
 the generic `IProtocolAdapter` plus its protocol-specific `IAaveV3Adapter` — so it adds two
@@ -141,4 +142,6 @@ ERC-165 map slots; CompoundV3Adapter reuses the shared `IProtocolAdapter` map sl
 adds its protocol-specific `ICompoundV3Adapter` slot — so it adds one ERC-7201 slot and one
 new ERC-165 map slot; ERC4626Adapter likewise reuses the shared `IProtocolAdapter` map slot and
 adds only its protocol-specific `IERC4626Adapter` slot — one ERC-7201 slot and one new ERC-165
+map slot; CurveStableSwapAdapter likewise reuses the shared `IProtocolAdapter` map slot and adds
+only its protocol-specific `ICurveStableSwapAdapter` slot — one ERC-7201 slot and one new ERC-165
 map slot).
