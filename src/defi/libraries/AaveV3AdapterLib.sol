@@ -425,10 +425,52 @@ library AaveV3AdapterLib {
         ReentrancyGuardLib.nonReentrantAfter();
     }
 
-    // ---- Stubs filled in by later tasks (compile placeholders) ----
+    //*//////////////////////////////////////////////////////////////////////////
+    //                              EMERGENCY EXIT
+    //////////////////////////////////////////////////////////////////////////*//
 
-    /// @dev Full exit to vault. Real body in Task 10.
-    function emergencyWithdraw() internal returns (uint256) {
-        return 0; // replaced in a later task
+    /// @notice Fully exits the Aave position and returns all recovered assets to the vault.
+    /// @dev Admin-only. Callable while paused/stopped (it is the escape hatch). If the position is
+    ///      levered, repays debt from withdrawn collateral until debt is cleared, then withdraws
+    ///      the remaining collateral to the vault. Reentrancy-gated. Reports the real amount sent.
+    function emergencyWithdraw() internal returns (uint256 recovered) {
+        AccessControlLib.checkRole(DEFAULT_ADMIN_ROLE);
+        ReentrancyGuardLib.nonReentrantBefore();
+        AaveV3AdapterStorage storage $ = aaveV3AdapterStorage();
+        address asset_ = $._asset;
+        address vault_ = $._vault;
+        IAaveV3Pool pool = _pool();
+
+        // Repay outstanding debt by iteratively pulling collateral and repaying. With single-asset
+        // looping, pulling collateral and repaying the same token unwinds the loop. One pass of
+        // "withdraw all withdrawable, repay all" clears typical positions; loop until debt is 0 or
+        // no further progress (defensive bound).
+        (, uint256 debtBase,,,,) = pool.getUserAccountData(address(this));
+        uint256 guardN;
+        while (debtBase > 0 && guardN < 8) {
+            // Withdraw the max currently withdrawable (Aave caps at the HF-safe amount).
+            pool.withdraw(asset_, type(uint256).max, address(this));
+            uint256 bal = AdapterBaseLib.balanceOfSelf(asset_);
+            if (bal == 0) break;
+            AdapterBaseLib.forceApprove(asset_, address(pool), bal);
+            pool.repay(asset_, bal, AAVE_VARIABLE_RATE, address(this));
+            (, debtBase,,,,) = pool.getUserAccountData(address(this));
+            unchecked {
+                ++guardN;
+            }
+        }
+
+        // Withdraw all remaining collateral straight to the vault.
+        uint256 beforeBal = IERC20(asset_).balanceOf(vault_);
+        pool.withdraw(asset_, type(uint256).max, vault_);
+        // Sweep any residual idle asset sitting in the adapter (leftover from repay rounding).
+        uint256 residual = AdapterBaseLib.balanceOfSelf(asset_);
+        if (residual > 0) {
+            AdapterBaseLib.transferHonest(asset_, vault_, residual);
+        }
+        recovered = IERC20(asset_).balanceOf(vault_) - beforeBal;
+
+        emit IProtocolAdapter.EmergencyWithdrawn(asset_, vault_, recovered);
+        ReentrancyGuardLib.nonReentrantAfter();
     }
 }
