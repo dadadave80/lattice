@@ -94,6 +94,7 @@ and a row here.
 |---|---|---|---|---|---|
 | VaultCore | `lattice.storage.VaultCore` | `0x391c4f0f82559e85ff01d307d4b19b40f088495abd453c84d7e0fa35497de600` | `IVaultCore` | `0xa86d8962` | `0xee1c77df59bab5696d7427515bb0fba56d8719259c4cc5bc6587a3654b26bdf2` |
 | StrategyManager | `lattice.storage.StrategyManager` | `0x1b00913e47c53f1d64d326bde2ad6a7904ed791d4ee4432bc133be907894ca00` | `IStrategyManager` | `0xcce4011b` | `0x3d05027e9ebc1daac4235d8ac5fc59b9acea5ece08ff307b79ab5b69ad569930` |
+| AaveV3Adapter | `lattice.storage.AaveV3Adapter` | `0x78e1f0849c8352c9588d407dc28e9981715ac638a0aa753fc1ecf5191c1f8200` | `IProtocolAdapter` + `IAaveV3Adapter` | `0x8f7783e6` / `0xe0d5525d` | `0x789387b95720f4aa713e912bc377a2f999f1310b69003727d9c01b7ea1494c77` / `0x262752a3af13c9a5ddea1c5915891d611ab5f872b74fae046923437d05fcf120` |
 
 ### AMM
 
@@ -130,6 +131,8 @@ and a row here.
 
 ---
 
-**Counts:** 31 storage-bearing modules (31 unique ERC-7201 slots) and 32 ERC-165 interface
+**Counts:** 32 storage-bearing modules (32 unique ERC-7201 slots) and 34 ERC-165 interface
 map slots (GovernedDiamondCut reuses IDiamondCut's `0x1f931c1c` ERC-165 slot, so it adds an
-ERC-7201 slot but no new ERC-165 map slot).
+ERC-7201 slot but no new ERC-165 map slot; AaveV3Adapter registers two interfaces —
+the generic `IProtocolAdapter` plus its protocol-specific `IAaveV3Adapter` — so it adds two
+ERC-165 map slots).

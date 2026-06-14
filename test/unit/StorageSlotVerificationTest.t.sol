@@ -61,6 +61,11 @@ import {ERC165_MAP_IVOTES_SLOT, VOTES_STORAGE_SLOT} from "@lattice/governance/li
 
 // defi
 import {
+    AAVE_V3_ADAPTER_STORAGE_SLOT,
+    ERC165_MAP_IAAVEV3ADAPTER_SLOT,
+    ERC165_MAP_IPROTOCOLADAPTER_SLOT
+} from "@lattice/defi/libraries/AaveV3AdapterLib.sol";
+import {
     ERC165_MAP_ISTRATEGYMANAGER_SLOT,
     STRATEGY_MANAGER_STORAGE_SLOT
 } from "@lattice/defi/libraries/StrategyManagerLib.sol";
@@ -115,6 +120,7 @@ import {
 // Interfaces (for type(...).interfaceId)
 // ---------------------------------------------------------------------------
 
+import {IAaveV3Adapter} from "@lattice/interfaces/IAaveV3Adapter.sol";
 import {IAccessControl} from "@lattice/interfaces/IAccessControl.sol";
 import {IAccessControlEnumerable} from "@lattice/interfaces/IAccessControlEnumerable.sol";
 import {IAccessControlTimed} from "@lattice/interfaces/IAccessControlTimed.sol";
@@ -134,6 +140,7 @@ import {IGovernor} from "@lattice/interfaces/IGovernor.sol";
 import {IInvariantChecker} from "@lattice/interfaces/IInvariantChecker.sol";
 import {INonces} from "@lattice/interfaces/INonces.sol";
 import {IPausable} from "@lattice/interfaces/IPausable.sol";
+import {IProtocolAdapter} from "@lattice/interfaces/IProtocolAdapter.sol";
 import {IRateLimiter} from "@lattice/interfaces/IRateLimiter.sol";
 import {IReentrancyGuard} from "@lattice/interfaces/IReentrancyGuard.sol";
 import {IStrategyManager} from "@lattice/interfaces/IStrategyManager.sol";
@@ -295,6 +302,14 @@ contract StorageSlotVerificationTest is Test {
             STRATEGY_MANAGER_STORAGE_SLOT,
             _erc7201Slot("lattice.storage.StrategyManager"),
             "StrategyManager storage slot mismatch"
+        );
+    }
+
+    function test_AaveV3AdapterStorageSlot() public pure {
+        assertEq(
+            AAVE_V3_ADAPTER_STORAGE_SLOT,
+            _erc7201Slot("lattice.storage.AaveV3Adapter"),
+            "AaveV3Adapter storage slot mismatch"
         );
     }
 
@@ -566,6 +581,22 @@ contract StorageSlotVerificationTest is Test {
         );
     }
 
+    function test_Erc165MapIProtocolAdapterSlot() public pure {
+        assertEq(
+            ERC165_MAP_IPROTOCOLADAPTER_SLOT,
+            _erc165MapSlot(type(IProtocolAdapter).interfaceId, ERC165_STORAGE_LOCATION),
+            "ERC165 IProtocolAdapter map slot mismatch"
+        );
+    }
+
+    function test_Erc165MapIAaveV3AdapterSlot() public pure {
+        assertEq(
+            ERC165_MAP_IAAVEV3ADAPTER_SLOT,
+            _erc165MapSlot(type(IAaveV3Adapter).interfaceId, ERC165_STORAGE_LOCATION),
+            "ERC165 IAaveV3Adapter map slot mismatch"
+        );
+    }
+
     // ---- amm ----
 
     function test_Erc165MapIConstantProductSlot() public pure {
@@ -708,7 +739,7 @@ contract StorageSlotVerificationTest is Test {
     // ======================== Slot inventories ========================
 
     function _allStorageSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](31);
+        slots = new bytes32[](32);
         uint256 i;
         // access
         slots[i++] = ACCESS_CONTROL_STORAGE_SLOT;
@@ -732,6 +763,7 @@ contract StorageSlotVerificationTest is Test {
         // defi
         slots[i++] = VAULT_CORE_STORAGE_SLOT;
         slots[i++] = STRATEGY_MANAGER_STORAGE_SLOT;
+        slots[i++] = AAVE_V3_ADAPTER_STORAGE_SLOT;
         // amm
         slots[i++] = CONSTANT_PRODUCT_STORAGE_SLOT;
         // oracles
@@ -752,7 +784,7 @@ contract StorageSlotVerificationTest is Test {
     }
 
     function _allErc165MapSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](32);
+        slots = new bytes32[](34);
         uint256 i;
         // access
         slots[i++] = ERC165_MAP_IACCESSCONTROL_SLOT;
@@ -777,6 +809,8 @@ contract StorageSlotVerificationTest is Test {
         // defi
         slots[i++] = ERC165_MAP_IVAULTCORE_SLOT;
         slots[i++] = ERC165_MAP_ISTRATEGYMANAGER_SLOT;
+        slots[i++] = ERC165_MAP_IPROTOCOLADAPTER_SLOT;
+        slots[i++] = ERC165_MAP_IAAVEV3ADAPTER_SLOT;
         // amm
         slots[i++] = ERC165_MAP_ICONSTANTPRODUCT_SLOT;
         // oracles
