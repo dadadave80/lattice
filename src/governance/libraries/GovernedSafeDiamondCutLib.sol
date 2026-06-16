@@ -242,14 +242,16 @@ library GovernedSafeDiamondCutLib {
         if (eta == 0) revert IGovernedSafeDiamondCut.CutNotScheduled(id);
         if (block.timestamp < eta) revert IGovernedSafeDiamondCut.CutNotReady(id, eta);
 
+        // Effects before interactions: clear the schedule BEFORE the external cut so a re-entrant
+        // executeCut with the same id cannot replay it. Defense-in-depth — the _checkSafe gate already
+        // blocks re-entry, since an init delegatecall runs as the diamond (msg.sender != the Safe).
+        delete $._scheduledAt[id];
+
         // Frozen-selector protection BEFORE applying the cut, against the CURRENT frozen set.
         _enforceNotFrozen($, _diamondCut);
 
         // Apply the cut via diamond-lib (untouched core).
         DiamondLib.diamondCut(_diamondCut, _init, _calldata);
-
-        // Clear the operation so it cannot be replayed (marks it done).
-        delete $._scheduledAt[id];
 
         uint256 version;
         unchecked {
