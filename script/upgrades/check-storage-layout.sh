@@ -52,6 +52,8 @@ PROBE="StorageLayoutProbe"
 #   <namespace>             : the module's @custom:storage-location erc7201 string.
 GUARDED_STRUCTS=(
     "GovernedDiamondCutStorage lattice.storage.GovernedDiamondCut"
+    "SafeDiamondCutStorage lattice.storage.SafeDiamondCut"
+    "GovernedSafeDiamondCutStorage lattice.storage.GovernedSafeDiamondCut"
 )
 
 command -v forge >/dev/null 2>&1 || { echo "ERROR: forge not found on PATH" >&2; exit 2; }

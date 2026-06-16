@@ -53,6 +53,21 @@ and a row here.
   **no** new ERC-165 id (the pinned `0x1f931c1c` is unchanged) and **no** new storage slot (the
   `_frozenSelectors` set is APPENDED to the existing `GovernedDiamondCutStorage`, leaving the namespace
   string and slot untouched).
+- **SafeDiamondCut** is the multisig-gated analogue of GovernedDiamondCut: it pins a Gnosis Safe address
+  as the cut authority instead of a self-held role. Like GovernedDiamondCut it exposes only the canonical
+  cut selector `diamondCut` (`0x1f931c1c` == `IDiamondCut`) for ERC-165 purposes, so it likewise **reuses**
+  diamond-lib's `ERC165_MAP_ICUT_SLOT` (`0xa0f80413692945aab97c6ef0328381ebb94e4b17a84d11ebf6b61f73435b6d7e`)
+  — already registered by `DiamondLib.registerInterface()` — and adds a unique ERC-7201 storage slot but
+  **no** new ERC-165 row. Its Safe-authority surface (`ISafeDiamondCut`/`ISafeAuthority`: `setSafe` /
+  `safe`) plus the frozen-selector / registry / emergency surfaces are plain facet functions sharing the
+  same ERC-7201 slot — they add no ERC-165 id and no new storage slot (`_safe` and the registry/frozen
+  fields live in the single `SafeDiamondCutStorage`).
+- **GovernedSafeDiamondCut** is the Safe-gated, built-in-timelock variant. Unlike SafeDiamondCut it does
+  **not** serve a synchronous cut at `0x1f931c1c` (every cut travels schedule → delay → execute), so its
+  scheduling surface is a genuinely **new** interface, `IGovernedSafeDiamondCut` (`0xacb1aeb6`), which mints
+  its **own** ERC-165 map slot (`0xe71618ea5c7977b34866901ace6d6c6585c16253798f12024e30133e7fb7b675`). It
+  therefore adds one ERC-7201 storage slot and one new ERC-165 map slot. Its shared Safe-authority /
+  registry / frozen / emergency surfaces are plain facet functions sharing the same ERC-7201 slot.
 - Utility libraries that hold no own ERC-7201 storage slot (`EnumerableSet`, `TimelockLib`) and
   token-extension libraries that declare no `*_STORAGE_SLOT` (`ERC20Burnable`, `ERC20Permit`,
   `ERC20Votes`) are intentionally **not** listed here. (`ERC20Permit`, `ERC20Votes`, and
@@ -102,6 +117,8 @@ and a row here.
 | Governor | `lattice.storage.Governor` | `0x20a7901cc1c78eb01d63d9c1875355513c3dabc82d8607ad0f82e1312f750c00` | `IGovernor` | `0x220cdebb` | `0x16d0785b1b0d3d2d988cff60fd273da31ad0fc5acccec3792316ca40dcc33977` |
 | TimelockController | `lattice.storage.TimelockController` | `0x87f5daf40fea2daee0a93658693902d7cd9e07fa1a4f16f2e8eb4a4e9d433000` | `ITimelockController` | `0xd826478e` | `0xc0a085cd59634eff50a01907a25e03eb6a55bd6279462a3ac6a99ce44b9c2f08` |
 | GovernedDiamondCut | `lattice.storage.GovernedDiamondCut` | `0x9a46da229426897da8e8df190858c430564a988584235445fd229e2bef8a8700` | `IDiamondCut` (reused, EIP-2535) | `0x1f931c1c` | `0xa0f80413692945aab97c6ef0328381ebb94e4b17a84d11ebf6b61f73435b6d7e` (shared) |
+| SafeDiamondCut | `lattice.storage.SafeDiamondCut` | `0xdfdae3ef74d2f2c31fc34cd5e60ae4b170cd90587a13d52debd5569f575e7900` | `IDiamondCut` (reused, EIP-2535) | `0x1f931c1c` | `0xa0f80413692945aab97c6ef0328381ebb94e4b17a84d11ebf6b61f73435b6d7e` (shared) |
+| GovernedSafeDiamondCut | `lattice.storage.GovernedSafeDiamondCut` | `0x67b04bedb2ce49892ef6d6cc51adf679ddefc544b7aca2da8ae73f02694ff300` | `IGovernedSafeDiamondCut` | `0xacb1aeb6` | `0xe71618ea5c7977b34866901ace6d6c6585c16253798f12024e30133e7fb7b675` |
 
 ### DeFi
 
@@ -151,9 +168,13 @@ and a row here.
 
 ---
 
-**Counts:** 37 storage-bearing modules (37 unique ERC-7201 slots) and 39 ERC-165 interface
+**Counts:** 39 storage-bearing modules (39 unique ERC-7201 slots) and 40 ERC-165 interface
 map slots (GovernedDiamondCut reuses IDiamondCut's `0x1f931c1c` ERC-165 slot, so it adds an
-ERC-7201 slot but no new ERC-165 map slot; AaveV3Adapter registers two interfaces —
+ERC-7201 slot but no new ERC-165 map slot; SafeDiamondCut likewise reuses IDiamondCut's
+`0x1f931c1c` ERC-165 slot, so it adds an ERC-7201 slot but no new ERC-165 map slot;
+GovernedSafeDiamondCut serves no synchronous cut selector and registers its own
+`IGovernedSafeDiamondCut` (`0xacb1aeb6`) interface, so it adds one ERC-7201 slot AND one new
+ERC-165 map slot; AaveV3Adapter registers two interfaces —
 the generic `IProtocolAdapter` plus its protocol-specific `IAaveV3Adapter` — so it adds two
 ERC-165 map slots; CompoundV3Adapter reuses the shared `IProtocolAdapter` map slot and only
 adds its protocol-specific `ICompoundV3Adapter` slot — so it adds one ERC-7201 slot and one
