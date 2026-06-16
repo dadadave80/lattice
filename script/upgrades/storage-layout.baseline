@@ -2,3 +2,17 @@
 0	0	_cutCount	t_uint256
 1	0	_cutRegistry	t_mapping(t_uint256,t_struct(CutRecord)_storage)
 2	0	_frozenSelectors	t_struct(Bytes4Set)_storage
+
+### SafeDiamondCutStorage @ erc7201:lattice.storage.SafeDiamondCut (slot 0xdfdae3ef74d2f2c31fc34cd5e60ae4b170cd90587a13d52debd5569f575e7900)
+0	0	_safe	t_address
+1	0	_cutCount	t_uint256
+2	0	_cutRegistry	t_mapping(t_uint256,t_struct(CutRecord)_storage)
+3	0	_frozenSelectors	t_struct(Bytes4Set)_storage
+
+### GovernedSafeDiamondCutStorage @ erc7201:lattice.storage.GovernedSafeDiamondCut (slot 0x67b04bedb2ce49892ef6d6cc51adf679ddefc544b7aca2da8ae73f02694ff300)
+0	0	_safe	t_address
+1	0	_minDelay	t_uint256
+2	0	_scheduledAt	t_mapping(t_bytes32,t_uint256)
+3	0	_cutCount	t_uint256
+4	0	_cutRegistry	t_mapping(t_uint256,t_struct(CutRecord)_storage)
+5	0	_frozenSelectors	t_struct(Bytes4Set)_storage

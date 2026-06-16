@@ -52,7 +52,12 @@ import {
 
 // governance
 import {GOVERNED_DIAMOND_CUT_STORAGE_SLOT} from "@lattice/governance/libraries/GovernedDiamondCutLib.sol";
+import {
+    ERC165_MAP_IGOVERNEDSAFEDIAMONDCUT_SLOT,
+    GOVERNED_SAFE_DIAMOND_CUT_STORAGE_SLOT
+} from "@lattice/governance/libraries/GovernedSafeDiamondCutLib.sol";
 import {ERC165_MAP_IGOVERNOR_SLOT, GOVERNOR_STORAGE_SLOT} from "@lattice/governance/libraries/GovernorLib.sol";
+import {SAFE_DIAMOND_CUT_STORAGE_SLOT} from "@lattice/governance/libraries/SafeDiamondCutLib.sol";
 import {
     ERC165_MAP_ITIMELOCKCONTROLLER_SLOT,
     TIMELOCK_CONTROLLER_STORAGE_SLOT
@@ -156,6 +161,7 @@ import {IERC2981} from "@lattice/interfaces/IERC2981.sol";
 import {IERC4626} from "@lattice/interfaces/IERC4626.sol";
 import {IERC4626Adapter} from "@lattice/interfaces/IERC4626Adapter.sol";
 import {IEmergencyStop} from "@lattice/interfaces/IEmergencyStop.sol";
+import {IGovernedSafeDiamondCut} from "@lattice/interfaces/IGovernedSafeDiamondCut.sol";
 import {IGovernor} from "@lattice/interfaces/IGovernor.sol";
 import {IInvariantChecker} from "@lattice/interfaces/IInvariantChecker.sol";
 import {ILidoAdapter} from "@lattice/interfaces/ILidoAdapter.sol";
@@ -310,6 +316,22 @@ contract StorageSlotVerificationTest is Test {
             GOVERNED_DIAMOND_CUT_STORAGE_SLOT,
             _erc7201Slot("lattice.storage.GovernedDiamondCut"),
             "GovernedDiamondCut storage slot mismatch"
+        );
+    }
+
+    function test_SafeDiamondCutStorageSlot() public pure {
+        assertEq(
+            SAFE_DIAMOND_CUT_STORAGE_SLOT,
+            _erc7201Slot("lattice.storage.SafeDiamondCut"),
+            "SafeDiamondCut storage slot mismatch"
+        );
+    }
+
+    function test_GovernedSafeDiamondCutStorageSlot() public pure {
+        assertEq(
+            GOVERNED_SAFE_DIAMOND_CUT_STORAGE_SLOT,
+            _erc7201Slot("lattice.storage.GovernedSafeDiamondCut"),
+            "GovernedSafeDiamondCut storage slot mismatch"
         );
     }
 
@@ -623,6 +645,18 @@ contract StorageSlotVerificationTest is Test {
         );
     }
 
+    function test_Erc165MapIGovernedSafeDiamondCutSlot() public pure {
+        // GovernedSafeDiamondCut does NOT serve the canonical cut selector (every cut is delayed), so
+        // its scheduling surface is a genuinely new interface minting its own ERC-165 map slot.
+        bytes4 interfaceId = type(IGovernedSafeDiamondCut).interfaceId;
+        assertEq(interfaceId, bytes4(0xacb1aeb6), "IGovernedSafeDiamondCut interfaceId comment is stale");
+        assertEq(
+            ERC165_MAP_IGOVERNEDSAFEDIAMONDCUT_SLOT,
+            _erc165MapSlot(interfaceId, ERC165_STORAGE_LOCATION),
+            "ERC165 IGovernedSafeDiamondCut map slot mismatch"
+        );
+    }
+
     // ---- defi ----
 
     function test_Erc165MapIVaultCoreSlot() public pure {
@@ -851,7 +885,7 @@ contract StorageSlotVerificationTest is Test {
     // ======================== Slot inventories ========================
 
     function _allStorageSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](37);
+        slots = new bytes32[](39);
         uint256 i;
         // access
         slots[i++] = ACCESS_CONTROL_STORAGE_SLOT;
@@ -872,6 +906,8 @@ contract StorageSlotVerificationTest is Test {
         slots[i++] = GOVERNOR_STORAGE_SLOT;
         slots[i++] = TIMELOCK_CONTROLLER_STORAGE_SLOT;
         slots[i++] = GOVERNED_DIAMOND_CUT_STORAGE_SLOT;
+        slots[i++] = SAFE_DIAMOND_CUT_STORAGE_SLOT;
+        slots[i++] = GOVERNED_SAFE_DIAMOND_CUT_STORAGE_SLOT;
         // defi
         slots[i++] = VAULT_CORE_STORAGE_SLOT;
         slots[i++] = STRATEGY_MANAGER_STORAGE_SLOT;
@@ -901,7 +937,7 @@ contract StorageSlotVerificationTest is Test {
     }
 
     function _allErc165MapSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](39);
+        slots = new bytes32[](40);
         uint256 i;
         // access
         slots[i++] = ERC165_MAP_IACCESSCONTROL_SLOT;
@@ -923,6 +959,10 @@ contract StorageSlotVerificationTest is Test {
         slots[i++] = ERC165_MAP_IVOTES_SLOT;
         slots[i++] = ERC165_MAP_IGOVERNOR_SLOT;
         slots[i++] = ERC165_MAP_ITIMELOCKCONTROLLER_SLOT;
+        // GovernedSafeDiamondCut mints its own ERC-165 map slot (it does NOT serve the canonical cut
+        // selector). SafeDiamondCut reuses IDiamondCut's 0x1f931c1c slot (already registered by
+        // DiamondLib), so it adds an ERC-7201 slot but NO new ERC-165 map slot.
+        slots[i++] = ERC165_MAP_IGOVERNEDSAFEDIAMONDCUT_SLOT;
         // defi
         slots[i++] = ERC165_MAP_IVAULTCORE_SLOT;
         slots[i++] = ERC165_MAP_ISTRATEGYMANAGER_SLOT;
