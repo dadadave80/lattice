@@ -37,6 +37,28 @@ contract StorageLayoutProbe {
         EnumerableSet.Bytes4Set _frozenSelectors;
     }
 
-    /// @dev Forces solc to emit the struct type into `storageLayout`. Never read, never deployed.
+    /// @dev Verbatim mirror of `SafeDiamondCutLib.SafeDiamondCutStorage`
+    ///      (`@custom:storage-location erc7201:lattice.storage.SafeDiamondCut`). Append-only.
+    struct SafeDiamondCutStorage {
+        address _safe;
+        uint256 _cutCount;
+        mapping(uint256 version => IUpgradeRegistry.CutRecord record) _cutRegistry;
+        EnumerableSet.Bytes4Set _frozenSelectors;
+    }
+
+    /// @dev Verbatim mirror of `GovernedSafeDiamondCutLib.GovernedSafeDiamondCutStorage`
+    ///      (`@custom:storage-location erc7201:lattice.storage.GovernedSafeDiamondCut`). Append-only.
+    struct GovernedSafeDiamondCutStorage {
+        address _safe;
+        uint256 _minDelay;
+        mapping(bytes32 id => uint256 eta) _scheduledAt;
+        uint256 _cutCount;
+        mapping(uint256 version => IUpgradeRegistry.CutRecord record) _cutRegistry;
+        EnumerableSet.Bytes4Set _frozenSelectors;
+    }
+
+    /// @dev Forces solc to emit the struct types into `storageLayout`. Never read, never deployed.
     GovernedDiamondCutStorage internal _unusedGovernedDiamondCut;
+    SafeDiamondCutStorage internal _unusedSafeDiamondCut;
+    GovernedSafeDiamondCutStorage internal _unusedGovernedSafeDiamondCut;
 }
