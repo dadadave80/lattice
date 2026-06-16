@@ -1,0 +1,128 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.30;
+
+/// @dev A ShortString is a string packed into a single bytes32 word.
+/// The lower byte stores the byte length of the string (0-31).
+/// Strings of 32 bytes or more must use the fallback (storage) mechanism.
+type ShortString is bytes32;
+
+/// @title ShortStrings
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/utils/ShortStrings.sol)
+/// @notice Pack strings of up to 31 bytes into a single bytes32 word.
+/// @dev Mirrors OpenZeppelin's ShortStrings. Strings longer than 31 bytes
+///      fall back to a `string storage` variable held by the caller.
+///      The sentinel value for a fallback ShortString is bytes32(type(uint256).max)
+///      (all 0xff), which cannot be a valid packed short string since the length
+///      byte would be 255 — greater than 31.
+library ShortStrings {
+    /// @dev Sentinel for a ShortString stored in the fallback slot.
+    bytes32 private constant FALLBACK_SENTINEL = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
+
+    error StringTooLong(string str);
+    error InvalidShortString();
+
+    /// @notice Packs a string of up to 31 bytes into a ShortString.
+    /// @dev Reverts with {StringTooLong} if the string is 32 bytes or longer.
+    /// @param str The string to pack.
+    /// @return The packed ShortString.
+    function toShortString(string memory str) internal pure returns (ShortString) {
+        bytes memory bstr = bytes(str);
+        if (bstr.length > 31) {
+            revert StringTooLong(str);
+        }
+        return ShortString.wrap(_pack(bstr));
+    }
+
+    /// @notice Unpacks a ShortString into a string.
+    /// @dev Reverts with {InvalidShortString} if the ShortString is the fallback sentinel.
+    /// @param sstr The ShortString to unpack.
+    /// @return The original string.
+    function toString(ShortString sstr) internal pure returns (string memory) {
+        uint256 len = byteLength(sstr);
+        bytes32 raw = ShortString.unwrap(sstr);
+        // Extract the data bytes (upper 31 bytes of the word)
+        string memory str = new string(32);
+        assembly ("memory-safe") {
+            mstore(str, len)
+            mstore(add(str, 0x20), raw)
+        }
+        return str;
+    }
+
+    /// @notice Returns the byte length of a ShortString.
+    /// @dev The length is stored in the lowest byte of the packed word.
+    ///      Reverts with {InvalidShortString} if the ShortString is the fallback sentinel.
+    /// @param sstr The ShortString.
+    /// @return The byte length.
+    function byteLength(ShortString sstr) internal pure returns (uint256) {
+        bytes32 raw = ShortString.unwrap(sstr);
+        // length is in the lowest byte
+        uint256 len = uint256(raw) & 0xff;
+        // A valid packed ShortString holds 0..31 data bytes. Any other length byte (including
+        // the all-0xff fallback sentinel, whose length byte is 255) is invalid — reject it so
+        // toString never mstore's an oversized length over its 32-byte buffer.
+        if (len > 31) {
+            revert InvalidShortString();
+        }
+        return len;
+    }
+
+    /// @notice Converts a string to a ShortString, falling back to storage for long strings.
+    /// @dev If the string is longer than 31 bytes, it is stored in `store` and the
+    ///      fallback sentinel is returned. Otherwise, the packed ShortString is returned
+    ///      and `store` is left unchanged (but is assigned to empty to satisfy the compiler).
+    /// @param value The string to convert.
+    /// @param store A storage reference to use for strings that are too long.
+    /// @return The ShortString (may be the fallback sentinel).
+    function toShortStringWithFallback(string memory value, string storage store) internal returns (ShortString) {
+        if (bytes(value).length < 32) {
+            return toShortString(value);
+        }
+        // Store the full string in the storage fallback slot. Routing through a storage-slot
+        // wrapper performs the correct native long-string encoding (length*2+1 in the base slot,
+        // data words at keccak(slot)) with no hand-rolled word copy and no trailing-garbage
+        // writes — matching OpenZeppelin's StorageSlot-based approach.
+        _stringSlot(store).value = value;
+        return ShortString.wrap(FALLBACK_SENTINEL);
+    }
+
+    /// @notice Converts a ShortString back to a string, using storage fallback if needed.
+    /// @param value The ShortString to convert.
+    /// @param store The storage fallback that may contain the full string.
+    /// @return The original string.
+    function toStringWithFallback(ShortString value, string storage store) internal pure returns (string memory) {
+        if (ShortString.unwrap(value) != FALLBACK_SENTINEL) {
+            return toString(value);
+        }
+        return store;
+    }
+
+    // -------------------------------------------------------------------------
+    // Internal helpers
+    // -------------------------------------------------------------------------
+
+    /// @dev Mirror of OpenZeppelin's `StorageSlot.StringSlot`. Wrapping a slot in this struct lets
+    ///      us copy a memory string into a `string storage` reference via a native assignment.
+    struct StringSlot {
+        string value;
+    }
+
+    /// @dev Returns a {StringSlot} pointing at the same storage slot as `store`.
+    function _stringSlot(string storage store) private pure returns (StringSlot storage ptr) {
+        assembly ("memory-safe") {
+            ptr.slot := store.slot
+        }
+    }
+
+    /// @dev Packs bytes into the upper bytes of a bytes32 word, length in the lowest byte.
+    function _pack(bytes memory bstr) private pure returns (bytes32 result) {
+        uint256 len = bstr.length;
+        assembly ("memory-safe") {
+            // Load 32 bytes starting at bstr data pointer; top-align them
+            result := mload(add(bstr, 0x20))
+        }
+        // Mask out anything below the length byte and insert the length
+        // Upper 31 bytes = string data; lowest byte = length
+        result = (result & ~bytes32(uint256(0xff))) | bytes32(len);
+    }
+}

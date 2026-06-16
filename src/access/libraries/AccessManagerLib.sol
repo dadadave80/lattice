@@ -1,0 +1,494 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.30;
+
+import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
+import {IAccessManaged} from "@lattice/interfaces/IAccessManaged.sol";
+import {IAccessManager} from "@lattice/interfaces/IAccessManager.sol";
+import {EnumerableSet} from "@lattice/utils/libraries/EnumerableSet.sol";
+import {TimelockLib} from "@lattice/utils/libraries/TimelockLib.sol";
+
+//*//////////////////////////////////////////////////////////////////////////
+//                                  STORAGE
+//////////////////////////////////////////////////////////////////////////*//
+
+/// @dev `keccak256(abi.encode(uint256(keccak256("lattice.storage.AccessManager")) - 1)) & ~bytes32(uint256(0xff))`.
+bytes32 constant ACCESS_MANAGER_STORAGE_SLOT = 0x031c2bc21c63b497895ca319b75b15a6c2f2e4b0e91bbd5327f580843bca1a00;
+
+/// @dev `0x8fc52f86` is `type(IAccessManager).interfaceId`.
+bytes32 constant ERC165_MAP_IACCESSMANAGER_SLOT = 0xa0825c9ce05c3e98cbd409c12bc8bdadc253d720dbb80af60f4b2f3807f3c1dd;
+
+struct Delay {
+    uint32 value;
+    uint32 pendingValue;
+    uint48 effectAt;
+}
+
+struct Access {
+    uint48 since;
+    Delay delay;
+}
+
+struct Role {
+    uint64 admin;
+    uint64 guardian;
+    uint32 grantDelay;
+    uint48 grantDelayEffectAt;
+    uint32 pendingGrantDelay;
+}
+
+struct TargetConfig {
+    mapping(bytes4 selector => uint64 roleId) allowedRoles;
+    uint32 adminDelay;
+    uint48 adminDelayEffectAt;
+    uint32 pendingAdminDelay;
+    bool closed;
+}
+
+/// @custom:storage-location erc7201:lattice.storage.AccessManager
+struct AccessManagerStorage {
+    mapping(uint64 roleId => Role) _roles;
+    mapping(uint64 roleId => mapping(address account => Access)) _access;
+    mapping(uint64 roleId => EnumerableSet.AddressSet) _roleMembers;
+    mapping(address target => TargetConfig) _targets;
+    TimelockLib.MultiSchedule _operationQueue;
+    mapping(bytes32 operationId => uint32 nonce) _nonces;
+    uint32 _nextNonce;
+}
+
+/// @title AccessManagerLib
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/access/manager/AccessManager.sol)
+/// @notice Logic for IAccessManager.
+library AccessManagerLib {
+    using EnumerableSet for EnumerableSet.AddressSet;
+    using TimelockLib for TimelockLib.MultiSchedule;
+
+    uint64 internal constant ADMIN_ROLE = 0;
+    uint64 internal constant PUBLIC_ROLE = type(uint64).max;
+
+    /// @notice Scheduled operations expire after this many seconds past `readyAt`.
+    uint32 internal constant EXPIRATION = 1 weeks;
+
+    /// @notice Minimum setback applied when changing delays.
+    uint32 internal constant MIN_SETBACK = 5 days;
+
+    function accessManagerStorage() internal pure returns (AccessManagerStorage storage $) {
+        assembly {
+            $.slot := ACCESS_MANAGER_STORAGE_SLOT
+        }
+    }
+
+    function __AccessManager_init(address initialAdmin) internal {
+        InitializableLib.checkInitializing(InitializableLib.initializableSlot());
+        if (initialAdmin == address(0)) revert IAccessManager.AccessManagerInvalidInitialAdmin();
+        _grantRoleInternal(ADMIN_ROLE, initialAdmin, 0, true);
+        registerInterface();
+    }
+
+    function registerInterface() internal {
+        assembly ("memory-safe") {
+            sstore(ERC165_MAP_IACCESSMANAGER_SLOT, true)
+        }
+    }
+
+    // ---- Hashing ----
+
+    function hashOperation(address caller, address target, bytes calldata data) internal pure returns (bytes32) {
+        return keccak256(abi.encode(caller, target, data));
+    }
+
+    // ---- Role queries ----
+
+    function hasRole(uint64 roleId, address account) internal view returns (bool isMember, uint32 executionDelay) {
+        if (roleId == PUBLIC_ROLE) return (true, 0);
+        Access storage a = accessManagerStorage()._access[roleId][account];
+        isMember = a.since != 0 && block.timestamp >= a.since;
+        executionDelay = isMember ? _effectiveDelay(a.delay) : 0;
+    }
+
+    function getAccess(uint64 roleId, address account)
+        internal
+        view
+        returns (uint48 since, uint32 currentDelay, uint32 pendingDelay, uint48 effect)
+    {
+        Access storage a = accessManagerStorage()._access[roleId][account];
+        return (a.since, a.delay.value, a.delay.pendingValue, a.delay.effectAt);
+    }
+
+    function getRoleAdmin(uint64 roleId) internal view returns (uint64) {
+        return accessManagerStorage()._roles[roleId].admin;
+    }
+
+    function getRoleGuardian(uint64 roleId) internal view returns (uint64) {
+        return accessManagerStorage()._roles[roleId].guardian;
+    }
+
+    function getRoleGrantDelay(uint64 roleId) internal view returns (uint32) {
+        Role storage r = accessManagerStorage()._roles[roleId];
+        if (r.grantDelayEffectAt != 0 && block.timestamp >= r.grantDelayEffectAt) {
+            return r.pendingGrantDelay;
+        }
+        return r.grantDelay;
+    }
+
+    function getRoleMembers(uint64 roleId) internal view returns (address[] memory) {
+        return accessManagerStorage()._roleMembers[roleId].values();
+    }
+
+    function getRoleMemberCount(uint64 roleId) internal view returns (uint256) {
+        return accessManagerStorage()._roleMembers[roleId].length();
+    }
+
+    // ---- Target queries ----
+
+    function getTargetFunctionRole(address target, bytes4 selector) internal view returns (uint64) {
+        return accessManagerStorage()._targets[target].allowedRoles[selector];
+    }
+
+    function getTargetAdminDelay(address target) internal view returns (uint32) {
+        TargetConfig storage t = accessManagerStorage()._targets[target];
+        if (t.adminDelayEffectAt != 0 && block.timestamp >= t.adminDelayEffectAt) {
+            return t.pendingAdminDelay;
+        }
+        return t.adminDelay;
+    }
+
+    function isTargetClosed(address target) internal view returns (bool) {
+        return accessManagerStorage()._targets[target].closed;
+    }
+
+    function canCall(address caller, address target, bytes4 selector)
+        internal
+        view
+        returns (bool immediate, uint32 delay)
+    {
+        AccessManagerStorage storage $ = accessManagerStorage();
+        if ($._targets[target].closed) return (false, 0);
+        uint64 roleId = $._targets[target].allowedRoles[selector];
+        if (roleId == PUBLIC_ROLE) return (true, 0);
+        (bool isMember, uint32 executionDelay) = hasRole(roleId, caller);
+        if (!isMember) return (false, 0);
+        if (executionDelay == 0) return (true, 0);
+        return (false, executionDelay);
+    }
+
+    /// @notice Returns the timestamp at which `operationId` becomes (or became) executable.
+    /// @dev Returns 0 in three distinct cases:
+    ///      1. The operation was never scheduled (`getNonce(operationId) == 0`).
+    ///      2. The operation was consumed (executed successfully).
+    ///      3. The operation was scheduled but has since expired (`readyAt + EXPIRATION < now`).
+    ///      Callers that need to distinguish case 1 from cases 2/3 should additionally call
+    ///      `getNonce(operationId)`: a non-zero nonce means the operation existed at some point.
+    function getSchedule(bytes32 operationId) internal view returns (uint48) {
+        uint48 r = accessManagerStorage()._operationQueue.readyAt(operationId);
+        if (r != 0 && block.timestamp > uint256(r) + EXPIRATION) return 0;
+        return r;
+    }
+
+    function getNonce(bytes32 operationId) internal view returns (uint32) {
+        return accessManagerStorage()._nonces[operationId];
+    }
+
+    // ---- Role management ----
+
+    function grantRole(uint64 roleId, address account, uint32 executionDelay) internal {
+        _checkRoleAdmin(roleId);
+        if (roleId == ADMIN_ROLE || roleId == PUBLIC_ROLE) {
+            revert IAccessManager.AccessManagerLockedRole(roleId);
+        }
+        _grantRoleInternal(roleId, account, executionDelay, true);
+    }
+
+    function revokeRole(uint64 roleId, address account) internal {
+        _checkRoleAdmin(roleId);
+        if (roleId == ADMIN_ROLE || roleId == PUBLIC_ROLE) {
+            revert IAccessManager.AccessManagerLockedRole(roleId);
+        }
+        _revokeRoleInternal(roleId, account);
+    }
+
+    function renounceRole(uint64 roleId, address callerConfirmation) internal {
+        if (callerConfirmation != msg.sender) {
+            revert IAccessManager.AccessManagerBadConfirmation();
+        }
+        if (roleId == ADMIN_ROLE || roleId == PUBLIC_ROLE) {
+            revert IAccessManager.AccessManagerLockedRole(roleId);
+        }
+        _revokeRoleInternal(roleId, callerConfirmation);
+    }
+
+    function setRoleAdmin(uint64 roleId, uint64 admin) internal {
+        _checkAdmin();
+        if (roleId == ADMIN_ROLE || roleId == PUBLIC_ROLE) {
+            revert IAccessManager.AccessManagerLockedRole(roleId);
+        }
+        accessManagerStorage()._roles[roleId].admin = admin;
+        emit IAccessManager.RoleAdminChanged(roleId, admin);
+    }
+
+    function setRoleGuardian(uint64 roleId, uint64 guardian) internal {
+        _checkAdmin();
+        if (roleId == ADMIN_ROLE || roleId == PUBLIC_ROLE) {
+            revert IAccessManager.AccessManagerLockedRole(roleId);
+        }
+        accessManagerStorage()._roles[roleId].guardian = guardian;
+        emit IAccessManager.RoleGuardianChanged(roleId, guardian);
+    }
+
+    function setGrantDelay(uint64 roleId, uint32 newDelay) internal {
+        _checkAdmin();
+        if (roleId == ADMIN_ROLE || roleId == PUBLIC_ROLE) {
+            revert IAccessManager.AccessManagerLockedRole(roleId);
+        }
+        Role storage r = accessManagerStorage()._roles[roleId];
+        // Consolidate any pending delay that has already become effective.
+        if (r.grantDelayEffectAt != 0 && block.timestamp >= r.grantDelayEffectAt) {
+            r.grantDelay = r.pendingGrantDelay;
+            r.pendingGrantDelay = 0;
+            r.grantDelayEffectAt = 0;
+        }
+        uint32 currentDelay = r.grantDelay;
+        if (newDelay == currentDelay) return; // No-op: avoid unnecessary storage writes.
+        uint48 effectAt;
+        if (newDelay < currentDelay) {
+            uint32 diff = currentDelay - newDelay;
+            uint32 wait = diff > MIN_SETBACK ? diff : MIN_SETBACK;
+            r.pendingGrantDelay = newDelay;
+            effectAt = uint48(block.timestamp + wait);
+            r.grantDelayEffectAt = effectAt;
+        } else {
+            r.pendingGrantDelay = newDelay;
+            effectAt = uint48(block.timestamp + MIN_SETBACK);
+            r.grantDelayEffectAt = effectAt;
+        }
+        emit IAccessManager.RoleGrantDelayChanged(roleId, newDelay, effectAt);
+    }
+
+    function labelRole(uint64 roleId, string calldata label) internal {
+        _checkAdmin();
+        if (roleId == ADMIN_ROLE || roleId == PUBLIC_ROLE) {
+            revert IAccessManager.AccessManagerLockedRole(roleId);
+        }
+        emit IAccessManager.RoleLabel(roleId, label);
+    }
+
+    function setTargetFunctionRole(address target, bytes4[] calldata selectors, uint64 roleId) internal {
+        _checkAdmin();
+        AccessManagerStorage storage $ = accessManagerStorage();
+        for (uint256 i; i < selectors.length; ++i) {
+            $._targets[target].allowedRoles[selectors[i]] = roleId;
+            emit IAccessManager.TargetFunctionRoleUpdated(target, selectors[i], roleId);
+        }
+    }
+
+    function setTargetAdminDelay(address target, uint32 newDelay) internal {
+        _checkAdmin();
+        TargetConfig storage t = accessManagerStorage()._targets[target];
+        // Consolidate any pending delay that has already become effective.
+        if (t.adminDelayEffectAt != 0 && block.timestamp >= t.adminDelayEffectAt) {
+            t.adminDelay = t.pendingAdminDelay;
+            t.pendingAdminDelay = 0;
+            t.adminDelayEffectAt = 0;
+        }
+        uint32 currentDelay = t.adminDelay;
+        uint48 effectAt;
+        if (newDelay == currentDelay) {
+            effectAt = uint48(block.timestamp);
+            t.pendingAdminDelay = newDelay;
+            t.adminDelayEffectAt = effectAt;
+        } else if (newDelay < currentDelay) {
+            uint32 diff = currentDelay - newDelay;
+            uint32 wait = diff > MIN_SETBACK ? diff : MIN_SETBACK;
+            t.pendingAdminDelay = newDelay;
+            effectAt = uint48(block.timestamp + wait);
+            t.adminDelayEffectAt = effectAt;
+        } else {
+            t.pendingAdminDelay = newDelay;
+            effectAt = uint48(block.timestamp + MIN_SETBACK);
+            t.adminDelayEffectAt = effectAt;
+        }
+        emit IAccessManager.TargetAdminDelayUpdated(target, newDelay, effectAt);
+    }
+
+    function setTargetClosed(address target, bool closed) internal {
+        _checkAdmin();
+        accessManagerStorage()._targets[target].closed = closed;
+        emit IAccessManager.TargetClosed(target, closed);
+    }
+
+    // ---- Operation scheduling ----
+
+    function schedule(address target, bytes calldata data, uint48 when)
+        internal
+        returns (bytes32 operationId, uint32 nonce)
+    {
+        address caller = msg.sender;
+        uint32 delay = _checkCanSchedule(caller, target, data);
+        operationId = hashOperation(caller, target, data);
+        uint48 effectiveWhen;
+        (nonce, effectiveWhen) = _writeSchedule(operationId, when, delay);
+        emit IAccessManager.OperationScheduled(operationId, nonce, effectiveWhen, caller, target, data);
+    }
+
+    function execute(address target, bytes calldata data) internal returns (uint32 nonce) {
+        address caller = msg.sender;
+        (bool immediate, uint32 delay) = canCall(caller, target, bytes4(data[0:4]));
+        bytes32 operationId = hashOperation(caller, target, data);
+        AccessManagerStorage storage $ = accessManagerStorage();
+        nonce = $._nonces[operationId];
+
+        if (immediate && delay == 0) {
+            // No schedule needed
+        } else if (delay > 0) {
+            uint48 readyAt = $._operationQueue.readyAt(operationId);
+            if (readyAt == 0) revert IAccessManager.AccessManagerNotScheduled(operationId);
+            if (block.timestamp < readyAt) revert IAccessManager.AccessManagerNotReady(operationId);
+            if (block.timestamp > uint256(readyAt) + EXPIRATION) {
+                revert IAccessManager.AccessManagerExpired(operationId);
+            }
+            $._operationQueue._readyAt[operationId] = 0;
+        } else {
+            revert IAccessManager.AccessManagerUnauthorizedAccount(
+                caller, getTargetFunctionRole(target, bytes4(data[0:4]))
+            );
+        }
+
+        emit IAccessManager.OperationExecuted(operationId, nonce);
+
+        // Set the consuming flag on AccessManaged targets so restrictedCheck() passes.
+        // We use try/catch: if the target does not implement IAccessManaged, the call
+        // reverts and we skip silently (non-AccessManaged targets are unaffected).
+        bool isAccessManaged = false;
+        try IAccessManaged(target).setConsumingScheduledOp(true) {
+            isAccessManaged = true;
+        } catch {}
+
+        (bool ok, bytes memory ret) = target.call{value: msg.value}(data);
+
+        // Always clear the flag, even if the call failed.
+        if (isAccessManaged) {
+            try IAccessManaged(target).setConsumingScheduledOp(false) {} catch {}
+        }
+
+        if (!ok) {
+            // Bubble up the original revert reason if the target provided one;
+            // else fall back to our typed error so callers can decode it.
+            if (ret.length > 0) {
+                assembly ("memory-safe") {
+                    revert(add(32, ret), mload(ret))
+                }
+            }
+            revert IAccessManager.AccessManagerTargetCallFailed(target);
+        }
+    }
+
+    function cancel(address caller, address target, bytes calldata data) internal returns (uint32 nonce) {
+        address msgSender = msg.sender;
+        bytes32 operationId = hashOperation(caller, target, data);
+        AccessManagerStorage storage $ = accessManagerStorage();
+        if (!$._operationQueue.isPending(operationId)) {
+            revert IAccessManager.AccessManagerNotScheduled(operationId);
+        }
+
+        if (msgSender != caller) {
+            bytes4 selector = bytes4(data[0:4]);
+            uint64 roleId = $._targets[target].allowedRoles[selector];
+            uint64 guardian = $._roles[roleId].guardian;
+            (bool isGuardian,) = hasRole(guardian, msgSender);
+            (bool isAdmin,) = hasRole(ADMIN_ROLE, msgSender);
+            if (!isGuardian && !isAdmin) revert IAccessManager.AccessManagerUnauthorizedCancel(msgSender, target);
+        }
+
+        $._operationQueue._readyAt[operationId] = 0;
+        nonce = $._nonces[operationId];
+        emit IAccessManager.OperationCanceled(operationId, nonce);
+    }
+
+    // ---- Internal helpers ----
+
+    function _effectiveDelay(Delay storage d) private view returns (uint32) {
+        if (d.effectAt != 0 && block.timestamp >= d.effectAt) return d.pendingValue;
+        return d.value;
+    }
+
+    function _grantRoleInternal(uint64 roleId, address account, uint32 executionDelay, bool emitEvent) private {
+        AccessManagerStorage storage $ = accessManagerStorage();
+        Access storage a = $._access[roleId][account];
+        bool isNewMember = a.since == 0;
+        if (isNewMember) {
+            uint48 since = uint48(block.timestamp) + uint48(getRoleGrantDelay(roleId));
+            a.since = since;
+            a.delay.value = executionDelay;
+            $._roleMembers[roleId].add(account);
+            if (emitEvent) {
+                emit IAccessManager.RoleGranted(roleId, account, executionDelay, since, true);
+            }
+        } else {
+            if (a.delay.value != executionDelay) {
+                a.delay.value = executionDelay;
+                if (emitEvent) {
+                    emit IAccessManager.RoleGranted(roleId, account, executionDelay, a.since, false);
+                }
+            }
+        }
+    }
+
+    function _revokeRoleInternal(uint64 roleId, address account) private {
+        AccessManagerStorage storage $ = accessManagerStorage();
+        if ($._access[roleId][account].since == 0) return;
+        delete $._access[roleId][account];
+        $._roleMembers[roleId].remove(account);
+        emit IAccessManager.RoleRevoked(roleId, account);
+    }
+
+    function _checkAdmin() private view {
+        (bool isMember,) = hasRole(ADMIN_ROLE, msg.sender);
+        if (!isMember) revert IAccessManager.AccessManagerUnauthorizedAccount(msg.sender, ADMIN_ROLE);
+    }
+
+    function _checkRoleAdmin(uint64 roleId) private view {
+        uint64 adminRole = accessManagerStorage()._roles[roleId].admin;
+        (bool isMember,) = hasRole(adminRole, msg.sender);
+        if (!isMember) revert IAccessManager.AccessManagerUnauthorizedAccount(msg.sender, adminRole);
+    }
+
+    /// @dev Validates that `caller` may schedule a call to `target` with `data` and returns
+    ///      the required execution delay. Reverts if the caller has no access at all or has
+    ///      immediate access (no schedule needed).
+    function _checkCanSchedule(address caller, address target, bytes calldata data)
+        private
+        view
+        returns (uint32 delay)
+    {
+        (bool immediate, uint32 d) = canCall(caller, target, bytes4(data[0:4]));
+        if (!immediate && d == 0) {
+            revert IAccessManager.AccessManagerUnauthorizedAccount(
+                caller, getTargetFunctionRole(target, bytes4(data[0:4]))
+            );
+        }
+        if (immediate && d == 0) {
+            revert IAccessManager.AccessManagerNotScheduled(hashOperation(caller, target, data));
+        }
+        delay = d;
+    }
+
+    /// @dev Writes the scheduled operation to storage and returns the assigned nonce and
+    ///      the effective (clamped) schedule timestamp.
+    function _writeSchedule(bytes32 operationId, uint48 when, uint32 delay)
+        private
+        returns (uint32 nonce, uint48 effectiveWhen)
+    {
+        AccessManagerStorage storage $ = accessManagerStorage();
+        uint48 existing = $._operationQueue._readyAt[operationId];
+        if (existing != 0) {
+            bool expired = block.timestamp > uint256(existing) + EXPIRATION;
+            if (!expired) revert IAccessManager.AccessManagerAlreadyScheduled(operationId);
+            // If expired, clear and allow reschedule
+            $._operationQueue._readyAt[operationId] = 0;
+        }
+        uint48 minWhen = uint48(block.timestamp) + delay;
+        effectiveWhen = when < minWhen ? minWhen : when;
+        $._operationQueue._readyAt[operationId] = effectiveWhen;
+        nonce = ++$._nextNonce;
+        $._nonces[operationId] = nonce;
+    }
+}

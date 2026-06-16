@@ -31,8 +31,40 @@ jobs:
       - name: Run Forge fmt
         run: forge fmt --check
 
+      # --sizes gates EIP-170 (24,576 B) on deployable contracts only. Test/script fixtures
+      # (e.g. the SelfGovDiamond E2E harness that inherits every facet at once) legitimately
+      # exceed the limit and are never deployed; `--skip test script` excludes them. Tests are
+      # still compiled by the `forge test` step below, so compile errors remain caught.
       - name: Run Forge build
-        run: forge build --sizes
+        run: forge build --sizes --skip test script
+
+      - name: Build with via_ir (IR-pipeline parity)
+        run: forge build --via-ir --sizes --skip test script
+
+      # Append-only ERC-7201 storage-struct guard (CLAUDE.md "Append-only storage struct rule").
+      # Fails if any guarded module struct's namespaced layout drifts from its committed baseline
+      # (reorder/retype/shrink/removal). `jq` is preinstalled on ubuntu-latest runners.
+      - name: Check ERC-7201 storage layout (append-only)
+        run: ./script/upgrades/check-storage-layout.sh
 
       - name: Run Forge tests
         run: forge test -vvv
+
+  slither:
+    name: Slither (advisory)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+          submodules: recursive
+
+      # Advisory for now (continue-on-error + fail-on: none). Triage findings, then make this
+      # a hard gate per the architecture spec's "0 high/medium" target.
+      - name: Run Slither
+        uses: crytic/slither-action@v0.4.0
+        continue-on-error: true
+        with:
+          fail-on: none

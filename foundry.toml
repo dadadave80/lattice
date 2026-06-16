@@ -11,6 +11,25 @@ remappings = [
 [profile.ci]
 optimizer_runs = 1_000_000
 via_ir = false
+build_info = true
+extra_output = ["storageLayout"]
+
+[rpc_endpoints]
+mainnet = "${MAINNET_RPC_URL}"
+optimism = "${OPTIMISM_RPC_URL}"
+
+[etherscan]
+mainnet = { key = "${ETHERSCAN_API_KEY}" }
+
+[invariant]
+runs = 256
+depth = 128
+# fail_on_revert stays false for now: the ERC20-balance, ConstantProduct, and AccessControl-admin-chain
+# handlers are not yet revert-safe (they rely on Foundry discarding invalid calls — over-balance
+# transfers, invalid swaps, unauthorized grants). Flipping to true requires bounding handler inputs
+# (amounts→balances) and callers (→authorized roles). The ERC4626 and Timelock handlers already pass
+# with fail_on_revert=true (0 reverts over 32k calls). Tracked as a follow-up.
+fail_on_revert = false
 
 [fmt]
 sort_imports = true

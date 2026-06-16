@@ -1,0 +1,4 @@
+### GovernedDiamondCutStorage @ erc7201:lattice.storage.GovernedDiamondCut (slot 0x9a46da229426897da8e8df190858c430564a988584235445fd229e2bef8a8700)
+0	0	_cutCount	t_uint256
+1	0	_cutRegistry	t_mapping(t_uint256,t_struct(CutRecord)_storage)
+2	0	_frozenSelectors	t_struct(Bytes4Set)_storage
