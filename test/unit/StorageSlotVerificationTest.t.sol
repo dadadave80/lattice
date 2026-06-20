@@ -153,6 +153,7 @@ import {
     ERC6538REGISTRY_STORAGE_SLOT
 } from "@lattice/privacy/libraries/ERC6538RegistryLib.sol";
 import {ERC165_MAP_IGROTH16VERIFIER_SLOT} from "@lattice/privacy/libraries/Groth16VerifierLib.sol";
+import {ERC165_MAP_IPLONKVERIFIER_SLOT} from "@lattice/privacy/libraries/PlonkVerifierLib.sol";
 
 // ens
 import {ENS_RESOLVER_STORAGE_SLOT, ERC165_MAP_IENSRESOLVER_SLOT} from "@lattice/ens/libraries/ENSResolverLib.sol";
@@ -201,6 +202,7 @@ import {IInvariantChecker} from "@lattice/interfaces/IInvariantChecker.sol";
 import {ILidoAdapter} from "@lattice/interfaces/ILidoAdapter.sol";
 import {INonces} from "@lattice/interfaces/INonces.sol";
 import {IPausable} from "@lattice/interfaces/IPausable.sol";
+import {IPlonkVerifier} from "@lattice/interfaces/IPlonkVerifier.sol";
 import {IProtocolAdapter} from "@lattice/interfaces/IProtocolAdapter.sol";
 import {IRateLimiter} from "@lattice/interfaces/IRateLimiter.sol";
 import {IReentrancyGuard} from "@lattice/interfaces/IReentrancyGuard.sol";
@@ -995,6 +997,16 @@ contract StorageSlotVerificationTest is Test {
         );
     }
 
+    function test_Erc165MapIPlonkVerifierSlot() public pure {
+        bytes4 interfaceId = type(IPlonkVerifier).interfaceId;
+        assertEq(interfaceId, bytes4(0x5d484314), "IPlonkVerifier interfaceId comment is stale");
+        assertEq(
+            ERC165_MAP_IPLONKVERIFIER_SLOT,
+            _erc165MapSlot(interfaceId, ERC165_STORAGE_LOCATION),
+            "ERC165 IPlonkVerifier map slot mismatch"
+        );
+    }
+
     function test_Erc165MapIENSResolverSlot() public pure {
         bytes4 interfaceId = type(IENSResolver).interfaceId;
         assertEq(interfaceId, bytes4(0x566ec67d), "IENSResolver interfaceId comment is stale");
@@ -1112,7 +1124,7 @@ contract StorageSlotVerificationTest is Test {
     }
 
     function _allErc165MapSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](48);
+        slots = new bytes32[](49);
         uint256 i;
         // access
         slots[i++] = ERC165_MAP_IACCESSCONTROL_SLOT;
@@ -1182,6 +1194,7 @@ contract StorageSlotVerificationTest is Test {
         slots[i++] = ERC165_MAP_IERC6538REGISTRY_SLOT;
         slots[i++] = ERC165_MAP_ICOMMITREVEAL_SLOT;
         slots[i++] = ERC165_MAP_IGROTH16VERIFIER_SLOT;
+        slots[i++] = ERC165_MAP_IPLONKVERIFIER_SLOT;
         // ens
         slots[i++] = ERC165_MAP_IENSREVERSECLAIMER_SLOT;
         slots[i++] = ERC165_MAP_IENSRESOLVER_SLOT;
