@@ -93,6 +93,13 @@ and a row here.
   circuit-free first deliverable of the privacy-track part 2 (#10); the remaining ZK-dependent modules
   (shielded transfers, private voting, Semaphore membership, ZK verifiers, Merkle/nullifier lib) await the
   proving-system decision.
+- **Groth16Verifier** is a stateless, generic Groth16 proof verifier over BN254 (alt_bn128) — the
+  verifying key is a parameter, so one deployment verifies proofs for any circuit. The verification logic
+  generalizes the audited snarkjs (iden3) verifier template (PR#36 hardening: public inputs `< r`, proof
+  coordinates `< q`) and evaluates the pairing check with the BN254 precompiles. It holds **no** ERC-7201
+  storage (only registers `IGroth16Verifier`, `0x6d832d8e`, for ERC-165), so it adds **zero** storage slots
+  and **one** ERC-165 map slot. It is the proving-system primitive (#10, Groth16 ratified) the ZK privacy
+  modules plug their circuit key into.
 - **ENSReverseClaimer** lets a diamond claim its own primary ENS name via reverse resolution. It stores
   the configured reverse registrar + cached name in its own `ENSReverseClaimerStorage` at a unique
   ERC-7201 slot and mints `IENSReverseClaimer` (`0x84019dd8`); the identity setters are gated on
@@ -214,6 +221,7 @@ and a row here.
 | ERC5564Announcer | (stateless — no ERC-7201 storage) | — | `IERC5564Announcer` (ERC-5564) | `0x4d1f9583` | `0xa57260aa5166ddbfa7edd847f707bbf0762a8707401140e29b2073d6dfc88e2e` |
 | ERC6538Registry | `lattice.storage.ERC6538Registry` | `0x77e72c5973ed8cfb58126100bfd525d25949aa328155f37334e51548cdc80100` | `IERC6538Registry` (ERC-6538) | `0x7b1f57cb` | `0xba3bf91c60e936a8bb7a4c2729c74c6ef842a655f3dff9707765ac926778cd2e` |
 | CommitReveal | `lattice.storage.CommitReveal` | `0xd3109411a8705fe8e8868eda2607aae4e6b37bb0d383a8a9e1c55c78e6853e00` | `ICommitReveal` | `0xe371e8b7` | `0xdc9ba0d500a620df2dabeedf359873cda3ecd1229c8cb91b5b30ae80ec382462` |
+| Groth16Verifier | (stateless — no ERC-7201 storage) | — | `IGroth16Verifier` | `0x6d832d8e` | `0x65fb5f0c2dd2a1b03fcdcf008584d060b7a7596bbc510b7022310e4dbd7682a9` |
 
 ### ENS
 
@@ -225,10 +233,11 @@ and a row here.
 
 ---
 
-**Counts:** 45 storage-bearing modules (45 unique ERC-7201 slots) and 47 ERC-165 interface
+**Counts:** 45 storage-bearing modules (45 unique ERC-7201 slots) and 48 ERC-165 interface
 map slots (the privacy track adds the stateful `ERC6538Registry` — one ERC-7201 slot and one
 `IERC6538Registry` ERC-165 slot — plus the stateless `ERC5564Announcer` — no ERC-7201 slot, one
-`IERC5564Announcer` ERC-165 slot; GovernedDiamondCut reuses IDiamondCut's `0x1f931c1c` ERC-165 slot, so it adds an
+`IERC5564Announcer` ERC-165 slot — and the stateless `Groth16Verifier` — no ERC-7201 slot, one
+`IGroth16Verifier` (`0x6d832d8e`) ERC-165 slot; GovernedDiamondCut reuses IDiamondCut's `0x1f931c1c` ERC-165 slot, so it adds an
 ERC-7201 slot but no new ERC-165 map slot; SafeDiamondCut likewise reuses IDiamondCut's
 `0x1f931c1c` ERC-165 slot, so it adds an ERC-7201 slot but no new ERC-165 map slot;
 GovernedSafeDiamondCut serves no synchronous cut selector and registers its own
