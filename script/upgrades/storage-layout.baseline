@@ -37,3 +37,8 @@
 
 ### CommitRevealStorage @ erc7201:lattice.storage.CommitReveal (slot 0xd3109411a8705fe8e8868eda2607aae4e6b37bb0d383a8a9e1c55c78e6853e00)
 0	0	_commitments	t_mapping(t_bytes32,t_struct(Commitment)_storage)
+
+### SemaphoreStorage @ erc7201:lattice.storage.Semaphore (slot 0x9014b6f2f89a94726c6607d3b9e5562f77c44e9f80791dbbfea2ef3de33d0300)
+0	0	groups	t_mapping(t_uint256,t_struct(Group)_storage)
+1	0	groupCount	t_uint256
+2	0	verifier	t_address
