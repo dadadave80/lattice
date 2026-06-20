@@ -145,6 +145,13 @@ import {
     ERC6538REGISTRY_STORAGE_SLOT
 } from "@lattice/privacy/libraries/ERC6538RegistryLib.sol";
 
+// ens
+import {ENS_RESOLVER_STORAGE_SLOT, ERC165_MAP_IENSRESOLVER_SLOT} from "@lattice/ens/libraries/ENSResolverLib.sol";
+import {
+    ENS_SUBNAME_ISSUER_STORAGE_SLOT,
+    ERC165_MAP_IENSSUBNAMEISSUER_SLOT
+} from "@lattice/ens/libraries/ENSSubnameIssuerLib.sol";
+
 // ---------------------------------------------------------------------------
 // Interfaces (for type(...).interfaceId)
 // ---------------------------------------------------------------------------
@@ -162,6 +169,8 @@ import {ICompoundV3Adapter} from "@lattice/interfaces/ICompoundV3Adapter.sol";
 import {IConstantProduct} from "@lattice/interfaces/IConstantProduct.sol";
 import {ICurveStableSwapAdapter} from "@lattice/interfaces/ICurveStableSwapAdapter.sol";
 import {IEIP712} from "@lattice/interfaces/IEIP712.sol";
+import {IENSResolver} from "@lattice/interfaces/IENSResolver.sol";
+import {IENSSubnameIssuer} from "@lattice/interfaces/IENSSubnameIssuer.sol";
 import {IERC20} from "@lattice/interfaces/IERC20.sol";
 import {IERC20Capped} from "@lattice/interfaces/IERC20Capped.sol";
 import {IERC2981} from "@lattice/interfaces/IERC2981.sol";
@@ -507,6 +516,22 @@ contract StorageSlotVerificationTest is Test {
             ERC6538REGISTRY_STORAGE_SLOT,
             _erc7201Slot("lattice.storage.ERC6538Registry"),
             "ERC6538Registry storage slot mismatch"
+        );
+    }
+
+    // ---- ens ----
+
+    function test_ENSResolverStorageSlot() public pure {
+        assertEq(
+            ENS_RESOLVER_STORAGE_SLOT, _erc7201Slot("lattice.storage.ENSResolver"), "ENSResolver storage slot mismatch"
+        );
+    }
+
+    function test_ENSSubnameIssuerStorageSlot() public pure {
+        assertEq(
+            ENS_SUBNAME_ISSUER_STORAGE_SLOT,
+            _erc7201Slot("lattice.storage.ENSSubnameIssuer"),
+            "ENSSubnameIssuer storage slot mismatch"
         );
     }
 
@@ -899,6 +924,26 @@ contract StorageSlotVerificationTest is Test {
         );
     }
 
+    function test_Erc165MapIENSResolverSlot() public pure {
+        bytes4 interfaceId = type(IENSResolver).interfaceId;
+        assertEq(interfaceId, bytes4(0x566ec67d), "IENSResolver interfaceId comment is stale");
+        assertEq(
+            ERC165_MAP_IENSRESOLVER_SLOT,
+            _erc165MapSlot(interfaceId, ERC165_STORAGE_LOCATION),
+            "ERC165 IENSResolver map slot mismatch"
+        );
+    }
+
+    function test_Erc165MapIENSSubnameIssuerSlot() public pure {
+        bytes4 interfaceId = type(IENSSubnameIssuer).interfaceId;
+        assertEq(interfaceId, bytes4(0x6ead39e3), "IENSSubnameIssuer interfaceId comment is stale");
+        assertEq(
+            ERC165_MAP_IENSSUBNAMEISSUER_SLOT,
+            _erc165MapSlot(interfaceId, ERC165_STORAGE_LOCATION),
+            "ERC165 IENSSubnameIssuer map slot mismatch"
+        );
+    }
+
     // ======================== Uniqueness Checks ========================
 
     /// @notice Every module's ERC-7201 storage slot must be globally unique so modules can be
@@ -926,7 +971,7 @@ contract StorageSlotVerificationTest is Test {
     // ======================== Slot inventories ========================
 
     function _allStorageSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](40);
+        slots = new bytes32[](42);
         uint256 i;
         // access
         slots[i++] = ACCESS_CONTROL_STORAGE_SLOT;
@@ -977,10 +1022,13 @@ contract StorageSlotVerificationTest is Test {
         slots[i++] = VESTING_WALLET_STORAGE_SLOT;
         // privacy (ERC5564Announcer is stateless — no ERC-7201 storage slot)
         slots[i++] = ERC6538REGISTRY_STORAGE_SLOT;
+        // ens
+        slots[i++] = ENS_RESOLVER_STORAGE_SLOT;
+        slots[i++] = ENS_SUBNAME_ISSUER_STORAGE_SLOT;
     }
 
     function _allErc165MapSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](42);
+        slots = new bytes32[](44);
         uint256 i;
         // access
         slots[i++] = ERC165_MAP_IACCESSCONTROL_SLOT;
@@ -1047,5 +1095,8 @@ contract StorageSlotVerificationTest is Test {
         // ERC-165 id; ERC5564Announcer is stateless and likewise mints its own ERC-165 id)
         slots[i++] = ERC165_MAP_IERC5564ANNOUNCER_SLOT;
         slots[i++] = ERC165_MAP_IERC6538REGISTRY_SLOT;
+        // ens
+        slots[i++] = ERC165_MAP_IENSRESOLVER_SLOT;
+        slots[i++] = ERC165_MAP_IENSSUBNAMEISSUER_SLOT;
     }
 }

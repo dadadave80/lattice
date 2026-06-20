@@ -20,3 +20,9 @@
 ### ERC6538RegistryStorage @ erc7201:lattice.storage.ERC6538Registry (slot 0x77e72c5973ed8cfb58126100bfd525d25949aa328155f37334e51548cdc80100)
 0	0	_stealthMetaAddresses	t_mapping(t_address,t_mapping(t_uint256,t_bytes_storage))
 1	0	_nonces	t_mapping(t_address,t_uint256)
+
+### ENSResolverStorage @ erc7201:lattice.storage.ENSResolver (slot 0x33f26d8db6499021a25127a427a9f060956987880daa3f7db97807f377225300)
+0	0	_ensRegistry	t_address
+
+### ENSSubnameIssuerStorage @ erc7201:lattice.storage.ENSSubnameIssuer (slot 0xecd97908615d460a8806be2f460463395b75373d406444064e9704ed5d892e00)
+0	0	_nameWrapper	t_address
