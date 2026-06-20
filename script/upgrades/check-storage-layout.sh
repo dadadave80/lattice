@@ -56,6 +56,7 @@ GUARDED_STRUCTS=(
     "GovernedSafeDiamondCutStorage lattice.storage.GovernedSafeDiamondCut"
     "ERC6538RegistryStorage lattice.storage.ERC6538Registry"
     "ENSReverseClaimerStorage lattice.storage.ENSReverseClaimer"
+    "SafeHarborAdopterStorage lattice.storage.SafeHarborAdopter"
 )
 
 command -v forge >/dev/null 2>&1 || { echo "ERROR: forge not found on PATH" >&2; exit 2; }
