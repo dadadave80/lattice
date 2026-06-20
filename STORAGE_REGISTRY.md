@@ -73,6 +73,19 @@ and a row here.
   `ERC20Votes`) are intentionally **not** listed here. (`ERC20Permit`, `ERC20Votes`, and
   `ERC20Burnable` do register ERC-165 ids but reuse the underlying `ERC20`/`Votes`/`Nonces`
   storage, so they have no row of their own.)
+- **ERC5564Announcer** is a stateless ERC-5564 announcer (it only emits `Announcement`), so it has
+  **no** ERC-7201 storage slot and **no** row in the storage-uniqueness array — only an ERC-165 map slot
+  for `IERC5564Announcer` (`0x4d1f9583`). Its function/event ABI is byte-identical to the canonical
+  ERC-5564 announcer. **ERC6538Registry** matches the canonical ERC-6538 reference ABI exactly
+  (address-keyed registrant in the event/getter/nonce, single `registerKeysOnBehalf(address,...)`,
+  `Erc6538RegistryEntry` EIP-712 entry, `ERC6538Registry__InvalidSignature` error), so `type(IERC6538Registry).interfaceId`
+  is the conformant `0x7b1f57cb`. It keeps its `ERC6538RegistryStorage` (the stealth-meta-address map plus
+  a **registry-local** per-registrant nonce — independent of the diamond-wide `Nonces` module, matching the
+  canonical per-registry nonce semantics) at a unique ERC-7201 slot, and reuses only the shared `EIP712`
+  domain for typed-data hashing. CONFORMANCE CAVEAT: as a Diamond facet the EIP-712 `verifyingContract`
+  is the host diamond, so relayers/wallets must read the live domain via `DOMAIN_SEPARATOR()` /
+  `eip712Domain()` rather than a fixed singleton address. Together the two privacy modules add **one**
+  ERC-7201 storage slot and **two** ERC-165 map slots.
 - **IAdapterOperator** (`setOperator` / `operator`) is the authorized-operator surface co-implemented
   by **every** protocol adapter facet alongside `IProtocolAdapter`. It is a **separate** interface on
   purpose: adding its two functions to `IProtocolAdapter` would change that interface's pinned id
@@ -166,10 +179,19 @@ and a row here.
 | Nonces | `lattice.storage.Nonces` | `0x2b93a5a8782d382c0f6890e7e2d77ba67ed77675c16cc334b45b931317d4de00` | `INonces` | `0x7ecebe00` | `0x7a551986b45870996296121343257817091920bfbe333333c5198eab95eb2fa2` |
 | VestingWallet | `lattice.storage.VestingWallet` | `0x6d3272be2f02b6d92080037a80b8780ee2896be455de43b32ab08d8adbdbbe00` | `IVestingWallet` | `0x1c3a25a8` | `0x30594729cb8d6a49998656680a715012a3392034ab2a6e4f69a94bf6b0450af9` |
 
+### Privacy
+
+| Module | ERC-7201 namespace | Storage slot (hex) | Interface | interfaceId | ERC-165 map slot (hex) |
+|---|---|---|---|---|---|
+| ERC5564Announcer | (stateless — no ERC-7201 storage) | — | `IERC5564Announcer` (ERC-5564) | `0x4d1f9583` | `0xa57260aa5166ddbfa7edd847f707bbf0762a8707401140e29b2073d6dfc88e2e` |
+| ERC6538Registry | `lattice.storage.ERC6538Registry` | `0x77e72c5973ed8cfb58126100bfd525d25949aa328155f37334e51548cdc80100` | `IERC6538Registry` (ERC-6538) | `0x7b1f57cb` | `0xba3bf91c60e936a8bb7a4c2729c74c6ef842a655f3dff9707765ac926778cd2e` |
+
 ---
 
-**Counts:** 39 storage-bearing modules (39 unique ERC-7201 slots) and 40 ERC-165 interface
-map slots (GovernedDiamondCut reuses IDiamondCut's `0x1f931c1c` ERC-165 slot, so it adds an
+**Counts:** 40 storage-bearing modules (40 unique ERC-7201 slots) and 42 ERC-165 interface
+map slots (the privacy track adds the stateful `ERC6538Registry` — one ERC-7201 slot and one
+`IERC6538Registry` ERC-165 slot — plus the stateless `ERC5564Announcer` — no ERC-7201 slot, one
+`IERC5564Announcer` ERC-165 slot; GovernedDiamondCut reuses IDiamondCut's `0x1f931c1c` ERC-165 slot, so it adds an
 ERC-7201 slot but no new ERC-165 map slot; SafeDiamondCut likewise reuses IDiamondCut's
 `0x1f931c1c` ERC-165 slot, so it adds an ERC-7201 slot but no new ERC-165 map slot;
 GovernedSafeDiamondCut serves no synchronous cut selector and registers its own

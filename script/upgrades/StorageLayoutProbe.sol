@@ -57,8 +57,16 @@ contract StorageLayoutProbe {
         EnumerableSet.Bytes4Set _frozenSelectors;
     }
 
+    /// @dev Verbatim mirror of `ERC6538RegistryLib.ERC6538RegistryStorage`
+    ///      (`@custom:storage-location erc7201:lattice.storage.ERC6538Registry`). Append-only.
+    struct ERC6538RegistryStorage {
+        mapping(address registrant => mapping(uint256 schemeId => bytes stealthMetaAddress)) _stealthMetaAddresses;
+        mapping(address registrant => uint256 nonce) _nonces;
+    }
+
     /// @dev Forces solc to emit the struct types into `storageLayout`. Never read, never deployed.
     GovernedDiamondCutStorage internal _unusedGovernedDiamondCut;
     SafeDiamondCutStorage internal _unusedSafeDiamondCut;
     GovernedSafeDiamondCutStorage internal _unusedGovernedSafeDiamondCut;
+    ERC6538RegistryStorage internal _unusedERC6538Registry;
 }
