@@ -86,12 +86,18 @@ and a row here.
   is the host diamond, so relayers/wallets must read the live domain via `DOMAIN_SEPARATOR()` /
   `eip712Domain()` rather than a fixed singleton address. Together the two privacy modules add **one**
   ERC-7201 storage slot and **two** ERC-165 map slots.
-- **ENSReverseClaimer** lets a diamond claim its own primary ENS name via reverse resolution. It has a
-  unique `ENSReverseClaimerStorage` (configured reverse registrar + cached name) at its own ERC-7201 slot
-  and mints its own ERC-165 id for `IENSReverseClaimer` (`0x84019dd8`). The identity setters are gated on
-  the dedicated `ENS_MANAGER_ROLE` (`keccak256("ENS_MANAGER_ROLE")`), managed via the diamond's
-  AccessControl module. The reverse registrar address is configurable per chain (mainnet `ReverseRegistrar`
-  or the ENSIP-11 `L2ReverseRegistrar`) and is never hardcoded.
+- **ENSReverseClaimer** lets a diamond claim its own primary ENS name via reverse resolution. It stores
+  the configured reverse registrar + cached name in its own `ENSReverseClaimerStorage` at a unique
+  ERC-7201 slot and mints `IENSReverseClaimer` (`0x84019dd8`); the identity setters are gated on
+  `ENS_MANAGER_ROLE` (`keccak256("ENS_MANAGER_ROLE")`). It adds one ERC-7201 slot and one ERC-165 map slot.
+- **ENSResolver** and **ENSSubnameIssuer** are the ENS-identity forward path. **ENSResolver** does on-chain
+  forward resolution (registry → resolver → `addr`) and stores the configurable ENS registry at its own
+  ERC-7201 slot, gated on `ENS_MANAGER_ROLE`; it mints `IENSResolver` (`0x566ec67d`). **ENSSubnameIssuer**
+  mints subnames via the ENS NameWrapper, stores the configurable NameWrapper at its own ERC-7201 slot, and
+  is gated on the dedicated `ENS_SUBNAME_ISSUER_ROLE` (`keccak256("ENS_SUBNAME_ISSUER_ROLE")`); it mints
+  `IENSSubnameIssuer` (`0x6ead39e3`). Both vendor minimal external ENS interfaces (`IENS`, `IAddrResolver`,
+  `INameWrapper`) under `interfaces/external/` and never hardcode ENS addresses. Together they add **two**
+  ERC-7201 storage slots and **two** ERC-165 map slots.
 - **IAdapterOperator** (`setOperator` / `operator`) is the authorized-operator surface co-implemented
   by **every** protocol adapter facet alongside `IProtocolAdapter`. It is a **separate** interface on
   purpose: adding its two functions to `IProtocolAdapter` would change that interface's pinned id
@@ -197,10 +203,12 @@ and a row here.
 | Module | ERC-7201 namespace | Storage slot (hex) | Interface | interfaceId | ERC-165 map slot (hex) |
 |---|---|---|---|---|---|
 | ENSReverseClaimer | `lattice.storage.ENSReverseClaimer` | `0x4490f19c91eeff7574cc9707696b972040b89f54488ef7fa354afe94a194c100` | `IENSReverseClaimer` | `0x84019dd8` | `0x3c859ae3ba58f26576821324787594a5249343bb61f3f7c4054b439dbc4eff8c` |
+| ENSResolver | `lattice.storage.ENSResolver` | `0x33f26d8db6499021a25127a427a9f060956987880daa3f7db97807f377225300` | `IENSResolver` | `0x566ec67d` | `0x79535b2b28365a4b28deff1d36dfc239871172c80dcc5e494674d846366975cb` |
+| ENSSubnameIssuer | `lattice.storage.ENSSubnameIssuer` | `0xecd97908615d460a8806be2f460463395b75373d406444064e9704ed5d892e00` | `IENSSubnameIssuer` | `0x6ead39e3` | `0x19f98b1c052723a0f45e31ccce192390fdd3867a76366f19df750eb883381f60` |
 
 ---
 
-**Counts:** 41 storage-bearing modules (41 unique ERC-7201 slots) and 43 ERC-165 interface
+**Counts:** 43 storage-bearing modules (43 unique ERC-7201 slots) and 45 ERC-165 interface
 map slots (the privacy track adds the stateful `ERC6538Registry` — one ERC-7201 slot and one
 `IERC6538Registry` ERC-165 slot — plus the stateless `ERC5564Announcer` — no ERC-7201 slot, one
 `IERC5564Announcer` ERC-165 slot; GovernedDiamondCut reuses IDiamondCut's `0x1f931c1c` ERC-165 slot, so it adds an
