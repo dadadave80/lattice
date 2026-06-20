@@ -15,3 +15,6 @@ docs/
 
 # Dotenv file
 .env
+
+# CI-generated contract-size report (forge build --sizes --json)
+sizes.json
