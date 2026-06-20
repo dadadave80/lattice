@@ -38,8 +38,25 @@ jobs:
       - name: Run Forge build
         run: forge build --sizes --skip test script
 
-      - name: Build with via_ir (IR-pipeline parity)
-        run: forge build --via-ir --sizes --skip test script
+      # IR-pipeline parity + EIP-170 under via_ir. The size gate still applies to
+      # every contract; the ONE exemption is the vendored, gas-optimized PoseidonT3,
+      # which is hand-tuned assembly for the legacy pipeline and exceeds EIP-170 only
+      # under via-ir (~29-55 KB vs 23.5 KB legacy), regardless of optimizer_runs. It
+      # deploys via the legacy pipeline (Lattice's profile is via_ir = false; the
+      # legacy --sizes build above is its authoritative gate). See lib/VENDORED.md.
+      - name: Build with via_ir (IR parity + EIP-170, PoseidonT3 exempt)
+        run: |
+          set -euo pipefail
+          # 1) Must compile under the IR pipeline (catches stack-too-deep / IR-only errors).
+          forge build --via-ir --skip test script
+          # 2) EIP-170/EIP-3860 size gate, exempting only the vendored PoseidonT3 (cached compile).
+          forge build --via-ir --sizes --json --skip test script > sizes.json 2>/dev/null || true
+          violations=$(jq -r '[to_entries[] | select((.value.runtime_margin < 0 or .value.init_margin < 0) and .key != "PoseidonT3") | .key] | join(", ")' sizes.json)
+          if [ -n "$violations" ]; then
+            echo "::error::Contracts exceed the size limit under via_ir: $violations"
+            exit 1
+          fi
+          echo "via_ir size gate OK (only the vendored PoseidonT3 is exempt)."
 
       # Append-only ERC-7201 storage-struct guard (CLAUDE.md "Append-only storage struct rule").
       # Fails if any guarded module struct's namespaced layout drifts from its committed baseline
