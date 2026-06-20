@@ -16,3 +16,7 @@
 3	0	_cutCount	t_uint256
 4	0	_cutRegistry	t_mapping(t_uint256,t_struct(CutRecord)_storage)
 5	0	_frozenSelectors	t_struct(Bytes4Set)_storage
+
+### ERC6538RegistryStorage @ erc7201:lattice.storage.ERC6538Registry (slot 0x77e72c5973ed8cfb58126100bfd525d25949aa328155f37334e51548cdc80100)
+0	0	_stealthMetaAddresses	t_mapping(t_address,t_mapping(t_uint256,t_bytes_storage))
+1	0	_nonces	t_mapping(t_address,t_uint256)
