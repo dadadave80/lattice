@@ -138,6 +138,13 @@ import {
     VESTING_WALLET_STORAGE_SLOT
 } from "@lattice/utils/libraries/VestingWalletLib.sol";
 
+// privacy
+import {ERC165_MAP_IERC5564ANNOUNCER_SLOT} from "@lattice/privacy/libraries/ERC5564AnnouncerLib.sol";
+import {
+    ERC165_MAP_IERC6538REGISTRY_SLOT,
+    ERC6538REGISTRY_STORAGE_SLOT
+} from "@lattice/privacy/libraries/ERC6538RegistryLib.sol";
+
 // ---------------------------------------------------------------------------
 // Interfaces (for type(...).interfaceId)
 // ---------------------------------------------------------------------------
@@ -160,6 +167,8 @@ import {IERC20Capped} from "@lattice/interfaces/IERC20Capped.sol";
 import {IERC2981} from "@lattice/interfaces/IERC2981.sol";
 import {IERC4626} from "@lattice/interfaces/IERC4626.sol";
 import {IERC4626Adapter} from "@lattice/interfaces/IERC4626Adapter.sol";
+import {IERC5564Announcer} from "@lattice/interfaces/IERC5564Announcer.sol";
+import {IERC6538Registry} from "@lattice/interfaces/IERC6538Registry.sol";
 import {IEmergencyStop} from "@lattice/interfaces/IEmergencyStop.sol";
 import {IGovernedSafeDiamondCut} from "@lattice/interfaces/IGovernedSafeDiamondCut.sol";
 import {IGovernor} from "@lattice/interfaces/IGovernor.sol";
@@ -488,6 +497,16 @@ contract StorageSlotVerificationTest is Test {
             VESTING_WALLET_STORAGE_SLOT,
             _erc7201Slot("lattice.storage.VestingWallet"),
             "VestingWallet storage slot mismatch"
+        );
+    }
+
+    // ---- privacy ----
+
+    function test_ERC6538RegistryStorageSlot() public pure {
+        assertEq(
+            ERC6538REGISTRY_STORAGE_SLOT,
+            _erc7201Slot("lattice.storage.ERC6538Registry"),
+            "ERC6538Registry storage slot mismatch"
         );
     }
 
@@ -858,6 +877,28 @@ contract StorageSlotVerificationTest is Test {
         );
     }
 
+    // ---- privacy ----
+
+    function test_Erc165MapIERC5564AnnouncerSlot() public pure {
+        bytes4 interfaceId = type(IERC5564Announcer).interfaceId;
+        assertEq(interfaceId, bytes4(0x4d1f9583), "IERC5564Announcer interfaceId comment is stale");
+        assertEq(
+            ERC165_MAP_IERC5564ANNOUNCER_SLOT,
+            _erc165MapSlot(interfaceId, ERC165_STORAGE_LOCATION),
+            "ERC165 IERC5564Announcer map slot mismatch"
+        );
+    }
+
+    function test_Erc165MapIERC6538RegistrySlot() public pure {
+        bytes4 interfaceId = type(IERC6538Registry).interfaceId;
+        assertEq(interfaceId, bytes4(0x7b1f57cb), "IERC6538Registry interfaceId comment is stale");
+        assertEq(
+            ERC165_MAP_IERC6538REGISTRY_SLOT,
+            _erc165MapSlot(interfaceId, ERC165_STORAGE_LOCATION),
+            "ERC165 IERC6538Registry map slot mismatch"
+        );
+    }
+
     // ======================== Uniqueness Checks ========================
 
     /// @notice Every module's ERC-7201 storage slot must be globally unique so modules can be
@@ -885,7 +926,7 @@ contract StorageSlotVerificationTest is Test {
     // ======================== Slot inventories ========================
 
     function _allStorageSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](39);
+        slots = new bytes32[](40);
         uint256 i;
         // access
         slots[i++] = ACCESS_CONTROL_STORAGE_SLOT;
@@ -934,10 +975,12 @@ contract StorageSlotVerificationTest is Test {
         slots[i++] = EIP712_STORAGE_SLOT;
         slots[i++] = NONCES_STORAGE_SLOT;
         slots[i++] = VESTING_WALLET_STORAGE_SLOT;
+        // privacy (ERC5564Announcer is stateless — no ERC-7201 storage slot)
+        slots[i++] = ERC6538REGISTRY_STORAGE_SLOT;
     }
 
     function _allErc165MapSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](40);
+        slots = new bytes32[](42);
         uint256 i;
         // access
         slots[i++] = ERC165_MAP_IACCESSCONTROL_SLOT;
@@ -1000,5 +1043,9 @@ contract StorageSlotVerificationTest is Test {
         slots[i++] = ERC165_MAP_IEIP712_SLOT;
         slots[i++] = ERC165_MAP_INONCES_SLOT;
         slots[i++] = ERC165_MAP_IVESTINGWALLET_SLOT;
+        // privacy (ERC6538Registry reuses the shared EIP712 + Nonces storage but mints its own
+        // ERC-165 id; ERC5564Announcer is stateless and likewise mints its own ERC-165 id)
+        slots[i++] = ERC165_MAP_IERC5564ANNOUNCER_SLOT;
+        slots[i++] = ERC165_MAP_IERC6538REGISTRY_SLOT;
     }
 }
