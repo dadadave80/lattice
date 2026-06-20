@@ -24,3 +24,7 @@
 ### ENSReverseClaimerStorage @ erc7201:lattice.storage.ENSReverseClaimer (slot 0x4490f19c91eeff7574cc9707696b972040b89f54488ef7fa354afe94a194c100)
 0	0	_reverseRegistrar	t_address
 1	0	_ensName	t_string_storage
+
+### SafeHarborAdopterStorage @ erc7201:lattice.storage.SafeHarborAdopter (slot 0xaaf15994f2af30ab6b279714cd625e3af0592976549136cf56b423f8b1439400)
+0	0	_safeHarborRegistry	t_address
+1	0	_agreementFactory	t_address

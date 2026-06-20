@@ -92,6 +92,14 @@ and a row here.
   the dedicated `ENS_MANAGER_ROLE` (`keccak256("ENS_MANAGER_ROLE")`), managed via the diamond's
   AccessControl module. The reverse registrar address is configurable per chain (mainnet `ReverseRegistrar`
   or the ENSIP-11 `L2ReverseRegistrar`) and is never hardcoded.
+- **SafeHarborAdopter** lets a diamond adopt the SEAL Whitehat Safe Harbor agreement on-chain (the legal
+  half of incident response, complementing EmergencyStop). It stores the configurable SEAL registry +
+  agreement factory in its own `SafeHarborAdopterStorage` at a unique ERC-7201 slot and mints
+  `ISafeHarborAdopter` (`0x2a3e8e12`). The diamond calls the registry itself (`msg.sender == diamond`),
+  so it is recorded as the adopter; adoption / creation are gated on the dedicated `SAFE_HARBOR_ADMIN_ROLE`
+  (`keccak256("SAFE_HARBOR_ADMIN_ROLE")`) because the agreement designates the asset-recovery address.
+  The vendored SEAL interfaces (`ISafeHarborRegistry`, `IAgreementFactory` + `AgreementDetails` types) live
+  under `interfaces/external/`; the deployed SEAL addresses + struct ABI must be verified per chain.
 - **IAdapterOperator** (`setOperator` / `operator`) is the authorized-operator surface co-implemented
   by **every** protocol adapter facet alongside `IProtocolAdapter`. It is a **separate** interface on
   purpose: adding its two functions to `IProtocolAdapter` would change that interface's pinned id
@@ -138,6 +146,7 @@ and a row here.
 | GovernedDiamondCut | `lattice.storage.GovernedDiamondCut` | `0x9a46da229426897da8e8df190858c430564a988584235445fd229e2bef8a8700` | `IDiamondCut` (reused, EIP-2535) | `0x1f931c1c` | `0xa0f80413692945aab97c6ef0328381ebb94e4b17a84d11ebf6b61f73435b6d7e` (shared) |
 | SafeDiamondCut | `lattice.storage.SafeDiamondCut` | `0xdfdae3ef74d2f2c31fc34cd5e60ae4b170cd90587a13d52debd5569f575e7900` | `IDiamondCut` (reused, EIP-2535) | `0x1f931c1c` | `0xa0f80413692945aab97c6ef0328381ebb94e4b17a84d11ebf6b61f73435b6d7e` (shared) |
 | GovernedSafeDiamondCut | `lattice.storage.GovernedSafeDiamondCut` | `0x67b04bedb2ce49892ef6d6cc51adf679ddefc544b7aca2da8ae73f02694ff300` | `IGovernedSafeDiamondCut` | `0xacb1aeb6` | `0xe71618ea5c7977b34866901ace6d6c6585c16253798f12024e30133e7fb7b675` |
+| SafeHarborAdopter | `lattice.storage.SafeHarborAdopter` | `0xaaf15994f2af30ab6b279714cd625e3af0592976549136cf56b423f8b1439400` | `ISafeHarborAdopter` | `0x2a3e8e12` | `0xc27d89bdc7ce502086d0749a1bda2c210ca866065fa49ea19147ad53e8e018ad` |
 
 ### DeFi
 
@@ -200,7 +209,7 @@ and a row here.
 
 ---
 
-**Counts:** 41 storage-bearing modules (41 unique ERC-7201 slots) and 43 ERC-165 interface
+**Counts:** 42 storage-bearing modules (42 unique ERC-7201 slots) and 44 ERC-165 interface
 map slots (the privacy track adds the stateful `ERC6538Registry` — one ERC-7201 slot and one
 `IERC6538Registry` ERC-165 slot — plus the stateless `ERC5564Announcer` — no ERC-7201 slot, one
 `IERC5564Announcer` ERC-165 slot; GovernedDiamondCut reuses IDiamondCut's `0x1f931c1c` ERC-165 slot, so it adds an
