@@ -38,8 +38,16 @@ jobs:
       - name: Run Forge build
         run: forge build --sizes --skip test script
 
+      # IR-pipeline parity: confirm the whole codebase still COMPILES under the IR
+      # pipeline (catches stack-too-deep / IR-only incompatibilities). Deliberately
+      # NOT gated on --sizes: the vendored, gas-optimized PoseidonT3 is hand-tuned
+      # assembly for the legacy pipeline and exceeds EIP-170 only under via-ir
+      # (~29-55 KB vs 23.5 KB legacy). Lattice's CI/deploy profile is via_ir = false,
+      # so PoseidonT3 deploys via the legacy pipeline and the authoritative EIP-170
+      # gate is the legacy `--sizes` build above (no Lattice facet is near the limit).
+      # See lib/VENDORED.md.
       - name: Build with via_ir (IR-pipeline parity)
-        run: forge build --via-ir --sizes --skip test script
+        run: forge build --via-ir --skip test script
 
       # Append-only ERC-7201 storage-struct guard (CLAUDE.md "Append-only storage struct rule").
       # Fails if any guarded module struct's namespaced layout drifts from its committed baseline

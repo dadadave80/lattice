@@ -18,6 +18,17 @@ v4 audit, PSE, Mar 2024) dynamic-depth incremental Merkle tree. Both are
 required because Lattice's ZK circuits hash with Poseidon — a keccak tree would
 not verify against them.
 
+Pipeline note: `PoseidonT3.sol` is hand-tuned assembly optimized for solc's
+**legacy** (non-`via_ir`) pipeline, where it deploys at ~23.5 KB — under the
+EIP-170 24,576 B limit. Under `--via-ir` the IR optimizer restructures that
+assembly and the contract balloons to ~29–55 KB, exceeding EIP-170 regardless of
+`optimizer_runs`. Lattice's CI/deploy profile sets `via_ir = false`, so PoseidonT3
+(and any Poseidon-based ZK module that links it) is deployed via the legacy
+pipeline. The CI `via_ir` step is therefore a compile-parity check only and does
+not enforce `--sizes` (the legacy `--sizes` build is the authoritative EIP-170
+gate). Consumers compiling Lattice's ZK privacy modules should likewise deploy
+PoseidonT3 with the legacy pipeline.
+
 Note: upstream's `zk-kit/lean-imt/Constants.sol` ships an `UNLICENSED` SPDX tag
 even though the zk-kit.solidity repository is MIT-licensed (Ethereum Foundation
 2025, repo-root `LICENSE`). The file is vendored verbatim, so that per-file tag is
