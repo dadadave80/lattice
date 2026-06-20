@@ -34,3 +34,6 @@
 ### SafeHarborAdopterStorage @ erc7201:lattice.storage.SafeHarborAdopter (slot 0xaaf15994f2af30ab6b279714cd625e3af0592976549136cf56b423f8b1439400)
 0	0	_safeHarborRegistry	t_address
 1	0	_agreementFactory	t_address
+
+### CommitRevealStorage @ erc7201:lattice.storage.CommitReveal (slot 0xd3109411a8705fe8e8868eda2607aae4e6b37bb0d383a8a9e1c55c78e6853e00)
+0	0	_commitments	t_mapping(t_bytes32,t_struct(Commitment)_storage)

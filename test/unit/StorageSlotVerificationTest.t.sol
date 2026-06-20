@@ -143,6 +143,10 @@ import {
 } from "@lattice/utils/libraries/VestingWalletLib.sol";
 
 // privacy
+import {
+    COMMIT_REVEAL_STORAGE_SLOT,
+    ERC165_MAP_ICOMMITREVEAL_SLOT
+} from "@lattice/privacy/libraries/CommitRevealLib.sol";
 import {ERC165_MAP_IERC5564ANNOUNCER_SLOT} from "@lattice/privacy/libraries/ERC5564AnnouncerLib.sol";
 import {
     ERC165_MAP_IERC6538REGISTRY_SLOT,
@@ -173,6 +177,7 @@ import {IAccessManager} from "@lattice/interfaces/IAccessManager.sol";
 import {IChainlinkAdapter} from "@lattice/interfaces/IChainlinkAdapter.sol";
 import {IChainlinkVRF} from "@lattice/interfaces/IChainlinkVRF.sol";
 import {ICircuitBreaker} from "@lattice/interfaces/ICircuitBreaker.sol";
+import {ICommitReveal} from "@lattice/interfaces/ICommitReveal.sol";
 import {ICompoundV3Adapter} from "@lattice/interfaces/ICompoundV3Adapter.sol";
 import {IConstantProduct} from "@lattice/interfaces/IConstantProduct.sol";
 import {ICurveStableSwapAdapter} from "@lattice/interfaces/ICurveStableSwapAdapter.sol";
@@ -534,6 +539,14 @@ contract StorageSlotVerificationTest is Test {
             ERC6538REGISTRY_STORAGE_SLOT,
             _erc7201Slot("lattice.storage.ERC6538Registry"),
             "ERC6538Registry storage slot mismatch"
+        );
+    }
+
+    function test_CommitRevealStorageSlot() public pure {
+        assertEq(
+            COMMIT_REVEAL_STORAGE_SLOT,
+            _erc7201Slot("lattice.storage.CommitReveal"),
+            "CommitReveal storage slot mismatch"
         );
     }
 
@@ -960,6 +973,16 @@ contract StorageSlotVerificationTest is Test {
         );
     }
 
+    function test_Erc165MapICommitRevealSlot() public pure {
+        bytes4 interfaceId = type(ICommitReveal).interfaceId;
+        assertEq(interfaceId, bytes4(0xe371e8b7), "ICommitReveal interfaceId comment is stale");
+        assertEq(
+            ERC165_MAP_ICOMMITREVEAL_SLOT,
+            _erc165MapSlot(interfaceId, ERC165_STORAGE_LOCATION),
+            "ERC165 ICommitReveal map slot mismatch"
+        );
+    }
+
     function test_Erc165MapIENSResolverSlot() public pure {
         bytes4 interfaceId = type(IENSResolver).interfaceId;
         assertEq(interfaceId, bytes4(0x566ec67d), "IENSResolver interfaceId comment is stale");
@@ -1017,7 +1040,7 @@ contract StorageSlotVerificationTest is Test {
     // ======================== Slot inventories ========================
 
     function _allStorageSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](44);
+        slots = new bytes32[](45);
         uint256 i;
         // access
         slots[i++] = ACCESS_CONTROL_STORAGE_SLOT;
@@ -1069,6 +1092,7 @@ contract StorageSlotVerificationTest is Test {
         slots[i++] = VESTING_WALLET_STORAGE_SLOT;
         // privacy (ERC5564Announcer is stateless — no ERC-7201 storage slot)
         slots[i++] = ERC6538REGISTRY_STORAGE_SLOT;
+        slots[i++] = COMMIT_REVEAL_STORAGE_SLOT;
         // ens
         slots[i++] = ENS_REVERSE_CLAIMER_STORAGE_SLOT;
         slots[i++] = ENS_RESOLVER_STORAGE_SLOT;
@@ -1076,7 +1100,7 @@ contract StorageSlotVerificationTest is Test {
     }
 
     function _allErc165MapSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](46);
+        slots = new bytes32[](47);
         uint256 i;
         // access
         slots[i++] = ERC165_MAP_IACCESSCONTROL_SLOT;
@@ -1144,6 +1168,7 @@ contract StorageSlotVerificationTest is Test {
         // ERC-165 id; ERC5564Announcer is stateless and likewise mints its own ERC-165 id)
         slots[i++] = ERC165_MAP_IERC5564ANNOUNCER_SLOT;
         slots[i++] = ERC165_MAP_IERC6538REGISTRY_SLOT;
+        slots[i++] = ERC165_MAP_ICOMMITREVEAL_SLOT;
         // ens
         slots[i++] = ERC165_MAP_IENSREVERSECLAIMER_SLOT;
         slots[i++] = ERC165_MAP_IENSRESOLVER_SLOT;
