@@ -56,6 +56,8 @@ GUARDED_STRUCTS=(
     "GovernedSafeDiamondCutStorage lattice.storage.GovernedSafeDiamondCut"
     "ERC6538RegistryStorage lattice.storage.ERC6538Registry"
     "ENSReverseClaimerStorage lattice.storage.ENSReverseClaimer"
+    "ENSResolverStorage lattice.storage.ENSResolver"
+    "ENSSubnameIssuerStorage lattice.storage.ENSSubnameIssuer"
     "SafeHarborAdopterStorage lattice.storage.SafeHarborAdopter"
 )
 
