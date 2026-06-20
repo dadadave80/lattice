@@ -86,6 +86,14 @@ and a row here.
   is the host diamond, so relayers/wallets must read the live domain via `DOMAIN_SEPARATOR()` /
   `eip712Domain()` rather than a fixed singleton address. Together the two privacy modules add **one**
   ERC-7201 storage slot and **two** ERC-165 map slots.
+- **ENSResolver** and **ENSSubnameIssuer** are the ENS-identity forward path. **ENSResolver** does on-chain
+  forward resolution (registry → resolver → `addr`) and stores the configurable ENS registry at its own
+  ERC-7201 slot, gated on `ENS_MANAGER_ROLE`; it mints `IENSResolver` (`0x566ec67d`). **ENSSubnameIssuer**
+  mints subnames via the ENS NameWrapper, stores the configurable NameWrapper at its own ERC-7201 slot, and
+  is gated on the dedicated `ENS_SUBNAME_ISSUER_ROLE` (`keccak256("ENS_SUBNAME_ISSUER_ROLE")`); it mints
+  `IENSSubnameIssuer` (`0x6ead39e3`). Both vendor minimal external ENS interfaces (`IENS`, `IAddrResolver`,
+  `INameWrapper`) under `interfaces/external/` and never hardcode ENS addresses. Together they add **two**
+  ERC-7201 storage slots and **two** ERC-165 map slots.
 - **IAdapterOperator** (`setOperator` / `operator`) is the authorized-operator surface co-implemented
   by **every** protocol adapter facet alongside `IProtocolAdapter`. It is a **separate** interface on
   purpose: adding its two functions to `IProtocolAdapter` would change that interface's pinned id
@@ -186,9 +194,16 @@ and a row here.
 | ERC5564Announcer | (stateless — no ERC-7201 storage) | — | `IERC5564Announcer` (ERC-5564) | `0x4d1f9583` | `0xa57260aa5166ddbfa7edd847f707bbf0762a8707401140e29b2073d6dfc88e2e` |
 | ERC6538Registry | `lattice.storage.ERC6538Registry` | `0x77e72c5973ed8cfb58126100bfd525d25949aa328155f37334e51548cdc80100` | `IERC6538Registry` (ERC-6538) | `0x7b1f57cb` | `0xba3bf91c60e936a8bb7a4c2729c74c6ef842a655f3dff9707765ac926778cd2e` |
 
+### ENS
+
+| Module | ERC-7201 namespace | Storage slot (hex) | Interface | interfaceId | ERC-165 map slot (hex) |
+|---|---|---|---|---|---|
+| ENSResolver | `lattice.storage.ENSResolver` | `0x33f26d8db6499021a25127a427a9f060956987880daa3f7db97807f377225300` | `IENSResolver` | `0x566ec67d` | `0x79535b2b28365a4b28deff1d36dfc239871172c80dcc5e494674d846366975cb` |
+| ENSSubnameIssuer | `lattice.storage.ENSSubnameIssuer` | `0xecd97908615d460a8806be2f460463395b75373d406444064e9704ed5d892e00` | `IENSSubnameIssuer` | `0x6ead39e3` | `0x19f98b1c052723a0f45e31ccce192390fdd3867a76366f19df750eb883381f60` |
+
 ---
 
-**Counts:** 40 storage-bearing modules (40 unique ERC-7201 slots) and 42 ERC-165 interface
+**Counts:** 42 storage-bearing modules (42 unique ERC-7201 slots) and 44 ERC-165 interface
 map slots (the privacy track adds the stateful `ERC6538Registry` — one ERC-7201 slot and one
 `IERC6538Registry` ERC-165 slot — plus the stateless `ERC5564Announcer` — no ERC-7201 slot, one
 `IERC5564Announcer` ERC-165 slot; GovernedDiamondCut reuses IDiamondCut's `0x1f931c1c` ERC-165 slot, so it adds an

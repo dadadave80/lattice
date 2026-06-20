@@ -64,9 +64,23 @@ contract StorageLayoutProbe {
         mapping(address registrant => uint256 nonce) _nonces;
     }
 
+    /// @dev Verbatim mirror of `ENSResolverLib.ENSResolverStorage`
+    ///      (`@custom:storage-location erc7201:lattice.storage.ENSResolver`). Append-only.
+    struct ENSResolverStorage {
+        address _ensRegistry;
+    }
+
+    /// @dev Verbatim mirror of `ENSSubnameIssuerLib.ENSSubnameIssuerStorage`
+    ///      (`@custom:storage-location erc7201:lattice.storage.ENSSubnameIssuer`). Append-only.
+    struct ENSSubnameIssuerStorage {
+        address _nameWrapper;
+    }
+
     /// @dev Forces solc to emit the struct types into `storageLayout`. Never read, never deployed.
     GovernedDiamondCutStorage internal _unusedGovernedDiamondCut;
     SafeDiamondCutStorage internal _unusedSafeDiamondCut;
     GovernedSafeDiamondCutStorage internal _unusedGovernedSafeDiamondCut;
     ERC6538RegistryStorage internal _unusedERC6538Registry;
+    ENSResolverStorage internal _unusedENSResolver;
+    ENSSubnameIssuerStorage internal _unusedENSSubnameIssuer;
 }
