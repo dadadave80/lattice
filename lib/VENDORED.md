@@ -11,6 +11,7 @@ upstream import paths, so no source change is needed.
 |------|----------|------------------|---------|
 | `poseidon-solidity/PoseidonT3.sol` | npm `poseidon-solidity` (chancehudson) | 0.0.5 | MIT |
 | `zk-kit/lean-imt/` | github.com/privacy-scaling-explorations/zk-kit.solidity `packages/lean-imt/contracts` | a171c845ec7fdc50cdd1fe96c14c27d707cdfbed | MIT |
+| `semaphore/` | github.com/semaphore-protocol/semaphore `packages/contracts/contracts` (SemaphoreVerifier + KeyPts + Constants + ISemaphoreVerifier) | 341475c66bee7473f8d25f44bc0dcf6b255b5a6c | MIT |
 
 PoseidonT3 is the gas-optimized BN254 Poseidon used by every SNARK-friendly
 incremental Merkle tree in the ecosystem; LeanIMT is the PSE-audited (Semaphore
