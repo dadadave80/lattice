@@ -148,6 +148,10 @@ import {
 // ens
 import {ENS_RESOLVER_STORAGE_SLOT, ERC165_MAP_IENSRESOLVER_SLOT} from "@lattice/ens/libraries/ENSResolverLib.sol";
 import {
+    ENS_REVERSE_CLAIMER_STORAGE_SLOT,
+    ERC165_MAP_IENSREVERSECLAIMER_SLOT
+} from "@lattice/ens/libraries/ENSReverseClaimerLib.sol";
+import {
     ENS_SUBNAME_ISSUER_STORAGE_SLOT,
     ERC165_MAP_IENSSUBNAMEISSUER_SLOT
 } from "@lattice/ens/libraries/ENSSubnameIssuerLib.sol";
@@ -170,6 +174,7 @@ import {IConstantProduct} from "@lattice/interfaces/IConstantProduct.sol";
 import {ICurveStableSwapAdapter} from "@lattice/interfaces/ICurveStableSwapAdapter.sol";
 import {IEIP712} from "@lattice/interfaces/IEIP712.sol";
 import {IENSResolver} from "@lattice/interfaces/IENSResolver.sol";
+import {IENSReverseClaimer} from "@lattice/interfaces/IENSReverseClaimer.sol";
 import {IENSSubnameIssuer} from "@lattice/interfaces/IENSSubnameIssuer.sol";
 import {IERC20} from "@lattice/interfaces/IERC20.sol";
 import {IERC20Capped} from "@lattice/interfaces/IERC20Capped.sol";
@@ -532,6 +537,14 @@ contract StorageSlotVerificationTest is Test {
             ENS_SUBNAME_ISSUER_STORAGE_SLOT,
             _erc7201Slot("lattice.storage.ENSSubnameIssuer"),
             "ENSSubnameIssuer storage slot mismatch"
+        );
+    }
+
+    function test_ENSReverseClaimerStorageSlot() public pure {
+        assertEq(
+            ENS_REVERSE_CLAIMER_STORAGE_SLOT,
+            _erc7201Slot("lattice.storage.ENSReverseClaimer"),
+            "ENSReverseClaimer storage slot mismatch"
         );
     }
 
@@ -944,6 +957,16 @@ contract StorageSlotVerificationTest is Test {
         );
     }
 
+    function test_Erc165MapIENSReverseClaimerSlot() public pure {
+        bytes4 interfaceId = type(IENSReverseClaimer).interfaceId;
+        assertEq(interfaceId, bytes4(0x84019dd8), "IENSReverseClaimer interfaceId comment is stale");
+        assertEq(
+            ERC165_MAP_IENSREVERSECLAIMER_SLOT,
+            _erc165MapSlot(interfaceId, ERC165_STORAGE_LOCATION),
+            "ERC165 IENSReverseClaimer map slot mismatch"
+        );
+    }
+
     // ======================== Uniqueness Checks ========================
 
     /// @notice Every module's ERC-7201 storage slot must be globally unique so modules can be
@@ -971,7 +994,7 @@ contract StorageSlotVerificationTest is Test {
     // ======================== Slot inventories ========================
 
     function _allStorageSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](42);
+        slots = new bytes32[](43);
         uint256 i;
         // access
         slots[i++] = ACCESS_CONTROL_STORAGE_SLOT;
@@ -1023,12 +1046,13 @@ contract StorageSlotVerificationTest is Test {
         // privacy (ERC5564Announcer is stateless — no ERC-7201 storage slot)
         slots[i++] = ERC6538REGISTRY_STORAGE_SLOT;
         // ens
+        slots[i++] = ENS_REVERSE_CLAIMER_STORAGE_SLOT;
         slots[i++] = ENS_RESOLVER_STORAGE_SLOT;
         slots[i++] = ENS_SUBNAME_ISSUER_STORAGE_SLOT;
     }
 
     function _allErc165MapSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](44);
+        slots = new bytes32[](45);
         uint256 i;
         // access
         slots[i++] = ERC165_MAP_IACCESSCONTROL_SLOT;
@@ -1096,6 +1120,7 @@ contract StorageSlotVerificationTest is Test {
         slots[i++] = ERC165_MAP_IERC5564ANNOUNCER_SLOT;
         slots[i++] = ERC165_MAP_IERC6538REGISTRY_SLOT;
         // ens
+        slots[i++] = ERC165_MAP_IENSREVERSECLAIMER_SLOT;
         slots[i++] = ERC165_MAP_IENSRESOLVER_SLOT;
         slots[i++] = ERC165_MAP_IENSSUBNAMEISSUER_SLOT;
     }
