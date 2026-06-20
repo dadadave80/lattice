@@ -64,9 +64,17 @@ contract StorageLayoutProbe {
         mapping(address registrant => uint256 nonce) _nonces;
     }
 
+    /// @dev Verbatim mirror of `ENSReverseClaimerLib.ENSReverseClaimerStorage`
+    ///      (`@custom:storage-location erc7201:lattice.storage.ENSReverseClaimer`). Append-only.
+    struct ENSReverseClaimerStorage {
+        address _reverseRegistrar;
+        string _ensName;
+    }
+
     /// @dev Forces solc to emit the struct types into `storageLayout`. Never read, never deployed.
     GovernedDiamondCutStorage internal _unusedGovernedDiamondCut;
     SafeDiamondCutStorage internal _unusedSafeDiamondCut;
     GovernedSafeDiamondCutStorage internal _unusedGovernedSafeDiamondCut;
     ERC6538RegistryStorage internal _unusedERC6538Registry;
+    ENSReverseClaimerStorage internal _unusedENSReverseClaimer;
 }
