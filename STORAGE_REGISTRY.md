@@ -107,6 +107,15 @@ and a row here.
   **no** ERC-7201 storage (only registers `IPlonkVerifier`, `0x5d484314`, for ERC-165), so it adds **zero**
   storage slots and **one** ERC-165 map slot. Provided as a reusable verifier for consumers who bring PLONK
   circuits, alongside the ratified-primary Groth16 path.
+- **Semaphore** is the anonymous-membership / signaling module: members join groups (Poseidon incremental
+  Merkle trees of identity commitments) and prove membership in zero knowledge while broadcasting a message
+  under a scope, without revealing which member they are. It keeps its `SemaphoreStorage` (group map +
+  counter + verifier address) at a unique ERC-7201 slot and mints `ISemaphore` (`0xf497879d`). Group
+  membership uses the shared `IncrementalMerkleTreeLib` (Poseidon LeanIMT + recent-root history) and
+  double-signaling protection uses a per-group `NullifierRegistryLib`; the Groth16 verification is delegated
+  to the **audited Semaphore v4 verifier** (vendored under `lib/semaphore/`, deployed separately and set via
+  `setVerifier`, gated on `DEFAULT_ADMIN_ROLE`). Each group has its own admin address (Semaphore-style, not a
+  global role). It adds **one** ERC-7201 storage slot and **one** ERC-165 map slot.
 - **ENSReverseClaimer** lets a diamond claim its own primary ENS name via reverse resolution. It stores
   the configured reverse registrar + cached name in its own `ENSReverseClaimerStorage` at a unique
   ERC-7201 slot and mints `IENSReverseClaimer` (`0x84019dd8`); the identity setters are gated on
@@ -230,6 +239,7 @@ and a row here.
 | CommitReveal | `lattice.storage.CommitReveal` | `0xd3109411a8705fe8e8868eda2607aae4e6b37bb0d383a8a9e1c55c78e6853e00` | `ICommitReveal` | `0xe371e8b7` | `0xdc9ba0d500a620df2dabeedf359873cda3ecd1229c8cb91b5b30ae80ec382462` |
 | Groth16Verifier | (stateless — no ERC-7201 storage) | — | `IGroth16Verifier` | `0x6d832d8e` | `0x65fb5f0c2dd2a1b03fcdcf008584d060b7a7596bbc510b7022310e4dbd7682a9` |
 | PlonkVerifier | (stateless — no ERC-7201 storage) | — | `IPlonkVerifier` | `0x5d484314` | `0xb1e78a1a6e11f30e01de857f602d74246da41ae3318d8e6afc2b73cc1cbe0ede` |
+| Semaphore | `lattice.storage.Semaphore` | `0x9014b6f2f89a94726c6607d3b9e5562f77c44e9f80791dbbfea2ef3de33d0300` | `ISemaphore` | `0xf497879d` | `0xf2439559430b40518d710e6342516a19266235963e7106afd03350497fe51040` |
 
 ### ENS
 
@@ -241,12 +251,13 @@ and a row here.
 
 ---
 
-**Counts:** 45 storage-bearing modules (45 unique ERC-7201 slots) and 49 ERC-165 interface
+**Counts:** 46 storage-bearing modules (46 unique ERC-7201 slots) and 50 ERC-165 interface
 map slots (the privacy track adds the stateful `ERC6538Registry` — one ERC-7201 slot and one
 `IERC6538Registry` ERC-165 slot — plus the stateless `ERC5564Announcer` — no ERC-7201 slot, one
 `IERC5564Announcer` ERC-165 slot — and the stateless `Groth16Verifier` — no ERC-7201 slot, one
 `IGroth16Verifier` (`0x6d832d8e`) ERC-165 slot — and the stateless `PlonkVerifier` — no ERC-7201 slot,
-one `IPlonkVerifier` (`0x5d484314`) ERC-165 slot; GovernedDiamondCut reuses IDiamondCut's `0x1f931c1c` ERC-165 slot, so it adds an
+one `IPlonkVerifier` (`0x5d484314`) ERC-165 slot — and the stateful `Semaphore` membership module — one
+ERC-7201 slot and one `ISemaphore` (`0xf497879d`) ERC-165 slot; GovernedDiamondCut reuses IDiamondCut's `0x1f931c1c` ERC-165 slot, so it adds an
 ERC-7201 slot but no new ERC-165 map slot; SafeDiamondCut likewise reuses IDiamondCut's
 `0x1f931c1c` ERC-165 slot, so it adds an ERC-7201 slot but no new ERC-165 map slot;
 GovernedSafeDiamondCut serves no synchronous cut selector and registers its own
