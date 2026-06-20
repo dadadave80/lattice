@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {ICommitReveal} from "@lattice/interfaces/ICommitReveal.sol";
 import {IUpgradeRegistry} from "@lattice/interfaces/IUpgradeRegistry.sol";
 import {EnumerableSet} from "@lattice/utils/libraries/EnumerableSet.sol";
 
@@ -90,6 +91,12 @@ contract StorageLayoutProbe {
         address _agreementFactory;
     }
 
+    /// @dev Verbatim mirror of `CommitRevealLib.CommitRevealStorage`
+    ///      (`@custom:storage-location erc7201:lattice.storage.CommitReveal`). Append-only.
+    struct CommitRevealStorage {
+        mapping(bytes32 commitment => ICommitReveal.Commitment record) _commitments;
+    }
+
     /// @dev Forces solc to emit the struct types into `storageLayout`. Never read, never deployed.
     GovernedDiamondCutStorage internal _unusedGovernedDiamondCut;
     SafeDiamondCutStorage internal _unusedSafeDiamondCut;
@@ -99,4 +106,5 @@ contract StorageLayoutProbe {
     ENSResolverStorage internal _unusedENSResolver;
     ENSSubnameIssuerStorage internal _unusedENSSubnameIssuer;
     SafeHarborAdopterStorage internal _unusedSafeHarborAdopter;
+    CommitRevealStorage internal _unusedCommitReveal;
 }

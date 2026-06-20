@@ -84,8 +84,15 @@ and a row here.
   canonical per-registry nonce semantics) at a unique ERC-7201 slot, and reuses only the shared `EIP712`
   domain for typed-data hashing. CONFORMANCE CAVEAT: as a Diamond facet the EIP-712 `verifyingContract`
   is the host diamond, so relayers/wallets must read the live domain via `DOMAIN_SEPARATOR()` /
-  `eip712Domain()` rather than a fixed singleton address. Together the two privacy modules add **one**
-  ERC-7201 storage slot and **two** ERC-165 map slots.
+  `eip712Domain()` rather than a fixed singleton address. Together the two stealth-address modules add
+  **one** ERC-7201 storage slot and **two** ERC-165 map slots.
+- **CommitReveal** is a generic commit–reveal primitive (sealed bids / auctions / MEV mitigation) — no ZK
+  / circuits, just keccak256. The commitment binds the committer's address, so only the bound committer can
+  reveal it (front-run-proof). It keeps its `CommitRevealStorage` (the commitment map) at a unique ERC-7201
+  slot and mints `ICommitReveal` (`0xe371e8b7`); it is permissionless (no role gating). It is the
+  circuit-free first deliverable of the privacy-track part 2 (#10); the remaining ZK-dependent modules
+  (shielded transfers, private voting, Semaphore membership, ZK verifiers, Merkle/nullifier lib) await the
+  proving-system decision.
 - **ENSReverseClaimer** lets a diamond claim its own primary ENS name via reverse resolution. It stores
   the configured reverse registrar + cached name in its own `ENSReverseClaimerStorage` at a unique
   ERC-7201 slot and mints `IENSReverseClaimer` (`0x84019dd8`); the identity setters are gated on
@@ -206,6 +213,7 @@ and a row here.
 |---|---|---|---|---|---|
 | ERC5564Announcer | (stateless — no ERC-7201 storage) | — | `IERC5564Announcer` (ERC-5564) | `0x4d1f9583` | `0xa57260aa5166ddbfa7edd847f707bbf0762a8707401140e29b2073d6dfc88e2e` |
 | ERC6538Registry | `lattice.storage.ERC6538Registry` | `0x77e72c5973ed8cfb58126100bfd525d25949aa328155f37334e51548cdc80100` | `IERC6538Registry` (ERC-6538) | `0x7b1f57cb` | `0xba3bf91c60e936a8bb7a4c2729c74c6ef842a655f3dff9707765ac926778cd2e` |
+| CommitReveal | `lattice.storage.CommitReveal` | `0xd3109411a8705fe8e8868eda2607aae4e6b37bb0d383a8a9e1c55c78e6853e00` | `ICommitReveal` | `0xe371e8b7` | `0xdc9ba0d500a620df2dabeedf359873cda3ecd1229c8cb91b5b30ae80ec382462` |
 
 ### ENS
 
@@ -217,7 +225,7 @@ and a row here.
 
 ---
 
-**Counts:** 44 storage-bearing modules (44 unique ERC-7201 slots) and 46 ERC-165 interface
+**Counts:** 45 storage-bearing modules (45 unique ERC-7201 slots) and 47 ERC-165 interface
 map slots (the privacy track adds the stateful `ERC6538Registry` — one ERC-7201 slot and one
 `IERC6538Registry` ERC-165 slot — plus the stateless `ERC5564Announcer` — no ERC-7201 slot, one
 `IERC5564Announcer` ERC-165 slot; GovernedDiamondCut reuses IDiamondCut's `0x1f931c1c` ERC-165 slot, so it adds an
