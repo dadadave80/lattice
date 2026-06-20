@@ -30,3 +30,7 @@
 
 ### ENSSubnameIssuerStorage @ erc7201:lattice.storage.ENSSubnameIssuer (slot 0xecd97908615d460a8806be2f460463395b75373d406444064e9704ed5d892e00)
 0	0	_nameWrapper	t_address
+
+### SafeHarborAdopterStorage @ erc7201:lattice.storage.SafeHarborAdopter (slot 0xaaf15994f2af30ab6b279714cd625e3af0592976549136cf56b423f8b1439400)
+0	0	_safeHarborRegistry	t_address
+1	0	_agreementFactory	t_address

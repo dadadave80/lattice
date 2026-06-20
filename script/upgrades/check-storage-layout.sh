@@ -58,6 +58,7 @@ GUARDED_STRUCTS=(
     "ENSReverseClaimerStorage lattice.storage.ENSReverseClaimer"
     "ENSResolverStorage lattice.storage.ENSResolver"
     "ENSSubnameIssuerStorage lattice.storage.ENSSubnameIssuer"
+    "SafeHarborAdopterStorage lattice.storage.SafeHarborAdopter"
 )
 
 command -v forge >/dev/null 2>&1 || { echo "ERROR: forge not found on PATH" >&2; exit 2; }

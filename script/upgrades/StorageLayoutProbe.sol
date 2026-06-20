@@ -83,6 +83,13 @@ contract StorageLayoutProbe {
         address _nameWrapper;
     }
 
+    /// @dev Verbatim mirror of `SafeHarborAdopterLib.SafeHarborAdopterStorage`
+    ///      (`@custom:storage-location erc7201:lattice.storage.SafeHarborAdopter`). Append-only.
+    struct SafeHarborAdopterStorage {
+        address _safeHarborRegistry;
+        address _agreementFactory;
+    }
+
     /// @dev Forces solc to emit the struct types into `storageLayout`. Never read, never deployed.
     GovernedDiamondCutStorage internal _unusedGovernedDiamondCut;
     SafeDiamondCutStorage internal _unusedSafeDiamondCut;
@@ -91,4 +98,5 @@ contract StorageLayoutProbe {
     ENSReverseClaimerStorage internal _unusedENSReverseClaimer;
     ENSResolverStorage internal _unusedENSResolver;
     ENSSubnameIssuerStorage internal _unusedENSSubnameIssuer;
+    SafeHarborAdopterStorage internal _unusedSafeHarborAdopter;
 }
