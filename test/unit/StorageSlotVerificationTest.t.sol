@@ -59,6 +59,10 @@ import {
 import {ERC165_MAP_IGOVERNOR_SLOT, GOVERNOR_STORAGE_SLOT} from "@lattice/governance/libraries/GovernorLib.sol";
 import {SAFE_DIAMOND_CUT_STORAGE_SLOT} from "@lattice/governance/libraries/SafeDiamondCutLib.sol";
 import {
+    ERC165_MAP_ISAFEHARBORADOPTER_SLOT,
+    SAFE_HARBOR_ADOPTER_STORAGE_SLOT
+} from "@lattice/governance/libraries/SafeHarborAdopterLib.sol";
+import {
     ERC165_MAP_ITIMELOCKCONTROLLER_SLOT,
     TIMELOCK_CONTROLLER_STORAGE_SLOT
 } from "@lattice/governance/libraries/TimelockControllerLib.sol";
@@ -193,6 +197,7 @@ import {IPausable} from "@lattice/interfaces/IPausable.sol";
 import {IProtocolAdapter} from "@lattice/interfaces/IProtocolAdapter.sol";
 import {IRateLimiter} from "@lattice/interfaces/IRateLimiter.sol";
 import {IReentrancyGuard} from "@lattice/interfaces/IReentrancyGuard.sol";
+import {ISafeHarborAdopter} from "@lattice/interfaces/ISafeHarborAdopter.sol";
 import {IStrategyManager} from "@lattice/interfaces/IStrategyManager.sol";
 import {ITWAPOracle} from "@lattice/interfaces/ITWAPOracle.sol";
 import {ITimelockController} from "@lattice/interfaces/ITimelockController.sol";
@@ -355,6 +360,14 @@ contract StorageSlotVerificationTest is Test {
             GOVERNED_SAFE_DIAMOND_CUT_STORAGE_SLOT,
             _erc7201Slot("lattice.storage.GovernedSafeDiamondCut"),
             "GovernedSafeDiamondCut storage slot mismatch"
+        );
+    }
+
+    function test_SafeHarborAdopterStorageSlot() public pure {
+        assertEq(
+            SAFE_HARBOR_ADOPTER_STORAGE_SLOT,
+            _erc7201Slot("lattice.storage.SafeHarborAdopter"),
+            "SafeHarborAdopter storage slot mismatch"
         );
     }
 
@@ -714,6 +727,16 @@ contract StorageSlotVerificationTest is Test {
         );
     }
 
+    function test_Erc165MapISafeHarborAdopterSlot() public pure {
+        bytes4 interfaceId = type(ISafeHarborAdopter).interfaceId;
+        assertEq(interfaceId, bytes4(0x2a3e8e12), "ISafeHarborAdopter interfaceId comment is stale");
+        assertEq(
+            ERC165_MAP_ISAFEHARBORADOPTER_SLOT,
+            _erc165MapSlot(interfaceId, ERC165_STORAGE_LOCATION),
+            "ERC165 ISafeHarborAdopter map slot mismatch"
+        );
+    }
+
     // ---- defi ----
 
     function test_Erc165MapIVaultCoreSlot() public pure {
@@ -994,7 +1017,7 @@ contract StorageSlotVerificationTest is Test {
     // ======================== Slot inventories ========================
 
     function _allStorageSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](43);
+        slots = new bytes32[](44);
         uint256 i;
         // access
         slots[i++] = ACCESS_CONTROL_STORAGE_SLOT;
@@ -1017,6 +1040,7 @@ contract StorageSlotVerificationTest is Test {
         slots[i++] = GOVERNED_DIAMOND_CUT_STORAGE_SLOT;
         slots[i++] = SAFE_DIAMOND_CUT_STORAGE_SLOT;
         slots[i++] = GOVERNED_SAFE_DIAMOND_CUT_STORAGE_SLOT;
+        slots[i++] = SAFE_HARBOR_ADOPTER_STORAGE_SLOT;
         // defi
         slots[i++] = VAULT_CORE_STORAGE_SLOT;
         slots[i++] = STRATEGY_MANAGER_STORAGE_SLOT;
@@ -1052,7 +1076,7 @@ contract StorageSlotVerificationTest is Test {
     }
 
     function _allErc165MapSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](45);
+        slots = new bytes32[](46);
         uint256 i;
         // access
         slots[i++] = ERC165_MAP_IACCESSCONTROL_SLOT;
@@ -1078,6 +1102,7 @@ contract StorageSlotVerificationTest is Test {
         // selector). SafeDiamondCut reuses IDiamondCut's 0x1f931c1c slot (already registered by
         // DiamondLib), so it adds an ERC-7201 slot but NO new ERC-165 map slot.
         slots[i++] = ERC165_MAP_IGOVERNEDSAFEDIAMONDCUT_SLOT;
+        slots[i++] = ERC165_MAP_ISAFEHARBORADOPTER_SLOT;
         // defi
         slots[i++] = ERC165_MAP_IVAULTCORE_SLOT;
         slots[i++] = ERC165_MAP_ISTRATEGYMANAGER_SLOT;
