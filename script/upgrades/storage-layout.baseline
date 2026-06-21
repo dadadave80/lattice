@@ -42,3 +42,7 @@
 0	0	groups	t_mapping(t_uint256,t_struct(Group)_storage)
 1	0	groupCount	t_uint256
 2	0	verifier	t_address
+
+### PrivateVotingStorage @ erc7201:lattice.storage.PrivateVoting (slot 0x366a7e9d1ddfe6eaa85ec4e6a71a0be592797e3e9ab0151a827465f6ed6bb900)
+0	0	_polls	t_mapping(t_uint256,t_struct(Poll)_storage)
+1	0	_pollCount	t_uint256

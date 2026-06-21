@@ -71,6 +71,7 @@ GUARDED_STRUCTS=(
     "SafeHarborAdopterStorage lattice.storage.SafeHarborAdopter"
     "CommitRevealStorage lattice.storage.CommitReveal"
     "SemaphoreStorage lattice.storage.Semaphore"
+    "PrivateVotingStorage lattice.storage.PrivateVoting"
 )
 
 command -v forge >/dev/null 2>&1 || { echo "ERROR: forge not found on PATH" >&2; exit 2; }
