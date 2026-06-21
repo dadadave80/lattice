@@ -159,6 +159,10 @@ import {
     PRIVATE_VOTING_STORAGE_SLOT
 } from "@lattice/privacy/libraries/PrivateVotingLib.sol";
 import {ERC165_MAP_ISEMAPHORE_SLOT, SEMAPHORE_STORAGE_SLOT} from "@lattice/privacy/libraries/SemaphoreLib.sol";
+import {
+    ERC165_MAP_ISHIELDEDPOOL_SLOT,
+    SHIELDED_POOL_STORAGE_SLOT
+} from "@lattice/privacy/libraries/ShieldedPoolLib.sol";
 
 // ens
 import {ENS_RESOLVER_STORAGE_SLOT, ERC165_MAP_IENSRESOLVER_SLOT} from "@lattice/ens/libraries/ENSResolverLib.sol";
@@ -214,6 +218,7 @@ import {IRateLimiter} from "@lattice/interfaces/IRateLimiter.sol";
 import {IReentrancyGuard} from "@lattice/interfaces/IReentrancyGuard.sol";
 import {ISafeHarborAdopter} from "@lattice/interfaces/ISafeHarborAdopter.sol";
 import {ISemaphore} from "@lattice/interfaces/ISemaphore.sol";
+import {IShieldedPool} from "@lattice/interfaces/IShieldedPool.sol";
 import {IStrategyManager} from "@lattice/interfaces/IStrategyManager.sol";
 import {ITWAPOracle} from "@lattice/interfaces/ITWAPOracle.sol";
 import {ITimelockController} from "@lattice/interfaces/ITimelockController.sol";
@@ -570,6 +575,14 @@ contract StorageSlotVerificationTest is Test {
             PRIVATE_VOTING_STORAGE_SLOT,
             _erc7201Slot("lattice.storage.PrivateVoting"),
             "PrivateVoting storage slot mismatch"
+        );
+    }
+
+    function test_ShieldedPoolStorageSlot() public pure {
+        assertEq(
+            SHIELDED_POOL_STORAGE_SLOT,
+            _erc7201Slot("lattice.storage.ShieldedPool"),
+            "ShieldedPool storage slot mismatch"
         );
     }
 
@@ -1046,6 +1059,16 @@ contract StorageSlotVerificationTest is Test {
         );
     }
 
+    function test_Erc165MapIShieldedPoolSlot() public pure {
+        bytes4 interfaceId = type(IShieldedPool).interfaceId;
+        assertEq(interfaceId, bytes4(0x8f5cc2c7), "IShieldedPool interfaceId comment is stale");
+        assertEq(
+            ERC165_MAP_ISHIELDEDPOOL_SLOT,
+            _erc165MapSlot(interfaceId, ERC165_STORAGE_LOCATION),
+            "ERC165 IShieldedPool map slot mismatch"
+        );
+    }
+
     function test_Erc165MapIENSResolverSlot() public pure {
         bytes4 interfaceId = type(IENSResolver).interfaceId;
         assertEq(interfaceId, bytes4(0x566ec67d), "IENSResolver interfaceId comment is stale");
@@ -1103,7 +1126,7 @@ contract StorageSlotVerificationTest is Test {
     // ======================== Slot inventories ========================
 
     function _allStorageSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](47);
+        slots = new bytes32[](48);
         uint256 i;
         // access
         slots[i++] = ACCESS_CONTROL_STORAGE_SLOT;
@@ -1158,6 +1181,7 @@ contract StorageSlotVerificationTest is Test {
         slots[i++] = COMMIT_REVEAL_STORAGE_SLOT;
         slots[i++] = SEMAPHORE_STORAGE_SLOT;
         slots[i++] = PRIVATE_VOTING_STORAGE_SLOT;
+        slots[i++] = SHIELDED_POOL_STORAGE_SLOT;
         // ens
         slots[i++] = ENS_REVERSE_CLAIMER_STORAGE_SLOT;
         slots[i++] = ENS_RESOLVER_STORAGE_SLOT;
@@ -1165,7 +1189,7 @@ contract StorageSlotVerificationTest is Test {
     }
 
     function _allErc165MapSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](51);
+        slots = new bytes32[](52);
         uint256 i;
         // access
         slots[i++] = ERC165_MAP_IACCESSCONTROL_SLOT;
@@ -1238,6 +1262,7 @@ contract StorageSlotVerificationTest is Test {
         slots[i++] = ERC165_MAP_IPLONKVERIFIER_SLOT;
         slots[i++] = ERC165_MAP_ISEMAPHORE_SLOT;
         slots[i++] = ERC165_MAP_IPRIVATEVOTING_SLOT;
+        slots[i++] = ERC165_MAP_ISHIELDEDPOOL_SLOT;
         // ens
         slots[i++] = ERC165_MAP_IENSREVERSECLAIMER_SLOT;
         slots[i++] = ERC165_MAP_IENSRESOLVER_SLOT;

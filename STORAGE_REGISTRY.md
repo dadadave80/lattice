@@ -125,6 +125,17 @@ and a row here.
   unique ERC-7201 slot and mints `IPrivateVoting` (`0xf750b661`); it adds **one** ERC-7201 storage slot and
   **one** ERC-165 map slot. 1-person-1-vote, not token-weighted (private weighted voting needs a bespoke
   circuit and is out of scope).
+- **ShieldedPool** is fixed-denomination shielded (private) ERC-20 transfers (Tornado-style): a depositor
+  inserts `Poseidon(nullifier, secret)` into the pool's Poseidon LeanIMT (`IncrementalMerkleTreeLib`), and a
+  later withdrawal proves membership in zero knowledge and burns a one-time nullifier hash
+  (`NullifierRegistryLib`) to an arbitrary recipient. The on-chain mechanics are the library's value-add;
+  the withdraw CIRCUIT + its verifier are consumer-supplied per pool (5 public signals `[root,
+  nullifierHash, recipient, relayer, fee]`), so the cryptography is wrapped, not hand-rolled. Withdrawals
+  follow strict CEI (nullifier spent before any ERC-20 transfer). It keeps its `ShieldedPoolStorage` (pool
+  map + counter) at a unique ERC-7201 slot and mints `IShieldedPool` (`0x8f5cc2c7`); pool creation is gated
+  on `DEFAULT_ADMIN_ROLE`. It adds **one** ERC-7201 storage slot and **one** ERC-165 map slot. SECURITY:
+  this module escrows funds and must be deployed with an audited circuit/verifier + honest trusted setup
+  before any mainnet-with-funds use.
 - **ENSReverseClaimer** lets a diamond claim its own primary ENS name via reverse resolution. It stores
   the configured reverse registrar + cached name in its own `ENSReverseClaimerStorage` at a unique
   ERC-7201 slot and mints `IENSReverseClaimer` (`0x84019dd8`); the identity setters are gated on
@@ -250,6 +261,7 @@ and a row here.
 | PlonkVerifier | (stateless — no ERC-7201 storage) | — | `IPlonkVerifier` | `0x5d484314` | `0xb1e78a1a6e11f30e01de857f602d74246da41ae3318d8e6afc2b73cc1cbe0ede` |
 | Semaphore | `lattice.storage.Semaphore` | `0x9014b6f2f89a94726c6607d3b9e5562f77c44e9f80791dbbfea2ef3de33d0300` | `ISemaphore` | `0xf497879d` | `0xf2439559430b40518d710e6342516a19266235963e7106afd03350497fe51040` |
 | PrivateVoting | `lattice.storage.PrivateVoting` | `0x366a7e9d1ddfe6eaa85ec4e6a71a0be592797e3e9ab0151a827465f6ed6bb900` | `IPrivateVoting` | `0xf750b661` | `0xd7a71e51b42fc01807cbfbb5db7d2ead6dbf4db6187d1c815fc074c4ac95ba7c` |
+| ShieldedPool | `lattice.storage.ShieldedPool` | `0xa961220e87963afb8adc0f7621a90ce1922bf3bb438109c43cc7dacbc8e06600` | `IShieldedPool` | `0x8f5cc2c7` | `0x584247a1f67e966ee8f18e29a93dbcead963401775336064ffc8d6a343c2a4df` |
 
 ### ENS
 
@@ -261,14 +273,15 @@ and a row here.
 
 ---
 
-**Counts:** 47 storage-bearing modules (47 unique ERC-7201 slots) and 51 ERC-165 interface
+**Counts:** 48 storage-bearing modules (48 unique ERC-7201 slots) and 52 ERC-165 interface
 map slots (the privacy track adds the stateful `ERC6538Registry` — one ERC-7201 slot and one
 `IERC6538Registry` ERC-165 slot — plus the stateless `ERC5564Announcer` — no ERC-7201 slot, one
 `IERC5564Announcer` ERC-165 slot — and the stateless `Groth16Verifier` — no ERC-7201 slot, one
 `IGroth16Verifier` (`0x6d832d8e`) ERC-165 slot — and the stateless `PlonkVerifier` — no ERC-7201 slot,
 one `IPlonkVerifier` (`0x5d484314`) ERC-165 slot — and the stateful `Semaphore` membership module — one
 ERC-7201 slot and one `ISemaphore` (`0xf497879d`) ERC-165 slot — and the stateful `PrivateVoting` module
-— one ERC-7201 slot and one `IPrivateVoting` (`0xf750b661`) ERC-165 slot; GovernedDiamondCut reuses IDiamondCut's `0x1f931c1c` ERC-165 slot, so it adds an
+— one ERC-7201 slot and one `IPrivateVoting` (`0xf750b661`) ERC-165 slot — and the stateful `ShieldedPool`
+module — one ERC-7201 slot and one `IShieldedPool` (`0x8f5cc2c7`) ERC-165 slot; GovernedDiamondCut reuses IDiamondCut's `0x1f931c1c` ERC-165 slot, so it adds an
 ERC-7201 slot but no new ERC-165 map slot; SafeDiamondCut likewise reuses IDiamondCut's
 `0x1f931c1c` ERC-165 slot, so it adds an ERC-7201 slot but no new ERC-165 map slot;
 GovernedSafeDiamondCut serves no synchronous cut selector and registers its own
