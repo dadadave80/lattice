@@ -154,6 +154,10 @@ import {
 } from "@lattice/privacy/libraries/ERC6538RegistryLib.sol";
 import {ERC165_MAP_IGROTH16VERIFIER_SLOT} from "@lattice/privacy/libraries/Groth16VerifierLib.sol";
 import {ERC165_MAP_IPLONKVERIFIER_SLOT} from "@lattice/privacy/libraries/PlonkVerifierLib.sol";
+import {
+    ERC165_MAP_IPRIVATEVOTING_SLOT,
+    PRIVATE_VOTING_STORAGE_SLOT
+} from "@lattice/privacy/libraries/PrivateVotingLib.sol";
 import {ERC165_MAP_ISEMAPHORE_SLOT, SEMAPHORE_STORAGE_SLOT} from "@lattice/privacy/libraries/SemaphoreLib.sol";
 
 // ens
@@ -204,6 +208,7 @@ import {ILidoAdapter} from "@lattice/interfaces/ILidoAdapter.sol";
 import {INonces} from "@lattice/interfaces/INonces.sol";
 import {IPausable} from "@lattice/interfaces/IPausable.sol";
 import {IPlonkVerifier} from "@lattice/interfaces/IPlonkVerifier.sol";
+import {IPrivateVoting} from "@lattice/interfaces/IPrivateVoting.sol";
 import {IProtocolAdapter} from "@lattice/interfaces/IProtocolAdapter.sol";
 import {IRateLimiter} from "@lattice/interfaces/IRateLimiter.sol";
 import {IReentrancyGuard} from "@lattice/interfaces/IReentrancyGuard.sol";
@@ -558,6 +563,14 @@ contract StorageSlotVerificationTest is Test {
 
     function test_SemaphoreStorageSlot() public pure {
         assertEq(SEMAPHORE_STORAGE_SLOT, _erc7201Slot("lattice.storage.Semaphore"), "Semaphore storage slot mismatch");
+    }
+
+    function test_PrivateVotingStorageSlot() public pure {
+        assertEq(
+            PRIVATE_VOTING_STORAGE_SLOT,
+            _erc7201Slot("lattice.storage.PrivateVoting"),
+            "PrivateVoting storage slot mismatch"
+        );
     }
 
     // ---- ens ----
@@ -1023,6 +1036,16 @@ contract StorageSlotVerificationTest is Test {
         );
     }
 
+    function test_Erc165MapIPrivateVotingSlot() public pure {
+        bytes4 interfaceId = type(IPrivateVoting).interfaceId;
+        assertEq(interfaceId, bytes4(0xf750b661), "IPrivateVoting interfaceId comment is stale");
+        assertEq(
+            ERC165_MAP_IPRIVATEVOTING_SLOT,
+            _erc165MapSlot(interfaceId, ERC165_STORAGE_LOCATION),
+            "ERC165 IPrivateVoting map slot mismatch"
+        );
+    }
+
     function test_Erc165MapIENSResolverSlot() public pure {
         bytes4 interfaceId = type(IENSResolver).interfaceId;
         assertEq(interfaceId, bytes4(0x566ec67d), "IENSResolver interfaceId comment is stale");
@@ -1080,7 +1103,7 @@ contract StorageSlotVerificationTest is Test {
     // ======================== Slot inventories ========================
 
     function _allStorageSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](46);
+        slots = new bytes32[](47);
         uint256 i;
         // access
         slots[i++] = ACCESS_CONTROL_STORAGE_SLOT;
@@ -1134,6 +1157,7 @@ contract StorageSlotVerificationTest is Test {
         slots[i++] = ERC6538REGISTRY_STORAGE_SLOT;
         slots[i++] = COMMIT_REVEAL_STORAGE_SLOT;
         slots[i++] = SEMAPHORE_STORAGE_SLOT;
+        slots[i++] = PRIVATE_VOTING_STORAGE_SLOT;
         // ens
         slots[i++] = ENS_REVERSE_CLAIMER_STORAGE_SLOT;
         slots[i++] = ENS_RESOLVER_STORAGE_SLOT;
@@ -1141,7 +1165,7 @@ contract StorageSlotVerificationTest is Test {
     }
 
     function _allErc165MapSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](50);
+        slots = new bytes32[](51);
         uint256 i;
         // access
         slots[i++] = ERC165_MAP_IACCESSCONTROL_SLOT;
@@ -1213,6 +1237,7 @@ contract StorageSlotVerificationTest is Test {
         slots[i++] = ERC165_MAP_IGROTH16VERIFIER_SLOT;
         slots[i++] = ERC165_MAP_IPLONKVERIFIER_SLOT;
         slots[i++] = ERC165_MAP_ISEMAPHORE_SLOT;
+        slots[i++] = ERC165_MAP_IPRIVATEVOTING_SLOT;
         // ens
         slots[i++] = ERC165_MAP_IENSREVERSECLAIMER_SLOT;
         slots[i++] = ERC165_MAP_IENSRESOLVER_SLOT;
