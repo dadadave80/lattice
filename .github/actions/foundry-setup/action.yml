@@ -1,0 +1,18 @@
+name: Foundry setup
+description: >-
+  Installs Foundry (the foundry-rs/foundry-toolchain action caches the toolchain
+  install and RPC responses). NOTE: the repository must already be checked out
+  before this runs -- a LOCAL composite action cannot perform its own checkout
+  (the runner reads this action.yml from the workspace, which actions/checkout
+  populates), so each job runs actions/checkout inline before
+  `uses: ./.github/actions/foundry-setup`.
+
+runs:
+  using: composite
+  steps:
+    - name: Install Foundry
+      uses: foundry-rs/foundry-toolchain@v1
+
+    - name: Show Forge version
+      shell: bash
+      run: forge --version
