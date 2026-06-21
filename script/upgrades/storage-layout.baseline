@@ -54,3 +54,6 @@
 ### PythAdapterStorage @ erc7201:lattice.storage.PythAdapter (slot 0x4f06923ad9b02e8a3ff8edafe956de2290e9ad8f87494c6f70ad4259b24ff100)
 0	0	_feeds	t_mapping(t_bytes32,t_struct(PythFeed)_storage)
 1	0	_pyth	t_address
+
+### API3AdapterStorage @ erc7201:lattice.storage.API3Adapter (slot 0xdedf34315ce34cb136d15a8f1bef434dfd97b5e1960d065caa42769bce24e700)
+0	0	_feeds	t_mapping(t_bytes32,t_struct(API3Feed)_storage)

@@ -162,6 +162,17 @@ contract StorageLayoutProbe {
         address _pyth;
     }
 
+    /// @dev Verbatim mirror of `API3AdapterLib.API3AdapterStorage` and its `API3Feed`
+    ///      (`@custom:storage-location erc7201:lattice.storage.API3Adapter`). Append-only.
+    struct API3Feed {
+        address proxy;
+        uint48 maxStaleness;
+    }
+
+    struct API3AdapterStorage {
+        mapping(bytes32 key => API3Feed) _feeds;
+    }
+
     /// @dev Forces solc to emit the struct types into `storageLayout`. Never read, never deployed.
     GovernedDiamondCutStorage internal _unusedGovernedDiamondCut;
     SafeDiamondCutStorage internal _unusedSafeDiamondCut;
@@ -176,4 +187,5 @@ contract StorageLayoutProbe {
     PrivateVotingStorage internal _unusedPrivateVoting;
     ShieldedPoolStorage internal _unusedShieldedPool;
     PythAdapterStorage internal _unusedPythAdapter;
+    API3AdapterStorage internal _unusedAPI3Adapter;
 }
