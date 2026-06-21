@@ -79,6 +79,7 @@ GUARDED_STRUCTS=(
     "DIAAdapterStorage lattice.storage.DIAAdapter"
     "BandAdapterStorage lattice.storage.BandAdapter"
     "TellorAdapterStorage lattice.storage.TellorAdapter"
+    "RedStoneAdapterStorage lattice.storage.RedStoneAdapter"
 )
 
 command -v forge >/dev/null 2>&1 || { echo "ERROR: forge not found on PATH" >&2; exit 2; }

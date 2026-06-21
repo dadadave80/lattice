@@ -222,6 +222,18 @@ contract StorageLayoutProbe {
         address _tellor;
     }
 
+    /// @dev Verbatim mirror of `RedStoneAdapterLib.RedStoneAdapterStorage` and its `RedStoneFeed`
+    ///      (`@custom:storage-location erc7201:lattice.storage.RedStoneAdapter`). Append-only.
+    struct RedStoneFeed {
+        address adapter;
+        uint48 maxStaleness;
+        bytes32 dataFeedId;
+    }
+
+    struct RedStoneAdapterStorage {
+        mapping(bytes32 key => RedStoneFeed) _feeds;
+    }
+
     /// @dev Forces solc to emit the struct types into `storageLayout`. Never read, never deployed.
     GovernedDiamondCutStorage internal _unusedGovernedDiamondCut;
     SafeDiamondCutStorage internal _unusedSafeDiamondCut;
@@ -241,4 +253,5 @@ contract StorageLayoutProbe {
     DIAAdapterStorage internal _unusedDIAAdapter;
     BandAdapterStorage internal _unusedBandAdapter;
     TellorAdapterStorage internal _unusedTellorAdapter;
+    RedStoneAdapterStorage internal _unusedRedStoneAdapter;
 }

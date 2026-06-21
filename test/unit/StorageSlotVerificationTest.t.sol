@@ -120,6 +120,10 @@ import {
 } from "@lattice/oracles/libraries/ChronicleAdapterLib.sol";
 import {DIA_ADAPTER_STORAGE_SLOT, ERC165_MAP_IDIAADAPTER_SLOT} from "@lattice/oracles/libraries/DIAAdapterLib.sol";
 import {ERC165_MAP_IPYTHADAPTER_SLOT, PYTH_ADAPTER_STORAGE_SLOT} from "@lattice/oracles/libraries/PythAdapterLib.sol";
+import {
+    ERC165_MAP_IREDSTONEADAPTER_SLOT,
+    REDSTONE_ADAPTER_STORAGE_SLOT
+} from "@lattice/oracles/libraries/RedStoneAdapterLib.sol";
 import {ERC165_MAP_ITWAPORACLE_SLOT, TWAP_ORACLE_STORAGE_SLOT} from "@lattice/oracles/libraries/TWAPOracleLib.sol";
 import {
     ERC165_MAP_ITELLORADAPTER_SLOT,
@@ -232,6 +236,7 @@ import {IPrivateVoting} from "@lattice/interfaces/IPrivateVoting.sol";
 import {IProtocolAdapter} from "@lattice/interfaces/IProtocolAdapter.sol";
 import {IPythAdapter} from "@lattice/interfaces/IPythAdapter.sol";
 import {IRateLimiter} from "@lattice/interfaces/IRateLimiter.sol";
+import {IRedStoneAdapter} from "@lattice/interfaces/IRedStoneAdapter.sol";
 import {IReentrancyGuard} from "@lattice/interfaces/IReentrancyGuard.sol";
 import {ISafeHarborAdopter} from "@lattice/interfaces/ISafeHarborAdopter.sol";
 import {ISemaphore} from "@lattice/interfaces/ISemaphore.sol";
@@ -527,6 +532,14 @@ contract StorageSlotVerificationTest is Test {
             TELLOR_ADAPTER_STORAGE_SLOT,
             _erc7201Slot("lattice.storage.TellorAdapter"),
             "TellorAdapter storage slot mismatch"
+        );
+    }
+
+    function test_RedStoneAdapterStorageSlot() public pure {
+        assertEq(
+            REDSTONE_ADAPTER_STORAGE_SLOT,
+            _erc7201Slot("lattice.storage.RedStoneAdapter"),
+            "RedStoneAdapter storage slot mismatch"
         );
     }
 
@@ -1010,6 +1023,16 @@ contract StorageSlotVerificationTest is Test {
         );
     }
 
+    function test_Erc165MapIRedStoneAdapterSlot() public pure {
+        bytes4 interfaceId = type(IRedStoneAdapter).interfaceId;
+        assertEq(interfaceId, bytes4(0xd5afaecd), "IRedStoneAdapter interfaceId comment is stale");
+        assertEq(
+            ERC165_MAP_IREDSTONEADAPTER_SLOT,
+            _erc165MapSlot(interfaceId, ERC165_STORAGE_LOCATION),
+            "ERC165 IRedStoneAdapter map slot mismatch"
+        );
+    }
+
     function test_Erc165MapIChainlinkVRFSlot() public pure {
         assertEq(
             ERC165_MAP_ICHAINLINKVRF_SLOT,
@@ -1244,7 +1267,7 @@ contract StorageSlotVerificationTest is Test {
     // ======================== Slot inventories ========================
 
     function _allStorageSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](54);
+        slots = new bytes32[](55);
         uint256 i;
         // access
         slots[i++] = ACCESS_CONTROL_STORAGE_SLOT;
@@ -1287,6 +1310,7 @@ contract StorageSlotVerificationTest is Test {
         slots[i++] = DIA_ADAPTER_STORAGE_SLOT;
         slots[i++] = BAND_ADAPTER_STORAGE_SLOT;
         slots[i++] = TELLOR_ADAPTER_STORAGE_SLOT;
+        slots[i++] = REDSTONE_ADAPTER_STORAGE_SLOT;
         slots[i++] = CHAINLINK_VRF_STORAGE_SLOT;
         slots[i++] = TWAP_ORACLE_STORAGE_SLOT;
         // security
@@ -1313,7 +1337,7 @@ contract StorageSlotVerificationTest is Test {
     }
 
     function _allErc165MapSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](58);
+        slots = new bytes32[](59);
         uint256 i;
         // access
         slots[i++] = ERC165_MAP_IACCESSCONTROL_SLOT;
@@ -1370,6 +1394,7 @@ contract StorageSlotVerificationTest is Test {
         slots[i++] = ERC165_MAP_IDIAADAPTER_SLOT;
         slots[i++] = ERC165_MAP_IBANDADAPTER_SLOT;
         slots[i++] = ERC165_MAP_ITELLORADAPTER_SLOT;
+        slots[i++] = ERC165_MAP_IREDSTONEADAPTER_SLOT;
         slots[i++] = ERC165_MAP_ICHAINLINKVRF_SLOT;
         slots[i++] = ERC165_MAP_ITWAPORACLE_SLOT;
         // security

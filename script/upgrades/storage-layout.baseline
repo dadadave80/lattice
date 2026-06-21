@@ -71,3 +71,6 @@
 ### TellorAdapterStorage @ erc7201:lattice.storage.TellorAdapter (slot 0xf830cd05b050ba9ecf73559ef9b50793eb6cd90a674e3621847f667a1210d100)
 0	0	_feeds	t_mapping(t_bytes32,t_struct(TellorFeed)_storage)
 1	0	_tellor	t_address
+
+### RedStoneAdapterStorage @ erc7201:lattice.storage.RedStoneAdapter (slot 0x6c77ff7037fedb1e7737bf925fac4c87e7cc2c960916dee7790d2d73271bc700)
+0	0	_feeds	t_mapping(t_bytes32,t_struct(RedStoneFeed)_storage)
