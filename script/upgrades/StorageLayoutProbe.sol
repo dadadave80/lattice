@@ -114,6 +114,25 @@ contract StorageLayoutProbe {
         address verifier;
     }
 
+    /// @dev Verbatim mirror of `PrivateVotingLib.PrivateVotingStorage` and its `Poll`
+    ///      (`@custom:storage-location erc7201:lattice.storage.PrivateVoting`). Append-only.
+    struct Poll {
+        uint256 groupId;
+        NullifierRegistryLib.Registry nullifiers;
+        mapping(uint256 choice => uint256 votes) tally;
+        uint256 totalVotes;
+        address creator;
+        uint32 numChoices;
+        uint64 startTime;
+        uint64 endTime;
+        bool exists;
+    }
+
+    struct PrivateVotingStorage {
+        mapping(uint256 pollId => Poll poll) _polls;
+        uint256 _pollCount;
+    }
+
     /// @dev Forces solc to emit the struct types into `storageLayout`. Never read, never deployed.
     GovernedDiamondCutStorage internal _unusedGovernedDiamondCut;
     SafeDiamondCutStorage internal _unusedSafeDiamondCut;
@@ -125,4 +144,5 @@ contract StorageLayoutProbe {
     SafeHarborAdopterStorage internal _unusedSafeHarborAdopter;
     CommitRevealStorage internal _unusedCommitReveal;
     SemaphoreStorage internal _unusedSemaphore;
+    PrivateVotingStorage internal _unusedPrivateVoting;
 }
