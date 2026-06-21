@@ -74,6 +74,7 @@ GUARDED_STRUCTS=(
     "PrivateVotingStorage lattice.storage.PrivateVoting"
     "ShieldedPoolStorage lattice.storage.ShieldedPool"
     "PythAdapterStorage lattice.storage.PythAdapter"
+    "API3AdapterStorage lattice.storage.API3Adapter"
 )
 
 command -v forge >/dev/null 2>&1 || { echo "ERROR: forge not found on PATH" >&2; exit 2; }

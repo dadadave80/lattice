@@ -104,6 +104,7 @@ import {
 } from "@lattice/amm/libraries/ConstantProductLib.sol";
 
 // oracles
+import {API3_ADAPTER_STORAGE_SLOT, ERC165_MAP_IAPI3ADAPTER_SLOT} from "@lattice/oracles/libraries/API3AdapterLib.sol";
 import {
     CHAINLINK_ADAPTER_STORAGE_SLOT,
     ERC165_MAP_ICHAINLINKADAPTER_SLOT
@@ -180,6 +181,7 @@ import {
 // Interfaces (for type(...).interfaceId)
 // ---------------------------------------------------------------------------
 
+import {IAPI3Adapter} from "@lattice/interfaces/IAPI3Adapter.sol";
 import {IAaveV3Adapter} from "@lattice/interfaces/IAaveV3Adapter.sol";
 import {IAccessControl} from "@lattice/interfaces/IAccessControl.sol";
 import {IAccessControlEnumerable} from "@lattice/interfaces/IAccessControlEnumerable.sol";
@@ -477,6 +479,12 @@ contract StorageSlotVerificationTest is Test {
     function test_PythAdapterStorageSlot() public pure {
         assertEq(
             PYTH_ADAPTER_STORAGE_SLOT, _erc7201Slot("lattice.storage.PythAdapter"), "PythAdapter storage slot mismatch"
+        );
+    }
+
+    function test_API3AdapterStorageSlot() public pure {
+        assertEq(
+            API3_ADAPTER_STORAGE_SLOT, _erc7201Slot("lattice.storage.API3Adapter"), "API3Adapter storage slot mismatch"
         );
     }
 
@@ -910,6 +918,16 @@ contract StorageSlotVerificationTest is Test {
         );
     }
 
+    function test_Erc165MapIAPI3AdapterSlot() public pure {
+        bytes4 interfaceId = type(IAPI3Adapter).interfaceId;
+        assertEq(interfaceId, bytes4(0xfa98111e), "IAPI3Adapter interfaceId comment is stale");
+        assertEq(
+            ERC165_MAP_IAPI3ADAPTER_SLOT,
+            _erc165MapSlot(interfaceId, ERC165_STORAGE_LOCATION),
+            "ERC165 IAPI3Adapter map slot mismatch"
+        );
+    }
+
     function test_Erc165MapIChainlinkVRFSlot() public pure {
         assertEq(
             ERC165_MAP_ICHAINLINKVRF_SLOT,
@@ -1144,7 +1162,7 @@ contract StorageSlotVerificationTest is Test {
     // ======================== Slot inventories ========================
 
     function _allStorageSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](49);
+        slots = new bytes32[](50);
         uint256 i;
         // access
         slots[i++] = ACCESS_CONTROL_STORAGE_SLOT;
@@ -1182,6 +1200,7 @@ contract StorageSlotVerificationTest is Test {
         // oracles
         slots[i++] = CHAINLINK_ADAPTER_STORAGE_SLOT;
         slots[i++] = PYTH_ADAPTER_STORAGE_SLOT;
+        slots[i++] = API3_ADAPTER_STORAGE_SLOT;
         slots[i++] = CHAINLINK_VRF_STORAGE_SLOT;
         slots[i++] = TWAP_ORACLE_STORAGE_SLOT;
         // security
@@ -1208,7 +1227,7 @@ contract StorageSlotVerificationTest is Test {
     }
 
     function _allErc165MapSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](53);
+        slots = new bytes32[](54);
         uint256 i;
         // access
         slots[i++] = ERC165_MAP_IACCESSCONTROL_SLOT;
@@ -1260,6 +1279,7 @@ contract StorageSlotVerificationTest is Test {
         // oracles
         slots[i++] = ERC165_MAP_ICHAINLINKADAPTER_SLOT;
         slots[i++] = ERC165_MAP_IPYTHADAPTER_SLOT;
+        slots[i++] = ERC165_MAP_IAPI3ADAPTER_SLOT;
         slots[i++] = ERC165_MAP_ICHAINLINKVRF_SLOT;
         slots[i++] = ERC165_MAP_ITWAPORACLE_SLOT;
         // security
