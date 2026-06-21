@@ -3,6 +3,8 @@ pragma solidity ^0.8.30;
 
 import {ICommitReveal} from "@lattice/interfaces/ICommitReveal.sol";
 import {IUpgradeRegistry} from "@lattice/interfaces/IUpgradeRegistry.sol";
+import {IncrementalMerkleTreeLib} from "@lattice/privacy/libraries/IncrementalMerkleTreeLib.sol";
+import {NullifierRegistryLib} from "@lattice/privacy/libraries/NullifierRegistryLib.sol";
 import {EnumerableSet} from "@lattice/utils/libraries/EnumerableSet.sol";
 
 /// @title StorageLayoutProbe
@@ -97,6 +99,21 @@ contract StorageLayoutProbe {
         mapping(bytes32 commitment => ICommitReveal.Commitment record) _commitments;
     }
 
+    /// @dev Verbatim mirror of `SemaphoreLib.SemaphoreStorage` and its `Group`
+    ///      (`@custom:storage-location erc7201:lattice.storage.Semaphore`). Append-only.
+    struct Group {
+        IncrementalMerkleTreeLib.Tree tree;
+        NullifierRegistryLib.Registry nullifiers;
+        address admin;
+        bool exists;
+    }
+
+    struct SemaphoreStorage {
+        mapping(uint256 groupId => Group group) groups;
+        uint256 groupCount;
+        address verifier;
+    }
+
     /// @dev Forces solc to emit the struct types into `storageLayout`. Never read, never deployed.
     GovernedDiamondCutStorage internal _unusedGovernedDiamondCut;
     SafeDiamondCutStorage internal _unusedSafeDiamondCut;
@@ -107,4 +124,5 @@ contract StorageLayoutProbe {
     ENSSubnameIssuerStorage internal _unusedENSSubnameIssuer;
     SafeHarborAdopterStorage internal _unusedSafeHarborAdopter;
     CommitRevealStorage internal _unusedCommitReveal;
+    SemaphoreStorage internal _unusedSemaphore;
 }

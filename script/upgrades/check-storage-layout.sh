@@ -30,6 +30,16 @@
 #      diff in code review); a reorder/retype/shrink/removal ALSO changes it and
 #      is the incompatible case the reviewer must reject.
 #
+# LIMITATION (nested value-structs): the diff captures a struct member typed as a
+#   nested value-struct (or a mapping to one) by its TYPE NAME only, not by that
+#   nested struct's internal field layout. So reordering/retyping the fields of a
+#   nested struct (e.g. `Group` inside SemaphoreStorage, `CutRecord` inside the
+#   *DiamondCut storages, `Commitment` inside CommitReveal) is NOT caught here.
+#   Mitigation: every such nested struct is mirrored VERBATIM in
+#   StorageLayoutProbe.sol, so the change is visible in code review -- reviewers
+#   MUST manually inspect any edit to a nested value-struct's fields. (A future
+#   enhancement could recursively expand nested structs into the diffed layout.)
+#
 # USAGE
 #   script/upgrades/check-storage-layout.sh            # verify (CI mode; exit 1 on drift)
 #   script/upgrades/check-storage-layout.sh --update   # regenerate the baseline
@@ -60,6 +70,7 @@ GUARDED_STRUCTS=(
     "ENSSubnameIssuerStorage lattice.storage.ENSSubnameIssuer"
     "SafeHarborAdopterStorage lattice.storage.SafeHarborAdopter"
     "CommitRevealStorage lattice.storage.CommitReveal"
+    "SemaphoreStorage lattice.storage.Semaphore"
 )
 
 command -v forge >/dev/null 2>&1 || { echo "ERROR: forge not found on PATH" >&2; exit 2; }
