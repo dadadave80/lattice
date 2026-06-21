@@ -230,6 +230,10 @@ and a row here.
 | ChainlinkAdapter | `lattice.storage.ChainlinkAdapter` | `0xdbb02d424081d7fb4c59a631e74d23250f514b627bc328ad0ec973d94b228000` | `IChainlinkAdapter` | `0x364fdec9` | `0x65e721c748691ae5a9544827b82a8602440249a42e1438a441599564727a3bd2` |
 | PythAdapter | `lattice.storage.PythAdapter` | `0x4f06923ad9b02e8a3ff8edafe956de2290e9ad8f87494c6f70ad4259b24ff100` | `IPythAdapter` | `0x3839468c` | `0x8285166a3f9489792233ccce4dfcee0aa88473267c0fab1b647d041fceb112c6` |
 | API3Adapter | `lattice.storage.API3Adapter` | `0xdedf34315ce34cb136d15a8f1bef434dfd97b5e1960d065caa42769bce24e700` | `IAPI3Adapter` | `0xfa98111e` | `0x21168d66e590ee042a818ed855046fa88c4c6601cbf29cfcb9e870d054a8cb77` |
+| ChronicleAdapter | `lattice.storage.ChronicleAdapter` | `0xfc08f646a4b61c410e914db3efd5dca6935b089749eb55e38d0c450dddbb7600` | `IChronicleAdapter` | `0x278f5b6a` | `0xfbb4f19de9230b60c572e8ff078c06c8112306947245c1d5058d08359436c1ca` |
+| DIAAdapter | `lattice.storage.DIAAdapter` | `0x96676e4e566fe60ae3185e7bd982de2eb1f4d0f9b85c8e29200af4e575d6c400` | `IDIAAdapter` | `0xec319d60` | `0xac3b2e96bffda1d6525b62f471f6722940d02b7c74a1e8090cae939120be2443` |
+| BandAdapter | `lattice.storage.BandAdapter` | `0xf5012e750700459bfafa131fc1c12ce6e9c0f0209cb29cbc1f960c4760a00a00` | `IBandAdapter` | `0xebdf87c5` | `0xc004cf02eead1d879bc806deefbe1f4228491d4cea98d16c38bf22274d73f5ac` |
+| TellorAdapter | `lattice.storage.TellorAdapter` | `0xf830cd05b050ba9ecf73559ef9b50793eb6cd90a674e3621847f667a1210d100` | `ITellorAdapter` | `0xddc762ca` | `0xd0880994b1b91b07c905771aa510c46b61d48fe80d33acc431dc49f1cf7b22c5` |
 | ChainlinkVRF | `lattice.storage.ChainlinkVRF` | `0x296a09c3f1dda7c7057a0d3e9cfd88b1666f0f2ebdcbdc2f576bbcf22db0d200` | `IChainlinkVRF` | `0xed74ccf3` | `0x5e805972aa7ebffe06f2b61cc9d80c103d549fa32d030cc2918893026547c07e` |
 | TWAPOracle | `lattice.storage.TWAPOracle` | `0xc2bcc163613aea761b734a9692ad3548aab9088be29b53e03facf6a2a351df00` | `ITWAPOracle` | `0xd1baebe0` | `0x3edcb012a40cef5fed8aba3a5816c3233af9ecd91b8a1965a2b67b8940a0f49f` |
 
@@ -275,7 +279,7 @@ and a row here.
 
 ---
 
-**Counts:** 50 storage-bearing modules (50 unique ERC-7201 slots) and 54 ERC-165 interface
+**Counts:** 54 storage-bearing modules (54 unique ERC-7201 slots) and 58 ERC-165 interface
 map slots (the privacy track adds the stateful `ERC6538Registry` — one ERC-7201 slot and one
 `IERC6538Registry` ERC-165 slot — plus the stateless `ERC5564Announcer` — no ERC-7201 slot, one
 `IERC5564Announcer` ERC-165 slot — and the stateless `Groth16Verifier` — no ERC-7201 slot, one
