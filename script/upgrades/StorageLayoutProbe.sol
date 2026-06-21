@@ -149,6 +149,19 @@ contract StorageLayoutProbe {
         uint256 _poolCount;
     }
 
+    /// @dev Verbatim mirror of `PythAdapterLib.PythAdapterStorage` and its `PythFeed`
+    ///      (`@custom:storage-location erc7201:lattice.storage.PythAdapter`). Append-only.
+    struct PythFeed {
+        bytes32 priceId;
+        uint48 maxStaleness;
+        uint64 maxConfBps;
+    }
+
+    struct PythAdapterStorage {
+        mapping(bytes32 key => PythFeed) _feeds;
+        address _pyth;
+    }
+
     /// @dev Forces solc to emit the struct types into `storageLayout`. Never read, never deployed.
     GovernedDiamondCutStorage internal _unusedGovernedDiamondCut;
     SafeDiamondCutStorage internal _unusedSafeDiamondCut;
@@ -162,4 +175,5 @@ contract StorageLayoutProbe {
     SemaphoreStorage internal _unusedSemaphore;
     PrivateVotingStorage internal _unusedPrivateVoting;
     ShieldedPoolStorage internal _unusedShieldedPool;
+    PythAdapterStorage internal _unusedPythAdapter;
 }
