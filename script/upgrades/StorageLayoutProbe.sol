@@ -133,6 +133,22 @@ contract StorageLayoutProbe {
         uint256 _pollCount;
     }
 
+    /// @dev Verbatim mirror of `ShieldedPoolLib.ShieldedPoolStorage` and its `ShieldedPool`
+    ///      (`@custom:storage-location erc7201:lattice.storage.ShieldedPool`). Append-only.
+    struct ShieldedPool {
+        IncrementalMerkleTreeLib.Tree commitments;
+        NullifierRegistryLib.Registry nullifiers;
+        address token;
+        uint256 denomination;
+        address verifier;
+        bool exists;
+    }
+
+    struct ShieldedPoolStorage {
+        mapping(uint256 poolId => ShieldedPool pool) _pools;
+        uint256 _poolCount;
+    }
+
     /// @dev Forces solc to emit the struct types into `storageLayout`. Never read, never deployed.
     GovernedDiamondCutStorage internal _unusedGovernedDiamondCut;
     SafeDiamondCutStorage internal _unusedSafeDiamondCut;
@@ -145,4 +161,5 @@ contract StorageLayoutProbe {
     CommitRevealStorage internal _unusedCommitReveal;
     SemaphoreStorage internal _unusedSemaphore;
     PrivateVotingStorage internal _unusedPrivateVoting;
+    ShieldedPoolStorage internal _unusedShieldedPool;
 }

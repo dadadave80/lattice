@@ -46,3 +46,7 @@
 ### PrivateVotingStorage @ erc7201:lattice.storage.PrivateVoting (slot 0x366a7e9d1ddfe6eaa85ec4e6a71a0be592797e3e9ab0151a827465f6ed6bb900)
 0	0	_polls	t_mapping(t_uint256,t_struct(Poll)_storage)
 1	0	_pollCount	t_uint256
+
+### ShieldedPoolStorage @ erc7201:lattice.storage.ShieldedPool (slot 0xa961220e87963afb8adc0f7621a90ce1922bf3bb438109c43cc7dacbc8e06600)
+0	0	_pools	t_mapping(t_uint256,t_struct(ShieldedPool)_storage)
+1	0	_poolCount	t_uint256
