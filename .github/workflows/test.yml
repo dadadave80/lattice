@@ -11,39 +11,79 @@ env:
   FOUNDRY_PROFILE: ci
 
 jobs:
-  check:
-    name: Foundry project
+  # Formatting needs no compilation, so it runs standalone and fails fast.
+  fmt:
+    name: Format
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
       - uses: actions/checkout@v5
         with:
-          persist-credentials: false
           submodules: recursive
-
-      - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
-
-      - name: Show Forge version
-        run: forge --version
-
+          persist-credentials: false
+      - uses: ./.github/actions/foundry-setup
       - name: Run Forge fmt
         run: forge fmt --check
+
+  # Single source-of-truth compile (legacy/ci profile). Gates EIP-170 and populates the shared
+  # forge cache (out/ + cache/, keyed on src + lib content) so the `test` and `storage-layout`
+  # jobs reuse the src/ artifacts and recompile ONLY their own test/script files. The cache is
+  # keyed on src + lib (NOT test/script), so a test-only change does not invalidate this build.
+  build:
+    name: Build (EIP-170)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - uses: ./.github/actions/foundry-setup
+      - name: Cache forge build (src)
+        uses: actions/cache@v4
+        with:
+          path: |
+            out
+            cache
+          key: forge-build-${{ runner.os }}-${{ hashFiles('foundry.toml', 'remappings.txt', 'src/**/*.sol', 'lib/**/*.sol') }}
 
       # --sizes gates EIP-170 (24,576 B) on deployable contracts only. Test/script fixtures
       # (e.g. the SelfGovDiamond E2E harness that inherits every facet at once) legitimately
       # exceed the limit and are never deployed; `--skip test script` excludes them. Tests are
-      # still compiled by the `forge test` step below, so compile errors remain caught.
-      - name: Run Forge build
+      # still compiled by the `test` job, so compile errors there remain caught. On a cache hit
+      # this is a near-instant no-op compile that still runs the size gate.
+      - name: Build src (--sizes)
         run: forge build --sizes --skip test script
 
-      # IR-pipeline parity + EIP-170 under via_ir. The size gate still applies to
-      # every contract; the ONE exemption is the vendored, gas-optimized PoseidonT3,
-      # which is hand-tuned assembly for the legacy pipeline and exceeds EIP-170 only
-      # under via-ir (~29-55 KB vs 23.5 KB legacy), regardless of optimizer_runs. It
-      # deploys via the legacy pipeline (Lattice's profile is via_ir = false; the
-      # legacy --sizes build above is its authoritative gate). See lib/VENDORED.md.
+  # IR-pipeline parity is a SEPARATE compiler configuration (via_ir), so it cannot reuse the
+  # legacy build cache -- it runs standalone, in parallel, and does not block `test`.
+  via-ir:
+    name: Build via_ir (IR parity)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - uses: ./.github/actions/foundry-setup
+      - name: Cache forge build (via_ir)
+        uses: actions/cache@v4
+        with:
+          path: |
+            out
+            cache
+          key: forge-viair-${{ runner.os }}-${{ hashFiles('foundry.toml', 'remappings.txt', 'src/**/*.sol', 'lib/**/*.sol') }}
+
+      # IR-pipeline parity + EIP-170 under via_ir. The size gate still applies to every
+      # contract; the ONE exemption is the vendored, gas-optimized PoseidonT3, which is
+      # hand-tuned assembly for the legacy pipeline and exceeds EIP-170 only under via-ir
+      # (~29-55 KB vs 23.5 KB legacy), regardless of optimizer_runs. It deploys via the legacy
+      # pipeline (Lattice's profile is via_ir = false; the legacy --sizes build is its
+      # authoritative gate). See lib/VENDORED.md.
       - name: Build with via_ir (IR parity + EIP-170, PoseidonT3 exempt)
         run: |
           set -euo pipefail
@@ -58,12 +98,51 @@ jobs:
           fi
           echo "via_ir size gate OK (only the vendored PoseidonT3 is exempt)."
 
-      # Append-only ERC-7201 storage-struct guard (CLAUDE.md "Append-only storage struct rule").
-      # Fails if any guarded module struct's namespaced layout drifts from its committed baseline
-      # (reorder/retype/shrink/removal). `jq` is preinstalled on ubuntu-latest runners.
-      - name: Check ERC-7201 storage layout (append-only)
+  # Append-only ERC-7201 storage-struct guard. Restores the `build` cache, so only the
+  # StorageLayoutProbe (script/) is compiled here, not src/.
+  storage-layout:
+    name: Storage layout (append-only)
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - uses: ./.github/actions/foundry-setup
+      - name: Restore forge build cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            out
+            cache
+          key: forge-build-${{ runner.os }}-${{ hashFiles('foundry.toml', 'remappings.txt', 'src/**/*.sol', 'lib/**/*.sol') }}
+      # `jq` is preinstalled on ubuntu-latest runners.
+      - name: Check ERC-7201 storage layout
         run: ./script/upgrades/check-storage-layout.sh
 
+  # Restores the `build` cache, so only test/ files are compiled here, not src/.
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - uses: ./.github/actions/foundry-setup
+      - name: Restore forge build cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            out
+            cache
+          key: forge-build-${{ runner.os }}-${{ hashFiles('foundry.toml', 'remappings.txt', 'src/**/*.sol', 'lib/**/*.sol') }}
       - name: Run Forge tests
         run: forge test -vvv
 
