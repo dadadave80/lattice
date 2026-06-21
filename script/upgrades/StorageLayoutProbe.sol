@@ -173,6 +173,55 @@ contract StorageLayoutProbe {
         mapping(bytes32 key => API3Feed) _feeds;
     }
 
+    /// @dev Verbatim mirror of `ChronicleAdapterLib.ChronicleAdapterStorage` and its `ChronicleFeed`
+    ///      (`@custom:storage-location erc7201:lattice.storage.ChronicleAdapter`). Append-only.
+    struct ChronicleFeed {
+        address chronicle;
+        uint48 maxStaleness;
+    }
+
+    struct ChronicleAdapterStorage {
+        mapping(bytes32 key => ChronicleFeed) _feeds;
+    }
+
+    /// @dev Verbatim mirror of `DIAAdapterLib.DIAAdapterStorage` and its `DIAFeed`
+    ///      (`@custom:storage-location erc7201:lattice.storage.DIAAdapter`). Append-only.
+    struct DIAFeed {
+        address oracle;
+        uint48 maxStaleness;
+        string diaKey;
+    }
+
+    struct DIAAdapterStorage {
+        mapping(bytes32 key => DIAFeed) _feeds;
+    }
+
+    /// @dev Verbatim mirror of `BandAdapterLib.BandAdapterStorage` and its `BandFeed`
+    ///      (`@custom:storage-location erc7201:lattice.storage.BandAdapter`). Append-only.
+    struct BandFeed {
+        uint48 maxStaleness;
+        string base;
+        string quote;
+    }
+
+    struct BandAdapterStorage {
+        mapping(bytes32 key => BandFeed) _feeds;
+        address _reference;
+    }
+
+    /// @dev Verbatim mirror of `TellorAdapterLib.TellorAdapterStorage` and its `TellorFeed`
+    ///      (`@custom:storage-location erc7201:lattice.storage.TellorAdapter`). Append-only.
+    struct TellorFeed {
+        bytes32 queryId;
+        uint48 disputeBuffer;
+        uint48 maxStaleness;
+    }
+
+    struct TellorAdapterStorage {
+        mapping(bytes32 key => TellorFeed) _feeds;
+        address _tellor;
+    }
+
     /// @dev Forces solc to emit the struct types into `storageLayout`. Never read, never deployed.
     GovernedDiamondCutStorage internal _unusedGovernedDiamondCut;
     SafeDiamondCutStorage internal _unusedSafeDiamondCut;
@@ -188,4 +237,8 @@ contract StorageLayoutProbe {
     ShieldedPoolStorage internal _unusedShieldedPool;
     PythAdapterStorage internal _unusedPythAdapter;
     API3AdapterStorage internal _unusedAPI3Adapter;
+    ChronicleAdapterStorage internal _unusedChronicleAdapter;
+    DIAAdapterStorage internal _unusedDIAAdapter;
+    BandAdapterStorage internal _unusedBandAdapter;
+    TellorAdapterStorage internal _unusedTellorAdapter;
 }
