@@ -79,6 +79,11 @@ and a row here.
   matches the standard) at map slot `0x8874437f0039021364a4853ff7e826b818ba7233f378ea008f000746be5d784a`,
   and reuses the `ERC20` balances — no storage row of its own. It gives a `BridgeERC7802` a native
   mint/burn token.
+- **ERC20Crosschain** is the self-bridging ERC-20 variant of {BridgeFungible}: the token burns its OWN
+  supply on send and mints it on receive (no separate bridge / external token). It is co-mounted with
+  `CrosschainLink` + `ERC20`, registered under the shared `FUNGIBLE_BRIDGE_TAG`, and **reuses** the
+  `IBridgeFungible` ERC-165 id (`0x28dcc8d8`) and the `ERC20` balances — so it adds **no** new storage
+  slot and **no** new ERC-165 row of its own.
 - **ERC5564Announcer** is a stateless ERC-5564 announcer (it only emits `Announcement`), so it has
   **no** ERC-7201 storage slot and **no** row in the storage-uniqueness array — only an ERC-165 map slot
   for `IERC5564Announcer` (`0x4d1f9583`). Its function/event ABI is byte-identical to the canonical
