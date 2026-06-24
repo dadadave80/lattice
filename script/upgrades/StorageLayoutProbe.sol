@@ -268,6 +268,26 @@ contract StorageLayoutProbe {
         mapping(string axelar => bytes chain) _axelarToErc7930;
     }
 
+    /// @dev Verbatim mirror of `WormholeGatewayAdapterLib.WormholeGatewayAdapterStorage` and its
+    ///      `PendingMessage` (`@custom:storage-location erc7201:lattice.storage.WormholeGatewayAdapter`). Append-only.
+    struct PendingMessage {
+        address sender;
+        uint256 value;
+        bytes recipient;
+        bytes payload;
+    }
+
+    struct WormholeGatewayAdapterStorage {
+        address _relayer;
+        uint16 _wormholeChainId;
+        uint256 _lastMsgId;
+        mapping(uint256 chainId => address remote) _remoteGateways;
+        mapping(uint256 chainId => uint16 wormhole) _chainIdToWormhole;
+        mapping(uint16 wormhole => uint256 chainId) _wormholeToChainId;
+        mapping(bytes32 sendId => PendingMessage) _pending;
+        mapping(uint256 chainId => mapping(uint256 sendId => bool used)) _executed;
+    }
+
     /// @dev Forces solc to emit the struct types into `storageLayout`. Never read, never deployed.
     GovernedDiamondCutStorage internal _unusedGovernedDiamondCut;
     SafeDiamondCutStorage internal _unusedSafeDiamondCut;
@@ -292,4 +312,5 @@ contract StorageLayoutProbe {
     BridgeERC20Storage internal _unusedBridgeERC20;
     BridgeERC7802Storage internal _unusedBridgeERC7802;
     AxelarGatewayAdapterStorage internal _unusedAxelarGatewayAdapter;
+    WormholeGatewayAdapterStorage internal _unusedWormholeGatewayAdapter;
 }
