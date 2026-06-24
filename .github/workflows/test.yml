@@ -42,7 +42,7 @@ jobs:
           persist-credentials: false
       - uses: ./.github/actions/foundry-setup
       - name: Cache forge build (src)
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             out
@@ -71,7 +71,7 @@ jobs:
           persist-credentials: false
       - uses: ./.github/actions/foundry-setup
       - name: Cache forge build (via_ir)
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             out
@@ -113,7 +113,7 @@ jobs:
           persist-credentials: false
       - uses: ./.github/actions/foundry-setup
       - name: Restore forge build cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             out
@@ -137,7 +137,7 @@ jobs:
           persist-credentials: false
       - uses: ./.github/actions/foundry-setup
       - name: Restore forge build cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             out
