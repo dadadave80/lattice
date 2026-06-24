@@ -238,6 +238,14 @@ and a row here.
 | ChainlinkVRF | `lattice.storage.ChainlinkVRF` | `0x296a09c3f1dda7c7057a0d3e9cfd88b1666f0f2ebdcbdc2f576bbcf22db0d200` | `IChainlinkVRF` | `0xed74ccf3` | `0x5e805972aa7ebffe06f2b61cc9d80c103d549fa32d030cc2918893026547c07e` |
 | TWAPOracle | `lattice.storage.TWAPOracle` | `0xc2bcc163613aea761b734a9692ad3548aab9088be29b53e03facf6a2a351df00` | `ITWAPOracle` | `0xd1baebe0` | `0x3edcb012a40cef5fed8aba3a5816c3233af9ecd91b8a1965a2b67b8940a0f49f` |
 
+### Crosschain
+
+| Module | ERC-7201 namespace | Storage slot (hex) | Interface | interfaceId | ERC-165 map slot (hex) |
+|---|---|---|---|---|---|
+| CrosschainLink | `lattice.storage.CrosschainLink` | `0x018a2157cdb5adbb1b39e614b18b4d8eae2cba40cdae1a4ba3100cc857e64900` | `ICrosschainLink` | `0xe1805ff8` | `0x9ddc11a88c7ecd9ccccbcd59cd7f34c709ebe70b4507cbaed74ad8b1267235ef` |
+| BridgeERC20 | `lattice.storage.BridgeERC20` | `0x0e9006c16c4f5fe9e0e3215c8af601bd97024c6bebdfa0efe51c092276cd7c00` | `IBridgeFungible` | `0x28dcc8d8` | `0xc98ec5eb76ed7701e7884a55fd8dcc6ba54f192d7f68011281537265c16215d4` |
+| BridgeERC7802 | `lattice.storage.BridgeERC7802` | `0x9d1b234db7644d1f76207933d92c2e89140027741ab600a4ff4b12a8d51e4b00` | `IBridgeFungible` | `0x28dcc8d8` | `0xc98ec5eb76ed7701e7884a55fd8dcc6ba54f192d7f68011281537265c16215d4` |
+
 ### Security
 
 | Module | ERC-7201 namespace | Storage slot (hex) | Interface | interfaceId | ERC-165 map slot (hex) |
