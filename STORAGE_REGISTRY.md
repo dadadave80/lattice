@@ -257,6 +257,8 @@ and a row here.
 | BridgeERC20 | `lattice.storage.BridgeERC20` | `0x0e9006c16c4f5fe9e0e3215c8af601bd97024c6bebdfa0efe51c092276cd7c00` | `IBridgeFungible` | `0x28dcc8d8` | `0xc98ec5eb76ed7701e7884a55fd8dcc6ba54f192d7f68011281537265c16215d4` |
 | BridgeERC7802 | `lattice.storage.BridgeERC7802` | `0x9d1b234db7644d1f76207933d92c2e89140027741ab600a4ff4b12a8d51e4b00` | `IBridgeFungible` | `0x28dcc8d8` | `0xc98ec5eb76ed7701e7884a55fd8dcc6ba54f192d7f68011281537265c16215d4` |
 | AxelarGatewayAdapter | `lattice.storage.AxelarGatewayAdapter` | `0xeb5bee64b500c298be8b1e9f77b8505f5c8c9cdd4c45b490c069ffc446e8fd00` | `IERC7786GatewaySource` | `0x11967553` | `0x3c75b8ea75c097979221eb9302e2f0f6009b4ffe0a7198db5dc29979e09ea0e3` |
+| WormholeGatewayAdapter | `lattice.storage.WormholeGatewayAdapter` | `0x46329d8c82c4b2643a1707018dd8f47f4e747c04259ec1eec95a00ddfb1bd600` | `IERC7786GatewaySource` | `0x11967553` | `0x3c75b8ea75c097979221eb9302e2f0f6009b4ffe0a7198db5dc29979e09ea0e3` |
+| ERC7786OpenBridge | `lattice.storage.ERC7786OpenBridge` | `0xca75154ce55fdf901a786b6fa60962886fadca5cda61c777098bc66b49134a00` | `IERC7786GatewaySource` | `0x11967553` | `0x3c75b8ea75c097979221eb9302e2f0f6009b4ffe0a7198db5dc29979e09ea0e3` |
 
 ### Security
 
