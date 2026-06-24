@@ -304,6 +304,49 @@ contract StorageLayoutProbe {
         mapping(bytes32 id => OpenBridgeTracker tracker) _trackers;
     }
 
+    /// @dev Verbatim mirror of `PythEntropyAdapterLib.PythEntropyAdapterStorage`
+    ///      (`@custom:storage-location erc7201:lattice.storage.PythEntropyAdapter`). Append-only.
+    struct PythEntropyAdapterStorage {
+        address _entropy;
+        address _provider;
+        mapping(uint64 sequenceNumber => bytes32 userKey) _pendingRequests;
+    }
+
+    /// @dev Verbatim mirror of `GelatoVRFAdapterLib.GelatoVRFAdapterStorage`
+    ///      (`@custom:storage-location erc7201:lattice.storage.GelatoVRFAdapter`). Append-only.
+    struct GelatoVRFAdapterStorage {
+        address _operator;
+        uint256 _nextRequestId;
+        mapping(uint256 requestId => bytes32 userKey) _pendingRequests;
+    }
+
+    /// @dev Verbatim mirror of `API3QRNGAdapterLib.API3QRNGAdapterStorage`
+    ///      (`@custom:storage-location erc7201:lattice.storage.API3QRNGAdapter`). Append-only.
+    struct API3QRNGAdapterStorage {
+        address _airnodeRrp;
+        address _airnode;
+        bytes32 _endpointId;
+        address _sponsorWallet;
+        mapping(bytes32 requestId => bytes32 userKey) _pendingRequests;
+    }
+
+    /// @dev Verbatim mirror of `GelatoAutomateAdapterLib.GelatoAutomateAdapterStorage`
+    ///      (`@custom:storage-location erc7201:lattice.storage.GelatoAutomateAdapter`). Append-only.
+    struct GelatoAutomateAdapterStorage {
+        address _automate;
+        address _dedicatedMsgSender;
+        mapping(bytes32 taskId => bool tracked) _tasks;
+    }
+
+    /// @dev Verbatim mirror of `ChainlinkAutomationAdapterLib.ChainlinkAutomationAdapterStorage`
+    ///      (`@custom:storage-location erc7201:lattice.storage.ChainlinkAutomationAdapter`). Append-only.
+    struct ChainlinkAutomationAdapterStorage {
+        address _forwarder;
+        uint256 _interval;
+        uint256 _lastTimeStamp;
+        uint256 _counter;
+    }
+
     /// @dev Forces solc to emit the struct types into `storageLayout`. Never read, never deployed.
     GovernedDiamondCutStorage internal _unusedGovernedDiamondCut;
     SafeDiamondCutStorage internal _unusedSafeDiamondCut;
@@ -330,4 +373,9 @@ contract StorageLayoutProbe {
     AxelarGatewayAdapterStorage internal _unusedAxelarGatewayAdapter;
     WormholeGatewayAdapterStorage internal _unusedWormholeGatewayAdapter;
     ERC7786OpenBridgeStorage internal _unusedERC7786OpenBridge;
+    PythEntropyAdapterStorage internal _unusedPythEntropyAdapter;
+    GelatoVRFAdapterStorage internal _unusedGelatoVRFAdapter;
+    API3QRNGAdapterStorage internal _unusedAPI3QRNGAdapter;
+    GelatoAutomateAdapterStorage internal _unusedGelatoAutomateAdapter;
+    ChainlinkAutomationAdapterStorage internal _unusedChainlinkAutomationAdapter;
 }

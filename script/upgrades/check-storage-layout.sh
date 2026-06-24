@@ -86,6 +86,11 @@ GUARDED_STRUCTS=(
     "AxelarGatewayAdapterStorage lattice.storage.AxelarGatewayAdapter"
     "WormholeGatewayAdapterStorage lattice.storage.WormholeGatewayAdapter"
     "ERC7786OpenBridgeStorage lattice.storage.ERC7786OpenBridge"
+    "PythEntropyAdapterStorage lattice.storage.PythEntropyAdapter"
+    "GelatoVRFAdapterStorage lattice.storage.GelatoVRFAdapter"
+    "API3QRNGAdapterStorage lattice.storage.API3QRNGAdapter"
+    "GelatoAutomateAdapterStorage lattice.storage.GelatoAutomateAdapter"
+    "ChainlinkAutomationAdapterStorage lattice.storage.ChainlinkAutomationAdapter"
 )
 
 command -v forge >/dev/null 2>&1 || { echo "ERROR: forge not found on PATH" >&2; exit 2; }

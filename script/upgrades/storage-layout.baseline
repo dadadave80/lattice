@@ -108,3 +108,31 @@
 3	0	_nonce	t_uint256
 4	0	_remotes	t_mapping(t_bytes2,t_mapping(t_bytes_memory_ptr,t_bytes_storage))
 5	0	_trackers	t_mapping(t_bytes32,t_struct(OpenBridgeTracker)_storage)
+
+### PythEntropyAdapterStorage @ erc7201:lattice.storage.PythEntropyAdapter (slot 0xf5638fd8a7410f61ded501225ccb03fd632a93dd0cfb1615ce2666e2781d4f00)
+0	0	_entropy	t_address
+1	0	_provider	t_address
+2	0	_pendingRequests	t_mapping(t_uint64,t_bytes32)
+
+### GelatoVRFAdapterStorage @ erc7201:lattice.storage.GelatoVRFAdapter (slot 0x411b018662c29400f5f1d8919575dbc72aa8b7559a2445103c6d3b36a4058500)
+0	0	_operator	t_address
+1	0	_nextRequestId	t_uint256
+2	0	_pendingRequests	t_mapping(t_uint256,t_bytes32)
+
+### API3QRNGAdapterStorage @ erc7201:lattice.storage.API3QRNGAdapter (slot 0xb551ab661bfaed153d497ffdaa9cbb1d46fa1d799d8e6f2a2aa8ecfb66104b00)
+0	0	_airnodeRrp	t_address
+1	0	_airnode	t_address
+2	0	_endpointId	t_bytes32
+3	0	_sponsorWallet	t_address
+4	0	_pendingRequests	t_mapping(t_bytes32,t_bytes32)
+
+### GelatoAutomateAdapterStorage @ erc7201:lattice.storage.GelatoAutomateAdapter (slot 0x2e009cfe8b023d727b88173e4903cf45c68c8d769ec207081d89791b624d6900)
+0	0	_automate	t_address
+1	0	_dedicatedMsgSender	t_address
+2	0	_tasks	t_mapping(t_bytes32,t_bool)
+
+### ChainlinkAutomationAdapterStorage @ erc7201:lattice.storage.ChainlinkAutomationAdapter (slot 0x79ff96d501e28b99bca4f72c19ec619bce29c1cac16a5bcab62634e5e94dcb00)
+0	0	_forwarder	t_address
+1	0	_interval	t_uint256
+2	0	_lastTimeStamp	t_uint256
+3	0	_counter	t_uint256

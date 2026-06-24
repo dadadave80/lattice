@@ -247,6 +247,11 @@ and a row here.
 | TellorAdapter | `lattice.storage.TellorAdapter` | `0xf830cd05b050ba9ecf73559ef9b50793eb6cd90a674e3621847f667a1210d100` | `ITellorAdapter` | `0xddc762ca` | `0xd0880994b1b91b07c905771aa510c46b61d48fe80d33acc431dc49f1cf7b22c5` |
 | RedStoneAdapter | `lattice.storage.RedStoneAdapter` | `0x6c77ff7037fedb1e7737bf925fac4c87e7cc2c960916dee7790d2d73271bc700` | `IRedStoneAdapter` | `0xd5afaecd` | `0x48fa637c6327d1b003860a80c88da58028cdc6c0ad566c17cfe6e68792096327` |
 | ChainlinkVRF | `lattice.storage.ChainlinkVRF` | `0x296a09c3f1dda7c7057a0d3e9cfd88b1666f0f2ebdcbdc2f576bbcf22db0d200` | `IChainlinkVRF` | `0xed74ccf3` | `0x5e805972aa7ebffe06f2b61cc9d80c103d549fa32d030cc2918893026547c07e` |
+| PythEntropyAdapter | `lattice.storage.PythEntropyAdapter` | `0xf5638fd8a7410f61ded501225ccb03fd632a93dd0cfb1615ce2666e2781d4f00` | `IPythEntropyAdapter` | `0x4da4fb45` | `0x0b3233815ce1b1f92051bbb497fa74751e231e11c662dee243cd17d8f2a816f7` |
+| GelatoVRFAdapter | `lattice.storage.GelatoVRFAdapter` | `0x411b018662c29400f5f1d8919575dbc72aa8b7559a2445103c6d3b36a4058500` | `IGelatoVRFAdapter` | `0x648cc6c7` | `0x96d079b02f2bbbe165b473b6ab18c1244741cc699c115aaf2550dd64c3fba9dd` |
+| API3QRNGAdapter | `lattice.storage.API3QRNGAdapter` | `0xb551ab661bfaed153d497ffdaa9cbb1d46fa1d799d8e6f2a2aa8ecfb66104b00` | `IAPI3QRNGAdapter` | `0xae37b187` | `0x686b5c002fca8114a8568270b3aef529a60083a8d9c09dbd16e3a0bb6b30bfcf` |
+| GelatoAutomateAdapter | `lattice.storage.GelatoAutomateAdapter` | `0x2e009cfe8b023d727b88173e4903cf45c68c8d769ec207081d89791b624d6900` | `IGelatoAutomateAdapter` | `0xa5503dc2` | `0x266c2a44ce0cae7d2ae6065711c72b357de4f867c756d7ce5224cd89d213768f` |
+| ChainlinkAutomationAdapter | `lattice.storage.ChainlinkAutomationAdapter` | `0x79ff96d501e28b99bca4f72c19ec619bce29c1cac16a5bcab62634e5e94dcb00` | `IChainlinkAutomationAdapter` | `0x97290114` | `0xda518c4395658f1bda3e69bd76a71c3cebddb4103a2ca4f795abdfcb18525c7c` |
 | TWAPOracle | `lattice.storage.TWAPOracle` | `0xc2bcc163613aea761b734a9692ad3548aab9088be29b53e03facf6a2a351df00` | `ITWAPOracle` | `0xd1baebe0` | `0x3edcb012a40cef5fed8aba3a5816c3233af9ecd91b8a1965a2b67b8940a0f49f` |
 
 ### Crosschain
@@ -302,7 +307,7 @@ and a row here.
 
 ---
 
-**Counts:** 55 storage-bearing modules (55 unique ERC-7201 slots) and 59 ERC-165 interface
+**Counts:** 66 storage-bearing modules (66 unique ERC-7201 slots) and 67 ERC-165 interface
 map slots (the privacy track adds the stateful `ERC6538Registry` — one ERC-7201 slot and one
 `IERC6538Registry` ERC-165 slot — plus the stateless `ERC5564Announcer` — no ERC-7201 slot, one
 `IERC5564Announcer` ERC-165 slot — and the stateless `Groth16Verifier` — no ERC-7201 slot, one
@@ -326,4 +331,14 @@ only its protocol-specific `ICurveStableSwapAdapter` slot — one ERC-7201 slot 
 map slot; LidoAdapter likewise reuses the shared `IProtocolAdapter` map slot and adds only its
 protocol-specific `ILidoAdapter` slot — one ERC-7201 slot and one new ERC-165 map slot;
 UniswapV3Adapter likewise reuses the shared `IProtocolAdapter` map slot and adds only its
-protocol-specific `IUniswapV3Adapter` slot — one ERC-7201 slot and one new ERC-165 map slot).
+protocol-specific `IUniswapV3Adapter` slot — one ERC-7201 slot and one new ERC-165 map slot). The
+crosschain track adds six storage-bearing modules — `CrosschainLink`, `BridgeERC20`, `BridgeERC7802`,
+`AxelarGatewayAdapter`, `WormholeGatewayAdapter`, `ERC7786OpenBridge` — each with its own ERC-7201 slot;
+the two bridges share the `IBridgeFungible` (`0x28dcc8d8`) ERC-165 slot and the three gateways share the
+`IERC7786GatewaySource` (`0x11967553`) ERC-165 slot, so crosschain adds six ERC-7201 slots and three new
+ERC-165 map slots. The randomness/automation adapters — `PythEntropyAdapter`, `GelatoVRFAdapter`,
+`API3QRNGAdapter`, `GelatoAutomateAdapter`, `ChainlinkAutomationAdapter` (alongside the existing
+`ChainlinkVRF`) — each add one ERC-7201 storage slot and one unique ERC-165 map slot; the five new modules
+add five ERC-7201 slots and five ERC-165 map slots. Randomness/automation adapters currently live under
+`src/oracles/` alongside `ChainlinkVRF` (module-home decision: kept there for consistency rather than split
+into dedicated `src/randomness/` + `src/automation/` namespaces).
