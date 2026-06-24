@@ -234,6 +234,31 @@ contract StorageLayoutProbe {
         mapping(bytes32 key => RedStoneFeed) _feeds;
     }
 
+    /// @dev Verbatim mirror of `CrosschainLinkLib.CrosschainLinkStorage` and its `Link`
+    ///      (`@custom:storage-location erc7201:lattice.storage.CrosschainLink`). Append-only.
+    struct Link {
+        address gateway;
+        bytes counterpart;
+    }
+
+    struct CrosschainLinkStorage {
+        mapping(bytes chain => Link) _links;
+        mapping(bytes4 tag => address handler) _handlers;
+        mapping(bytes32 usedKey => bool used) _used;
+    }
+
+    /// @dev Verbatim mirror of `BridgeERC20Lib.BridgeERC20Storage`
+    ///      (`@custom:storage-location erc7201:lattice.storage.BridgeERC20`). Append-only.
+    struct BridgeERC20Storage {
+        address _token;
+    }
+
+    /// @dev Verbatim mirror of `BridgeERC7802Lib.BridgeERC7802Storage`
+    ///      (`@custom:storage-location erc7201:lattice.storage.BridgeERC7802`). Append-only.
+    struct BridgeERC7802Storage {
+        address _token;
+    }
+
     /// @dev Forces solc to emit the struct types into `storageLayout`. Never read, never deployed.
     GovernedDiamondCutStorage internal _unusedGovernedDiamondCut;
     SafeDiamondCutStorage internal _unusedSafeDiamondCut;
@@ -254,4 +279,7 @@ contract StorageLayoutProbe {
     BandAdapterStorage internal _unusedBandAdapter;
     TellorAdapterStorage internal _unusedTellorAdapter;
     RedStoneAdapterStorage internal _unusedRedStoneAdapter;
+    CrosschainLinkStorage internal _unusedCrosschainLink;
+    BridgeERC20Storage internal _unusedBridgeERC20;
+    BridgeERC7802Storage internal _unusedBridgeERC7802;
 }

@@ -51,6 +51,13 @@ import {
 } from "@lattice/tokens/libraries/ERC721URIStorageLib.sol";
 
 // governance
+import {BRIDGE_ERC20_STORAGE_SLOT} from "@lattice/crosschain/libraries/BridgeERC20Lib.sol";
+import {BRIDGE_ERC7802_STORAGE_SLOT} from "@lattice/crosschain/libraries/BridgeERC7802Lib.sol";
+import {ERC165_MAP_IBRIDGEFUNGIBLE_SLOT} from "@lattice/crosschain/libraries/BridgeFungibleLib.sol";
+import {
+    CROSSCHAIN_LINK_STORAGE_SLOT,
+    ERC165_MAP_ICROSSCHAINLINK_SLOT
+} from "@lattice/crosschain/libraries/CrosschainLinkLib.sol";
 import {GOVERNED_DIAMOND_CUT_STORAGE_SLOT} from "@lattice/governance/libraries/GovernedDiamondCutLib.sol";
 import {
     ERC165_MAP_IGOVERNEDSAFEDIAMONDCUT_SLOT,
@@ -203,6 +210,7 @@ import {IAccessControlTimed} from "@lattice/interfaces/IAccessControlTimed.sol";
 import {IAccessManaged} from "@lattice/interfaces/IAccessManaged.sol";
 import {IAccessManager} from "@lattice/interfaces/IAccessManager.sol";
 import {IBandAdapter} from "@lattice/interfaces/IBandAdapter.sol";
+import {IBridgeFungible} from "@lattice/interfaces/IBridgeFungible.sol";
 import {IChainlinkAdapter} from "@lattice/interfaces/IChainlinkAdapter.sol";
 import {IChainlinkVRF} from "@lattice/interfaces/IChainlinkVRF.sol";
 import {IChronicleAdapter} from "@lattice/interfaces/IChronicleAdapter.sol";
@@ -210,6 +218,7 @@ import {ICircuitBreaker} from "@lattice/interfaces/ICircuitBreaker.sol";
 import {ICommitReveal} from "@lattice/interfaces/ICommitReveal.sol";
 import {ICompoundV3Adapter} from "@lattice/interfaces/ICompoundV3Adapter.sol";
 import {IConstantProduct} from "@lattice/interfaces/IConstantProduct.sol";
+import {ICrosschainLink} from "@lattice/interfaces/ICrosschainLink.sol";
 import {ICurveStableSwapAdapter} from "@lattice/interfaces/ICurveStableSwapAdapter.sol";
 import {IDIAAdapter} from "@lattice/interfaces/IDIAAdapter.sol";
 import {IEIP712} from "@lattice/interfaces/IEIP712.sol";
@@ -554,6 +563,30 @@ contract StorageSlotVerificationTest is Test {
     function test_TWAPOracleStorageSlot() public pure {
         assertEq(
             TWAP_ORACLE_STORAGE_SLOT, _erc7201Slot("lattice.storage.TWAPOracle"), "TWAPOracle storage slot mismatch"
+        );
+    }
+
+    // ---- crosschain ----
+
+    function test_CrosschainLinkStorageSlot() public pure {
+        assertEq(
+            CROSSCHAIN_LINK_STORAGE_SLOT,
+            _erc7201Slot("lattice.storage.CrosschainLink"),
+            "CrosschainLink storage slot mismatch"
+        );
+    }
+
+    function test_BridgeERC20StorageSlot() public pure {
+        assertEq(
+            BRIDGE_ERC20_STORAGE_SLOT, _erc7201Slot("lattice.storage.BridgeERC20"), "BridgeERC20 storage slot mismatch"
+        );
+    }
+
+    function test_BridgeERC7802StorageSlot() public pure {
+        assertEq(
+            BRIDGE_ERC7802_STORAGE_SLOT,
+            _erc7201Slot("lattice.storage.BridgeERC7802"),
+            "BridgeERC7802 storage slot mismatch"
         );
     }
 
@@ -1049,6 +1082,26 @@ contract StorageSlotVerificationTest is Test {
         );
     }
 
+    function test_Erc165MapICrosschainLinkSlot() public pure {
+        bytes4 interfaceId = type(ICrosschainLink).interfaceId;
+        assertEq(interfaceId, bytes4(0xe1805ff8), "ICrosschainLink interfaceId comment is stale");
+        assertEq(
+            ERC165_MAP_ICROSSCHAINLINK_SLOT,
+            _erc165MapSlot(interfaceId, ERC165_STORAGE_LOCATION),
+            "ERC165 ICrosschainLink map slot mismatch"
+        );
+    }
+
+    function test_Erc165MapIBridgeFungibleSlot() public pure {
+        bytes4 interfaceId = type(IBridgeFungible).interfaceId;
+        assertEq(interfaceId, bytes4(0x28dcc8d8), "IBridgeFungible interfaceId comment is stale");
+        assertEq(
+            ERC165_MAP_IBRIDGEFUNGIBLE_SLOT,
+            _erc165MapSlot(interfaceId, ERC165_STORAGE_LOCATION),
+            "ERC165 IBridgeFungible map slot mismatch"
+        );
+    }
+
     // ---- security ----
 
     function test_Erc165MapIPausableSlot() public pure {
@@ -1267,7 +1320,7 @@ contract StorageSlotVerificationTest is Test {
     // ======================== Slot inventories ========================
 
     function _allStorageSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](55);
+        slots = new bytes32[](58);
         uint256 i;
         // access
         slots[i++] = ACCESS_CONTROL_STORAGE_SLOT;
@@ -1313,6 +1366,10 @@ contract StorageSlotVerificationTest is Test {
         slots[i++] = REDSTONE_ADAPTER_STORAGE_SLOT;
         slots[i++] = CHAINLINK_VRF_STORAGE_SLOT;
         slots[i++] = TWAP_ORACLE_STORAGE_SLOT;
+        // crosschain
+        slots[i++] = CROSSCHAIN_LINK_STORAGE_SLOT;
+        slots[i++] = BRIDGE_ERC20_STORAGE_SLOT;
+        slots[i++] = BRIDGE_ERC7802_STORAGE_SLOT;
         // security
         slots[i++] = PAUSABLE_STORAGE_SLOT;
         slots[i++] = REENTRANCY_GUARD_STORAGE_SLOT;
@@ -1337,7 +1394,7 @@ contract StorageSlotVerificationTest is Test {
     }
 
     function _allErc165MapSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](59);
+        slots = new bytes32[](61);
         uint256 i;
         // access
         slots[i++] = ERC165_MAP_IACCESSCONTROL_SLOT;
@@ -1397,6 +1454,9 @@ contract StorageSlotVerificationTest is Test {
         slots[i++] = ERC165_MAP_IREDSTONEADAPTER_SLOT;
         slots[i++] = ERC165_MAP_ICHAINLINKVRF_SLOT;
         slots[i++] = ERC165_MAP_ITWAPORACLE_SLOT;
+        // crosschain (both bridges share the IBridgeFungible interface → one map slot)
+        slots[i++] = ERC165_MAP_ICROSSCHAINLINK_SLOT;
+        slots[i++] = ERC165_MAP_IBRIDGEFUNGIBLE_SLOT;
         // security
         slots[i++] = ERC165_MAP_IPAUSABLE_SLOT;
         slots[i++] = ERC165_MAP_IREENTRANCYGUARD_SLOT;
