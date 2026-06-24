@@ -51,6 +51,10 @@ import {
 } from "@lattice/tokens/libraries/ERC721URIStorageLib.sol";
 
 // governance
+import {
+    AXELAR_GATEWAY_ADAPTER_STORAGE_SLOT,
+    ERC165_MAP_IERC7786GATEWAYSOURCE_SLOT
+} from "@lattice/crosschain/libraries/AxelarGatewayAdapterLib.sol";
 import {BRIDGE_ERC20_STORAGE_SLOT} from "@lattice/crosschain/libraries/BridgeERC20Lib.sol";
 import {BRIDGE_ERC7802_STORAGE_SLOT} from "@lattice/crosschain/libraries/BridgeERC7802Lib.sol";
 import {ERC165_MAP_IBRIDGEFUNGIBLE_SLOT} from "@lattice/crosschain/libraries/BridgeFungibleLib.sol";
@@ -258,6 +262,7 @@ import {IUniswapV3Adapter} from "@lattice/interfaces/IUniswapV3Adapter.sol";
 import {IVaultCore} from "@lattice/interfaces/IVaultCore.sol";
 import {IVestingWallet} from "@lattice/interfaces/IVestingWallet.sol";
 import {IVotes} from "@lattice/interfaces/IVotes.sol";
+import {IERC7786GatewaySource} from "@lattice/interfaces/external/IERC7786.sol";
 
 /// @title StorageSlotVerificationTest
 /// @notice Re-derives every ERC-7201 storage slot and ERC-165 map slot from first principles
@@ -587,6 +592,14 @@ contract StorageSlotVerificationTest is Test {
             BRIDGE_ERC7802_STORAGE_SLOT,
             _erc7201Slot("lattice.storage.BridgeERC7802"),
             "BridgeERC7802 storage slot mismatch"
+        );
+    }
+
+    function test_AxelarGatewayAdapterStorageSlot() public pure {
+        assertEq(
+            AXELAR_GATEWAY_ADAPTER_STORAGE_SLOT,
+            _erc7201Slot("lattice.storage.AxelarGatewayAdapter"),
+            "AxelarGatewayAdapter storage slot mismatch"
         );
     }
 
@@ -1102,6 +1115,16 @@ contract StorageSlotVerificationTest is Test {
         );
     }
 
+    function test_Erc165MapIERC7786GatewaySourceSlot() public pure {
+        bytes4 interfaceId = type(IERC7786GatewaySource).interfaceId;
+        assertEq(interfaceId, bytes4(0x11967553), "IERC7786GatewaySource interfaceId comment is stale");
+        assertEq(
+            ERC165_MAP_IERC7786GATEWAYSOURCE_SLOT,
+            _erc165MapSlot(interfaceId, ERC165_STORAGE_LOCATION),
+            "ERC165 IERC7786GatewaySource map slot mismatch"
+        );
+    }
+
     // ---- security ----
 
     function test_Erc165MapIPausableSlot() public pure {
@@ -1320,7 +1343,7 @@ contract StorageSlotVerificationTest is Test {
     // ======================== Slot inventories ========================
 
     function _allStorageSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](58);
+        slots = new bytes32[](59);
         uint256 i;
         // access
         slots[i++] = ACCESS_CONTROL_STORAGE_SLOT;
@@ -1370,6 +1393,7 @@ contract StorageSlotVerificationTest is Test {
         slots[i++] = CROSSCHAIN_LINK_STORAGE_SLOT;
         slots[i++] = BRIDGE_ERC20_STORAGE_SLOT;
         slots[i++] = BRIDGE_ERC7802_STORAGE_SLOT;
+        slots[i++] = AXELAR_GATEWAY_ADAPTER_STORAGE_SLOT;
         // security
         slots[i++] = PAUSABLE_STORAGE_SLOT;
         slots[i++] = REENTRANCY_GUARD_STORAGE_SLOT;
@@ -1394,7 +1418,7 @@ contract StorageSlotVerificationTest is Test {
     }
 
     function _allErc165MapSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](61);
+        slots = new bytes32[](62);
         uint256 i;
         // access
         slots[i++] = ERC165_MAP_IACCESSCONTROL_SLOT;
@@ -1457,6 +1481,7 @@ contract StorageSlotVerificationTest is Test {
         // crosschain (both bridges share the IBridgeFungible interface → one map slot)
         slots[i++] = ERC165_MAP_ICROSSCHAINLINK_SLOT;
         slots[i++] = ERC165_MAP_IBRIDGEFUNGIBLE_SLOT;
+        slots[i++] = ERC165_MAP_IERC7786GATEWAYSOURCE_SLOT;
         // security
         slots[i++] = ERC165_MAP_IPAUSABLE_SLOT;
         slots[i++] = ERC165_MAP_IREENTRANCYGUARD_SLOT;
