@@ -62,6 +62,8 @@ import {
     CROSSCHAIN_LINK_STORAGE_SLOT,
     ERC165_MAP_ICROSSCHAINLINK_SLOT
 } from "@lattice/crosschain/libraries/CrosschainLinkLib.sol";
+import {ERC7786_OPEN_BRIDGE_STORAGE_SLOT} from "@lattice/crosschain/libraries/ERC7786OpenBridgeLib.sol";
+import {WORMHOLE_GATEWAY_ADAPTER_STORAGE_SLOT} from "@lattice/crosschain/libraries/WormholeGatewayAdapterLib.sol";
 import {GOVERNED_DIAMOND_CUT_STORAGE_SLOT} from "@lattice/governance/libraries/GovernedDiamondCutLib.sol";
 import {
     ERC165_MAP_IGOVERNEDSAFEDIAMONDCUT_SLOT,
@@ -600,6 +602,22 @@ contract StorageSlotVerificationTest is Test {
             AXELAR_GATEWAY_ADAPTER_STORAGE_SLOT,
             _erc7201Slot("lattice.storage.AxelarGatewayAdapter"),
             "AxelarGatewayAdapter storage slot mismatch"
+        );
+    }
+
+    function test_WormholeGatewayAdapterStorageSlot() public pure {
+        assertEq(
+            WORMHOLE_GATEWAY_ADAPTER_STORAGE_SLOT,
+            _erc7201Slot("lattice.storage.WormholeGatewayAdapter"),
+            "WormholeGatewayAdapter storage slot mismatch"
+        );
+    }
+
+    function test_ERC7786OpenBridgeStorageSlot() public pure {
+        assertEq(
+            ERC7786_OPEN_BRIDGE_STORAGE_SLOT,
+            _erc7201Slot("lattice.storage.ERC7786OpenBridge"),
+            "ERC7786OpenBridge storage slot mismatch"
         );
     }
 
@@ -1343,7 +1361,7 @@ contract StorageSlotVerificationTest is Test {
     // ======================== Slot inventories ========================
 
     function _allStorageSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](59);
+        slots = new bytes32[](61);
         uint256 i;
         // access
         slots[i++] = ACCESS_CONTROL_STORAGE_SLOT;
@@ -1394,6 +1412,8 @@ contract StorageSlotVerificationTest is Test {
         slots[i++] = BRIDGE_ERC20_STORAGE_SLOT;
         slots[i++] = BRIDGE_ERC7802_STORAGE_SLOT;
         slots[i++] = AXELAR_GATEWAY_ADAPTER_STORAGE_SLOT;
+        slots[i++] = WORMHOLE_GATEWAY_ADAPTER_STORAGE_SLOT;
+        slots[i++] = ERC7786_OPEN_BRIDGE_STORAGE_SLOT;
         // security
         slots[i++] = PAUSABLE_STORAGE_SLOT;
         slots[i++] = REENTRANCY_GUARD_STORAGE_SLOT;

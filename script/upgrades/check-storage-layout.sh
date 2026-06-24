@@ -84,6 +84,8 @@ GUARDED_STRUCTS=(
     "BridgeERC20Storage lattice.storage.BridgeERC20"
     "BridgeERC7802Storage lattice.storage.BridgeERC7802"
     "AxelarGatewayAdapterStorage lattice.storage.AxelarGatewayAdapter"
+    "WormholeGatewayAdapterStorage lattice.storage.WormholeGatewayAdapter"
+    "ERC7786OpenBridgeStorage lattice.storage.ERC7786OpenBridge"
 )
 
 command -v forge >/dev/null 2>&1 || { echo "ERROR: forge not found on PATH" >&2; exit 2; }
