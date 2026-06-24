@@ -91,3 +91,13 @@
 1	0	_remoteGateways	t_mapping(t_bytes2,t_mapping(t_bytes_memory_ptr,t_bytes_storage))
 2	0	_erc7930ToAxelar	t_mapping(t_bytes_memory_ptr,t_string_storage)
 3	0	_axelarToErc7930	t_mapping(t_string_memory_ptr,t_bytes_storage)
+
+### WormholeGatewayAdapterStorage @ erc7201:lattice.storage.WormholeGatewayAdapter (slot 0x46329d8c82c4b2643a1707018dd8f47f4e747c04259ec1eec95a00ddfb1bd600)
+0	0	_relayer	t_address
+0	20	_wormholeChainId	t_uint16
+1	0	_lastMsgId	t_uint256
+2	0	_remoteGateways	t_mapping(t_uint256,t_address)
+3	0	_chainIdToWormhole	t_mapping(t_uint256,t_uint16)
+4	0	_wormholeToChainId	t_mapping(t_uint16,t_uint256)
+5	0	_pending	t_mapping(t_bytes32,t_struct(PendingMessage)_storage)
+6	0	_executed	t_mapping(t_uint256,t_mapping(t_uint256,t_bool))
