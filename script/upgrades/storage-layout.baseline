@@ -74,3 +74,14 @@
 
 ### RedStoneAdapterStorage @ erc7201:lattice.storage.RedStoneAdapter (slot 0x6c77ff7037fedb1e7737bf925fac4c87e7cc2c960916dee7790d2d73271bc700)
 0	0	_feeds	t_mapping(t_bytes32,t_struct(RedStoneFeed)_storage)
+
+### CrosschainLinkStorage @ erc7201:lattice.storage.CrosschainLink (slot 0x018a2157cdb5adbb1b39e614b18b4d8eae2cba40cdae1a4ba3100cc857e64900)
+0	0	_links	t_mapping(t_bytes_memory_ptr,t_struct(Link)_storage)
+1	0	_handlers	t_mapping(t_bytes4,t_address)
+2	0	_used	t_mapping(t_bytes32,t_bool)
+
+### BridgeERC20Storage @ erc7201:lattice.storage.BridgeERC20 (slot 0x0e9006c16c4f5fe9e0e3215c8af601bd97024c6bebdfa0efe51c092276cd7c00)
+0	0	_token	t_address
+
+### BridgeERC7802Storage @ erc7201:lattice.storage.BridgeERC7802 (slot 0x9d1b234db7644d1f76207933d92c2e89140027741ab600a4ff4b12a8d51e4b00)
+0	0	_token	t_address
