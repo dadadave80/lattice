@@ -288,6 +288,22 @@ contract StorageLayoutProbe {
         mapping(uint256 chainId => mapping(uint256 sendId => bool used)) _executed;
     }
 
+    /// @dev Verbatim mirror of `ERC7786OpenBridgeLib.ERC7786OpenBridgeStorage` and its `OpenBridgeTracker`
+    ///      (`@custom:storage-location erc7201:lattice.storage.ERC7786OpenBridge`). Append-only.
+    struct OpenBridgeTracker {
+        mapping(address gateway => bool received) receivedBy;
+        uint8 countReceived;
+        bool executed;
+    }
+
+    struct ERC7786OpenBridgeStorage {
+        EnumerableSet.AddressSet _gateways;
+        uint8 _threshold;
+        uint256 _nonce;
+        mapping(bytes2 chainType => mapping(bytes chainReference => bytes bridge)) _remotes;
+        mapping(bytes32 id => OpenBridgeTracker tracker) _trackers;
+    }
+
     /// @dev Forces solc to emit the struct types into `storageLayout`. Never read, never deployed.
     GovernedDiamondCutStorage internal _unusedGovernedDiamondCut;
     SafeDiamondCutStorage internal _unusedSafeDiamondCut;
@@ -313,4 +329,5 @@ contract StorageLayoutProbe {
     BridgeERC7802Storage internal _unusedBridgeERC7802;
     AxelarGatewayAdapterStorage internal _unusedAxelarGatewayAdapter;
     WormholeGatewayAdapterStorage internal _unusedWormholeGatewayAdapter;
+    ERC7786OpenBridgeStorage internal _unusedERC7786OpenBridge;
 }
