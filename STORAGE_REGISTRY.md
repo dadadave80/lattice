@@ -251,6 +251,7 @@ and a row here.
 | CrosschainLink | `lattice.storage.CrosschainLink` | `0x018a2157cdb5adbb1b39e614b18b4d8eae2cba40cdae1a4ba3100cc857e64900` | `ICrosschainLink` | `0xe1805ff8` | `0x9ddc11a88c7ecd9ccccbcd59cd7f34c709ebe70b4507cbaed74ad8b1267235ef` |
 | BridgeERC20 | `lattice.storage.BridgeERC20` | `0x0e9006c16c4f5fe9e0e3215c8af601bd97024c6bebdfa0efe51c092276cd7c00` | `IBridgeFungible` | `0x28dcc8d8` | `0xc98ec5eb76ed7701e7884a55fd8dcc6ba54f192d7f68011281537265c16215d4` |
 | BridgeERC7802 | `lattice.storage.BridgeERC7802` | `0x9d1b234db7644d1f76207933d92c2e89140027741ab600a4ff4b12a8d51e4b00` | `IBridgeFungible` | `0x28dcc8d8` | `0xc98ec5eb76ed7701e7884a55fd8dcc6ba54f192d7f68011281537265c16215d4` |
+| AxelarGatewayAdapter | `lattice.storage.AxelarGatewayAdapter` | `0xeb5bee64b500c298be8b1e9f77b8505f5c8c9cdd4c45b490c069ffc446e8fd00` | `IERC7786GatewaySource` | `0x11967553` | `0x3c75b8ea75c097979221eb9302e2f0f6009b4ffe0a7198db5dc29979e09ea0e3` |
 
 ### Security
 
