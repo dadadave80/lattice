@@ -101,3 +101,10 @@
 4	0	_wormholeToChainId	t_mapping(t_uint16,t_uint256)
 5	0	_pending	t_mapping(t_bytes32,t_struct(PendingMessage)_storage)
 6	0	_executed	t_mapping(t_uint256,t_mapping(t_uint256,t_bool))
+
+### ERC7786OpenBridgeStorage @ erc7201:lattice.storage.ERC7786OpenBridge (slot 0xca75154ce55fdf901a786b6fa60962886fadca5cda61c777098bc66b49134a00)
+0	0	_gateways	t_struct(AddressSet)_storage
+2	0	_threshold	t_uint8
+3	0	_nonce	t_uint256
+4	0	_remotes	t_mapping(t_bytes2,t_mapping(t_bytes_memory_ptr,t_bytes_storage))
+5	0	_trackers	t_mapping(t_bytes32,t_struct(OpenBridgeTracker)_storage)
