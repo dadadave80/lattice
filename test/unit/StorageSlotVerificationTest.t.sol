@@ -118,11 +118,19 @@ import {
 
 // oracles
 import {API3_ADAPTER_STORAGE_SLOT, ERC165_MAP_IAPI3ADAPTER_SLOT} from "@lattice/oracles/libraries/API3AdapterLib.sol";
+import {
+    API3_QRNG_ADAPTER_STORAGE_SLOT,
+    ERC165_MAP_IAPI3QRNGADAPTER_SLOT
+} from "@lattice/oracles/libraries/API3QRNGAdapterLib.sol";
 import {BAND_ADAPTER_STORAGE_SLOT, ERC165_MAP_IBANDADAPTER_SLOT} from "@lattice/oracles/libraries/BandAdapterLib.sol";
 import {
     CHAINLINK_ADAPTER_STORAGE_SLOT,
     ERC165_MAP_ICHAINLINKADAPTER_SLOT
 } from "@lattice/oracles/libraries/ChainlinkAdapterLib.sol";
+import {
+    CHAINLINK_AUTOMATION_ADAPTER_STORAGE_SLOT,
+    ERC165_MAP_ICHAINLINKAUTOMATIONADAPTER_SLOT
+} from "@lattice/oracles/libraries/ChainlinkAutomationAdapterLib.sol";
 import {
     CHAINLINK_VRF_STORAGE_SLOT,
     ERC165_MAP_ICHAINLINKVRF_SLOT
@@ -132,7 +140,19 @@ import {
     ERC165_MAP_ICHRONICLEADAPTER_SLOT
 } from "@lattice/oracles/libraries/ChronicleAdapterLib.sol";
 import {DIA_ADAPTER_STORAGE_SLOT, ERC165_MAP_IDIAADAPTER_SLOT} from "@lattice/oracles/libraries/DIAAdapterLib.sol";
+import {
+    ERC165_MAP_IGELATOAUTOMATEADAPTER_SLOT,
+    GELATO_AUTOMATE_ADAPTER_STORAGE_SLOT
+} from "@lattice/oracles/libraries/GelatoAutomateAdapterLib.sol";
+import {
+    ERC165_MAP_IGELATOVRFADAPTER_SLOT,
+    GELATO_VRF_ADAPTER_STORAGE_SLOT
+} from "@lattice/oracles/libraries/GelatoVRFAdapterLib.sol";
 import {ERC165_MAP_IPYTHADAPTER_SLOT, PYTH_ADAPTER_STORAGE_SLOT} from "@lattice/oracles/libraries/PythAdapterLib.sol";
+import {
+    ERC165_MAP_IPYTHENTROPYADAPTER_SLOT,
+    PYTH_ENTROPY_ADAPTER_STORAGE_SLOT
+} from "@lattice/oracles/libraries/PythEntropyAdapterLib.sol";
 import {
     ERC165_MAP_IREDSTONEADAPTER_SLOT,
     REDSTONE_ADAPTER_STORAGE_SLOT
@@ -209,6 +229,7 @@ import {
 // ---------------------------------------------------------------------------
 
 import {IAPI3Adapter} from "@lattice/interfaces/IAPI3Adapter.sol";
+import {IAPI3QRNGAdapter} from "@lattice/interfaces/IAPI3QRNGAdapter.sol";
 import {IAaveV3Adapter} from "@lattice/interfaces/IAaveV3Adapter.sol";
 import {IAccessControl} from "@lattice/interfaces/IAccessControl.sol";
 import {IAccessControlEnumerable} from "@lattice/interfaces/IAccessControlEnumerable.sol";
@@ -218,6 +239,7 @@ import {IAccessManager} from "@lattice/interfaces/IAccessManager.sol";
 import {IBandAdapter} from "@lattice/interfaces/IBandAdapter.sol";
 import {IBridgeFungible} from "@lattice/interfaces/IBridgeFungible.sol";
 import {IChainlinkAdapter} from "@lattice/interfaces/IChainlinkAdapter.sol";
+import {IChainlinkAutomationAdapter} from "@lattice/interfaces/IChainlinkAutomationAdapter.sol";
 import {IChainlinkVRF} from "@lattice/interfaces/IChainlinkVRF.sol";
 import {IChronicleAdapter} from "@lattice/interfaces/IChronicleAdapter.sol";
 import {ICircuitBreaker} from "@lattice/interfaces/ICircuitBreaker.sol";
@@ -239,6 +261,8 @@ import {IERC4626Adapter} from "@lattice/interfaces/IERC4626Adapter.sol";
 import {IERC5564Announcer} from "@lattice/interfaces/IERC5564Announcer.sol";
 import {IERC6538Registry} from "@lattice/interfaces/IERC6538Registry.sol";
 import {IEmergencyStop} from "@lattice/interfaces/IEmergencyStop.sol";
+import {IGelatoAutomateAdapter} from "@lattice/interfaces/IGelatoAutomateAdapter.sol";
+import {IGelatoVRFAdapter} from "@lattice/interfaces/IGelatoVRFAdapter.sol";
 import {IGovernedSafeDiamondCut} from "@lattice/interfaces/IGovernedSafeDiamondCut.sol";
 import {IGovernor} from "@lattice/interfaces/IGovernor.sol";
 import {IGroth16Verifier} from "@lattice/interfaces/IGroth16Verifier.sol";
@@ -250,6 +274,7 @@ import {IPlonkVerifier} from "@lattice/interfaces/IPlonkVerifier.sol";
 import {IPrivateVoting} from "@lattice/interfaces/IPrivateVoting.sol";
 import {IProtocolAdapter} from "@lattice/interfaces/IProtocolAdapter.sol";
 import {IPythAdapter} from "@lattice/interfaces/IPythAdapter.sol";
+import {IPythEntropyAdapter} from "@lattice/interfaces/IPythEntropyAdapter.sol";
 import {IRateLimiter} from "@lattice/interfaces/IRateLimiter.sol";
 import {IRedStoneAdapter} from "@lattice/interfaces/IRedStoneAdapter.sol";
 import {IReentrancyGuard} from "@lattice/interfaces/IReentrancyGuard.sol";
@@ -564,6 +589,46 @@ contract StorageSlotVerificationTest is Test {
             CHAINLINK_VRF_STORAGE_SLOT,
             _erc7201Slot("lattice.storage.ChainlinkVRF"),
             "ChainlinkVRF storage slot mismatch"
+        );
+    }
+
+    function test_PythEntropyAdapterStorageSlot() public pure {
+        assertEq(
+            PYTH_ENTROPY_ADAPTER_STORAGE_SLOT,
+            _erc7201Slot("lattice.storage.PythEntropyAdapter"),
+            "PythEntropyAdapter storage slot mismatch"
+        );
+    }
+
+    function test_GelatoVRFAdapterStorageSlot() public pure {
+        assertEq(
+            GELATO_VRF_ADAPTER_STORAGE_SLOT,
+            _erc7201Slot("lattice.storage.GelatoVRFAdapter"),
+            "GelatoVRFAdapter storage slot mismatch"
+        );
+    }
+
+    function test_API3QRNGAdapterStorageSlot() public pure {
+        assertEq(
+            API3_QRNG_ADAPTER_STORAGE_SLOT,
+            _erc7201Slot("lattice.storage.API3QRNGAdapter"),
+            "API3QRNGAdapter storage slot mismatch"
+        );
+    }
+
+    function test_GelatoAutomateAdapterStorageSlot() public pure {
+        assertEq(
+            GELATO_AUTOMATE_ADAPTER_STORAGE_SLOT,
+            _erc7201Slot("lattice.storage.GelatoAutomateAdapter"),
+            "GelatoAutomateAdapter storage slot mismatch"
+        );
+    }
+
+    function test_ChainlinkAutomationAdapterStorageSlot() public pure {
+        assertEq(
+            CHAINLINK_AUTOMATION_ADAPTER_STORAGE_SLOT,
+            _erc7201Slot("lattice.storage.ChainlinkAutomationAdapter"),
+            "ChainlinkAutomationAdapter storage slot mismatch"
         );
     }
 
@@ -1105,6 +1170,46 @@ contract StorageSlotVerificationTest is Test {
         );
     }
 
+    function test_Erc165MapIPythEntropyAdapterSlot() public pure {
+        assertEq(
+            ERC165_MAP_IPYTHENTROPYADAPTER_SLOT,
+            _erc165MapSlot(type(IPythEntropyAdapter).interfaceId, ERC165_STORAGE_LOCATION),
+            "ERC165 IPythEntropyAdapter map slot mismatch"
+        );
+    }
+
+    function test_Erc165MapIGelatoVRFAdapterSlot() public pure {
+        assertEq(
+            ERC165_MAP_IGELATOVRFADAPTER_SLOT,
+            _erc165MapSlot(type(IGelatoVRFAdapter).interfaceId, ERC165_STORAGE_LOCATION),
+            "ERC165 IGelatoVRFAdapter map slot mismatch"
+        );
+    }
+
+    function test_Erc165MapIAPI3QRNGAdapterSlot() public pure {
+        assertEq(
+            ERC165_MAP_IAPI3QRNGADAPTER_SLOT,
+            _erc165MapSlot(type(IAPI3QRNGAdapter).interfaceId, ERC165_STORAGE_LOCATION),
+            "ERC165 IAPI3QRNGAdapter map slot mismatch"
+        );
+    }
+
+    function test_Erc165MapIGelatoAutomateAdapterSlot() public pure {
+        assertEq(
+            ERC165_MAP_IGELATOAUTOMATEADAPTER_SLOT,
+            _erc165MapSlot(type(IGelatoAutomateAdapter).interfaceId, ERC165_STORAGE_LOCATION),
+            "ERC165 IGelatoAutomateAdapter map slot mismatch"
+        );
+    }
+
+    function test_Erc165MapIChainlinkAutomationAdapterSlot() public pure {
+        assertEq(
+            ERC165_MAP_ICHAINLINKAUTOMATIONADAPTER_SLOT,
+            _erc165MapSlot(type(IChainlinkAutomationAdapter).interfaceId, ERC165_STORAGE_LOCATION),
+            "ERC165 IChainlinkAutomationAdapter map slot mismatch"
+        );
+    }
+
     function test_Erc165MapITWAPOracleSlot() public pure {
         assertEq(
             ERC165_MAP_ITWAPORACLE_SLOT,
@@ -1361,7 +1466,7 @@ contract StorageSlotVerificationTest is Test {
     // ======================== Slot inventories ========================
 
     function _allStorageSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](61);
+        slots = new bytes32[](66);
         uint256 i;
         // access
         slots[i++] = ACCESS_CONTROL_STORAGE_SLOT;
@@ -1406,6 +1511,11 @@ contract StorageSlotVerificationTest is Test {
         slots[i++] = TELLOR_ADAPTER_STORAGE_SLOT;
         slots[i++] = REDSTONE_ADAPTER_STORAGE_SLOT;
         slots[i++] = CHAINLINK_VRF_STORAGE_SLOT;
+        slots[i++] = PYTH_ENTROPY_ADAPTER_STORAGE_SLOT;
+        slots[i++] = GELATO_VRF_ADAPTER_STORAGE_SLOT;
+        slots[i++] = API3_QRNG_ADAPTER_STORAGE_SLOT;
+        slots[i++] = GELATO_AUTOMATE_ADAPTER_STORAGE_SLOT;
+        slots[i++] = CHAINLINK_AUTOMATION_ADAPTER_STORAGE_SLOT;
         slots[i++] = TWAP_ORACLE_STORAGE_SLOT;
         // crosschain
         slots[i++] = CROSSCHAIN_LINK_STORAGE_SLOT;
@@ -1438,7 +1548,7 @@ contract StorageSlotVerificationTest is Test {
     }
 
     function _allErc165MapSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](62);
+        slots = new bytes32[](67);
         uint256 i;
         // access
         slots[i++] = ERC165_MAP_IACCESSCONTROL_SLOT;
@@ -1497,6 +1607,11 @@ contract StorageSlotVerificationTest is Test {
         slots[i++] = ERC165_MAP_ITELLORADAPTER_SLOT;
         slots[i++] = ERC165_MAP_IREDSTONEADAPTER_SLOT;
         slots[i++] = ERC165_MAP_ICHAINLINKVRF_SLOT;
+        slots[i++] = ERC165_MAP_IPYTHENTROPYADAPTER_SLOT;
+        slots[i++] = ERC165_MAP_IGELATOVRFADAPTER_SLOT;
+        slots[i++] = ERC165_MAP_IAPI3QRNGADAPTER_SLOT;
+        slots[i++] = ERC165_MAP_IGELATOAUTOMATEADAPTER_SLOT;
+        slots[i++] = ERC165_MAP_ICHAINLINKAUTOMATIONADAPTER_SLOT;
         slots[i++] = ERC165_MAP_ITWAPORACLE_SLOT;
         // crosschain (both bridges share the IBridgeFungible interface → one map slot)
         slots[i++] = ERC165_MAP_ICROSSCHAINLINK_SLOT;
