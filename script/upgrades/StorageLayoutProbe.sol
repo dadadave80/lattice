@@ -259,6 +259,15 @@ contract StorageLayoutProbe {
         address _token;
     }
 
+    /// @dev Verbatim mirror of `AxelarGatewayAdapterLib.AxelarGatewayAdapterStorage`
+    ///      (`@custom:storage-location erc7201:lattice.storage.AxelarGatewayAdapter`). Append-only.
+    struct AxelarGatewayAdapterStorage {
+        address _gateway;
+        mapping(bytes2 chainType => mapping(bytes chainReference => bytes addr)) _remoteGateways;
+        mapping(bytes chain => string axelar) _erc7930ToAxelar;
+        mapping(string axelar => bytes chain) _axelarToErc7930;
+    }
+
     /// @dev Forces solc to emit the struct types into `storageLayout`. Never read, never deployed.
     GovernedDiamondCutStorage internal _unusedGovernedDiamondCut;
     SafeDiamondCutStorage internal _unusedSafeDiamondCut;
@@ -282,4 +291,5 @@ contract StorageLayoutProbe {
     CrosschainLinkStorage internal _unusedCrosschainLink;
     BridgeERC20Storage internal _unusedBridgeERC20;
     BridgeERC7802Storage internal _unusedBridgeERC7802;
+    AxelarGatewayAdapterStorage internal _unusedAxelarGatewayAdapter;
 }

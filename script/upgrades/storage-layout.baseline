@@ -85,3 +85,9 @@
 
 ### BridgeERC7802Storage @ erc7201:lattice.storage.BridgeERC7802 (slot 0x9d1b234db7644d1f76207933d92c2e89140027741ab600a4ff4b12a8d51e4b00)
 0	0	_token	t_address
+
+### AxelarGatewayAdapterStorage @ erc7201:lattice.storage.AxelarGatewayAdapter (slot 0xeb5bee64b500c298be8b1e9f77b8505f5c8c9cdd4c45b490c069ffc446e8fd00)
+0	0	_gateway	t_address
+1	0	_remoteGateways	t_mapping(t_bytes2,t_mapping(t_bytes_memory_ptr,t_bytes_storage))
+2	0	_erc7930ToAxelar	t_mapping(t_bytes_memory_ptr,t_string_storage)
+3	0	_axelarToErc7930	t_mapping(t_string_memory_ptr,t_bytes_storage)
