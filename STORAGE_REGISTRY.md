@@ -70,9 +70,15 @@ and a row here.
   registry / frozen / emergency surfaces are plain facet functions sharing the same ERC-7201 slot.
 - Utility libraries that hold no own ERC-7201 storage slot (`EnumerableSet`, `TimelockLib`) and
   token-extension libraries that declare no `*_STORAGE_SLOT` (`ERC20Burnable`, `ERC20Permit`,
-  `ERC20Votes`) are intentionally **not** listed here. (`ERC20Permit`, `ERC20Votes`, and
-  `ERC20Burnable` do register ERC-165 ids but reuse the underlying `ERC20`/`Votes`/`Nonces`
+  `ERC20Votes`, `ERC7802`) are intentionally **not** listed here. (`ERC20Permit`, `ERC20Votes`,
+  `ERC20Burnable`, and `ERC7802` do register ERC-165 ids but reuse the underlying `ERC20`/`Votes`/`Nonces`
   storage, so they have no row of their own.)
+- **ERC7802** is the crosschain-native ERC-20 extension (ERC-7802: `crosschainMint`/`crosschainBurn`,
+  role-gated to `CROSSCHAIN_BRIDGE_ROLE`). It registers the **canonical** ERC-7802 id
+  `type(IERC7802).interfaceId == 0x33331994` (the vendored `IERC7802` omits `IERC165` so the derived id
+  matches the standard) at map slot `0x8874437f0039021364a4853ff7e826b818ba7233f378ea008f000746be5d784a`,
+  and reuses the `ERC20` balances — no storage row of its own. It gives a `BridgeERC7802` a native
+  mint/burn token.
 - **ERC5564Announcer** is a stateless ERC-5564 announcer (it only emits `Announcement`), so it has
   **no** ERC-7201 storage slot and **no** row in the storage-uniqueness array — only an ERC-165 map slot
   for `IERC5564Announcer` (`0x4d1f9583`). Its function/event ABI is byte-identical to the canonical
