@@ -252,6 +252,7 @@ and a row here.
 | API3QRNGAdapter | `lattice.storage.API3QRNGAdapter` | `0xb551ab661bfaed153d497ffdaa9cbb1d46fa1d799d8e6f2a2aa8ecfb66104b00` | `IAPI3QRNGAdapter` | `0xae37b187` | `0x686b5c002fca8114a8568270b3aef529a60083a8d9c09dbd16e3a0bb6b30bfcf` |
 | GelatoAutomateAdapter | `lattice.storage.GelatoAutomateAdapter` | `0x2e009cfe8b023d727b88173e4903cf45c68c8d769ec207081d89791b624d6900` | `IGelatoAutomateAdapter` | `0xa5503dc2` | `0x266c2a44ce0cae7d2ae6065711c72b357de4f867c756d7ce5224cd89d213768f` |
 | ChainlinkAutomationAdapter | `lattice.storage.ChainlinkAutomationAdapter` | `0x79ff96d501e28b99bca4f72c19ec619bce29c1cac16a5bcab62634e5e94dcb00` | `IChainlinkAutomationAdapter` | `0x97290114` | `0xda518c4395658f1bda3e69bd76a71c3cebddb4103a2ca4f795abdfcb18525c7c` |
+| ChainlinkCREAdapter | `lattice.storage.ChainlinkCREAdapter` | `0x38811f86f85f0447c0970d57466dc7a3c4187640f04a44e7622c183e45f90b00` | `IReceiver` (canonical CRE id) | `0x805f2132` | `0x441e497903b68a1fc13e526fe3469e615b027289cdd3d767c8ce4993ccc4bf83` |
 | TWAPOracle | `lattice.storage.TWAPOracle` | `0xc2bcc163613aea761b734a9692ad3548aab9088be29b53e03facf6a2a351df00` | `ITWAPOracle` | `0xd1baebe0` | `0x3edcb012a40cef5fed8aba3a5816c3233af9ecd91b8a1965a2b67b8940a0f49f` |
 
 ### Crosschain
@@ -307,7 +308,7 @@ and a row here.
 
 ---
 
-**Counts:** 66 storage-bearing modules (66 unique ERC-7201 slots) and 67 ERC-165 interface
+**Counts:** 67 storage-bearing modules (67 unique ERC-7201 slots) and 68 ERC-165 interface
 map slots (the privacy track adds the stateful `ERC6538Registry` — one ERC-7201 slot and one
 `IERC6538Registry` ERC-165 slot — plus the stateless `ERC5564Announcer` — no ERC-7201 slot, one
 `IERC5564Announcer` ERC-165 slot — and the stateless `Groth16Verifier` — no ERC-7201 slot, one
@@ -341,4 +342,7 @@ ERC-165 map slots. The randomness/automation adapters — `PythEntropyAdapter`, 
 `ChainlinkVRF`) — each add one ERC-7201 storage slot and one unique ERC-165 map slot; the five new modules
 add five ERC-7201 slots and five ERC-165 map slots. Randomness/automation adapters currently live under
 `src/oracles/` alongside `ChainlinkVRF` (module-home decision: kept there for consistency rather than split
-into dedicated `src/randomness/` + `src/automation/` namespaces).
+into dedicated `src/randomness/` + `src/automation/` namespaces). `ChainlinkCREAdapter` is a Chainlink CRE
+workflow-report receiver (push model): it adds one ERC-7201 storage slot and registers the **canonical**
+`type(IReceiver).interfaceId` (`0x805f2132`) — rather than its Lattice-specific `IChainlinkCREAdapter` id —
+so CRE tooling detects the receiver via ERC-165, matching the ERC-721/ERC-1155 canonical-id precedent.

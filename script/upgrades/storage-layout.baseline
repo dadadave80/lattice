@@ -136,3 +136,8 @@
 1	0	_interval	t_uint256
 2	0	_lastTimeStamp	t_uint256
 3	0	_counter	t_uint256
+
+### ChainlinkCREAdapterStorage @ erc7201:lattice.storage.ChainlinkCREAdapter (slot 0x38811f86f85f0447c0970d57466dc7a3c4187640f04a44e7622c183e45f90b00)
+0	0	_forwarder	t_address
+1	0	_workflows	t_mapping(t_bytes32,t_bool)
+2	0	_latestReports	t_mapping(t_bytes32,t_struct(CREReport)_storage)
