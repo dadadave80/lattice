@@ -325,6 +325,13 @@ contract StorageLayoutProbe {
         mapping(uint256 chainId => CCVConfig) _ccvConfigs;
     }
 
+    /// @dev Verbatim mirror of `MarketplaceZoneLib.MarketplaceZoneStorage`
+    ///      (`@custom:storage-location erc7201:lattice.storage.MarketplaceZone`). Append-only.
+    struct MarketplaceZoneStorage {
+        bool _paused;
+        mapping(address collection => bool required) _royaltyRequired;
+    }
+
     /// @dev Verbatim mirror of `PythEntropyAdapterLib.PythEntropyAdapterStorage`
     ///      (`@custom:storage-location erc7201:lattice.storage.PythEntropyAdapter`). Append-only.
     struct PythEntropyAdapterStorage {
@@ -414,4 +421,5 @@ contract StorageLayoutProbe {
     GelatoAutomateAdapterStorage internal _unusedGelatoAutomateAdapter;
     ChainlinkAutomationAdapterStorage internal _unusedChainlinkAutomationAdapter;
     ChainlinkCREAdapterStorage internal _unusedChainlinkCREAdapter;
+    MarketplaceZoneStorage internal _unusedMarketplaceZone;
 }
