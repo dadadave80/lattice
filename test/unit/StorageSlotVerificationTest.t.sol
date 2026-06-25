@@ -51,6 +51,10 @@ import {
 } from "@lattice/tokens/libraries/ERC721URIStorageLib.sol";
 
 // governance
+import {ERC165_MAP_IERC1271_SLOT} from "@lattice/accounts/libraries/ERC1271SignatureLib.sol";
+import {ERC4337_VALIDATION_STORAGE_SLOT} from "@lattice/accounts/libraries/ERC4337ValidationLib.sol";
+import {ERC165_MAP_IERC7821_SLOT} from "@lattice/accounts/libraries/ERC7821ExecutorLib.sol";
+import {SIGNER_ECDSA_STORAGE_SLOT} from "@lattice/accounts/libraries/SignerECDSALib.sol";
 import {
     AXELAR_GATEWAY_ADAPTER_STORAGE_SLOT,
     ERC165_MAP_IERC7786GATEWAYSOURCE_SLOT
@@ -85,6 +89,8 @@ import {
     TIMELOCK_CONTROLLER_STORAGE_SLOT
 } from "@lattice/governance/libraries/TimelockControllerLib.sol";
 import {ERC165_MAP_IVOTES_SLOT, VOTES_STORAGE_SLOT} from "@lattice/governance/libraries/VotesLib.sol";
+import {IERC1271} from "@lattice/interfaces/external/IERC1271.sol";
+import {IERC7821} from "@lattice/interfaces/external/IERC7821.sol";
 import {ZoneInterface} from "@lattice/interfaces/external/ZoneInterface.sol";
 import {
     ERC165_MAP_ZONEINTERFACE_SLOT,
@@ -727,6 +733,22 @@ contract StorageSlotVerificationTest is Test {
         );
     }
 
+    // ---- accounts ----
+
+    function test_SignerECDSAStorageSlot() public pure {
+        assertEq(
+            SIGNER_ECDSA_STORAGE_SLOT, _erc7201Slot("lattice.storage.SignerECDSA"), "SignerECDSA storage slot mismatch"
+        );
+    }
+
+    function test_ERC4337ValidationStorageSlot() public pure {
+        assertEq(
+            ERC4337_VALIDATION_STORAGE_SLOT,
+            _erc7201Slot("lattice.storage.ERC4337Validation"),
+            "ERC4337Validation storage slot mismatch"
+        );
+    }
+
     // ---- security ----
 
     function test_PausableStorageSlot() public pure {
@@ -1336,6 +1358,28 @@ contract StorageSlotVerificationTest is Test {
         );
     }
 
+    // ---- accounts ----
+
+    function test_Erc165MapIERC1271Slot() public pure {
+        bytes4 interfaceId = type(IERC1271).interfaceId;
+        assertEq(interfaceId, bytes4(0x1626ba7e), "IERC1271 interfaceId comment is stale");
+        assertEq(
+            ERC165_MAP_IERC1271_SLOT,
+            _erc165MapSlot(interfaceId, ERC165_STORAGE_LOCATION),
+            "ERC165 IERC1271 map slot mismatch"
+        );
+    }
+
+    function test_Erc165MapIERC7821Slot() public pure {
+        bytes4 interfaceId = type(IERC7821).interfaceId;
+        assertEq(interfaceId, bytes4(0x39922547), "IERC7821 interfaceId comment is stale");
+        assertEq(
+            ERC165_MAP_IERC7821_SLOT,
+            _erc165MapSlot(interfaceId, ERC165_STORAGE_LOCATION),
+            "ERC165 IERC7821 map slot mismatch"
+        );
+    }
+
     // ---- security ----
 
     function test_Erc165MapIPausableSlot() public pure {
@@ -1554,7 +1598,7 @@ contract StorageSlotVerificationTest is Test {
     // ======================== Slot inventories ========================
 
     function _allStorageSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](69);
+        slots = new bytes32[](71);
         uint256 i;
         // access
         slots[i++] = ACCESS_CONTROL_STORAGE_SLOT;
@@ -1616,6 +1660,9 @@ contract StorageSlotVerificationTest is Test {
         slots[i++] = CCIP_GATEWAY_ADAPTER_STORAGE_SLOT;
         // markets
         slots[i++] = MARKETPLACE_ZONE_STORAGE_SLOT;
+        // accounts
+        slots[i++] = SIGNER_ECDSA_STORAGE_SLOT;
+        slots[i++] = ERC4337_VALIDATION_STORAGE_SLOT;
         // security
         slots[i++] = PAUSABLE_STORAGE_SLOT;
         slots[i++] = REENTRANCY_GUARD_STORAGE_SLOT;
@@ -1640,7 +1687,7 @@ contract StorageSlotVerificationTest is Test {
     }
 
     function _allErc165MapSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](71);
+        slots = new bytes32[](73);
         uint256 i;
         // access
         slots[i++] = ERC165_MAP_IACCESSCONTROL_SLOT;
@@ -1716,6 +1763,9 @@ contract StorageSlotVerificationTest is Test {
         slots[i++] = ERC165_MAP_IANY2EVMMESSAGERECEIVERV2_SLOT;
         // markets
         slots[i++] = ERC165_MAP_ZONEINTERFACE_SLOT;
+        // accounts (ERC1271Signature + ERC7821Executor; SignerECDSA/ERC4337Validation register no ERC-165 id)
+        slots[i++] = ERC165_MAP_IERC1271_SLOT;
+        slots[i++] = ERC165_MAP_IERC7821_SLOT;
         // security
         slots[i++] = ERC165_MAP_IPAUSABLE_SLOT;
         slots[i++] = ERC165_MAP_IREENTRANCYGUARD_SLOT;
