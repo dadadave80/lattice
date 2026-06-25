@@ -85,6 +85,11 @@ import {
     TIMELOCK_CONTROLLER_STORAGE_SLOT
 } from "@lattice/governance/libraries/TimelockControllerLib.sol";
 import {ERC165_MAP_IVOTES_SLOT, VOTES_STORAGE_SLOT} from "@lattice/governance/libraries/VotesLib.sol";
+import {ZoneInterface} from "@lattice/interfaces/external/ZoneInterface.sol";
+import {
+    ERC165_MAP_ZONEINTERFACE_SLOT,
+    MARKETPLACE_ZONE_STORAGE_SLOT
+} from "@lattice/markets/libraries/MarketplaceZoneLib.sol";
 
 // defi
 import {
@@ -714,6 +719,14 @@ contract StorageSlotVerificationTest is Test {
         );
     }
 
+    function test_MarketplaceZoneStorageSlot() public pure {
+        assertEq(
+            MARKETPLACE_ZONE_STORAGE_SLOT,
+            _erc7201Slot("lattice.storage.MarketplaceZone"),
+            "MarketplaceZone storage slot mismatch"
+        );
+    }
+
     // ---- security ----
 
     function test_PausableStorageSlot() public pure {
@@ -1310,6 +1323,19 @@ contract StorageSlotVerificationTest is Test {
         );
     }
 
+    // ---- markets ----
+
+    /// @dev The Seaport MarketplaceZone registers type(ZoneInterface).interfaceId (XOR of the 3 zone hooks).
+    function test_Erc165MapZoneInterfaceSlot() public pure {
+        bytes4 interfaceId = type(ZoneInterface).interfaceId;
+        assertEq(interfaceId, bytes4(0x3822a094), "ZoneInterface interfaceId comment is stale");
+        assertEq(
+            ERC165_MAP_ZONEINTERFACE_SLOT,
+            _erc165MapSlot(interfaceId, ERC165_STORAGE_LOCATION),
+            "ERC165 ZoneInterface map slot mismatch"
+        );
+    }
+
     // ---- security ----
 
     function test_Erc165MapIPausableSlot() public pure {
@@ -1528,7 +1554,7 @@ contract StorageSlotVerificationTest is Test {
     // ======================== Slot inventories ========================
 
     function _allStorageSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](68);
+        slots = new bytes32[](69);
         uint256 i;
         // access
         slots[i++] = ACCESS_CONTROL_STORAGE_SLOT;
@@ -1588,6 +1614,8 @@ contract StorageSlotVerificationTest is Test {
         slots[i++] = WORMHOLE_GATEWAY_ADAPTER_STORAGE_SLOT;
         slots[i++] = ERC7786_OPEN_BRIDGE_STORAGE_SLOT;
         slots[i++] = CCIP_GATEWAY_ADAPTER_STORAGE_SLOT;
+        // markets
+        slots[i++] = MARKETPLACE_ZONE_STORAGE_SLOT;
         // security
         slots[i++] = PAUSABLE_STORAGE_SLOT;
         slots[i++] = REENTRANCY_GUARD_STORAGE_SLOT;
@@ -1612,7 +1640,7 @@ contract StorageSlotVerificationTest is Test {
     }
 
     function _allErc165MapSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](70);
+        slots = new bytes32[](71);
         uint256 i;
         // access
         slots[i++] = ERC165_MAP_IACCESSCONTROL_SLOT;
@@ -1686,6 +1714,8 @@ contract StorageSlotVerificationTest is Test {
         slots[i++] = ERC165_MAP_IERC7786GATEWAYSOURCE_SLOT;
         slots[i++] = ERC165_MAP_IANY2EVMMESSAGERECEIVER_SLOT;
         slots[i++] = ERC165_MAP_IANY2EVMMESSAGERECEIVERV2_SLOT;
+        // markets
+        slots[i++] = ERC165_MAP_ZONEINTERFACE_SLOT;
         // security
         slots[i++] = ERC165_MAP_IPAUSABLE_SLOT;
         slots[i++] = ERC165_MAP_IREENTRANCYGUARD_SLOT;
