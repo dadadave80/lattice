@@ -5,8 +5,9 @@ pragma solidity >=0.8.4;
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice Error/event surface of the `ERC7821Executor` facet. The `execute` / `supportsExecutionMode`
 ///         entrypoints are on the vendored `IERC7821`.
-/// @dev v1 authorizes `execute` for: the account itself (`address(this)`), the configured ERC-4337 EntryPoint,
-///      or a `DEFAULT_ADMIN_ROLE` holder. Signed-`opData` authorization is a v2 follow-on.
+/// @dev Authorizes `execute` for: the account itself (`address(this)`), the configured ERC-4337 EntryPoint,
+///      a `DEFAULT_ADMIN_ROLE` holder, or — for the opData mode — an owner-signed EIP-712 `Execute` envelope
+///      relayed by anyone (nonce-protected).
 interface IERC7821Executor {
     /// @notice Emitted once per `execute` batch, after all calls succeed.
     event BatchExecuted(bytes32 indexed mode, uint256 calls);

@@ -162,3 +162,7 @@
 
 ### ERC4337ValidationStorage @ erc7201:lattice.storage.ERC4337Validation (slot 0x63f3a16063eb3400d0c49a9883f78e71c0740febe009dfe0af21003612fc2a00)
 0	0	_entryPoint	t_address
+
+### SessionKeyStorage @ erc7201:lattice.storage.SessionKey (slot 0xd72f45b3818762a6cc49804ed52c577908badd7fff8bbd7849829b4fc764ae00)
+0	0	_keys	t_mapping(t_address,t_struct(SessionKeyData)_storage)
+1	0	_allowed	t_mapping(t_address,t_mapping(t_bytes32,t_bool))
