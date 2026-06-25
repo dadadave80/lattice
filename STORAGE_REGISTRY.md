@@ -281,6 +281,7 @@ and a row here.
 | ERC4337Validation | `lattice.storage.ERC4337Validation` | `0x63f3a16063eb3400d0c49a9883f78e71c0740febe009dfe0af21003612fc2a00` | `IAccount` (no ERC-165 id) | — | — |
 | ERC1271Signature | — (stateless) | — | `IERC1271` | `0x1626ba7e` | `0x13edcf2102dbcbe8afc6b8b590ac545a2ed12e9a15726b4c8ab7a3fb938ab3b7` |
 | ERC7821Executor | — (stateless) | — | `IERC7821` (Lattice-local id) | `0x39922547` | `0x78c1401e50bfb6276de93dc8c11adfbefc06555e8af1f7964bc4c850cbbd171c` |
+| SessionKey | `lattice.storage.SessionKey` | `0xd72f45b3818762a6cc49804ed52c577908badd7fff8bbd7849829b4fc764ae00` | — (admin/policy) | — | — |
 
 ### Security
 
@@ -324,7 +325,7 @@ and a row here.
 
 ---
 
-**Counts:** 71 storage-bearing modules (71 unique ERC-7201 slots) and 73 ERC-165 interface
+**Counts:** 72 storage-bearing modules (72 unique ERC-7201 slots) and 73 ERC-165 interface
 map slots (the privacy track adds the stateful `ERC6538Registry` — one ERC-7201 slot and one
 `IERC6538Registry` ERC-165 slot — plus the stateless `ERC5564Announcer` — no ERC-7201 slot, one
 `IERC5564Announcer` ERC-165 slot — and the stateless `Groth16Verifier` — no ERC-7201 slot, one
@@ -370,6 +371,8 @@ ECDSA signer) and `ERC4337Validation` (configurable-EntryPoint `validateUserOp`)
 but no ERC-165 map slot — the signer is an internal seam and ERC-4337 defines no ERC-165 id; the stateless
 `ERC1271Signature` and `ERC7821Executor` add no ERC-7201 slot and one ERC-165 map slot each — `IERC1271`
 (`0x1626ba7e`) and a Lattice-local `type(IERC7821).interfaceId` (`0x39922547`; ERC-7821 defines no canonical
-id, discovery is via `supportsExecutionMode`) — so accounts adds two ERC-7201 slots and two new ERC-165 map
-slots. The owner-based ECDSA signer backs both `validateUserOp` and `isValidSignature`; ERC-7739 defensive
+id, discovery is via `supportsExecutionMode`) — so the entry-surface facets add two ERC-7201 slots and two new
+ERC-165 map slots; the `SessionKey` module (scoped, expiring secondary keys for the executor's signed-opData
+path, #58 item 4) adds a third ERC-7201 slot and no ERC-165 id — three ERC-7201 slots and two ERC-165 map slots
+total for accounts. The owner-based ECDSA signer backs both `validateUserOp` and `isValidSignature`; ERC-7739 defensive
 rehashing on the 1271 path is a planned hardening (compose audited Solady/OZ, do not hand-roll).
