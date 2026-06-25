@@ -6,7 +6,7 @@ import {ChainlinkAutomationAdapterLib} from "@lattice/oracles/libraries/Chainlin
 
 /// @title ChainlinkAutomationAdapter
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
-/// @author Modified from Chainlink (https://github.com/smartcontractkit/chainlink)
+/// @author Modified from Chainlink (https://github.com/smartcontractkit/chainlink-evm)
 /// @notice Diamond facet for the consumer side of Chainlink Automation (keepers)
 ///         with a canonical time-interval upkeep.
 /// @dev Stateless delegator — all logic and storage live in

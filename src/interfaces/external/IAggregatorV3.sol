@@ -2,7 +2,7 @@
 pragma solidity >=0.8.4;
 
 /// @title IAggregatorV3
-/// @author Modified from Chainlink (https://github.com/smartcontractkit/chainlink/blob/develop/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol)
+/// @author Modified from Chainlink (https://github.com/smartcontractkit/chainlink-evm/blob/develop/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol)
 /// @notice Minimal interface for Chainlink AggregatorV3 price feeds.
 /// @dev Vendored subset — do not add a chainlink-brownie-contracts dependency.
 interface IAggregatorV3 {

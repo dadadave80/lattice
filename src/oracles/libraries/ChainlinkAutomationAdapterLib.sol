@@ -29,7 +29,7 @@ struct ChainlinkAutomationAdapterStorage {
 
 /// @title ChainlinkAutomationAdapterLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
-/// @author Modified from Chainlink (https://github.com/smartcontractkit/chainlink)
+/// @author Modified from Chainlink (https://github.com/smartcontractkit/chainlink-evm)
 /// @notice Library implementing the consumer side of Chainlink Automation
 ///         (keepers) with a canonical time-interval upkeep. `checkUpkeep`
 ///         reports `true` once `interval` seconds have elapsed; `performUpkeep`
