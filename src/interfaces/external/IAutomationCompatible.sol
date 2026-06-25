@@ -2,7 +2,7 @@
 pragma solidity >=0.8.4;
 
 /// @title IAutomationCompatible
-/// @author Modified from Chainlink (https://github.com/smartcontractkit/chainlink/blob/develop/contracts/src/v0.8/automation/interfaces/AutomationCompatibleInterface.sol)
+/// @author Modified from Chainlink (https://github.com/smartcontractkit/chainlink-evm/blob/develop/contracts/src/v0.8/automation/interfaces/AutomationCompatibleInterface.sol)
 /// @notice Consumer-side interface for Chainlink Automation (keepers).
 /// @dev Vendored — do not add a chainlink dependency. Automation nodes simulate `checkUpkeep`
 ///      off-chain; when it returns `true`, the Automation forwarder calls `performUpkeep`, which the
