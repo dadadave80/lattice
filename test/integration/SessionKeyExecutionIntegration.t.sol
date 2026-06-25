@@ -44,9 +44,20 @@ contract Target {
     function other(uint256) external pure {}
 }
 
+contract MockToken {
+    uint256 public transfers;
+
+    function transfer(address, uint256) external returns (bool) {
+        transfers++;
+        return true;
+    }
+}
+
 contract SessionKeyExecutionIntegration is Test {
     LatticeAccount account;
     Target target;
+    MockToken token;
+    address dest = address(0xD357);
 
     address admin = address(0x1);
     address ownerAddr;
@@ -66,7 +77,15 @@ contract SessionKeyExecutionIntegration is Test {
         account = new LatticeAccount();
         account.initialize(admin, ownerAddr, address(0xE47));
         target = new Target();
+        token = new MockToken();
         vm.warp(1);
+    }
+
+    function _transferCalls(address to, uint256 amount) internal view returns (Call[] memory calls) {
+        calls = new Call[](1);
+        calls[0] = Call({
+            target: address(token), value: 0, data: abi.encodeWithSignature("transfer(address,uint256)", to, amount)
+        });
     }
 
     function _setValueCalls(uint256 v) internal view returns (Call[] memory calls) {
@@ -126,5 +145,30 @@ contract SessionKeyExecutionIntegration is Test {
         vm.prank(relayer);
         vm.expectRevert(abi.encodeWithSelector(ISessionKey.SessionKeyNotActive.selector, sessionKeyAddr));
         account.execute(BATCH_OPDATA, abi.encode(calls, _opData(sessionKeyPk, calls, 0)));
+    }
+
+    function test_SessionKey_SpendWithinLimit() public {
+        _register(1000, address(token), 0xa9059cbb); // permit transfer() on the token
+        vm.prank(admin);
+        account.setSpendLimit(sessionKeyAddr, address(token), 100);
+        Call[] memory calls = _transferCalls(dest, 60);
+        vm.prank(relayer);
+        account.execute(BATCH_OPDATA, abi.encode(calls, _opData(sessionKeyPk, calls, 0)));
+        assertEq(token.transfers(), 1, "transfer not executed");
+        (, uint256 spent) = account.spendLimit(sessionKeyAddr, address(token));
+        assertEq(spent, 60, "spend not accrued");
+    }
+
+    function test_SessionKey_SpendExceedsLimit() public {
+        _register(1000, address(token), 0xa9059cbb);
+        vm.prank(admin);
+        account.setSpendLimit(sessionKeyAddr, address(token), 100);
+        Call[] memory calls = _transferCalls(dest, 150);
+        vm.prank(relayer);
+        vm.expectRevert(
+            abi.encodeWithSelector(ISessionKey.SpendLimitExceeded.selector, sessionKeyAddr, address(token), 100, 150)
+        );
+        account.execute(BATCH_OPDATA, abi.encode(calls, _opData(sessionKeyPk, calls, 0)));
+        assertEq(token.transfers(), 0, "transfer should not have executed");
     }
 }

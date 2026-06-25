@@ -40,4 +40,14 @@ contract SessionKey is ISessionKey {
     function isCallPermitted(address key, address target, bytes4 selector) external view virtual returns (bool) {
         return SessionKeyLib.isCallPermitted(key, target, selector);
     }
+
+    /// @inheritdoc ISessionKey
+    function setSpendLimit(address key, address token, uint256 cap) external virtual {
+        SessionKeyLib.setSpendLimit(key, token, cap);
+    }
+
+    /// @inheritdoc ISessionKey
+    function spendLimit(address key, address token) external view virtual returns (uint256 cap, uint256 spent) {
+        return SessionKeyLib.spendLimit(key, token);
+    }
 }
