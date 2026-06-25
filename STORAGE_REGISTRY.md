@@ -267,6 +267,12 @@ and a row here.
 | ERC7786OpenBridge | `lattice.storage.ERC7786OpenBridge` | `0xca75154ce55fdf901a786b6fa60962886fadca5cda61c777098bc66b49134a00` | `IERC7786GatewaySource` | `0x11967553` | `0x3c75b8ea75c097979221eb9302e2f0f6009b4ffe0a7198db5dc29979e09ea0e3` |
 | CCIPGatewayAdapter | `lattice.storage.CCIPGatewayAdapter` | `0xfc37dafbf0181d0474cf94e236f0ede0d369aab52659fb134d4be3b15fbb8e00` | `IERC7786GatewaySource` + `IAny2EVMMessageReceiver` + `IAny2EVMMessageReceiverV2` | `0x11967553` / `0x85572ffb` / `0x1bfc84d0` | `0x3c75b8ea75c097979221eb9302e2f0f6009b4ffe0a7198db5dc29979e09ea0e3` / `0x800eb085c0ca5e4523c112cc053bae87b4696eb6a3bf735b4b8b0a9d09be1465` / `0x9baecadb3e37f7ef6c6624a337da384f68e7fa9684795d0ccbd7f9f089dee070` |
 
+### Markets
+
+| Module | ERC-7201 namespace | Storage slot (hex) | Interface | interfaceId | ERC-165 map slot (hex) |
+|---|---|---|---|---|---|
+| MarketplaceZone | `lattice.storage.MarketplaceZone` | `0xe77b1be4866c120f9cf1b3ac35bdd606adb1b331ef4d920e5a5993f90d992800` | `ZoneInterface` (Seaport) | `0x3822a094` | `0xeb1ff41651f419b216c82171945cb548e85f1f021f4de7ac580f5665f8fc8360` |
+
 ### Security
 
 | Module | ERC-7201 namespace | Storage slot (hex) | Interface | interfaceId | ERC-165 map slot (hex) |
@@ -309,7 +315,7 @@ and a row here.
 
 ---
 
-**Counts:** 68 storage-bearing modules (68 unique ERC-7201 slots) and 70 ERC-165 interface
+**Counts:** 69 storage-bearing modules (69 unique ERC-7201 slots) and 71 ERC-165 interface
 map slots (the privacy track adds the stateful `ERC6538Registry` — one ERC-7201 slot and one
 `IERC6538Registry` ERC-165 slot — plus the stateless `ERC5564Announcer` — no ERC-7201 slot, one
 `IERC5564Announcer` ERC-165 slot — and the stateless `Groth16Verifier` — no ERC-7201 slot, one

@@ -152,3 +152,7 @@
 0	0	_forwarder	t_address
 1	0	_workflows	t_mapping(t_bytes32,t_bool)
 2	0	_latestReports	t_mapping(t_bytes32,t_struct(CREReport)_storage)
+
+### MarketplaceZoneStorage @ erc7201:lattice.storage.MarketplaceZone (slot 0xe77b1be4866c120f9cf1b3ac35bdd606adb1b331ef4d920e5a5993f90d992800)
+0	0	_paused	t_bool
+1	0	_royaltyRequired	t_mapping(t_address,t_bool)
