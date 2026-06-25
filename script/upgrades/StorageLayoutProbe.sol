@@ -347,6 +347,19 @@ contract StorageLayoutProbe {
         uint256 _counter;
     }
 
+    /// @dev Verbatim mirror of `ChainlinkCREAdapterLib.ChainlinkCREAdapterStorage` and its `CREReport`
+    ///      (`@custom:storage-location erc7201:lattice.storage.ChainlinkCREAdapter`). Append-only.
+    struct CREReport {
+        bytes data;
+        uint256 timestamp;
+    }
+
+    struct ChainlinkCREAdapterStorage {
+        address _forwarder;
+        mapping(bytes32 workflowId => bool allowed) _workflows;
+        mapping(bytes32 workflowId => CREReport report) _latestReports;
+    }
+
     /// @dev Forces solc to emit the struct types into `storageLayout`. Never read, never deployed.
     GovernedDiamondCutStorage internal _unusedGovernedDiamondCut;
     SafeDiamondCutStorage internal _unusedSafeDiamondCut;
@@ -378,4 +391,5 @@ contract StorageLayoutProbe {
     API3QRNGAdapterStorage internal _unusedAPI3QRNGAdapter;
     GelatoAutomateAdapterStorage internal _unusedGelatoAutomateAdapter;
     ChainlinkAutomationAdapterStorage internal _unusedChainlinkAutomationAdapter;
+    ChainlinkCREAdapterStorage internal _unusedChainlinkCREAdapter;
 }
