@@ -27,6 +27,15 @@ interface ICCIPGatewayAdapter {
     /// @notice Emitted when the fee token is set (`address(0)` ⇒ native).
     event SetFeeToken(address indexed feeToken);
 
+    /// @notice Emitted when a source chain's CCV (Cross-Chain Verifier) requirements / finality are configured.
+    event ConfiguredCCV(
+        uint256 indexed chainId,
+        address[] requiredCCVs,
+        address[] optionalCCVs,
+        uint8 optionalThreshold,
+        bytes4 allowedFinalityConfig
+    );
+
     // -------------------------------------------------------------------------
     //                                  Errors
     // -------------------------------------------------------------------------
@@ -48,6 +57,9 @@ interface ICCIPGatewayAdapter {
 
     /// @notice Refunding unspent native value to the sender failed.
     error RefundFailed();
+
+    /// @notice The optional-CCV threshold exceeds the number of optional CCVs supplied.
+    error InvalidCCVThreshold(uint8 threshold, uint256 optionalCount);
 
     /// @notice The inbound callback was not invoked by the configured CCIP router.
     error NotRouter(address caller);
@@ -76,6 +88,18 @@ interface ICCIPGatewayAdapter {
     /// @notice Quotes the CCIP fee (in the configured fee token) to send `payload` to `recipient` (ERC-7930).
     function quoteFee(bytes calldata recipient, bytes calldata payload) external view returns (uint256);
 
+    /// @notice Returns the configured CCV requirements / finality for inbound messages from `chainId`
+    ///         (all-empty / `bytes4(0)` ⇒ unconfigured: CCIP defaults, require full finality).
+    function getCCVConfig(uint256 chainId)
+        external
+        view
+        returns (
+            address[] memory requiredCCVs,
+            address[] memory optionalCCVs,
+            uint8 optionalThreshold,
+            bytes4 allowedFinalityConfig
+        );
+
     // -------------------------------------------------------------------------
     //                                  Admin
     // -------------------------------------------------------------------------
@@ -91,4 +115,15 @@ interface ICCIPGatewayAdapter {
 
     /// @notice Sets the fee token (`address(0)` ⇒ native). Admin only.
     function setFeeToken(address feeToken) external;
+
+    /// @notice Configures the CCV requirements + allowed finality returned to the CCIP router for inbound
+    ///         messages from `chainId`. `optionalThreshold` must be ≤ `optionalCCVs.length`. Admin only.
+    /// @param allowedFinalityConfig CCIP finality flag; `bytes4(0)` requires full finality (the safe default).
+    function configureCCV(
+        uint256 chainId,
+        address[] calldata requiredCCVs,
+        address[] calldata optionalCCVs,
+        uint8 optionalThreshold,
+        bytes4 allowedFinalityConfig
+    ) external;
 }

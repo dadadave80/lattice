@@ -118,6 +118,7 @@
 5	0	_destGasLimit	t_mapping(t_uint256,t_uint256)
 6	0	_destAllowOutOfOrder	t_mapping(t_uint256,t_bool)
 7	0	_executed	t_mapping(t_uint256,t_mapping(t_bytes32,t_bool))
+8	0	_ccvConfigs	t_mapping(t_uint256,t_struct(CCVConfig)_storage)
 
 ### PythEntropyAdapterStorage @ erc7201:lattice.storage.PythEntropyAdapter (slot 0xf5638fd8a7410f61ded501225ccb03fd632a93dd0cfb1615ce2666e2781d4f00)
 0	0	_entropy	t_address

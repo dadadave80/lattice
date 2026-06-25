@@ -265,7 +265,7 @@ and a row here.
 | AxelarGatewayAdapter | `lattice.storage.AxelarGatewayAdapter` | `0xeb5bee64b500c298be8b1e9f77b8505f5c8c9cdd4c45b490c069ffc446e8fd00` | `IERC7786GatewaySource` | `0x11967553` | `0x3c75b8ea75c097979221eb9302e2f0f6009b4ffe0a7198db5dc29979e09ea0e3` |
 | WormholeGatewayAdapter | `lattice.storage.WormholeGatewayAdapter` | `0x46329d8c82c4b2643a1707018dd8f47f4e747c04259ec1eec95a00ddfb1bd600` | `IERC7786GatewaySource` | `0x11967553` | `0x3c75b8ea75c097979221eb9302e2f0f6009b4ffe0a7198db5dc29979e09ea0e3` |
 | ERC7786OpenBridge | `lattice.storage.ERC7786OpenBridge` | `0xca75154ce55fdf901a786b6fa60962886fadca5cda61c777098bc66b49134a00` | `IERC7786GatewaySource` | `0x11967553` | `0x3c75b8ea75c097979221eb9302e2f0f6009b4ffe0a7198db5dc29979e09ea0e3` |
-| CCIPGatewayAdapter | `lattice.storage.CCIPGatewayAdapter` | `0xfc37dafbf0181d0474cf94e236f0ede0d369aab52659fb134d4be3b15fbb8e00` | `IERC7786GatewaySource` + `IAny2EVMMessageReceiver` | `0x11967553` / `0x85572ffb` | `0x3c75b8ea75c097979221eb9302e2f0f6009b4ffe0a7198db5dc29979e09ea0e3` / `0x800eb085c0ca5e4523c112cc053bae87b4696eb6a3bf735b4b8b0a9d09be1465` |
+| CCIPGatewayAdapter | `lattice.storage.CCIPGatewayAdapter` | `0xfc37dafbf0181d0474cf94e236f0ede0d369aab52659fb134d4be3b15fbb8e00` | `IERC7786GatewaySource` + `IAny2EVMMessageReceiver` + `IAny2EVMMessageReceiverV2` | `0x11967553` / `0x85572ffb` / `0x1bfc84d0` | `0x3c75b8ea75c097979221eb9302e2f0f6009b4ffe0a7198db5dc29979e09ea0e3` / `0x800eb085c0ca5e4523c112cc053bae87b4696eb6a3bf735b4b8b0a9d09be1465` / `0x9baecadb3e37f7ef6c6624a337da384f68e7fa9684795d0ccbd7f9f089dee070` |
 
 ### Security
 
@@ -309,7 +309,7 @@ and a row here.
 
 ---
 
-**Counts:** 68 storage-bearing modules (68 unique ERC-7201 slots) and 69 ERC-165 interface
+**Counts:** 68 storage-bearing modules (68 unique ERC-7201 slots) and 70 ERC-165 interface
 map slots (the privacy track adds the stateful `ERC6538Registry` — one ERC-7201 slot and one
 `IERC6538Registry` ERC-165 slot — plus the stateless `ERC5564Announcer` — no ERC-7201 slot, one
 `IERC5564Announcer` ERC-165 slot — and the stateless `Groth16Verifier` — no ERC-7201 slot, one
@@ -338,8 +338,10 @@ crosschain track adds seven storage-bearing modules — `CrosschainLink`, `Bridg
 `AxelarGatewayAdapter`, `WormholeGatewayAdapter`, `ERC7786OpenBridge`, `CCIPGatewayAdapter` — each with its
 own ERC-7201 slot; the two bridges share the `IBridgeFungible` (`0x28dcc8d8`) ERC-165 slot and the four
 gateways share the `IERC7786GatewaySource` (`0x11967553`) ERC-165 slot — `CCIPGatewayAdapter` additionally
-registers `IAny2EVMMessageReceiver` (`0x85572ffb`), required for the CCIP router's pre-delivery
-`supportsInterface` check — so crosschain adds seven ERC-7201 slots and four new ERC-165 map slots. The randomness/automation adapters — `PythEntropyAdapter`, `GelatoVRFAdapter`,
+registers `IAny2EVMMessageReceiver` (`0x85572ffb`, required for the CCIP router's pre-delivery
+`supportsInterface` check) and `IAny2EVMMessageReceiverV2` (`0x1bfc84d0` — Solidity's `type().interfaceId`
+excludes the inherited `ccipReceive`, so the V2 id is the `getCCVsAndFinalityConfig` selector — for CCV-enabled
+lanes) — so crosschain adds seven ERC-7201 slots and five new ERC-165 map slots. The randomness/automation adapters — `PythEntropyAdapter`, `GelatoVRFAdapter`,
 `API3QRNGAdapter`, `GelatoAutomateAdapter`, `ChainlinkAutomationAdapter` (alongside the existing
 `ChainlinkVRF`) — each add one ERC-7201 storage slot and one unique ERC-165 map slot; the five new modules
 add five ERC-7201 slots and five ERC-165 map slots. Randomness/automation adapters currently live under

@@ -304,8 +304,15 @@ contract StorageLayoutProbe {
         mapping(bytes32 id => OpenBridgeTracker tracker) _trackers;
     }
 
-    /// @dev Verbatim mirror of `CCIPGatewayAdapterLib.CCIPGatewayAdapterStorage`
+    /// @dev Verbatim mirror of `CCIPGatewayAdapterLib.CCIPGatewayAdapterStorage` and its `CCVConfig`
     ///      (`@custom:storage-location erc7201:lattice.storage.CCIPGatewayAdapter`). Append-only.
+    struct CCVConfig {
+        address[] requiredCCVs;
+        address[] optionalCCVs;
+        uint8 optionalThreshold;
+        bytes4 allowedFinalityConfig;
+    }
+
     struct CCIPGatewayAdapterStorage {
         address _router;
         address _feeToken;
@@ -315,6 +322,7 @@ contract StorageLayoutProbe {
         mapping(uint256 chainId => uint256 gasLimit) _destGasLimit;
         mapping(uint256 chainId => bool allowOutOfOrder) _destAllowOutOfOrder;
         mapping(uint256 chainId => mapping(bytes32 messageId => bool used)) _executed;
+        mapping(uint256 chainId => CCVConfig) _ccvConfigs;
     }
 
     /// @dev Verbatim mirror of `PythEntropyAdapterLib.PythEntropyAdapterStorage`

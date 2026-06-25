@@ -29,6 +29,23 @@ bytes32 constant ERC165_MAP_IERC7786GATEWAYSOURCE_SLOT =
 bytes32 constant ERC165_MAP_IANY2EVMMESSAGERECEIVER_SLOT =
     0x800eb085c0ca5e4523c112cc053bae87b4696eb6a3bf735b4b8b0a9d09be1465;
 
+/// @dev ERC-165 map slot for `IAny2EVMMessageReceiverV2`. UNIQUE to CCIP — CCV-enabled lanes detect support
+///      via `supportsInterface(type(IAny2EVMMessageReceiverV2).interfaceId)`. NOTE: Solidity's
+///      `type().interfaceId` EXCLUDES inherited functions, so the V2 id is the `getCCVsAndFinalityConfig`
+///      selector `0x1bfc84d0` (NOT the full XOR with the inherited `ccipReceive`) — and that is exactly the
+///      value the router queries. `keccak256(abi.encode(bytes4(0x1bfc84d0), 0x9ca7f3e2e2bfb15fdf072b85dde92837cddacee6cf2f6b38cd06c9457c1c4200))`.
+bytes32 constant ERC165_MAP_IANY2EVMMESSAGERECEIVERV2_SLOT =
+    0x9baecadb3e37f7ef6c6624a337da384f68e7fa9684795d0ccbd7f9f089dee070;
+
+/// @notice Per-source-chain CCV (Cross-Chain Verifier) requirements + allowed finality, returned to the CCIP
+///         router via `getCCVsAndFinalityConfig`. An all-zero value means CCIP defaults (require full finality).
+struct CCVConfig {
+    address[] requiredCCVs;
+    address[] optionalCCVs;
+    uint8 optionalThreshold;
+    bytes4 allowedFinalityConfig;
+}
+
 /// @notice ERC-7201 namespaced storage for the CCIP gateway adapter.
 /// @custom:storage-location erc7201:lattice.storage.CCIPGatewayAdapter
 struct CCIPGatewayAdapterStorage {
@@ -48,6 +65,8 @@ struct CCIPGatewayAdapterStorage {
     mapping(uint256 chainId => bool allowOutOfOrder) _destAllowOutOfOrder;
     /// @notice Replay guard: per source chainId, the set of consumed CCIP messageIds. APPEND-ONLY.
     mapping(uint256 chainId => mapping(bytes32 messageId => bool used)) _executed;
+    /// @notice Per source chainId, the CCV requirements + finality returned to the router (V2/CCV). APPEND-ONLY.
+    mapping(uint256 chainId => CCVConfig) _ccvConfigs;
 }
 
 /// @title CCIPGatewayAdapterLib
@@ -76,12 +95,14 @@ library CCIPGatewayAdapterLib {
         registerInterface();
     }
 
-    /// @notice Writes `true` to the ERC-165 map slots for `IERC7786GatewaySource` (shared) and
-    ///         `IAny2EVMMessageReceiver` (CCIP-specific; required for the router to deliver messages).
+    /// @notice Writes `true` to the ERC-165 map slots for `IERC7786GatewaySource` (shared, gateway source),
+    ///         `IAny2EVMMessageReceiver` (V1, required for the router to deliver messages), and
+    ///         `IAny2EVMMessageReceiverV2` (CCV-enabled lanes query `getCCVsAndFinalityConfig`).
     function registerInterface() internal {
         assembly ("memory-safe") {
             sstore(ERC165_MAP_IERC7786GATEWAYSOURCE_SLOT, true)
             sstore(ERC165_MAP_IANY2EVMMESSAGERECEIVER_SLOT, true)
+            sstore(ERC165_MAP_IANY2EVMMESSAGERECEIVERV2_SLOT, true)
         }
     }
 
@@ -127,6 +148,24 @@ library CCIPGatewayAdapterLib {
         return IRouterClient(ccipGatewayAdapterStorage()._router).getFee(selector, message);
     }
 
+    /// @notice CCV view the CCIP router calls for inbound messages from `sourceChainSelector` (V2 lanes).
+    ///         An unconfigured source returns the CCIP default (no extra CCVs, `bytes4(0)` = require finality).
+    function getCCVsAndFinalityConfig(uint64 sourceChainSelector)
+        internal
+        view
+        returns (address[] memory, address[] memory, uint8, bytes4)
+    {
+        CCIPGatewayAdapterStorage storage $ = ccipGatewayAdapterStorage();
+        CCVConfig storage c = $._ccvConfigs[$._selectorToChainId[sourceChainSelector]];
+        return (c.requiredCCVs, c.optionalCCVs, c.optionalThreshold, c.allowedFinalityConfig);
+    }
+
+    /// @notice Returns the CCV config stored for `chainId` (admin read, by EVM chainId).
+    function getCCVConfig(uint256 chainId) internal view returns (address[] memory, address[] memory, uint8, bytes4) {
+        CCVConfig storage c = ccipGatewayAdapterStorage()._ccvConfigs[chainId];
+        return (c.requiredCCVs, c.optionalCCVs, c.optionalThreshold, c.allowedFinalityConfig);
+    }
+
     //*//////////////////////////////////////////////////////////////////////////
     //                                   ADMIN
     //////////////////////////////////////////////////////////////////////////*//
@@ -164,6 +203,29 @@ library CCIPGatewayAdapterLib {
         AccessControlLib.checkRole(DEFAULT_ADMIN_ROLE);
         ccipGatewayAdapterStorage()._feeToken = feeToken_;
         emit ICCIPGatewayAdapter.SetFeeToken(feeToken_);
+    }
+
+    /// @notice Configures the CCV requirements + allowed finality returned to the router for inbound messages
+    ///         from `chainId`. `optionalThreshold` must be ≤ `optionalCCVs.length`.
+    function configureCCV(
+        uint256 chainId,
+        address[] calldata requiredCCVs,
+        address[] calldata optionalCCVs,
+        uint8 optionalThreshold,
+        bytes4 allowedFinalityConfig
+    ) internal {
+        AccessControlLib.checkRole(DEFAULT_ADMIN_ROLE);
+        if (optionalThreshold > optionalCCVs.length) {
+            revert ICCIPGatewayAdapter.InvalidCCVThreshold(optionalThreshold, optionalCCVs.length);
+        }
+        CCVConfig storage c = ccipGatewayAdapterStorage()._ccvConfigs[chainId];
+        c.requiredCCVs = requiredCCVs;
+        c.optionalCCVs = optionalCCVs;
+        c.optionalThreshold = optionalThreshold;
+        c.allowedFinalityConfig = allowedFinalityConfig;
+        emit ICCIPGatewayAdapter.ConfiguredCCV(
+            chainId, requiredCCVs, optionalCCVs, optionalThreshold, allowedFinalityConfig
+        );
     }
 
     //*//////////////////////////////////////////////////////////////////////////
