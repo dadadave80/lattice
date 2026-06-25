@@ -156,3 +156,9 @@
 ### MarketplaceZoneStorage @ erc7201:lattice.storage.MarketplaceZone (slot 0xe77b1be4866c120f9cf1b3ac35bdd606adb1b331ef4d920e5a5993f90d992800)
 0	0	_paused	t_bool
 1	0	_royaltyRequired	t_mapping(t_address,t_bool)
+
+### SignerECDSAStorage @ erc7201:lattice.storage.SignerECDSA (slot 0xaf273bb17bfc30760e1328e155348f6f93ceff3d7bff7b90236de96aa1fbbe00)
+0	0	_owner	t_address
+
+### ERC4337ValidationStorage @ erc7201:lattice.storage.ERC4337Validation (slot 0x63f3a16063eb3400d0c49a9883f78e71c0740febe009dfe0af21003612fc2a00)
+0	0	_entryPoint	t_address

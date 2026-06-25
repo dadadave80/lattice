@@ -94,6 +94,8 @@ GUARDED_STRUCTS=(
     "ChainlinkAutomationAdapterStorage lattice.storage.ChainlinkAutomationAdapter"
     "ChainlinkCREAdapterStorage lattice.storage.ChainlinkCREAdapter"
     "MarketplaceZoneStorage lattice.storage.MarketplaceZone"
+    "SignerECDSAStorage lattice.storage.SignerECDSA"
+    "ERC4337ValidationStorage lattice.storage.ERC4337Validation"
 )
 
 command -v forge >/dev/null 2>&1 || { echo "ERROR: forge not found on PATH" >&2; exit 2; }
