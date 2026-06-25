@@ -14,6 +14,7 @@ import {ERC7821ExecutorLib} from "@lattice/accounts/libraries/ERC7821ExecutorLib
 import {SignerECDSALib} from "@lattice/accounts/libraries/SignerECDSALib.sol";
 import {IAccount, PackedUserOperation} from "@lattice/interfaces/external/IAccount.sol";
 import {Call, IERC7821} from "@lattice/interfaces/external/IERC7821.sol";
+import {EIP712Lib} from "@lattice/utils/libraries/EIP712Lib.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @dev A Lattice account assembled from all four v1 facets — the shape a deployed Diamond would have.
@@ -22,6 +23,7 @@ contract LatticeAccount is AccessControl, SignerECDSA, ERC1271Signature, ERC4337
         bytes32 s = InitializableLib.initializableSlot();
         InitializableLib.preInitializer(s);
         AccessControlLib.__AccessControl_init(admin_);
+        EIP712Lib.__EIP712_init("LatticeAccount", "1");
         SignerECDSALib.__SignerECDSA_init(owner_);
         ERC1271SignatureLib.__ERC1271Signature_init();
         ERC4337ValidationLib.__ERC4337Validation_init(entryPoint_);
@@ -139,8 +141,22 @@ contract AccountIntegration is Test {
     }
 
     function test_ExternalConsumerAcceptsOwner1271Sig() public view {
-        bytes32 hash = keccak256("seaport order");
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerPk, hash);
-        assertTrue(consumer.accepts(address(account), hash, abi.encodePacked(r, s, v)), "1271 sig rejected");
+        // Owner wraps the order hash in this account's domain (ERC-7739 PersonalSign); a plain sig is rejected.
+        bytes32 orderHash = keccak256("seaport order");
+        bytes32 sep = keccak256(
+            abi.encode(
+                keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
+                keccak256("LatticeAccount"),
+                keccak256("1"),
+                block.chainid,
+                address(account)
+            )
+        );
+        bytes32 structHash = keccak256(
+            abi.encode(bytes32(0x983e65e5148e570cd828ead231ee759a8d7958721a768f93bc4483ba005c32de), orderHash)
+        );
+        bytes32 digest = keccak256(abi.encodePacked(hex"1901", sep, structHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerPk, digest);
+        assertTrue(consumer.accepts(address(account), orderHash, abi.encodePacked(r, s, v)), "1271 sig rejected");
     }
 }

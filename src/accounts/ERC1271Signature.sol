@@ -8,12 +8,14 @@ import {IERC1271} from "@lattice/interfaces/external/IERC1271.sol";
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice ERC-1271 contract-signature facet. Lets the Diamond declare a signature valid (for permits,
 ///         Seaport orders, Permit2) when it is a valid signature from the configured `SignerECDSA` owner.
-/// @dev Stateless delegator — logic lives in {ERC1271SignatureLib}. v1 verifies the owner signature over the
-///      raw `hash`; ERC-7739 defensive rehashing (cross-account replay protection) is a planned hardening.
+/// @dev Stateless delegator — logic lives in {ERC1271SignatureLib}. Implements ERC-7739 defensive rehashing:
+///      accepts only nested `TypedDataSign` / `PersonalSign` envelopes bound to this account's EIP-712 domain
+///      (a plain signature over the raw hash is rejected), defeating cross-account replay.
 /// @custom:lattice-version 0.1.0
+/// @custom:lattice-source ERC-7739
 contract ERC1271Signature is IERC1271 {
     /// @inheritdoc IERC1271
-    function isValidSignature(bytes32 hash, bytes memory signature) external view virtual returns (bytes4) {
+    function isValidSignature(bytes32 hash, bytes calldata signature) external view virtual returns (bytes4) {
         return ERC1271SignatureLib.isValidSignature(hash, signature);
     }
 }
