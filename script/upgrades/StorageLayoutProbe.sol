@@ -332,6 +332,18 @@ contract StorageLayoutProbe {
         mapping(address collection => bool required) _royaltyRequired;
     }
 
+    /// @dev Verbatim mirror of `SignerECDSALib.SignerECDSAStorage`
+    ///      (`@custom:storage-location erc7201:lattice.storage.SignerECDSA`). Append-only.
+    struct SignerECDSAStorage {
+        address _owner;
+    }
+
+    /// @dev Verbatim mirror of `ERC4337ValidationLib.ERC4337ValidationStorage`
+    ///      (`@custom:storage-location erc7201:lattice.storage.ERC4337Validation`). Append-only.
+    struct ERC4337ValidationStorage {
+        address _entryPoint;
+    }
+
     /// @dev Verbatim mirror of `PythEntropyAdapterLib.PythEntropyAdapterStorage`
     ///      (`@custom:storage-location erc7201:lattice.storage.PythEntropyAdapter`). Append-only.
     struct PythEntropyAdapterStorage {
@@ -422,4 +434,6 @@ contract StorageLayoutProbe {
     ChainlinkAutomationAdapterStorage internal _unusedChainlinkAutomationAdapter;
     ChainlinkCREAdapterStorage internal _unusedChainlinkCREAdapter;
     MarketplaceZoneStorage internal _unusedMarketplaceZone;
+    SignerECDSAStorage internal _unusedSignerECDSA;
+    ERC4337ValidationStorage internal _unusedERC4337Validation;
 }
