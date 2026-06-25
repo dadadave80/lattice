@@ -109,6 +109,17 @@
 4	0	_remotes	t_mapping(t_bytes2,t_mapping(t_bytes_memory_ptr,t_bytes_storage))
 5	0	_trackers	t_mapping(t_bytes32,t_struct(OpenBridgeTracker)_storage)
 
+### CCIPGatewayAdapterStorage @ erc7201:lattice.storage.CCIPGatewayAdapter (slot 0xfc37dafbf0181d0474cf94e236f0ede0d369aab52659fb134d4be3b15fbb8e00)
+0	0	_router	t_address
+1	0	_feeToken	t_address
+2	0	_chainIdToSelector	t_mapping(t_uint256,t_uint64)
+3	0	_selectorToChainId	t_mapping(t_uint64,t_uint256)
+4	0	_remoteGateways	t_mapping(t_uint256,t_address)
+5	0	_destGasLimit	t_mapping(t_uint256,t_uint256)
+6	0	_destAllowOutOfOrder	t_mapping(t_uint256,t_bool)
+7	0	_executed	t_mapping(t_uint256,t_mapping(t_bytes32,t_bool))
+8	0	_ccvConfigs	t_mapping(t_uint256,t_struct(CCVConfig)_storage)
+
 ### PythEntropyAdapterStorage @ erc7201:lattice.storage.PythEntropyAdapter (slot 0xf5638fd8a7410f61ded501225ccb03fd632a93dd0cfb1615ce2666e2781d4f00)
 0	0	_entropy	t_address
 1	0	_provider	t_address
