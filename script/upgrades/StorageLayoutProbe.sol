@@ -304,6 +304,19 @@ contract StorageLayoutProbe {
         mapping(bytes32 id => OpenBridgeTracker tracker) _trackers;
     }
 
+    /// @dev Verbatim mirror of `CCIPGatewayAdapterLib.CCIPGatewayAdapterStorage`
+    ///      (`@custom:storage-location erc7201:lattice.storage.CCIPGatewayAdapter`). Append-only.
+    struct CCIPGatewayAdapterStorage {
+        address _router;
+        address _feeToken;
+        mapping(uint256 chainId => uint64 selector) _chainIdToSelector;
+        mapping(uint64 selector => uint256 chainId) _selectorToChainId;
+        mapping(uint256 chainId => address remote) _remoteGateways;
+        mapping(uint256 chainId => uint256 gasLimit) _destGasLimit;
+        mapping(uint256 chainId => bool allowOutOfOrder) _destAllowOutOfOrder;
+        mapping(uint256 chainId => mapping(bytes32 messageId => bool used)) _executed;
+    }
+
     /// @dev Verbatim mirror of `PythEntropyAdapterLib.PythEntropyAdapterStorage`
     ///      (`@custom:storage-location erc7201:lattice.storage.PythEntropyAdapter`). Append-only.
     struct PythEntropyAdapterStorage {
@@ -386,6 +399,7 @@ contract StorageLayoutProbe {
     AxelarGatewayAdapterStorage internal _unusedAxelarGatewayAdapter;
     WormholeGatewayAdapterStorage internal _unusedWormholeGatewayAdapter;
     ERC7786OpenBridgeStorage internal _unusedERC7786OpenBridge;
+    CCIPGatewayAdapterStorage internal _unusedCCIPGatewayAdapter;
     PythEntropyAdapterStorage internal _unusedPythEntropyAdapter;
     GelatoVRFAdapterStorage internal _unusedGelatoVRFAdapter;
     API3QRNGAdapterStorage internal _unusedAPI3QRNGAdapter;

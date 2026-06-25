@@ -59,6 +59,10 @@ import {BRIDGE_ERC20_STORAGE_SLOT} from "@lattice/crosschain/libraries/BridgeERC
 import {BRIDGE_ERC7802_STORAGE_SLOT} from "@lattice/crosschain/libraries/BridgeERC7802Lib.sol";
 import {ERC165_MAP_IBRIDGEFUNGIBLE_SLOT} from "@lattice/crosschain/libraries/BridgeFungibleLib.sol";
 import {
+    CCIP_GATEWAY_ADAPTER_STORAGE_SLOT,
+    ERC165_MAP_IANY2EVMMESSAGERECEIVER_SLOT
+} from "@lattice/crosschain/libraries/CCIPGatewayAdapterLib.sol";
+import {
     CROSSCHAIN_LINK_STORAGE_SLOT,
     ERC165_MAP_ICROSSCHAINLINK_SLOT
 } from "@lattice/crosschain/libraries/CrosschainLinkLib.sol";
@@ -293,6 +297,7 @@ import {IUniswapV3Adapter} from "@lattice/interfaces/IUniswapV3Adapter.sol";
 import {IVaultCore} from "@lattice/interfaces/IVaultCore.sol";
 import {IVestingWallet} from "@lattice/interfaces/IVestingWallet.sol";
 import {IVotes} from "@lattice/interfaces/IVotes.sol";
+import {IAny2EVMMessageReceiver} from "@lattice/interfaces/external/IAny2EVMMessageReceiver.sol";
 import {IERC7786GatewaySource} from "@lattice/interfaces/external/IERC7786.sol";
 import {IReceiver} from "@lattice/interfaces/external/IReceiver.sol";
 
@@ -696,6 +701,14 @@ contract StorageSlotVerificationTest is Test {
             ERC7786_OPEN_BRIDGE_STORAGE_SLOT,
             _erc7201Slot("lattice.storage.ERC7786OpenBridge"),
             "ERC7786OpenBridge storage slot mismatch"
+        );
+    }
+
+    function test_CCIPGatewayAdapterStorageSlot() public pure {
+        assertEq(
+            CCIP_GATEWAY_ADAPTER_STORAGE_SLOT,
+            _erc7201Slot("lattice.storage.CCIPGatewayAdapter"),
+            "CCIPGatewayAdapter storage slot mismatch"
         );
     }
 
@@ -1271,6 +1284,18 @@ contract StorageSlotVerificationTest is Test {
         );
     }
 
+    /// @dev CCIP uniquely registers IAny2EVMMessageReceiver so the router's pre-delivery supportsInterface
+    ///      check passes; this map slot is NOT shared with the other gateways.
+    function test_Erc165MapIAny2EVMMessageReceiverSlot() public pure {
+        bytes4 interfaceId = type(IAny2EVMMessageReceiver).interfaceId;
+        assertEq(interfaceId, bytes4(0x85572ffb), "IAny2EVMMessageReceiver interfaceId comment is stale");
+        assertEq(
+            ERC165_MAP_IANY2EVMMESSAGERECEIVER_SLOT,
+            _erc165MapSlot(interfaceId, ERC165_STORAGE_LOCATION),
+            "ERC165 IAny2EVMMessageReceiver map slot mismatch"
+        );
+    }
+
     // ---- security ----
 
     function test_Erc165MapIPausableSlot() public pure {
@@ -1489,7 +1514,7 @@ contract StorageSlotVerificationTest is Test {
     // ======================== Slot inventories ========================
 
     function _allStorageSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](67);
+        slots = new bytes32[](68);
         uint256 i;
         // access
         slots[i++] = ACCESS_CONTROL_STORAGE_SLOT;
@@ -1548,6 +1573,7 @@ contract StorageSlotVerificationTest is Test {
         slots[i++] = AXELAR_GATEWAY_ADAPTER_STORAGE_SLOT;
         slots[i++] = WORMHOLE_GATEWAY_ADAPTER_STORAGE_SLOT;
         slots[i++] = ERC7786_OPEN_BRIDGE_STORAGE_SLOT;
+        slots[i++] = CCIP_GATEWAY_ADAPTER_STORAGE_SLOT;
         // security
         slots[i++] = PAUSABLE_STORAGE_SLOT;
         slots[i++] = REENTRANCY_GUARD_STORAGE_SLOT;
@@ -1572,7 +1598,7 @@ contract StorageSlotVerificationTest is Test {
     }
 
     function _allErc165MapSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](68);
+        slots = new bytes32[](69);
         uint256 i;
         // access
         slots[i++] = ERC165_MAP_IACCESSCONTROL_SLOT;
@@ -1638,10 +1664,13 @@ contract StorageSlotVerificationTest is Test {
         slots[i++] = ERC165_MAP_ICHAINLINKAUTOMATIONADAPTER_SLOT;
         slots[i++] = ERC165_MAP_IRECEIVER_SLOT;
         slots[i++] = ERC165_MAP_ITWAPORACLE_SLOT;
-        // crosschain (both bridges share the IBridgeFungible interface → one map slot)
+        // crosschain (both bridges share the IBridgeFungible interface → one map slot; the four gateways
+        // share the IERC7786GatewaySource slot; CCIP additionally registers IAny2EVMMessageReceiver so the
+        // CCIP router's pre-delivery supportsInterface check passes → one extra unique map slot)
         slots[i++] = ERC165_MAP_ICROSSCHAINLINK_SLOT;
         slots[i++] = ERC165_MAP_IBRIDGEFUNGIBLE_SLOT;
         slots[i++] = ERC165_MAP_IERC7786GATEWAYSOURCE_SLOT;
+        slots[i++] = ERC165_MAP_IANY2EVMMESSAGERECEIVER_SLOT;
         // security
         slots[i++] = ERC165_MAP_IPAUSABLE_SLOT;
         slots[i++] = ERC165_MAP_IREENTRANCYGUARD_SLOT;
