@@ -363,6 +363,12 @@ contract StorageLayoutProbe {
         mapping(address key => mapping(address token => SpendLimit)) _spend;
     }
 
+    /// @dev Verbatim mirror of `ERC7579ModuleConfigLib.ERC7579ModuleConfigStorage`
+    ///      (`@custom:storage-location erc7201:lattice.storage.ERC7579ModuleConfig`). Append-only.
+    struct ERC7579ModuleConfigStorage {
+        mapping(uint256 moduleTypeId => mapping(address module => bool installed)) _installed;
+    }
+
     /// @dev Verbatim mirror of `PythEntropyAdapterLib.PythEntropyAdapterStorage`
     ///      (`@custom:storage-location erc7201:lattice.storage.PythEntropyAdapter`). Append-only.
     struct PythEntropyAdapterStorage {
@@ -456,4 +462,5 @@ contract StorageLayoutProbe {
     SignerECDSAStorage internal _unusedSignerECDSA;
     ERC4337ValidationStorage internal _unusedERC4337Validation;
     SessionKeyStorage internal _unusedSessionKey;
+    ERC7579ModuleConfigStorage internal _unusedERC7579ModuleConfig;
 }
