@@ -132,6 +132,10 @@ import {
     ERC165_MAP_ICHAINLINKAUTOMATIONADAPTER_SLOT
 } from "@lattice/oracles/libraries/ChainlinkAutomationAdapterLib.sol";
 import {
+    CHAINLINK_CRE_ADAPTER_STORAGE_SLOT,
+    ERC165_MAP_IRECEIVER_SLOT
+} from "@lattice/oracles/libraries/ChainlinkCREAdapterLib.sol";
+import {
     CHAINLINK_VRF_STORAGE_SLOT,
     ERC165_MAP_ICHAINLINKVRF_SLOT
 } from "@lattice/oracles/libraries/ChainlinkVRFLib.sol";
@@ -290,6 +294,7 @@ import {IVaultCore} from "@lattice/interfaces/IVaultCore.sol";
 import {IVestingWallet} from "@lattice/interfaces/IVestingWallet.sol";
 import {IVotes} from "@lattice/interfaces/IVotes.sol";
 import {IERC7786GatewaySource} from "@lattice/interfaces/external/IERC7786.sol";
+import {IReceiver} from "@lattice/interfaces/external/IReceiver.sol";
 
 /// @title StorageSlotVerificationTest
 /// @notice Re-derives every ERC-7201 storage slot and ERC-165 map slot from first principles
@@ -629,6 +634,14 @@ contract StorageSlotVerificationTest is Test {
             CHAINLINK_AUTOMATION_ADAPTER_STORAGE_SLOT,
             _erc7201Slot("lattice.storage.ChainlinkAutomationAdapter"),
             "ChainlinkAutomationAdapter storage slot mismatch"
+        );
+    }
+
+    function test_ChainlinkCREAdapterStorageSlot() public pure {
+        assertEq(
+            CHAINLINK_CRE_ADAPTER_STORAGE_SLOT,
+            _erc7201Slot("lattice.storage.ChainlinkCREAdapter"),
+            "ChainlinkCREAdapter storage slot mismatch"
         );
     }
 
@@ -1210,6 +1223,16 @@ contract StorageSlotVerificationTest is Test {
         );
     }
 
+    /// @dev ChainlinkCREAdapter registers the canonical `type(IReceiver).interfaceId` (the CRE receiver
+    ///      id), not its Lattice-specific interface id, so CRE tooling detects the receiver via ERC-165.
+    function test_Erc165MapIReceiverSlot() public pure {
+        assertEq(
+            ERC165_MAP_IRECEIVER_SLOT,
+            _erc165MapSlot(type(IReceiver).interfaceId, ERC165_STORAGE_LOCATION),
+            "ERC165 IReceiver map slot mismatch"
+        );
+    }
+
     function test_Erc165MapITWAPOracleSlot() public pure {
         assertEq(
             ERC165_MAP_ITWAPORACLE_SLOT,
@@ -1466,7 +1489,7 @@ contract StorageSlotVerificationTest is Test {
     // ======================== Slot inventories ========================
 
     function _allStorageSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](66);
+        slots = new bytes32[](67);
         uint256 i;
         // access
         slots[i++] = ACCESS_CONTROL_STORAGE_SLOT;
@@ -1516,6 +1539,7 @@ contract StorageSlotVerificationTest is Test {
         slots[i++] = API3_QRNG_ADAPTER_STORAGE_SLOT;
         slots[i++] = GELATO_AUTOMATE_ADAPTER_STORAGE_SLOT;
         slots[i++] = CHAINLINK_AUTOMATION_ADAPTER_STORAGE_SLOT;
+        slots[i++] = CHAINLINK_CRE_ADAPTER_STORAGE_SLOT;
         slots[i++] = TWAP_ORACLE_STORAGE_SLOT;
         // crosschain
         slots[i++] = CROSSCHAIN_LINK_STORAGE_SLOT;
@@ -1548,7 +1572,7 @@ contract StorageSlotVerificationTest is Test {
     }
 
     function _allErc165MapSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](67);
+        slots = new bytes32[](68);
         uint256 i;
         // access
         slots[i++] = ERC165_MAP_IACCESSCONTROL_SLOT;
@@ -1612,6 +1636,7 @@ contract StorageSlotVerificationTest is Test {
         slots[i++] = ERC165_MAP_IAPI3QRNGADAPTER_SLOT;
         slots[i++] = ERC165_MAP_IGELATOAUTOMATEADAPTER_SLOT;
         slots[i++] = ERC165_MAP_ICHAINLINKAUTOMATIONADAPTER_SLOT;
+        slots[i++] = ERC165_MAP_IRECEIVER_SLOT;
         slots[i++] = ERC165_MAP_ITWAPORACLE_SLOT;
         // crosschain (both bridges share the IBridgeFungible interface → one map slot)
         slots[i++] = ERC165_MAP_ICROSSCHAINLINK_SLOT;

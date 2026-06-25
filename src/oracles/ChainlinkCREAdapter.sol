@@ -1,0 +1,58 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.30;
+
+import {IChainlinkCREAdapter} from "@lattice/interfaces/IChainlinkCREAdapter.sol";
+import {ChainlinkCREAdapterLib} from "@lattice/oracles/libraries/ChainlinkCREAdapterLib.sol";
+
+/// @title ChainlinkCREAdapter
+/// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from Chainlink (https://github.com/smartcontractkit/chainlink/blob/develop/contracts/src/v0.8/keystone)
+/// @notice Diamond facet that receives Chainlink CRE (Chainlink Runtime Environment) workflow reports
+///         via the `IReceiver.onReport` entry point, delivered by the KeystoneForwarder.
+/// @dev Stateless delegator — all logic and storage live in ChainlinkCREAdapterLib.
+///
+///      `onReport` is gated to the configured forwarder and an admin-allowlisted workflow id, then
+///      stores the latest report per workflow. Consumer facets that inherit this contract should
+///      override `onReport` to act on the delivered report after calling `super.onReport`.
+///
+///      The module registers the canonical `type(IReceiver).interfaceId` for ERC-165 so CRE tooling
+///      detects the receiver (the ERC-721/ERC-1155 canonical-id precedent).
+/// @custom:lattice-version 0.1.0
+/// @custom:lattice-source Chainlink
+contract ChainlinkCREAdapter is IChainlinkCREAdapter {
+    /// @inheritdoc IChainlinkCREAdapter
+    function getForwarder() external view virtual override returns (address) {
+        return ChainlinkCREAdapterLib.getForwarder();
+    }
+
+    /// @inheritdoc IChainlinkCREAdapter
+    function isWorkflowAllowed(bytes32 workflowId) external view virtual override returns (bool) {
+        return ChainlinkCREAdapterLib.isWorkflowAllowed(workflowId);
+    }
+
+    /// @inheritdoc IChainlinkCREAdapter
+    function getLatestReport(bytes32 workflowId)
+        external
+        view
+        virtual
+        override
+        returns (bytes memory report, uint256 timestamp)
+    {
+        return ChainlinkCREAdapterLib.getLatestReport(workflowId);
+    }
+
+    /// @inheritdoc IChainlinkCREAdapter
+    function setForwarder(address forwarder) external virtual override {
+        ChainlinkCREAdapterLib.setForwarder(forwarder);
+    }
+
+    /// @inheritdoc IChainlinkCREAdapter
+    function setWorkflow(bytes32 workflowId, bool allowed) external virtual override {
+        ChainlinkCREAdapterLib.setWorkflow(workflowId, allowed);
+    }
+
+    /// @inheritdoc IChainlinkCREAdapter
+    function onReport(bytes calldata metadata, bytes calldata report) external virtual override {
+        ChainlinkCREAdapterLib.onReport(metadata, report);
+    }
+}
