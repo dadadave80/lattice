@@ -36,13 +36,29 @@ struct ChainlinkCREAdapterStorage {
 
 /// @title ChainlinkCREAdapterLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
-/// @author Modified from Chainlink (https://github.com/smartcontractkit/chainlink/blob/develop/contracts/src/v0.8/keystone)
+/// @author Modified from the Chainlink CRE consumer-contract guide
+///         (https://docs.chain.link/cre/guides/workflow/using-evm-client/onchain-write/building-consumer-contracts)
 /// @notice Library implementing a Chainlink CRE (Chainlink Runtime Environment) workflow-report
 ///         receiver. The `KeystoneForwarder` validates the DON's report signatures off-chain, then
 ///         calls `onReport`, which is gated to the configured forwarder AND to an admin-allowlisted
 ///         workflow id. The latest report per workflow is stored; consumer facets inheriting
 ///         `ChainlinkCREAdapter` should override `onReport` (calling `super.onReport` first) to act on
 ///         the decoded report.
+/// @dev IMPLEMENTATION NOTE — this follows the guide's "Direct IReceiver Implementation" path, NOT its
+///      `ReceiverTemplate` base contract. `ReceiverTemplate` is an `Ownable`, constructor-initialized
+///      standalone contract (`constructor(address forwarder) Ownable(msg.sender)`) and is structurally
+///      incompatible with a Lattice Diamond facet, which is stateless (initialized via
+///      `__ChainlinkCREAdapter_init`, no constructor), keeps state in ERC-7201 namespaced storage, gates
+///      on `AccessControl` roles (`DEFAULT_ADMIN_ROLE`) rather than `Ownable`, and registers ERC-165
+///      through the shared diamond `ERC165Lib` map. Each `ReceiverTemplate` feature is re-created here,
+///      adapted to that model: its `onlyForwarder` modifier -> the `msg.sender == forwarder` check; its
+///      constructor forwarder + `setForwarderAddress` -> `setForwarder`; its optional
+///      `setExpectedWorkflowId` validation -> the mandatory `setWorkflow` allowlist (the workflow id
+///      already binds owner + name + workflow binary, so per-field owner/name checks are unnecessary);
+///      its `_decodeMetadata` helper -> `_decodeMetadata` here; and its abstract
+///      `_processReport(bytes)` hook -> the stored latest report plus the `virtual onReport` that
+///      consumer facets override (the same callback pattern as the other Lattice adapters). There is
+///      therefore intentionally no `_processReport` function in this module.
 library ChainlinkCREAdapterLib {
     /// @dev The KeystoneForwarder always delivers 64-byte metadata: 62 packed bytes
     ///      (workflowId ++ workflowName ++ workflowOwner) plus a trailing 2-byte report id.

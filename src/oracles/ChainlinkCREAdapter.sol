@@ -6,7 +6,8 @@ import {ChainlinkCREAdapterLib} from "@lattice/oracles/libraries/ChainlinkCREAda
 
 /// @title ChainlinkCREAdapter
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
-/// @author Modified from Chainlink (https://github.com/smartcontractkit/chainlink/blob/develop/contracts/src/v0.8/keystone)
+/// @author Modified from the Chainlink CRE consumer-contract guide
+///         (https://docs.chain.link/cre/guides/workflow/using-evm-client/onchain-write/building-consumer-contracts)
 /// @notice Diamond facet that receives Chainlink CRE (Chainlink Runtime Environment) workflow reports
 ///         via the `IReceiver.onReport` entry point, delivered by the KeystoneForwarder.
 /// @dev Stateless delegator — all logic and storage live in ChainlinkCREAdapterLib.
@@ -17,6 +18,11 @@ import {ChainlinkCREAdapterLib} from "@lattice/oracles/libraries/ChainlinkCREAda
 ///
 ///      The module registers the canonical `type(IReceiver).interfaceId` for ERC-165 so CRE tooling
 ///      detects the receiver (the ERC-721/ERC-1155 canonical-id precedent).
+///
+///      This follows the guide's "Direct IReceiver Implementation" path, not the `Ownable`/
+///      constructor-based `ReceiverTemplate` (incompatible with the stateless facet + ERC-7201 model);
+///      the `virtual onReport` override is the Lattice analogue of `ReceiverTemplate._processReport`.
+///      See `ChainlinkCREAdapterLib` for the full mapping.
 /// @custom:lattice-version 0.1.0
 /// @custom:lattice-source Chainlink
 contract ChainlinkCREAdapter is IChainlinkCREAdapter {

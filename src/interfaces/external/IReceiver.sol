@@ -9,7 +9,7 @@ interface IERC165 {
 }
 
 /// @title IReceiver
-/// @author Modified from Chainlink (https://github.com/smartcontractkit/chainlink/blob/develop/contracts/src/v0.8/keystone/interfaces/IReceiver.sol)
+/// @author Modified from Chainlink CRE (https://docs.chain.link/samples/CRE/IReceiver.sol)
 /// @notice Consumer interface for receiving Chainlink CRE (Chainlink Runtime Environment) workflow
 ///         reports. The `KeystoneForwarder` validates the DON's report signatures off-chain, then calls
 ///         `onReport` on the consumer.
