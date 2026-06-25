@@ -7,18 +7,26 @@ import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {ERC4337Validation} from "@lattice/accounts/ERC4337Validation.sol";
 import {ERC7821Executor} from "@lattice/accounts/ERC7821Executor.sol";
+import {SignerECDSA} from "@lattice/accounts/SignerECDSA.sol";
 import {ERC4337ValidationLib} from "@lattice/accounts/libraries/ERC4337ValidationLib.sol";
 import {ERC7821ExecutorLib} from "@lattice/accounts/libraries/ERC7821ExecutorLib.sol";
+import {SignerECDSALib} from "@lattice/accounts/libraries/SignerECDSALib.sol";
 import {IERC7821Executor} from "@lattice/interfaces/IERC7821Executor.sol";
+import {INonces} from "@lattice/interfaces/INonces.sol";
 import {Call} from "@lattice/interfaces/external/IERC7821.sol";
+import {EIP712Lib} from "@lattice/utils/libraries/EIP712Lib.sol";
+import {NoncesLib} from "@lattice/utils/libraries/NoncesLib.sol";
 import {Test} from "forge-std/Test.sol";
 
-/// @dev Harness: executor facet + 4337 validation facet (for the EntryPoint auth path) + access facet.
-contract MockERC7821 is AccessControl, ERC4337Validation, ERC7821Executor {
-    function initialize(address admin_, address entryPoint_) external {
+/// @dev Harness: executor + 4337 validation (EntryPoint auth) + signer + EIP-712 domain + nonces.
+contract MockERC7821 is AccessControl, SignerECDSA, ERC4337Validation, ERC7821Executor {
+    function initialize(address admin_, address owner_, address entryPoint_) external {
         bytes32 s = InitializableLib.initializableSlot();
         InitializableLib.preInitializer(s);
         AccessControlLib.__AccessControl_init(admin_);
+        EIP712Lib.__EIP712_init("LatticeAccount", "1");
+        NoncesLib.__Nonces_init();
+        SignerECDSALib.__SignerECDSA_init(owner_);
         ERC4337ValidationLib.__ERC4337Validation_init(entryPoint_);
         ERC7821ExecutorLib.__ERC7821Executor_init();
         InitializableLib.postInitializer(s);
@@ -49,16 +57,27 @@ contract ERC7821ExecutorTester is Test {
     Target target;
     address admin = address(0x1);
     address entryPointAddr = address(0xE47);
-    address stranger = address(0xBAD);
+    address ownerAddr;
+    uint256 ownerPk;
+    address stranger;
+    uint256 strangerPk;
+
+    string constant NAME = "LatticeAccount";
+    string constant VERSION = "1";
 
     bytes32 constant BATCH = 0x0100000000000000000000000000000000000000000000000000000000000000;
     bytes32 constant BATCH_OPDATA = 0x0100000000007821000100000000000000000000000000000000000000000000;
     bytes32 constant BAD_MODE = 0x0200000000000000000000000000000000000000000000000000000000000000;
     bytes4 constant IERC7821_ID = 0x39922547;
+    bytes32 constant EXECUTE_TYPEHASH = 0xb63526befbf5b966e64c36954eb12c5d09096e0b0a8a06e90bd0c857b842ebcb;
+    bytes32 constant DOMAIN_TYPEHASH =
+        keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
 
     function setUp() public {
+        (ownerAddr, ownerPk) = makeAddrAndKey("owner");
+        (stranger, strangerPk) = makeAddrAndKey("stranger");
         account = new MockERC7821();
-        account.initialize(admin, entryPointAddr);
+        account.initialize(admin, ownerAddr, entryPointAddr);
         target = new Target();
     }
 
@@ -66,6 +85,28 @@ contract ERC7821ExecutorTester is Test {
         calls = new Call[](1);
         calls[0] = Call({target: address(target), value: weiValue, data: abi.encodeCall(Target.setValue, (v))});
     }
+
+    function _accountSeparator() internal view returns (bytes32) {
+        return keccak256(
+            abi.encode(
+                DOMAIN_TYPEHASH, keccak256(bytes(NAME)), keccak256(bytes(VERSION)), block.chainid, address(account)
+            )
+        );
+    }
+
+    /// @dev Builds the owner-signed opData envelope `abi.encode(nonce, signature)` for a batch.
+    function _signOpData(uint256 pk, bytes32 mode, Call[] memory calls, uint256 nonce)
+        internal
+        view
+        returns (bytes memory)
+    {
+        bytes32 structHash = keccak256(abi.encode(EXECUTE_TYPEHASH, mode, keccak256(abi.encode(calls)), nonce));
+        bytes32 digest = keccak256(abi.encodePacked(hex"1901", _accountSeparator(), structHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(pk, digest);
+        return abi.encode(nonce, abi.encodePacked(r, s, v));
+    }
+
+    // ---- direct authorization (unchanged behavior) ----
 
     function test_SupportsMode() public view {
         assertTrue(account.supportsExecutionMode(BATCH), "batch unsupported");
@@ -105,7 +146,8 @@ contract ERC7821ExecutorTester is Test {
         assertEq(target.received(), 0.5 ether, "ETH not forwarded");
     }
 
-    function test_ExecuteBatch_OpData() public {
+    /// @dev An admin is directly authorized, so opData is ignored even when present (here empty).
+    function test_ExecuteBatch_OpData_DirectAdmin() public {
         Call[] memory calls = _oneCall(11, 0);
         vm.prank(admin);
         account.execute(BATCH_OPDATA, abi.encode(calls, bytes("")));
@@ -130,5 +172,41 @@ contract ERC7821ExecutorTester is Test {
         vm.prank(admin);
         vm.expectRevert(bytes("boom"));
         account.execute(BATCH, abi.encode(calls));
+    }
+
+    // ---- signed opData (relayer-submitted, owner-authorized) ----
+
+    function test_SignedOpData_AsRelayer() public {
+        Call[] memory calls = _oneCall(77, 0);
+        bytes memory opData = _signOpData(ownerPk, BATCH_OPDATA, calls, 0);
+        vm.prank(stranger); // an unauthorized relayer
+        account.execute(BATCH_OPDATA, abi.encode(calls, opData));
+        assertEq(target.value(), 77, "owner-signed batch not executed by relayer");
+    }
+
+    function test_SignedOpData_RejectsBadSig() public {
+        Call[] memory calls = _oneCall(1, 0);
+        bytes memory opData = _signOpData(strangerPk, BATCH_OPDATA, calls, 0); // not the owner
+        vm.prank(stranger);
+        vm.expectRevert(abi.encodeWithSelector(IERC7821Executor.UnauthorizedExecutor.selector, stranger));
+        account.execute(BATCH_OPDATA, abi.encode(calls, opData));
+    }
+
+    function test_SignedOpData_RejectsReplay() public {
+        Call[] memory calls = _oneCall(1, 0);
+        bytes memory opData = _signOpData(ownerPk, BATCH_OPDATA, calls, 0);
+        vm.prank(stranger);
+        account.execute(BATCH_OPDATA, abi.encode(calls, opData)); // nonce 0 consumed
+        vm.prank(stranger);
+        vm.expectRevert(abi.encodeWithSelector(INonces.InvalidAccountNonce.selector, address(account), 1));
+        account.execute(BATCH_OPDATA, abi.encode(calls, opData)); // replay: account nonce is now 1
+    }
+
+    function test_SignedOpData_RejectsWrongNonce() public {
+        Call[] memory calls = _oneCall(1, 0);
+        bytes memory opData = _signOpData(ownerPk, BATCH_OPDATA, calls, 5); // wrong nonce (current is 0)
+        vm.prank(stranger);
+        vm.expectRevert(abi.encodeWithSelector(INonces.InvalidAccountNonce.selector, address(account), 0));
+        account.execute(BATCH_OPDATA, abi.encode(calls, opData));
     }
 }
