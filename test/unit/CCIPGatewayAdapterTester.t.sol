@@ -11,6 +11,7 @@ import {ICCIPGatewayAdapter} from "@lattice/interfaces/ICCIPGatewayAdapter.sol";
 import {IERC20} from "@lattice/interfaces/IERC20.sol";
 import {Client} from "@lattice/interfaces/external/CCIPClient.sol";
 import {IAny2EVMMessageReceiver} from "@lattice/interfaces/external/IAny2EVMMessageReceiver.sol";
+import {IAny2EVMMessageReceiverV2} from "@lattice/interfaces/external/IAny2EVMMessageReceiverV2.sol";
 import {IERC7786GatewaySource, IERC7786Recipient} from "@lattice/interfaces/external/IERC7786.sol";
 import {IRouterClient} from "@lattice/interfaces/external/IRouterClient.sol";
 import {InteroperableAddress} from "@lattice/utils/libraries/InteroperableAddress.sol";
@@ -419,5 +420,72 @@ contract CCIPGatewayAdapterTester is Test {
             abi.encodeWithSelector(ICCIPGatewayAdapter.InvalidOriginGateway.selector, REMOTE_SELECTOR, m.sender)
         );
         adapter.ccipReceive(m);
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                                 V2 / CCV
+    //////////////////////////////////////////////////////////////////////////*//
+
+    function _ccvs() internal pure returns (address[] memory req, address[] memory opt) {
+        req = new address[](1);
+        req[0] = address(0xCC1);
+        opt = new address[](2);
+        opt[0] = address(0xCC2);
+        opt[1] = address(0xCC3);
+    }
+
+    function test_SupportsInterfaceCCIPReceiverV2() public view {
+        // CCV-enabled lanes detect the receiver via the V2 interfaceId. Solidity's type().interfaceId
+        // excludes inherited functions, so V2's id is the getCCVsAndFinalityConfig selector — exactly the
+        // value the CCIP router queries.
+        assertTrue(adapter.supportsInterface(type(IAny2EVMMessageReceiverV2).interfaceId));
+        assertEq(type(IAny2EVMMessageReceiverV2).interfaceId, bytes4(0x1bfc84d0));
+    }
+
+    function test_GetCCVsAndFinalityConfigDefault() public view {
+        (address[] memory req, address[] memory opt, uint8 thr, bytes4 fin) =
+            adapter.getCCVsAndFinalityConfig(REMOTE_SELECTOR, "");
+        assertEq(req.length, 0);
+        assertEq(opt.length, 0);
+        assertEq(thr, 0);
+        assertEq(fin, bytes4(0), "unconfigured => require full finality");
+    }
+
+    function test_ConfigureCCVAndRead() public {
+        (address[] memory req, address[] memory opt) = _ccvs();
+        bytes4 fin = bytes4(uint32(0x00010000)); // a non-zero finality flag
+
+        vm.prank(admin);
+        adapter.configureCCV(REMOTE_CHAIN, req, opt, 1, fin);
+
+        // read by chainId (admin getter)
+        (address[] memory rReq, address[] memory rOpt, uint8 rThr, bytes4 rFin) = adapter.getCCVConfig(REMOTE_CHAIN);
+        assertEq(rReq.length, 1);
+        assertEq(rReq[0], address(0xCC1));
+        assertEq(rOpt.length, 2);
+        assertEq(rOpt[1], address(0xCC3));
+        assertEq(rThr, 1);
+        assertEq(rFin, fin);
+
+        // read by selector (what the CCIP router calls)
+        (address[] memory sReq,,, bytes4 sFin) = adapter.getCCVsAndFinalityConfig(REMOTE_SELECTOR, "");
+        assertEq(sReq[0], address(0xCC1));
+        assertEq(sFin, fin);
+    }
+
+    function test_ConfigureCCVRevertsNonAdmin() public {
+        (address[] memory req, address[] memory opt) = _ccvs();
+        vm.prank(user);
+        vm.expectRevert(abi.encodeWithSelector(UNAUTHORIZED_ACCOUNT, user, bytes32(0)));
+        adapter.configureCCV(REMOTE_CHAIN, req, opt, 1, bytes4(0));
+    }
+
+    function test_ConfigureCCVInvalidThresholdReverts() public {
+        address[] memory req = new address[](0);
+        address[] memory opt = new address[](1);
+        opt[0] = address(0xCC2);
+        vm.prank(admin);
+        vm.expectRevert(abi.encodeWithSelector(ICCIPGatewayAdapter.InvalidCCVThreshold.selector, uint8(2), uint256(1)));
+        adapter.configureCCV(REMOTE_CHAIN, req, opt, 2, bytes4(0)); // threshold 2 > 1 optional
     }
 }

@@ -5,6 +5,7 @@ import {CCIPGatewayAdapterLib} from "@lattice/crosschain/libraries/CCIPGatewayAd
 import {ICCIPGatewayAdapter} from "@lattice/interfaces/ICCIPGatewayAdapter.sol";
 import {Client} from "@lattice/interfaces/external/CCIPClient.sol";
 import {IAny2EVMMessageReceiver} from "@lattice/interfaces/external/IAny2EVMMessageReceiver.sol";
+import {IAny2EVMMessageReceiverV2} from "@lattice/interfaces/external/IAny2EVMMessageReceiverV2.sol";
 import {IERC7786GatewaySource} from "@lattice/interfaces/external/IERC7786.sol";
 
 /// @title CCIPGatewayAdapter
@@ -13,11 +14,12 @@ import {IERC7786GatewaySource} from "@lattice/interfaces/external/IERC7786.sol";
 ///         message via the router; `ccipReceive` is the router's delivery callback. EVM chains only.
 /// @dev Stateless delegator — logic/storage live in {CCIPGatewayAdapterLib}. CCIP routes by `uint64` chain
 ///      selector (the lib holds a chainId ⇄ selector map); the router-gated `ccipReceive` is the inbound
-///      analogue of Wormhole's `receiveWormholeMessages` / Axelar's `execute`. Implements only the V1 CCIP
-///      receiver (`IAny2EVMMessageReceiver`); CCV finality (`IAny2EVMMessageReceiverV2`) is out of scope.
+///      analogue of Wormhole's `receiveWormholeMessages` / Axelar's `execute`. Implements the V2 CCIP
+///      receiver (`IAny2EVMMessageReceiverV2`): V1 `ccipReceive` delivery plus `getCCVsAndFinalityConfig` so
+///      CCV-enabled lanes can read the admin-configured Cross-Chain Verifier / finality requirements.
 /// @custom:lattice-version 0.1.0
 /// @custom:lattice-source Chainlink
-contract CCIPGatewayAdapter is IERC7786GatewaySource, IAny2EVMMessageReceiver, ICCIPGatewayAdapter {
+contract CCIPGatewayAdapter is IERC7786GatewaySource, IAny2EVMMessageReceiverV2, ICCIPGatewayAdapter {
     /// @inheritdoc IERC7786GatewaySource
     function sendMessage(bytes calldata recipient, bytes calldata payload, bytes[] calldata attributes)
         external
@@ -36,6 +38,21 @@ contract CCIPGatewayAdapter is IERC7786GatewaySource, IAny2EVMMessageReceiver, I
     /// @inheritdoc IAny2EVMMessageReceiver
     function ccipReceive(Client.Any2EVMMessage calldata message) external virtual {
         CCIPGatewayAdapterLib.ccipReceive(message);
+    }
+
+    /// @inheritdoc IAny2EVMMessageReceiverV2
+    function getCCVsAndFinalityConfig(uint64 sourceChainSelector, bytes calldata)
+        external
+        view
+        virtual
+        returns (
+            address[] memory requiredCCVs,
+            address[] memory optionalCCVs,
+            uint8 optionalThreshold,
+            bytes4 allowedFinalityConfig
+        )
+    {
+        return CCIPGatewayAdapterLib.getCCVsAndFinalityConfig(sourceChainSelector);
     }
 
     /// @inheritdoc ICCIPGatewayAdapter
@@ -96,5 +113,33 @@ contract CCIPGatewayAdapter is IERC7786GatewaySource, IAny2EVMMessageReceiver, I
     /// @inheritdoc ICCIPGatewayAdapter
     function setFeeToken(address feeToken_) external virtual {
         CCIPGatewayAdapterLib.setFeeToken(feeToken_);
+    }
+
+    /// @inheritdoc ICCIPGatewayAdapter
+    function configureCCV(
+        uint256 chainId,
+        address[] calldata requiredCCVs,
+        address[] calldata optionalCCVs,
+        uint8 optionalThreshold,
+        bytes4 allowedFinalityConfig
+    ) external virtual {
+        CCIPGatewayAdapterLib.configureCCV(
+            chainId, requiredCCVs, optionalCCVs, optionalThreshold, allowedFinalityConfig
+        );
+    }
+
+    /// @inheritdoc ICCIPGatewayAdapter
+    function getCCVConfig(uint256 chainId)
+        external
+        view
+        virtual
+        returns (
+            address[] memory requiredCCVs,
+            address[] memory optionalCCVs,
+            uint8 optionalThreshold,
+            bytes4 allowedFinalityConfig
+        )
+    {
+        return CCIPGatewayAdapterLib.getCCVConfig(chainId);
     }
 }

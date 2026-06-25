@@ -60,6 +60,7 @@ import {BRIDGE_ERC7802_STORAGE_SLOT} from "@lattice/crosschain/libraries/BridgeE
 import {ERC165_MAP_IBRIDGEFUNGIBLE_SLOT} from "@lattice/crosschain/libraries/BridgeFungibleLib.sol";
 import {
     CCIP_GATEWAY_ADAPTER_STORAGE_SLOT,
+    ERC165_MAP_IANY2EVMMESSAGERECEIVERV2_SLOT,
     ERC165_MAP_IANY2EVMMESSAGERECEIVER_SLOT
 } from "@lattice/crosschain/libraries/CCIPGatewayAdapterLib.sol";
 import {
@@ -298,6 +299,7 @@ import {IVaultCore} from "@lattice/interfaces/IVaultCore.sol";
 import {IVestingWallet} from "@lattice/interfaces/IVestingWallet.sol";
 import {IVotes} from "@lattice/interfaces/IVotes.sol";
 import {IAny2EVMMessageReceiver} from "@lattice/interfaces/external/IAny2EVMMessageReceiver.sol";
+import {IAny2EVMMessageReceiverV2} from "@lattice/interfaces/external/IAny2EVMMessageReceiverV2.sol";
 import {IERC7786GatewaySource} from "@lattice/interfaces/external/IERC7786.sol";
 import {IReceiver} from "@lattice/interfaces/external/IReceiver.sol";
 
@@ -1296,6 +1298,18 @@ contract StorageSlotVerificationTest is Test {
         );
     }
 
+    /// @dev CCIP also registers IAny2EVMMessageReceiverV2 for CCV-enabled lanes. Solidity's type().interfaceId
+    ///      excludes inherited functions, so the V2 id is the getCCVsAndFinalityConfig selector (0x1bfc84d0).
+    function test_Erc165MapIAny2EVMMessageReceiverV2Slot() public pure {
+        bytes4 interfaceId = type(IAny2EVMMessageReceiverV2).interfaceId;
+        assertEq(interfaceId, bytes4(0x1bfc84d0), "IAny2EVMMessageReceiverV2 interfaceId comment is stale");
+        assertEq(
+            ERC165_MAP_IANY2EVMMESSAGERECEIVERV2_SLOT,
+            _erc165MapSlot(interfaceId, ERC165_STORAGE_LOCATION),
+            "ERC165 IAny2EVMMessageReceiverV2 map slot mismatch"
+        );
+    }
+
     // ---- security ----
 
     function test_Erc165MapIPausableSlot() public pure {
@@ -1598,7 +1612,7 @@ contract StorageSlotVerificationTest is Test {
     }
 
     function _allErc165MapSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](69);
+        slots = new bytes32[](70);
         uint256 i;
         // access
         slots[i++] = ERC165_MAP_IACCESSCONTROL_SLOT;
@@ -1665,12 +1679,13 @@ contract StorageSlotVerificationTest is Test {
         slots[i++] = ERC165_MAP_IRECEIVER_SLOT;
         slots[i++] = ERC165_MAP_ITWAPORACLE_SLOT;
         // crosschain (both bridges share the IBridgeFungible interface → one map slot; the four gateways
-        // share the IERC7786GatewaySource slot; CCIP additionally registers IAny2EVMMessageReceiver so the
-        // CCIP router's pre-delivery supportsInterface check passes → one extra unique map slot)
+        // share the IERC7786GatewaySource slot; CCIP additionally registers IAny2EVMMessageReceiver (V1,
+        // required for delivery) and IAny2EVMMessageReceiverV2 (CCV lanes) → two extra unique map slots)
         slots[i++] = ERC165_MAP_ICROSSCHAINLINK_SLOT;
         slots[i++] = ERC165_MAP_IBRIDGEFUNGIBLE_SLOT;
         slots[i++] = ERC165_MAP_IERC7786GATEWAYSOURCE_SLOT;
         slots[i++] = ERC165_MAP_IANY2EVMMESSAGERECEIVER_SLOT;
+        slots[i++] = ERC165_MAP_IANY2EVMMESSAGERECEIVERV2_SLOT;
         // security
         slots[i++] = ERC165_MAP_IPAUSABLE_SLOT;
         slots[i++] = ERC165_MAP_IREENTRANCYGUARD_SLOT;
