@@ -273,6 +273,15 @@ and a row here.
 |---|---|---|---|---|---|
 | MarketplaceZone | `lattice.storage.MarketplaceZone` | `0xe77b1be4866c120f9cf1b3ac35bdd606adb1b331ef4d920e5a5993f90d992800` | `ZoneInterface` (Seaport) | `0x3822a094` | `0xeb1ff41651f419b216c82171945cb548e85f1f021f4de7ac580f5665f8fc8360` |
 
+### Accounts
+
+| Module | ERC-7201 namespace | Storage slot (hex) | Interface | interfaceId | ERC-165 map slot (hex) |
+|---|---|---|---|---|---|
+| SignerECDSA | `lattice.storage.SignerECDSA` | `0xaf273bb17bfc30760e1328e155348f6f93ceff3d7bff7b90236de96aa1fbbe00` | — (internal signer seam) | — | — |
+| ERC4337Validation | `lattice.storage.ERC4337Validation` | `0x63f3a16063eb3400d0c49a9883f78e71c0740febe009dfe0af21003612fc2a00` | `IAccount` (no ERC-165 id) | — | — |
+| ERC1271Signature | — (stateless) | — | `IERC1271` | `0x1626ba7e` | `0x13edcf2102dbcbe8afc6b8b590ac545a2ed12e9a15726b4c8ab7a3fb938ab3b7` |
+| ERC7821Executor | — (stateless) | — | `IERC7821` (Lattice-local id) | `0x39922547` | `0x78c1401e50bfb6276de93dc8c11adfbefc06555e8af1f7964bc4c850cbbd171c` |
+
 ### Security
 
 | Module | ERC-7201 namespace | Storage slot (hex) | Interface | interfaceId | ERC-165 map slot (hex) |
@@ -315,7 +324,7 @@ and a row here.
 
 ---
 
-**Counts:** 69 storage-bearing modules (69 unique ERC-7201 slots) and 71 ERC-165 interface
+**Counts:** 71 storage-bearing modules (71 unique ERC-7201 slots) and 73 ERC-165 interface
 map slots (the privacy track adds the stateful `ERC6538Registry` — one ERC-7201 slot and one
 `IERC6538Registry` ERC-165 slot — plus the stateless `ERC5564Announcer` — no ERC-7201 slot, one
 `IERC5564Announcer` ERC-165 slot — and the stateless `Groth16Verifier` — no ERC-7201 slot, one
@@ -355,4 +364,12 @@ add five ERC-7201 slots and five ERC-165 map slots. Randomness/automation adapte
 into dedicated `src/randomness/` + `src/automation/` namespaces). `ChainlinkCREAdapter` is a Chainlink CRE
 workflow-report receiver (push model): it adds one ERC-7201 storage slot and registers the **canonical**
 `type(IReceiver).interfaceId` (`0x805f2132`) — rather than its Lattice-specific `IChainlinkCREAdapter` id —
-so CRE tooling detects the receiver via ERC-165, matching the ERC-721/ERC-1155 canonical-id precedent.
+so CRE tooling detects the receiver via ERC-165, matching the ERC-721/ERC-1155 canonical-id precedent. The
+accounts track (#56 v1) adds the smart-account entry surface as four facets: `SignerECDSA` (single-owner
+ECDSA signer) and `ERC4337Validation` (configurable-EntryPoint `validateUserOp`) each add one ERC-7201 slot
+but no ERC-165 map slot — the signer is an internal seam and ERC-4337 defines no ERC-165 id; the stateless
+`ERC1271Signature` and `ERC7821Executor` add no ERC-7201 slot and one ERC-165 map slot each — `IERC1271`
+(`0x1626ba7e`) and a Lattice-local `type(IERC7821).interfaceId` (`0x39922547`; ERC-7821 defines no canonical
+id, discovery is via `supportsExecutionMode`) — so accounts adds two ERC-7201 slots and two new ERC-165 map
+slots. The owner-based ECDSA signer backs both `validateUserOp` and `isValidSignature`; ERC-7739 defensive
+rehashing on the 1271 path is a planned hardening (compose audited Solady/OZ, do not hand-roll).

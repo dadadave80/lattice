@@ -1,0 +1,85 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.30;
+
+import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
+import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
+import {ERC4337ValidationLib} from "@lattice/accounts/libraries/ERC4337ValidationLib.sol";
+import {IERC7821Executor} from "@lattice/interfaces/IERC7821Executor.sol";
+import {Call} from "@lattice/interfaces/external/IERC7821.sol";
+
+//*//////////////////////////////////////////////////////////////////////////
+//                                  STORAGE
+//////////////////////////////////////////////////////////////////////////*//
+
+/// @dev ERC-165 map slot for `IERC7821` (`type(IERC7821).interfaceId == 0x39922547`, the XOR of
+///      `execute(bytes32,bytes)` ^ `supportsExecutionMode(bytes32)`; ERC-7821 defines no canonical id).
+///      `keccak256(abi.encode(bytes4(0x39922547), 0x9ca7f3e2e2bfb15fdf072b85dde92837cddacee6cf2f6b38cd06c9457c1c4200))`.
+bytes32 constant ERC165_MAP_IERC7821_SLOT = 0x78c1401e50bfb6276de93dc8c11adfbefc06555e8af1f7964bc4c850cbbd171c;
+
+/// @dev ERC-7821 mode ids. First byte `0x01` = batch; bytes [6:10) `0x78210001` mark the opData variant.
+///      Only the first 10 bytes are significant (`_MODE_HEAD_MASK`); the trailing modePayload is ignored.
+bytes32 constant _MODE_HEAD_MASK = 0xffffffffffffffffffff00000000000000000000000000000000000000000000;
+bytes32 constant _BATCH_HEAD = 0x0100000000000000000000000000000000000000000000000000000000000000;
+bytes32 constant _BATCH_OPDATA_HEAD = 0x0100000000007821000100000000000000000000000000000000000000000000;
+
+/// @title ERC7821ExecutorLib
+/// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @notice Logic for the ERC-7821 minimal batch executor facet. Stateless: authorization is derived from the
+///         caller (self / configured EntryPoint / `DEFAULT_ADMIN_ROLE`) and the calls run from the account.
+/// @dev Supports the single-batch mode and the single-batch + opData mode (opData is decoded but unused in v1
+///      — signed-opData authorization is a v2 follow-on). A failing inner call bubbles its revert data.
+library ERC7821ExecutorLib {
+    /// @notice Registers the `IERC7821` ERC-165 id.
+    function __ERC7821Executor_init() internal {
+        InitializableLib.checkInitializing(InitializableLib.initializableSlot());
+        registerInterface();
+    }
+
+    /// @notice Writes `true` to the ERC-165 map slot for `IERC7821`.
+    function registerInterface() internal {
+        assembly ("memory-safe") {
+            sstore(ERC165_MAP_IERC7821_SLOT, true)
+        }
+    }
+
+    /// @notice Whether `mode` is a supported batch execution mode (with or without opData).
+    function supportsExecutionMode(bytes32 mode) internal pure returns (bool) {
+        bytes32 head = mode & _MODE_HEAD_MASK;
+        return head == _BATCH_HEAD || head == _BATCH_OPDATA_HEAD;
+    }
+
+    /// @notice Executes a batch of calls per `mode`. Reverts {UnsupportedExecutionMode} on an unknown mode and
+    ///         {UnauthorizedExecutor} if the caller is not self / the EntryPoint / an admin.
+    function execute(bytes32 mode, bytes calldata executionData) internal {
+        bytes32 head = mode & _MODE_HEAD_MASK;
+        bool hasOpData;
+        if (head == _BATCH_OPDATA_HEAD) hasOpData = true;
+        else if (head != _BATCH_HEAD) revert IERC7821Executor.UnsupportedExecutionMode(mode);
+
+        _authorize();
+
+        Call[] memory calls;
+        if (hasOpData) (calls,) = abi.decode(executionData, (Call[], bytes));
+        else calls = abi.decode(executionData, (Call[]));
+
+        uint256 n = calls.length;
+        for (uint256 i; i < n; ++i) {
+            Call memory c = calls[i];
+            (bool ok, bytes memory ret) = c.target.call{value: c.value}(c.data);
+            if (!ok) {
+                assembly ("memory-safe") {
+                    revert(add(ret, 0x20), mload(ret))
+                }
+            }
+        }
+        emit IERC7821Executor.BatchExecuted(mode, n);
+    }
+
+    /// @notice Reverts unless the caller is the account itself, the configured EntryPoint, or an admin.
+    function _authorize() private view {
+        if (msg.sender == address(this)) return;
+        if (msg.sender == ERC4337ValidationLib.entryPoint()) return;
+        if (AccessControlLib.hasRole(DEFAULT_ADMIN_ROLE, msg.sender)) return;
+        revert IERC7821Executor.UnauthorizedExecutor(msg.sender);
+    }
+}
