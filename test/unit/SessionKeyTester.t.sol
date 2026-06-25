@@ -5,8 +5,9 @@ import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {SessionKey} from "@lattice/accounts/SessionKey.sol";
-import {ANY_SELECTOR, ANY_TARGET, SessionKeyLib} from "@lattice/accounts/libraries/SessionKeyLib.sol";
+import {ANY_SELECTOR, ANY_TARGET, NATIVE_TOKEN, SessionKeyLib} from "@lattice/accounts/libraries/SessionKeyLib.sol";
 import {ISessionKey} from "@lattice/interfaces/ISessionKey.sol";
+import {Call} from "@lattice/interfaces/external/IERC7821.sol";
 import {Test} from "forge-std/Test.sol";
 
 contract MockSessionKey is AccessControl, SessionKey {
@@ -16,6 +17,11 @@ contract MockSessionKey is AccessControl, SessionKey {
         AccessControlLib.__AccessControl_init(admin_);
         SessionKeyLib.__SessionKey_init();
         InitializableLib.postInitializer(s);
+    }
+
+    /// @dev Exposes the executor-side authorization hook (policy + spend accrual) for direct unit coverage.
+    function authorize(address key, Call[] calldata calls) external {
+        SessionKeyLib.authorizeBatch(key, calls);
     }
 }
 
@@ -125,5 +131,101 @@ contract SessionKeyTester is Test {
         vm.prank(address(0xBAD));
         vm.expectRevert();
         acct.revokeSessionKey(key);
+    }
+
+    // ---- spend limits ----
+
+    address tok = address(0x70CE);
+    address dest = address(0xD357);
+
+    function _transferCall(address token, address to, uint256 amount) internal pure returns (Call[] memory c) {
+        c = new Call[](1);
+        c[0] = Call({target: token, value: 0, data: abi.encodeWithSignature("transfer(address,uint256)", to, amount)});
+    }
+
+    function _transferFromCall(address token, address from, address to, uint256 amount)
+        internal
+        pure
+        returns (Call[] memory c)
+    {
+        c = new Call[](1);
+        c[0] = Call({
+            target: token,
+            value: 0,
+            data: abi.encodeWithSignature("transferFrom(address,address,uint256)", from, to, amount)
+        });
+    }
+
+    function test_SetSpendLimit() public {
+        vm.expectEmit(true, true, false, true, address(acct));
+        emit ISessionKey.SpendLimitSet(key, tok, 100);
+        vm.prank(admin);
+        acct.setSpendLimit(key, tok, 100);
+        (uint256 cap, uint256 spent) = acct.spendLimit(key, tok);
+        assertEq(cap, 100, "cap");
+        assertEq(spent, 0, "spent");
+    }
+
+    function test_SetSpendLimit_RevertNotAdmin() public {
+        vm.prank(address(0xBAD));
+        vm.expectRevert();
+        acct.setSpendLimit(key, tok, 100);
+    }
+
+    function test_Spend_WithinCap() public {
+        _register(key, 0, until, _perm(tok, 0xa9059cbb));
+        vm.prank(admin);
+        acct.setSpendLimit(key, tok, 100);
+        acct.authorize(key, _transferCall(tok, dest, 60));
+        (, uint256 spent) = acct.spendLimit(key, tok);
+        assertEq(spent, 60, "spent accrued");
+    }
+
+    function test_Spend_Exceeds() public {
+        _register(key, 0, until, _perm(tok, 0xa9059cbb));
+        vm.prank(admin);
+        acct.setSpendLimit(key, tok, 100);
+        vm.expectRevert(abi.encodeWithSelector(ISessionKey.SpendLimitExceeded.selector, key, tok, 100, 150));
+        acct.authorize(key, _transferCall(tok, dest, 150));
+    }
+
+    function test_Spend_AccumulatesAcrossBatches() public {
+        _register(key, 0, until, _perm(tok, 0xa9059cbb));
+        vm.prank(admin);
+        acct.setSpendLimit(key, tok, 100);
+        acct.authorize(key, _transferCall(tok, dest, 60));
+        vm.expectRevert(abi.encodeWithSelector(ISessionKey.SpendLimitExceeded.selector, key, tok, 100, 110));
+        acct.authorize(key, _transferCall(tok, dest, 50));
+    }
+
+    function test_Spend_UnconfiguredIsUncapped() public {
+        _register(key, 0, until, _perm(tok, 0xa9059cbb));
+        acct.authorize(key, _transferCall(tok, dest, 1e30)); // no limit set → no revert
+        (uint256 cap, uint256 spent) = acct.spendLimit(key, tok);
+        assertEq(cap, 0, "uncapped");
+        assertEq(spent, 0, "untracked");
+    }
+
+    function test_Spend_Native() public {
+        _register(key, 0, until, _perm(ANY_TARGET, ANY_SELECTOR));
+        vm.prank(admin);
+        acct.setSpendLimit(key, NATIVE_TOKEN, 1 ether);
+        Call[] memory calls = new Call[](1);
+        calls[0] = Call({target: dest, value: 0.5 ether, data: ""});
+        acct.authorize(key, calls);
+        (, uint256 spent) = acct.spendLimit(key, NATIVE_TOKEN);
+        assertEq(spent, 0.5 ether, "native spent accrued");
+    }
+
+    function test_Spend_OnlyTransferFromSelf() public {
+        _register(key, 0, until, _perm(tok, 0x23b872dd));
+        vm.prank(admin);
+        acct.setSpendLimit(key, tok, 100);
+        acct.authorize(key, _transferFromCall(tok, address(acct), dest, 40)); // from self → counts
+        (, uint256 spent) = acct.spendLimit(key, tok);
+        assertEq(spent, 40, "self transferFrom counted");
+        acct.authorize(key, _transferFromCall(tok, address(0x9999), dest, 50)); // from other → ignored
+        (, uint256 spent2) = acct.spendLimit(key, tok);
+        assertEq(spent2, 40, "non-self transferFrom not counted");
     }
 }

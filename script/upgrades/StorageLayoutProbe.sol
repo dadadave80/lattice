@@ -351,9 +351,16 @@ contract StorageLayoutProbe {
         uint48 validUntil;
     }
 
+    struct SpendLimit {
+        uint256 cap;
+        uint256 spent;
+        bool configured;
+    }
+
     struct SessionKeyStorage {
         mapping(address key => SessionKeyData) _keys;
         mapping(address key => mapping(bytes32 permHash => bool)) _allowed;
+        mapping(address key => mapping(address token => SpendLimit)) _spend;
     }
 
     /// @dev Verbatim mirror of `PythEntropyAdapterLib.PythEntropyAdapterStorage`
