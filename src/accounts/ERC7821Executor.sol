@@ -10,7 +10,8 @@ import {IERC7821} from "@lattice/interfaces/external/IERC7821.sol";
 ///         the account itself, the configured ERC-4337 EntryPoint, or a `DEFAULT_ADMIN_ROLE` holder.
 /// @dev Stateless delegator — logic lives in {ERC7821ExecutorLib}. Following the ERC-7821 reference, execution
 ///      is gated by authorization only (no reentrancy lock, which would block legitimate self-re-entrant
-///      flows). Signed-`opData` authorization is a v2 follow-on; v1 decodes but ignores `opData`.
+///      flows). An unauthorized caller may still execute a batch the owner signed off-chain via the opData
+///      envelope (replay-protected by the account nonce).
 /// @custom:lattice-version 0.1.0
 /// @custom:lattice-source ERC-7821
 contract ERC7821Executor is IERC7821 {

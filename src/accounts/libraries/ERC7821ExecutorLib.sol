@@ -4,8 +4,11 @@ pragma solidity ^0.8.30;
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
 import {ERC4337ValidationLib} from "@lattice/accounts/libraries/ERC4337ValidationLib.sol";
+import {SignerECDSALib} from "@lattice/accounts/libraries/SignerECDSALib.sol";
 import {IERC7821Executor} from "@lattice/interfaces/IERC7821Executor.sol";
 import {Call} from "@lattice/interfaces/external/IERC7821.sol";
+import {EIP712Lib} from "@lattice/utils/libraries/EIP712Lib.sol";
+import {NoncesLib} from "@lattice/utils/libraries/NoncesLib.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
 //                                  STORAGE
@@ -22,12 +25,18 @@ bytes32 constant _MODE_HEAD_MASK = 0xffffffffffffffffffff00000000000000000000000
 bytes32 constant _BATCH_HEAD = 0x0100000000000000000000000000000000000000000000000000000000000000;
 bytes32 constant _BATCH_OPDATA_HEAD = 0x0100000000007821000100000000000000000000000000000000000000000000;
 
+/// @dev EIP-712 type hash for a relayer-submitted (signed-opData) batch authorization.
+///      `keccak256("Execute(bytes32 mode,bytes32 callsHash,uint256 nonce)")`.
+bytes32 constant EXECUTE_TYPEHASH = 0xb63526befbf5b966e64c36954eb12c5d09096e0b0a8a06e90bd0c857b842ebcb;
+
 /// @title ERC7821ExecutorLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice Logic for the ERC-7821 minimal batch executor facet. Stateless: authorization is derived from the
 ///         caller (self / configured EntryPoint / `DEFAULT_ADMIN_ROLE`) and the calls run from the account.
-/// @dev Supports the single-batch mode and the single-batch + opData mode (opData is decoded but unused in v1
-///      — signed-opData authorization is a v2 follow-on). A failing inner call bubbles its revert data.
+/// @dev Authorization is either direct (caller is self / EntryPoint / `DEFAULT_ADMIN_ROLE`) or, for the opData
+///      mode, an owner-signed EIP-712 `Execute` envelope `abi.encode(nonce, signature)` that lets a relayer
+///      submit a batch the owner authorized off-chain (replay-protected via the shared {NoncesLib}). A failing
+///      inner call bubbles its revert data.
 library ERC7821ExecutorLib {
     /// @notice Registers the `IERC7821` ERC-165 id.
     function __ERC7821Executor_init() internal {
@@ -56,11 +65,16 @@ library ERC7821ExecutorLib {
         if (head == _BATCH_OPDATA_HEAD) hasOpData = true;
         else if (head != _BATCH_HEAD) revert IERC7821Executor.UnsupportedExecutionMode(mode);
 
-        _authorize();
-
         Call[] memory calls;
-        if (hasOpData) (calls,) = abi.decode(executionData, (Call[], bytes));
+        bytes memory opData;
+        if (hasOpData) (calls, opData) = abi.decode(executionData, (Call[], bytes));
         else calls = abi.decode(executionData, (Call[]));
+
+        // Direct caller (self / EntryPoint / admin), or an owner-signed opData envelope.
+        if (!_isDirectlyAuthorized()) {
+            if (!hasOpData || opData.length == 0) revert IERC7821Executor.UnauthorizedExecutor(msg.sender);
+            _verifySignedOpData(mode, calls, opData);
+        }
 
         uint256 n = calls.length;
         for (uint256 i; i < n; ++i) {
@@ -75,11 +89,21 @@ library ERC7821ExecutorLib {
         emit IERC7821Executor.BatchExecuted(mode, n);
     }
 
-    /// @notice Reverts unless the caller is the account itself, the configured EntryPoint, or an admin.
-    function _authorize() private view {
-        if (msg.sender == address(this)) return;
-        if (msg.sender == ERC4337ValidationLib.entryPoint()) return;
-        if (AccessControlLib.hasRole(DEFAULT_ADMIN_ROLE, msg.sender)) return;
-        revert IERC7821Executor.UnauthorizedExecutor(msg.sender);
+    /// @notice True if the caller is the account itself, the configured EntryPoint, or an admin.
+    function _isDirectlyAuthorized() private view returns (bool) {
+        return msg.sender == address(this) || msg.sender == ERC4337ValidationLib.entryPoint()
+            || AccessControlLib.hasRole(DEFAULT_ADMIN_ROLE, msg.sender);
+    }
+
+    /// @notice Verifies an owner-signed, nonce-protected EIP-712 `Execute` authorization for this batch, then
+    ///         consumes the account nonce. Reverts {UnauthorizedExecutor} on a bad signature; the nonce check
+    ///         reverts `InvalidAccountNonce` on replay / wrong nonce.
+    function _verifySignedOpData(bytes32 mode, Call[] memory calls, bytes memory opData) private {
+        (uint256 nonce, bytes memory signature) = abi.decode(opData, (uint256, bytes));
+        bytes32 structHash = keccak256(abi.encode(EXECUTE_TYPEHASH, mode, keccak256(abi.encode(calls)), nonce));
+        if (!SignerECDSALib.isValidSignatureNow(EIP712Lib.hashTypedDataV4(structHash), signature)) {
+            revert IERC7821Executor.UnauthorizedExecutor(msg.sender);
+        }
+        NoncesLib.useCheckedNonce(address(this), nonce);
     }
 }
