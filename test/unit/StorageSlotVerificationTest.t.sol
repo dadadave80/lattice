@@ -54,6 +54,7 @@ import {
 import {ERC165_MAP_IERC1271_SLOT} from "@lattice/accounts/libraries/ERC1271SignatureLib.sol";
 import {ERC4337_VALIDATION_STORAGE_SLOT} from "@lattice/accounts/libraries/ERC4337ValidationLib.sol";
 import {ERC165_MAP_IERC7821_SLOT} from "@lattice/accounts/libraries/ERC7821ExecutorLib.sol";
+import {SESSION_KEY_STORAGE_SLOT} from "@lattice/accounts/libraries/SessionKeyLib.sol";
 import {SIGNER_ECDSA_STORAGE_SLOT} from "@lattice/accounts/libraries/SignerECDSALib.sol";
 import {
     AXELAR_GATEWAY_ADAPTER_STORAGE_SLOT,
@@ -746,6 +747,12 @@ contract StorageSlotVerificationTest is Test {
             ERC4337_VALIDATION_STORAGE_SLOT,
             _erc7201Slot("lattice.storage.ERC4337Validation"),
             "ERC4337Validation storage slot mismatch"
+        );
+    }
+
+    function test_SessionKeyStorageSlot() public pure {
+        assertEq(
+            SESSION_KEY_STORAGE_SLOT, _erc7201Slot("lattice.storage.SessionKey"), "SessionKey storage slot mismatch"
         );
     }
 
@@ -1598,7 +1605,7 @@ contract StorageSlotVerificationTest is Test {
     // ======================== Slot inventories ========================
 
     function _allStorageSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](71);
+        slots = new bytes32[](72);
         uint256 i;
         // access
         slots[i++] = ACCESS_CONTROL_STORAGE_SLOT;
@@ -1663,6 +1670,7 @@ contract StorageSlotVerificationTest is Test {
         // accounts
         slots[i++] = SIGNER_ECDSA_STORAGE_SLOT;
         slots[i++] = ERC4337_VALIDATION_STORAGE_SLOT;
+        slots[i++] = SESSION_KEY_STORAGE_SLOT;
         // security
         slots[i++] = PAUSABLE_STORAGE_SLOT;
         slots[i++] = REENTRANCY_GUARD_STORAGE_SLOT;

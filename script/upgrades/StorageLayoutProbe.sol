@@ -344,6 +344,18 @@ contract StorageLayoutProbe {
         address _entryPoint;
     }
 
+    /// @dev Verbatim mirror of `SessionKeyLib.SessionKeyData` / `SessionKeyStorage`
+    ///      (`@custom:storage-location erc7201:lattice.storage.SessionKey`). Append-only.
+    struct SessionKeyData {
+        uint48 validAfter;
+        uint48 validUntil;
+    }
+
+    struct SessionKeyStorage {
+        mapping(address key => SessionKeyData) _keys;
+        mapping(address key => mapping(bytes32 permHash => bool)) _allowed;
+    }
+
     /// @dev Verbatim mirror of `PythEntropyAdapterLib.PythEntropyAdapterStorage`
     ///      (`@custom:storage-location erc7201:lattice.storage.PythEntropyAdapter`). Append-only.
     struct PythEntropyAdapterStorage {
@@ -436,4 +448,5 @@ contract StorageLayoutProbe {
     MarketplaceZoneStorage internal _unusedMarketplaceZone;
     SignerECDSAStorage internal _unusedSignerECDSA;
     ERC4337ValidationStorage internal _unusedERC4337Validation;
+    SessionKeyStorage internal _unusedSessionKey;
 }

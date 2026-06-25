@@ -13,6 +13,7 @@ import {ERC7821ExecutorLib} from "@lattice/accounts/libraries/ERC7821ExecutorLib
 import {SignerECDSALib} from "@lattice/accounts/libraries/SignerECDSALib.sol";
 import {IERC7821Executor} from "@lattice/interfaces/IERC7821Executor.sol";
 import {INonces} from "@lattice/interfaces/INonces.sol";
+import {ISessionKey} from "@lattice/interfaces/ISessionKey.sol";
 import {Call} from "@lattice/interfaces/external/IERC7821.sol";
 import {EIP712Lib} from "@lattice/utils/libraries/EIP712Lib.sol";
 import {NoncesLib} from "@lattice/utils/libraries/NoncesLib.sol";
@@ -184,11 +185,12 @@ contract ERC7821ExecutorTester is Test {
         assertEq(target.value(), 77, "owner-signed batch not executed by relayer");
     }
 
-    function test_SignedOpData_RejectsBadSig() public {
+    /// @dev A non-owner signer is treated as a session key; an unregistered one is rejected.
+    function test_SignedOpData_RejectsUnknownSigner() public {
         Call[] memory calls = _oneCall(1, 0);
-        bytes memory opData = _signOpData(strangerPk, BATCH_OPDATA, calls, 0); // not the owner
+        bytes memory opData = _signOpData(strangerPk, BATCH_OPDATA, calls, 0); // neither owner nor a session key
         vm.prank(stranger);
-        vm.expectRevert(abi.encodeWithSelector(IERC7821Executor.UnauthorizedExecutor.selector, stranger));
+        vm.expectRevert(abi.encodeWithSelector(ISessionKey.SessionKeyNotActive.selector, stranger));
         account.execute(BATCH_OPDATA, abi.encode(calls, opData));
     }
 
