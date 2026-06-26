@@ -7,7 +7,7 @@ import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {AccountSigner} from "@lattice/accounts/AccountSigner.sol";
 import {ERC4337Validation} from "@lattice/accounts/ERC4337Validation.sol";
 import {AccountSignerLib} from "@lattice/accounts/libraries/AccountSignerLib.sol";
-import {ERC4337ValidationLib} from "@lattice/accounts/libraries/ERC4337ValidationLib.sol";
+import {DEFAULT_ENTRY_POINT, ERC4337ValidationLib} from "@lattice/accounts/libraries/ERC4337ValidationLib.sol";
 import {IERC4337Validation} from "@lattice/interfaces/IERC4337Validation.sol";
 import {IAccount, PackedUserOperation} from "@lattice/interfaces/external/IAccount.sol";
 import {Test} from "forge-std/Test.sol";
@@ -38,6 +38,11 @@ contract ERC4337ValidationTester is Test {
         (stranger, strangerPk) = makeAddrAndKey("stranger");
         account = new MockERC4337();
         account.initialize(admin, ownerAddr, entryPointAddr);
+    }
+
+    /// @dev The blessed default EntryPoint is finalized (#58 item 9) to ERC-4337 v0.9 (OZ default singleton).
+    function test_DefaultEntryPointIsV09() public pure {
+        assertEq(DEFAULT_ENTRY_POINT, 0x433709009B8330FDa32311DF1C2AFA402eD8D009, "default EntryPoint != v0.9");
     }
 
     function _ethHash(bytes32 h) internal pure returns (bytes32) {
