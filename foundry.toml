@@ -86,7 +86,6 @@ katana = "${KATANA_RPC_URL}"               # katana           747474
 boba = "${BOBA_RPC_URL}"                   # boba             288
 xdc = "${XDC_RPC_URL}"                     # xdc              50
 superseed = "${SUPERSEED_RPC_URL}"         # superseed        5330
-swellchain = "${SWELLCHAIN_RPC_URL}"       # swellchain       1923
 # --- testnets ---
 sepolia = "${SEPOLIA_RPC_URL}"                          # ethereum sepolia   11155111
 holesky = "${HOLESKY_RPC_URL}"                          # ethereum holesky   17000
