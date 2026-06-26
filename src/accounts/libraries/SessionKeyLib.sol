@@ -3,6 +3,7 @@ pragma solidity ^0.8.30;
 
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
+import {IERC20} from "@lattice/interfaces/IERC20.sol";
 import {ISessionKey} from "@lattice/interfaces/ISessionKey.sol";
 import {Call} from "@lattice/interfaces/external/IERC7821.sol";
 
@@ -24,6 +25,11 @@ address constant NATIVE_TOKEN = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
 /// @dev ERC-20 selectors used for direct-transfer spend accounting.
 bytes4 constant _ERC20_TRANSFER = 0xa9059cbb; // transfer(address,uint256)
 bytes4 constant _ERC20_TRANSFER_FROM = 0x23b872dd; // transferFrom(address,address,uint256)
+
+/// @dev Sentinel for a capped token whose balance cannot be read (non-contract / reverting / malformed
+///      `balanceOf`). Balance-diff then defers to the calldata sum for that token instead of reverting and
+///      bricking the key. A real balance can never equal this (token supplies are far below `2^256 - 1`).
+uint256 constant _UNMEASURABLE = type(uint256).max;
 
 /// @notice Per-key validity window. `validUntil == 0` means unregistered/revoked.
 struct SessionKeyData {
@@ -47,6 +53,9 @@ struct SessionKeyStorage {
     mapping(address key => mapping(bytes32 permHash => bool)) _allowed;
     /// @notice Per-token cumulative spend caps. APPEND-ONLY.
     mapping(address key => mapping(address token => SpendLimit)) _spend;
+    /// @notice Distinct tokens with a configured cap per key, so a batch's actual balance decrease can be
+    ///         settled against every capped token (balance-diff accounting). APPEND-ONLY.
+    mapping(address key => address[]) _cappedTokens;
 }
 
 /// @title SessionKeyLib
@@ -54,7 +63,15 @@ struct SessionKeyStorage {
 /// @notice Logic + ERC-7201 storage for scoped, expiring session keys. A registered key authorizes a batch
 ///         through the ERC-7821 executor's signed-`opData` path when the key is within its validity window and
 ///         every call matches its `(target, selector)` allowlist.
-/// @dev v1 enforces expiry + allowlist (with `ANY_*` wildcards). Per-token spend limits are a planned follow-on.
+/// @dev Enforces expiry + allowlist (with `ANY_*` wildcards) + per-token cumulative spend caps. Spend is the
+///      `max` of (a) the sum of direct ERC-20 / native transfers in the calldata (accrued up-front in
+///      {authorizeBatch}, so a direct over-spend fails fast) and (b) the account's actual balance decrease over
+///      the batch ({snapshotSpend} before / {settleSpend} after), which also captures INDIRECT spends —
+///      `approve` + a third-party pull, a DeFi deposit, a non-standard token — that no transfer selector reveals.
+///      Semantics: the calldata sum is the FLOOR, so direct transfers are always capped regardless of how the
+///      token reports balances; a net-zero round-trip (tokens out and back) is not a spend; a token whose
+///      `balanceOf` reverts / is a non-contract falls back to calldata-only (never bricks the key); and a
+///      rebasing/exotic `balanceOf` only makes the INDIRECT measurement approximate (direct stays exact).
 library SessionKeyLib {
     function sessionKeyStorage() internal pure returns (SessionKeyStorage storage $) {
         assembly {
@@ -101,7 +118,9 @@ library SessionKeyLib {
     /// @notice Sets a cumulative spend cap for `(key, token)`, resetting the spent counter. Admin only.
     function setSpendLimit(address key, address token, uint256 cap) internal {
         AccessControlLib.checkRole(DEFAULT_ADMIN_ROLE);
-        SpendLimit storage l = sessionKeyStorage()._spend[key][token];
+        SessionKeyStorage storage $ = sessionKeyStorage();
+        SpendLimit storage l = $._spend[key][token];
+        if (!l.configured) $._cappedTokens[key].push(token); // first cap for this token → enumerate it
         l.cap = cap;
         l.spent = 0;
         l.configured = true;
@@ -154,6 +173,39 @@ library SessionKeyLib {
         }
     }
 
+    /// @notice Snapshots the account's balance of every capped token for `key`, taken BEFORE the batch runs.
+    ///         Pairs with {settleSpend}. Returns parallel arrays (token, balanceBefore).
+    function snapshotSpend(address key) internal view returns (address[] memory tokens, uint256[] memory before) {
+        tokens = sessionKeyStorage()._cappedTokens[key];
+        uint256 n = tokens.length;
+        before = new uint256[](n);
+        for (uint256 i; i < n; ++i) {
+            before[i] = _accountBalance(tokens[i]);
+        }
+    }
+
+    /// @notice Settles spend AFTER the batch: for each capped token, tops up the already-accrued calldata sum to
+    ///         the token's actual balance decrease, so the recorded spend is `max(calldataSum, balanceDecrease)`.
+    ///         Reverts {SpendLimitExceeded} if the true spend breaches the cap (rolling back the whole batch).
+    /// @param key The session key whose caps to settle.
+    /// @param tokens The capped tokens from {snapshotSpend}.
+    /// @param before The matching pre-batch balances from {snapshotSpend}.
+    /// @param calls The executed batch (to recompute the already-accrued calldata sum per token).
+    function settleSpend(address key, address[] memory tokens, uint256[] memory before, Call[] memory calls) internal {
+        uint256 n = tokens.length;
+        for (uint256 i; i < n; ++i) {
+            address token = tokens[i];
+            uint256 beforeBal = before[i];
+            uint256 afterBal = _accountBalance(token);
+            // Skip unmeasurable tokens (the calldata sum already governs them) and any non-decrease (a net-zero
+            // round-trip is not a spend). A reentrant nested batch only over-counts here, never under — fail-safe.
+            if (beforeBal == _UNMEASURABLE || afterBal == _UNMEASURABLE || beforeBal <= afterBal) continue;
+            uint256 decrease = beforeBal - afterBal;
+            uint256 cdSum = _calldataSum(token, calls); // already accrued in authorizeBatch
+            if (decrease > cdSum) _accrueSpend(key, token, decrease - cdSum); // top up to the true spend
+        }
+    }
+
     //*//////////////////////////////////////////////////////////////////////////
     //                                  INTERNAL
     //////////////////////////////////////////////////////////////////////////*//
@@ -188,6 +240,31 @@ library SessionKeyLib {
             if (from == address(this)) return (target, amount);
         }
         return (target, 0);
+    }
+
+    /// @notice The account's balance of `token`, or {_UNMEASURABLE} if it cannot be read (non-contract,
+    ///         reverting, or malformed `balanceOf`). The native sentinel resolves to the account's ETH balance
+    ///         and is always measurable. An unmeasurable token defers to calldata-sum accounting rather than
+    ///         bricking the key — the low-level staticcall never reverts up.
+    function _accountBalance(address token) private view returns (uint256) {
+        if (token == NATIVE_TOKEN) return address(this).balance;
+        (bool ok, bytes memory ret) = token.staticcall(abi.encodeCall(IERC20.balanceOf, (address(this))));
+        return (ok && ret.length >= 32) ? abi.decode(ret, (uint256)) : _UNMEASURABLE;
+    }
+
+    /// @notice Sum of direct ERC-20 / native transfers of `token` in `calls` — the amount {authorizeBatch}
+    ///         already accrued for it, used as the floor when topping up to the balance decrease.
+    function _calldataSum(address token, Call[] memory calls) private view returns (uint256 sum) {
+        uint256 n = calls.length;
+        for (uint256 i; i < n; ++i) {
+            Call memory c = calls[i];
+            if (token == NATIVE_TOKEN) {
+                sum += c.value;
+            } else {
+                (address t, uint256 amount) = _decodeErc20Spend(c.target, c.data);
+                if (t == token) sum += amount;
+            }
+        }
     }
 
     function _permHash(address target, bytes4 selector) private pure returns (bytes32) {
