@@ -1,0 +1,133 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.30;
+
+import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
+import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
+import {ERC7821ExecutorLib} from "@lattice/accounts/libraries/ERC7821ExecutorLib.sol";
+import {IModuleConfig} from "@lattice/interfaces/IModuleConfig.sol";
+import {IERC7579Module, IERC7579ModuleConfig, MODULE_TYPE_EXECUTOR} from "@lattice/interfaces/external/IERC7579.sol";
+import {Call} from "@lattice/interfaces/external/IERC7821.sol";
+
+//*//////////////////////////////////////////////////////////////////////////
+//                                  STORAGE
+//////////////////////////////////////////////////////////////////////////*//
+
+/// @dev `keccak256(abi.encode(uint256(keccak256("lattice.storage.ERC7579ModuleConfig")) - 1)) & ~bytes32(uint256(0xff))`.
+bytes32 constant ERC7579_MODULE_CONFIG_STORAGE_SLOT =
+    0xf5855f8dc57bbb54955d6871575c862d7a11401119f5a873c91e7ac60628d800;
+
+/// @dev ERC-165 map slots for the three OZ ERC-7579 interfaces the Diamond supports (this facet + the
+///      `ERC7821Executor` facet's `execute`/`supportsExecutionMode` complete `IERC7579Execution` and
+///      `IERC7579AccountConfig`). `keccak256(abi.encode(bytes4(id), 0x9ca7f3e2…c1c4200))`.
+bytes32 constant ERC165_MAP_IERC7579EXECUTION_SLOT = 0x1adc25256844eecf70d1111a7d897d059d6c39bccc33e2fe1bcdd0aa07e45227; // 0x3f3f9537
+bytes32 constant ERC165_MAP_IERC7579ACCOUNTCONFIG_SLOT =
+    0xca27659497801bbd07af0889ead6ea5a1a9b8739438e7af51464f7082b08ae43; // 0xbe1d6cf6
+bytes32 constant ERC165_MAP_IERC7579MODULECONFIG_SLOT =
+    0x1c2e0d7514777ddafe41add8aefc1cb6319fbc463de0c6eb0b00433efbdbdd41; // 0x232dbb4a
+
+/// @notice ERC-7201 namespaced storage for the ERC-7579 module registry.
+/// @custom:storage-location erc7201:lattice.storage.ERC7579ModuleConfig
+struct ERC7579ModuleConfigStorage {
+    /// @notice Installed modules per type: `_installed[moduleTypeId][module]`. APPEND-ONLY.
+    mapping(uint256 moduleTypeId => mapping(address module => bool installed)) _installed;
+}
+
+/// @title ERC7579ModuleConfigLib
+/// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @notice Logic + ERC-7201 storage for the ERC-7579 module registry. v1 supports EXECUTOR modules (type 2):
+///         an installed executor may drive a batch on the account via `executeFromExecutor`.
+/// @dev `diamondCut` remains the selector authority ("modules-as-facets"); this registry tracks installed
+///      executor modules and gates `executeFromExecutor`. `execute` / `supportsExecutionMode` (completing the
+///      ERC-7579 surface) live on the `ERC7821Executor` facet. Validator/hook/fallback consumption is a v2.
+library ERC7579ModuleConfigLib {
+    /// @dev ERC-7579 account identifier (`vendorname.accountname.semver`).
+    string private constant _ACCOUNT_ID = "lattice.diamond-account.0.1.0";
+
+    function erc7579ModuleConfigStorage() internal pure returns (ERC7579ModuleConfigStorage storage $) {
+        assembly {
+            $.slot := ERC7579_MODULE_CONFIG_STORAGE_SLOT
+        }
+    }
+
+    /// @notice Registers the three ERC-7579 interface ids the Diamond supports.
+    function __ERC7579ModuleConfig_init() internal {
+        InitializableLib.checkInitializing(InitializableLib.initializableSlot());
+        registerInterfaces();
+    }
+
+    function registerInterfaces() internal {
+        assembly ("memory-safe") {
+            sstore(ERC165_MAP_IERC7579EXECUTION_SLOT, true)
+            sstore(ERC165_MAP_IERC7579ACCOUNTCONFIG_SLOT, true)
+            sstore(ERC165_MAP_IERC7579MODULECONFIG_SLOT, true)
+        }
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                                   READS
+    //////////////////////////////////////////////////////////////////////////*//
+
+    function accountId() internal pure returns (string memory) {
+        return _ACCOUNT_ID;
+    }
+
+    function supportsModule(uint256 moduleTypeId) internal pure returns (bool) {
+        return moduleTypeId == MODULE_TYPE_EXECUTOR;
+    }
+
+    function isModuleInstalled(uint256 moduleTypeId, address module, bytes calldata) internal view returns (bool) {
+        return erc7579ModuleConfigStorage()._installed[moduleTypeId][module];
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                                 LIFECYCLE
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice Installs `module` as `moduleTypeId`. Caller must be the account itself or an admin; the module
+    ///         must report the type via `isModuleType`. Calls `module.onInstall(initData)`.
+    function installModule(uint256 moduleTypeId, address module, bytes calldata initData) internal {
+        _authorizeConfig();
+        if (!supportsModule(moduleTypeId)) revert IModuleConfig.UnsupportedModuleType(moduleTypeId);
+        if (!IERC7579Module(module).isModuleType(moduleTypeId)) {
+            revert IModuleConfig.InvalidModuleForType(module, moduleTypeId);
+        }
+        mapping(address => bool) storage installed = erc7579ModuleConfigStorage()._installed[moduleTypeId];
+        if (installed[module]) revert IModuleConfig.ModuleAlreadyInstalled(moduleTypeId, module);
+        installed[module] = true;
+        IERC7579Module(module).onInstall(initData);
+        emit IERC7579ModuleConfig.ModuleInstalled(moduleTypeId, module);
+    }
+
+    /// @notice Uninstalls `module`. Caller must be the account itself or an admin. Calls `onUninstall`.
+    function uninstallModule(uint256 moduleTypeId, address module, bytes calldata deInitData) internal {
+        _authorizeConfig();
+        mapping(address => bool) storage installed = erc7579ModuleConfigStorage()._installed[moduleTypeId];
+        if (!installed[module]) revert IModuleConfig.ModuleNotInstalled(moduleTypeId, module);
+        installed[module] = false;
+        IERC7579Module(module).onUninstall(deInitData);
+        emit IERC7579ModuleConfig.ModuleUninstalled(moduleTypeId, module);
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                                 EXECUTION
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice Runs a batch on behalf of `msg.sender`, which must be an installed executor module (type 2).
+    function executeFromExecutor(bytes32 mode, bytes calldata executionCalldata) internal returns (bytes[] memory) {
+        if (!erc7579ModuleConfigStorage()._installed[MODULE_TYPE_EXECUTOR][msg.sender]) {
+            revert IModuleConfig.NotInstalledExecutor(msg.sender);
+        }
+        (Call[] memory calls,) = ERC7821ExecutorLib.decodeBatch(mode, executionCalldata);
+        return ERC7821ExecutorLib.runCalls(calls);
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                                  INTERNAL
+    //////////////////////////////////////////////////////////////////////////*//
+
+    function _authorizeConfig() private view {
+        if (msg.sender != address(this) && !AccessControlLib.hasRole(DEFAULT_ADMIN_ROLE, msg.sender)) {
+            revert IModuleConfig.UnauthorizedModuleConfig(msg.sender);
+        }
+    }
+}
