@@ -58,7 +58,6 @@ somnia = "${SOMNIA_RPC_URL}"               # somnia           5031
 apechain = "${APECHAIN_RPC_URL}"           # apechain         33139
 tempo = "${TEMPO_RPC_URL}"                 # tempo            4217
 megaeth = "${MEGAETH_RPC_URL}"             # megaeth          4326
-polygon-zkevm = "${POLYGON_ZKEVM_RPC_URL}" # polygon zkevm    1101
 cronos = "${CRONOS_RPC_URL}"               # cronos           25
 moonbeam = "${MOONBEAM_RPC_URL}"           # moonbeam         1284
 moonriver = "${MOONRIVER_RPC_URL}"         # moonriver        1285
@@ -122,6 +121,29 @@ somnia-testnet = "${SOMNIA_TESTNET_RPC_URL}"            # somnia testnet     503
 apechain-curtis = "${APECHAIN_CURTIS_RPC_URL}"          # apechain curtis    33111
 tempo-testnet = "${TEMPO_TESTNET_RPC_URL}"              # tempo testnet      42431
 hoodi = "${HOODI_RPC_URL}"                              # ethereum hoodi     560048
+cronos-testnet = "${CRONOS_TESTNET_RPC_URL}"            # cronos testnet     338
+moonbase-alpha = "${MOONBASE_ALPHA_RPC_URL}"            # moonbase alpha     1287
+kava-testnet = "${KAVA_TESTNET_RPC_URL}"                # kava testnet       2221
+filecoin-calibration = "${FILECOIN_CALIBRATION_RPC_URL}" # filecoin calib.    314159
+manta-sepolia = "${MANTA_SEPOLIA_RPC_URL}"              # manta sepolia      3441006
+opbnb-testnet = "${OPBNB_TESTNET_RPC_URL}"              # opbnb testnet      5611
+taiko-hekla = "${TAIKO_HEKLA_RPC_URL}"                  # taiko hekla        167009
+immutable-testnet = "${IMMUTABLE_TESTNET_RPC_URL}"      # immutable testnet  13473
+abstract-testnet = "${ABSTRACT_TESTNET_RPC_URL}"        # abstract testnet   11124
+soneium-minato = "${SONEIUM_MINATO_RPC_URL}"            # soneium minato     1946
+story-aeneid = "${STORY_AENEID_RPC_URL}"                # story aeneid       1315
+flow-testnet = "${FLOW_TESTNET_RPC_URL}"                # flow testnet       545
+rootstock-testnet = "${ROOTSTOCK_TESTNET_RPC_URL}"      # rootstock testnet  31
+flare-coston2 = "${FLARE_COSTON2_RPC_URL}"              # flare coston2      114
+songbird-coston = "${SONGBIRD_COSTON_RPC_URL}"          # songbird coston    16
+etherlink-ghostnet = "${ETHERLINK_GHOSTNET_RPC_URL}"    # etherlink ghostnet 128123
+bob-sepolia = "${BOB_SEPOLIA_RPC_URL}"                  # bob sepolia        808813
+ronin-saigon = "${RONIN_SAIGON_RPC_URL}"                # ronin saigon       202601
+astar-shibuya = "${ASTAR_SHIBUYA_RPC_URL}"              # astar shibuya      81
+boba-sepolia = "${BOBA_SEPOLIA_RPC_URL}"                # boba sepolia       28882
+gravity-testnet = "${GRAVITY_TESTNET_RPC_URL}"          # gravity testnet    13505
+superseed-sepolia = "${SUPERSEED_SEPOLIA_RPC_URL}"      # superseed sepolia  53302
+xdc-apothem = "${XDC_APOTHEM_RPC_URL}"                  # xdc apothem        51
 
 [etherscan]
 mainnet = { key = "${ETHERSCAN_API_KEY}" }
