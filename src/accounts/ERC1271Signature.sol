@@ -7,7 +7,7 @@ import {IERC1271} from "@lattice/interfaces/external/IERC1271.sol";
 /// @title ERC1271Signature
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice ERC-1271 contract-signature facet. Lets the Diamond declare a signature valid (for permits,
-///         Seaport orders, Permit2) when it is a valid signature from the configured `SignerECDSA` owner.
+///         Seaport orders, Permit2) when it is a valid signature from the configured `AccountSigner` owner.
 /// @dev Stateless delegator — logic lives in {ERC1271SignatureLib}. Implements ERC-7739 defensive rehashing:
 ///      accepts only nested `TypedDataSign` / `PersonalSign` envelopes bound to this account's EIP-712 domain
 ///      (a plain signature over the raw hash is rejected), defeating cross-account replay.
