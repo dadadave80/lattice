@@ -36,3 +36,25 @@ even though the zk-kit.solidity repository is MIT-licensed (Ethereum Foundation
 preserved as-is — faithful to upstream, not an injected edit. It holds only the
 public BN254 scalar-field constant; Lattice's own libraries define
 `SNARK_SCALAR_FIELD` first-party (MIT) rather than importing that file.
+
+## Account passkey crypto (`src/utils/libraries/`)
+
+The smart-account signer (`src/accounts/SignerECDSA`) verifies P256 (secp256r1) and
+WebAuthn signatures using audited Solady crypto. Unlike the byte-identical `lib/`
+vendors above, these are vendored into `src/utils/libraries/` with **minimal
+mechanical edits** — see each file's header for the exact delta:
+
+| Path | Upstream | Version / commit | License |
+|------|----------|------------------|---------|
+| `src/utils/libraries/P256.sol` | Vectorized/solady `src/utils/P256.sol` | ab96a830e705de13e0f58cfaefadab4ac8257655 | MIT |
+| `src/utils/libraries/Base64.sol` | Vectorized/solady `src/utils/Base64.sol` | ab96a830e705de13e0f58cfaefadab4ac8257655 | MIT |
+| `src/utils/libraries/WebAuthn.sol` | Vectorized/solady `src/utils/WebAuthn.sol` | ab96a830e705de13e0f58cfaefadab4ac8257655 | MIT |
+
+Edits are limited to: pragma pinned to `^0.8.30`; and in `WebAuthn.sol`, the two
+import paths rewritten to `@lattice/utils/libraries/{Base64,P256}.sol`. No logic or
+assembly is changed. They are excluded from `forge fmt` (`[fmt] ignore` in
+`foundry.toml`) so they stay diffable against upstream — re-sync from the pinned
+commit rather than patching here. P256 verification uses the RIP-7212 precompile
+(`0x100`) with a deployed-verifier fallback (`0x…D01eA45F9eFD5c54f037Fa57Ea1a`); on
+a chain lacking both, passkey verification returns `false`, so gate passkey
+enablement per target chain.

@@ -51,6 +51,7 @@ import {
 } from "@lattice/tokens/libraries/ERC721URIStorageLib.sol";
 
 // governance
+import {ACCOUNT_SIGNER_STORAGE_SLOT} from "@lattice/accounts/libraries/AccountSignerLib.sol";
 import {ERC165_MAP_IERC1271_SLOT} from "@lattice/accounts/libraries/ERC1271SignatureLib.sol";
 import {ERC4337_VALIDATION_STORAGE_SLOT} from "@lattice/accounts/libraries/ERC4337ValidationLib.sol";
 import {
@@ -61,7 +62,6 @@ import {
 } from "@lattice/accounts/libraries/ERC7579ModuleConfigLib.sol";
 import {ERC165_MAP_IERC7821_SLOT} from "@lattice/accounts/libraries/ERC7821ExecutorLib.sol";
 import {SESSION_KEY_STORAGE_SLOT} from "@lattice/accounts/libraries/SessionKeyLib.sol";
-import {SIGNER_ECDSA_STORAGE_SLOT} from "@lattice/accounts/libraries/SignerECDSALib.sol";
 import {
     AXELAR_GATEWAY_ADAPTER_STORAGE_SLOT,
     ERC165_MAP_IERC7786GATEWAYSOURCE_SLOT
@@ -747,9 +747,11 @@ contract StorageSlotVerificationTest is Test {
 
     // ---- accounts ----
 
-    function test_SignerECDSAStorageSlot() public pure {
+    function test_AccountSignerStorageSlot() public pure {
         assertEq(
-            SIGNER_ECDSA_STORAGE_SLOT, _erc7201Slot("lattice.storage.SignerECDSA"), "SignerECDSA storage slot mismatch"
+            ACCOUNT_SIGNER_STORAGE_SLOT,
+            _erc7201Slot("lattice.storage.AccountSigner"),
+            "AccountSigner storage slot mismatch"
         );
     }
 
@@ -1717,7 +1719,7 @@ contract StorageSlotVerificationTest is Test {
         // markets
         slots[i++] = MARKETPLACE_ZONE_STORAGE_SLOT;
         // accounts
-        slots[i++] = SIGNER_ECDSA_STORAGE_SLOT;
+        slots[i++] = ACCOUNT_SIGNER_STORAGE_SLOT;
         slots[i++] = ERC4337_VALIDATION_STORAGE_SLOT;
         slots[i++] = SESSION_KEY_STORAGE_SLOT;
         slots[i++] = ERC7579_MODULE_CONFIG_STORAGE_SLOT;
@@ -1821,7 +1823,7 @@ contract StorageSlotVerificationTest is Test {
         slots[i++] = ERC165_MAP_IANY2EVMMESSAGERECEIVERV2_SLOT;
         // markets
         slots[i++] = ERC165_MAP_ZONEINTERFACE_SLOT;
-        // accounts (ERC1271Signature + ERC7821Executor; SignerECDSA/ERC4337Validation register no ERC-165 id)
+        // accounts (ERC1271Signature + ERC7821Executor; AccountSigner/ERC4337Validation register no ERC-165 id)
         slots[i++] = ERC165_MAP_IERC1271_SLOT;
         slots[i++] = ERC165_MAP_IERC7821_SLOT;
         slots[i++] = ERC165_MAP_IERC7579EXECUTION_SLOT;

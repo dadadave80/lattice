@@ -33,3 +33,9 @@ fail_on_revert = false
 
 [fmt]
 sort_imports = true
+# Vendored-verbatim audited crypto (Solady) — keep byte-exact, do not reformat. Re-sync from upstream.
+ignore = [
+    "src/utils/libraries/P256.sol",
+    "src/utils/libraries/Base64.sol",
+    "src/utils/libraries/WebAuthn.sol",
+]

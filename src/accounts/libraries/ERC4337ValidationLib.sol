@@ -3,7 +3,7 @@ pragma solidity ^0.8.30;
 
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
-import {SignerECDSALib} from "@lattice/accounts/libraries/SignerECDSALib.sol";
+import {AccountSignerLib} from "@lattice/accounts/libraries/AccountSignerLib.sol";
 import {IERC4337Validation} from "@lattice/interfaces/IERC4337Validation.sol";
 import {IAccount, PackedUserOperation} from "@lattice/interfaces/external/IAccount.sol";
 import {ECDSA} from "@lattice/utils/libraries/ECDSA.sol";
@@ -29,10 +29,10 @@ struct ERC4337ValidationStorage {
 /// @title ERC4337ValidationLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice Logic + ERC-7201 storage for the ERC-4337 validation facet. `validateUserOp` is gated to the
-///         configured EntryPoint, validates the user op signature against the `SignerECDSA` owner, and pays
+///         configured EntryPoint, validates the user op signature against the `AccountSigner` owner, and pays
 ///         the EntryPoint its prefund.
 /// @dev The user op signature is checked over the EIP-191 (`personal_sign`) digest of `userOpHash`
-///      (SimpleAccount convention), routed through `SignerECDSALib` so the owner may be an EOA or an
+///      (SimpleAccount convention), routed through `AccountSignerLib` so the owner may be an EOA or an
 ///      ERC-1271 contract. Per ERC-4337, a signature mismatch returns `SIG_VALIDATION_FAILED` (1) rather than
 ///      reverting; only an unauthorized caller reverts. No `validUntil`/`validAfter` time-range in v1.
 library ERC4337ValidationLib {
@@ -78,7 +78,7 @@ library ERC4337ValidationLib {
         if (msg.sender != erc4337ValidationStorage()._entryPoint) {
             revert IERC4337Validation.NotFromEntryPoint(msg.sender);
         }
-        bool ok = SignerECDSALib.isValidSignatureNow(ECDSA.toEthSignedMessageHash(userOpHash), userOp.signature);
+        bool ok = AccountSignerLib.isValidSignatureNow(ECDSA.toEthSignedMessageHash(userOpHash), userOp.signature);
         validationData = ok ? SIG_VALIDATION_SUCCESS : SIG_VALIDATION_FAILED;
         _payPrefund(missingAccountFunds);
     }

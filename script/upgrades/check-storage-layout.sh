@@ -94,7 +94,7 @@ GUARDED_STRUCTS=(
     "ChainlinkAutomationAdapterStorage lattice.storage.ChainlinkAutomationAdapter"
     "ChainlinkCREAdapterStorage lattice.storage.ChainlinkCREAdapter"
     "MarketplaceZoneStorage lattice.storage.MarketplaceZone"
-    "SignerECDSAStorage lattice.storage.SignerECDSA"
+    "AccountSignerStorage lattice.storage.AccountSigner"
     "ERC4337ValidationStorage lattice.storage.ERC4337Validation"
     "SessionKeyStorage lattice.storage.SessionKey"
     "ERC7579ModuleConfigStorage lattice.storage.ERC7579ModuleConfig"

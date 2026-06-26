@@ -157,8 +157,12 @@
 0	0	_paused	t_bool
 1	0	_royaltyRequired	t_mapping(t_address,t_bool)
 
-### SignerECDSAStorage @ erc7201:lattice.storage.SignerECDSA (slot 0xaf273bb17bfc30760e1328e155348f6f93ceff3d7bff7b90236de96aa1fbbe00)
+### AccountSignerStorage @ erc7201:lattice.storage.AccountSigner (slot 0x0da6d1e39c7e91c8bb664dbc699f525d1effdcf9e745a754a440ffebe67feb00)
 0	0	_owner	t_address
+0	20	_signerType	t_enum(SignerType)73805
+0	21	_requireUV	t_bool
+1	0	_p256X	t_bytes32
+2	0	_p256Y	t_bytes32
 
 ### ERC4337ValidationStorage @ erc7201:lattice.storage.ERC4337Validation (slot 0x63f3a16063eb3400d0c49a9883f78e71c0740febe009dfe0af21003612fc2a00)
 0	0	_entryPoint	t_address
