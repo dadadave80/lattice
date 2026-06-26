@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {IAccountSigner} from "@lattice/interfaces/IAccountSigner.sol";
 import {ICommitReveal} from "@lattice/interfaces/ICommitReveal.sol";
 import {IUpgradeRegistry} from "@lattice/interfaces/IUpgradeRegistry.sol";
 import {IncrementalMerkleTreeLib} from "@lattice/privacy/libraries/IncrementalMerkleTreeLib.sol";
@@ -337,7 +336,7 @@ contract StorageLayoutProbe {
     ///      (`@custom:storage-location erc7201:lattice.storage.AccountSigner`). Append-only.
     struct AccountSignerStorage {
         address _owner;
-        IAccountSigner.SignerType _signerType;
+        uint8 _signerType;
         bool _requireUV;
         bytes32 _p256X;
         bytes32 _p256Y;
