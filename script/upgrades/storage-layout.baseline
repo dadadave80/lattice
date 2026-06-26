@@ -171,6 +171,7 @@
 0	0	_keys	t_mapping(t_address,t_struct(SessionKeyData)_storage)
 1	0	_allowed	t_mapping(t_address,t_mapping(t_bytes32,t_bool))
 2	0	_spend	t_mapping(t_address,t_mapping(t_address,t_struct(SpendLimit)_storage))
+3	0	_cappedTokens	t_mapping(t_address,t_array(t_address)dyn_storage)
 
 ### ERC7579ModuleConfigStorage @ erc7201:lattice.storage.ERC7579ModuleConfig (slot 0xf5855f8dc57bbb54955d6871575c862d7a11401119f5a873c91e7ac60628d800)
 0	0	_installed	t_mapping(t_uint256,t_mapping(t_address,t_bool))

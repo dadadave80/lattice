@@ -46,9 +46,16 @@ contract Target {
 
 contract MockToken {
     uint256 public transfers;
+    mapping(address => uint256) public balanceOf;
 
-    function transfer(address, uint256) external returns (bool) {
+    function mint(address to, uint256 amt) external {
+        balanceOf[to] += amt;
+    }
+
+    function transfer(address to, uint256 amt) external returns (bool) {
         transfers++;
+        balanceOf[msg.sender] -= amt;
+        balanceOf[to] += amt;
         return true;
     }
 }
@@ -78,6 +85,7 @@ contract SessionKeyExecutionIntegration is Test {
         account.initialize(admin, ownerAddr, address(0xE47));
         target = new Target();
         token = new MockToken();
+        token.mint(address(account), 1000); // fund the account so balance-diff spend accounting can measure
         vm.warp(1);
     }
 
