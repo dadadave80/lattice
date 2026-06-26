@@ -20,8 +20,10 @@ bytes32 constant ACCOUNT_SIGNER_STORAGE_SLOT = 0x0da6d1e39c7e91c8bb664dbc699f525
 struct AccountSignerStorage {
     /// @notice ECDSA owner (EOA or ERC-1271). Authoritative only when `_signerType == ECDSA`. APPEND-ONLY.
     address _owner;
-    /// @notice Active signature scheme (0 == ECDSA). Packs into slot 0 above `_owner`. APPEND-ONLY.
-    IAccountSigner.SignerType _signerType;
+    /// @notice Active signature scheme as `uint8(SignerType)` (0 == ECDSA). Stored as `uint8`, not the enum,
+    ///         so the inspected storage layout is reproducible (`t_enum` carries a non-deterministic solc AST
+    ///         id, which breaks the cross-machine layout baseline). Packs into slot 0 above `_owner`. APPEND-ONLY.
+    uint8 _signerType;
     /// @notice WebAuthn user-verification policy. Packs into slot 0. APPEND-ONLY.
     bool _requireUV;
     /// @notice P256/WebAuthn public key X. APPEND-ONLY.
@@ -62,7 +64,7 @@ library AccountSignerLib {
     }
 
     function signerType() internal view returns (IAccountSigner.SignerType) {
-        return accountSignerStorage()._signerType;
+        return IAccountSigner.SignerType(accountSignerStorage()._signerType);
     }
 
     function p256PublicKey() internal view returns (bytes32 x, bytes32 y) {
@@ -77,7 +79,7 @@ library AccountSignerLib {
     /// @notice True if `signature` is valid over `hash` for the configured owner (ECDSA / P256 / WebAuthn).
     function isValidSignatureNow(bytes32 hash, bytes memory signature) internal view returns (bool) {
         AccountSignerStorage storage $ = accountSignerStorage();
-        IAccountSigner.SignerType t = $._signerType;
+        IAccountSigner.SignerType t = IAccountSigner.SignerType($._signerType);
 
         if (t == IAccountSigner.SignerType.ECDSA) {
             // Legacy path, byte-for-byte: EOA (ECDSA, low-S enforced) or ERC-1271 owner.
@@ -133,13 +135,13 @@ library AccountSignerLib {
         AccountSignerStorage storage $ = accountSignerStorage();
         emit IAccountSigner.OwnerSet($._owner, newOwner);
         $._owner = newOwner;
-        $._signerType = IAccountSigner.SignerType.ECDSA; // re-arm the ECDSA path on owner change
+        $._signerType = uint8(IAccountSigner.SignerType.ECDSA); // re-arm the ECDSA path on owner change
     }
 
     function _setSigner(IAccountSigner.SignerType t, bytes32 x, bytes32 y, bool uv) private {
         if (x == bytes32(0) && y == bytes32(0)) revert IAccountSigner.InvalidP256Key();
         AccountSignerStorage storage $ = accountSignerStorage();
-        $._signerType = t;
+        $._signerType = uint8(t);
         $._p256X = x;
         $._p256Y = y;
         $._requireUV = uv;
