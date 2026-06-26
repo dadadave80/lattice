@@ -4,14 +4,14 @@ pragma solidity ^0.8.30;
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
+import {AccountSigner} from "@lattice/accounts/AccountSigner.sol";
 import {ERC4337Validation} from "@lattice/accounts/ERC4337Validation.sol";
 import {ERC7821Executor} from "@lattice/accounts/ERC7821Executor.sol";
 import {SessionKey} from "@lattice/accounts/SessionKey.sol";
-import {SignerECDSA} from "@lattice/accounts/SignerECDSA.sol";
+import {AccountSignerLib} from "@lattice/accounts/libraries/AccountSignerLib.sol";
 import {ERC4337ValidationLib} from "@lattice/accounts/libraries/ERC4337ValidationLib.sol";
 import {ERC7821ExecutorLib} from "@lattice/accounts/libraries/ERC7821ExecutorLib.sol";
 import {SessionKeyLib} from "@lattice/accounts/libraries/SessionKeyLib.sol";
-import {SignerECDSALib} from "@lattice/accounts/libraries/SignerECDSALib.sol";
 import {ISessionKey} from "@lattice/interfaces/ISessionKey.sol";
 import {Call} from "@lattice/interfaces/external/IERC7821.sol";
 import {EIP712Lib} from "@lattice/utils/libraries/EIP712Lib.sol";
@@ -19,14 +19,14 @@ import {NoncesLib} from "@lattice/utils/libraries/NoncesLib.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @dev Account assembled from the signer + executor + session-key facets (+ EIP-712 domain + nonces).
-contract LatticeAccount is AccessControl, SignerECDSA, ERC4337Validation, ERC7821Executor, SessionKey {
+contract LatticeAccount is AccessControl, AccountSigner, ERC4337Validation, ERC7821Executor, SessionKey {
     function initialize(address admin_, address owner_, address entryPoint_) external {
         bytes32 s = InitializableLib.initializableSlot();
         InitializableLib.preInitializer(s);
         AccessControlLib.__AccessControl_init(admin_);
         EIP712Lib.__EIP712_init("LatticeAccount", "1");
         NoncesLib.__Nonces_init();
-        SignerECDSALib.__SignerECDSA_init(owner_);
+        AccountSignerLib.__AccountSigner_init(owner_);
         ERC4337ValidationLib.__ERC4337Validation_init(entryPoint_);
         ERC7821ExecutorLib.__ERC7821Executor_init();
         SessionKeyLib.__SessionKey_init();

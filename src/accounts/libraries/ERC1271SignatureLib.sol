@@ -2,8 +2,8 @@
 pragma solidity ^0.8.30;
 
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
+import {AccountSignerLib} from "@lattice/accounts/libraries/AccountSignerLib.sol";
 import {ERC7739Lib} from "@lattice/accounts/libraries/ERC7739Lib.sol";
-import {SignerECDSALib} from "@lattice/accounts/libraries/SignerECDSALib.sol";
 import {EIP712Lib} from "@lattice/utils/libraries/EIP712Lib.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
@@ -26,7 +26,7 @@ bytes32 constant ERC7739_SENTINEL_HASH = 0x7739773977397739773977397739773977397
 /// @title ERC1271SignatureLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice Logic for the ERC-1271 contract-signature facet. Stateless — delegates verification to the
-///         configured owner via {SignerECDSALib}.
+///         configured owner via {AccountSignerLib}.
 /// @dev Implements ERC-7739: `isValidSignature` accepts only a nested `TypedDataSign` (EIP-712) or
 ///      `PersonalSign` envelope bound to this account's EIP-712 domain, so a signature is never valid for a
 ///      different account that shares the owner key. A plain signature over the raw `hash` is rejected. The
@@ -61,7 +61,7 @@ library ERC1271SignatureLib {
 
     /// @notice `personal_sign` path: the owner must have signed `hash` wrapped in this account's domain.
     function _isValidNestedPersonalSignSignature(bytes32 hash, bytes calldata signature) private view returns (bool) {
-        return SignerECDSALib.isValidSignatureNow(
+        return AccountSignerLib.isValidSignatureNow(
             EIP712Lib.hashTypedDataV4(ERC7739Lib.personalSignStructHash(hash)), signature
         );
     }
@@ -82,7 +82,7 @@ library ERC1271SignatureLib {
             EIP712Lib.eip712Domain();
 
         return hash == _toTypedDataHash(appSeparator, contentsHash) && bytes(contentsDescr).length != 0
-            && SignerECDSALib.isValidSignatureNow(
+            && AccountSignerLib.isValidSignatureNow(
             _toTypedDataHash(
             appSeparator,
             ERC7739Lib.typedDataSignStructHash(

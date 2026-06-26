@@ -5,12 +5,12 @@ import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
+import {AccountSigner} from "@lattice/accounts/AccountSigner.sol";
 import {ERC4337Validation} from "@lattice/accounts/ERC4337Validation.sol";
 import {ERC7821Executor} from "@lattice/accounts/ERC7821Executor.sol";
-import {SignerECDSA} from "@lattice/accounts/SignerECDSA.sol";
+import {AccountSignerLib} from "@lattice/accounts/libraries/AccountSignerLib.sol";
 import {ERC4337ValidationLib} from "@lattice/accounts/libraries/ERC4337ValidationLib.sol";
 import {ERC7821ExecutorLib} from "@lattice/accounts/libraries/ERC7821ExecutorLib.sol";
-import {SignerECDSALib} from "@lattice/accounts/libraries/SignerECDSALib.sol";
 import {IERC7821Executor} from "@lattice/interfaces/IERC7821Executor.sol";
 import {INonces} from "@lattice/interfaces/INonces.sol";
 import {ISessionKey} from "@lattice/interfaces/ISessionKey.sol";
@@ -20,14 +20,14 @@ import {NoncesLib} from "@lattice/utils/libraries/NoncesLib.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @dev Harness: executor + 4337 validation (EntryPoint auth) + signer + EIP-712 domain + nonces.
-contract MockERC7821 is AccessControl, SignerECDSA, ERC4337Validation, ERC7821Executor {
+contract MockERC7821 is AccessControl, AccountSigner, ERC4337Validation, ERC7821Executor {
     function initialize(address admin_, address owner_, address entryPoint_) external {
         bytes32 s = InitializableLib.initializableSlot();
         InitializableLib.preInitializer(s);
         AccessControlLib.__AccessControl_init(admin_);
         EIP712Lib.__EIP712_init("LatticeAccount", "1");
         NoncesLib.__Nonces_init();
-        SignerECDSALib.__SignerECDSA_init(owner_);
+        AccountSignerLib.__AccountSigner_init(owner_);
         ERC4337ValidationLib.__ERC4337Validation_init(entryPoint_);
         ERC7821ExecutorLib.__ERC7821Executor_init();
         InitializableLib.postInitializer(s);

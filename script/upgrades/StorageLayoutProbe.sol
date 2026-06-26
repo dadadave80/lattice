@@ -332,10 +332,14 @@ contract StorageLayoutProbe {
         mapping(address collection => bool required) _royaltyRequired;
     }
 
-    /// @dev Verbatim mirror of `SignerECDSALib.SignerECDSAStorage`
-    ///      (`@custom:storage-location erc7201:lattice.storage.SignerECDSA`). Append-only.
-    struct SignerECDSAStorage {
+    /// @dev Verbatim mirror of `AccountSignerLib.AccountSignerStorage`
+    ///      (`@custom:storage-location erc7201:lattice.storage.AccountSigner`). Append-only.
+    struct AccountSignerStorage {
         address _owner;
+        uint8 _signerType;
+        bool _requireUV;
+        bytes32 _p256X;
+        bytes32 _p256Y;
     }
 
     /// @dev Verbatim mirror of `ERC4337ValidationLib.ERC4337ValidationStorage`
@@ -459,7 +463,7 @@ contract StorageLayoutProbe {
     ChainlinkAutomationAdapterStorage internal _unusedChainlinkAutomationAdapter;
     ChainlinkCREAdapterStorage internal _unusedChainlinkCREAdapter;
     MarketplaceZoneStorage internal _unusedMarketplaceZone;
-    SignerECDSAStorage internal _unusedSignerECDSA;
+    AccountSignerStorage internal _unusedAccountSigner;
     ERC4337ValidationStorage internal _unusedERC4337Validation;
     SessionKeyStorage internal _unusedSessionKey;
     ERC7579ModuleConfigStorage internal _unusedERC7579ModuleConfig;
