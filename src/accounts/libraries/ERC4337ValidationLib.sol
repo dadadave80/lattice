@@ -19,6 +19,16 @@ bytes32 constant ERC4337_VALIDATION_STORAGE_SLOT = 0x63f3a16063eb3400d0c49a9883f
 uint256 constant SIG_VALIDATION_SUCCESS = 0;
 uint256 constant SIG_VALIDATION_FAILED = 1;
 
+/// @dev The blessed default EntryPoint (#58 item 9): ERC-4337 **v0.9** (eth-infinitism singleton, deployed
+///      2025-12-22). The account stores its own EntryPoint (set at init, admin-mutable), so this is only the
+///      deploy default — never hardcoded into validation. Other canonical singletons, for reference:
+///      v0.7 = `0x0000000071727De22E5E9d8BAf0edAc6f37da032`,
+///      v0.8 = `0x4337084D9E255Ff0702461CF8895CE9E3b5Ff108` (native EIP-7702).
+///      NOTE: v0.9 redefined `nonReentrant` as `tx.origin == msg.sender && msg.sender.code.length == 0`, so
+///      `handleOps` is only callable as a top-level tx from a code-less EOA bundler — contract relayers and
+///      EIP-7702-delegated EOAs (`code.length == 23`) cannot submit ops directly.
+address constant DEFAULT_ENTRY_POINT = 0x433709009B8330FDa32311DF1C2AFA402eD8D009;
+
 /// @notice ERC-7201 namespaced storage for the ERC-4337 validation facet.
 /// @custom:storage-location erc7201:lattice.storage.ERC4337Validation
 struct ERC4337ValidationStorage {
