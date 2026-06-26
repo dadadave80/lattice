@@ -373,6 +373,15 @@ contract StorageLayoutProbe {
         mapping(uint256 moduleTypeId => mapping(address module => bool installed)) _installed;
     }
 
+    /// @dev Verbatim mirror of `ERC6551AccountLib.ERC6551AccountStorage`
+    ///      (`@custom:storage-location erc7201:lattice.storage.ERC6551Account`). Append-only.
+    struct ERC6551AccountStorage {
+        uint256 _chainId;
+        address _tokenContract;
+        uint256 _tokenId;
+        uint256 _state;
+    }
+
     /// @dev Verbatim mirror of `PythEntropyAdapterLib.PythEntropyAdapterStorage`
     ///      (`@custom:storage-location erc7201:lattice.storage.PythEntropyAdapter`). Append-only.
     struct PythEntropyAdapterStorage {
@@ -467,4 +476,5 @@ contract StorageLayoutProbe {
     ERC4337ValidationStorage internal _unusedERC4337Validation;
     SessionKeyStorage internal _unusedSessionKey;
     ERC7579ModuleConfigStorage internal _unusedERC7579ModuleConfig;
+    ERC6551AccountStorage internal _unusedERC6551Account;
 }
