@@ -45,6 +45,18 @@ fraxtal = "${FRAXTAL_RPC_URL}"             # fraxtal          252
 sonic = "${SONIC_RPC_URL}"                 # sonic            146
 unichain = "${UNICHAIN_RPC_URL}"           # unichain         130
 berachain = "${BERACHAIN_RPC_URL}"         # berachain        80094
+monad = "${MONAD_RPC_URL}"                 # monad            143
+hyperevm = "${HYPEREVM_RPC_URL}"           # hyperliquid evm  999
+worldchain = "${WORLDCHAIN_RPC_URL}"       # world chain      480
+sei = "${SEI_RPC_URL}"                     # sei              1329
+ink = "${INK_RPC_URL}"                     # ink              57073
+hedera = "${HEDERA_RPC_URL}"               # hedera (hashio)  295
+plasma = "${PLASMA_RPC_URL}"               # plasma           9745
+aurora = "${AURORA_RPC_URL}"               # aurora           1313161554
+lens = "${LENS_RPC_URL}"                   # lens             232
+somnia = "${SOMNIA_RPC_URL}"               # somnia           5031
+apechain = "${APECHAIN_RPC_URL}"           # apechain         33139
+tempo = "${TEMPO_RPC_URL}"                 # tempo            4217
 # --- testnets ---
 sepolia = "${SEPOLIA_RPC_URL}"                          # ethereum sepolia   11155111
 holesky = "${HOLESKY_RPC_URL}"                          # ethereum holesky   17000
@@ -65,6 +77,20 @@ celo-alfajores = "${CELO_ALFAJORES_RPC_URL}"            # celo alfajores     447
 lisk-sepolia = "${LISK_SEPOLIA_RPC_URL}"                # lisk sepolia       4202
 zora-sepolia = "${ZORA_SEPOLIA_RPC_URL}"                # zora sepolia       999999999
 unichain-sepolia = "${UNICHAIN_SEPOLIA_RPC_URL}"        # unichain sepolia   1301
+monad-testnet = "${MONAD_TESTNET_RPC_URL}"              # monad testnet      10143
+hyperevm-testnet = "${HYPEREVM_TESTNET_RPC_URL}"        # hyperevm testnet   998
+megaeth-testnet = "${MEGAETH_TESTNET_RPC_URL}"          # megaeth testnet    6343
+worldchain-sepolia = "${WORLDCHAIN_SEPOLIA_RPC_URL}"    # worldchain sepolia 4801
+sei-testnet = "${SEI_TESTNET_RPC_URL}"                  # sei testnet        1328
+ink-sepolia = "${INK_SEPOLIA_RPC_URL}"                  # ink sepolia        763373
+hedera-testnet = "${HEDERA_TESTNET_RPC_URL}"            # hedera testnet     296
+plasma-testnet = "${PLASMA_TESTNET_RPC_URL}"            # plasma testnet     9746
+aurora-testnet = "${AURORA_TESTNET_RPC_URL}"            # aurora testnet     1313161555
+lens-testnet = "${LENS_TESTNET_RPC_URL}"                # lens testnet       37111
+somnia-testnet = "${SOMNIA_TESTNET_RPC_URL}"            # somnia testnet     50312
+apechain-curtis = "${APECHAIN_CURTIS_RPC_URL}"          # apechain curtis    33111
+tempo-testnet = "${TEMPO_TESTNET_RPC_URL}"              # tempo testnet      42431
+hoodi = "${HOODI_RPC_URL}"                              # ethereum hoodi     560048
 
 [etherscan]
 mainnet = { key = "${ETHERSCAN_API_KEY}" }
