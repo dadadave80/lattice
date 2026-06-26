@@ -143,6 +143,7 @@ boba-sepolia = "${BOBA_SEPOLIA_RPC_URL}"                # boba sepolia       288
 gravity-testnet = "${GRAVITY_TESTNET_RPC_URL}"          # gravity testnet    13505
 superseed-sepolia = "${SUPERSEED_SEPOLIA_RPC_URL}"      # superseed sepolia  53302
 xdc-apothem = "${XDC_APOTHEM_RPC_URL}"                  # xdc apothem        51
+arc-testnet = "${ARC_TESTNET_RPC_URL}"                  # circle arc testnet 5042002
 
 [etherscan]
 mainnet = { key = "${ETHERSCAN_API_KEY}" }
