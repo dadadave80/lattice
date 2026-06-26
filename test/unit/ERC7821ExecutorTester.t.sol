@@ -8,9 +8,11 @@ import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {AccountSigner} from "@lattice/accounts/AccountSigner.sol";
 import {ERC4337Validation} from "@lattice/accounts/ERC4337Validation.sol";
 import {ERC7821Executor} from "@lattice/accounts/ERC7821Executor.sol";
+import {SessionKey} from "@lattice/accounts/SessionKey.sol";
 import {AccountSignerLib} from "@lattice/accounts/libraries/AccountSignerLib.sol";
 import {ERC4337ValidationLib} from "@lattice/accounts/libraries/ERC4337ValidationLib.sol";
 import {ERC7821ExecutorLib} from "@lattice/accounts/libraries/ERC7821ExecutorLib.sol";
+import {ANY_SELECTOR, ANY_TARGET, SessionKeyLib} from "@lattice/accounts/libraries/SessionKeyLib.sol";
 import {IERC7821Executor} from "@lattice/interfaces/IERC7821Executor.sol";
 import {INonces} from "@lattice/interfaces/INonces.sol";
 import {ISessionKey} from "@lattice/interfaces/ISessionKey.sol";
@@ -20,7 +22,7 @@ import {NoncesLib} from "@lattice/utils/libraries/NoncesLib.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @dev Harness: executor + 4337 validation (EntryPoint auth) + signer + EIP-712 domain + nonces.
-contract MockERC7821 is AccessControl, AccountSigner, ERC4337Validation, ERC7821Executor {
+contract MockERC7821 is AccessControl, AccountSigner, ERC4337Validation, ERC7821Executor, SessionKey {
     function initialize(address admin_, address owner_, address entryPoint_) external {
         bytes32 s = InitializableLib.initializableSlot();
         InitializableLib.preInitializer(s);
@@ -30,6 +32,7 @@ contract MockERC7821 is AccessControl, AccountSigner, ERC4337Validation, ERC7821
         AccountSignerLib.__AccountSigner_init(owner_);
         ERC4337ValidationLib.__ERC4337Validation_init(entryPoint_);
         ERC7821ExecutorLib.__ERC7821Executor_init();
+        SessionKeyLib.__SessionKey_init();
         InitializableLib.postInitializer(s);
     }
 
@@ -50,6 +53,61 @@ contract Target {
 
     function boom() external pure {
         revert("boom");
+    }
+}
+
+/// @dev Minimal ERC-20 for spend-accounting tests.
+contract MockERC20 {
+    mapping(address => uint256) public balanceOf;
+    mapping(address => mapping(address => uint256)) public allowance;
+
+    function mint(address to, uint256 amt) external {
+        balanceOf[to] += amt;
+    }
+
+    function approve(address sp, uint256 amt) external returns (bool) {
+        allowance[msg.sender][sp] = amt;
+        return true;
+    }
+
+    function transfer(address to, uint256 amt) external returns (bool) {
+        balanceOf[msg.sender] -= amt;
+        balanceOf[to] += amt;
+        return true;
+    }
+
+    function transferFrom(address from, address to, uint256 amt) external returns (bool) {
+        allowance[from][msg.sender] -= amt;
+        balanceOf[from] -= amt;
+        balanceOf[to] += amt;
+        return true;
+    }
+}
+
+/// @dev Pulls tokens from its caller via a prior approval — an INDIRECT spend (no transfer selector in the
+///      account's own batch calldata).
+contract Puller {
+    function pull(address token, uint256 amt) external {
+        MockERC20(token).transferFrom(msg.sender, address(this), amt);
+    }
+}
+
+/// @dev A token that transfers fine but whose `balanceOf` reverts — must not brick balance-diff settlement.
+contract RevertingBalanceToken {
+    mapping(address => uint256) internal _bal;
+
+    function mint(address to, uint256 amt) external {
+        _bal[to] += amt;
+    }
+
+    function transfer(address to, uint256 amt) external returns (bool) {
+        _bal[msg.sender] -= amt;
+        _bal[to] += amt;
+        return true;
+    }
+
+    function balanceOf(address) external pure returns (uint256) {
+        revert("no balanceOf");
     }
 }
 
@@ -210,5 +268,97 @@ contract ERC7821ExecutorTester is Test {
         vm.prank(stranger);
         vm.expectRevert(abi.encodeWithSelector(INonces.InvalidAccountNonce.selector, address(account), 0));
         account.execute(BATCH_OPDATA, abi.encode(calls, opData));
+    }
+
+    // ---- session-key spend limits: balance-diff accounting (follow-on) ----
+
+    address sessionKey;
+    uint256 sessionKeyPk;
+    MockERC20 token;
+    Puller puller;
+    address dest = address(0xD357);
+
+    /// @dev Registers a wildcard session key with a `cap` on `token`, and mints 1000 to the account.
+    function _setupSessionKey(uint256 cap) internal {
+        (sessionKey, sessionKeyPk) = makeAddrAndKey("sessionKey");
+        token = new MockERC20();
+        puller = new Puller();
+        token.mint(address(account), 1000);
+        ISessionKey.Permission[] memory perms = new ISessionKey.Permission[](1);
+        perms[0] = ISessionKey.Permission({target: ANY_TARGET, selector: ANY_SELECTOR});
+        vm.startPrank(admin);
+        account.registerSessionKey(sessionKey, 0, uint48(1_000_000), perms);
+        account.setSpendLimit(sessionKey, address(token), cap);
+        vm.stopPrank();
+    }
+
+    /// @dev A batch that spends `amt` of `token` INDIRECTLY: approve a puller, which then pulls — no transfer
+    ///      selector appears in the account's own calldata.
+    function _indirectSpendBatch(uint256 amt) internal view returns (Call[] memory calls) {
+        calls = new Call[](2);
+        calls[0] =
+            Call({target: address(token), value: 0, data: abi.encodeCall(MockERC20.approve, (address(puller), amt))});
+        calls[1] = Call({target: address(puller), value: 0, data: abi.encodeCall(Puller.pull, (address(token), amt))});
+    }
+
+    /// @notice The headline: an indirect over-spend that the calldata-sum alone would miss is caught by the
+    ///         balance decrease, and the whole batch reverts.
+    function test_SessionKey_IndirectSpend_Caught() public {
+        _setupSessionKey(50);
+        Call[] memory calls = _indirectSpendBatch(100); // 100 > cap, but only approve/pull selectors
+        bytes memory opData = _signOpData(sessionKeyPk, BATCH_OPDATA, calls, 0);
+        vm.prank(stranger);
+        vm.expectRevert(
+            abi.encodeWithSelector(ISessionKey.SpendLimitExceeded.selector, sessionKey, address(token), 50, 100)
+        );
+        account.execute(BATCH_OPDATA, abi.encode(calls, opData));
+        assertEq(token.balanceOf(address(account)), 1000, "over-spend not rolled back");
+    }
+
+    /// @notice An indirect spend within cap succeeds and accrues the balance decrease.
+    function test_SessionKey_IndirectSpend_WithinCap() public {
+        _setupSessionKey(100);
+        Call[] memory calls = _indirectSpendBatch(80);
+        bytes memory opData = _signOpData(sessionKeyPk, BATCH_OPDATA, calls, 0);
+        vm.prank(stranger);
+        account.execute(BATCH_OPDATA, abi.encode(calls, opData));
+        (, uint256 spent) = account.spendLimit(sessionKey, address(token));
+        assertEq(spent, 80, "balance-diff spend not accrued");
+        assertEq(token.balanceOf(address(account)), 920, "tokens not moved");
+    }
+
+    /// @notice A direct transfer is counted once — the calldata sum equals the balance decrease, no double-count.
+    function test_SessionKey_DirectSpend_NoDoubleCount() public {
+        _setupSessionKey(100);
+        Call[] memory calls = new Call[](1);
+        calls[0] = Call({target: address(token), value: 0, data: abi.encodeCall(MockERC20.transfer, (dest, 40))});
+        bytes memory opData = _signOpData(sessionKeyPk, BATCH_OPDATA, calls, 0);
+        vm.prank(stranger);
+        account.execute(BATCH_OPDATA, abi.encode(calls, opData));
+        (, uint256 spent) = account.spendLimit(sessionKey, address(token));
+        assertEq(spent, 40, "direct transfer double-counted");
+    }
+
+    /// @notice A capped token whose `balanceOf` reverts does NOT brick the key: snapshot/settle skip it and the
+    ///         calldata sum still caps direct transfers.
+    function test_SessionKey_RevertingBalanceOf_FallsBackToCalldata() public {
+        (sessionKey, sessionKeyPk) = makeAddrAndKey("sessionKey");
+        RevertingBalanceToken rtok = new RevertingBalanceToken();
+        rtok.mint(address(account), 1000);
+        ISessionKey.Permission[] memory perms = new ISessionKey.Permission[](1);
+        perms[0] = ISessionKey.Permission({target: ANY_TARGET, selector: ANY_SELECTOR});
+        vm.startPrank(admin);
+        account.registerSessionKey(sessionKey, 0, uint48(1_000_000), perms);
+        account.setSpendLimit(sessionKey, address(rtok), 100);
+        vm.stopPrank();
+
+        Call[] memory calls = new Call[](1);
+        calls[0] =
+            Call({target: address(rtok), value: 0, data: abi.encodeCall(RevertingBalanceToken.transfer, (dest, 40))});
+        bytes memory opData = _signOpData(sessionKeyPk, BATCH_OPDATA, calls, 0);
+        vm.prank(stranger);
+        account.execute(BATCH_OPDATA, abi.encode(calls, opData)); // must not revert on snapshot/settle
+        (, uint256 spent) = account.spendLimit(sessionKey, address(rtok));
+        assertEq(spent, 40, "calldata sum not accrued for an unmeasurable token");
     }
 }
