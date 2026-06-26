@@ -365,6 +365,7 @@ contract StorageLayoutProbe {
         mapping(address key => SessionKeyData) _keys;
         mapping(address key => mapping(bytes32 permHash => bool)) _allowed;
         mapping(address key => mapping(address token => SpendLimit)) _spend;
+        mapping(address key => address[]) _cappedTokens;
     }
 
     /// @dev Verbatim mirror of `ERC7579ModuleConfigLib.ERC7579ModuleConfigStorage`
