@@ -98,6 +98,7 @@ GUARDED_STRUCTS=(
     "ERC4337ValidationStorage lattice.storage.ERC4337Validation"
     "SessionKeyStorage lattice.storage.SessionKey"
     "ERC7579ModuleConfigStorage lattice.storage.ERC7579ModuleConfig"
+    "ERC6551AccountStorage lattice.storage.ERC6551Account"
 )
 
 command -v forge >/dev/null 2>&1 || { echo "ERROR: forge not found on PATH" >&2; exit 2; }

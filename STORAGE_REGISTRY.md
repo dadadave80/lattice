@@ -283,6 +283,7 @@ and a row here.
 | ERC7821Executor | — (stateless) | — | `IERC7821` (Lattice-local id) | `0x39922547` | `0x78c1401e50bfb6276de93dc8c11adfbefc06555e8af1f7964bc4c850cbbd171c` |
 | SessionKey | `lattice.storage.SessionKey` | `0xd72f45b3818762a6cc49804ed52c577908badd7fff8bbd7849829b4fc764ae00` | — (admin/policy) | — | — |
 | ERC7579ModuleConfig | `lattice.storage.ERC7579ModuleConfig` | `0xf5855f8dc57bbb54955d6871575c862d7a11401119f5a873c91e7ac60628d800` | `IERC7579Execution` / `IERC7579AccountConfig` / `IERC7579ModuleConfig` | `0x3f3f9537` / `0xbe1d6cf6` / `0x232dbb4a` | `0x1adc25256844eecf70d1111a7d897d059d6c39bccc33e2fe1bcdd0aa07e45227` / `0xca27659497801bbd07af0889ead6ea5a1a9b8739438e7af51464f7082b08ae43` / `0x1c2e0d7514777ddafe41add8aefc1cb6319fbc463de0c6eb0b00433efbdbdd41` |
+| ERC6551Account | `lattice.storage.ERC6551Account` | `0x5d509296c8693d1a2071f7702ffb166090e7cdcee4fc11a42df61b6a19026100` | `IERC6551Account` / `IERC6551Executable` | `0x6faff5f1` / `0x51945447` | `0xe5e50471a231013bea8f6034ec0b978814d697120ebd88e3624ed42959ed0a66` / `0x7119a8e42d55700f1f34f34e17ffb769e414497fcab2ff2004aa97c610742b4b` |
 
 ### Security
 
@@ -326,7 +327,7 @@ and a row here.
 
 ---
 
-**Counts:** 73 storage-bearing modules (73 unique ERC-7201 slots) and 76 ERC-165 interface
+**Counts:** 74 storage-bearing modules (74 unique ERC-7201 slots) and 78 ERC-165 interface
 map slots (the privacy track adds the stateful `ERC6538Registry` — one ERC-7201 slot and one
 `IERC6538Registry` ERC-165 slot — plus the stateless `ERC5564Announcer` — no ERC-7201 slot, one
 `IERC5564Announcer` ERC-165 slot — and the stateless `Groth16Verifier` — no ERC-7201 slot, one
@@ -378,6 +379,9 @@ ERC-165 map slots; the `SessionKey` module (scoped, expiring secondary keys for 
 path, #58 item 4) adds a third ERC-7201 slot and no ERC-165 id; the `ERC7579ModuleConfig` facet (ERC-7579
 executor modules + introspection, #58 item 2) adds a fourth ERC-7201 slot and registers the three OZ ERC-7579
 interface ids (`IERC7579Execution` `0x3f3f9537`, `IERC7579AccountConfig` `0xbe1d6cf6`, `IERC7579ModuleConfig`
-`0x232dbb4a`) — four ERC-7201 slots and five ERC-165 map slots total for accounts. The single owner (ECDSA, a
+`0x232dbb4a`) — four ERC-7201 slots and five ERC-165 map slots so far. The single owner (ECDSA, a
 P256 key, or a WebAuthn passkey — #58 item 3) backs both `validateUserOp` and `isValidSignature`, with ERC-7739
-defensive rehashing on the 1271 path (#59) composing audited OZ/Solady rather than hand-rolled crypto.
+defensive rehashing on the 1271 path (#59) composing audited OZ/Solady rather than hand-rolled crypto. The
+`ERC6551Account` facet (#58 item 8) makes the Diamond a token-bound account controlled by the owner of a bound
+ERC-721 — a fifth ERC-7201 slot and two more ERC-165 ids (`IERC6551Account` `0x6faff5f1`, `IERC6551Executable`
+`0x51945447`), bringing accounts to five ERC-7201 slots and seven ERC-165 map slots.
