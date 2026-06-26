@@ -3,9 +3,9 @@ pragma solidity ^0.8.30;
 
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
+import {AccountSignerLib} from "@lattice/accounts/libraries/AccountSignerLib.sol";
 import {ERC4337ValidationLib} from "@lattice/accounts/libraries/ERC4337ValidationLib.sol";
 import {SessionKeyLib} from "@lattice/accounts/libraries/SessionKeyLib.sol";
-import {SignerECDSALib} from "@lattice/accounts/libraries/SignerECDSALib.sol";
 import {IERC7821Executor} from "@lattice/interfaces/IERC7821Executor.sol";
 import {Call} from "@lattice/interfaces/external/IERC7821.sol";
 import {ECDSA} from "@lattice/utils/libraries/ECDSA.sol";
@@ -121,7 +121,7 @@ library ERC7821ExecutorLib {
             keccak256(abi.encode(EXECUTE_TYPEHASH, mode, keccak256(abi.encode(calls)), nonce))
         );
 
-        if (!SignerECDSALib.isValidSignatureNow(digest, signature)) {
+        if (!AccountSignerLib.isValidSignatureNow(digest, signature)) {
             (address signer, ECDSA.RecoverError err,) = ECDSA.tryRecover(digest, signature);
             if (err != ECDSA.RecoverError.NoError) revert IERC7821Executor.UnauthorizedExecutor(msg.sender);
             SessionKeyLib.authorizeBatch(signer, calls);

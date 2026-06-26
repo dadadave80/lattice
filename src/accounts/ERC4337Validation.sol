@@ -8,7 +8,7 @@ import {IAccount, PackedUserOperation} from "@lattice/interfaces/external/IAccou
 /// @title ERC4337Validation
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice ERC-4337 validation facet — makes the Diamond a smart account drivable by a configured EntryPoint.
-///         `validateUserOp` gates on the EntryPoint, validates the user op signature against the `SignerECDSA`
+///         `validateUserOp` gates on the EntryPoint, validates the user op signature against the `AccountSigner`
 ///         owner, and pays the EntryPoint its prefund.
 /// @dev Stateless delegator — logic/storage live in {ERC4337ValidationLib}. The EntryPoint is configurable
 ///      (v0.7/v0.8/v0.9) rather than hardcoded.

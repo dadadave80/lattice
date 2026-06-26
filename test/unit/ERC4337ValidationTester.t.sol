@@ -4,21 +4,21 @@ pragma solidity ^0.8.30;
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
+import {AccountSigner} from "@lattice/accounts/AccountSigner.sol";
 import {ERC4337Validation} from "@lattice/accounts/ERC4337Validation.sol";
-import {SignerECDSA} from "@lattice/accounts/SignerECDSA.sol";
+import {AccountSignerLib} from "@lattice/accounts/libraries/AccountSignerLib.sol";
 import {ERC4337ValidationLib} from "@lattice/accounts/libraries/ERC4337ValidationLib.sol";
-import {SignerECDSALib} from "@lattice/accounts/libraries/SignerECDSALib.sol";
 import {IERC4337Validation} from "@lattice/interfaces/IERC4337Validation.sol";
 import {IAccount, PackedUserOperation} from "@lattice/interfaces/external/IAccount.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @dev Harness: 4337 validation facet + signer facet + access facet.
-contract MockERC4337 is AccessControl, SignerECDSA, ERC4337Validation {
+contract MockERC4337 is AccessControl, AccountSigner, ERC4337Validation {
     function initialize(address admin_, address owner_, address entryPoint_) external {
         bytes32 s = InitializableLib.initializableSlot();
         InitializableLib.preInitializer(s);
         AccessControlLib.__AccessControl_init(admin_);
-        SignerECDSALib.__SignerECDSA_init(owner_);
+        AccountSignerLib.__AccountSigner_init(owner_);
         ERC4337ValidationLib.__ERC4337Validation_init(entryPoint_);
         InitializableLib.postInitializer(s);
     }
