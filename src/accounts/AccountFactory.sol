@@ -26,14 +26,15 @@ contract AccountFactory is IAccountFactory {
     ///      different factory ⇒ a different address set, preserving the counterfactual guarantee.
     FacetCut[] private _blueprint;
 
-    /// @param blueprint_ The facet cuts (Add) wiring a complete account.
-    /// @param accountInit_ Initializer delegatecalled during `diamondCut`; MUST expose `init(address owner)`.
-    constructor(FacetCut[] memory blueprint_, address accountInit_) {
-        if (blueprint_.length == 0) revert EmptyBlueprint();
-        accountInit = accountInit_;
+    /// @param __blueprint The facet cuts (Add) wiring a complete account.
+    /// @param _accountInit Initializer delegatecalled during `diamondCut`; MUST expose `init(address owner)`.
+    constructor(FacetCut[] memory __blueprint, address _accountInit) {
+        uint256 blueprintLength = __blueprint.length;
+        if (blueprintLength == 0) revert EmptyBlueprint();
+        accountInit = _accountInit;
         _proxyInitCodeHash = keccak256(type(Diamond).creationCode);
-        for (uint256 i; i < blueprint_.length; ++i) {
-            _blueprint.push(blueprint_[i]);
+        for (uint256 i; i < blueprintLength; ++i) {
+            _blueprint.push(__blueprint[i]);
         }
     }
 
@@ -43,7 +44,6 @@ contract AccountFactory is IAccountFactory {
         account = _predict(s);
         if (account.code.length != 0) return account; // already deployed — idempotent
 
-        // ponytail: storage→memory deep-copy of the blueprint per call; fine for a deploy-time factory.
         FacetCut[] memory cuts = _blueprint;
         Diamond proxy = new Diamond{salt: s}();
         proxy.initialize(cuts, accountInit, abi.encodeWithSignature("init(address)", owner));
