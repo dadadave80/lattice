@@ -385,3 +385,16 @@ defensive rehashing on the 1271 path (#59) composing audited OZ/Solady rather th
 `ERC6551Account` facet (#58 item 8) makes the Diamond a token-bound account controlled by the owner of a bound
 ERC-721 — a fifth ERC-7201 slot and two more ERC-165 ids (`IERC6551Account` `0x6faff5f1`, `IERC6551Executable`
 `0x51945447`), bringing accounts to five ERC-7201 slots and seven ERC-165 map slots.
+
+**EIP-7702 storage-collision review (#58 item 7).** The same facets run as an EIP-7702 delegate, executing
+against the *EOA's own storage*. This is collision-safe by construction: every slot the account touches is high
+in the address space — the Diamond facet map at `DIAMOND_STORAGE_LOCATION` (`0x6d5a…c000`), the initializable
+guard at `0xffff…1132`, and all ERC-7201 module slots / ERC-165 map slots above — never a low/sequential slot.
+So residual storage left in an EOA by a prior 7702 delegate (which would use low slots) cannot corrupt the
+account state, and the namespaced slots cannot alias each other (the per-module uniqueness already asserted by
+`StorageSlotVerificationTest`). Onboarding writes owner = the EOA itself via `AccountInit.init7702`; the
+self-owner signature path uses ECDSA-only recovery (`AccountSignerLib`) to avoid recursing into the EOA's own
+ERC-1271 entry point now that the delegated EOA carries code. Onboarding must be **atomic** — the 7702
+authorization bundled into the first UserOp's transaction (the standard 4337+7702 flow) — since the bare
+`Diamond.initialize` is ungated; integrators that cannot guarantee atomicity delegate to `Account7702Diamond`
+instead, whose `initializeAuthorized` requires the EOA's signature over the exact onboarding.
