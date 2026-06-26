@@ -66,12 +66,21 @@ library ERC7821ExecutorLib {
         (Call[] memory calls, bytes memory opData) = decodeBatch(mode, executionData);
 
         // Direct caller (self / EntryPoint / admin), or a signed opData envelope (owner or session key).
+        address sessionKey;
         if (!_isDirectlyAuthorized()) {
             if (opData.length == 0) revert IERC7821Executor.UnauthorizedExecutor(msg.sender);
-            _verifySignedOpData(mode, calls, opData);
+            sessionKey = _verifySignedOpData(mode, calls, opData);
         }
 
-        runCalls(calls);
+        if (sessionKey == address(0)) {
+            runCalls(calls);
+        } else {
+            // Session-key batch: bound spend by the actual balance decrease across the batch (which captures
+            // indirect spends), not just direct transfer calldata. Snapshot before, settle after.
+            (address[] memory tokens, uint256[] memory before) = SessionKeyLib.snapshotSpend(sessionKey);
+            runCalls(calls);
+            SessionKeyLib.settleSpend(sessionKey, tokens, before, calls);
+        }
         emit IERC7821Executor.BatchExecuted(mode, calls.length);
     }
 
@@ -115,7 +124,12 @@ library ERC7821ExecutorLib {
     ///         must be a registered session key whose policy permits every call (see {SessionKeyLib}). Reverts
     ///         {UnauthorizedExecutor} on a bad signature, the session-key errors on a policy/validity failure,
     ///         and `InvalidAccountNonce` on replay / wrong nonce.
-    function _verifySignedOpData(bytes32 mode, Call[] memory calls, bytes memory opData) private {
+    /// @return sessionKey The authorizing session key, or `address(0)` when the owner signed (full authority,
+    ///         no spend limit). Callers settle spend for a non-zero session key.
+    function _verifySignedOpData(bytes32 mode, Call[] memory calls, bytes memory opData)
+        private
+        returns (address sessionKey)
+    {
         (uint256 nonce, bytes memory signature) = abi.decode(opData, (uint256, bytes));
         bytes32 digest = EIP712Lib.hashTypedDataV4(
             keccak256(abi.encode(EXECUTE_TYPEHASH, mode, keccak256(abi.encode(calls)), nonce))
@@ -125,6 +139,7 @@ library ERC7821ExecutorLib {
             (address signer, ECDSA.RecoverError err,) = ECDSA.tryRecover(digest, signature);
             if (err != ECDSA.RecoverError.NoError) revert IERC7821Executor.UnauthorizedExecutor(msg.sender);
             SessionKeyLib.authorizeBatch(signer, calls);
+            sessionKey = signer;
         }
         NoncesLib.useCheckedNonce(address(this), nonce);
     }
