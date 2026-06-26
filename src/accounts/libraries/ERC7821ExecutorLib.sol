@@ -63,23 +63,35 @@ library ERC7821ExecutorLib {
     /// @notice Executes a batch of calls per `mode`. Reverts {UnsupportedExecutionMode} on an unknown mode and
     ///         {UnauthorizedExecutor} if the caller is not self / the EntryPoint / an admin.
     function execute(bytes32 mode, bytes calldata executionData) internal {
-        bytes32 head = mode & _MODE_HEAD_MASK;
-        bool hasOpData;
-        if (head == _BATCH_OPDATA_HEAD) hasOpData = true;
-        else if (head != _BATCH_HEAD) revert IERC7821Executor.UnsupportedExecutionMode(mode);
-
-        Call[] memory calls;
-        bytes memory opData;
-        if (hasOpData) (calls, opData) = abi.decode(executionData, (Call[], bytes));
-        else calls = abi.decode(executionData, (Call[]));
+        (Call[] memory calls, bytes memory opData) = decodeBatch(mode, executionData);
 
         // Direct caller (self / EntryPoint / admin), or a signed opData envelope (owner or session key).
         if (!_isDirectlyAuthorized()) {
-            if (!hasOpData || opData.length == 0) revert IERC7821Executor.UnauthorizedExecutor(msg.sender);
+            if (opData.length == 0) revert IERC7821Executor.UnauthorizedExecutor(msg.sender);
             _verifySignedOpData(mode, calls, opData);
         }
 
+        runCalls(calls);
+        emit IERC7821Executor.BatchExecuted(mode, calls.length);
+    }
+
+    /// @notice Validates `mode` and decodes the call batch (and any trailing `opData`). Shared by `execute`
+    ///         and the ERC-7579 `executeFromExecutor` path.
+    function decodeBatch(bytes32 mode, bytes calldata executionData)
+        internal
+        pure
+        returns (Call[] memory calls, bytes memory opData)
+    {
+        bytes32 head = mode & _MODE_HEAD_MASK;
+        if (head == _BATCH_OPDATA_HEAD) (calls, opData) = abi.decode(executionData, (Call[], bytes));
+        else if (head == _BATCH_HEAD) calls = abi.decode(executionData, (Call[]));
+        else revert IERC7821Executor.UnsupportedExecutionMode(mode);
+    }
+
+    /// @notice Runs a decoded batch from the account, bubbling any inner revert and collecting return data.
+    function runCalls(Call[] memory calls) internal returns (bytes[] memory results) {
         uint256 n = calls.length;
+        results = new bytes[](n);
         for (uint256 i; i < n; ++i) {
             Call memory c = calls[i];
             (bool ok, bytes memory ret) = c.target.call{value: c.value}(c.data);
@@ -88,8 +100,8 @@ library ERC7821ExecutorLib {
                     revert(add(ret, 0x20), mload(ret))
                 }
             }
+            results[i] = ret;
         }
-        emit IERC7821Executor.BatchExecuted(mode, n);
     }
 
     /// @notice True if the caller is the account itself, the configured EntryPoint, or an admin.
