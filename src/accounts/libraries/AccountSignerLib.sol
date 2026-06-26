@@ -4,6 +4,7 @@ pragma solidity ^0.8.30;
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
 import {IAccountSigner} from "@lattice/interfaces/IAccountSigner.sol";
+import {ECDSA} from "@lattice/utils/libraries/ECDSA.sol";
 import {P256} from "@lattice/utils/libraries/P256.sol";
 import {SignatureChecker} from "@lattice/utils/libraries/SignatureChecker.sol";
 import {WebAuthn} from "@lattice/utils/libraries/WebAuthn.sol";
@@ -82,8 +83,18 @@ library AccountSignerLib {
         IAccountSigner.SignerType t = IAccountSigner.SignerType($._signerType);
 
         if (t == IAccountSigner.SignerType.ECDSA) {
+            address o = $._owner;
+            // EIP-7702 self-owner (#58 item 7): when the owner IS this account, the account is its own signing
+            // EOA and now carries delegate code. Running a bad signature through SignatureChecker would fall
+            // through to this same account's ERC-1271 path and recurse, burning gas up to the call's limit
+            // (breaking the "never reverts, fails cheaply" invariant the 4337 path relies on). A self-owner is
+            // an EOA key by construction, so verify with plain ECDSA recovery only — no ERC-1271 fallback.
+            if (o == address(this)) {
+                (address rec, ECDSA.RecoverError err,) = ECDSA.tryRecover(hash, signature);
+                return err == ECDSA.RecoverError.NoError && rec == o;
+            }
             // Legacy path, byte-for-byte: EOA (ECDSA, low-S enforced) or ERC-1271 owner.
-            return SignatureChecker.isValidSignatureNow($._owner, hash, signature);
+            return SignatureChecker.isValidSignatureNow(o, hash, signature);
         }
 
         if (t == IAccountSigner.SignerType.P256) {

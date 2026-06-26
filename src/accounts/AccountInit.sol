@@ -28,6 +28,24 @@ contract AccountInit {
     /// @notice Runs the account module initializers. MUST be invoked via `diamondCut`'s `_init` delegatecall.
     /// @param owner The account's initial ECDSA signing owner.
     function init(address owner) external {
+        _init(owner);
+    }
+
+    /// @notice EIP-7702 onboarding (#58 item 7): identical to {init} but the owner is the account itself — i.e.
+    ///         the delegated EOA, whose own key is the signer. Taking no owner argument keeps the `0x7702`
+    ///         initCode uniform for every EOA. Runs against the EOA's own storage via its 7702 delegate code.
+    /// @dev SECURITY — onboarding MUST be atomic. The bare {Diamond} `initialize` that delegatecalls this is
+    ///      ungated, so the 7702 authorization MUST be bundled into the SAME transaction as the first UserOp
+    ///      (the standard 4337+7702 flow: the auth in the `handleOps` tx's `authorization_list`). Then
+    ///      delegation + init run in one tx and cannot be front-run. Applying the delegation in a SEPARATE,
+    ///      earlier tx and leaving the account uninitialized opens a window where anyone can initialize it with
+    ///      a hostile blueprint. Integrators who cannot guarantee atomicity should delegate to
+    ///      {Account7702Diamond} instead, whose signed onboarding closes that window on-chain.
+    function init7702() external {
+        _init(address(this));
+    }
+
+    function _init(address owner) private {
         AccessControlLib.__AccessControl_init(address(this));
         AccountSignerLib.__AccountSigner_init(owner);
         ERC4337ValidationLib.__ERC4337Validation_init(ENTRY_POINT);
