@@ -5,7 +5,12 @@ import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
 import {ERC7821ExecutorLib} from "@lattice/accounts/libraries/ERC7821ExecutorLib.sol";
 import {IModuleConfig} from "@lattice/interfaces/IModuleConfig.sol";
-import {IERC7579Module, IERC7579ModuleConfig, MODULE_TYPE_EXECUTOR} from "@lattice/interfaces/external/IERC7579.sol";
+import {
+    IERC7579Module,
+    IERC7579ModuleConfig,
+    MODULE_TYPE_EXECUTOR,
+    MODULE_TYPE_VALIDATOR
+} from "@lattice/interfaces/external/IERC7579.sol";
 import {Call} from "@lattice/interfaces/external/IERC7821.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
@@ -34,11 +39,12 @@ struct ERC7579ModuleConfigStorage {
 
 /// @title ERC7579ModuleConfigLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
-/// @notice Logic + ERC-7201 storage for the ERC-7579 module registry. v1 supports EXECUTOR modules (type 2):
-///         an installed executor may drive a batch on the account via `executeFromExecutor`.
+/// @notice Logic + ERC-7201 storage for the ERC-7579 module registry. Supports EXECUTOR modules (type 2) — an
+///         installed executor may drive a batch via `executeFromExecutor` — and VALIDATOR modules (type 1),
+///         selected per user-operation and consumed by `ERC4337Validation` (#58 follow-on).
 /// @dev `diamondCut` remains the selector authority ("modules-as-facets"); this registry tracks installed
-///      executor modules and gates `executeFromExecutor`. `execute` / `supportsExecutionMode` (completing the
-///      ERC-7579 surface) live on the `ERC7821Executor` facet. Validator/hook/fallback consumption is a v2.
+///      modules. `execute` / `supportsExecutionMode` (completing the ERC-7579 surface) live on the
+///      `ERC7821Executor` facet. Hook (type 4) and fallback (type 3) consumption are subsequent follow-ons.
 library ERC7579ModuleConfigLib {
     /// @dev ERC-7579 account identifier (`vendorname.accountname.semver`).
     string private constant _ACCOUNT_ID = "lattice.diamond-account.0.1.0";
@@ -72,10 +78,16 @@ library ERC7579ModuleConfigLib {
     }
 
     function supportsModule(uint256 moduleTypeId) internal pure returns (bool) {
-        return moduleTypeId == MODULE_TYPE_EXECUTOR;
+        return moduleTypeId == MODULE_TYPE_EXECUTOR || moduleTypeId == MODULE_TYPE_VALIDATOR;
     }
 
     function isModuleInstalled(uint256 moduleTypeId, address module, bytes calldata) internal view returns (bool) {
+        return erc7579ModuleConfigStorage()._installed[moduleTypeId][module];
+    }
+
+    /// @notice Whether `module` is installed as `moduleTypeId` — the context-free form for internal consumers
+    ///         (e.g. the validation facet's per-op validator lookup).
+    function isInstalled(uint256 moduleTypeId, address module) internal view returns (bool) {
         return erc7579ModuleConfigStorage()._installed[moduleTypeId][module];
     }
 
@@ -93,8 +105,10 @@ library ERC7579ModuleConfigLib {
         }
         mapping(address => bool) storage installed = erc7579ModuleConfigStorage()._installed[moduleTypeId];
         if (installed[module]) revert IModuleConfig.ModuleAlreadyInstalled(moduleTypeId, module);
-        installed[module] = true;
+        // CEI: run the module's init BEFORE recording it installed, so the flag is only ever set for a
+        // fully-initialized module — and a (re-entrant) executor cannot drive `executeFromExecutor` mid-`onInstall`.
         IERC7579Module(module).onInstall(initData);
+        installed[module] = true;
         emit IERC7579ModuleConfig.ModuleInstalled(moduleTypeId, module);
     }
 
