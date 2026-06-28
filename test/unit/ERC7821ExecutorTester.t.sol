@@ -7,22 +7,32 @@ import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {AccountSigner} from "@lattice/accounts/AccountSigner.sol";
 import {ERC4337Validation} from "@lattice/accounts/ERC4337Validation.sol";
+import {ERC7579ModuleConfig} from "@lattice/accounts/ERC7579ModuleConfig.sol";
 import {ERC7821Executor} from "@lattice/accounts/ERC7821Executor.sol";
 import {SessionKey} from "@lattice/accounts/SessionKey.sol";
 import {AccountSignerLib} from "@lattice/accounts/libraries/AccountSignerLib.sol";
 import {ERC4337ValidationLib} from "@lattice/accounts/libraries/ERC4337ValidationLib.sol";
+import {ERC7579ModuleConfigLib} from "@lattice/accounts/libraries/ERC7579ModuleConfigLib.sol";
 import {ERC7821ExecutorLib} from "@lattice/accounts/libraries/ERC7821ExecutorLib.sol";
 import {ANY_SELECTOR, ANY_TARGET, SessionKeyLib} from "@lattice/accounts/libraries/SessionKeyLib.sol";
 import {IERC7821Executor} from "@lattice/interfaces/IERC7821Executor.sol";
 import {INonces} from "@lattice/interfaces/INonces.sol";
 import {ISessionKey} from "@lattice/interfaces/ISessionKey.sol";
+import {IERC7579Hook, MODULE_TYPE_HOOK} from "@lattice/interfaces/external/IERC7579.sol";
 import {Call} from "@lattice/interfaces/external/IERC7821.sol";
 import {EIP712Lib} from "@lattice/utils/libraries/EIP712Lib.sol";
 import {NoncesLib} from "@lattice/utils/libraries/NoncesLib.sol";
 import {Test} from "forge-std/Test.sol";
 
-/// @dev Harness: executor + 4337 validation (EntryPoint auth) + signer + EIP-712 domain + nonces.
-contract MockERC7821 is AccessControl, AccountSigner, ERC4337Validation, ERC7821Executor, SessionKey {
+/// @dev Harness: executor + 4337 validation + signer + session keys + module config (to install hooks).
+contract MockERC7821 is
+    AccessControl,
+    AccountSigner,
+    ERC4337Validation,
+    ERC7821Executor,
+    SessionKey,
+    ERC7579ModuleConfig
+{
     function initialize(address admin_, address owner_, address entryPoint_) external {
         bytes32 s = InitializableLib.initializableSlot();
         InitializableLib.preInitializer(s);
@@ -33,11 +43,43 @@ contract MockERC7821 is AccessControl, AccountSigner, ERC4337Validation, ERC7821
         ERC4337ValidationLib.__ERC4337Validation_init(entryPoint_);
         ERC7821ExecutorLib.__ERC7821Executor_init();
         SessionKeyLib.__SessionKey_init();
+        ERC7579ModuleConfigLib.__ERC7579ModuleConfig_init();
         InitializableLib.postInitializer(s);
     }
 
     function supportsInterface(bytes4 id) public view returns (bool) {
         return ERC165Lib.supportsInterface(id);
+    }
+}
+
+/// @dev Global ERC-7579 hook: counts pre/postCheck, threads context, and can block by reverting in preCheck.
+contract MockHook is IERC7579Hook {
+    bool public blocks;
+    uint256 public pre;
+    uint256 public post;
+    address public lastSender;
+    bytes public lastCtx;
+
+    function setBlocks(bool b) external {
+        blocks = b;
+    }
+
+    function onInstall(bytes calldata) external {}
+    function onUninstall(bytes calldata) external {}
+
+    function isModuleType(uint256 t) external pure returns (bool) {
+        return t == MODULE_TYPE_HOOK;
+    }
+
+    function preCheck(address msgSender, uint256, bytes calldata) external returns (bytes memory) {
+        require(!blocks, "hook: blocked");
+        lastSender = msgSender;
+        return abi.encode(++pre);
+    }
+
+    function postCheck(bytes calldata hookData) external {
+        ++post;
+        lastCtx = hookData;
     }
 }
 
@@ -360,5 +402,50 @@ contract ERC7821ExecutorTester is Test {
         account.execute(BATCH_OPDATA, abi.encode(calls, opData)); // must not revert on snapshot/settle
         (, uint256 spent) = account.spendLimit(sessionKey, address(rtok));
         assertEq(spent, 40, "calldata sum not accrued for an unmeasurable token");
+    }
+
+    // ---- ERC-7579 global hook (type 4) wrapping execute (#58 follow-on) ----
+
+    function _installHook() internal returns (MockHook hook) {
+        hook = new MockHook();
+        vm.prank(admin);
+        account.installModule(MODULE_TYPE_HOOK, address(hook), "");
+    }
+
+    function test_Hook_WrapsExecute() public {
+        MockHook hook = _installHook();
+        vm.prank(admin);
+        account.execute(BATCH, abi.encode(_oneCall(7, 0)));
+        assertEq(hook.pre(), 1, "preCheck not called");
+        assertEq(hook.post(), 1, "postCheck not called");
+        assertEq(hook.lastSender(), admin, "preCheck msgSender wrong");
+        assertEq(hook.lastCtx(), abi.encode(uint256(1)), "context not threaded pre -> post");
+        assertEq(target.value(), 7, "batch not executed under hook");
+    }
+
+    function test_Hook_PreCheckRevertBlocksExecution() public {
+        MockHook hook = _installHook();
+        hook.setBlocks(true);
+        vm.prank(admin);
+        vm.expectRevert(bytes("hook: blocked"));
+        account.execute(BATCH, abi.encode(_oneCall(9, 0)));
+        assertEq(target.value(), 0, "execution not blocked by reverting hook");
+    }
+
+    function test_Hook_NoHookLeavesExecuteUnchanged() public {
+        vm.prank(admin);
+        account.execute(BATCH, abi.encode(_oneCall(5, 0)));
+        assertEq(target.value(), 5, "execute broken without a hook");
+    }
+
+    /// @dev Atomic wrap: a reverting batch under a hook reverts the WHOLE call with the batch's error (preCheck's
+    ///      effects roll back and postCheck never runs) — the hook wrap is transparent to reverts.
+    function test_Hook_RevertingBatchPropagates() public {
+        _installHook();
+        Call[] memory calls = new Call[](1);
+        calls[0] = Call({target: address(target), value: 0, data: abi.encodeCall(Target.boom, ())});
+        vm.prank(admin);
+        vm.expectRevert(bytes("boom"));
+        account.execute(BATCH, abi.encode(calls));
     }
 }
