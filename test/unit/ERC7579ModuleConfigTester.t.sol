@@ -124,7 +124,8 @@ contract ERC7579ModuleConfigTester is Test {
         assertTrue(account.supportsModule(MODULE_TYPE_EXECUTOR), "executor supported");
         assertTrue(account.supportsModule(MODULE_TYPE_VALIDATOR), "validator supported");
         assertTrue(account.supportsModule(MODULE_TYPE_HOOK), "hook supported");
-        assertFalse(account.supportsModule(MODULE_TYPE_FALLBACK), "fallback not yet supported");
+        assertTrue(account.supportsModule(MODULE_TYPE_FALLBACK), "fallback supported");
+        assertFalse(account.supportsModule(99), "unknown type unsupported");
     }
 
     function test_SupportsInterface() public view {
@@ -149,8 +150,8 @@ contract ERC7579ModuleConfigTester is Test {
 
     function test_InstallModule_RevertUnsupportedType() public {
         vm.prank(admin);
-        vm.expectRevert(abi.encodeWithSelector(IModuleConfig.UnsupportedModuleType.selector, MODULE_TYPE_FALLBACK));
-        account.installModule(MODULE_TYPE_FALLBACK, address(executor), "");
+        vm.expectRevert(abi.encodeWithSelector(IModuleConfig.UnsupportedModuleType.selector, uint256(99)));
+        account.installModule(99, address(executor), "");
     }
 
     function test_InstallModule_RevertInvalidModule() public {

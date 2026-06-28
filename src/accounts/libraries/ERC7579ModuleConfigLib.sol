@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {DiamondLib} from "@diamond/libraries/DiamondLib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
 import {ERC7821ExecutorLib} from "@lattice/accounts/libraries/ERC7821ExecutorLib.sol";
@@ -10,10 +11,22 @@ import {
     IERC7579Module,
     IERC7579ModuleConfig,
     MODULE_TYPE_EXECUTOR,
+    MODULE_TYPE_FALLBACK,
     MODULE_TYPE_HOOK,
     MODULE_TYPE_VALIDATOR
 } from "@lattice/interfaces/external/IERC7579.sol";
 import {Call} from "@lattice/interfaces/external/IERC7821.sol";
+
+/// @dev Fallback-handler (type 3) call types: forward via CALL (with the original caller appended ERC-2771-style)
+///      or DELEGATECALL (the handler runs in the account's own context).
+bytes1 constant FALLBACK_CALLTYPE_CALL = 0x00;
+bytes1 constant FALLBACK_CALLTYPE_DELEGATECALL = 0xff;
+
+/// @notice A registered fallback handler + how the account forwards to it.
+struct FallbackHandler {
+    address handler;
+    bytes1 callType;
+}
 
 //*//////////////////////////////////////////////////////////////////////////
 //                                  STORAGE
@@ -39,16 +52,20 @@ struct ERC7579ModuleConfigStorage {
     mapping(uint256 moduleTypeId => mapping(address module => bool installed)) _installed;
     /// @notice The single global HOOK (type 4) wrapping the account's execution surface; 0 if none. APPEND-ONLY.
     address _hook;
+    /// @notice FALLBACK (type 3) handlers per selector, consulted by `AccountDiamond` on a facet-map miss
+    ///         (layered UNDER the facet map — `diamondCut` keeps selector authority). APPEND-ONLY.
+    mapping(bytes4 selector => FallbackHandler) _fallbacks;
 }
 
 /// @title ERC7579ModuleConfigLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
-/// @notice Logic + ERC-7201 storage for the ERC-7579 module registry. Supports EXECUTOR modules (type 2) — an
-///         installed executor may drive a batch via `executeFromExecutor` — and VALIDATOR modules (type 1),
-///         selected per user-operation and consumed by `ERC4337Validation` (#58 follow-on).
-/// @dev `diamondCut` remains the selector authority ("modules-as-facets"); this registry tracks installed
-///      modules. `execute` / `supportsExecutionMode` (completing the ERC-7579 surface) live on the
-///      `ERC7821Executor` facet. Hook (type 4) and fallback (type 3) consumption are subsequent follow-ons.
+/// @notice Logic + ERC-7201 storage for the ERC-7579 module registry, consuming all four module types:
+///         EXECUTOR (2 — drives batches via `executeFromExecutor`), VALIDATOR (1 — authorizes user ops in
+///         `ERC4337Validation`), HOOK (4 — the single global hook wrapping execution), and FALLBACK (3 —
+///         per-selector handlers dispatched by `AccountDiamond` on a facet-map miss).
+/// @dev `diamondCut` remains the SOLE selector authority ("modules-as-facets"); fallback handlers are layered
+///      UNDER the facet map and may not shadow a facet selector. `execute` / `supportsExecutionMode` (completing
+///      the ERC-7579 surface) live on the `ERC7821Executor` facet.
 library ERC7579ModuleConfigLib {
     /// @dev ERC-7579 account identifier (`vendorname.accountname.semver`).
     string private constant _ACCOUNT_ID = "lattice.diamond-account.0.1.0";
@@ -83,7 +100,7 @@ library ERC7579ModuleConfigLib {
 
     function supportsModule(uint256 moduleTypeId) internal pure returns (bool) {
         return moduleTypeId == MODULE_TYPE_EXECUTOR || moduleTypeId == MODULE_TYPE_VALIDATOR
-            || moduleTypeId == MODULE_TYPE_HOOK;
+            || moduleTypeId == MODULE_TYPE_HOOK || moduleTypeId == MODULE_TYPE_FALLBACK;
     }
 
     /// @notice The installed global hook (type 4), or `address(0)` if none.
@@ -91,7 +108,24 @@ library ERC7579ModuleConfigLib {
         return erc7579ModuleConfigStorage()._hook;
     }
 
-    function isModuleInstalled(uint256 moduleTypeId, address module, bytes calldata) internal view returns (bool) {
+    /// @notice The fallback handler (type 3) for `selector`, or a zero-address handler if none. Read by
+    ///         `AccountDiamond` on a facet-map miss.
+    function fallbackHandlerFor(bytes4 selector) internal view returns (address handler, bytes1 callType) {
+        FallbackHandler storage f = erc7579ModuleConfigStorage()._fallbacks[selector];
+        return (f.handler, f.callType);
+    }
+
+    /// @dev For FALLBACK (type 3), `additionalContext` is `abi.encode(bytes4 selector)`; the module is "installed"
+    ///      iff it is the registered handler for that selector. Other types key on `_installed[type][module]`.
+    function isModuleInstalled(uint256 moduleTypeId, address module, bytes calldata additionalContext)
+        internal
+        view
+        returns (bool)
+    {
+        if (moduleTypeId == MODULE_TYPE_FALLBACK) {
+            if (additionalContext.length < 32) return false;
+            return erc7579ModuleConfigStorage()._fallbacks[abi.decode(additionalContext, (bytes4))].handler == module;
+        }
         return erc7579ModuleConfigStorage()._installed[moduleTypeId][module];
     }
 
@@ -114,6 +148,27 @@ library ERC7579ModuleConfigLib {
             revert IModuleConfig.InvalidModuleForType(module, moduleTypeId);
         }
         ERC7579ModuleConfigStorage storage $ = erc7579ModuleConfigStorage();
+        // FALLBACK (type 3): `initData = abi.encode(bytes4 selector, bytes1 callType, bytes handlerData)`. The
+        // registry (`_fallbacks[selector]`), not the `_installed` flag, is the source of truth (one handler may
+        // serve several selectors). `handlerData` — not the whole tuple — is what `onInstall` receives.
+        if (moduleTypeId == MODULE_TYPE_FALLBACK) {
+            (bytes4 selector, bytes1 callType, bytes memory handlerData) = abi.decode(initData, (bytes4, bytes1, bytes));
+            if ($._fallbacks[selector].handler != address(0)) {
+                revert IModuleConfig.ModuleAlreadyInstalled(moduleTypeId, $._fallbacks[selector].handler);
+            }
+            if (callType != FALLBACK_CALLTYPE_CALL && callType != FALLBACK_CALLTYPE_DELEGATECALL) {
+                revert IModuleConfig.UnsupportedFallbackCallType(callType);
+            }
+            // Layer UNDER facets: a fallback may not shadow a selector the diamond already dispatches. Use the
+            // non-reverting overload — the single-arg `selectorToFacet` reverts {FunctionDoesNotExist} on a miss.
+            if (DiamondLib.selectorToFacet(DiamondLib.diamondStorage(), selector) != address(0)) {
+                revert IModuleConfig.FallbackShadowsFacet(selector);
+            }
+            IERC7579Module(module).onInstall(handlerData); // CEI
+            $._fallbacks[selector] = FallbackHandler(module, callType);
+            emit IERC7579ModuleConfig.ModuleInstalled(moduleTypeId, module);
+            return;
+        }
         if ($._installed[moduleTypeId][module]) revert IModuleConfig.ModuleAlreadyInstalled(moduleTypeId, module);
         // At most one global HOOK (type 4) wraps the account — uninstall the current one before replacing it.
         if (moduleTypeId == MODULE_TYPE_HOOK && $._hook != address(0)) {
@@ -131,6 +186,18 @@ library ERC7579ModuleConfigLib {
     function uninstallModule(uint256 moduleTypeId, address module, bytes calldata deInitData) internal {
         _authorizeConfig();
         ERC7579ModuleConfigStorage storage $ = erc7579ModuleConfigStorage();
+        // FALLBACK (type 3): `deInitData = abi.encode(bytes4 selector, bytes handlerData)`; clear the per-selector
+        // registry entry before `onUninstall` (fail-safe).
+        if (moduleTypeId == MODULE_TYPE_FALLBACK) {
+            (bytes4 selector, bytes memory handlerData) = abi.decode(deInitData, (bytes4, bytes));
+            if ($._fallbacks[selector].handler != module) {
+                revert IModuleConfig.ModuleNotInstalled(moduleTypeId, module);
+            }
+            delete $._fallbacks[selector];
+            IERC7579Module(module).onUninstall(handlerData);
+            emit IERC7579ModuleConfig.ModuleUninstalled(moduleTypeId, module);
+            return;
+        }
         if (!$._installed[moduleTypeId][module]) revert IModuleConfig.ModuleNotInstalled(moduleTypeId, module);
         $._installed[moduleTypeId][module] = false;
         if (moduleTypeId == MODULE_TYPE_HOOK) $._hook = address(0); // clear before onUninstall (fail-safe)

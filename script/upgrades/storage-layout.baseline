@@ -176,6 +176,7 @@
 ### ERC7579ModuleConfigStorage @ erc7201:lattice.storage.ERC7579ModuleConfig (slot 0xf5855f8dc57bbb54955d6871575c862d7a11401119f5a873c91e7ac60628d800)
 0	0	_installed	t_mapping(t_uint256,t_mapping(t_address,t_bool))
 1	0	_hook	t_address
+2	0	_fallbacks	t_mapping(t_bytes4,t_struct(FallbackHandler)_storage)
 
 ### ERC6551AccountStorage @ erc7201:lattice.storage.ERC6551Account (slot 0x5d509296c8693d1a2071f7702ffb166090e7cdcee4fc11a42df61b6a19026100)
 0	0	_chainId	t_uint256
