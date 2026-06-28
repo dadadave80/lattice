@@ -6,9 +6,11 @@ import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/Ac
 import {ERC7821ExecutorLib} from "@lattice/accounts/libraries/ERC7821ExecutorLib.sol";
 import {IModuleConfig} from "@lattice/interfaces/IModuleConfig.sol";
 import {
+    IERC7579Hook,
     IERC7579Module,
     IERC7579ModuleConfig,
     MODULE_TYPE_EXECUTOR,
+    MODULE_TYPE_HOOK,
     MODULE_TYPE_VALIDATOR
 } from "@lattice/interfaces/external/IERC7579.sol";
 import {Call} from "@lattice/interfaces/external/IERC7821.sol";
@@ -35,6 +37,8 @@ bytes32 constant ERC165_MAP_IERC7579MODULECONFIG_SLOT =
 struct ERC7579ModuleConfigStorage {
     /// @notice Installed modules per type: `_installed[moduleTypeId][module]`. APPEND-ONLY.
     mapping(uint256 moduleTypeId => mapping(address module => bool installed)) _installed;
+    /// @notice The single global HOOK (type 4) wrapping the account's execution surface; 0 if none. APPEND-ONLY.
+    address _hook;
 }
 
 /// @title ERC7579ModuleConfigLib
@@ -78,7 +82,13 @@ library ERC7579ModuleConfigLib {
     }
 
     function supportsModule(uint256 moduleTypeId) internal pure returns (bool) {
-        return moduleTypeId == MODULE_TYPE_EXECUTOR || moduleTypeId == MODULE_TYPE_VALIDATOR;
+        return moduleTypeId == MODULE_TYPE_EXECUTOR || moduleTypeId == MODULE_TYPE_VALIDATOR
+            || moduleTypeId == MODULE_TYPE_HOOK;
+    }
+
+    /// @notice The installed global hook (type 4), or `address(0)` if none.
+    function hook() internal view returns (address) {
+        return erc7579ModuleConfigStorage()._hook;
     }
 
     function isModuleInstalled(uint256 moduleTypeId, address module, bytes calldata) internal view returns (bool) {
@@ -103,21 +113,27 @@ library ERC7579ModuleConfigLib {
         if (!IERC7579Module(module).isModuleType(moduleTypeId)) {
             revert IModuleConfig.InvalidModuleForType(module, moduleTypeId);
         }
-        mapping(address => bool) storage installed = erc7579ModuleConfigStorage()._installed[moduleTypeId];
-        if (installed[module]) revert IModuleConfig.ModuleAlreadyInstalled(moduleTypeId, module);
+        ERC7579ModuleConfigStorage storage $ = erc7579ModuleConfigStorage();
+        if ($._installed[moduleTypeId][module]) revert IModuleConfig.ModuleAlreadyInstalled(moduleTypeId, module);
+        // At most one global HOOK (type 4) wraps the account — uninstall the current one before replacing it.
+        if (moduleTypeId == MODULE_TYPE_HOOK && $._hook != address(0)) {
+            revert IModuleConfig.ModuleAlreadyInstalled(moduleTypeId, $._hook);
+        }
         // CEI: run the module's init BEFORE recording it installed, so the flag is only ever set for a
         // fully-initialized module — and a (re-entrant) executor cannot drive `executeFromExecutor` mid-`onInstall`.
         IERC7579Module(module).onInstall(initData);
-        installed[module] = true;
+        $._installed[moduleTypeId][module] = true;
+        if (moduleTypeId == MODULE_TYPE_HOOK) $._hook = module;
         emit IERC7579ModuleConfig.ModuleInstalled(moduleTypeId, module);
     }
 
     /// @notice Uninstalls `module`. Caller must be the account itself or an admin. Calls `onUninstall`.
     function uninstallModule(uint256 moduleTypeId, address module, bytes calldata deInitData) internal {
         _authorizeConfig();
-        mapping(address => bool) storage installed = erc7579ModuleConfigStorage()._installed[moduleTypeId];
-        if (!installed[module]) revert IModuleConfig.ModuleNotInstalled(moduleTypeId, module);
-        installed[module] = false;
+        ERC7579ModuleConfigStorage storage $ = erc7579ModuleConfigStorage();
+        if (!$._installed[moduleTypeId][module]) revert IModuleConfig.ModuleNotInstalled(moduleTypeId, module);
+        $._installed[moduleTypeId][module] = false;
+        if (moduleTypeId == MODULE_TYPE_HOOK) $._hook = address(0); // clear before onUninstall (fail-safe)
         IERC7579Module(module).onUninstall(deInitData);
         emit IERC7579ModuleConfig.ModuleUninstalled(moduleTypeId, module);
     }
@@ -127,12 +143,34 @@ library ERC7579ModuleConfigLib {
     //////////////////////////////////////////////////////////////////////////*//
 
     /// @notice Runs a batch on behalf of `msg.sender`, which must be an installed executor module (type 2).
-    function executeFromExecutor(bytes32 mode, bytes calldata executionCalldata) internal returns (bytes[] memory) {
+    ///         Wrapped by the global hook (if any), like the owner/session-key `execute` path.
+    function executeFromExecutor(bytes32 mode, bytes calldata executionCalldata)
+        internal
+        returns (bytes[] memory results)
+    {
         if (!erc7579ModuleConfigStorage()._installed[MODULE_TYPE_EXECUTOR][msg.sender]) {
             revert IModuleConfig.NotInstalledExecutor(msg.sender);
         }
         (Call[] memory calls,) = ERC7821ExecutorLib.decodeBatch(mode, executionCalldata);
-        return ERC7821ExecutorLib.runCalls(calls);
+        (address h, bytes memory hookData) = preExecutionHook(msg.data);
+        results = ERC7821ExecutorLib.runCalls(calls);
+        postExecutionHook(h, hookData);
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                                   HOOKS
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice Runs the global hook's `preCheck` (if installed) before an execution, returning the hook and its
+    ///         opaque context for the matching {postExecutionHook}. A reverting hook blocks the execution.
+    function preExecutionHook(bytes calldata msgData) internal returns (address h, bytes memory hookData) {
+        h = erc7579ModuleConfigStorage()._hook;
+        if (h != address(0)) hookData = IERC7579Hook(h).preCheck(msg.sender, msg.value, msgData);
+    }
+
+    /// @notice Runs the global hook's `postCheck` (if `h` is non-zero) after an execution.
+    function postExecutionHook(address h, bytes memory hookData) internal {
+        if (h != address(0)) IERC7579Hook(h).postCheck(hookData);
     }
 
     //*//////////////////////////////////////////////////////////////////////////
