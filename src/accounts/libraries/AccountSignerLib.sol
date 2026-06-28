@@ -108,10 +108,12 @@ library AccountSignerLib {
             return P256.verifySignature(hash, r, s, $._p256X, $._p256Y); // low-S enforced
         }
 
-        // WebAuthn: `signature` is `abi.encode(WebAuthn.WebAuthnAuth)`. The decoder never reverts (a malformed
-        // envelope yields an empty struct → verify returns false). `hash` is the raw challenge — WebAuthn.verify
-        // base64url-encodes it and matches it inside clientDataJSON; it does not pre-hash.
-        WebAuthn.WebAuthnAuth memory auth = WebAuthn.tryDecodeAuth(signature);
+        // WebAuthn: `signature` is the COMPACT assertion encoding (see {WebAuthn.tryEncodeAuthCompact}):
+        // `abi.encodePacked(uint16 authDataLen, authData, clientDataJSON, uint16 challengeIndex, uint16 typeIndex,
+        // bytes32 r, bytes32 s)` — chosen over the ABI envelope to shave UserOp calldata. The decoder never
+        // reverts (a malformed envelope yields an empty struct → verify returns false). `hash` is the raw
+        // challenge — WebAuthn.verify base64url-encodes it and matches it inside clientDataJSON; no pre-hash.
+        WebAuthn.WebAuthnAuth memory auth = WebAuthn.tryDecodeAuthCompact(signature);
         return WebAuthn.verify(abi.encodePacked(hash), $._requireUV, auth, $._p256X, $._p256Y);
     }
 
