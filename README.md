@@ -24,7 +24,7 @@ consumed as a Forge dependency; there is no application or canonical deployment 
 | Area | Modules |
 |------|---------|
 | `access/` | `AccessControl`, `AccessControlEnumerable`, `AccessControlTimed`, `AccessManager` (+ `AccessManaged`, `AccessManagerStandalone`), `Ownable` |
-| `accounts/` | Diamond smart-account building blocks: `Account7702Diamond`, `AccountFactory`, `AccountInit`, `AccountSigner`, `ERC1271Signature`, `ERC4337Validation`, `ERC6551Account`, `ERC7579ModuleConfig`, `ERC7821Executor`, `SessionKey` |
+| `accounts/` | Diamond smart-account building blocks — two modular-account flavors ([see below](#smart-account-flavors-erc-7579-and-erc-6900)). **ERC-7579:** `AccountDiamond`, `Account7702Diamond`, `AccountFactory`, `AccountInit`, `AccountSigner`, `ERC4337Validation`, `ERC1271Signature`, `ERC7821Executor`, `ERC7579ModuleConfig`, `SessionKey`. **ERC-6900:** `ModularAccount6900`, `AccountFactory6900`, `AccountInit6900`, `ERC6900ModuleManager`, `ERC6900Executor`, `ERC6900Validation`, `ERC6900Signature`, `ERC6900AccountView` (+ reference modules `SingleSignerValidation`, `SpendingLimit`). Plus `ERC6551Account` |
 | `amm/` | `ConstantProduct` |
 | `crosschain/` | `AxelarGatewayAdapter`, `BridgeERC20`, `BridgeERC7802`, `CCIPGatewayAdapter`, `CrosschainLink`, `CrosschainTimelockHandler`, `ERC7786OpenBridge`, `WormholeGatewayAdapter` |
 | `defi/` | `AaveV3Adapter`, `CompoundV3Adapter`, `CurveStableSwapAdapter`, `ERC4626Adapter`, `LidoAdapter`, `StrategyManager`, `UniswapV3Adapter`, `VaultCore` |
@@ -48,6 +48,45 @@ integrations. The canonical storage/interface registry is
 [`STORAGE_REGISTRY.md`](STORAGE_REGISTRY.md), and
 `test/unit/StorageSlotVerificationTest.t.sol` re-derives every registered slot and checks
 global uniqueness.
+
+## Smart-account flavors: ERC-7579 and ERC-6900
+
+Lattice ships **two modular smart-account flavors**, both built on the shared Diamond core
+(DiamondCut / Loupe / ERC-165 / AccessControl). They are **separate blueprints** — you pick one
+per account; the two facet sets are never cut into the same Diamond. Both target ERC-4337 and
+ERC-1271, and both are written fresh in the three-layer facet pattern (the ERC-6900 reference
+implementation is GPL and is **not** a dependency — only minimal interfaces are vendored into
+`src/interfaces/external/`).
+
+- **ERC-7579** (`AccountDiamond` proxy) — the four fixed module types (validator 1, executor 2,
+  fallback 3, hook 4). A per-op validator is selected by the top 20 bytes of `userOp.nonce`; one
+  global hook wraps execution; a fallback registry is layered under the facet map.
+- **ERC-6900** (`ModularAccount6900` proxy) — inspired by EIP-2535 itself, so it maps onto the
+  Diamond most naturally. Validation is a richer `ModuleEntity` (`address ‖ uint32 entityId`)
+  with per-validation pre-validation hooks and per-selector pre/post execution hooks — the
+  standardized form of a session-key permission. Execution modules are dispatched by **CALL** (so
+  they run in their own storage), layered under the facet map.
+
+| Dimension | ERC-7579 | ERC-6900 |
+|---|---|---|
+| Proxy | `AccountDiamond` | `ModularAccount6900` |
+| Factory / init | `AccountFactory` / `AccountInit` | `AccountFactory6900` / `AccountInit6900` |
+| Module identity | module address (per type) | `ModuleEntity` = `address ‖ uint32 entityId` |
+| Module kinds | 4 fixed types | validation / validation-hook / execution / execution-hook modules |
+| userOp validator selection | top 20 bytes of `userOp.nonce` | first 24 bytes of `userOp.signature` |
+| Validation scope | by module type | global (per-selector opt-in) **or** a per-selector allowlist |
+| Hooks | one global pre/post hook | per-validation pre-validation hooks + per-selector pre/post exec hooks |
+| Execution extension | fallback handlers (CALL or DELEGATECALL) | execution-function registry, dispatched by CALL (own storage) |
+| Session-key permissions | `SessionKey` library (ad hoc) | a validation + attached hooks (standardized) |
+| Introspection | `DiamondLoupe` | `IERC6900AccountView` (`getExecutionData` / `getValidationData`) |
+| Config authority | account-self or admin | account-self or admin (config is admin-gated, not validation-gated) |
+
+The ERC-6900 facets: `ERC6900ModuleManager` (install/uninstall validations + executions),
+`ERC6900Executor` (`execute` / `executeBatch` / `executeWithRuntimeValidation` plus the proxy's
+execution-module dispatch), `ERC6900Validation` (ERC-4337 `validateUserOp`), `ERC6900Signature`
+(ERC-1271, ERC-7739-bound to the account's domain so signatures can't be replayed across
+accounts), and `ERC6900AccountView` (the loupe). Reference modules `SingleSignerValidation` and
+`SpendingLimit` demonstrate the validation and execution-hook module shapes.
 
 ## Architecture: three-layer facet pattern
 
@@ -135,7 +174,7 @@ local `forge test` does not guarantee CI passes if optimizer behavior diverges �
 ```
 src/
 ├── access/        # AccessControl(+Enumerable,+Timed), AccessManager(+Managed,+Standalone), Ownable
-├── accounts/      # Diamond smart accounts, ERC-4337/7579/7821/6551, session keys, factory/init
+├── accounts/      # Diamond smart accounts — ERC-7579 & ERC-6900 modular flavors, ERC-4337/7821/6551, session keys, factory/init
 ├── amm/           # ConstantProduct
 ├── crosschain/    # CCIP, Axelar, Wormhole, ERC-7786, bridge tokens, cross-chain timelock
 ├── defi/          # Aave, Compound, Curve, Lido, Uniswap V3, ERC4626 adapters, vault/strategy modules
