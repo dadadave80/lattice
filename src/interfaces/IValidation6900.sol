@@ -3,9 +3,10 @@ pragma solidity >=0.8.4;
 
 /// @title IValidation6900
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
-/// @notice Errors for the ERC-6900 ERC-4337 userOp validation path (`ERC6900Validation` facet). The applicability
-///         reverts ({ValidationFunctionMissing}, {SelfCallRecursionDepthExceeded}, {UnrecognizedFunction}) are
-///         shared with the executor and live on `IExecutor6900`; the sparse-segment reverts live on
+/// @notice Errors for the ERC-6900 ERC-4337 userOp validation (`ERC6900Validation` facet) and ERC-1271
+///         signature validation (`ERC6900Signature` facet) paths. The applicability reverts
+///         ({ValidationFunctionMissing}, {SelfCallRecursionDepthExceeded}, {UnrecognizedFunction}) are shared
+///         with the executor and live on `IExecutor6900`; the sparse-segment reverts live on
 ///         `SparseCalldataSegmentLib`.
 /// @dev Re-implemented FRESH from the ERC-6900 reference semantics (erc6900/reference-implementation @ 65892c2).
 interface IValidation6900 {
@@ -22,4 +23,7 @@ interface IValidation6900 {
     /// @notice The selected validation has execution hooks, which require the `executeUserOp` wrapper to run at
     ///         execution time (not yet supported); the userOp is rejected rather than silently skipping them.
     error RequireUserOperationContext();
+
+    /// @notice The selected validation function is not flagged as a signature (ERC-1271) validation.
+    error SignatureValidationInvalid(address module, uint32 entityId);
 }
