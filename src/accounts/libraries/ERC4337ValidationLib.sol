@@ -4,8 +4,10 @@ pragma solidity ^0.8.30;
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
 import {AccountSignerLib} from "@lattice/accounts/libraries/AccountSignerLib.sol";
+import {ERC7579ModuleConfigLib} from "@lattice/accounts/libraries/ERC7579ModuleConfigLib.sol";
 import {IERC4337Validation} from "@lattice/interfaces/IERC4337Validation.sol";
 import {IAccount, PackedUserOperation} from "@lattice/interfaces/external/IAccount.sol";
+import {IERC7579Validator, MODULE_TYPE_VALIDATOR} from "@lattice/interfaces/external/IERC7579.sol";
 import {ECDSA} from "@lattice/utils/libraries/ECDSA.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
@@ -88,8 +90,16 @@ library ERC4337ValidationLib {
         if (msg.sender != erc4337ValidationStorage()._entryPoint) {
             revert IERC4337Validation.NotFromEntryPoint(msg.sender);
         }
-        bool ok = AccountSignerLib.isValidSignatureNow(ECDSA.toEthSignedMessageHash(userOpHash), userOp.signature);
-        validationData = ok ? SIG_VALIDATION_SUCCESS : SIG_VALIDATION_FAILED;
+        // ERC-7579 validator routing (#58 follow-on): the top 20 bytes of the nonce select an installed
+        // VALIDATOR module, which returns the packed validationData. A zero / uninstalled selector falls back
+        // to the default single-owner path (the `AccountSigner`), so existing key-0 ops are unchanged.
+        address validator = address(bytes20(bytes32(userOp.nonce)));
+        if (validator != address(0) && ERC7579ModuleConfigLib.isInstalled(MODULE_TYPE_VALIDATOR, validator)) {
+            validationData = IERC7579Validator(validator).validateUserOp(userOp, userOpHash);
+        } else {
+            bool ok = AccountSignerLib.isValidSignatureNow(ECDSA.toEthSignedMessageHash(userOpHash), userOp.signature);
+            validationData = ok ? SIG_VALIDATION_SUCCESS : SIG_VALIDATION_FAILED;
+        }
         _payPrefund(missingAccountFunds);
     }
 
