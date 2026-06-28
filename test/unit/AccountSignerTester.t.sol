@@ -154,7 +154,7 @@ contract AccountSignerTester is Test {
         string memory cdj = string.concat(head, '"challenge":"', chB64, '","origin":"https://lattice.xyz"}');
         bytes32 message = sha256(abi.encodePacked(authData, sha256(bytes(cdj))));
         (bytes32 r, bytes32 s) = _signP256Low(pk, message);
-        return abi.encode(
+        return WebAuthn.tryEncodeAuthCompact(
             WebAuthn.WebAuthnAuth({
                 authenticatorData: authData,
                 clientDataJSON: cdj,
@@ -193,5 +193,21 @@ contract AccountSignerTester is Test {
         vm.prank(admin);
         signer.setWebAuthnSigner(bytes32(x), bytes32(y), false);
         assertFalse(signer.rawValidate(keccak256("c"), abi.encode("not a webauthn envelope")), "malformed accepted");
+    }
+
+    /// @dev The reason the WebAuthn path uses the compact codec: it's materially smaller than the ABI envelope,
+    ///      which is what dominates a passkey UserOp's calldata cost.
+    function test_WebAuthn_CompactEncodingIsSmaller() public pure {
+        WebAuthn.WebAuthnAuth memory auth = WebAuthn.WebAuthnAuth({
+            authenticatorData: abi.encodePacked(keccak256("lattice.rp"), bytes1(uint8(1)), bytes4(0x00000001)),
+            clientDataJSON: '{"type":"webauthn.get","challenge":"abc","origin":"https://lattice.xyz"}',
+            challengeIndex: 23,
+            typeIndex: 1,
+            r: bytes32(uint256(1)),
+            s: bytes32(uint256(2))
+        });
+        bytes memory compact = WebAuthn.tryEncodeAuthCompact(auth);
+        assertGt(compact.length, 0, "compact encode failed");
+        assertLt(compact.length, abi.encode(auth).length, "compact not smaller than the ABI envelope");
     }
 }
