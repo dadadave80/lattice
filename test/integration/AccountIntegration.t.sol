@@ -182,7 +182,7 @@ contract AccountIntegration is Test {
         string memory cdj = string.concat(head, '"challenge":"', chB64, '","origin":"https://lattice.xyz"}');
         bytes32 message = sha256(abi.encodePacked(authData, sha256(bytes(cdj))));
         (bytes32 r, bytes32 s) = _signP256Low(pk, message);
-        return abi.encode(
+        return WebAuthn.tryEncodeAuthCompact(
             WebAuthn.WebAuthnAuth({
                 authenticatorData: authData,
                 clientDataJSON: cdj,
