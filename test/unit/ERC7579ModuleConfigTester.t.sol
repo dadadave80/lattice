@@ -13,6 +13,7 @@ import {
     IERC7579ModuleConfig,
     MODULE_TYPE_EXECUTOR,
     MODULE_TYPE_FALLBACK,
+    MODULE_TYPE_HOOK,
     MODULE_TYPE_VALIDATOR
 } from "@lattice/interfaces/external/IERC7579.sol";
 import {Call} from "@lattice/interfaces/external/IERC7821.sol";
@@ -65,6 +66,22 @@ contract MockBadModule {
     }
 }
 
+/// @dev A minimal ERC-7579 hook module (type 4).
+contract MockHookModule {
+    function onInstall(bytes calldata) external {}
+    function onUninstall(bytes calldata) external {}
+
+    function isModuleType(uint256 t) external pure returns (bool) {
+        return t == MODULE_TYPE_HOOK;
+    }
+
+    function preCheck(address, uint256, bytes calldata) external pure returns (bytes memory) {
+        return "";
+    }
+
+    function postCheck(bytes calldata) external {}
+}
+
 contract Target {
     uint256 public value;
 
@@ -106,6 +123,7 @@ contract ERC7579ModuleConfigTester is Test {
     function test_SupportsModule() public view {
         assertTrue(account.supportsModule(MODULE_TYPE_EXECUTOR), "executor supported");
         assertTrue(account.supportsModule(MODULE_TYPE_VALIDATOR), "validator supported");
+        assertTrue(account.supportsModule(MODULE_TYPE_HOOK), "hook supported");
         assertFalse(account.supportsModule(MODULE_TYPE_FALLBACK), "fallback not yet supported");
     }
 
@@ -189,5 +207,37 @@ contract ERC7579ModuleConfigTester is Test {
         MockExecutor other = new MockExecutor(); // never installed
         vm.expectRevert(abi.encodeWithSelector(IModuleConfig.NotInstalledExecutor.selector, address(other)));
         other.drive(address(account), BATCH, _setValueData(1));
+    }
+
+    // ---- hook module (type 4) lifecycle ----
+
+    function test_Hook_InstallAndUninstall() public {
+        MockHookModule hook = new MockHookModule();
+        vm.prank(admin);
+        account.installModule(MODULE_TYPE_HOOK, address(hook), "");
+        assertTrue(account.isModuleInstalled(MODULE_TYPE_HOOK, address(hook), ""), "hook not installed");
+        vm.prank(admin);
+        account.uninstallModule(MODULE_TYPE_HOOK, address(hook), "");
+        assertFalse(account.isModuleInstalled(MODULE_TYPE_HOOK, address(hook), ""), "hook not uninstalled");
+    }
+
+    /// @dev Only one global hook; a second install reverts until the first is uninstalled.
+    function test_Hook_OnlyOneGlobalHook() public {
+        MockHookModule h1 = new MockHookModule();
+        MockHookModule h2 = new MockHookModule();
+        vm.prank(admin);
+        account.installModule(MODULE_TYPE_HOOK, address(h1), "");
+
+        vm.prank(admin);
+        vm.expectRevert(
+            abi.encodeWithSelector(IModuleConfig.ModuleAlreadyInstalled.selector, MODULE_TYPE_HOOK, address(h1))
+        );
+        account.installModule(MODULE_TYPE_HOOK, address(h2), "");
+
+        vm.prank(admin);
+        account.uninstallModule(MODULE_TYPE_HOOK, address(h1), "");
+        vm.prank(admin);
+        account.installModule(MODULE_TYPE_HOOK, address(h2), ""); // now succeeds
+        assertTrue(account.isModuleInstalled(MODULE_TYPE_HOOK, address(h2), ""), "h2 not installed after swap");
     }
 }
