@@ -99,6 +99,18 @@ library ERC6900TypesLib {
         return (uint8(ValidationConfig.unwrap(self)[24]) & _VALIDATION_FLAG_IS_USER_OP) != 0;
     }
 
+    function isGlobal(ValidationFlags self) internal pure returns (bool) {
+        return (ValidationFlags.unwrap(self) & _VALIDATION_FLAG_IS_GLOBAL) != 0;
+    }
+
+    function isSignatureValidation(ValidationFlags self) internal pure returns (bool) {
+        return (ValidationFlags.unwrap(self) & _VALIDATION_FLAG_IS_SIGNATURE) != 0;
+    }
+
+    function isUserOpValidation(ValidationFlags self) internal pure returns (bool) {
+        return (ValidationFlags.unwrap(self) & _VALIDATION_FLAG_IS_USER_OP) != 0;
+    }
+
     // ---- HookConfig ----
 
     function packValidationHook(ModuleEntity hookFunction) internal pure returns (HookConfig) {
