@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.4;
 
-// IERC7579 — Minimal modular smart-account interfaces (executor-module subset).
+// IERC7579 — Minimal modular smart-account interfaces.
 // Vendored from OpenZeppelin Contracts `contracts/interfaces/draft-IERC7579.sol` (MIT, the OZ split form).
-// Vendored subset — do not add an openzeppelin-contracts dependency. Lattice implements the EXECUTOR-module
-// subset (type 2) in v1. Interface ids (Solidity excludes inherited fns): IERC7579Execution = 0x3f3f9537,
+// Vendored subset — do not add an openzeppelin-contracts dependency. Lattice consumes EXECUTOR (type 2) and
+// VALIDATOR (type 1) modules. Interface ids (Solidity excludes inherited fns): IERC7579Execution = 0x3f3f9537,
 // IERC7579AccountConfig = 0xbe1d6cf6, IERC7579ModuleConfig = 0x232dbb4a.
+
+import {PackedUserOperation} from "@lattice/interfaces/external/IAccount.sol";
 
 uint256 constant MODULE_TYPE_VALIDATOR = 1;
 uint256 constant MODULE_TYPE_EXECUTOR = 2;
@@ -17,6 +19,16 @@ interface IERC7579Module {
     function onInstall(bytes calldata data) external;
     function onUninstall(bytes calldata data) external;
     function isModuleType(uint256 moduleTypeId) external view returns (bool);
+}
+
+/// @dev Validator module (type 1): authorizes user operations / ERC-1271 signatures on the account's behalf.
+///      Selected per-op by the validator address encoded in the top 20 bytes of `userOp.nonce`.
+interface IERC7579Validator is IERC7579Module {
+    function validateUserOp(PackedUserOperation calldata userOp, bytes32 userOpHash) external returns (uint256);
+    function isValidSignatureWithSender(address sender, bytes32 hash, bytes calldata signature)
+        external
+        view
+        returns (bytes4);
 }
 
 /// @dev Execution surface.

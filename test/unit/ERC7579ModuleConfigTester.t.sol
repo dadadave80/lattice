@@ -12,6 +12,7 @@ import {
     IERC7579Execution,
     IERC7579ModuleConfig,
     MODULE_TYPE_EXECUTOR,
+    MODULE_TYPE_FALLBACK,
     MODULE_TYPE_VALIDATOR
 } from "@lattice/interfaces/external/IERC7579.sol";
 import {Call} from "@lattice/interfaces/external/IERC7821.sol";
@@ -104,8 +105,8 @@ contract ERC7579ModuleConfigTester is Test {
 
     function test_SupportsModule() public view {
         assertTrue(account.supportsModule(MODULE_TYPE_EXECUTOR), "executor supported");
-        assertFalse(account.supportsModule(MODULE_TYPE_VALIDATOR), "validator not supported in v1");
-        assertFalse(account.supportsModule(3), "fallback not supported");
+        assertTrue(account.supportsModule(MODULE_TYPE_VALIDATOR), "validator supported");
+        assertFalse(account.supportsModule(MODULE_TYPE_FALLBACK), "fallback not yet supported");
     }
 
     function test_SupportsInterface() public view {
@@ -130,8 +131,8 @@ contract ERC7579ModuleConfigTester is Test {
 
     function test_InstallModule_RevertUnsupportedType() public {
         vm.prank(admin);
-        vm.expectRevert(abi.encodeWithSelector(IModuleConfig.UnsupportedModuleType.selector, MODULE_TYPE_VALIDATOR));
-        account.installModule(MODULE_TYPE_VALIDATOR, address(executor), "");
+        vm.expectRevert(abi.encodeWithSelector(IModuleConfig.UnsupportedModuleType.selector, MODULE_TYPE_FALLBACK));
+        account.installModule(MODULE_TYPE_FALLBACK, address(executor), "");
     }
 
     function test_InstallModule_RevertInvalidModule() public {

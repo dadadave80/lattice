@@ -6,21 +6,53 @@ import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {AccountSigner} from "@lattice/accounts/AccountSigner.sol";
 import {ERC4337Validation} from "@lattice/accounts/ERC4337Validation.sol";
+import {ERC7579ModuleConfig} from "@lattice/accounts/ERC7579ModuleConfig.sol";
 import {AccountSignerLib} from "@lattice/accounts/libraries/AccountSignerLib.sol";
 import {DEFAULT_ENTRY_POINT, ERC4337ValidationLib} from "@lattice/accounts/libraries/ERC4337ValidationLib.sol";
+import {ERC7579ModuleConfigLib} from "@lattice/accounts/libraries/ERC7579ModuleConfigLib.sol";
 import {IERC4337Validation} from "@lattice/interfaces/IERC4337Validation.sol";
 import {IAccount, PackedUserOperation} from "@lattice/interfaces/external/IAccount.sol";
+import {IERC7579Validator, MODULE_TYPE_VALIDATOR} from "@lattice/interfaces/external/IERC7579.sol";
 import {Test} from "forge-std/Test.sol";
 
-/// @dev Harness: 4337 validation facet + signer facet + access facet.
-contract MockERC4337 is AccessControl, AccountSigner, ERC4337Validation {
+/// @dev Harness: 4337 validation + signer + access + ERC-7579 module config (to install validators).
+contract MockERC4337 is AccessControl, AccountSigner, ERC4337Validation, ERC7579ModuleConfig {
     function initialize(address admin_, address owner_, address entryPoint_) external {
         bytes32 s = InitializableLib.initializableSlot();
         InitializableLib.preInitializer(s);
         AccessControlLib.__AccessControl_init(admin_);
         AccountSignerLib.__AccountSigner_init(owner_);
         ERC4337ValidationLib.__ERC4337Validation_init(entryPoint_);
+        ERC7579ModuleConfigLib.__ERC7579ModuleConfig_init();
         InitializableLib.postInitializer(s);
+    }
+}
+
+/// @dev Configurable ERC-7579 validator module: returns `ret` as the validationData regardless of signature.
+contract MockValidator is IERC7579Validator {
+    uint256 public ret; // 0 = valid, 1 = sig failure
+    uint256 public installs;
+
+    function setRet(uint256 r) external {
+        ret = r;
+    }
+
+    function onInstall(bytes calldata) external {
+        installs++;
+    }
+
+    function onUninstall(bytes calldata) external {}
+
+    function isModuleType(uint256 t) external pure returns (bool) {
+        return t == MODULE_TYPE_VALIDATOR;
+    }
+
+    function validateUserOp(PackedUserOperation calldata, bytes32) external view returns (uint256) {
+        return ret;
+    }
+
+    function isValidSignatureWithSender(address, bytes32, bytes calldata) external pure returns (bytes4) {
+        return 0x1626ba7e;
     }
 }
 
@@ -111,5 +143,54 @@ contract ERC4337ValidationTester is Test {
         vm.prank(entryPointAddr);
         account.validateUserOp(op, userOpHash, 0.5 ether);
         assertEq(entryPointAddr.balance - before, 0.5 ether, "prefund not paid to EntryPoint");
+    }
+
+    // ---- ERC-7579 validator-module routing (#58 follow-on) ----
+
+    /// @dev The nonce selects a validator by its address in the top 20 bytes.
+    function _validatorNonce(address v) internal pure returns (uint256) {
+        return uint256(uint160(v)) << 96;
+    }
+
+    function test_Validator_InstallRoutesAndPropagatesResult() public {
+        MockValidator validator = new MockValidator();
+        vm.prank(admin);
+        account.installModule(MODULE_TYPE_VALIDATOR, address(validator), "");
+        assertTrue(account.isModuleInstalled(MODULE_TYPE_VALIDATOR, address(validator), ""), "not installed");
+        assertEq(validator.installs(), 1, "onInstall not called");
+
+        bytes32 h = keccak256("op");
+        PackedUserOperation memory op = _op(strangerPk, h); // a sig the OWNER would reject
+        op.nonce = _validatorNonce(address(validator));
+
+        // Routed to the validator (which accepts), bypassing the owner — proving the route is taken.
+        vm.prank(entryPointAddr);
+        assertEq(account.validateUserOp(op, h, 0), 0, "validator accept not routed");
+
+        // The validator's own result propagates.
+        validator.setRet(1);
+        vm.prank(entryPointAddr);
+        assertEq(account.validateUserOp(op, h, 0), 1, "validator reject not propagated");
+    }
+
+    function test_Validator_ZeroSelectorUsesOwner() public {
+        bytes32 h = keccak256("op");
+        PackedUserOperation memory bad = _op(strangerPk, h);
+        bad.nonce = 0; // default key → owner path
+        vm.prank(entryPointAddr);
+        assertEq(account.validateUserOp(bad, h, 0), 1, "owner should reject stranger at key 0");
+
+        PackedUserOperation memory good = _op(ownerPk, h);
+        good.nonce = 0;
+        vm.prank(entryPointAddr);
+        assertEq(account.validateUserOp(good, h, 0), 0, "owner should accept its own sig at key 0");
+    }
+
+    function test_Validator_UninstalledSelectorFallsBackToOwner() public {
+        bytes32 h = keccak256("op");
+        PackedUserOperation memory op = _op(ownerPk, h); // valid owner sig
+        op.nonce = _validatorNonce(address(0xDEAD)); // a non-installed "validator"
+        vm.prank(entryPointAddr);
+        assertEq(account.validateUserOp(op, h, 0), 0, "uninstalled selector should fall back to owner");
     }
 }
