@@ -116,7 +116,7 @@ library ERC6900ExecutorLib {
             uint8(authorization[24]) == 1 ? ValidationCheckType.GLOBAL : ValidationCheckType.SELECTOR;
         ERC6900ModuleManagerStorage storage $ = ERC6900ModuleManagerLib.erc6900ModuleManagerStorage();
 
-        _checkIfValidationAppliesCallData(data, vf, t);
+        checkValidationAppliesCallData(data, vf, t);
         _doRuntimeValidation(vf, data, authorization[25:]);
 
         PostExecToRun[] memory postValidator = _doPreHooks($._validations[vf].executionHooks, data);
@@ -155,16 +155,18 @@ library ERC6900ExecutorLib {
             // installed such a validation + permitted the selector IS the authorization — pre-validation hooks
             // run, but `validateRuntime` is NOT called (no signature to check).
             ModuleEntity key = ERC6900TypesLib.pack(msg.sender, DIRECT_CALL_VALIDATION_ENTITY_ID);
-            _checkIfValidationAppliesCallData(callData, key, ValidationCheckType.EITHER);
+            checkValidationAppliesCallData(callData, key, ValidationCheckType.EITHER);
             _doPreRuntimeValidationHooks(key, callData);
             postValidator = _doPreHooks($._validations[key].executionHooks, callData);
         }
         postSelector = _doPreHooks($._executions[selector].executionHooks, callData);
     }
 
-    /// @dev Validation applicability for `callData`'s selector + the self-call recursion guard (depth 1).
-    function _checkIfValidationAppliesCallData(bytes calldata callData, ModuleEntity vf, ValidationCheckType t)
-        private
+    /// @notice Validation applicability for `callData`'s selector + the self-call recursion guard (depth 1).
+    ///         Shared with the userOp validation path (#74 sub-task 4), which decodes the selector from the
+    ///         userOp callData and passes GLOBAL or SELECTOR (never EITHER).
+    function checkValidationAppliesCallData(bytes calldata callData, ModuleEntity vf, ValidationCheckType t)
+        internal
         view
     {
         bytes4 selector = _selectorOf(callData);
