@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {Diamond} from "@diamond/Diamond.sol";
 import {DiamondLib, FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
+import {AccountDiamond} from "@lattice/accounts/AccountDiamond.sol";
 import {ECDSA} from "@lattice/utils/libraries/ECDSA.sol";
 
 /// @title Account7702Diamond
@@ -18,7 +18,7 @@ import {ECDSA} from "@lattice/utils/libraries/ECDSA.sol";
 /// @dev A front-runner cannot forge the EOA's signature, so cannot substitute a hostile blueprint; replaying
 ///      the EOA's own signed onboarding only reproduces the intended state (`init7702` sets owner = the EOA).
 ///      The residual is at most a failed first UserOp + retry, never account hijacking.
-contract Account7702Diamond is Diamond {
+contract Account7702Diamond is AccountDiamond {
     /// @notice The provided onboarding signature did not recover to this account (the delegating EOA).
     error UnauthorizedOnboarding();
 

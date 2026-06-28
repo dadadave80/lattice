@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
+import {AccountDiamond} from "@lattice/accounts/AccountDiamond.sol";
 import {IAccountFactory} from "@lattice/interfaces/IAccountFactory.sol";
 
 /// @title AccountFactory
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice Deterministic factory for EIP-2535 Diamond smart accounts, suitable for ERC-4337 counterfactual
 ///         `initCode` onboarding. Holds a fixed facet blueprint + initializer; each `createAccount` CREATE2-
-///         deploys a bare {Diamond} proxy and initializes it with the blueprint and the owner.
+///         deploys a {AccountDiamond} proxy and initializes it with the blueprint and the owner.
 /// @dev The proxy has no constructor args, so its initcode hash is constant and the CREATE2 address depends
 ///      only on `(factory, keccak256(owner, salt))`. Deploy this factory itself deterministically (e.g. via
 ///      CreateX) and the same `(owner, salt)` lands at the SAME account address on every chain. Folding the
@@ -19,7 +19,7 @@ contract AccountFactory is IAccountFactory {
     /// @inheritdoc IAccountFactory
     address public immutable accountInit;
 
-    /// @dev `keccak256(type(Diamond).creationCode)` — the CREATE2 initcode hash, fixed at construction.
+    /// @dev `keccak256(type(AccountDiamond).creationCode)` — the CREATE2 initcode hash, fixed at construction.
     bytes32 private immutable _proxyInitCodeHash;
 
     /// @dev The facet cuts applied to every account. Fixed at construction; a different blueprint ⇒ a
@@ -32,7 +32,7 @@ contract AccountFactory is IAccountFactory {
         uint256 blueprintLength = __blueprint.length;
         if (blueprintLength == 0) revert EmptyBlueprint();
         accountInit = _accountInit;
-        _proxyInitCodeHash = keccak256(type(Diamond).creationCode);
+        _proxyInitCodeHash = keccak256(type(AccountDiamond).creationCode);
         for (uint256 i; i < blueprintLength; ++i) {
             _blueprint.push(__blueprint[i]);
         }
@@ -45,7 +45,7 @@ contract AccountFactory is IAccountFactory {
         if (account.code.length != 0) return account; // already deployed — idempotent
 
         FacetCut[] memory cuts = _blueprint;
-        Diamond proxy = new Diamond{salt: s}();
+        AccountDiamond proxy = new AccountDiamond{salt: s}();
         proxy.initialize(cuts, accountInit, abi.encodeWithSignature("init(address)", owner));
 
         emit AccountCreated(account, owner, salt);
@@ -61,7 +61,7 @@ contract AccountFactory is IAccountFactory {
         return keccak256(abi.encode(owner, salt));
     }
 
-    /// @dev Standard CREATE2 address derivation for the bare {Diamond} proxy.
+    /// @dev Standard CREATE2 address derivation for the {AccountDiamond} proxy.
     function _predict(bytes32 s) private view returns (address) {
         return
             address(uint160(uint256(keccak256(abi.encodePacked(bytes1(0xff), address(this), s, _proxyInitCodeHash)))));
