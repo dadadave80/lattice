@@ -102,13 +102,22 @@ library ERC6900ModuleManagerLib {
         return _ACCOUNT_ID;
     }
 
-    /// @notice The execution-function install state for `selector` (module, validation flags, exec hooks).
+    /// @notice The execution-function install state for `selector` (module, validation flags, exec hooks). A
+    ///         native function — one the Diamond dispatches to a facet — reports the account itself as the module
+    ///         (per `IERC6900AccountView`); `execute`/`executeBatch` additionally report `allowGlobalValidation`
+    ///         (matching the executor's native validation-gated set). An unowned selector reports all zero.
     function getExecutionData(bytes4 selector) internal view returns (ExecutionDataView memory data) {
         ExecutionStorage storage e = erc6900ModuleManagerStorage()._executions[selector];
-        data.module = e.module;
-        data.skipRuntimeValidation = e.skipRuntimeValidation;
-        data.allowGlobalValidation = e.allowGlobalValidation;
-        data.executionHooks = _toHookConfigs(e.executionHooks);
+        if (e.module != address(0)) {
+            data.module = e.module;
+            data.skipRuntimeValidation = e.skipRuntimeValidation;
+            data.allowGlobalValidation = e.allowGlobalValidation;
+            data.executionHooks = _toHookConfigs(e.executionHooks);
+        } else if (DiamondLib.selectorToFacet(DiamondLib.diamondStorage(), selector) != address(0)) {
+            data.module = address(this);
+            data.allowGlobalValidation =
+                selector == IERC6900Account.execute.selector || selector == IERC6900Account.executeBatch.selector;
+        }
     }
 
     /// @notice The validation-function install state for `validationFunction` (flags, hooks, selectors).
