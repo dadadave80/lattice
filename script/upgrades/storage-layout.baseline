@@ -183,3 +183,8 @@
 1	0	_tokenContract	t_address
 2	0	_tokenId	t_uint256
 3	0	_state	t_uint256
+
+### ERC6900ModuleManagerStorage @ erc7201:lattice.storage.ERC6900ModuleManager (slot 0x498a44bfdab4c9c01e0c660bf3b7240261bf444dc4c542e64dac94a83f534500)
+0	0	_executions	t_mapping(t_bytes4,t_struct(ExecutionStorage)_storage)
+1	0	_validations	t_mapping(t_userDefinedValueType(ModuleEntity),t_struct(ValidationStorage)_storage)
+2	0	_interfaceRefCount	t_mapping(t_bytes4,t_uint256)
