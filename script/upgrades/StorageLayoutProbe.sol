@@ -3,6 +3,7 @@ pragma solidity ^0.8.30;
 
 import {ICommitReveal} from "@lattice/interfaces/ICommitReveal.sol";
 import {IUpgradeRegistry} from "@lattice/interfaces/IUpgradeRegistry.sol";
+import {HookConfig, ModuleEntity, ValidationFlags} from "@lattice/interfaces/external/IERC6900.sol";
 import {IncrementalMerkleTreeLib} from "@lattice/privacy/libraries/IncrementalMerkleTreeLib.sol";
 import {NullifierRegistryLib} from "@lattice/privacy/libraries/NullifierRegistryLib.sol";
 import {EnumerableSet} from "@lattice/utils/libraries/EnumerableSet.sol";
@@ -391,6 +392,29 @@ contract StorageLayoutProbe {
         uint256 _state;
     }
 
+    /// @dev Verbatim mirror of `ERC6900ModuleManagerLib.ExecutionStorage` / `ValidationStorage` /
+    ///      `ERC6900ModuleManagerStorage` (`@custom:storage-location erc7201:lattice.storage.ERC6900ModuleManager`).
+    ///      Append-only.
+    struct ExecutionStorage {
+        address module;
+        bool skipRuntimeValidation;
+        bool allowGlobalValidation;
+        EnumerableSet.Bytes32Set executionHooks;
+    }
+
+    struct ValidationStorage {
+        ValidationFlags validationFlags;
+        HookConfig[] validationHooks;
+        EnumerableSet.Bytes32Set executionHooks;
+        EnumerableSet.Bytes4Set selectors;
+    }
+
+    struct ERC6900ModuleManagerStorage {
+        mapping(bytes4 selector => ExecutionStorage) _executions;
+        mapping(ModuleEntity validationFunction => ValidationStorage) _validations;
+        mapping(bytes4 interfaceId => uint256 count) _interfaceRefCount;
+    }
+
     /// @dev Verbatim mirror of `PythEntropyAdapterLib.PythEntropyAdapterStorage`
     ///      (`@custom:storage-location erc7201:lattice.storage.PythEntropyAdapter`). Append-only.
     struct PythEntropyAdapterStorage {
@@ -486,4 +510,5 @@ contract StorageLayoutProbe {
     SessionKeyStorage internal _unusedSessionKey;
     ERC7579ModuleConfigStorage internal _unusedERC7579ModuleConfig;
     ERC6551AccountStorage internal _unusedERC6551Account;
+    ERC6900ModuleManagerStorage internal _unusedERC6900ModuleManager;
 }
