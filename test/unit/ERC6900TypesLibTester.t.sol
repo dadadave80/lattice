@@ -10,6 +10,7 @@ import {Test} from "forge-std/Test.sol";
 contract ERC6900TypesLibTester is Test {
     using ERC6900TypesLib for ModuleEntity;
     using ERC6900TypesLib for ValidationConfig;
+    using ERC6900TypesLib for ValidationFlags;
     using ERC6900TypesLib for HookConfig;
 
     address constant MODULE = 0xAAbbCCDdeEFf00112233445566778899aABBcCDd;
@@ -77,6 +78,15 @@ contract ERC6900TypesLibTester is Test {
         (ModuleEntity me, ValidationFlags flags) = _vc(true, false, true).unpack();
         assertEq(ModuleEntity.unwrap(me), ME_GOLDEN, "moduleEntity");
         assertEq(ValidationFlags.unwrap(flags), 0x05, "flags = isGlobal|isUserOp");
+    }
+
+    function test_ValidationFlags_Accessors() public pure {
+        (, ValidationFlags g) = _vc(true, false, false).unpack();
+        assertTrue(g.isGlobal() && !g.isSignatureValidation() && !g.isUserOpValidation(), "isGlobal only");
+        (, ValidationFlags s) = _vc(false, true, false).unpack();
+        assertTrue(!s.isGlobal() && s.isSignatureValidation() && !s.isUserOpValidation(), "isSignature only");
+        (, ValidationFlags u) = _vc(false, false, true).unpack();
+        assertTrue(!u.isGlobal() && !u.isSignatureValidation() && u.isUserOpValidation(), "isUserOp only");
     }
 
     function test_ValidationConfig_PackFromModuleEntity() public pure {
