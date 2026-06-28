@@ -5,6 +5,7 @@ import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
 import {AccountSignerLib} from "@lattice/accounts/libraries/AccountSignerLib.sol";
 import {ERC4337ValidationLib} from "@lattice/accounts/libraries/ERC4337ValidationLib.sol";
+import {ERC7579ModuleConfigLib} from "@lattice/accounts/libraries/ERC7579ModuleConfigLib.sol";
 import {SessionKeyLib} from "@lattice/accounts/libraries/SessionKeyLib.sol";
 import {IERC7821Executor} from "@lattice/interfaces/IERC7821Executor.sol";
 import {Call} from "@lattice/interfaces/external/IERC7821.sol";
@@ -72,6 +73,8 @@ library ERC7821ExecutorLib {
             sessionKey = _verifySignedOpData(mode, calls, opData);
         }
 
+        // Global ERC-7579 hook (type 4), if installed, wraps the whole batch: preCheck before, postCheck after.
+        (address hook, bytes memory hookData) = ERC7579ModuleConfigLib.preExecutionHook(msg.data);
         if (sessionKey == address(0)) {
             runCalls(calls);
         } else {
@@ -81,6 +84,7 @@ library ERC7821ExecutorLib {
             runCalls(calls);
             SessionKeyLib.settleSpend(sessionKey, tokens, before, calls);
         }
+        ERC7579ModuleConfigLib.postExecutionHook(hook, hookData);
         emit IERC7821Executor.BatchExecuted(mode, calls.length);
     }
 

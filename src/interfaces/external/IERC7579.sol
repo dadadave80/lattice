@@ -31,6 +31,19 @@ interface IERC7579Validator is IERC7579Module {
         returns (bytes4);
 }
 
+/// @dev Hook module (type 4): the single global hook that wraps the account's execution surface. `preCheck`
+///      runs before the batch (returning opaque context), `postCheck` after — letting it enforce arbitrary
+///      pre/post-execution policy (spend guards, allowlists, invariants) and revert to block the execution.
+///      The wrap is ATOMIC (`preCheck(); _execute(); postCheck();`, per the ERC-7579 reference): a reverting
+///      batch, `preCheck`, or `postCheck` reverts the WHOLE call — including any `preCheck` state effects — so
+///      `postCheck` runs only on an otherwise-successful execution, never after a reverted one.
+interface IERC7579Hook is IERC7579Module {
+    function preCheck(address msgSender, uint256 msgValue, bytes calldata msgData)
+        external
+        returns (bytes memory hookData);
+    function postCheck(bytes calldata hookData) external;
+}
+
 /// @dev Execution surface.
 interface IERC7579Execution {
     function execute(bytes32 mode, bytes calldata executionCalldata) external payable;

@@ -372,6 +372,7 @@ contract StorageLayoutProbe {
     ///      (`@custom:storage-location erc7201:lattice.storage.ERC7579ModuleConfig`). Append-only.
     struct ERC7579ModuleConfigStorage {
         mapping(uint256 moduleTypeId => mapping(address module => bool installed)) _installed;
+        address _hook;
     }
 
     /// @dev Verbatim mirror of `ERC6551AccountLib.ERC6551AccountStorage`
