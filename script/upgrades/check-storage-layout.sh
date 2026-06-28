@@ -99,6 +99,7 @@ GUARDED_STRUCTS=(
     "SessionKeyStorage lattice.storage.SessionKey"
     "ERC7579ModuleConfigStorage lattice.storage.ERC7579ModuleConfig"
     "ERC6551AccountStorage lattice.storage.ERC6551Account"
+    "ERC6900ModuleManagerStorage lattice.storage.ERC6900ModuleManager"
 )
 
 command -v forge >/dev/null 2>&1 || { echo "ERROR: forge not found on PATH" >&2; exit 2; }
@@ -134,7 +135,7 @@ generate_layout() {
             | select(.key | test("\\(" + $n + "\\)"))
             | .value.members[]
             | "\(.slot)\t\(.offset)\t\(.label)\t\(.type)"
-        ' | sed -E 's/\)[0-9]+_/)_/g' | sort -n -k1,1 -k2,2
+        ' | sed -E 's/\)[0-9]+/)/g' | sort -n -k1,1 -k2,2
         echo ""
     done
 }
