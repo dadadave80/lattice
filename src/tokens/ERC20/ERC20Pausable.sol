@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {PausableLib} from "@lattice/security/libraries/PausableLib.sol";
-import {ERC20} from "@lattice/tokens/ERC20/ERC20.sol";
+import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
 
 /// @title ERC20Pausable
 /// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/extensions/ERC20Pausable.sol)
@@ -14,18 +14,16 @@ import {ERC20} from "@lattice/tokens/ERC20/ERC20.sol";
 ///      mints/burns while paused should apply {PausableLib.whenNotPaused} on those entrypoints too.
 /// @custom:lattice-version 0.1.0
 /// @custom:lattice-source OpenZeppelin v5.6.1
-contract ERC20Pausable is ERC20 {
-    /// @inheritdoc ERC20
-    /// @dev Reverts with {IPausable-EnforcedPause} while the token is paused.
-    function transfer(address to, uint256 value) public virtual override returns (bool) {
+contract ERC20Pausable {
+    /// @notice Moves `value` to `to`, reverting with {IPausable-EnforcedPause} while paused (replaces base transfer).
+    function transfer(address to, uint256 value) public virtual returns (bool) {
         PausableLib.whenNotPaused();
-        return super.transfer(to, value);
+        return ERC20Lib.transfer(to, value);
     }
 
-    /// @inheritdoc ERC20
-    /// @dev Reverts with {IPausable-EnforcedPause} while the token is paused.
-    function transferFrom(address from, address to, uint256 value) public virtual override returns (bool) {
+    /// @notice Moves `value` from `from` to `to`, reverting with {IPausable-EnforcedPause} while paused (replaces base).
+    function transferFrom(address from, address to, uint256 value) public virtual returns (bool) {
         PausableLib.whenNotPaused();
-        return super.transferFrom(from, to, value);
+        return ERC20Lib.transferFrom(from, to, value);
     }
 }

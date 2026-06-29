@@ -2,7 +2,6 @@
 pragma solidity ^0.8.30;
 
 import {IERC20Capped} from "@lattice/interfaces/tokens/IERC20Capped.sol";
-import {ERC20} from "@lattice/tokens/ERC20/ERC20.sol";
 import {ERC20CappedLib} from "@lattice/tokens/ERC20/libraries/ERC20CappedLib.sol";
 import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
 
@@ -13,7 +12,7 @@ import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
 ///      that enforces the cap before delegating to ERC20Lib._mint.
 /// @custom:lattice-version 0.1.0
 /// @custom:lattice-source OpenZeppelin v5.1.0
-contract ERC20Capped is ERC20, IERC20Capped {
+contract ERC20Capped is IERC20Capped {
     /// @inheritdoc IERC20Capped
     function cap() public view virtual returns (uint256) {
         return ERC20CappedLib.cap();

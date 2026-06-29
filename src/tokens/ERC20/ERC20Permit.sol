@@ -2,7 +2,6 @@
 pragma solidity ^0.8.30;
 
 import {IERC20Permit} from "@lattice/interfaces/tokens/IERC20Permit.sol";
-import {ERC20} from "@lattice/tokens/ERC20/ERC20.sol";
 import {ERC20PermitLib} from "@lattice/tokens/ERC20/libraries/ERC20PermitLib.sol";
 import {EIP712} from "@lattice/utils/EIP712.sol";
 import {Nonces} from "@lattice/utils/Nonces.sol";
@@ -16,7 +15,7 @@ import {NoncesLib} from "@lattice/utils/libraries/NoncesLib.sol";
 ///      EIP712 and Nonces modules must be initialized separately in the initializer.
 /// @custom:lattice-version 0.1.0
 /// @custom:lattice-source OpenZeppelin v5.1.0
-contract ERC20Permit is ERC20, EIP712, Nonces, IERC20Permit {
+contract ERC20Permit is EIP712, Nonces, IERC20Permit {
     /// @inheritdoc IERC20Permit
     function permit(address owner, address spender, uint256 value, uint256 deadline, uint8 v, bytes32 r, bytes32 s)
         public

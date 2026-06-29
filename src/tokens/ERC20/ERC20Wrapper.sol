@@ -2,7 +2,6 @@
 pragma solidity ^0.8.30;
 
 import {IERC20Wrapper} from "@lattice/interfaces/tokens/IERC20Wrapper.sol";
-import {ERC20} from "@lattice/tokens/ERC20/ERC20.sol";
 import {ERC20WrapperLib} from "@lattice/tokens/ERC20/libraries/ERC20WrapperLib.sol";
 
 /// @title ERC20Wrapper
@@ -12,9 +11,9 @@ import {ERC20WrapperLib} from "@lattice/tokens/ERC20/libraries/ERC20WrapperLib.s
 ///      adds it. `decimals()` overrides the base 18 to mirror the underlying.
 /// @custom:lattice-version 0.1.0
 /// @custom:lattice-source OpenZeppelin v5.6.1
-contract ERC20Wrapper is ERC20, IERC20Wrapper {
-    /// @inheritdoc ERC20
-    function decimals() public view virtual override returns (uint8) {
+contract ERC20Wrapper is IERC20Wrapper {
+    /// @notice The wrapper decimals, mirroring the underlying token (replaces the base 18).
+    function decimals() public view virtual returns (uint8) {
         return ERC20WrapperLib.decimals();
     }
 
