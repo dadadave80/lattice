@@ -6,8 +6,8 @@ import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {ENSSubnameIssuer} from "@lattice/ens/ENSSubnameIssuer.sol";
 import {ENSSubnameIssuerLib, ENS_SUBNAME_ISSUER_ROLE} from "@lattice/ens/libraries/ENSSubnameIssuerLib.sol";
-import {IAccessControl} from "@lattice/interfaces/IAccessControl.sol";
-import {IENSSubnameIssuer} from "@lattice/interfaces/IENSSubnameIssuer.sol";
+import {IAccessControl} from "@lattice/interfaces/access/IAccessControl.sol";
+import {IENSSubnameIssuer} from "@lattice/interfaces/ens/IENSSubnameIssuer.sol";
 import {INameWrapper} from "@lattice/interfaces/external/INameWrapper.sol";
 import {Test} from "forge-std/Test.sol";
 

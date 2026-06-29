@@ -6,7 +6,7 @@ import {
     SegmentOutOfOrder,
     SparseCalldataSegmentLib,
     ValidationSignatureSegmentMissing
-} from "@lattice/accounts/libraries/SparseCalldataSegmentLib.sol";
+} from "@lattice/accounts/erc6900/libraries/SparseCalldataSegmentLib.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @dev Calldata harness (the lib operates on `bytes calldata`).

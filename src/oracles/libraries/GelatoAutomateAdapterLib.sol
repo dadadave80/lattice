@@ -3,8 +3,8 @@ pragma solidity ^0.8.30;
 
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
-import {IGelatoAutomateAdapter} from "@lattice/interfaces/IGelatoAutomateAdapter.sol";
 import {IGelatoAutomate} from "@lattice/interfaces/external/IGelatoAutomate.sol";
+import {IGelatoAutomateAdapter} from "@lattice/interfaces/oracles/IGelatoAutomateAdapter.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
 //                                  STORAGE

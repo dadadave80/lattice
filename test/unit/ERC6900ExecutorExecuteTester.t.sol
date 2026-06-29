@@ -4,11 +4,11 @@ pragma solidity ^0.8.30;
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
-import {ERC6900Executor} from "@lattice/accounts/ERC6900Executor.sol";
-import {ERC6900ModuleManager} from "@lattice/accounts/ERC6900ModuleManager.sol";
-import {ModularAccount6900} from "@lattice/accounts/ModularAccount6900.sol";
-import {ERC6900TypesLib} from "@lattice/accounts/libraries/ERC6900TypesLib.sol";
-import {IExecutor6900} from "@lattice/interfaces/IExecutor6900.sol";
+import {ERC6900Executor} from "@lattice/accounts/erc6900/ERC6900Executor.sol";
+import {ERC6900ModuleManager} from "@lattice/accounts/erc6900/ERC6900ModuleManager.sol";
+import {ModularAccount6900} from "@lattice/accounts/erc6900/ModularAccount6900.sol";
+import {ERC6900TypesLib} from "@lattice/accounts/erc6900/libraries/ERC6900TypesLib.sol";
+import {IERC6900Executor} from "@lattice/interfaces/accounts/IERC6900Executor.sol";
 import {
     Call,
     DIRECT_CALL_VALIDATION_ENTITY_ID,
@@ -89,7 +89,9 @@ contract ERC6900ExecutorExecuteTester is Test {
     function test_Execute_RevertUnauthorized() public {
         vm.prank(caller);
         vm.expectRevert(
-            abi.encodeWithSelector(IExecutor6900.ValidationFunctionMissing.selector, IERC6900Account.execute.selector)
+            abi.encodeWithSelector(
+                IERC6900Executor.ValidationFunctionMissing.selector, IERC6900Account.execute.selector
+            )
         );
         account.execute(address(t1), 0, abi.encodeCall(Target.setV, (1)));
     }
@@ -98,7 +100,7 @@ contract ERC6900ExecutorExecuteTester is Test {
         _authorize(false, _sel(IERC6900Account.execute.selector));
         bytes memory inner = abi.encodeCall(IERC6900Account.execute, (address(t1), 0, ""));
         vm.prank(caller);
-        vm.expectRevert(IExecutor6900.SelfCallRecursionDepthExceeded.selector);
+        vm.expectRevert(IERC6900Executor.SelfCallRecursionDepthExceeded.selector);
         account.execute(address(account), 0, inner);
     }
 
@@ -135,7 +137,7 @@ contract ERC6900ExecutorExecuteTester is Test {
         Call[] memory calls = new Call[](1);
         calls[0] = Call({target: address(account), value: 0, data: configCall});
         vm.prank(caller);
-        vm.expectRevert(IExecutor6900.SelfCallRecursionDepthExceeded.selector);
+        vm.expectRevert(IERC6900Executor.SelfCallRecursionDepthExceeded.selector);
         account.executeBatch(calls);
     }
 
@@ -147,7 +149,7 @@ contract ERC6900ExecutorExecuteTester is Test {
             (ERC6900TypesLib.pack(caller, 1, true, false, false), new bytes4[](0), "", new bytes[](0))
         );
         vm.prank(caller);
-        vm.expectRevert(IExecutor6900.SelfCallRecursionDepthExceeded.selector);
+        vm.expectRevert(IERC6900Executor.SelfCallRecursionDepthExceeded.selector);
         account.execute(address(account), 0, configCall);
     }
 

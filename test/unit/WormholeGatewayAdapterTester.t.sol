@@ -7,7 +7,7 @@ import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {WormholeGatewayAdapter} from "@lattice/crosschain/WormholeGatewayAdapter.sol";
 import {WormholeGatewayAdapterLib} from "@lattice/crosschain/libraries/WormholeGatewayAdapterLib.sol";
-import {IWormholeGatewayAdapter} from "@lattice/interfaces/IWormholeGatewayAdapter.sol";
+import {IWormholeGatewayAdapter} from "@lattice/interfaces/crosschain/IWormholeGatewayAdapter.sol";
 import {IERC7786GatewaySource, IERC7786Recipient} from "@lattice/interfaces/external/IERC7786.sol";
 import {IERC7786Attributes} from "@lattice/interfaces/external/IERC7786Attributes.sol";
 import {IWormholeRelayer} from "@lattice/interfaces/external/IWormholeRelayer.sol";

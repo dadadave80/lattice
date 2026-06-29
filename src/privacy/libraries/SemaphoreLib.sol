@@ -3,7 +3,7 @@ pragma solidity ^0.8.30;
 
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
-import {ISemaphore} from "@lattice/interfaces/ISemaphore.sol";
+import {ISemaphore} from "@lattice/interfaces/privacy/ISemaphore.sol";
 import {IncrementalMerkleTreeLib} from "@lattice/privacy/libraries/IncrementalMerkleTreeLib.sol";
 import {NullifierRegistryLib} from "@lattice/privacy/libraries/NullifierRegistryLib.sol";
 import {ISemaphoreVerifier} from "@semaphore/ISemaphoreVerifier.sol";

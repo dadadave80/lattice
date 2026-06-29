@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {IChronicleAdapter} from "@lattice/interfaces/IChronicleAdapter.sol";
+import {IChronicleAdapter} from "@lattice/interfaces/oracles/IChronicleAdapter.sol";
 import {ChronicleAdapterLib} from "@lattice/oracles/libraries/ChronicleAdapterLib.sol";
 
 /// @title ChronicleAdapter

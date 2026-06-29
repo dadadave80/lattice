@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {ENSReverseClaimerLib} from "@lattice/ens/libraries/ENSReverseClaimerLib.sol";
-import {IENSReverseClaimer} from "@lattice/interfaces/IENSReverseClaimer.sol";
+import {IENSReverseClaimer} from "@lattice/interfaces/ens/IENSReverseClaimer.sol";
 
 /// @title ENSReverseClaimer
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

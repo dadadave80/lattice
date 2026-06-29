@@ -29,8 +29,8 @@ import {AaveV3AdapterLib} from "@lattice/defi/libraries/AaveV3AdapterLib.sol";
 import {StrategyManagerLib} from "@lattice/defi/libraries/StrategyManagerLib.sol";
 import {VaultCoreLib} from "@lattice/defi/libraries/VaultCoreLib.sol";
 import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib.sol";
-import {ERC20Lib} from "@lattice/tokens/libraries/ERC20Lib.sol";
-import {ERC4626Lib} from "@lattice/tokens/libraries/ERC4626Lib.sol";
+import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
+import {ERC4626Lib} from "@lattice/tokens/ERC4626/libraries/ERC4626Lib.sol";
 import {Test} from "forge-std/Test.sol";
 
 // Reuse the mocks from the supply test by importing them.

@@ -3,7 +3,7 @@ pragma solidity ^0.8.30;
 
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
-import {IShieldedPool, IShieldedWithdrawVerifier} from "@lattice/interfaces/IShieldedPool.sol";
+import {IShieldedPool, IShieldedWithdrawVerifier} from "@lattice/interfaces/privacy/IShieldedPool.sol";
 import {IncrementalMerkleTreeLib} from "@lattice/privacy/libraries/IncrementalMerkleTreeLib.sol";
 import {NullifierRegistryLib} from "@lattice/privacy/libraries/NullifierRegistryLib.sol";
 import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib.sol";

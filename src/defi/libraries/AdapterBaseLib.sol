@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {IERC20} from "@lattice/interfaces/IERC20.sol";
+import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
 
 /// @title AdapterBaseLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

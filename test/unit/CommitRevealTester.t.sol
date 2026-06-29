@@ -3,7 +3,7 @@ pragma solidity ^0.8.30;
 
 import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
-import {ICommitReveal} from "@lattice/interfaces/ICommitReveal.sol";
+import {ICommitReveal} from "@lattice/interfaces/privacy/ICommitReveal.sol";
 import {CommitReveal} from "@lattice/privacy/CommitReveal.sol";
 import {CommitRevealLib} from "@lattice/privacy/libraries/CommitRevealLib.sol";
 import {Test} from "forge-std/Test.sol";

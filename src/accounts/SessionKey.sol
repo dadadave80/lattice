@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {SessionKeyLib} from "@lattice/accounts/libraries/SessionKeyLib.sol";
-import {ISessionKey} from "@lattice/interfaces/ISessionKey.sol";
+import {ISessionKey} from "@lattice/interfaces/accounts/ISessionKey.sol";
 
 /// @title SessionKey
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

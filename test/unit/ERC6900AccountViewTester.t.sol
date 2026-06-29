@@ -5,9 +5,9 @@ import {DiamondLib, FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLi
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
-import {ERC6900AccountView} from "@lattice/accounts/ERC6900AccountView.sol";
-import {ERC6900ModuleManager} from "@lattice/accounts/ERC6900ModuleManager.sol";
-import {ERC6900TypesLib} from "@lattice/accounts/libraries/ERC6900TypesLib.sol";
+import {ERC6900AccountView} from "@lattice/accounts/erc6900/ERC6900AccountView.sol";
+import {ERC6900ModuleManager} from "@lattice/accounts/erc6900/ERC6900ModuleManager.sol";
+import {ERC6900TypesLib} from "@lattice/accounts/erc6900/libraries/ERC6900TypesLib.sol";
 import {
     ExecutionDataView,
     ExecutionManifest,

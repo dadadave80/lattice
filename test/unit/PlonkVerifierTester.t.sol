@@ -3,7 +3,7 @@ pragma solidity ^0.8.30;
 
 import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
-import {IPlonkVerifier} from "@lattice/interfaces/IPlonkVerifier.sol";
+import {IPlonkVerifier} from "@lattice/interfaces/privacy/IPlonkVerifier.sol";
 import {PlonkVerifier} from "@lattice/privacy/PlonkVerifier.sol";
 import {PlonkVerifierLib} from "@lattice/privacy/libraries/PlonkVerifierLib.sol";
 import {Test} from "forge-std/Test.sol";

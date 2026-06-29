@@ -4,7 +4,7 @@ pragma solidity ^0.8.30;
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
-import {IAccessControl} from "@lattice/interfaces/IAccessControl.sol";
+import {IAccessControl} from "@lattice/interfaces/access/IAccessControl.sol";
 import {Multicall} from "@lattice/utils/Multicall.sol";
 import {Test} from "forge-std/Test.sol";
 

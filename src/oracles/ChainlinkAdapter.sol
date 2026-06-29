@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {IChainlinkAdapter} from "@lattice/interfaces/IChainlinkAdapter.sol";
+import {IChainlinkAdapter} from "@lattice/interfaces/oracles/IChainlinkAdapter.sol";
 import {ChainlinkAdapterLib} from "@lattice/oracles/libraries/ChainlinkAdapterLib.sol";
 
 /// @title ChainlinkAdapter

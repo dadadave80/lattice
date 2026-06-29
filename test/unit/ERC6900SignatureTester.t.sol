@@ -4,17 +4,17 @@ pragma solidity ^0.8.30;
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
-import {ERC6900ModuleManager} from "@lattice/accounts/ERC6900ModuleManager.sol";
-import {ERC6900Signature} from "@lattice/accounts/ERC6900Signature.sol";
+import {ERC6900ModuleManager} from "@lattice/accounts/erc6900/ERC6900ModuleManager.sol";
+import {ERC6900Signature} from "@lattice/accounts/erc6900/ERC6900Signature.sol";
+import {ERC6900TypesLib} from "@lattice/accounts/erc6900/libraries/ERC6900TypesLib.sol";
 import {
     ERC1271_INVALID,
     ERC1271_MAGIC_VALUE,
     ERC7739_SENTINEL_HASH,
     ERC7739_SUPPORT
 } from "@lattice/accounts/libraries/ERC1271SignatureLib.sol";
-import {ERC6900TypesLib} from "@lattice/accounts/libraries/ERC6900TypesLib.sol";
 import {ERC7739Lib} from "@lattice/accounts/libraries/ERC7739Lib.sol";
-import {IValidation6900} from "@lattice/interfaces/IValidation6900.sol";
+import {IERC6900Validation} from "@lattice/interfaces/accounts/IERC6900Validation.sol";
 import {HookConfig, ModuleEntity, ValidationConfig} from "@lattice/interfaces/external/IERC6900.sol";
 import {EIP712Lib} from "@lattice/utils/libraries/EIP712Lib.sol";
 import {Test} from "forge-std/Test.sol";
@@ -136,7 +136,7 @@ contract ERC6900SignatureTester is Test {
     function test_IsValidSignature_RevertNotSignatureFlag() public {
         _install(false, new bytes[](0)); // installed without the isSignatureValidation flag
         vm.expectRevert(
-            abi.encodeWithSelector(IValidation6900.SignatureValidationInvalid.selector, address(val), ENTITY)
+            abi.encodeWithSelector(IERC6900Validation.SignatureValidationInvalid.selector, address(val), ENTITY)
         );
         account.isValidSignature(RAW_HASH, _sig(hex"1234"));
     }

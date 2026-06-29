@@ -5,10 +5,10 @@ import {DiamondLib, FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
-import {ERC6900ModuleManager} from "@lattice/accounts/ERC6900ModuleManager.sol";
-import {ERC6900ModuleManagerLib} from "@lattice/accounts/libraries/ERC6900ModuleManagerLib.sol";
-import {ERC6900TypesLib} from "@lattice/accounts/libraries/ERC6900TypesLib.sol";
-import {IModuleManager6900} from "@lattice/interfaces/IModuleManager6900.sol";
+import {ERC6900ModuleManager} from "@lattice/accounts/erc6900/ERC6900ModuleManager.sol";
+import {ERC6900ModuleManagerLib} from "@lattice/accounts/erc6900/libraries/ERC6900ModuleManagerLib.sol";
+import {ERC6900TypesLib} from "@lattice/accounts/erc6900/libraries/ERC6900TypesLib.sol";
+import {IERC6900ModuleManager} from "@lattice/interfaces/accounts/IERC6900ModuleManager.sol";
 import {
     HookConfig,
     IERC6900Account,
@@ -184,7 +184,7 @@ contract ERC6900ModuleManagerValidationTester is Test {
         bytes4[] memory s = new bytes4[](2);
         (s[0], s[1]) = (SEL_A, SEL_A);
         vm.prank(admin);
-        vm.expectRevert(abi.encodeWithSelector(IModuleManager6900.ValidationAlreadySet.selector, SEL_A, _me()));
+        vm.expectRevert(abi.encodeWithSelector(IERC6900ModuleManager.ValidationAlreadySet.selector, SEL_A, _me()));
         mgr.installValidation(_config(true, false, true), s, "", new bytes[](0));
     }
 
@@ -194,7 +194,7 @@ contract ERC6900ModuleManagerValidationTester is Test {
         hooks[1] = _execHook(address(module), 2, true, false, ""); // identical exec hook — set dedupes/reverts
         HookConfig dup = ERC6900TypesLib.packExecHook(ERC6900TypesLib.pack(address(module), 2), true, false);
         vm.prank(admin);
-        vm.expectRevert(abi.encodeWithSelector(IModuleManager6900.ExecutionHookAlreadySet.selector, dup));
+        vm.expectRevert(abi.encodeWithSelector(IERC6900ModuleManager.ExecutionHookAlreadySet.selector, dup));
         mgr.installValidation(_config(false, false, true), _sels(SEL_A), "", hooks);
     }
 
@@ -205,13 +205,13 @@ contract ERC6900ModuleManagerValidationTester is Test {
             hooks[i] = _valHook(address(module), uint32(i), "");
         }
         vm.prank(admin);
-        vm.expectRevert(IModuleManager6900.PreValidationHookLimitExceeded.selector);
+        vm.expectRevert(IERC6900ModuleManager.PreValidationHookLimitExceeded.selector);
         mgr.installValidation(_config(false, false, true), _sels(SEL_A), "", hooks);
     }
 
     function test_InstallValidation_RevertUnauthorized() public {
         vm.prank(address(0xBAD));
-        vm.expectRevert(abi.encodeWithSelector(IModuleManager6900.UnauthorizedModuleConfig.selector, address(0xBAD)));
+        vm.expectRevert(abi.encodeWithSelector(IERC6900ModuleManager.UnauthorizedModuleConfig.selector, address(0xBAD)));
         mgr.installValidation(_config(true, false, true), _sels(SEL_A), "", new bytes[](0));
     }
 
@@ -263,7 +263,7 @@ contract ERC6900ModuleManagerValidationTester is Test {
 
         bytes[] memory wrong = new bytes[](2); // total installed hooks == 1
         vm.prank(admin);
-        vm.expectRevert(IModuleManager6900.ArrayLengthMismatch.selector);
+        vm.expectRevert(IERC6900ModuleManager.ArrayLengthMismatch.selector);
         mgr.uninstallValidation(_me(), "", wrong);
     }
 

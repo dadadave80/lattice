@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {IERC6538Registry} from "@lattice/interfaces/IERC6538Registry.sol";
+import {IERC6538Registry} from "@lattice/interfaces/privacy/IERC6538Registry.sol";
 import {ERC6538RegistryLib} from "@lattice/privacy/libraries/ERC6538RegistryLib.sol";
 import {EIP712} from "@lattice/utils/EIP712.sol";
 import {EIP712Lib} from "@lattice/utils/libraries/EIP712Lib.sol";

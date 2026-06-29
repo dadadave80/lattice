@@ -7,11 +7,11 @@ import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {Account6900BlueprintHelper} from "@lattice-test/helpers/Account6900BlueprintHelper.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
-import {AccountFactory6900} from "@lattice/accounts/AccountFactory6900.sol";
-import {AccountInit6900} from "@lattice/accounts/AccountInit6900.sol";
-import {ERC6900ModuleManager} from "@lattice/accounts/ERC6900ModuleManager.sol";
-import {ERC6900TypesLib} from "@lattice/accounts/libraries/ERC6900TypesLib.sol";
-import {IAccountFactory} from "@lattice/interfaces/IAccountFactory.sol";
+import {AccountFactory6900} from "@lattice/accounts/erc6900/AccountFactory6900.sol";
+import {AccountInit6900} from "@lattice/accounts/erc6900/AccountInit6900.sol";
+import {ERC6900ModuleManager} from "@lattice/accounts/erc6900/ERC6900ModuleManager.sol";
+import {ERC6900TypesLib} from "@lattice/accounts/erc6900/libraries/ERC6900TypesLib.sol";
+import {IAccountFactory} from "@lattice/interfaces/accounts/IAccountFactory.sol";
 import {
     IERC6900Account,
     IERC6900AccountView,

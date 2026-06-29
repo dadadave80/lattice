@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
-import {IReentrancyGuard} from "@lattice/interfaces/IReentrancyGuard.sol";
+import {IReentrancyGuard} from "@lattice/interfaces/security/IReentrancyGuard.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
 //                                  STORAGE

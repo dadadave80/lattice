@@ -3,7 +3,7 @@ pragma solidity ^0.8.30;
 
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlEnumerableLib, AccessControlLib} from "@lattice/access/libraries/AccessControlEnumerableLib.sol";
-import {IAccessControl, IAccessControlEnumerable} from "@lattice/interfaces/IAccessControlEnumerable.sol";
+import {IAccessControl, IAccessControlEnumerable} from "@lattice/interfaces/access/IAccessControlEnumerable.sol";
 import {EnumerableSet} from "@lattice/utils/libraries/EnumerableSet.sol";
 
 /// @title AccessControlEnumerable

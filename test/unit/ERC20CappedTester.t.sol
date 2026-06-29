@@ -5,11 +5,11 @@ import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
-import {IERC20} from "@lattice/interfaces/IERC20.sol";
-import {IERC20Capped} from "@lattice/interfaces/IERC20Capped.sol";
-import {ERC20Capped} from "@lattice/tokens/ERC20Capped.sol";
-import {ERC20CappedLib} from "@lattice/tokens/libraries/ERC20CappedLib.sol";
-import {ERC20Lib} from "@lattice/tokens/libraries/ERC20Lib.sol";
+import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
+import {IERC20Capped} from "@lattice/interfaces/tokens/IERC20Capped.sol";
+import {ERC20Capped} from "@lattice/tokens/ERC20/ERC20Capped.sol";
+import {ERC20CappedLib} from "@lattice/tokens/ERC20/libraries/ERC20CappedLib.sol";
+import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @title MockERC20CappedContract

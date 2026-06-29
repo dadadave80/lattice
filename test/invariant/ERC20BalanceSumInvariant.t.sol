@@ -2,8 +2,8 @@
 pragma solidity ^0.8.30;
 
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
-import {ERC20} from "@lattice/tokens/ERC20.sol";
-import {ERC20Lib} from "@lattice/tokens/libraries/ERC20Lib.sol";
+import {ERC20} from "@lattice/tokens/ERC20/ERC20.sol";
+import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
 import {Test} from "forge-std/Test.sol";
 
 //*//////////////////////////////////////////////////////////////////////////

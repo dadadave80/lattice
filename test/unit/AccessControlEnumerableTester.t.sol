@@ -5,7 +5,7 @@ import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlEnumerable} from "@lattice/access/AccessControlEnumerable.sol";
 import {AccessControlEnumerableLib} from "@lattice/access/libraries/AccessControlEnumerableLib.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
-import {IAccessControl} from "@lattice/interfaces/IAccessControl.sol";
+import {IAccessControl} from "@lattice/interfaces/access/IAccessControl.sol";
 import {Test} from "forge-std/Test.sol";
 
 contract MockAccessControlEnumerableContract is AccessControlEnumerable {

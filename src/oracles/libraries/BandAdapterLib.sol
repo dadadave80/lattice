@@ -3,8 +3,8 @@ pragma solidity ^0.8.30;
 
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
-import {IBandAdapter} from "@lattice/interfaces/IBandAdapter.sol";
 import {IStdReference} from "@lattice/interfaces/external/IStdReference.sol";
+import {IBandAdapter} from "@lattice/interfaces/oracles/IBandAdapter.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
 //                                  STORAGE

@@ -3,7 +3,7 @@ pragma solidity ^0.8.30;
 
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
-import {IENSSubnameIssuer} from "@lattice/interfaces/IENSSubnameIssuer.sol";
+import {IENSSubnameIssuer} from "@lattice/interfaces/ens/IENSSubnameIssuer.sol";
 import {INameWrapper} from "@lattice/interfaces/external/INameWrapper.sol";
 
 //*//////////////////////////////////////////////////////////////////////////

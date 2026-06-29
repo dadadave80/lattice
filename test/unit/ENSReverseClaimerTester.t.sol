@@ -6,8 +6,8 @@ import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {ENSReverseClaimer} from "@lattice/ens/ENSReverseClaimer.sol";
 import {ENSReverseClaimerLib, ENS_MANAGER_ROLE} from "@lattice/ens/libraries/ENSReverseClaimerLib.sol";
-import {IAccessControl} from "@lattice/interfaces/IAccessControl.sol";
-import {IENSReverseClaimer} from "@lattice/interfaces/IENSReverseClaimer.sol";
+import {IAccessControl} from "@lattice/interfaces/access/IAccessControl.sol";
+import {IENSReverseClaimer} from "@lattice/interfaces/ens/IENSReverseClaimer.sol";
 import {IReverseRegistrar} from "@lattice/interfaces/external/IReverseRegistrar.sol";
 import {Test} from "forge-std/Test.sol";
 

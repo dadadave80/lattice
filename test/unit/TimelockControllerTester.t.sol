@@ -5,8 +5,8 @@ import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {TimelockControllerStandalone} from "@lattice/governance/TimelockControllerStandalone.sol";
 import {TimelockControllerLib} from "@lattice/governance/libraries/TimelockControllerLib.sol";
-import {IAccessControl} from "@lattice/interfaces/IAccessControl.sol";
-import {ITimelockController} from "@lattice/interfaces/ITimelockController.sol";
+import {IAccessControl} from "@lattice/interfaces/access/IAccessControl.sol";
+import {ITimelockController} from "@lattice/interfaces/governance/ITimelockController.sol";
 import {Test} from "forge-std/Test.sol";
 import {Vm} from "forge-std/Vm.sol";
 

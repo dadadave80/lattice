@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {VotesLib} from "@lattice/governance/libraries/VotesLib.sol";
-import {IVotes} from "@lattice/interfaces/IVotes.sol";
+import {IVotes} from "@lattice/interfaces/governance/IVotes.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @dev Minimal consumer of VotesLib that does NOT impose the ERC20Votes uint208 supply cap,

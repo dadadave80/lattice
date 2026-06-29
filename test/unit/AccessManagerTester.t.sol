@@ -4,7 +4,7 @@ pragma solidity ^0.8.30;
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessManager} from "@lattice/access/AccessManager.sol";
 import {AccessManagerLib} from "@lattice/access/libraries/AccessManagerLib.sol";
-import {IAccessManager} from "@lattice/interfaces/IAccessManager.sol";
+import {IAccessManager} from "@lattice/interfaces/access/IAccessManager.sol";
 import {Test} from "forge-std/Test.sol";
 import {Vm} from "forge-std/Vm.sol";
 

@@ -5,8 +5,8 @@ import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
-import {ERC1155} from "@lattice/tokens/ERC1155.sol";
-import {ERC1155Lib} from "@lattice/tokens/libraries/ERC1155Lib.sol";
+import {ERC1155} from "@lattice/tokens/ERC1155/ERC1155.sol";
+import {ERC1155Lib} from "@lattice/tokens/ERC1155/libraries/ERC1155Lib.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @notice Minimal mock ERC1155 for gas tests.

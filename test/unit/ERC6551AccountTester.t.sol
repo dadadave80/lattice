@@ -5,7 +5,7 @@ import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {ERC6551Account} from "@lattice/accounts/ERC6551Account.sol";
 import {ERC6551AccountLib} from "@lattice/accounts/libraries/ERC6551AccountLib.sol";
-import {ITokenBound} from "@lattice/interfaces/ITokenBound.sol";
+import {ITokenBound} from "@lattice/interfaces/accounts/ITokenBound.sol";
 import {Test} from "forge-std/Test.sol";
 
 contract MockTBA is ERC6551Account {

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {IGroth16Verifier} from "@lattice/interfaces/IGroth16Verifier.sol";
+import {IGroth16Verifier} from "@lattice/interfaces/privacy/IGroth16Verifier.sol";
 import {Groth16VerifierLib} from "@lattice/privacy/libraries/Groth16VerifierLib.sol";
 
 /// @title Groth16Verifier

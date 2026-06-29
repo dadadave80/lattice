@@ -4,8 +4,8 @@ pragma solidity ^0.8.30;
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {AccessControlTimedLib} from "@lattice/access/libraries/AccessControlTimedLib.sol";
-import {IAccessControl} from "@lattice/interfaces/IAccessControl.sol";
-import {IAccessControlTimed} from "@lattice/interfaces/IAccessControlTimed.sol";
+import {IAccessControl} from "@lattice/interfaces/access/IAccessControl.sol";
+import {IAccessControlTimed} from "@lattice/interfaces/access/IAccessControlTimed.sol";
 
 /// @title AccessControlTimed
 /// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/access/AccessControl.sol)

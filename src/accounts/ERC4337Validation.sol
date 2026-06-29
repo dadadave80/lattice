@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {ERC4337ValidationLib} from "@lattice/accounts/libraries/ERC4337ValidationLib.sol";
-import {IERC4337Validation} from "@lattice/interfaces/IERC4337Validation.sol";
+import {IERC4337Validation} from "@lattice/interfaces/accounts/IERC4337Validation.sol";
 import {IAccount, PackedUserOperation} from "@lattice/interfaces/external/IAccount.sol";
 
 /// @title ERC4337Validation
