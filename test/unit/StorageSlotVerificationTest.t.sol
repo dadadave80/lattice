@@ -40,6 +40,7 @@ import {
     ERC165_MAP_IERC20CAPPED_SLOT,
     ERC20CAPPED_STORAGE_SLOT
 } from "@lattice/tokens/ERC20/libraries/ERC20CappedLib.sol";
+import {ERC165_MAP_IERC3156FLASHLENDER_SLOT} from "@lattice/tokens/ERC20/libraries/ERC20FlashMintLib.sol";
 import {ERC165_MAP_IERC20_SLOT, ERC20_STORAGE_SLOT} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
 import {ERC165_MAP_IERC2981_SLOT, ERC2981_STORAGE_SLOT} from "@lattice/tokens/ERC2981/libraries/ERC2981Lib.sol";
 import {ERC165_MAP_IERC4626_SLOT, ERC4626_STORAGE_SLOT} from "@lattice/tokens/ERC4626/libraries/ERC4626Lib.sol";
@@ -291,6 +292,7 @@ import {IENSReverseClaimer} from "@lattice/interfaces/ens/IENSReverseClaimer.sol
 import {IENSSubnameIssuer} from "@lattice/interfaces/ens/IENSSubnameIssuer.sol";
 import {IAny2EVMMessageReceiver} from "@lattice/interfaces/external/IAny2EVMMessageReceiver.sol";
 import {IAny2EVMMessageReceiverV2} from "@lattice/interfaces/external/IAny2EVMMessageReceiverV2.sol";
+import {IERC3156FlashLender} from "@lattice/interfaces/external/IERC3156FlashLender.sol";
 import {IERC7786GatewaySource} from "@lattice/interfaces/external/IERC7786.sol";
 import {IReceiver} from "@lattice/interfaces/external/IReceiver.sol";
 import {IGovernedSafeDiamondCut} from "@lattice/interfaces/governance/IGovernedSafeDiamondCut.sol";
@@ -985,6 +987,14 @@ contract StorageSlotVerificationTest is Test {
             ERC165_MAP_IERC20CAPPED_SLOT,
             _erc165MapSlot(type(IERC20Capped).interfaceId, ERC165_STORAGE_LOCATION),
             "ERC165 IERC20Capped map slot mismatch"
+        );
+    }
+
+    function test_Erc165MapIERC3156FlashLenderSlot() public pure {
+        assertEq(
+            ERC165_MAP_IERC3156FLASHLENDER_SLOT,
+            _erc165MapSlot(type(IERC3156FlashLender).interfaceId, ERC165_STORAGE_LOCATION),
+            "ERC165 IERC3156FlashLender map slot mismatch"
         );
     }
 
@@ -1785,7 +1795,7 @@ contract StorageSlotVerificationTest is Test {
     }
 
     function _allErc165MapSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](78);
+        slots = new bytes32[](79);
         uint256 i;
         // access
         slots[i++] = ERC165_MAP_IACCESSCONTROL_SLOT;
@@ -1803,6 +1813,7 @@ contract StorageSlotVerificationTest is Test {
         slots[i++] = ERC165_MAP_IERC1155METADATAURI_SLOT;
         slots[i++] = ERC165_MAP_IERC2981_SLOT;
         slots[i++] = ERC165_MAP_IERC4626_SLOT;
+        slots[i++] = ERC165_MAP_IERC3156FLASHLENDER_SLOT;
         // governance
         slots[i++] = ERC165_MAP_IVOTES_SLOT;
         slots[i++] = ERC165_MAP_IGOVERNOR_SLOT;
