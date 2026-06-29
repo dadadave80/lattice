@@ -7,6 +7,7 @@ import {IERC3156FlashBorrower} from "@lattice/interfaces/external/IERC3156FlashB
 import {IERC3156FlashLender} from "@lattice/interfaces/external/IERC3156FlashLender.sol";
 import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
 import {IERC20FlashMint} from "@lattice/interfaces/tokens/IERC20FlashMint.sol";
+import {ERC20} from "@lattice/tokens/ERC20/ERC20.sol";
 import {ERC20FlashMint} from "@lattice/tokens/ERC20/ERC20FlashMint.sol";
 import {ERC20FlashMintLib} from "@lattice/tokens/ERC20/libraries/ERC20FlashMintLib.sol";
 import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
@@ -46,7 +47,7 @@ contract FlashBorrower is IERC3156FlashBorrower {
     }
 }
 
-contract MockERC20FlashMintContract is ERC20FlashMint {
+contract MockERC20FlashMintContract is ERC20, ERC20FlashMint {
     function initialize(string memory name_, string memory symbol_, address mintTo, uint256 mintAmount) external {
         bytes32 s = InitializableLib.initializableSlot();
         InitializableLib.preInitializer(s);

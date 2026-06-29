@@ -30,7 +30,11 @@ contract MockUnderlying is ERC20 {
     }
 }
 
-contract MockWrapperContract is ERC20Wrapper {
+contract MockWrapperContract is ERC20, ERC20Wrapper {
+    function decimals() public view override(ERC20, ERC20Wrapper) returns (uint8) {
+        return ERC20Wrapper.decimals();
+    }
+
     function initialize(address underlying_) external {
         bytes32 s = InitializableLib.initializableSlot();
         InitializableLib.preInitializer(s);

@@ -4,7 +4,6 @@ pragma solidity ^0.8.30;
 import {IERC3156FlashBorrower} from "@lattice/interfaces/external/IERC3156FlashBorrower.sol";
 import {IERC3156FlashLender} from "@lattice/interfaces/external/IERC3156FlashLender.sol";
 import {IERC20FlashMint} from "@lattice/interfaces/tokens/IERC20FlashMint.sol";
-import {ERC20} from "@lattice/tokens/ERC20/ERC20.sol";
 import {ERC20FlashMintLib} from "@lattice/tokens/ERC20/libraries/ERC20FlashMintLib.sol";
 
 /// @title ERC20FlashMint
@@ -14,7 +13,7 @@ import {ERC20FlashMintLib} from "@lattice/tokens/ERC20/libraries/ERC20FlashMintL
 ///      reflected by `maxFlashLoan` — pair with a cap-aware flash-mint library if that composition is needed.
 /// @custom:lattice-version 0.1.0
 /// @custom:lattice-source OpenZeppelin v5.6.1
-contract ERC20FlashMint is ERC20, IERC20FlashMint {
+contract ERC20FlashMint is IERC20FlashMint {
     /// @inheritdoc IERC3156FlashLender
     function maxFlashLoan(address token) public view virtual returns (uint256) {
         return ERC20FlashMintLib.maxFlashLoan(token);

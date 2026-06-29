@@ -7,6 +7,7 @@ import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {IPausable} from "@lattice/interfaces/security/IPausable.sol";
 import {Pausable} from "@lattice/security/Pausable.sol";
 import {PausableLib} from "@lattice/security/libraries/PausableLib.sol";
+import {ERC20} from "@lattice/tokens/ERC20/ERC20.sol";
 import {ERC20Pausable} from "@lattice/tokens/ERC20/ERC20Pausable.sol";
 import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
 import {Test} from "forge-std/Test.sol";
@@ -14,7 +15,19 @@ import {Test} from "forge-std/Test.sol";
 /// @title MockERC20PausableContract
 /// @notice Composes the ERC20Pausable facet (transfer gating) with the Pausable facet (pause/unpause control)
 ///         and AccessControl (admin auth for pause), as a real token diamond would.
-contract MockERC20PausableContract is ERC20Pausable, Pausable {
+contract MockERC20PausableContract is ERC20, ERC20Pausable, Pausable {
+    function transfer(address to, uint256 value) public override(ERC20, ERC20Pausable) returns (bool) {
+        return ERC20Pausable.transfer(to, value);
+    }
+
+    function transferFrom(address from, address to, uint256 value)
+        public
+        override(ERC20, ERC20Pausable)
+        returns (bool)
+    {
+        return ERC20Pausable.transferFrom(from, to, value);
+    }
+
     function initialize(string memory name_, string memory symbol_, address admin, address mintTo, uint256 mintAmount)
         external
     {
