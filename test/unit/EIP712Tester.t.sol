@@ -3,7 +3,7 @@ pragma solidity ^0.8.30;
 
 import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
-import {IEIP712} from "@lattice/interfaces/IEIP712.sol";
+import {IEIP712} from "@lattice/interfaces/utils/IEIP712.sol";
 import {EIP712} from "@lattice/utils/EIP712.sol";
 import {EIP712Lib} from "@lattice/utils/libraries/EIP712Lib.sol";
 import {Test} from "forge-std/Test.sol";

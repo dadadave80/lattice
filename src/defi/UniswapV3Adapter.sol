@@ -2,9 +2,9 @@
 pragma solidity ^0.8.30;
 
 import {UniswapV3AdapterLib} from "@lattice/defi/libraries/UniswapV3AdapterLib.sol";
-import {IAdapterOperator} from "@lattice/interfaces/IAdapterOperator.sol";
-import {IProtocolAdapter} from "@lattice/interfaces/IProtocolAdapter.sol";
-import {IUniswapV3Adapter} from "@lattice/interfaces/IUniswapV3Adapter.sol";
+import {IAdapterOperator} from "@lattice/interfaces/defi/IAdapterOperator.sol";
+import {IProtocolAdapter} from "@lattice/interfaces/defi/IProtocolAdapter.sol";
+import {IUniswapV3Adapter} from "@lattice/interfaces/defi/IUniswapV3Adapter.sol";
 import {IStrategy} from "@lattice/interfaces/external/IStrategy.sol";
 import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib.sol";
 

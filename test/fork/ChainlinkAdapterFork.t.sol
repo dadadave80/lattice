@@ -5,7 +5,7 @@ import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
-import {IChainlinkAdapter} from "@lattice/interfaces/IChainlinkAdapter.sol";
+import {IChainlinkAdapter} from "@lattice/interfaces/oracles/IChainlinkAdapter.sol";
 import {ChainlinkAdapter} from "@lattice/oracles/ChainlinkAdapter.sol";
 import {ChainlinkAdapterLib} from "@lattice/oracles/libraries/ChainlinkAdapterLib.sol";
 import {Test} from "forge-std/Test.sol";

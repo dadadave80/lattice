@@ -6,8 +6,7 @@ import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {SafeHarborAdopter} from "@lattice/governance/SafeHarborAdopter.sol";
 import {SAFE_HARBOR_ADMIN_ROLE, SafeHarborAdopterLib} from "@lattice/governance/libraries/SafeHarborAdopterLib.sol";
-import {IAccessControl} from "@lattice/interfaces/IAccessControl.sol";
-import {ISafeHarborAdopter} from "@lattice/interfaces/ISafeHarborAdopter.sol";
+import {IAccessControl} from "@lattice/interfaces/access/IAccessControl.sol";
 import {
     Account as ShAccount,
     AgreementDetails,
@@ -19,6 +18,7 @@ import {
     IdentityRequirements
 } from "@lattice/interfaces/external/IAgreementFactory.sol";
 import {ISafeHarborRegistry} from "@lattice/interfaces/external/ISafeHarborRegistry.sol";
+import {ISafeHarborAdopter} from "@lattice/interfaces/governance/ISafeHarborAdopter.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @title MockSafeHarborRegistry

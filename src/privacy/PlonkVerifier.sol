@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {IPlonkVerifier} from "@lattice/interfaces/IPlonkVerifier.sol";
+import {IPlonkVerifier} from "@lattice/interfaces/privacy/IPlonkVerifier.sol";
 import {PlonkVerifierLib} from "@lattice/privacy/libraries/PlonkVerifierLib.sol";
 
 /// @title PlonkVerifier

@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {IBridgeFungible} from "@lattice/interfaces/IBridgeFungible.sol";
-import {IERC20} from "@lattice/interfaces/IERC20.sol";
+import {IBridgeFungible} from "@lattice/interfaces/crosschain/IBridgeFungible.sol";
+import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
 import {InteroperableAddress} from "@lattice/utils/libraries/InteroperableAddress.sol";
 
 /// @dev 0x28dcc8d8 is `type(IBridgeFungible).interfaceId`.

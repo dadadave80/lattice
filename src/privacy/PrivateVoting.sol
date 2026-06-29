@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {IPrivateVoting} from "@lattice/interfaces/IPrivateVoting.sol";
-import {ISemaphore} from "@lattice/interfaces/ISemaphore.sol";
+import {IPrivateVoting} from "@lattice/interfaces/privacy/IPrivateVoting.sol";
+import {ISemaphore} from "@lattice/interfaces/privacy/ISemaphore.sol";
 import {PrivateVotingLib} from "@lattice/privacy/libraries/PrivateVotingLib.sol";
 
 /// @title PrivateVoting

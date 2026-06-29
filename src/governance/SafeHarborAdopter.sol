@@ -2,8 +2,8 @@
 pragma solidity ^0.8.30;
 
 import {SafeHarborAdopterLib} from "@lattice/governance/libraries/SafeHarborAdopterLib.sol";
-import {ISafeHarborAdopter} from "@lattice/interfaces/ISafeHarborAdopter.sol";
 import {AgreementDetails} from "@lattice/interfaces/external/IAgreementFactory.sol";
+import {ISafeHarborAdopter} from "@lattice/interfaces/governance/ISafeHarborAdopter.sol";
 
 /// @title SafeHarborAdopter
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

@@ -7,12 +7,12 @@ import {DiamondLoupeFacet} from "@diamond/facets/DiamondLoupeFacet.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
-import {AccountInit6900} from "@lattice/accounts/AccountInit6900.sol";
-import {ERC6900AccountView} from "@lattice/accounts/ERC6900AccountView.sol";
-import {ERC6900Executor} from "@lattice/accounts/ERC6900Executor.sol";
-import {ERC6900ModuleManager} from "@lattice/accounts/ERC6900ModuleManager.sol";
-import {ERC6900Signature} from "@lattice/accounts/ERC6900Signature.sol";
-import {ERC6900Validation} from "@lattice/accounts/ERC6900Validation.sol";
+import {AccountInit6900} from "@lattice/accounts/erc6900/AccountInit6900.sol";
+import {ERC6900AccountView} from "@lattice/accounts/erc6900/ERC6900AccountView.sol";
+import {ERC6900Executor} from "@lattice/accounts/erc6900/ERC6900Executor.sol";
+import {ERC6900ModuleManager} from "@lattice/accounts/erc6900/ERC6900ModuleManager.sol";
+import {ERC6900Signature} from "@lattice/accounts/erc6900/ERC6900Signature.sol";
+import {ERC6900Validation} from "@lattice/accounts/erc6900/ERC6900Validation.sol";
 
 /// @notice Builds the canonical ERC-6900 modular-account blueprint (9 facets + initializer) for the
 ///         {AccountFactory6900}. The shared Diamond core (cut/loupe/erc165/access) plus the five 6900 facets

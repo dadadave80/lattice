@@ -5,7 +5,7 @@ import {
     CROSSCHAIN_TIMELOCK_TAG,
     CrosschainTimelockHandlerLib
 } from "@lattice/crosschain/libraries/CrosschainTimelockHandlerLib.sol";
-import {IERC7786MessageHandler} from "@lattice/interfaces/IERC7786MessageHandler.sol";
+import {IERC7786MessageHandler} from "@lattice/interfaces/crosschain/IERC7786MessageHandler.sol";
 
 /// @title CrosschainTimelockHandler
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

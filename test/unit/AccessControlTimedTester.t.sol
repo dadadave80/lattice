@@ -5,8 +5,8 @@ import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlTimed} from "@lattice/access/AccessControlTimed.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {AccessControlTimedLib} from "@lattice/access/libraries/AccessControlTimedLib.sol";
-import {IAccessControl} from "@lattice/interfaces/IAccessControl.sol";
-import {IAccessControlTimed} from "@lattice/interfaces/IAccessControlTimed.sol";
+import {IAccessControl} from "@lattice/interfaces/access/IAccessControl.sol";
+import {IAccessControlTimed} from "@lattice/interfaces/access/IAccessControlTimed.sol";
 import {Test} from "forge-std/Test.sol";
 
 contract MockAccessControlTimedContract is AccessControlTimed {

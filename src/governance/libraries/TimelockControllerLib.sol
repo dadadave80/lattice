@@ -3,7 +3,7 @@ pragma solidity ^0.8.30;
 
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
-import {ITimelockController} from "@lattice/interfaces/ITimelockController.sol";
+import {ITimelockController} from "@lattice/interfaces/governance/ITimelockController.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
 //                                  STORAGE

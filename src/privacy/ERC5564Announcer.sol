@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {IERC5564Announcer} from "@lattice/interfaces/IERC5564Announcer.sol";
+import {IERC5564Announcer} from "@lattice/interfaces/privacy/IERC5564Announcer.sol";
 import {ERC5564AnnouncerLib} from "@lattice/privacy/libraries/ERC5564AnnouncerLib.sol";
 
 /// @title ERC5564Announcer

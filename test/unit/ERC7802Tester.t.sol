@@ -5,12 +5,12 @@ import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
-import {IERC20} from "@lattice/interfaces/IERC20.sol";
 import {IERC7802} from "@lattice/interfaces/external/IERC7802.sol";
-import {ERC20} from "@lattice/tokens/ERC20.sol";
-import {ERC7802} from "@lattice/tokens/ERC7802.sol";
-import {ERC20Lib} from "@lattice/tokens/libraries/ERC20Lib.sol";
-import {CROSSCHAIN_BRIDGE_ROLE, ERC7802Lib} from "@lattice/tokens/libraries/ERC7802Lib.sol";
+import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
+import {ERC20} from "@lattice/tokens/ERC20/ERC20.sol";
+import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
+import {ERC7802} from "@lattice/tokens/ERC7802/ERC7802.sol";
+import {CROSSCHAIN_BRIDGE_ROLE, ERC7802Lib} from "@lattice/tokens/ERC7802/libraries/ERC7802Lib.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @notice A crosschain-native ERC-20: ERC20 + ERC7802 mint/burn, role-gated to a bridge.

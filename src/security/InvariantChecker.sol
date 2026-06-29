@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {IInvariantChecker} from "@lattice/interfaces/IInvariantChecker.sol";
+import {IInvariantChecker} from "@lattice/interfaces/security/IInvariantChecker.sol";
 import {InvariantCheckerLib} from "@lattice/security/libraries/InvariantCheckerLib.sol";
 
 /// @title InvariantChecker

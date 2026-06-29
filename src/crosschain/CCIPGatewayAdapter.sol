@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {CCIPGatewayAdapterLib} from "@lattice/crosschain/libraries/CCIPGatewayAdapterLib.sol";
-import {ICCIPGatewayAdapter} from "@lattice/interfaces/ICCIPGatewayAdapter.sol";
+import {ICCIPGatewayAdapter} from "@lattice/interfaces/crosschain/ICCIPGatewayAdapter.sol";
 import {Client} from "@lattice/interfaces/external/CCIPClient.sol";
 import {IAny2EVMMessageReceiver} from "@lattice/interfaces/external/IAny2EVMMessageReceiver.sol";
 import {IAny2EVMMessageReceiverV2} from "@lattice/interfaces/external/IAny2EVMMessageReceiverV2.sol";

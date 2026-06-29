@@ -2,9 +2,9 @@
 pragma solidity ^0.8.30;
 
 import {VaultCoreLib} from "@lattice/defi/libraries/VaultCoreLib.sol";
-import {IERC4626} from "@lattice/interfaces/IERC4626.sol";
-import {IVaultCore} from "@lattice/interfaces/IVaultCore.sol";
-import {ERC4626} from "@lattice/tokens/ERC4626.sol";
+import {IVaultCore} from "@lattice/interfaces/defi/IVaultCore.sol";
+import {IERC4626} from "@lattice/interfaces/tokens/IERC4626.sol";
+import {ERC4626} from "@lattice/tokens/ERC4626/ERC4626.sol";
 
 /// @title VaultCore
 /// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/extensions/ERC4626.sol)

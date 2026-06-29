@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {GovernorLib} from "@lattice/governance/libraries/GovernorLib.sol";
-import {IGovernor} from "@lattice/interfaces/IGovernor.sol";
+import {IGovernor} from "@lattice/interfaces/governance/IGovernor.sol";
 
 /// @title Governor
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

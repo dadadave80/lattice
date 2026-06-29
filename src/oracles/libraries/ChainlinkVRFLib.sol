@@ -3,8 +3,8 @@ pragma solidity ^0.8.30;
 
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
-import {IChainlinkVRF} from "@lattice/interfaces/IChainlinkVRF.sol";
 import {IVRFCoordinatorV2Plus} from "@lattice/interfaces/external/IVRFCoordinatorV2Plus.sol";
+import {IChainlinkVRF} from "@lattice/interfaces/oracles/IChainlinkVRF.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
 //                                  STORAGE

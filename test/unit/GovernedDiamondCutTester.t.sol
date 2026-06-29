@@ -12,12 +12,12 @@ import {
     GovernedDiamondCutLib,
     UPGRADE_EXECUTOR_ROLE
 } from "@lattice/governance/libraries/GovernedDiamondCutLib.sol";
-import {IAccessControl} from "@lattice/interfaces/IAccessControl.sol";
-import {IEmergencyCut} from "@lattice/interfaces/IEmergencyCut.sol";
-import {IEmergencyStop} from "@lattice/interfaces/IEmergencyStop.sol";
-import {IFrozenSelectors} from "@lattice/interfaces/IFrozenSelectors.sol";
-import {IGovernedDiamondCut} from "@lattice/interfaces/IGovernedDiamondCut.sol";
-import {IUpgradeRegistry} from "@lattice/interfaces/IUpgradeRegistry.sol";
+import {IAccessControl} from "@lattice/interfaces/access/IAccessControl.sol";
+import {IEmergencyCut} from "@lattice/interfaces/governance/IEmergencyCut.sol";
+import {IFrozenSelectors} from "@lattice/interfaces/governance/IFrozenSelectors.sol";
+import {IGovernedDiamondCut} from "@lattice/interfaces/governance/IGovernedDiamondCut.sol";
+import {IUpgradeRegistry} from "@lattice/interfaces/governance/IUpgradeRegistry.sol";
+import {IEmergencyStop} from "@lattice/interfaces/security/IEmergencyStop.sol";
 import {EmergencyStop} from "@lattice/security/EmergencyStop.sol";
 import {EMERGENCY_GUARDIAN_ROLE, EmergencyStopLib} from "@lattice/security/libraries/EmergencyStopLib.sol";
 import {Test} from "forge-std/Test.sol";

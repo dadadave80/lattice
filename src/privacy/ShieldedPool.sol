@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {IShieldedPool} from "@lattice/interfaces/IShieldedPool.sol";
+import {IShieldedPool} from "@lattice/interfaces/privacy/IShieldedPool.sol";
 import {ShieldedPoolLib} from "@lattice/privacy/libraries/ShieldedPoolLib.sol";
 
 /// @title ShieldedPool

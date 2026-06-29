@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ICircuitBreaker} from "@lattice/interfaces/ICircuitBreaker.sol";
+import {ICircuitBreaker} from "@lattice/interfaces/security/ICircuitBreaker.sol";
 import {CircuitBreakerLib} from "@lattice/security/libraries/CircuitBreakerLib.sol";
 
 /// @title CircuitBreaker

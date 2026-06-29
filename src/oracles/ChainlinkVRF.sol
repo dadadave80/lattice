@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {IChainlinkVRF} from "@lattice/interfaces/IChainlinkVRF.sol";
+import {IChainlinkVRF} from "@lattice/interfaces/oracles/IChainlinkVRF.sol";
 import {ChainlinkVRFLib} from "@lattice/oracles/libraries/ChainlinkVRFLib.sol";
 
 /// @title ChainlinkVRF

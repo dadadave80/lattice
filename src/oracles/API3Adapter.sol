@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {IAPI3Adapter} from "@lattice/interfaces/IAPI3Adapter.sol";
+import {IAPI3Adapter} from "@lattice/interfaces/oracles/IAPI3Adapter.sol";
 import {API3AdapterLib} from "@lattice/oracles/libraries/API3AdapterLib.sol";
 
 /// @title API3Adapter

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ICommitReveal} from "@lattice/interfaces/ICommitReveal.sol";
+import {ICommitReveal} from "@lattice/interfaces/privacy/ICommitReveal.sol";
 import {CommitRevealLib} from "@lattice/privacy/libraries/CommitRevealLib.sol";
 
 /// @title CommitReveal

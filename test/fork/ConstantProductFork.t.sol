@@ -7,8 +7,8 @@ import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {ConstantProduct} from "@lattice/amm/ConstantProduct.sol";
 import {ConstantProductLib} from "@lattice/amm/libraries/ConstantProductLib.sol";
-import {IConstantProduct} from "@lattice/interfaces/IConstantProduct.sol";
-import {IERC20} from "@lattice/interfaces/IERC20.sol";
+import {IConstantProduct} from "@lattice/interfaces/amm/IConstantProduct.sol";
+import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
 import {Test} from "forge-std/Test.sol";
 
 // ---------------------------------------------------------------------------

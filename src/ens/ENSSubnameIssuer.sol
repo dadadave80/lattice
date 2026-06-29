@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {ENSSubnameIssuerLib} from "@lattice/ens/libraries/ENSSubnameIssuerLib.sol";
-import {IENSSubnameIssuer} from "@lattice/interfaces/IENSSubnameIssuer.sol";
+import {IENSSubnameIssuer} from "@lattice/interfaces/ens/IENSSubnameIssuer.sol";
 
 /// @title ENSSubnameIssuer
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

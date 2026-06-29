@@ -35,22 +35,32 @@ import {
     ERC1155_STORAGE_SLOT,
     ERC165_MAP_IERC1155METADATAURI_SLOT,
     ERC165_MAP_IERC1155_SLOT
-} from "@lattice/tokens/libraries/ERC1155Lib.sol";
-import {ERC165_MAP_IERC20CAPPED_SLOT, ERC20CAPPED_STORAGE_SLOT} from "@lattice/tokens/libraries/ERC20CappedLib.sol";
-import {ERC165_MAP_IERC20_SLOT, ERC20_STORAGE_SLOT} from "@lattice/tokens/libraries/ERC20Lib.sol";
-import {ERC165_MAP_IERC2981_SLOT, ERC2981_STORAGE_SLOT} from "@lattice/tokens/libraries/ERC2981Lib.sol";
-import {ERC165_MAP_IERC4626_SLOT, ERC4626_STORAGE_SLOT} from "@lattice/tokens/libraries/ERC4626Lib.sol";
+} from "@lattice/tokens/ERC1155/libraries/ERC1155Lib.sol";
+import {
+    ERC165_MAP_IERC20CAPPED_SLOT,
+    ERC20CAPPED_STORAGE_SLOT
+} from "@lattice/tokens/ERC20/libraries/ERC20CappedLib.sol";
+import {ERC165_MAP_IERC20_SLOT, ERC20_STORAGE_SLOT} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
+import {ERC165_MAP_IERC2981_SLOT, ERC2981_STORAGE_SLOT} from "@lattice/tokens/ERC2981/libraries/ERC2981Lib.sol";
+import {ERC165_MAP_IERC4626_SLOT, ERC4626_STORAGE_SLOT} from "@lattice/tokens/ERC4626/libraries/ERC4626Lib.sol";
 import {
     ERC165_MAP_IERC721METADATA_SLOT,
     ERC165_MAP_IERC721_SLOT,
     ERC721_STORAGE_SLOT
-} from "@lattice/tokens/libraries/ERC721Lib.sol";
+} from "@lattice/tokens/ERC721/libraries/ERC721Lib.sol";
 import {
     ERC165_MAP_ERC4906_SLOT,
     ERC721URISTORAGE_STORAGE_SLOT
-} from "@lattice/tokens/libraries/ERC721URIStorageLib.sol";
+} from "@lattice/tokens/ERC721/libraries/ERC721URIStorageLib.sol";
 
 // governance
+import {
+    ERC165_MAP_IERC7579ACCOUNTCONFIG_SLOT,
+    ERC165_MAP_IERC7579EXECUTION_SLOT,
+    ERC165_MAP_IERC7579MODULECONFIG_SLOT,
+    ERC7579_MODULE_CONFIG_STORAGE_SLOT
+} from "@lattice/accounts/erc7579/libraries/ERC7579ModuleConfigLib.sol";
+import {ERC165_MAP_IERC7821_SLOT} from "@lattice/accounts/erc7579/libraries/ERC7821ExecutorLib.sol";
 import {ACCOUNT_SIGNER_STORAGE_SLOT} from "@lattice/accounts/libraries/AccountSignerLib.sol";
 import {ERC165_MAP_IERC1271_SLOT} from "@lattice/accounts/libraries/ERC1271SignatureLib.sol";
 import {ERC4337_VALIDATION_STORAGE_SLOT} from "@lattice/accounts/libraries/ERC4337ValidationLib.sol";
@@ -59,13 +69,6 @@ import {
     ERC165_MAP_IERC6551EXECUTABLE_SLOT,
     ERC6551_ACCOUNT_STORAGE_SLOT
 } from "@lattice/accounts/libraries/ERC6551AccountLib.sol";
-import {
-    ERC165_MAP_IERC7579ACCOUNTCONFIG_SLOT,
-    ERC165_MAP_IERC7579EXECUTION_SLOT,
-    ERC165_MAP_IERC7579MODULECONFIG_SLOT,
-    ERC7579_MODULE_CONFIG_STORAGE_SLOT
-} from "@lattice/accounts/libraries/ERC7579ModuleConfigLib.sol";
-import {ERC165_MAP_IERC7821_SLOT} from "@lattice/accounts/libraries/ERC7821ExecutorLib.sol";
 import {SESSION_KEY_STORAGE_SLOT} from "@lattice/accounts/libraries/SessionKeyLib.sol";
 import {
     AXELAR_GATEWAY_ADAPTER_STORAGE_SLOT,
@@ -113,7 +116,7 @@ import {ZoneInterface} from "@lattice/interfaces/external/ZoneInterface.sol";
 import {
     ERC165_MAP_ZONEINTERFACE_SLOT,
     MARKETPLACE_ZONE_STORAGE_SLOT
-} from "@lattice/markets/libraries/MarketplaceZoneLib.sol";
+} from "@lattice/tokens/libraries/MarketplaceZoneLib.sol";
 
 // defi
 import {
@@ -266,71 +269,71 @@ import {
 // Interfaces (for type(...).interfaceId)
 // ---------------------------------------------------------------------------
 
-import {IAPI3Adapter} from "@lattice/interfaces/IAPI3Adapter.sol";
-import {IAPI3QRNGAdapter} from "@lattice/interfaces/IAPI3QRNGAdapter.sol";
-import {IAaveV3Adapter} from "@lattice/interfaces/IAaveV3Adapter.sol";
-import {IAccessControl} from "@lattice/interfaces/IAccessControl.sol";
-import {IAccessControlEnumerable} from "@lattice/interfaces/IAccessControlEnumerable.sol";
-import {IAccessControlTimed} from "@lattice/interfaces/IAccessControlTimed.sol";
-import {IAccessManaged} from "@lattice/interfaces/IAccessManaged.sol";
-import {IAccessManager} from "@lattice/interfaces/IAccessManager.sol";
-import {IBandAdapter} from "@lattice/interfaces/IBandAdapter.sol";
-import {IBridgeFungible} from "@lattice/interfaces/IBridgeFungible.sol";
-import {IChainlinkAdapter} from "@lattice/interfaces/IChainlinkAdapter.sol";
-import {IChainlinkAutomationAdapter} from "@lattice/interfaces/IChainlinkAutomationAdapter.sol";
-import {IChainlinkVRF} from "@lattice/interfaces/IChainlinkVRF.sol";
-import {IChronicleAdapter} from "@lattice/interfaces/IChronicleAdapter.sol";
-import {ICircuitBreaker} from "@lattice/interfaces/ICircuitBreaker.sol";
-import {ICommitReveal} from "@lattice/interfaces/ICommitReveal.sol";
-import {ICompoundV3Adapter} from "@lattice/interfaces/ICompoundV3Adapter.sol";
-import {IConstantProduct} from "@lattice/interfaces/IConstantProduct.sol";
-import {ICrosschainLink} from "@lattice/interfaces/ICrosschainLink.sol";
-import {ICurveStableSwapAdapter} from "@lattice/interfaces/ICurveStableSwapAdapter.sol";
-import {IDIAAdapter} from "@lattice/interfaces/IDIAAdapter.sol";
-import {IEIP712} from "@lattice/interfaces/IEIP712.sol";
-import {IENSResolver} from "@lattice/interfaces/IENSResolver.sol";
-import {IENSReverseClaimer} from "@lattice/interfaces/IENSReverseClaimer.sol";
-import {IENSSubnameIssuer} from "@lattice/interfaces/IENSSubnameIssuer.sol";
-import {IERC20} from "@lattice/interfaces/IERC20.sol";
-import {IERC20Capped} from "@lattice/interfaces/IERC20Capped.sol";
-import {IERC2981} from "@lattice/interfaces/IERC2981.sol";
-import {IERC4626} from "@lattice/interfaces/IERC4626.sol";
-import {IERC4626Adapter} from "@lattice/interfaces/IERC4626Adapter.sol";
-import {IERC5564Announcer} from "@lattice/interfaces/IERC5564Announcer.sol";
-import {IERC6538Registry} from "@lattice/interfaces/IERC6538Registry.sol";
-import {IEmergencyStop} from "@lattice/interfaces/IEmergencyStop.sol";
-import {IGelatoAutomateAdapter} from "@lattice/interfaces/IGelatoAutomateAdapter.sol";
-import {IGelatoVRFAdapter} from "@lattice/interfaces/IGelatoVRFAdapter.sol";
-import {IGovernedSafeDiamondCut} from "@lattice/interfaces/IGovernedSafeDiamondCut.sol";
-import {IGovernor} from "@lattice/interfaces/IGovernor.sol";
-import {IGroth16Verifier} from "@lattice/interfaces/IGroth16Verifier.sol";
-import {IInvariantChecker} from "@lattice/interfaces/IInvariantChecker.sol";
-import {ILidoAdapter} from "@lattice/interfaces/ILidoAdapter.sol";
-import {INonces} from "@lattice/interfaces/INonces.sol";
-import {IPausable} from "@lattice/interfaces/IPausable.sol";
-import {IPlonkVerifier} from "@lattice/interfaces/IPlonkVerifier.sol";
-import {IPrivateVoting} from "@lattice/interfaces/IPrivateVoting.sol";
-import {IProtocolAdapter} from "@lattice/interfaces/IProtocolAdapter.sol";
-import {IPythAdapter} from "@lattice/interfaces/IPythAdapter.sol";
-import {IPythEntropyAdapter} from "@lattice/interfaces/IPythEntropyAdapter.sol";
-import {IRateLimiter} from "@lattice/interfaces/IRateLimiter.sol";
-import {IRedStoneAdapter} from "@lattice/interfaces/IRedStoneAdapter.sol";
-import {IReentrancyGuard} from "@lattice/interfaces/IReentrancyGuard.sol";
-import {ISafeHarborAdopter} from "@lattice/interfaces/ISafeHarborAdopter.sol";
-import {ISemaphore} from "@lattice/interfaces/ISemaphore.sol";
-import {IShieldedPool} from "@lattice/interfaces/IShieldedPool.sol";
-import {IStrategyManager} from "@lattice/interfaces/IStrategyManager.sol";
-import {ITWAPOracle} from "@lattice/interfaces/ITWAPOracle.sol";
-import {ITellorAdapter} from "@lattice/interfaces/ITellorAdapter.sol";
-import {ITimelockController} from "@lattice/interfaces/ITimelockController.sol";
-import {IUniswapV3Adapter} from "@lattice/interfaces/IUniswapV3Adapter.sol";
-import {IVaultCore} from "@lattice/interfaces/IVaultCore.sol";
-import {IVestingWallet} from "@lattice/interfaces/IVestingWallet.sol";
-import {IVotes} from "@lattice/interfaces/IVotes.sol";
+import {IAccessControl} from "@lattice/interfaces/access/IAccessControl.sol";
+import {IAccessControlEnumerable} from "@lattice/interfaces/access/IAccessControlEnumerable.sol";
+import {IAccessControlTimed} from "@lattice/interfaces/access/IAccessControlTimed.sol";
+import {IAccessManaged} from "@lattice/interfaces/access/IAccessManaged.sol";
+import {IAccessManager} from "@lattice/interfaces/access/IAccessManager.sol";
+import {IConstantProduct} from "@lattice/interfaces/amm/IConstantProduct.sol";
+import {IBridgeFungible} from "@lattice/interfaces/crosschain/IBridgeFungible.sol";
+import {ICrosschainLink} from "@lattice/interfaces/crosschain/ICrosschainLink.sol";
+import {IAaveV3Adapter} from "@lattice/interfaces/defi/IAaveV3Adapter.sol";
+import {ICompoundV3Adapter} from "@lattice/interfaces/defi/ICompoundV3Adapter.sol";
+import {ICurveStableSwapAdapter} from "@lattice/interfaces/defi/ICurveStableSwapAdapter.sol";
+import {IERC4626Adapter} from "@lattice/interfaces/defi/IERC4626Adapter.sol";
+import {ILidoAdapter} from "@lattice/interfaces/defi/ILidoAdapter.sol";
+import {IProtocolAdapter} from "@lattice/interfaces/defi/IProtocolAdapter.sol";
+import {IStrategyManager} from "@lattice/interfaces/defi/IStrategyManager.sol";
+import {IUniswapV3Adapter} from "@lattice/interfaces/defi/IUniswapV3Adapter.sol";
+import {IVaultCore} from "@lattice/interfaces/defi/IVaultCore.sol";
+import {IENSResolver} from "@lattice/interfaces/ens/IENSResolver.sol";
+import {IENSReverseClaimer} from "@lattice/interfaces/ens/IENSReverseClaimer.sol";
+import {IENSSubnameIssuer} from "@lattice/interfaces/ens/IENSSubnameIssuer.sol";
 import {IAny2EVMMessageReceiver} from "@lattice/interfaces/external/IAny2EVMMessageReceiver.sol";
 import {IAny2EVMMessageReceiverV2} from "@lattice/interfaces/external/IAny2EVMMessageReceiverV2.sol";
 import {IERC7786GatewaySource} from "@lattice/interfaces/external/IERC7786.sol";
 import {IReceiver} from "@lattice/interfaces/external/IReceiver.sol";
+import {IGovernedSafeDiamondCut} from "@lattice/interfaces/governance/IGovernedSafeDiamondCut.sol";
+import {IGovernor} from "@lattice/interfaces/governance/IGovernor.sol";
+import {ISafeHarborAdopter} from "@lattice/interfaces/governance/ISafeHarborAdopter.sol";
+import {ITimelockController} from "@lattice/interfaces/governance/ITimelockController.sol";
+import {IVotes} from "@lattice/interfaces/governance/IVotes.sol";
+import {IAPI3Adapter} from "@lattice/interfaces/oracles/IAPI3Adapter.sol";
+import {IAPI3QRNGAdapter} from "@lattice/interfaces/oracles/IAPI3QRNGAdapter.sol";
+import {IBandAdapter} from "@lattice/interfaces/oracles/IBandAdapter.sol";
+import {IChainlinkAdapter} from "@lattice/interfaces/oracles/IChainlinkAdapter.sol";
+import {IChainlinkAutomationAdapter} from "@lattice/interfaces/oracles/IChainlinkAutomationAdapter.sol";
+import {IChainlinkVRF} from "@lattice/interfaces/oracles/IChainlinkVRF.sol";
+import {IChronicleAdapter} from "@lattice/interfaces/oracles/IChronicleAdapter.sol";
+import {IDIAAdapter} from "@lattice/interfaces/oracles/IDIAAdapter.sol";
+import {IGelatoAutomateAdapter} from "@lattice/interfaces/oracles/IGelatoAutomateAdapter.sol";
+import {IGelatoVRFAdapter} from "@lattice/interfaces/oracles/IGelatoVRFAdapter.sol";
+import {IPythAdapter} from "@lattice/interfaces/oracles/IPythAdapter.sol";
+import {IPythEntropyAdapter} from "@lattice/interfaces/oracles/IPythEntropyAdapter.sol";
+import {IRedStoneAdapter} from "@lattice/interfaces/oracles/IRedStoneAdapter.sol";
+import {ITWAPOracle} from "@lattice/interfaces/oracles/ITWAPOracle.sol";
+import {ITellorAdapter} from "@lattice/interfaces/oracles/ITellorAdapter.sol";
+import {ICommitReveal} from "@lattice/interfaces/privacy/ICommitReveal.sol";
+import {IERC5564Announcer} from "@lattice/interfaces/privacy/IERC5564Announcer.sol";
+import {IERC6538Registry} from "@lattice/interfaces/privacy/IERC6538Registry.sol";
+import {IGroth16Verifier} from "@lattice/interfaces/privacy/IGroth16Verifier.sol";
+import {IPlonkVerifier} from "@lattice/interfaces/privacy/IPlonkVerifier.sol";
+import {IPrivateVoting} from "@lattice/interfaces/privacy/IPrivateVoting.sol";
+import {ISemaphore} from "@lattice/interfaces/privacy/ISemaphore.sol";
+import {IShieldedPool} from "@lattice/interfaces/privacy/IShieldedPool.sol";
+import {ICircuitBreaker} from "@lattice/interfaces/security/ICircuitBreaker.sol";
+import {IEmergencyStop} from "@lattice/interfaces/security/IEmergencyStop.sol";
+import {IInvariantChecker} from "@lattice/interfaces/security/IInvariantChecker.sol";
+import {IPausable} from "@lattice/interfaces/security/IPausable.sol";
+import {IRateLimiter} from "@lattice/interfaces/security/IRateLimiter.sol";
+import {IReentrancyGuard} from "@lattice/interfaces/security/IReentrancyGuard.sol";
+import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
+import {IERC20Capped} from "@lattice/interfaces/tokens/IERC20Capped.sol";
+import {IERC2981} from "@lattice/interfaces/tokens/IERC2981.sol";
+import {IERC4626} from "@lattice/interfaces/tokens/IERC4626.sol";
+import {IEIP712} from "@lattice/interfaces/utils/IEIP712.sol";
+import {INonces} from "@lattice/interfaces/utils/INonces.sol";
+import {IVestingWallet} from "@lattice/interfaces/utils/IVestingWallet.sol";
 
 /// @title StorageSlotVerificationTest
 /// @notice Re-derives every ERC-7201 storage slot and ERC-165 map slot from first principles
