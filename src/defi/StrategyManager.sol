@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {StrategyManagerLib} from "@lattice/defi/libraries/StrategyManagerLib.sol";
-import {IStrategyManager} from "@lattice/interfaces/IStrategyManager.sol";
+import {IStrategyManager} from "@lattice/interfaces/defi/IStrategyManager.sol";
 import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib.sol";
 
 /// @title StrategyManager

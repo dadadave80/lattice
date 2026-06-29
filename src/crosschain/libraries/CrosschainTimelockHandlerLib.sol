@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {TimelockControllerLib} from "@lattice/governance/libraries/TimelockControllerLib.sol";
-import {ICrosschainTimelockHandler} from "@lattice/interfaces/ICrosschainTimelockHandler.sol";
+import {ICrosschainTimelockHandler} from "@lattice/interfaces/crosschain/ICrosschainTimelockHandler.sol";
 
 /// @dev Handler tag this module registers/dispatches under: `bytes4(keccak256("lattice.crosschain.TimelockSchedule"))`.
 bytes4 constant CROSSCHAIN_TIMELOCK_TAG = 0x4c71a524;

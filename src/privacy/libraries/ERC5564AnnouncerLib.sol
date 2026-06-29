@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
-import {IERC5564Announcer} from "@lattice/interfaces/IERC5564Announcer.sol";
+import {IERC5564Announcer} from "@lattice/interfaces/privacy/IERC5564Announcer.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
 //                                  STORAGE

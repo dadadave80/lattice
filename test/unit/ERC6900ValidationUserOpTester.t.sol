@@ -4,12 +4,12 @@ pragma solidity ^0.8.30;
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
-import {ERC6900ModuleManager} from "@lattice/accounts/ERC6900ModuleManager.sol";
-import {ERC6900Validation} from "@lattice/accounts/ERC6900Validation.sol";
+import {ERC6900ModuleManager} from "@lattice/accounts/erc6900/ERC6900ModuleManager.sol";
+import {ERC6900Validation} from "@lattice/accounts/erc6900/ERC6900Validation.sol";
+import {ERC6900TypesLib} from "@lattice/accounts/erc6900/libraries/ERC6900TypesLib.sol";
 import {ERC4337ValidationLib} from "@lattice/accounts/libraries/ERC4337ValidationLib.sol";
-import {ERC6900TypesLib} from "@lattice/accounts/libraries/ERC6900TypesLib.sol";
-import {IExecutor6900} from "@lattice/interfaces/IExecutor6900.sol";
-import {IValidation6900} from "@lattice/interfaces/IValidation6900.sol";
+import {IERC6900Executor} from "@lattice/interfaces/accounts/IERC6900Executor.sol";
+import {IERC6900Validation} from "@lattice/interfaces/accounts/IERC6900Validation.sol";
 import {PackedUserOperation} from "@lattice/interfaces/external/IAccount.sol";
 import {HookConfig, IERC6900Account, ModuleEntity, ValidationConfig} from "@lattice/interfaces/external/IERC6900.sol";
 import {Test} from "forge-std/Test.sol";
@@ -159,7 +159,7 @@ contract ERC6900ValidationUserOpTester is Test {
         _install(true, true, new bytes4[](0));
         PackedUserOperation memory op = _op(true, "");
         vm.prank(address(0xBAD));
-        vm.expectRevert(abi.encodeWithSelector(IValidation6900.NotFromEntryPoint.selector, address(0xBAD)));
+        vm.expectRevert(abi.encodeWithSelector(IERC6900Validation.NotFromEntryPoint.selector, address(0xBAD)));
         account.validateUserOp(op, bytes32(uint256(1)), 0);
     }
 
@@ -168,7 +168,9 @@ contract ERC6900ValidationUserOpTester is Test {
         PackedUserOperation memory op = _op(false, "");
         vm.prank(entryPoint);
         vm.expectRevert(
-            abi.encodeWithSelector(IExecutor6900.ValidationFunctionMissing.selector, IERC6900Account.execute.selector)
+            abi.encodeWithSelector(
+                IERC6900Executor.ValidationFunctionMissing.selector, IERC6900Account.execute.selector
+            )
         );
         account.validateUserOp(op, bytes32(uint256(1)), 0);
     }
@@ -177,7 +179,9 @@ contract ERC6900ValidationUserOpTester is Test {
         _install(true, false, new bytes4[](0)); // global but NOT isUserOpValidation
         PackedUserOperation memory op = _op(true, "");
         vm.prank(entryPoint);
-        vm.expectRevert(abi.encodeWithSelector(IValidation6900.UserOpValidationInvalid.selector, address(val), ENTITY));
+        vm.expectRevert(
+            abi.encodeWithSelector(IERC6900Validation.UserOpValidationInvalid.selector, address(val), ENTITY)
+        );
         account.validateUserOp(op, bytes32(uint256(1)), 0);
     }
 
@@ -232,7 +236,9 @@ contract ERC6900ValidationUserOpTester is Test {
         PackedUserOperation memory op = _op(true, "");
         vm.prank(entryPoint);
         vm.expectRevert(
-            abi.encodeWithSelector(IValidation6900.UnexpectedAggregator.selector, address(hook), uint32(1), address(2))
+            abi.encodeWithSelector(
+                IERC6900Validation.UnexpectedAggregator.selector, address(hook), uint32(1), address(2)
+            )
         );
         account.validateUserOp(op, bytes32(uint256(1)), 0);
     }
@@ -257,7 +263,7 @@ contract ERC6900ValidationUserOpTester is Test {
 
         PackedUserOperation memory op = _op(true, "");
         vm.prank(entryPoint);
-        vm.expectRevert(IValidation6900.RequireUserOperationContext.selector);
+        vm.expectRevert(IERC6900Validation.RequireUserOperationContext.selector);
         account.validateUserOp(op, bytes32(uint256(1)), 0);
     }
 }

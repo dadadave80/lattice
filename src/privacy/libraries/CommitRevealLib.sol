@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
-import {ICommitReveal} from "@lattice/interfaces/ICommitReveal.sol";
+import {ICommitReveal} from "@lattice/interfaces/privacy/ICommitReveal.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
 //                                  STORAGE

@@ -24,17 +24,16 @@ consumed as a Forge dependency; there is no application or canonical deployment 
 | Area | Modules |
 |------|---------|
 | `access/` | `AccessControl`, `AccessControlEnumerable`, `AccessControlTimed`, `AccessManager` (+ `AccessManaged`, `AccessManagerStandalone`), `Ownable` |
-| `accounts/` | Diamond smart-account building blocks — two modular-account flavors ([see below](#smart-account-flavors-erc-7579-and-erc-6900)). **ERC-7579:** `AccountDiamond`, `Account7702Diamond`, `AccountFactory`, `AccountInit`, `AccountSigner`, `ERC4337Validation`, `ERC1271Signature`, `ERC7821Executor`, `ERC7579ModuleConfig`, `SessionKey`. **ERC-6900:** `ModularAccount6900`, `AccountFactory6900`, `AccountInit6900`, `ERC6900ModuleManager`, `ERC6900Executor`, `ERC6900Validation`, `ERC6900Signature`, `ERC6900AccountView` (+ reference modules `SingleSignerValidation`, `SpendingLimit`). Plus `ERC6551Account` |
+| `accounts/` | Diamond smart-account building blocks — two modular-account flavors ([see below](#smart-account-flavors-erc-7579-and-erc-6900)), each in its own subfolder. **`accounts/erc7579/`:** `AccountDiamond`, `Account7702Diamond`, `AccountFactory`, `AccountInit`, `AccountSigner`, `ERC7821Executor`, `ERC7579ModuleConfig`. **`accounts/erc6900/`:** `ModularAccount6900`, `AccountFactory6900`, `AccountInit6900`, `ERC6900ModuleManager`, `ERC6900Executor`, `ERC6900Validation`, `ERC6900Signature`, `ERC6900AccountView` (+ reference modules `modules/SingleSignerValidation`, `modules/SpendingLimit`). **Shared base + standalone account types (`accounts/`):** `ERC4337Validation`, `ERC1271Signature` (the ERC-4337/1271 base both flavors build on), plus the single-facet standalone types `ERC6551Account` (token-bound) and `SessionKey` |
 | `amm/` | `ConstantProduct` |
 | `crosschain/` | `AxelarGatewayAdapter`, `BridgeERC20`, `BridgeERC7802`, `CCIPGatewayAdapter`, `CrosschainLink`, `CrosschainTimelockHandler`, `ERC7786OpenBridge`, `WormholeGatewayAdapter` |
 | `defi/` | `AaveV3Adapter`, `CompoundV3Adapter`, `CurveStableSwapAdapter`, `ERC4626Adapter`, `LidoAdapter`, `StrategyManager`, `UniswapV3Adapter`, `VaultCore` |
 | `ens/` | `ENSResolver`, `ENSReverseClaimer`, `ENSSubnameIssuer` |
 | `governance/` | `Governor` (+ `GovernorStandalone`), `TimelockController` (+ `TimelockControllerStandalone`), `Votes`, `GovernedDiamondCut`, `SafeDiamondCut`, `GovernedSafeDiamondCut`, `SafeHarborAdopter` |
-| `markets/` | `MarketplaceZone` |
 | `oracles/` | `API3Adapter`, `API3QRNGAdapter`, `BandAdapter`, `ChainlinkAdapter`, `ChainlinkAutomationAdapter`, `ChainlinkCREAdapter`, `ChainlinkVRF`, `ChronicleAdapter`, `DIAAdapter`, `GelatoAutomateAdapter`, `GelatoVRFAdapter`, `PythAdapter`, `PythEntropyAdapter`, `RedStoneAdapter`, `TWAPOracle`, `TellorAdapter` |
 | `privacy/` | `CommitReveal`, `ERC5564Announcer`, `ERC6538Registry`, `Groth16Verifier`, `PlonkVerifier`, `PrivateVoting`, `Semaphore`, `ShieldedPool` |
 | `security/` | `Pausable`, `ReentrancyGuard`, `RateLimiter`, `CircuitBreaker`, `EmergencyStop`, `InvariantChecker` |
-| `tokens/` | `ERC20` (+ `Burnable`, `Capped`, `Crosschain`, `Permit`, `Votes`), `ERC721` (+ `URIStorage`), `ERC1155`, `ERC2981`, `ERC4626`, `ERC7802` |
+| `tokens/` | One subfolder per standard (base + extensions flat inside, `<std>/libraries/` for logic). **`tokens/ERC20/`:** `ERC20` (+ `Burnable`, `Capped`, `Crosschain`, `Permit`, `Votes`). **`tokens/ERC721/`:** `ERC721` (+ `URIStorage`). **`tokens/ERC1155/`**, **`tokens/ERC2981/`**, **`tokens/ERC4626/`**, **`tokens/ERC7802/`**. `MarketplaceZone` sits at the `tokens/` root (a Seaport zone enforcing the issuer's own token policy, not a token standard) |
 | `utils/` | `EIP712`, `Multicall`, `Nonces`, `VestingWallet` (+ `VestingWalletStandalone`) |
 
 **Utility libraries** (`src/utils/libraries/`) — pure logic with no own storage, facet,
@@ -94,8 +93,8 @@ Diamond facets must be **stateless** — proxy state lives in the Diamond, not t
 so facet modules are split into three files with strict responsibilities:
 
 ```
-src/interfaces/IFoo.sol        # ABI, custom errors, events. Wide pragma (>=0.8.4)
-        ▲
+src/interfaces/<area>/IFoo.sol # ABI, custom errors, events. Wide pragma (>=0.8.4)
+        ▲                       # interfaces mirror the module's <area> folder
 src/<area>/libraries/FooLib.sol # ALL logic + ERC-7201 storage + __Foo_init(...)
         ▲                       # storage read via a single FooStorage() -> hardcoded slot
 src/<area>/Foo.sol              # stateless facet: virtual fns that forward to FooLib
@@ -174,20 +173,19 @@ local `forge test` does not guarantee CI passes if optimizer behavior diverges �
 ```
 src/
 ├── access/        # AccessControl(+Enumerable,+Timed), AccessManager(+Managed,+Standalone), Ownable
-├── accounts/      # Diamond smart accounts — ERC-7579 & ERC-6900 modular flavors, ERC-4337/7821/6551, session keys, factory/init
+├── accounts/      # Diamond smart accounts — erc7579/ & erc6900/ flavor subfolders + shared (ERC-4337/1271/6551, session keys)
 ├── amm/           # ConstantProduct
 ├── crosschain/    # CCIP, Axelar, Wormhole, ERC-7786, bridge tokens, cross-chain timelock
 ├── defi/          # Aave, Compound, Curve, Lido, Uniswap V3, ERC4626 adapters, vault/strategy modules
 ├── ens/           # ENS resolver, reverse claimer, subname issuer
 ├── governance/    # Governor, timelock, governed/Safe diamond cuts, Safe Harbor adoption
-├── markets/       # MarketplaceZone
 ├── oracles/       # Chainlink, Pyth, RedStone, Chronicle, DIA, API3, Band, Tellor, Gelato, TWAP
 ├── privacy/       # Commit-reveal, stealth address standards, Groth16/PLONK, Semaphore, shielded pool
 ├── security/      # Pausable, ReentrancyGuard, RateLimiter, CircuitBreaker, EmergencyStop, InvariantChecker
-├── tokens/        # ERC20/721/1155/2981/4626/7802 and extensions
+├── tokens/        # per-standard subfolders ERC20/ ERC721/ ERC1155/ ERC2981/ ERC4626/ ERC7802/ (base+extensions); MarketplaceZone at root
 ├── utils/         # EIP712, Multicall, Nonces, VestingWallet(+Standalone)
 │   └── libraries/ # Crypto, encoding, strings, checkpoints, math, multicall/nonces/vesting helpers
-└── interfaces/    # I<Module>.sol per module; external/ for third-party ABIs
+└── interfaces/    # I<Module>.sol mirrored into per-<area> subfolders; external/ for third-party ABIs
 ```
 
 Each `<area>/` also contains a `libraries/` subfolder holding the `<Module>Lib.sol`

@@ -3,7 +3,7 @@ pragma solidity ^0.8.30;
 
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
-import {IENSReverseClaimer} from "@lattice/interfaces/IENSReverseClaimer.sol";
+import {IENSReverseClaimer} from "@lattice/interfaces/ens/IENSReverseClaimer.sol";
 import {IReverseRegistrar} from "@lattice/interfaces/external/IReverseRegistrar.sol";
 
 //*//////////////////////////////////////////////////////////////////////////

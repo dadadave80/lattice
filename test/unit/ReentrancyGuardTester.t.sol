@@ -3,7 +3,7 @@ pragma solidity ^0.8.30;
 
 import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
-import {IReentrancyGuard} from "@lattice/interfaces/IReentrancyGuard.sol";
+import {IReentrancyGuard} from "@lattice/interfaces/security/IReentrancyGuard.sol";
 import {ReentrancyGuard} from "@lattice/security/ReentrancyGuard.sol";
 import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib.sol";
 import {Test} from "forge-std/Test.sol";

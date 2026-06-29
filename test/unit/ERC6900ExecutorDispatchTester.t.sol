@@ -5,10 +5,10 @@ import {DiamondLib, FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLi
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
-import {ERC6900ModuleManager} from "@lattice/accounts/ERC6900ModuleManager.sol";
-import {ModularAccount6900} from "@lattice/accounts/ModularAccount6900.sol";
-import {ERC6900TypesLib} from "@lattice/accounts/libraries/ERC6900TypesLib.sol";
-import {IExecutor6900} from "@lattice/interfaces/IExecutor6900.sol";
+import {ERC6900ModuleManager} from "@lattice/accounts/erc6900/ERC6900ModuleManager.sol";
+import {ModularAccount6900} from "@lattice/accounts/erc6900/ModularAccount6900.sol";
+import {ERC6900TypesLib} from "@lattice/accounts/erc6900/libraries/ERC6900TypesLib.sol";
+import {IERC6900Executor} from "@lattice/interfaces/accounts/IERC6900Executor.sol";
 import {
     DIRECT_CALL_VALIDATION_ENTITY_ID,
     ExecutionManifest,
@@ -133,7 +133,7 @@ contract ERC6900ExecutorDispatchTester is Test {
     }
 
     function test_Dispatch_UnrecognizedFunction() public {
-        vm.expectRevert(abi.encodeWithSelector(IExecutor6900.UnrecognizedFunction.selector, IFoo.bar.selector));
+        vm.expectRevert(abi.encodeWithSelector(IERC6900Executor.UnrecognizedFunction.selector, IFoo.bar.selector));
         IFoo(address(account)).bar();
     }
 
@@ -169,7 +169,7 @@ contract ERC6900ExecutorDispatchTester is Test {
         address caller = address(0xCA11E2);
 
         vm.prank(caller);
-        vm.expectRevert(abi.encodeWithSelector(IExecutor6900.ValidationFunctionMissing.selector, IFoo.foo.selector));
+        vm.expectRevert(abi.encodeWithSelector(IERC6900Executor.ValidationFunctionMissing.selector, IFoo.foo.selector));
         IFoo(address(account)).foo();
 
         // Install a direct-call validation: the validation "module" is the authorized caller, entityId = max.

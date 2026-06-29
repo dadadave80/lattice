@@ -5,12 +5,12 @@ import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
-import {IAccessControl} from "@lattice/interfaces/IAccessControl.sol";
-import {IERC721} from "@lattice/interfaces/IERC721.sol";
-import {IERC721URIStorage} from "@lattice/interfaces/IERC721URIStorage.sol";
-import {ERC721URIStorage} from "@lattice/tokens/ERC721URIStorage.sol";
-import {ERC721Lib} from "@lattice/tokens/libraries/ERC721Lib.sol";
-import {ERC721URIStorageLib} from "@lattice/tokens/libraries/ERC721URIStorageLib.sol";
+import {IAccessControl} from "@lattice/interfaces/access/IAccessControl.sol";
+import {IERC721} from "@lattice/interfaces/tokens/IERC721.sol";
+import {IERC721URIStorage} from "@lattice/interfaces/tokens/IERC721URIStorage.sol";
+import {ERC721URIStorage} from "@lattice/tokens/ERC721/ERC721URIStorage.sol";
+import {ERC721Lib} from "@lattice/tokens/ERC721/libraries/ERC721Lib.sol";
+import {ERC721URIStorageLib} from "@lattice/tokens/ERC721/libraries/ERC721URIStorageLib.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @title MockERC721URIStorageContract

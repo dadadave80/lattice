@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {IBandAdapter} from "@lattice/interfaces/IBandAdapter.sol";
+import {IBandAdapter} from "@lattice/interfaces/oracles/IBandAdapter.sol";
 import {BandAdapterLib} from "@lattice/oracles/libraries/BandAdapterLib.sol";
 
 /// @title BandAdapter

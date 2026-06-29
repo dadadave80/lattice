@@ -3,7 +3,7 @@ pragma solidity ^0.8.30;
 
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {OwnableLib} from "@diamond/libraries/OwnableLib.sol";
-import {IVestingWallet} from "@lattice/interfaces/IVestingWallet.sol";
+import {IVestingWallet} from "@lattice/interfaces/utils/IVestingWallet.sol";
 import {IERC20} from "forge-std/interfaces/IERC20.sol";
 
 //*//////////////////////////////////////////////////////////////////////////

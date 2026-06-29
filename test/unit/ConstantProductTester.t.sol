@@ -7,8 +7,8 @@ import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {ConstantProduct} from "@lattice/amm/ConstantProduct.sol";
 import {ConstantProductLib} from "@lattice/amm/libraries/ConstantProductLib.sol";
-import {IConstantProduct} from "@lattice/interfaces/IConstantProduct.sol";
-import {IReentrancyGuard} from "@lattice/interfaces/IReentrancyGuard.sol";
+import {IConstantProduct} from "@lattice/interfaces/amm/IConstantProduct.sol";
+import {IReentrancyGuard} from "@lattice/interfaces/security/IReentrancyGuard.sol";
 import {Test} from "forge-std/Test.sol";
 import {Vm} from "forge-std/Vm.sol";
 

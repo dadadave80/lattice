@@ -3,7 +3,7 @@ pragma solidity ^0.8.30;
 
 import {TimelockControllerStandalone} from "@lattice/governance/TimelockControllerStandalone.sol";
 import {TimelockControllerLib} from "@lattice/governance/libraries/TimelockControllerLib.sol";
-import {ITimelockController} from "@lattice/interfaces/ITimelockController.sol";
+import {ITimelockController} from "@lattice/interfaces/governance/ITimelockController.sol";
 import {Test} from "forge-std/Test.sol";
 
 //*//////////////////////////////////////////////////////////////////////////

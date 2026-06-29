@@ -11,7 +11,7 @@ import {CrosschainLinkLib} from "@lattice/crosschain/libraries/CrosschainLinkLib
 import {CROSSCHAIN_TIMELOCK_TAG} from "@lattice/crosschain/libraries/CrosschainTimelockHandlerLib.sol";
 import {TimelockController} from "@lattice/governance/TimelockController.sol";
 import {TimelockControllerLib} from "@lattice/governance/libraries/TimelockControllerLib.sol";
-import {ICrosschainTimelockHandler} from "@lattice/interfaces/ICrosschainTimelockHandler.sol";
+import {ICrosschainTimelockHandler} from "@lattice/interfaces/crosschain/ICrosschainTimelockHandler.sol";
 import {IERC7786GatewaySource} from "@lattice/interfaces/external/IERC7786.sol";
 import {InteroperableAddress} from "@lattice/utils/libraries/InteroperableAddress.sol";
 import {Test} from "forge-std/Test.sol";

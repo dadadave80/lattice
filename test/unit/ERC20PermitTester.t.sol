@@ -3,11 +3,11 @@ pragma solidity ^0.8.30;
 
 import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
-import {IERC20} from "@lattice/interfaces/IERC20.sol";
-import {IERC20Permit} from "@lattice/interfaces/IERC20Permit.sol";
-import {ERC20Permit} from "@lattice/tokens/ERC20Permit.sol";
-import {ERC20Lib} from "@lattice/tokens/libraries/ERC20Lib.sol";
-import {ERC20PermitLib} from "@lattice/tokens/libraries/ERC20PermitLib.sol";
+import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
+import {IERC20Permit} from "@lattice/interfaces/tokens/IERC20Permit.sol";
+import {ERC20Permit} from "@lattice/tokens/ERC20/ERC20Permit.sol";
+import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
+import {ERC20PermitLib} from "@lattice/tokens/ERC20/libraries/ERC20PermitLib.sol";
 import {EIP712Lib} from "@lattice/utils/libraries/EIP712Lib.sol";
 import {NoncesLib} from "@lattice/utils/libraries/NoncesLib.sol";
 import {Test} from "forge-std/Test.sol";

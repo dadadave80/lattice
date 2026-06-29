@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
-import {INonces} from "@lattice/interfaces/INonces.sol";
+import {INonces} from "@lattice/interfaces/utils/INonces.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
 //                                  STORAGE

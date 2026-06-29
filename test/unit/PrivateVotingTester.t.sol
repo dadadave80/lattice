@@ -3,8 +3,8 @@ pragma solidity ^0.8.30;
 
 import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
-import {IPrivateVoting} from "@lattice/interfaces/IPrivateVoting.sol";
-import {ISemaphore} from "@lattice/interfaces/ISemaphore.sol";
+import {IPrivateVoting} from "@lattice/interfaces/privacy/IPrivateVoting.sol";
+import {ISemaphore} from "@lattice/interfaces/privacy/ISemaphore.sol";
 import {PrivateVoting} from "@lattice/privacy/PrivateVoting.sol";
 import {Semaphore} from "@lattice/privacy/Semaphore.sol";
 import {PrivateVotingLib} from "@lattice/privacy/libraries/PrivateVotingLib.sol";

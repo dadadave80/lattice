@@ -4,11 +4,11 @@ pragma solidity ^0.8.30;
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
-import {ERC6900Executor} from "@lattice/accounts/ERC6900Executor.sol";
-import {ERC6900ModuleManager} from "@lattice/accounts/ERC6900ModuleManager.sol";
-import {ModularAccount6900} from "@lattice/accounts/ModularAccount6900.sol";
-import {ERC6900TypesLib} from "@lattice/accounts/libraries/ERC6900TypesLib.sol";
-import {IExecutor6900} from "@lattice/interfaces/IExecutor6900.sol";
+import {ERC6900Executor} from "@lattice/accounts/erc6900/ERC6900Executor.sol";
+import {ERC6900ModuleManager} from "@lattice/accounts/erc6900/ERC6900ModuleManager.sol";
+import {ModularAccount6900} from "@lattice/accounts/erc6900/ModularAccount6900.sol";
+import {ERC6900TypesLib} from "@lattice/accounts/erc6900/libraries/ERC6900TypesLib.sol";
+import {IERC6900Executor} from "@lattice/interfaces/accounts/IERC6900Executor.sol";
 import {HookConfig, IERC6900Account, ModuleEntity, ValidationConfig} from "@lattice/interfaces/external/IERC6900.sol";
 import {Test} from "forge-std/Test.sol";
 
@@ -127,7 +127,7 @@ contract ERC6900ExecutorRuntimeValidationTester is Test {
         val.setRevert(true);
         vm.expectRevert(
             abi.encodeWithSelector(
-                IExecutor6900.RuntimeValidationFunctionReverted.selector,
+                IERC6900Executor.RuntimeValidationFunctionReverted.selector,
                 address(val),
                 ENTITY,
                 abi.encodeWithSignature("Error(string)", "validation failed")
@@ -139,7 +139,9 @@ contract ERC6900ExecutorRuntimeValidationTester is Test {
     function test_RuntimeVal_RevertNotApplicable() public {
         _install(false, new bytes4[](0), new bytes[](0)); // no selectors, not global → cannot validate execute
         vm.expectRevert(
-            abi.encodeWithSelector(IExecutor6900.ValidationFunctionMissing.selector, IERC6900Account.execute.selector)
+            abi.encodeWithSelector(
+                IERC6900Executor.ValidationFunctionMissing.selector, IERC6900Account.execute.selector
+            )
         );
         account.executeWithRuntimeValidation(_execData(1), _auth(false));
     }

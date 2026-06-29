@@ -5,10 +5,10 @@ import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
-import {IAccessControl} from "@lattice/interfaces/IAccessControl.sol";
-import {IERC2981} from "@lattice/interfaces/IERC2981.sol";
-import {ERC2981} from "@lattice/tokens/ERC2981.sol";
-import {ERC2981Lib} from "@lattice/tokens/libraries/ERC2981Lib.sol";
+import {IAccessControl} from "@lattice/interfaces/access/IAccessControl.sol";
+import {IERC2981} from "@lattice/interfaces/tokens/IERC2981.sol";
+import {ERC2981} from "@lattice/tokens/ERC2981/ERC2981.sol";
+import {ERC2981Lib} from "@lattice/tokens/ERC2981/libraries/ERC2981Lib.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @title MockERC2981Contract

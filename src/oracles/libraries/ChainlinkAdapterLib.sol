@@ -3,8 +3,8 @@ pragma solidity ^0.8.30;
 
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
-import {IChainlinkAdapter} from "@lattice/interfaces/IChainlinkAdapter.sol";
 import {IAggregatorV3} from "@lattice/interfaces/external/IAggregatorV3.sol";
+import {IChainlinkAdapter} from "@lattice/interfaces/oracles/IChainlinkAdapter.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
 //                                  STORAGE

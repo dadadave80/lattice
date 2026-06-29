@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
-import {IGroth16Verifier} from "@lattice/interfaces/IGroth16Verifier.sol";
+import {IGroth16Verifier} from "@lattice/interfaces/privacy/IGroth16Verifier.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
 //                                  STORAGE

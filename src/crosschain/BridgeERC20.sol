@@ -2,8 +2,8 @@
 pragma solidity ^0.8.30;
 
 import {BridgeERC20Lib} from "@lattice/crosschain/libraries/BridgeERC20Lib.sol";
-import {IBridgeFungible} from "@lattice/interfaces/IBridgeFungible.sol";
-import {IERC7786MessageHandler} from "@lattice/interfaces/IERC7786MessageHandler.sol";
+import {IBridgeFungible} from "@lattice/interfaces/crosschain/IBridgeFungible.sol";
+import {IERC7786MessageHandler} from "@lattice/interfaces/crosschain/IERC7786MessageHandler.sol";
 
 /// @title BridgeERC20
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

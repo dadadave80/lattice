@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
-import {IEIP712} from "@lattice/interfaces/IEIP712.sol";
+import {IEIP712} from "@lattice/interfaces/utils/IEIP712.sol";
 import {ShortString, ShortStrings} from "@lattice/utils/libraries/ShortStrings.sol";
 
 //*//////////////////////////////////////////////////////////////////////////

@@ -6,10 +6,10 @@ import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
-import {ERC6900ModuleManager} from "@lattice/accounts/ERC6900ModuleManager.sol";
-import {ERC6900ModuleManagerLib} from "@lattice/accounts/libraries/ERC6900ModuleManagerLib.sol";
-import {ERC6900TypesLib} from "@lattice/accounts/libraries/ERC6900TypesLib.sol";
-import {IModuleManager6900} from "@lattice/interfaces/IModuleManager6900.sol";
+import {ERC6900ModuleManager} from "@lattice/accounts/erc6900/ERC6900ModuleManager.sol";
+import {ERC6900ModuleManagerLib} from "@lattice/accounts/erc6900/libraries/ERC6900ModuleManagerLib.sol";
+import {ERC6900TypesLib} from "@lattice/accounts/erc6900/libraries/ERC6900TypesLib.sol";
+import {IERC6900ModuleManager} from "@lattice/interfaces/accounts/IERC6900ModuleManager.sol";
 import {
     ExecutionDataView,
     ExecutionManifest,
@@ -189,7 +189,7 @@ contract ERC6900ModuleManagerExecutionTester is Test {
 
     function test_InstallExecution_RevertNullModule() public {
         vm.prank(admin);
-        vm.expectRevert(IModuleManager6900.NullModule.selector);
+        vm.expectRevert(IERC6900ModuleManager.NullModule.selector);
         mgr.installExecution(address(0), _manifest(EXEC_SEL), "");
     }
 
@@ -197,7 +197,7 @@ contract ERC6900ModuleManagerExecutionTester is Test {
         _install(_manifest(EXEC_SEL), "");
         MockModule other = new MockModule();
         vm.prank(admin);
-        vm.expectRevert(abi.encodeWithSelector(IModuleManager6900.ExecutionFunctionAlreadySet.selector, EXEC_SEL));
+        vm.expectRevert(abi.encodeWithSelector(IERC6900ModuleManager.ExecutionFunctionAlreadySet.selector, EXEC_SEL));
         mgr.installExecution(address(other), _manifest(EXEC_SEL), "");
     }
 
@@ -205,7 +205,7 @@ contract ERC6900ModuleManagerExecutionTester is Test {
         vm.prank(admin);
         vm.expectRevert(
             abi.encodeWithSelector(
-                IModuleManager6900.ExecutionFunctionShadowsFacet.selector, DummyFacet.facetPing.selector
+                IERC6900ModuleManager.ExecutionFunctionShadowsFacet.selector, DummyFacet.facetPing.selector
             )
         );
         mgr.installExecution(address(module), _manifest(DummyFacet.facetPing.selector), "");
@@ -219,13 +219,13 @@ contract ERC6900ModuleManagerExecutionTester is Test {
         m.executionHooks[1] = m.executionHooks[0]; // exact duplicate
         HookConfig dup = ERC6900TypesLib.packExecHook(ERC6900TypesLib.pack(address(module), 1), true, false);
         vm.prank(admin);
-        vm.expectRevert(abi.encodeWithSelector(IModuleManager6900.ExecutionHookAlreadySet.selector, dup));
+        vm.expectRevert(abi.encodeWithSelector(IERC6900ModuleManager.ExecutionHookAlreadySet.selector, dup));
         mgr.installExecution(address(module), m, "");
     }
 
     function test_InstallExecution_RevertUnauthorized() public {
         vm.prank(address(0xBAD));
-        vm.expectRevert(abi.encodeWithSelector(IModuleManager6900.UnauthorizedModuleConfig.selector, address(0xBAD)));
+        vm.expectRevert(abi.encodeWithSelector(IERC6900ModuleManager.UnauthorizedModuleConfig.selector, address(0xBAD)));
         mgr.installExecution(address(module), _manifest(EXEC_SEL), "");
     }
 
@@ -234,7 +234,7 @@ contract ERC6900ModuleManagerExecutionTester is Test {
         vm.prank(admin);
         vm.expectRevert(
             abi.encodeWithSelector(
-                IModuleManager6900.ModuleInstallCallbackFailed.selector,
+                IERC6900ModuleManager.ModuleInstallCallbackFailed.selector,
                 address(module),
                 abi.encodeWithSignature("Error(string)", "install failed")
             )
@@ -245,7 +245,7 @@ contract ERC6900ModuleManagerExecutionTester is Test {
     function test_InstallExecution_RevertInterfaceIdSentinel() public {
         // ERC-165 requires supportsInterface(0xffffffff) == false; a manifest may not refcount it true.
         vm.prank(admin);
-        vm.expectRevert(abi.encodeWithSelector(IModuleManager6900.InvalidInterfaceId.selector, bytes4(0xffffffff)));
+        vm.expectRevert(abi.encodeWithSelector(IERC6900ModuleManager.InvalidInterfaceId.selector, bytes4(0xffffffff)));
         mgr.installExecution(address(module), _manifestWithIface(EXEC_SEL, 0xffffffff), "");
     }
 
@@ -255,7 +255,7 @@ contract ERC6900ModuleManagerExecutionTester is Test {
         bytes4 nativeId = 0x01ffc9a7; // type(IERC165).interfaceId
         mgr.setNativeInterface(nativeId);
         vm.prank(admin);
-        vm.expectRevert(abi.encodeWithSelector(IModuleManager6900.InvalidInterfaceId.selector, nativeId));
+        vm.expectRevert(abi.encodeWithSelector(IERC6900ModuleManager.InvalidInterfaceId.selector, nativeId));
         mgr.installExecution(address(module), _manifestWithIface(EXEC_SEL, nativeId), "");
         assertTrue(mgr.supportsInterface(nativeId), "native bit untouched");
     }

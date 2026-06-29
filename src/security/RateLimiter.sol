@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {IRateLimiter} from "@lattice/interfaces/IRateLimiter.sol";
+import {IRateLimiter} from "@lattice/interfaces/security/IRateLimiter.sol";
 import {RateLimiterLib} from "@lattice/security/libraries/RateLimiterLib.sol";
 
 /// @title RateLimiter

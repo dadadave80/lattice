@@ -5,13 +5,13 @@ import {DiamondLib, FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLi
 import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
-import {IEmergencyCut} from "@lattice/interfaces/IEmergencyCut.sol";
-import {IFrozenSelectors} from "@lattice/interfaces/IFrozenSelectors.sol";
-import {IGovernedSafeDiamondCut} from "@lattice/interfaces/IGovernedSafeDiamondCut.sol";
-import {ISafeAuthority} from "@lattice/interfaces/ISafeAuthority.sol";
-import {ISafeDiamondCut} from "@lattice/interfaces/ISafeDiamondCut.sol";
-import {IUpgradeRegistry} from "@lattice/interfaces/IUpgradeRegistry.sol";
 import {ISafe} from "@lattice/interfaces/external/ISafe.sol";
+import {IEmergencyCut} from "@lattice/interfaces/governance/IEmergencyCut.sol";
+import {IFrozenSelectors} from "@lattice/interfaces/governance/IFrozenSelectors.sol";
+import {IGovernedSafeDiamondCut} from "@lattice/interfaces/governance/IGovernedSafeDiamondCut.sol";
+import {ISafeAuthority} from "@lattice/interfaces/governance/ISafeAuthority.sol";
+import {ISafeDiamondCut} from "@lattice/interfaces/governance/ISafeDiamondCut.sol";
+import {IUpgradeRegistry} from "@lattice/interfaces/governance/IUpgradeRegistry.sol";
 import {EMERGENCY_GUARDIAN_ROLE, EmergencyStopLib} from "@lattice/security/libraries/EmergencyStopLib.sol";
 import {EnumerableSet} from "@lattice/utils/libraries/EnumerableSet.sol";
 

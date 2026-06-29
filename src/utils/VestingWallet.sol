@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {IVestingWallet} from "@lattice/interfaces/IVestingWallet.sol";
+import {IVestingWallet} from "@lattice/interfaces/utils/IVestingWallet.sol";
 import {VestingWalletLib} from "@lattice/utils/libraries/VestingWalletLib.sol";
 
 /// @title VestingWallet

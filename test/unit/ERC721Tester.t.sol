@@ -5,9 +5,9 @@ import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
-import {IERC721, IERC721Receiver} from "@lattice/interfaces/IERC721.sol";
-import {ERC721} from "@lattice/tokens/ERC721.sol";
-import {ERC721Lib} from "@lattice/tokens/libraries/ERC721Lib.sol";
+import {IERC721, IERC721Receiver} from "@lattice/interfaces/tokens/IERC721.sol";
+import {ERC721} from "@lattice/tokens/ERC721/ERC721.sol";
+import {ERC721Lib} from "@lattice/tokens/ERC721/libraries/ERC721Lib.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @notice ERC721Receiver that correctly returns the expected selector.

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {AxelarGatewayAdapterLib} from "@lattice/crosschain/libraries/AxelarGatewayAdapterLib.sol";
-import {IAxelarGatewayAdapter} from "@lattice/interfaces/IAxelarGatewayAdapter.sol";
+import {IAxelarGatewayAdapter} from "@lattice/interfaces/crosschain/IAxelarGatewayAdapter.sol";
 import {IERC7786GatewaySource} from "@lattice/interfaces/external/IERC7786.sol";
 
 /// @title AxelarGatewayAdapter

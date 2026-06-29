@@ -6,9 +6,9 @@ import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
 import {StrategyManager} from "@lattice/defi/StrategyManager.sol";
 import {StrategyManagerLib} from "@lattice/defi/libraries/StrategyManagerLib.sol";
-import {IERC4626} from "@lattice/interfaces/IERC4626.sol";
-import {IStrategyManager} from "@lattice/interfaces/IStrategyManager.sol";
-import {IVaultCore} from "@lattice/interfaces/IVaultCore.sol";
+import {IStrategyManager} from "@lattice/interfaces/defi/IStrategyManager.sol";
+import {IVaultCore} from "@lattice/interfaces/defi/IVaultCore.sol";
+import {IERC4626} from "@lattice/interfaces/tokens/IERC4626.sol";
 import {Test} from "forge-std/Test.sol";
 
 //*//////////////////////////////////////////////////////////////////////////

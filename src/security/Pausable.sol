@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {IPausable} from "@lattice/interfaces/IPausable.sol";
+import {IPausable} from "@lattice/interfaces/security/IPausable.sol";
 import {PausableLib} from "@lattice/security/libraries/PausableLib.sol";
 
 /// @title Pausable

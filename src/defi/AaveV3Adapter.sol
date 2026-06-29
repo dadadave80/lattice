@@ -2,9 +2,9 @@
 pragma solidity ^0.8.30;
 
 import {AaveV3AdapterLib} from "@lattice/defi/libraries/AaveV3AdapterLib.sol";
-import {IAaveV3Adapter} from "@lattice/interfaces/IAaveV3Adapter.sol";
-import {IAdapterOperator} from "@lattice/interfaces/IAdapterOperator.sol";
-import {IProtocolAdapter} from "@lattice/interfaces/IProtocolAdapter.sol";
+import {IAaveV3Adapter} from "@lattice/interfaces/defi/IAaveV3Adapter.sol";
+import {IAdapterOperator} from "@lattice/interfaces/defi/IAdapterOperator.sol";
+import {IProtocolAdapter} from "@lattice/interfaces/defi/IProtocolAdapter.sol";
 import {IStrategy} from "@lattice/interfaces/external/IStrategy.sol";
 import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib.sol";
 

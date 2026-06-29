@@ -9,10 +9,10 @@ import {TimelockControllerStandalone} from "@lattice/governance/TimelockControll
 import {GovernorLib} from "@lattice/governance/libraries/GovernorLib.sol";
 import {TimelockControllerLib} from "@lattice/governance/libraries/TimelockControllerLib.sol";
 import {VotesLib} from "@lattice/governance/libraries/VotesLib.sol";
-import {IGovernor} from "@lattice/interfaces/IGovernor.sol";
-import {ERC20Votes} from "@lattice/tokens/ERC20Votes.sol";
-import {ERC20Lib} from "@lattice/tokens/libraries/ERC20Lib.sol";
-import {ERC20VotesLib} from "@lattice/tokens/libraries/ERC20VotesLib.sol";
+import {IGovernor} from "@lattice/interfaces/governance/IGovernor.sol";
+import {ERC20Votes} from "@lattice/tokens/ERC20/ERC20Votes.sol";
+import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
+import {ERC20VotesLib} from "@lattice/tokens/ERC20/libraries/ERC20VotesLib.sol";
 import {EIP712Lib} from "@lattice/utils/libraries/EIP712Lib.sol";
 import {NoncesLib} from "@lattice/utils/libraries/NoncesLib.sol";
 import {Test} from "forge-std/Test.sol";

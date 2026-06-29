@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {IRedStoneAdapter} from "@lattice/interfaces/IRedStoneAdapter.sol";
+import {IRedStoneAdapter} from "@lattice/interfaces/oracles/IRedStoneAdapter.sol";
 import {RedStoneAdapterLib} from "@lattice/oracles/libraries/RedStoneAdapterLib.sol";
 
 /// @title RedStoneAdapter

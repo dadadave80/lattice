@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {AccessManagerLib} from "@lattice/access/libraries/AccessManagerLib.sol";
-import {IAccessManager} from "@lattice/interfaces/IAccessManager.sol";
+import {IAccessManager} from "@lattice/interfaces/access/IAccessManager.sol";
 
 /// @title AccessManager
 /// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/access/manager/AccessManager.sol)

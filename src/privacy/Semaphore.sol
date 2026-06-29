@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ISemaphore} from "@lattice/interfaces/ISemaphore.sol";
+import {ISemaphore} from "@lattice/interfaces/privacy/ISemaphore.sol";
 import {SemaphoreLib} from "@lattice/privacy/libraries/SemaphoreLib.sol";
 
 /// @title Semaphore
