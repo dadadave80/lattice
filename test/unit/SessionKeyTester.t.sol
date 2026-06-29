@@ -6,7 +6,7 @@ import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {SessionKey} from "@lattice/accounts/SessionKey.sol";
 import {ANY_SELECTOR, ANY_TARGET, NATIVE_TOKEN, SessionKeyLib} from "@lattice/accounts/libraries/SessionKeyLib.sol";
-import {ISessionKey} from "@lattice/interfaces/ISessionKey.sol";
+import {ISessionKey} from "@lattice/interfaces/accounts/ISessionKey.sol";
 import {Call} from "@lattice/interfaces/external/IERC7821.sol";
 import {Test} from "forge-std/Test.sol";
 

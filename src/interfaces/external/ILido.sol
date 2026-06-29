@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.4;
 
-import {IERC20} from "@lattice/interfaces/IERC20.sol";
+import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
 
 /// @title ILido
 /// @author Modified from Lido stETH (https://github.com/lidofinance/lido-dao/blob/master/contracts/0.4.24/Lido.sol)

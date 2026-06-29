@@ -3,11 +3,11 @@ pragma solidity ^0.8.30;
 
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {GovernedSafeDiamondCutLib} from "@lattice/governance/libraries/GovernedSafeDiamondCutLib.sol";
-import {IEmergencyCut} from "@lattice/interfaces/IEmergencyCut.sol";
-import {IFrozenSelectors} from "@lattice/interfaces/IFrozenSelectors.sol";
-import {IGovernedSafeDiamondCut} from "@lattice/interfaces/IGovernedSafeDiamondCut.sol";
-import {ISafeAuthority} from "@lattice/interfaces/ISafeAuthority.sol";
-import {IUpgradeRegistry} from "@lattice/interfaces/IUpgradeRegistry.sol";
+import {IEmergencyCut} from "@lattice/interfaces/governance/IEmergencyCut.sol";
+import {IFrozenSelectors} from "@lattice/interfaces/governance/IFrozenSelectors.sol";
+import {IGovernedSafeDiamondCut} from "@lattice/interfaces/governance/IGovernedSafeDiamondCut.sol";
+import {ISafeAuthority} from "@lattice/interfaces/governance/ISafeAuthority.sol";
+import {IUpgradeRegistry} from "@lattice/interfaces/governance/IUpgradeRegistry.sol";
 
 /// @title GovernedSafeDiamondCut
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

@@ -3,8 +3,8 @@ pragma solidity ^0.8.30;
 
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {CreateXDeployer} from "@lattice-script/lib/CreateXDeployer.sol";
-import {IGovernedDiamondCut} from "@lattice/interfaces/IGovernedDiamondCut.sol";
-import {IGovernor} from "@lattice/interfaces/IGovernor.sol";
+import {IGovernedDiamondCut} from "@lattice/interfaces/governance/IGovernedDiamondCut.sol";
+import {IGovernor} from "@lattice/interfaces/governance/IGovernor.sol";
 import {Script, console} from "forge-std/Script.sol";
 
 /// @title UpgradeDiamond

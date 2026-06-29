@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {IEmergencyStop} from "@lattice/interfaces/IEmergencyStop.sol";
+import {IEmergencyStop} from "@lattice/interfaces/security/IEmergencyStop.sol";
 import {EmergencyStopLib} from "@lattice/security/libraries/EmergencyStopLib.sol";
 
 /// @title EmergencyStop

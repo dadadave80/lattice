@@ -3,8 +3,8 @@ pragma solidity ^0.8.30;
 
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
-import {ITWAPOracle} from "@lattice/interfaces/ITWAPOracle.sol";
 import {IUniswapV2Pair} from "@lattice/interfaces/external/IUniswapV2Pair.sol";
+import {ITWAPOracle} from "@lattice/interfaces/oracles/ITWAPOracle.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
 //                                  STORAGE

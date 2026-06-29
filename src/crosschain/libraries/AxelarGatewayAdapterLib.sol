@@ -3,7 +3,7 @@ pragma solidity ^0.8.30;
 
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
-import {IAxelarGatewayAdapter} from "@lattice/interfaces/IAxelarGatewayAdapter.sol";
+import {IAxelarGatewayAdapter} from "@lattice/interfaces/crosschain/IAxelarGatewayAdapter.sol";
 import {IAxelarGateway} from "@lattice/interfaces/external/IAxelarGateway.sol";
 import {IERC7786GatewaySource, IERC7786Recipient} from "@lattice/interfaces/external/IERC7786.sol";
 import {Bytes} from "@lattice/utils/libraries/Bytes.sol";

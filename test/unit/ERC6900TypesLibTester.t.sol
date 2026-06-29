@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ERC6900TypesLib} from "@lattice/accounts/libraries/ERC6900TypesLib.sol";
+import {ERC6900TypesLib} from "@lattice/accounts/erc6900/libraries/ERC6900TypesLib.sol";
 import {HookConfig, ModuleEntity, ValidationConfig, ValidationFlags} from "@lattice/interfaces/external/IERC6900.sol";
 import {Test} from "forge-std/Test.sol";
 

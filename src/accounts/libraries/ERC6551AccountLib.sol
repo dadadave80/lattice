@@ -2,8 +2,8 @@
 pragma solidity ^0.8.30;
 
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
-import {IERC721} from "@lattice/interfaces/IERC721.sol";
-import {ITokenBound} from "@lattice/interfaces/ITokenBound.sol";
+import {ITokenBound} from "@lattice/interfaces/accounts/ITokenBound.sol";
+import {IERC721} from "@lattice/interfaces/tokens/IERC721.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
 //                                  STORAGE

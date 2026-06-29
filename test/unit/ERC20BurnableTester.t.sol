@@ -3,11 +3,11 @@ pragma solidity ^0.8.30;
 
 import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
-import {IERC20} from "@lattice/interfaces/IERC20.sol";
-import {IERC20Burnable} from "@lattice/interfaces/IERC20Burnable.sol";
-import {ERC20Burnable} from "@lattice/tokens/ERC20Burnable.sol";
-import {ERC20BurnableLib} from "@lattice/tokens/libraries/ERC20BurnableLib.sol";
-import {ERC20Lib} from "@lattice/tokens/libraries/ERC20Lib.sol";
+import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
+import {IERC20Burnable} from "@lattice/interfaces/tokens/IERC20Burnable.sol";
+import {ERC20Burnable} from "@lattice/tokens/ERC20/ERC20Burnable.sol";
+import {ERC20BurnableLib} from "@lattice/tokens/ERC20/libraries/ERC20BurnableLib.sol";
+import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @title MockERC20BurnableContract

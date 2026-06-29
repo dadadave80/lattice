@@ -3,11 +3,11 @@ pragma solidity ^0.8.30;
 
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
-import {IERC20} from "@lattice/interfaces/IERC20.sol";
-import {IERC4626} from "@lattice/interfaces/IERC4626.sol";
-import {ERC4626} from "@lattice/tokens/ERC4626.sol";
-import {ERC20Lib} from "@lattice/tokens/libraries/ERC20Lib.sol";
-import {ERC4626Lib} from "@lattice/tokens/libraries/ERC4626Lib.sol";
+import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
+import {IERC4626} from "@lattice/interfaces/tokens/IERC4626.sol";
+import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
+import {ERC4626} from "@lattice/tokens/ERC4626/ERC4626.sol";
+import {ERC4626Lib} from "@lattice/tokens/ERC4626/libraries/ERC4626Lib.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @notice Minimal ERC-20 underlying asset for vault fuzz tests.

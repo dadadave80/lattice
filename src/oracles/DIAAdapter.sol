@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {IDIAAdapter} from "@lattice/interfaces/IDIAAdapter.sol";
+import {IDIAAdapter} from "@lattice/interfaces/oracles/IDIAAdapter.sol";
 import {DIAAdapterLib} from "@lattice/oracles/libraries/DIAAdapterLib.sol";
 
 /// @title DIAAdapter

@@ -3,7 +3,7 @@ pragma solidity ^0.8.30;
 
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
-import {IENSResolver} from "@lattice/interfaces/IENSResolver.sol";
+import {IENSResolver} from "@lattice/interfaces/ens/IENSResolver.sol";
 import {IAddrResolver} from "@lattice/interfaces/external/IAddrResolver.sol";
 import {IENS} from "@lattice/interfaces/external/IENS.sol";
 

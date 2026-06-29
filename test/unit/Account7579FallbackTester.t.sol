@@ -5,14 +5,14 @@ import {DiamondLib, FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLi
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
-import {AccountDiamond} from "@lattice/accounts/AccountDiamond.sol";
-import {ERC7579ModuleConfig} from "@lattice/accounts/ERC7579ModuleConfig.sol";
+import {AccountDiamond} from "@lattice/accounts/erc7579/AccountDiamond.sol";
+import {ERC7579ModuleConfig} from "@lattice/accounts/erc7579/ERC7579ModuleConfig.sol";
 import {
     ERC7579ModuleConfigLib,
     FALLBACK_CALLTYPE_CALL,
     FALLBACK_CALLTYPE_DELEGATECALL
-} from "@lattice/accounts/libraries/ERC7579ModuleConfigLib.sol";
-import {IModuleConfig} from "@lattice/interfaces/IModuleConfig.sol";
+} from "@lattice/accounts/erc7579/libraries/ERC7579ModuleConfigLib.sol";
+import {IModuleConfig} from "@lattice/interfaces/accounts/IModuleConfig.sol";
 import {MODULE_TYPE_FALLBACK} from "@lattice/interfaces/external/IERC7579.sol";
 import {Test} from "forge-std/Test.sol";
 

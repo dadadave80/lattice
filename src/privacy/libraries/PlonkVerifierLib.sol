@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
-import {IPlonkVerifier} from "@lattice/interfaces/IPlonkVerifier.sol";
+import {IPlonkVerifier} from "@lattice/interfaces/privacy/IPlonkVerifier.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
 //                                  STORAGE

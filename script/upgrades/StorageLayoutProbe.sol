@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ICommitReveal} from "@lattice/interfaces/ICommitReveal.sol";
-import {IUpgradeRegistry} from "@lattice/interfaces/IUpgradeRegistry.sol";
 import {HookConfig, ModuleEntity, ValidationFlags} from "@lattice/interfaces/external/IERC6900.sol";
+import {IUpgradeRegistry} from "@lattice/interfaces/governance/IUpgradeRegistry.sol";
+import {ICommitReveal} from "@lattice/interfaces/privacy/ICommitReveal.sol";
 import {IncrementalMerkleTreeLib} from "@lattice/privacy/libraries/IncrementalMerkleTreeLib.sol";
 import {NullifierRegistryLib} from "@lattice/privacy/libraries/NullifierRegistryLib.sol";
 import {EnumerableSet} from "@lattice/utils/libraries/EnumerableSet.sol";

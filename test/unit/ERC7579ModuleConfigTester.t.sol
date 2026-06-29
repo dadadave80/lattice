@@ -5,9 +5,9 @@ import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
-import {ERC7579ModuleConfig} from "@lattice/accounts/ERC7579ModuleConfig.sol";
-import {ERC7579ModuleConfigLib} from "@lattice/accounts/libraries/ERC7579ModuleConfigLib.sol";
-import {IModuleConfig} from "@lattice/interfaces/IModuleConfig.sol";
+import {ERC7579ModuleConfig} from "@lattice/accounts/erc7579/ERC7579ModuleConfig.sol";
+import {ERC7579ModuleConfigLib} from "@lattice/accounts/erc7579/libraries/ERC7579ModuleConfigLib.sol";
+import {IModuleConfig} from "@lattice/interfaces/accounts/IModuleConfig.sol";
 import {
     IERC7579Execution,
     IERC7579ModuleConfig,

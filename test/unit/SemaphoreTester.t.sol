@@ -4,7 +4,7 @@ pragma solidity ^0.8.30;
 import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
-import {ISemaphore} from "@lattice/interfaces/ISemaphore.sol";
+import {ISemaphore} from "@lattice/interfaces/privacy/ISemaphore.sol";
 import {Semaphore} from "@lattice/privacy/Semaphore.sol";
 import {SemaphoreLib} from "@lattice/privacy/libraries/SemaphoreLib.sol";
 import {SemaphoreVerifier} from "@semaphore/SemaphoreVerifier.sol";

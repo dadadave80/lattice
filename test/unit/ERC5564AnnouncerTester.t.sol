@@ -3,7 +3,7 @@ pragma solidity ^0.8.30;
 
 import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
-import {IERC5564Announcer} from "@lattice/interfaces/IERC5564Announcer.sol";
+import {IERC5564Announcer} from "@lattice/interfaces/privacy/IERC5564Announcer.sol";
 import {ERC5564Announcer} from "@lattice/privacy/ERC5564Announcer.sol";
 import {ERC5564AnnouncerLib} from "@lattice/privacy/libraries/ERC5564AnnouncerLib.sol";
 import {Test} from "forge-std/Test.sol";

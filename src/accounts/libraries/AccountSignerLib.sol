@@ -3,7 +3,7 @@ pragma solidity ^0.8.30;
 
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
-import {IAccountSigner} from "@lattice/interfaces/IAccountSigner.sol";
+import {IAccountSigner} from "@lattice/interfaces/accounts/IAccountSigner.sol";
 import {ECDSA} from "@lattice/utils/libraries/ECDSA.sol";
 import {P256} from "@lattice/utils/libraries/P256.sol";
 import {SignatureChecker} from "@lattice/utils/libraries/SignatureChecker.sol";

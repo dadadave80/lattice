@@ -7,11 +7,11 @@ import {DiamondLoupeFacet} from "@diamond/facets/DiamondLoupeFacet.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
-import {AccountInit} from "@lattice/accounts/AccountInit.sol";
-import {AccountSigner} from "@lattice/accounts/AccountSigner.sol";
 import {ERC1271Signature} from "@lattice/accounts/ERC1271Signature.sol";
 import {ERC4337Validation} from "@lattice/accounts/ERC4337Validation.sol";
-import {ERC7821Executor} from "@lattice/accounts/ERC7821Executor.sol";
+import {AccountInit} from "@lattice/accounts/erc7579/AccountInit.sol";
+import {AccountSigner} from "@lattice/accounts/erc7579/AccountSigner.sol";
+import {ERC7821Executor} from "@lattice/accounts/erc7579/ERC7821Executor.sol";
 
 /// @notice Builds the canonical single-owner ERC-4337 account blueprint (8 facets + initializer) used by the
 ///         factory, 7702, and EntryPoint integration tests. Selectors come from diamond-lib `GetSelectors`

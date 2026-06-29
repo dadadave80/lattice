@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {ConstantProductLib} from "@lattice/amm/libraries/ConstantProductLib.sol";
-import {IConstantProduct} from "@lattice/interfaces/IConstantProduct.sol";
+import {IConstantProduct} from "@lattice/interfaces/amm/IConstantProduct.sol";
 
 /// @title ConstantProduct
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

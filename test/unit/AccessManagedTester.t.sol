@@ -5,8 +5,8 @@ import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessManaged} from "@lattice/access/AccessManaged.sol";
 import {AccessManagerStandalone} from "@lattice/access/AccessManagerStandalone.sol";
 import {AccessManagedLib} from "@lattice/access/libraries/AccessManagedLib.sol";
-import {IAccessManaged} from "@lattice/interfaces/IAccessManaged.sol";
-import {IAccessManager} from "@lattice/interfaces/IAccessManager.sol";
+import {IAccessManaged} from "@lattice/interfaces/access/IAccessManaged.sol";
+import {IAccessManager} from "@lattice/interfaces/access/IAccessManager.sol";
 import {Test} from "forge-std/Test.sol";
 
 contract MockAccessManagedContract is AccessManaged {

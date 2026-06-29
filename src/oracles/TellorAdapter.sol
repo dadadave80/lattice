@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ITellorAdapter} from "@lattice/interfaces/ITellorAdapter.sol";
+import {ITellorAdapter} from "@lattice/interfaces/oracles/ITellorAdapter.sol";
 import {TellorAdapterLib} from "@lattice/oracles/libraries/TellorAdapterLib.sol";
 
 /// @title TellorAdapter

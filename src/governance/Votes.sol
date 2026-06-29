@@ -2,8 +2,8 @@
 pragma solidity ^0.8.30;
 
 import {VotesLib} from "@lattice/governance/libraries/VotesLib.sol";
-import {IVotes} from "@lattice/interfaces/IVotes.sol";
-import {ERC20Lib} from "@lattice/tokens/libraries/ERC20Lib.sol";
+import {IVotes} from "@lattice/interfaces/governance/IVotes.sol";
+import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
 
 /// @title Votes
 /// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/governance/utils/Votes.sol)

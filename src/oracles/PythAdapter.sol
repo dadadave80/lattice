@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {IPythAdapter} from "@lattice/interfaces/IPythAdapter.sol";
+import {IPythAdapter} from "@lattice/interfaces/oracles/IPythAdapter.sol";
 import {PythAdapterLib} from "@lattice/oracles/libraries/PythAdapterLib.sol";
 
 /// @title PythAdapter

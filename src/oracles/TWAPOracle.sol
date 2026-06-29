@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ITWAPOracle} from "@lattice/interfaces/ITWAPOracle.sol";
+import {ITWAPOracle} from "@lattice/interfaces/oracles/ITWAPOracle.sol";
 import {TWAPOracleLib} from "@lattice/oracles/libraries/TWAPOracleLib.sol";
 
 /// @title TWAPOracle

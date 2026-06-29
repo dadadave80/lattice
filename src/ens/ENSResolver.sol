@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {ENSResolverLib} from "@lattice/ens/libraries/ENSResolverLib.sol";
-import {IENSResolver} from "@lattice/interfaces/IENSResolver.sol";
+import {IENSResolver} from "@lattice/interfaces/ens/IENSResolver.sol";
 
 /// @title ENSResolver
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

@@ -3,12 +3,12 @@ pragma solidity ^0.8.30;
 
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {Account6900BlueprintHelper} from "@lattice-test/helpers/Account6900BlueprintHelper.sol";
-import {AccountFactory6900} from "@lattice/accounts/AccountFactory6900.sol";
-import {AccountInit6900} from "@lattice/accounts/AccountInit6900.sol";
-import {ERC6900TypesLib} from "@lattice/accounts/libraries/ERC6900TypesLib.sol";
-import {SingleSignerValidation} from "@lattice/accounts/modules/SingleSignerValidation.sol";
-import {SpendingLimit} from "@lattice/accounts/modules/SpendingLimit.sol";
-import {IExecutor6900} from "@lattice/interfaces/IExecutor6900.sol";
+import {AccountFactory6900} from "@lattice/accounts/erc6900/AccountFactory6900.sol";
+import {AccountInit6900} from "@lattice/accounts/erc6900/AccountInit6900.sol";
+import {ERC6900TypesLib} from "@lattice/accounts/erc6900/libraries/ERC6900TypesLib.sol";
+import {SingleSignerValidation} from "@lattice/accounts/erc6900/modules/SingleSignerValidation.sol";
+import {SpendingLimit} from "@lattice/accounts/erc6900/modules/SpendingLimit.sol";
+import {IERC6900Executor} from "@lattice/interfaces/accounts/IERC6900Executor.sol";
 import {IAccount, PackedUserOperation} from "@lattice/interfaces/external/IAccount.sol";
 import {
     DIRECT_CALL_VALIDATION_ENTITY_ID,
@@ -145,7 +145,7 @@ contract ERC6900E2ETester is Account6900BlueprintHelper {
         vm.prank(entryPoint);
         vm.expectRevert(
             abi.encodeWithSelector(
-                IExecutor6900.PreExecHookReverted.selector,
+                IERC6900Executor.PreExecHookReverted.selector,
                 address(spend),
                 SPEND_ENTITY,
                 abi.encodeWithSelector(SpendingLimit.SpendCapExceeded.selector, 1.2 ether, CAP)
@@ -185,7 +185,7 @@ contract ERC6900E2ETester is Account6900BlueprintHelper {
         // An unauthorized caller has no direct-call validation for the selector.
         vm.prank(address(0xBAD));
         vm.expectRevert(
-            abi.encodeWithSelector(IExecutor6900.ValidationFunctionMissing.selector, Counter.increment.selector)
+            abi.encodeWithSelector(IERC6900Executor.ValidationFunctionMissing.selector, Counter.increment.selector)
         );
         ICounter(account).increment();
     }
@@ -202,7 +202,9 @@ contract ERC6900E2ETester is Account6900BlueprintHelper {
         PackedUserOperation memory op = _signedOp(ownerKey, userOpHash);
         vm.prank(entryPoint);
         vm.expectRevert(
-            abi.encodeWithSelector(IExecutor6900.ValidationFunctionMissing.selector, IERC6900Account.execute.selector)
+            abi.encodeWithSelector(
+                IERC6900Executor.ValidationFunctionMissing.selector, IERC6900Account.execute.selector
+            )
         );
         IAccount(account).validateUserOp(op, userOpHash, 0);
     }

@@ -8,13 +8,13 @@ import {DiamondLoupeFacet} from "@diamond/facets/DiamondLoupeFacet.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
-import {AccountFactory} from "@lattice/accounts/AccountFactory.sol";
-import {AccountInit} from "@lattice/accounts/AccountInit.sol";
-import {AccountSigner} from "@lattice/accounts/AccountSigner.sol";
 import {ERC1271Signature} from "@lattice/accounts/ERC1271Signature.sol";
 import {ERC4337Validation} from "@lattice/accounts/ERC4337Validation.sol";
-import {ERC7821Executor} from "@lattice/accounts/ERC7821Executor.sol";
-import {IAccountFactory} from "@lattice/interfaces/IAccountFactory.sol";
+import {AccountFactory} from "@lattice/accounts/erc7579/AccountFactory.sol";
+import {AccountInit} from "@lattice/accounts/erc7579/AccountInit.sol";
+import {AccountSigner} from "@lattice/accounts/erc7579/AccountSigner.sol";
+import {ERC7821Executor} from "@lattice/accounts/erc7579/ERC7821Executor.sol";
+import {IAccountFactory} from "@lattice/interfaces/accounts/IAccountFactory.sol";
 import {IERC7821} from "@lattice/interfaces/external/IERC7821.sol";
 
 contract AccountFactoryTester is GetSelectors {

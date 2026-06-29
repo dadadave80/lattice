@@ -3,7 +3,7 @@ pragma solidity ^0.8.30;
 
 import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
-import {IGroth16Verifier} from "@lattice/interfaces/IGroth16Verifier.sol";
+import {IGroth16Verifier} from "@lattice/interfaces/privacy/IGroth16Verifier.sol";
 import {Groth16Verifier} from "@lattice/privacy/Groth16Verifier.sol";
 import {Groth16VerifierLib} from "@lattice/privacy/libraries/Groth16VerifierLib.sol";
 import {Test} from "forge-std/Test.sol";

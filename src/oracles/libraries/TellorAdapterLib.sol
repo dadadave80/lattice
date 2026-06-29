@@ -3,8 +3,8 @@ pragma solidity ^0.8.30;
 
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
-import {ITellorAdapter} from "@lattice/interfaces/ITellorAdapter.sol";
 import {ITellor} from "@lattice/interfaces/external/ITellor.sol";
+import {ITellorAdapter} from "@lattice/interfaces/oracles/ITellorAdapter.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
 //                                  STORAGE
