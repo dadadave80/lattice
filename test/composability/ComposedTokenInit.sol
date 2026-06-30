@@ -6,6 +6,9 @@ import {ERC20BurnableLib} from "@lattice/tokens/ERC20/libraries/ERC20BurnableLib
 import {ERC20CappedLib} from "@lattice/tokens/ERC20/libraries/ERC20CappedLib.sol";
 import {ERC20FlashMintLib} from "@lattice/tokens/ERC20/libraries/ERC20FlashMintLib.sol";
 import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
+import {ERC20PermitLib} from "@lattice/tokens/ERC20/libraries/ERC20PermitLib.sol";
+import {EIP712Lib} from "@lattice/utils/libraries/EIP712Lib.sol";
+import {NoncesLib} from "@lattice/utils/libraries/NoncesLib.sol";
 
 /// @title ComposedTokenInit
 /// @notice One-shot initializer for the composed ERC-20 diamond (mirrors {AccountInit}). Delegatecalled by the
@@ -35,5 +38,18 @@ contract ComposedTokenTestFacet {
 
     function pauseIt() external {
         PausableLib._pause();
+    }
+}
+
+/// @title PermitTokenInit
+/// @notice Initializer for a composed PERMIT token diamond. Seeds the ERC-20, EIP-712 domain, nonce, and ERC-2612
+///         storage once. The EIP-712 domain is shared storage that both {ERC20Permit} (to build the digest) and the
+///         standalone {EIP712} facet (for `eip712Domain()` discovery) read — neither owns that facet via inheritance.
+contract PermitTokenInit {
+    function init() external {
+        ERC20Lib.__ERC20_init("Permit", "PRMT");
+        EIP712Lib.__EIP712_init("Permit", "1");
+        NoncesLib.__Nonces_init();
+        ERC20PermitLib.__ERC20Permit_init();
     }
 }
