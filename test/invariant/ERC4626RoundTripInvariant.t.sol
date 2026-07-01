@@ -5,6 +5,7 @@ import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {VotesLib} from "@lattice/governance/libraries/VotesLib.sol";
+import {ERC20} from "@lattice/tokens/ERC20/ERC20.sol";
 import {ERC20Votes} from "@lattice/tokens/ERC20/ERC20Votes.sol";
 import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
 import {ERC20VotesLib} from "@lattice/tokens/ERC20/libraries/ERC20VotesLib.sol";
@@ -19,7 +20,15 @@ import {Test} from "forge-std/Test.sol";
 //////////////////////////////////////////////////////////////////////////*//
 
 /// @notice Simple mintable ERC20Votes used as the vault's underlying asset.
-contract InvAsset is ERC20Votes {
+contract InvAsset is ERC20, ERC20Votes {
+    function transfer(address to, uint256 value) public override(ERC20, ERC20Votes) returns (bool) {
+        return ERC20Votes.transfer(to, value);
+    }
+
+    function transferFrom(address from, address to, uint256 value) public override(ERC20, ERC20Votes) returns (bool) {
+        return ERC20Votes.transferFrom(from, to, value);
+    }
+
     function initialize(address admin) external {
         bytes32 s = InitializableLib.initializableSlot();
         InitializableLib.preInitializer(s);
