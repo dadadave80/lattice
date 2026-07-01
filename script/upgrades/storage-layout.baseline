@@ -133,6 +133,14 @@
 1	0	_executed	t_mapping(t_uint256,t_mapping(t_bytes32,t_bool))
 2	0	_outboundNonce	t_uint256
 
+### ZetaChainGatewayAdapterStorage @ erc7201:lattice.storage.ZetaChainGatewayAdapter (slot 0x7529f1b714a55f00ea95d180ad0c2a53651f18a834ecec0ff1f9af59ddf74000)
+0	0	_gateway	t_address
+1	0	_defaultOnRevertGasLimit	t_uint256
+2	0	_remoteApps	t_mapping(t_uint256,t_address)
+3	0	_appToChainId	t_mapping(t_address,t_uint256)
+4	0	_executed	t_mapping(t_uint256,t_mapping(t_bytes32,t_bool))
+5	0	_outboundNonce	t_uint256
+
 ### L1ToL2CrossDomainMessengerGatewayAdapterStorage @ erc7201:lattice.storage.L1ToL2CrossDomainMessengerGatewayAdapter (slot 0xba3de3e77bc32833730368f3190597d7121922af189304a06067265b4d53a500)
 0	0	_counterpartChainId	t_uint256
 1	0	_counterpartAdapter	t_address

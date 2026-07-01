@@ -353,6 +353,17 @@ contract StorageLayoutProbe {
         uint256 _outboundNonce;
     }
 
+    /// @dev Verbatim mirror of `ZetaChainGatewayAdapterLib.ZetaChainGatewayAdapterStorage`
+    ///      (`@custom:storage-location erc7201:lattice.storage.ZetaChainGatewayAdapter`). Append-only.
+    struct ZetaChainGatewayAdapterStorage {
+        address _gateway;
+        uint256 _defaultOnRevertGasLimit;
+        mapping(uint256 chainId => address remoteApp) _remoteApps;
+        mapping(address remoteApp => uint256 chainId) _appToChainId;
+        mapping(uint256 chainId => mapping(bytes32 id => bool used)) _executed;
+        uint256 _outboundNonce;
+    }
+
     /// @dev Verbatim mirror of
     ///      `L1ToL2CrossDomainMessengerGatewayAdapterLib.L1ToL2CrossDomainMessengerGatewayAdapterStorage`
     ///      (`@custom:storage-location erc7201:lattice.storage.L1ToL2CrossDomainMessengerGatewayAdapter`).
@@ -539,6 +550,7 @@ contract StorageLayoutProbe {
     CCIPGatewayAdapterStorage internal _unusedCCIPGatewayAdapter;
     LayerZeroGatewayAdapterStorage internal _unusedLayerZeroGatewayAdapter;
     L2ToL2CrossDomainMessengerGatewayAdapterStorage internal _unusedL2ToL2CrossDomainMessengerGatewayAdapter;
+    ZetaChainGatewayAdapterStorage internal _unusedZetaChainGatewayAdapter;
     L1ToL2CrossDomainMessengerGatewayAdapterStorage internal _unusedL1ToL2CrossDomainMessengerGatewayAdapter;
     PythEntropyAdapterStorage internal _unusedPythEntropyAdapter;
     GelatoVRFAdapterStorage internal _unusedGelatoVRFAdapter;
