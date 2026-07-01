@@ -120,6 +120,14 @@
 7	0	_executed	t_mapping(t_uint256,t_mapping(t_bytes32,t_bool))
 8	0	_ccvConfigs	t_mapping(t_uint256,t_struct(CCVConfig)_storage)
 
+### CCTPBridgeAdapterStorage @ erc7201:lattice.storage.CCTPBridgeAdapter (slot 0x94bcfd23a6ef7deebf3dfac9da6ba8c390ae8a620c8a163523fd263b20958b00)
+0	0	_tokenMessenger	t_address
+1	0	_messageTransmitter	t_address
+2	0	_usdc	t_address
+3	0	_chainIdToDomain	t_mapping(t_uint256,t_uint32)
+4	0	_chainRegistered	t_mapping(t_uint256,t_bool)
+5	0	_domainConfig	t_mapping(t_uint32,t_struct(DomainConfig)_storage)
+
 ### LayerZeroGatewayAdapterStorage @ erc7201:lattice.storage.LayerZeroGatewayAdapter (slot 0xbca2daa6d08cb277e523bf7dcd928e312ddbb7f9ac88be435916dda92924d100)
 0	0	_endpoint	t_address
 1	0	_chainIdToEid	t_mapping(t_uint256,t_uint32)
