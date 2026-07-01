@@ -20,7 +20,7 @@ import {InvariantCheckerLib} from "@lattice/security/libraries/InvariantCheckerL
 ///           the registered view and revert (`InvariantViolatedError`) if it returns `false`, or
 ///           (`InvariantCheckFailed`) if the call itself reverts.
 ///      The check tracks live state — it is not a one-shot latch — so the gate re-opens once the
-///      invariant holds again. See `test/unit/InvariantCheckerUsageTester.t.sol` for the canonical
+///      invariant holds again. See `test/unit/InvariantCheckerUsageTest.t.sol` for the canonical
 ///      worked example (a solvency invariant: registration, happy path, violation path, batch).
 /// @custom:lattice-version 0.1.0
 /// @custom:lattice-source Lattice original

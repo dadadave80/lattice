@@ -1,6 +1,6 @@
 # Groth16 test vector
 
-A real, self-contained Groth16 proof used by `test/unit/Groth16VerifierTester.t.sol` to validate the
+A real, self-contained Groth16 proof used by `test/unit/Groth16VerifierTest.t.sol` to validate the
 generic `Groth16Verifier` against ground truth. The circuit is the minimal `c = a * b` with `a` and the
 output `c` public, `b` private (`nPublic = 2`).
 

@@ -15,7 +15,7 @@ import {Test} from "forge-std/Test.sol";
 // ---------------------------------------------------------------------------
 
 /// @notice Mock Diamond that combines AccessControl + API3QRNGAdapter, matching
-///         the pattern from API3QRNGAdapterTester.t.sol.
+///         the pattern from API3QRNGAdapterTest.t.sol.
 contract MockAPI3QRNGAdapterForkContract is AccessControl, API3QRNGAdapter {
     function initialize(address _admin) external {
         bytes32 s = InitializableLib.initializableSlot();

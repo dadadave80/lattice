@@ -15,7 +15,7 @@ import {Test} from "forge-std/Test.sol";
 // ---------------------------------------------------------------------------
 
 /// @notice Mock Diamond that combines AccessControl + ChainlinkAdapter, matching
-///         the pattern from ChainlinkAdapterTester.t.sol.
+///         the pattern from ChainlinkAdapterTest.t.sol.
 contract MockChainlinkAdapterForkContract is AccessControl, ChainlinkAdapter {
     function initialize(address _admin) external {
         bytes32 s = InitializableLib.initializableSlot();

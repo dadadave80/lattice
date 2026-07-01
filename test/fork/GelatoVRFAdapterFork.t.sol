@@ -14,7 +14,7 @@ import {Test} from "forge-std/Test.sol";
 // ---------------------------------------------------------------------------
 
 /// @notice Mock Diamond that combines AccessControl + GelatoVRFAdapter, matching
-///         the pattern from GelatoVRFAdapterTester.t.sol.
+///         the pattern from GelatoVRFAdapterTest.t.sol.
 contract MockGelatoVRFAdapterForkContract is AccessControl, GelatoVRFAdapter {
     function initialize(address _admin) external {
         bytes32 s = InitializableLib.initializableSlot();
