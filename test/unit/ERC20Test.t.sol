@@ -1,47 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
+import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
+import {ERC20TestBase} from "@lattice-test/base/ERC20TestBase.sol";
 import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
-import {ERC20} from "@lattice/tokens/ERC20/ERC20.sol";
-import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
-import {Test} from "forge-std/Test.sol";
-
-/// @title MockERC20Contract
-/// @notice Mock ERC-20 token for testing, with mint access for tests.
-contract MockERC20Contract is ERC20 {
-    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
-
-    function initialize(string memory name_, string memory symbol_, address mintTo, uint256 mintAmount) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
-        ERC20Lib.__ERC20_init(name_, symbol_);
-        if (mintTo != address(0) && mintAmount > 0) {
-            ERC20Lib._mint(mintTo, mintAmount);
-        }
-        InitializableLib.postInitializer(s);
-    }
-
-    /// @notice Expose internal _mint for tests.
-    function mint(address to, uint256 value) external {
-        ERC20Lib._mint(to, value);
-    }
-
-    /// @notice Expose internal _burn for tests.
-    function burn(address from, uint256 value) external {
-        ERC20Lib._burn(from, value);
-    }
-
-    function supportsInterface(bytes4 interfaceId) public view returns (bool) {
-        return ERC165Lib.supportsInterface(interfaceId);
-    }
-}
 
 /// @title ERC20Test
-contract ERC20Test is Test {
-    MockERC20Contract token;
-
+/// @notice Exercises the base ERC-20 facet through a REAL {Diamond} assembled by the ready-to-deploy
+///         {DeployERC20} script (see {ERC20TestBase}) — every call below routes through the diamond's
+///         `delegatecall` dispatch, not a flattened inheritance mock. `mint`/`burn` come from the test-only
+///         {TokenTestFacet} (`helper`); `supportsInterface` from the cut-in `ERC165Facet`.
+contract ERC20Test is ERC20TestBase {
     address alice = address(0x1);
     address bob = address(0x2);
     address charlie = address(0x3);
@@ -51,9 +20,9 @@ contract ERC20Test is Test {
     event Transfer(address indexed from, address indexed to, uint256 value);
     event Approval(address indexed owner, address indexed spender, uint256 value);
 
-    function setUp() public {
-        token = new MockERC20Contract();
-        token.initialize("Test Token", "TEST", alice, INITIAL_SUPPLY);
+    function setUp() public override {
+        super.setUp(); // deploys the ERC-20 diamond ("Test Token"/"TEST") and wires `token`/`helper`
+        helper.mint(alice, INITIAL_SUPPLY);
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -116,12 +85,9 @@ contract ERC20Test is Test {
     }
 
     function test_TransferFromZeroAddressReverts() public {
-        // Direct call to internal path via mock's burn (which calls _update(from, address(0)))
-        // We test InvalidSender by calling mint to zero (which internally calls _update(address(0), to))
-        // For InvalidSender on _transfer, we use the public transfer which requires from == msgSender.
-        // Instead test via the internal _burn path exposed by mock.
+        // _burn(address(0), ..) hits the ERC20InvalidSender path of _update (exposed via the test helper facet).
         vm.expectRevert(abi.encodeWithSelector(IERC20.ERC20InvalidSender.selector, address(0)));
-        token.burn(address(0), 1);
+        helper.burn(address(0), 1);
     }
 
     function test_TransferInsufficientBalanceReverts() public {
@@ -202,34 +168,33 @@ contract ERC20Test is Test {
     //////////////////////////////////////////////////////////////////////////*//
 
     function test_SupportsIERC20() public view {
-        assertTrue(token.supportsInterface(type(IERC20).interfaceId));
+        assertTrue(ERC165Facet(diamond).supportsInterface(type(IERC20).interfaceId));
     }
 
     function test_DoesNotSupportRandomInterface() public view {
-        assertFalse(token.supportsInterface(bytes4(0xdeadbeef)));
+        assertFalse(ERC165Facet(diamond).supportsInterface(bytes4(0xdeadbeef)));
     }
 
     //*//////////////////////////////////////////////////////////////////////////
-    //                          MINT / BURN VIA MOCK
+    //                          MINT / BURN VIA TEST FACET
     //////////////////////////////////////////////////////////////////////////*//
 
     function test_MintIncreasesTotalSupply() public {
         uint256 before = token.totalSupply();
-        token.mint(bob, 1e18);
+        helper.mint(bob, 1e18);
         assertEq(token.totalSupply(), before + 1e18);
         assertEq(token.balanceOf(bob), 1e18);
     }
 
     function test_BurnDecreasesTotalSupply() public {
         uint256 before = token.totalSupply();
-        vm.prank(alice);
-        token.burn(alice, 1e18);
+        helper.burn(alice, 1e18);
         assertEq(token.totalSupply(), before - 1e18);
         assertEq(token.balanceOf(alice), INITIAL_SUPPLY - 1e18);
     }
 
     function test_MintToZeroAddressReverts() public {
         vm.expectRevert(abi.encodeWithSelector(IERC20.ERC20InvalidReceiver.selector, address(0)));
-        token.mint(address(0), 1e18);
+        helper.mint(address(0), 1e18);
     }
 }
