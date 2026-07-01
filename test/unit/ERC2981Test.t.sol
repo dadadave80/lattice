@@ -1,36 +1,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
-import {AccessControl} from "@lattice/access/AccessControl.sol";
-import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
+import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
+import {ERC2981TestBase} from "@lattice-test/base/ERC2981TestBase.sol";
+import {DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
 import {IAccessControl} from "@lattice/interfaces/access/IAccessControl.sol";
 import {IERC2981} from "@lattice/interfaces/tokens/IERC2981.sol";
 import {ERC2981} from "@lattice/tokens/ERC2981/ERC2981.sol";
-import {ERC2981Lib} from "@lattice/tokens/ERC2981/libraries/ERC2981Lib.sol";
-import {Test} from "forge-std/Test.sol";
-
-/// @title MockERC2981Contract
-/// @notice Mock ERC-2981 royalty contract for testing.
-contract MockERC2981Contract is ERC2981, AccessControl {
-    function initialize(address admin) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
-        ERC2981Lib.__ERC2981_init();
-        AccessControlLib.__AccessControl_init(admin);
-        InitializableLib.postInitializer(s);
-    }
-
-    function supportsInterface(bytes4 interfaceId) public view returns (bool) {
-        return ERC165Lib.supportsInterface(interfaceId);
-    }
-}
 
 /// @title ERC2981Test
-contract ERC2981Test is Test {
-    MockERC2981Contract royalty;
-
+/// @notice Exercises the ERC-2981 royalty facet through a REAL {Diamond} assembled by the ready-to-deploy
+///         {DeployERC2981} script (see {ERC2981TestBase}) — every call below routes through the diamond's
+///         `delegatecall` dispatch, not a flattened inheritance mock. Admin gating is enforced by the cut-in
+///         `AccessControl` facet; `supportsInterface` by the cut-in `ERC165Facet`.
+contract ERC2981Test is ERC2981TestBase {
     address admin = address(0xA);
     address alice = address(0x1);
     address bob = address(0x2);
@@ -40,8 +23,8 @@ contract ERC2981Test is Test {
     uint256 constant TOKEN_2 = 2;
 
     function setUp() public {
-        royalty = new MockERC2981Contract();
-        royalty.initialize(admin);
+        diamond = _deployERC2981(admin);
+        royalty = ERC2981(diamond);
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -187,6 +170,6 @@ contract ERC2981Test is Test {
     //////////////////////////////////////////////////////////////////////////*//
 
     function test_SupportsERC2981Interface() public view {
-        assertTrue(royalty.supportsInterface(0x2a55205a)); // IERC2981
+        assertTrue(ERC165Facet(diamond).supportsInterface(0x2a55205a)); // IERC2981
     }
 }

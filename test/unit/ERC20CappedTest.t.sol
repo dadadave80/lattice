@@ -1,61 +1,40 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
-import {AccessControl} from "@lattice/access/AccessControl.sol";
-import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
+import {Diamond} from "@diamond/Diamond.sol";
+import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
+import {MultiInit} from "@diamond/initializers/MultiInit.sol";
+import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
+import {DeployERC20Capped} from "@lattice-script/base/DeployERC20Capped.s.sol";
+import {ERC20TestBase} from "@lattice-test/base/ERC20TestBase.sol";
+import {TokenTestFacet} from "@lattice-test/helpers/TokenTestFacet.sol";
 import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
 import {IERC20Capped} from "@lattice/interfaces/tokens/IERC20Capped.sol";
 import {ERC20} from "@lattice/tokens/ERC20/ERC20.sol";
 import {ERC20Capped} from "@lattice/tokens/ERC20/ERC20Capped.sol";
-import {ERC20CappedLib} from "@lattice/tokens/ERC20/libraries/ERC20CappedLib.sol";
-import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
-import {Test} from "forge-std/Test.sol";
-
-/// @title MockERC20CappedContract
-/// @notice Mock combining AccessControl + ERC20Capped. The MINTER_ROLE gate
-///         is enforced in the external mint function.
-contract MockERC20CappedContract is AccessControl, ERC20, ERC20Capped {
-    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
-
-    function initialize(string memory name_, string memory symbol_, uint256 cap_, address admin) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
-        AccessControlLib.__AccessControl_init(admin);
-        ERC20Lib.__ERC20_init(name_, symbol_);
-        ERC20CappedLib.__ERC20Capped_init(cap_);
-        InitializableLib.postInitializer(s);
-    }
-
-    /// @notice Mints `value` tokens to `to`. Requires MINTER_ROLE.
-    function mint(address to, uint256 value) external {
-        AccessControlLib.checkRole(MINTER_ROLE);
-        _mint(to, value);
-    }
-
-    function supportsInterface(bytes4 interfaceId) public view returns (bool) {
-        return ERC165Lib.supportsInterface(interfaceId);
-    }
-}
 
 /// @title ERC20CappedTest
-contract ERC20CappedTest is Test {
-    MockERC20CappedContract token;
+/// @notice Exercises the {ERC20Capped} facet through a REAL {Diamond} assembled by the ready-to-deploy
+///         {DeployERC20Capped} script (base ERC-20 + the additive capped facet + a cap-seeding init). Every call
+///         routes through the diamond's `delegatecall` dispatch, not a flattened inheritance mock. The production
+///         {ERC20Capped} facet keeps minting internal (app-specific), so cap-enforced minting is driven through the
+///         test-only {TokenTestFacet.cappedMint} — which runs the SAME {ERC20CappedLib._checkCap} guard the facet's
+///         `_mint` uses — and `supportsInterface` comes from the cut-in `ERC165Facet`.
+contract ERC20CappedTest is ERC20TestBase {
+    ERC20Capped internal capped;
 
-    address admin = address(0x1);
-    address minter = address(0x2);
     address alice = address(0x3);
 
     uint256 constant CAP = 1_000_000e18;
 
-    function setUp() public {
-        token = new MockERC20CappedContract();
-        token.initialize("Capped Token", "CAP", CAP, admin);
-
-        // Grant minter role
-        vm.prank(admin);
-        token.grantRole(keccak256("MINTER_ROLE"), minter);
+    function setUp() public override {
+        DeployERC20Capped d = new DeployERC20Capped();
+        (FacetCut[] memory cuts, address[] memory inits, bytes[] memory initCalldatas) =
+            d.buildCuts("Capped Token", "CAP", CAP);
+        diamond = _deployWithHelper(cuts, inits, initCalldatas);
+        token = ERC20(diamond);
+        helper = TokenTestFacet(diamond);
+        capped = ERC20Capped(diamond);
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -63,7 +42,7 @@ contract ERC20CappedTest is Test {
     //////////////////////////////////////////////////////////////////////////*//
 
     function test_CapIsQueryable() public view {
-        assertEq(token.cap(), CAP);
+        assertEq(capped.cap(), CAP);
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -71,15 +50,13 @@ contract ERC20CappedTest is Test {
     //////////////////////////////////////////////////////////////////////////*//
 
     function test_MintUpToCapSucceeds() public {
-        vm.prank(minter);
-        token.mint(alice, CAP);
+        helper.cappedMint(alice, CAP);
         assertEq(token.totalSupply(), CAP);
         assertEq(token.balanceOf(alice), CAP);
     }
 
     function test_MintBelowCapSucceeds() public {
-        vm.prank(minter);
-        token.mint(alice, CAP / 2);
+        helper.cappedMint(alice, CAP / 2);
         assertEq(token.totalSupply(), CAP / 2);
     }
 
@@ -88,22 +65,19 @@ contract ERC20CappedTest is Test {
     //////////////////////////////////////////////////////////////////////////*//
 
     function test_MintBeyondCapReverts() public {
-        vm.prank(minter);
         vm.expectRevert(abi.encodeWithSelector(IERC20Capped.ERC20ExceededCap.selector, CAP + 1, CAP));
-        token.mint(alice, CAP + 1);
+        helper.cappedMint(alice, CAP + 1);
     }
 
     function test_MintBeyondCapAfterPartialMintReverts() public {
-        vm.prank(minter);
-        token.mint(alice, CAP - 10e18);
+        helper.cappedMint(alice, CAP - 10e18);
 
-        uint256 remaining = token.cap() - token.totalSupply();
+        uint256 remaining = capped.cap() - token.totalSupply();
         uint256 overMint = remaining + 1;
         uint256 newSupply = token.totalSupply() + overMint;
 
-        vm.prank(minter);
         vm.expectRevert(abi.encodeWithSelector(IERC20Capped.ERC20ExceededCap.selector, newSupply, CAP));
-        token.mint(alice, overMint);
+        helper.cappedMint(alice, overMint);
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -114,15 +88,12 @@ contract ERC20CappedTest is Test {
         uint256 firstMint = CAP / 2;
         uint256 secondMint = CAP - firstMint; // CAP - CAP/2 handles odd CAP values
 
-        vm.prank(minter);
-        token.mint(alice, firstMint);
-
-        vm.prank(minter);
-        token.mint(alice, secondMint);
+        helper.cappedMint(alice, firstMint);
+        helper.cappedMint(alice, secondMint);
 
         // totalSupply == cap (check is >, not >=, so this must not revert)
         assertEq(token.totalSupply(), CAP);
-        assertEq(token.totalSupply(), token.cap());
+        assertEq(token.totalSupply(), capped.cap());
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -130,9 +101,21 @@ contract ERC20CappedTest is Test {
     //////////////////////////////////////////////////////////////////////////*//
 
     function test_ZeroCapInInitReverts() public {
-        MockERC20CappedContract t2 = new MockERC20CappedContract();
+        // Pre-deploy the diamond so `expectRevert` can target the initialize call directly.
+        Diamond d = new Diamond();
+        DeployERC20Capped dep = new DeployERC20Capped();
+        (FacetCut[] memory prodCuts, address[] memory inits, bytes[] memory initCalldatas) =
+            dep.buildCuts("Bad Cap Token", "BAD", 0);
+
+        FacetCut[] memory cuts = new FacetCut[](prodCuts.length + 1);
+        for (uint256 i; i < prodCuts.length; ++i) {
+            cuts[i] = prodCuts[i];
+        }
+        cuts[prodCuts.length] = _helperCut();
+
+        MultiInit mi = new MultiInit();
         vm.expectRevert(abi.encodeWithSelector(IERC20Capped.ERC20InvalidCap.selector, 0));
-        t2.initialize("Bad Cap Token", "BAD", 0, admin);
+        d.initialize(cuts, address(mi), abi.encodeCall(MultiInit.multiInit, (inits, initCalldatas)));
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -140,10 +123,10 @@ contract ERC20CappedTest is Test {
     //////////////////////////////////////////////////////////////////////////*//
 
     function test_SupportsIERC20Capped() public view {
-        assertTrue(token.supportsInterface(type(IERC20Capped).interfaceId));
+        assertTrue(ERC165Facet(diamond).supportsInterface(type(IERC20Capped).interfaceId));
     }
 
     function test_SupportsIERC20() public view {
-        assertTrue(token.supportsInterface(type(IERC20).interfaceId));
+        assertTrue(ERC165Facet(diamond).supportsInterface(type(IERC20).interfaceId));
     }
 }

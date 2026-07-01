@@ -1,37 +1,22 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
+import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
+import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
+import {DeployERC20Burnable} from "@lattice-script/base/DeployERC20Burnable.s.sol";
+import {ERC20TestBase} from "@lattice-test/base/ERC20TestBase.sol";
+import {TokenTestFacet} from "@lattice-test/helpers/TokenTestFacet.sol";
 import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
 import {IERC20Burnable} from "@lattice/interfaces/tokens/IERC20Burnable.sol";
 import {ERC20} from "@lattice/tokens/ERC20/ERC20.sol";
-import {ERC20Burnable} from "@lattice/tokens/ERC20/ERC20Burnable.sol";
-import {ERC20BurnableLib} from "@lattice/tokens/ERC20/libraries/ERC20BurnableLib.sol";
-import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
-import {Test} from "forge-std/Test.sol";
-
-/// @title MockERC20BurnableContract
-contract MockERC20BurnableContract is ERC20, ERC20Burnable {
-    function initialize(string memory name_, string memory symbol_, address mintTo, uint256 mintAmount) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
-        ERC20Lib.__ERC20_init(name_, symbol_);
-        ERC20BurnableLib.__ERC20Burnable_init();
-        if (mintTo != address(0) && mintAmount > 0) {
-            ERC20Lib._mint(mintTo, mintAmount);
-        }
-        InitializableLib.postInitializer(s);
-    }
-
-    function supportsInterface(bytes4 interfaceId) public view returns (bool) {
-        return ERC165Lib.supportsInterface(interfaceId);
-    }
-}
 
 /// @title ERC20BurnableTest
-contract ERC20BurnableTest is Test {
-    MockERC20BurnableContract token;
+/// @notice Exercises the {ERC20Burnable} facet through a REAL {Diamond} assembled by the ready-to-deploy
+///         {DeployERC20Burnable} script (base ERC-20 + the additive burnable facet). Every call routes through the
+///         diamond's `delegatecall` dispatch, not a flattened inheritance mock; `mint` comes from the test-only
+///         {TokenTestFacet} (`helper`) and `supportsInterface` from the cut-in `ERC165Facet`.
+contract ERC20BurnableTest is ERC20TestBase {
+    IERC20Burnable internal burnable;
 
     address alice = address(0x1);
     address bob = address(0x2);
@@ -40,9 +25,16 @@ contract ERC20BurnableTest is Test {
 
     event Transfer(address indexed from, address indexed to, uint256 value);
 
-    function setUp() public {
-        token = new MockERC20BurnableContract();
-        token.initialize("Burn Token", "BURN", alice, INITIAL_SUPPLY);
+    function setUp() public override {
+        DeployERC20Burnable d = new DeployERC20Burnable();
+        (FacetCut[] memory cuts, address[] memory inits, bytes[] memory initCalldatas) =
+            d.buildCuts("Burn Token", "BURN");
+        diamond = _deployWithHelper(cuts, inits, initCalldatas);
+        token = ERC20(diamond);
+        helper = TokenTestFacet(diamond);
+        burnable = IERC20Burnable(diamond);
+
+        helper.mint(alice, INITIAL_SUPPLY);
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -55,7 +47,7 @@ contract ERC20BurnableTest is Test {
         uint256 balanceBefore = token.balanceOf(alice);
 
         vm.prank(alice);
-        token.burn(burnAmount);
+        burnable.burn(burnAmount);
 
         assertEq(token.totalSupply(), supplyBefore - burnAmount);
         assertEq(token.balanceOf(alice), balanceBefore - burnAmount);
@@ -66,7 +58,7 @@ contract ERC20BurnableTest is Test {
         vm.expectEmit(true, true, false, true, address(token));
         emit Transfer(alice, address(0), burnAmount);
         vm.prank(alice);
-        token.burn(burnAmount);
+        burnable.burn(burnAmount);
     }
 
     function test_BurnMoreThanBalanceReverts() public {
@@ -75,7 +67,7 @@ contract ERC20BurnableTest is Test {
         vm.expectRevert(
             abi.encodeWithSelector(IERC20.ERC20InsufficientBalance.selector, alice, INITIAL_SUPPLY, tooMuch)
         );
-        token.burn(tooMuch);
+        burnable.burn(tooMuch);
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -91,7 +83,7 @@ contract ERC20BurnableTest is Test {
         token.approve(bob, approved);
 
         vm.prank(bob);
-        token.burnFrom(alice, burnAmount);
+        burnable.burnFrom(alice, burnAmount);
 
         assertEq(token.totalSupply(), supplyBefore - burnAmount);
         assertEq(token.balanceOf(alice), INITIAL_SUPPLY - burnAmount);
@@ -107,7 +99,7 @@ contract ERC20BurnableTest is Test {
 
         vm.prank(bob);
         vm.expectRevert(abi.encodeWithSelector(IERC20.ERC20InsufficientAllowance.selector, bob, approved, tooBig));
-        token.burnFrom(alice, tooBig);
+        burnable.burnFrom(alice, tooBig);
     }
 
     function test_BurnFromEmitsTransferToZero() public {
@@ -120,7 +112,7 @@ contract ERC20BurnableTest is Test {
         emit Transfer(alice, address(0), burnAmount);
 
         vm.prank(bob);
-        token.burnFrom(alice, burnAmount);
+        burnable.burnFrom(alice, burnAmount);
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -128,10 +120,10 @@ contract ERC20BurnableTest is Test {
     //////////////////////////////////////////////////////////////////////////*//
 
     function test_SupportsIERC20Burnable() public view {
-        assertTrue(token.supportsInterface(type(IERC20Burnable).interfaceId));
+        assertTrue(ERC165Facet(diamond).supportsInterface(type(IERC20Burnable).interfaceId));
     }
 
     function test_SupportsIERC20() public view {
-        assertTrue(token.supportsInterface(type(IERC20).interfaceId));
+        assertTrue(ERC165Facet(diamond).supportsInterface(type(IERC20).interfaceId));
     }
 }

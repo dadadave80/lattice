@@ -1,14 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
-import {AccessControl} from "@lattice/access/AccessControl.sol";
-import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
-import {IERC721, IERC721Receiver} from "@lattice/interfaces/tokens/IERC721.sol";
-import {ERC721} from "@lattice/tokens/ERC721/ERC721.sol";
-import {ERC721Lib} from "@lattice/tokens/ERC721/libraries/ERC721Lib.sol";
-import {Test} from "forge-std/Test.sol";
+import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
+import {ERC721TestBase} from "@lattice-test/base/ERC721TestBase.sol";
+import {IERC721} from "@lattice/interfaces/tokens/IERC721.sol";
 
 /// @notice ERC721Receiver that correctly returns the expected selector.
 contract GoodReceiver {
@@ -33,51 +28,13 @@ contract RevertingReceiver {
     }
 }
 
-/// @title MockERC721Contract
-/// @notice Mock ERC-721 token for testing.
-contract MockERC721Contract is ERC721, AccessControl {
-    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
-
-    function initialize(string memory name_, string memory symbol_, address admin) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
-        ERC721Lib.__ERC721_init(name_, symbol_);
-        AccessControlLib.__AccessControl_init(admin);
-        InitializableLib.postInitializer(s);
-    }
-
-    /// @notice Admin-gated mint helper.
-    function mintHelper(address to, uint256 tokenId) external {
-        AccessControlLib.checkRole(DEFAULT_ADMIN_ROLE);
-        ERC721Lib._mint(to, tokenId);
-    }
-
-    /// @notice Safe mint helper for testing receiver hooks.
-    function safeMintHelper(address to, uint256 tokenId) external {
-        AccessControlLib.checkRole(DEFAULT_ADMIN_ROLE);
-        ERC721Lib._safeMint(to, tokenId);
-    }
-
-    /// @notice Exposes internal _transfer for testing.
-    function transferHelper(address from, address to, uint256 tokenId) external {
-        ERC721Lib._transfer(from, to, tokenId);
-    }
-
-    /// @notice Exposes internal _safeTransfer for testing.
-    function safeTransferHelper(address from, address to, uint256 tokenId) external {
-        ERC721Lib._safeTransfer(from, to, tokenId, "");
-    }
-
-    function supportsInterface(bytes4 interfaceId) public view returns (bool) {
-        return ERC165Lib.supportsInterface(interfaceId);
-    }
-}
-
 /// @title ERC721Test
-contract ERC721Test is Test {
-    MockERC721Contract token;
-
-    address admin = address(0xA);
+/// @notice Exercises the base ERC-721 facet through a REAL {Diamond} assembled by the ready-to-deploy
+///         {DeployERC721} script (see {ERC721TestBase}) — every call below routes through the diamond's
+///         `delegatecall` dispatch, not a flattened inheritance mock. Internal mint/burn/transfer primitives
+///         come from the test-only {ERC721TestFacet} (`helper`); `supportsInterface` from the cut-in
+///         `ERC165Facet`.
+contract ERC721Test is ERC721TestBase {
     address alice = address(0x1);
     address bob = address(0x2);
     address charlie = address(0x3);
@@ -89,11 +46,6 @@ contract ERC721Test is Test {
     event Transfer(address indexed from, address indexed to, uint256 indexed tokenId);
     event Approval(address indexed owner, address indexed approved, uint256 indexed tokenId);
     event ApprovalForAll(address indexed owner, address indexed operator, bool approved);
-
-    function setUp() public {
-        token = new MockERC721Contract();
-        token.initialize("Test NFT", "TNFT", admin);
-    }
 
     //*//////////////////////////////////////////////////////////////////////////
     //                               METADATA TESTS
@@ -112,8 +64,7 @@ contract ERC721Test is Test {
     //////////////////////////////////////////////////////////////////////////*//
 
     function test_MintSetsBalanceAndOwner() public {
-        vm.prank(admin);
-        token.mintHelper(alice, TOKEN_1);
+        helper.mint(alice, TOKEN_1);
 
         assertEq(token.balanceOf(alice), 1);
         assertEq(token.ownerOf(TOKEN_1), alice);
@@ -123,24 +74,20 @@ contract ERC721Test is Test {
         vm.expectEmit(true, true, true, true);
         emit Transfer(address(0), alice, TOKEN_1);
 
-        vm.prank(admin);
-        token.mintHelper(alice, TOKEN_1);
+        helper.mint(alice, TOKEN_1);
     }
 
     function test_MintToZeroAddressReverts() public {
         vm.expectRevert(abi.encodeWithSelector(IERC721.ERC721InvalidReceiver.selector, address(0)));
-        vm.prank(admin);
-        token.mintHelper(address(0), TOKEN_1);
+        helper.mint(address(0), TOKEN_1);
     }
 
     function test_MintExistingTokenReverts() public {
-        vm.prank(admin);
-        token.mintHelper(alice, TOKEN_1);
+        helper.mint(alice, TOKEN_1);
 
         // Minting same tokenId again: _update returns alice (non-zero), _mint reverts with ERC721InvalidSender
         vm.expectRevert(abi.encodeWithSelector(IERC721.ERC721InvalidSender.selector, alice));
-        vm.prank(admin);
-        token.mintHelper(bob, TOKEN_1);
+        helper.mint(bob, TOKEN_1);
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -148,12 +95,9 @@ contract ERC721Test is Test {
     //////////////////////////////////////////////////////////////////////////*//
 
     function test_BalanceOfReturnsCount() public {
-        vm.prank(admin);
-        token.mintHelper(alice, TOKEN_1);
-        vm.prank(admin);
-        token.mintHelper(alice, TOKEN_2);
-        vm.prank(admin);
-        token.mintHelper(bob, TOKEN_3);
+        helper.mint(alice, TOKEN_1);
+        helper.mint(alice, TOKEN_2);
+        helper.mint(bob, TOKEN_3);
 
         assertEq(token.balanceOf(alice), 2);
         assertEq(token.balanceOf(bob), 1);
@@ -170,8 +114,7 @@ contract ERC721Test is Test {
     //////////////////////////////////////////////////////////////////////////*//
 
     function test_TransferFromUpdatesOwner() public {
-        vm.prank(admin);
-        token.mintHelper(alice, TOKEN_1);
+        helper.mint(alice, TOKEN_1);
 
         vm.prank(alice);
         token.transferFrom(alice, bob, TOKEN_1);
@@ -182,8 +125,7 @@ contract ERC721Test is Test {
     }
 
     function test_TransferFromEmitsTransfer() public {
-        vm.prank(admin);
-        token.mintHelper(alice, TOKEN_1);
+        helper.mint(alice, TOKEN_1);
 
         vm.expectEmit(true, true, true, true);
         emit Transfer(alice, bob, TOKEN_1);
@@ -193,8 +135,7 @@ contract ERC721Test is Test {
     }
 
     function test_TransferFromClearsApproval() public {
-        vm.prank(admin);
-        token.mintHelper(alice, TOKEN_1);
+        helper.mint(alice, TOKEN_1);
 
         vm.prank(alice);
         token.approve(charlie, TOKEN_1);
@@ -207,8 +148,7 @@ contract ERC721Test is Test {
     }
 
     function test_TransferFromByNonOwnerNonOperatorReverts() public {
-        vm.prank(admin);
-        token.mintHelper(alice, TOKEN_1);
+        helper.mint(alice, TOKEN_1);
 
         vm.expectRevert(abi.encodeWithSelector(IERC721.ERC721InsufficientApproval.selector, charlie, TOKEN_1));
         vm.prank(charlie);
@@ -220,8 +160,7 @@ contract ERC721Test is Test {
     //////////////////////////////////////////////////////////////////////////*//
 
     function test_ApproveSetsTokenApproval() public {
-        vm.prank(admin);
-        token.mintHelper(alice, TOKEN_1);
+        helper.mint(alice, TOKEN_1);
 
         vm.prank(alice);
         token.approve(bob, TOKEN_1);
@@ -230,8 +169,7 @@ contract ERC721Test is Test {
     }
 
     function test_ApproveByNonOwnerNonOperatorReverts() public {
-        vm.prank(admin);
-        token.mintHelper(alice, TOKEN_1);
+        helper.mint(alice, TOKEN_1);
 
         vm.expectRevert(abi.encodeWithSelector(IERC721.ERC721InvalidApprover.selector, charlie));
         vm.prank(charlie);
@@ -239,8 +177,7 @@ contract ERC721Test is Test {
     }
 
     function test_ApprovedOperatorCanTransfer() public {
-        vm.prank(admin);
-        token.mintHelper(alice, TOKEN_1);
+        helper.mint(alice, TOKEN_1);
 
         vm.prank(alice);
         token.approve(bob, TOKEN_1);
@@ -273,10 +210,8 @@ contract ERC721Test is Test {
     }
 
     function test_OperatorCanTransferAnyToken() public {
-        vm.prank(admin);
-        token.mintHelper(alice, TOKEN_1);
-        vm.prank(admin);
-        token.mintHelper(alice, TOKEN_2);
+        helper.mint(alice, TOKEN_1);
+        helper.mint(alice, TOKEN_2);
 
         vm.prank(alice);
         token.setApprovalForAll(bob, true);
@@ -295,8 +230,7 @@ contract ERC721Test is Test {
     //////////////////////////////////////////////////////////////////////////*//
 
     function test_SafeTransferFromToEOASucceeds() public {
-        vm.prank(admin);
-        token.mintHelper(alice, TOKEN_1);
+        helper.mint(alice, TOKEN_1);
 
         vm.prank(alice);
         token.safeTransferFrom(alice, bob, TOKEN_1);
@@ -307,8 +241,7 @@ contract ERC721Test is Test {
     function test_SafeTransferFromToGoodReceiverSucceeds() public {
         GoodReceiver receiver = new GoodReceiver();
 
-        vm.prank(admin);
-        token.mintHelper(alice, TOKEN_1);
+        helper.mint(alice, TOKEN_1);
 
         vm.prank(alice);
         token.safeTransferFrom(alice, address(receiver), TOKEN_1);
@@ -319,8 +252,7 @@ contract ERC721Test is Test {
     function test_SafeTransferFromToBadReceiverReverts() public {
         BadReceiver receiver = new BadReceiver();
 
-        vm.prank(admin);
-        token.mintHelper(alice, TOKEN_1);
+        helper.mint(alice, TOKEN_1);
 
         vm.expectRevert(abi.encodeWithSelector(IERC721.ERC721InvalidReceiver.selector, address(receiver)));
         vm.prank(alice);
@@ -332,11 +264,11 @@ contract ERC721Test is Test {
     //////////////////////////////////////////////////////////////////////////*//
 
     function test_SupportsERC721Interface() public view {
-        assertTrue(token.supportsInterface(0x80ac58cd)); // IERC721
+        assertTrue(ERC165Facet(diamond).supportsInterface(0x80ac58cd)); // IERC721
     }
 
     function test_SupportsERC721MetadataInterface() public view {
-        assertTrue(token.supportsInterface(0x5b5e139f)); // IERC721Metadata
+        assertTrue(ERC165Facet(diamond).supportsInterface(0x5b5e139f)); // IERC721Metadata
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -347,8 +279,7 @@ contract ERC721Test is Test {
         RevertingReceiver receiver = new RevertingReceiver();
 
         vm.expectRevert(RevertingReceiver.MintNotOpen.selector);
-        vm.prank(admin);
-        token.safeMintHelper(address(receiver), TOKEN_1);
+        helper.safeMint(address(receiver), TOKEN_1);
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -368,9 +299,8 @@ contract ERC721Test is Test {
     //////////////////////////////////////////////////////////////////////////*//
 
     function test_IncreaseBalance_IncreasesCount() public {
-        // Use transferHelper which internally calls _update → _increaseBalance path for to
-        vm.prank(admin);
-        token.mintHelper(alice, TOKEN_1);
+        // Use transfer which internally calls _update → _increaseBalance path for to
+        helper.mint(alice, TOKEN_1);
 
         // Initial balance is 1
         assertEq(token.balanceOf(alice), 1);
@@ -387,39 +317,35 @@ contract ERC721Test is Test {
     //////////////////////////////////////////////////////////////////////////*//
 
     function test_TransferHelper_MovesToken() public {
-        vm.prank(admin);
-        token.mintHelper(alice, TOKEN_1);
+        helper.mint(alice, TOKEN_1);
 
-        // transferHelper bypasses auth (no prank needed)
-        token.transferHelper(alice, bob, TOKEN_1);
+        // helper.transfer bypasses auth (no prank needed)
+        helper.transfer(alice, bob, TOKEN_1);
         assertEq(token.ownerOf(TOKEN_1), bob);
     }
 
     function test_TransferHelper_WrongFromReverts() public {
-        vm.prank(admin);
-        token.mintHelper(alice, TOKEN_1);
+        helper.mint(alice, TOKEN_1);
 
         vm.expectRevert(abi.encodeWithSelector(IERC721.ERC721IncorrectOwner.selector, bob, TOKEN_1, alice));
-        token.transferHelper(bob, charlie, TOKEN_1);
+        helper.transfer(bob, charlie, TOKEN_1);
     }
 
     function test_SafeTransferHelper_ToGoodReceiver() public {
         GoodReceiver receiver = new GoodReceiver();
 
-        vm.prank(admin);
-        token.mintHelper(alice, TOKEN_1);
+        helper.mint(alice, TOKEN_1);
 
-        token.safeTransferHelper(alice, address(receiver), TOKEN_1);
+        helper.safeTransfer(alice, address(receiver), TOKEN_1);
         assertEq(token.ownerOf(TOKEN_1), address(receiver));
     }
 
     function test_SafeTransferHelper_ToRevertingReceiver_Bubbles() public {
         RevertingReceiver receiver = new RevertingReceiver();
 
-        vm.prank(admin);
-        token.mintHelper(alice, TOKEN_1);
+        helper.mint(alice, TOKEN_1);
 
         vm.expectRevert(RevertingReceiver.MintNotOpen.selector);
-        token.safeTransferHelper(alice, address(receiver), TOKEN_1);
+        helper.safeTransfer(alice, address(receiver), TOKEN_1);
     }
 }
