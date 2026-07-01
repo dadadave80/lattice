@@ -88,6 +88,8 @@ GUARDED_STRUCTS=(
     "ERC7786OpenBridgeStorage lattice.storage.ERC7786OpenBridge"
     "CCIPGatewayAdapterStorage lattice.storage.CCIPGatewayAdapter"
     "LayerZeroGatewayAdapterStorage lattice.storage.LayerZeroGatewayAdapter"
+    "L2ToL2CrossDomainMessengerGatewayAdapterStorage lattice.storage.L2ToL2CrossDomainMessengerGatewayAdapter"
+    "L1ToL2CrossDomainMessengerGatewayAdapterStorage lattice.storage.L1ToL2CrossDomainMessengerGatewayAdapter"
     "PythEntropyAdapterStorage lattice.storage.PythEntropyAdapter"
     "GelatoVRFAdapterStorage lattice.storage.GelatoVRFAdapter"
     "API3QRNGAdapterStorage lattice.storage.API3QRNGAdapter"
