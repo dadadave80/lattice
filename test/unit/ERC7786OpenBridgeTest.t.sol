@@ -1,16 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
-import {AccessControl} from "@lattice/access/AccessControl.sol";
-import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
+import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
+import {ERC7786OpenBridgeTestBase} from "@lattice-test/base/ERC7786OpenBridgeTestBase.sol";
 import {ERC7786OpenBridge} from "@lattice/crosschain/ERC7786OpenBridge.sol";
-import {ERC7786OpenBridgeLib} from "@lattice/crosschain/libraries/ERC7786OpenBridgeLib.sol";
 import {IERC7786OpenBridge} from "@lattice/interfaces/crosschain/IERC7786OpenBridge.sol";
 import {IERC7786GatewaySource, IERC7786Recipient} from "@lattice/interfaces/external/IERC7786.sol";
 import {InteroperableAddress} from "@lattice/utils/libraries/InteroperableAddress.sol";
-import {Test} from "forge-std/Test.sol";
 
 /// @notice A source gateway used both as a fan-out target (sendMessage) and an attester (its address).
 contract MockSourceGateway is IERC7786GatewaySource {
@@ -52,22 +48,7 @@ contract MockRecipient is IERC7786Recipient {
     }
 }
 
-contract MockOpenBridge is AccessControl, ERC7786OpenBridge {
-    function initialize(address admin_) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
-        AccessControlLib.__AccessControl_init(admin_);
-        ERC7786OpenBridgeLib.__ERC7786OpenBridge_init();
-        InitializableLib.postInitializer(s);
-    }
-
-    function supportsInterface(bytes4 id) public view returns (bool) {
-        return ERC165Lib.supportsInterface(id);
-    }
-}
-
-contract ERC7786OpenBridgeTest is Test {
-    MockOpenBridge bridge;
+contract ERC7786OpenBridgeTest is ERC7786OpenBridgeTestBase {
     MockSourceGateway g1;
     MockSourceGateway g2;
     MockRecipient recipient;
@@ -81,8 +62,8 @@ contract ERC7786OpenBridgeTest is Test {
     bytes4 constant UNAUTHORIZED_ACCOUNT = bytes4(keccak256("AccessControlUnauthorizedAccount(address,bytes32)"));
 
     function setUp() public {
-        bridge = new MockOpenBridge();
-        bridge.initialize(admin);
+        diamond = _deployERC7786OpenBridge(admin);
+        bridge = ERC7786OpenBridge(payable(diamond));
         g1 = new MockSourceGateway();
         g2 = new MockSourceGateway();
         recipient = new MockRecipient();
@@ -210,6 +191,6 @@ contract ERC7786OpenBridgeTest is Test {
     }
 
     function test_SupportsInterfaceGatewaySource() public view {
-        assertTrue(bridge.supportsInterface(type(IERC7786GatewaySource).interfaceId));
+        assertTrue(ERC165Facet(diamond).supportsInterface(type(IERC7786GatewaySource).interfaceId));
     }
 }

@@ -1,33 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
+import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
+import {ERC5564AnnouncerTestBase} from "@lattice-test/base/ERC5564AnnouncerTestBase.sol";
 import {IERC5564Announcer} from "@lattice/interfaces/privacy/IERC5564Announcer.sol";
 import {ERC5564Announcer} from "@lattice/privacy/ERC5564Announcer.sol";
-import {ERC5564AnnouncerLib} from "@lattice/privacy/libraries/ERC5564AnnouncerLib.sol";
-import {Test} from "forge-std/Test.sol";
-
-/// @title MockERC5564AnnouncerContract
-/// @notice Wrapper that inherits the ERC5564Announcer facet and exposes init + ERC-165 discovery.
-contract MockERC5564AnnouncerContract is ERC5564Announcer {
-    function initialize() external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
-        ERC5564AnnouncerLib.__ERC5564Announcer_init();
-        InitializableLib.postInitializer(s);
-    }
-
-    function supportsInterface(bytes4 interfaceId) external view returns (bool) {
-        return ERC165Lib.supportsInterface(interfaceId);
-    }
-}
 
 /// @title ERC5564AnnouncerTest
-/// @notice Unit tests for the ERC-5564 stealth-address announcer facet.
-contract ERC5564AnnouncerTest is Test {
-    MockERC5564AnnouncerContract announcer;
-
+/// @notice Exercises the ERC-5564 stealth-address announcer through a REAL {Diamond} assembled by the
+///         ready-to-deploy {DeployERC5564Announcer} script (see {ERC5564AnnouncerTestBase}) — every `announce`
+///         routes through the diamond's `delegatecall` dispatch, not a flattened inheritance mock.
+///         `supportsInterface` is answered by the cut-in `ERC165Facet`. The announcer is permissionless.
+contract ERC5564AnnouncerTest is ERC5564AnnouncerTestBase {
     address sender = address(0xA1);
     address stealth = address(0x5778);
 
@@ -40,8 +24,8 @@ contract ERC5564AnnouncerTest is Test {
     );
 
     function setUp() public {
-        announcer = new MockERC5564AnnouncerContract();
-        announcer.initialize();
+        diamond = _deployERC5564Announcer();
+        announcer = ERC5564Announcer(diamond);
     }
 
     function test_AnnounceEmitsWithCallerForcedToMsgSender() public {
@@ -68,7 +52,7 @@ contract ERC5564AnnouncerTest is Test {
     }
 
     function test_SupportsIERC5564Announcer() public view {
-        assertTrue(announcer.supportsInterface(type(IERC5564Announcer).interfaceId));
+        assertTrue(ERC165Facet(diamond).supportsInterface(type(IERC5564Announcer).interfaceId));
     }
 
     function test_InterfaceIdMatchesConstant() public pure {

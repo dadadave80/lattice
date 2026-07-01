@@ -1,49 +1,36 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
+import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
+import {PrivateVotingTestBase} from "@lattice-test/base/PrivateVotingTestBase.sol";
 import {IPrivateVoting} from "@lattice/interfaces/privacy/IPrivateVoting.sol";
 import {ISemaphore} from "@lattice/interfaces/privacy/ISemaphore.sol";
 import {PrivateVoting} from "@lattice/privacy/PrivateVoting.sol";
 import {Semaphore} from "@lattice/privacy/Semaphore.sol";
-import {PrivateVotingLib} from "@lattice/privacy/libraries/PrivateVotingLib.sol";
-import {SemaphoreLib} from "@lattice/privacy/libraries/SemaphoreLib.sol";
 import {SemaphoreVerifier} from "@semaphore/SemaphoreVerifier.sol";
-import {Test} from "forge-std/Test.sol";
-
-/// @notice Harness composing the PrivateVoting + Semaphore facets in one diamond.
-contract MockVotingContract is PrivateVoting, Semaphore {
-    function initialize(address verifier) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
-        SemaphoreLib.__Semaphore_init(verifier);
-        PrivateVotingLib.__PrivateVoting_init();
-        InitializableLib.postInitializer(s);
-    }
-
-    function supportsInterface(bytes4 interfaceId) external view returns (bool) {
-        return ERC165Lib.supportsInterface(interfaceId);
-    }
-}
 
 /// @title PrivateVotingTest
-/// @notice Tests anonymous 1p1v over Semaphore using REAL proofs (scope = pollId = 1, message = choice).
-contract PrivateVotingTest is Test {
-    MockVotingContract v;
+/// @notice Tests anonymous 1p1v over Semaphore through a REAL {Diamond} assembled by the ready-to-deploy
+///         {DeployPrivateVoting} script (see {PrivateVotingTestBase}) — BOTH the `Semaphore` membership facet and
+///         the `PrivateVoting` tally facet are cut into ONE diamond — using REAL proofs (scope = pollId = 1,
+///         message = choice). Poll/vote calls dispatch through the `voting` handle and group/membership calls
+///         through the `semaphore` handle onto the SAME diamond; `supportsInterface` is served by the cut-in
+///         `ERC165Facet`. The off-chain `SemaphoreVerifier` stays an external dependency (NOT the facet under test).
+contract PrivateVotingTest is PrivateVotingTestBase {
     uint256 groupId;
 
     uint256 constant ROOT = 5504274371000021352836406185992230687759203853005470845011606913465462220001;
 
     function setUp() public {
-        SemaphoreVerifier verifier = new SemaphoreVerifier();
-        v = new MockVotingContract();
-        v.initialize(address(verifier));
+        SemaphoreVerifier ver = new SemaphoreVerifier();
+        diamond = _deployPrivateVoting(address(ver));
+        voting = PrivateVoting(diamond);
+        semaphore = Semaphore(diamond);
         vm.warp(1_000_000);
-        groupId = v.createGroup(); // groupId 0, admin = this
+        groupId = semaphore.createGroup(); // groupId 0, admin = this
         uint256[] memory c = _commitments();
-        v.addMembers(groupId, c);
-        assertEq(v.getMerkleTreeRoot(groupId), ROOT, "group root mismatch");
+        semaphore.addMembers(groupId, c);
+        assertEq(semaphore.getMerkleTreeRoot(groupId), ROOT, "group root mismatch");
     }
 
     function _commitments() internal pure returns (uint256[] memory c) {
@@ -92,7 +79,7 @@ contract PrivateVotingTest is Test {
     }
 
     function _newPoll() internal returns (uint256) {
-        return v.createPoll(groupId, 3, 0, 0); // 3 choices, always open
+        return voting.createPoll(groupId, 3, 0, 0); // 3 choices, always open
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -103,29 +90,29 @@ contract PrivateVotingTest is Test {
         uint256 pollId = _newPoll();
         assertEq(pollId, 1);
 
-        v.vote(pollId, _aliceFor());
-        assertEq(v.getVotes(pollId, 1), 1);
-        assertEq(v.getPoll(pollId).totalVotes, 1);
-        assertTrue(v.hasVoted(pollId, _aliceFor().nullifier));
+        voting.vote(pollId, _aliceFor());
+        assertEq(voting.getVotes(pollId, 1), 1);
+        assertEq(voting.getPoll(pollId).totalVotes, 1);
+        assertTrue(voting.hasVoted(pollId, _aliceFor().nullifier));
 
-        v.vote(pollId, _bobAgainst());
-        assertEq(v.getVotes(pollId, 0), 1);
-        assertEq(v.getVotes(pollId, 1), 1);
-        assertEq(v.getPoll(pollId).totalVotes, 2);
+        voting.vote(pollId, _bobAgainst());
+        assertEq(voting.getVotes(pollId, 0), 1);
+        assertEq(voting.getVotes(pollId, 1), 1);
+        assertEq(voting.getPoll(pollId).totalVotes, 2);
     }
 
     function test_DoubleVoteReverts() public {
         uint256 pollId = _newPoll();
-        v.vote(pollId, _aliceFor());
+        voting.vote(pollId, _aliceFor());
         vm.expectRevert(IPrivateVoting.PrivateVotingAlreadyVoted.selector);
-        v.vote(pollId, _aliceFor());
+        voting.vote(pollId, _aliceFor());
     }
 
     function test_ScopeMismatchReverts() public {
         _newPoll(); // pollId 1
         uint256 pollId2 = _newPoll(); // pollId 2; aliceFor.scope == 1 != 2
         vm.expectRevert(IPrivateVoting.PrivateVotingScopeMismatch.selector);
-        v.vote(pollId2, _aliceFor());
+        voting.vote(pollId2, _aliceFor());
     }
 
     function test_InvalidChoiceReverts() public {
@@ -133,7 +120,7 @@ contract PrivateVotingTest is Test {
         ISemaphore.SemaphoreProof memory bad = _aliceFor();
         bad.message = 99; // >= numChoices; checked before the ZK verify
         vm.expectRevert(IPrivateVoting.PrivateVotingInvalidChoice.selector);
-        v.vote(pollId, bad);
+        voting.vote(pollId, bad);
     }
 
     function test_TamperedProofRejected() public {
@@ -143,40 +130,40 @@ contract PrivateVotingTest is Test {
             bad.nullifier = bad.nullifier + 1; // wrong public signal -> verifier returns false
         }
         vm.expectRevert(IPrivateVoting.PrivateVotingInvalidProof.selector);
-        v.vote(pollId, bad);
+        voting.vote(pollId, bad);
     }
 
     function test_PollDoesNotExistReverts() public {
         vm.expectRevert(IPrivateVoting.PrivateVotingPollDoesNotExist.selector);
-        v.vote(999, _aliceFor());
+        voting.vote(999, _aliceFor());
     }
 
     function test_OnlyGroupAdminCreatesPoll() public {
         vm.prank(address(0xBEEF));
         vm.expectRevert(IPrivateVoting.PrivateVotingNotGroupAdmin.selector);
-        v.createPoll(groupId, 3, 0, 0);
+        voting.createPoll(groupId, 3, 0, 0);
     }
 
     function test_InvalidNumChoicesReverts() public {
         vm.expectRevert(IPrivateVoting.PrivateVotingInvalidNumChoices.selector);
-        v.createPoll(groupId, 1, 0, 0);
+        voting.createPoll(groupId, 1, 0, 0);
     }
 
     function test_InvalidTimeWindowReverts() public {
         vm.expectRevert(IPrivateVoting.PrivateVotingInvalidTimeWindow.selector);
-        v.createPoll(groupId, 3, 1000, 500); // endTime <= startTime
+        voting.createPoll(groupId, 3, 1000, 500); // endTime <= startTime
     }
 
     function test_NotOpenReverts() public {
-        uint256 pollId = v.createPoll(groupId, 3, uint64(block.timestamp + 1000), 0);
+        uint256 pollId = voting.createPoll(groupId, 3, uint64(block.timestamp + 1000), 0);
         vm.expectRevert(IPrivateVoting.PrivateVotingNotOpen.selector);
-        v.vote(pollId, _aliceFor());
+        voting.vote(pollId, _aliceFor());
     }
 
     function test_ClosedReverts() public {
-        uint256 pollId = v.createPoll(groupId, 3, 1, 500); // window in the past (now == 1_000_000)
+        uint256 pollId = voting.createPoll(groupId, 3, 1, 500); // window in the past (now == 1_000_000)
         vm.expectRevert(IPrivateVoting.PrivateVotingClosed.selector);
-        v.vote(pollId, _aliceFor());
+        voting.vote(pollId, _aliceFor());
     }
 
     function test_InterfaceIdMatchesConstant() public pure {
@@ -184,6 +171,6 @@ contract PrivateVotingTest is Test {
     }
 
     function test_SupportsInterface() public view {
-        assertTrue(v.supportsInterface(type(IPrivateVoting).interfaceId));
+        assertTrue(ERC165Facet(diamond).supportsInterface(type(IPrivateVoting).interfaceId));
     }
 }
