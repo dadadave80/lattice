@@ -1,0 +1,42 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.30;
+
+import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
+import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
+import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
+import {AccessControl} from "@lattice/access/AccessControl.sol";
+import {InvariantChecker} from "@lattice/security/InvariantChecker.sol";
+import {InvariantCheckerInit} from "@lattice/security/InvariantCheckerInit.sol";
+
+/// @title DeployInvariantChecker
+/// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @notice Ready-to-deploy recipe for an InvariantChecker diamond: `ERC165Facet` + `AccessControl` +
+///         `InvariantChecker` + {InvariantCheckerInit}. The ONE source of truth for what an invariant-checking
+///         diamond is, shared by production (`run --broadcast`) and the facet tests (which build on {buildCuts}).
+///         `AccessControl` is part of the base recipe because `registerInvariant`/`unregisterInvariant` are
+///         `DEFAULT_ADMIN_ROLE`-gated.
+contract DeployInvariantChecker is BaseDeploy {
+    /// @notice Builds the InvariantChecker diamond cuts + initializer (no broadcast, no proxy deploy).
+    /// @param admin The address granted `DEFAULT_ADMIN_ROLE` (controls invariant registration).
+    /// @return cuts The facet cuts (ERC165 + AccessControl + InvariantChecker).
+    /// @return init The {InvariantCheckerInit} initializer address.
+    /// @return initCalldata The `init(admin)` calldata.
+    function buildCuts(address admin) public returns (FacetCut[] memory cuts, address init, bytes memory initCalldata) {
+        cuts = new FacetCut[](3);
+        cuts[0] = _cut(address(new ERC165Facet()), "ERC165Facet");
+        cuts[1] = _cut(address(new AccessControl()), "AccessControl");
+        cuts[2] = _cut(address(new InvariantChecker()), "InvariantChecker");
+        init = address(new InvariantCheckerInit());
+        initCalldata = abi.encodeCall(InvariantCheckerInit.init, (admin));
+    }
+
+    /// @notice Deploys an InvariantChecker diamond (broadcasting entrypoint for `forge script ... --broadcast`).
+    /// @param admin The invariant-registration admin.
+    /// @return checker The deployed invariant-checker diamond address.
+    function run(address admin) external returns (address checker) {
+        vm.startBroadcast();
+        (FacetCut[] memory cuts, address init, bytes memory initCalldata) = buildCuts(admin);
+        checker = _assemble(cuts, init, initCalldata);
+        vm.stopBroadcast();
+    }
+}

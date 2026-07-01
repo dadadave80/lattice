@@ -1,33 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
+import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
+import {CommitRevealTestBase} from "@lattice-test/base/CommitRevealTestBase.sol";
 import {ICommitReveal} from "@lattice/interfaces/privacy/ICommitReveal.sol";
 import {CommitReveal} from "@lattice/privacy/CommitReveal.sol";
-import {CommitRevealLib} from "@lattice/privacy/libraries/CommitRevealLib.sol";
-import {Test} from "forge-std/Test.sol";
-
-/// @title MockCommitRevealContract
-/// @notice Wrapper that inherits the CommitReveal facet and exposes init + ERC-165 discovery.
-contract MockCommitRevealContract is CommitReveal {
-    function initialize() external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
-        CommitRevealLib.__CommitReveal_init();
-        InitializableLib.postInitializer(s);
-    }
-
-    function supportsInterface(bytes4 interfaceId) external view returns (bool) {
-        return ERC165Lib.supportsInterface(interfaceId);
-    }
-}
 
 /// @title CommitRevealTest
-/// @notice Unit tests for the commit–reveal primitive facet.
-contract CommitRevealTest is Test {
-    MockCommitRevealContract cr;
-
+/// @notice Exercises the commit–reveal primitive facet through a REAL {Diamond} assembled by the ready-to-deploy
+///         {DeployCommitReveal} script (see {CommitRevealTestBase}) — every call below routes through the
+///         diamond's `delegatecall` dispatch, not a flattened inheritance mock. `supportsInterface` is served by
+///         the cut-in `ERC165Facet`.
+contract CommitRevealTest is CommitRevealTestBase {
     address alice = address(0xA11CE);
     address bob = address(0xB0B);
     address attacker = address(0xBAD);
@@ -38,8 +22,8 @@ contract CommitRevealTest is Test {
     event Revealed(bytes32 indexed commitment, address indexed committer, bytes data, bytes32 salt);
 
     function setUp() public {
-        cr = new MockCommitRevealContract();
-        cr.initialize();
+        diamond = _deployCommitReveal();
+        cr = CommitReveal(diamond);
         vm.warp(1_000_000);
     }
 
@@ -174,7 +158,7 @@ contract CommitRevealTest is Test {
     }
 
     function test_SupportsICommitReveal() public view {
-        assertTrue(cr.supportsInterface(type(ICommitReveal).interfaceId));
+        assertTrue(ERC165Facet(diamond).supportsInterface(type(ICommitReveal).interfaceId));
     }
 
     function test_InterfaceIdMatchesConstant() public pure {

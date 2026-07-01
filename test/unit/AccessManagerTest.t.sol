@@ -1,21 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
+import {Diamond} from "@diamond/Diamond.sol";
+import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
+import {AccessManagerTestBase} from "@lattice-test/base/AccessManagerTestBase.sol";
 import {AccessManager} from "@lattice/access/AccessManager.sol";
-import {AccessManagerLib} from "@lattice/access/libraries/AccessManagerLib.sol";
 import {IAccessManager} from "@lattice/interfaces/access/IAccessManager.sol";
-import {Test} from "forge-std/Test.sol";
 import {Vm} from "forge-std/Vm.sol";
-
-contract MockAccessManagerContract is AccessManager {
-    function initialize(address _admin) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
-        AccessManagerLib.__AccessManager_init(_admin);
-        InitializableLib.postInitializer(s);
-    }
-}
 
 contract CallSink {
     event Hit(uint256 v);
@@ -68,20 +59,24 @@ contract ReentrantTarget {
     }
 }
 
-contract AccessManagerTest is Test {
+/// @title AccessManagerTest
+/// @notice Exercises the AccessManager authority facet through a REAL {Diamond} assembled by the ready-to-deploy
+///         {DeployAccessManager} script (see {AccessManagerTestBase}) — every authority call (roles, targets,
+///         schedule/execute/cancel) routes through the diamond's `delegatecall` dispatch, not a flattened
+///         inheritance mock. The AccessManager self-gates its whole surface on `ADMIN_ROLE`.
+contract AccessManagerTest is AccessManagerTestBase {
     uint64 constant ADMIN_ROLE = 0;
     uint64 constant PUBLIC_ROLE = type(uint64).max;
     uint64 constant MINTER_ROLE = 1;
 
-    MockAccessManagerContract internal mgr;
     address internal admin = address(0xA1);
     address internal alice = address(0xA11CE);
     address internal bob = address(0xB0B);
 
     function setUp() public {
         vm.warp(1_000_000);
-        mgr = new MockAccessManagerContract();
-        mgr.initialize(admin);
+        diamond = _deployAccessManager(admin);
+        mgr = AccessManager(diamond);
     }
 
     function test_AdminInitiallyHasAdminRole() public view {
@@ -99,9 +94,10 @@ contract AccessManagerTest is Test {
     }
 
     function test_InvalidInitialAdminReverts() public {
-        MockAccessManagerContract mgr2 = new MockAccessManagerContract();
+        (FacetCut[] memory cuts, address init, bytes memory initCalldata) = deployer.buildCuts(address(0));
+        Diamond d = new Diamond();
         vm.expectRevert(IAccessManager.AccessManagerInvalidInitialAdmin.selector);
-        mgr2.initialize(address(0));
+        d.initialize(cuts, init, initCalldata);
     }
 
     function test_GrantRoleAddsMemberAfterDelay() public {

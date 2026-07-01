@@ -1,15 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
-import {AccessControl} from "@lattice/access/AccessControl.sol";
-import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
+import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
+import {InvariantCheckerTestBase} from "@lattice-test/base/InvariantCheckerTestBase.sol";
 import {IAccessControl} from "@lattice/interfaces/access/IAccessControl.sol";
 import {IInvariantChecker} from "@lattice/interfaces/security/IInvariantChecker.sol";
 import {InvariantChecker} from "@lattice/security/InvariantChecker.sol";
-import {InvariantCheckerLib} from "@lattice/security/libraries/InvariantCheckerLib.sol";
-import {Test} from "forge-std/Test.sol";
 
 // -------------------------------------------------------------------------
 // Helper contracts — simple invariant implementations
@@ -36,41 +32,19 @@ contract RevertingInvariant {
     }
 }
 
-// -------------------------------------------------------------------------
-// Mock contract
-// -------------------------------------------------------------------------
-
-/// @title MockInvariantCheckerContract
-/// @notice Test double combining InvariantChecker + AccessControl.
-contract MockInvariantCheckerContract is InvariantChecker, AccessControl {
-    /// @notice Initializes both AccessControl and InvariantChecker modules.
-    function initialize(address _admin) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
-        AccessControlLib.__AccessControl_init(_admin);
-        InvariantCheckerLib.__InvariantChecker_init();
-        InitializableLib.postInitializer(s);
-    }
-
-    function supportsInterface(bytes4 _interfaceId) public view returns (bool) {
-        return ERC165Lib.supportsInterface(_interfaceId);
-    }
-}
-
-// -------------------------------------------------------------------------
-// Test contract
-// -------------------------------------------------------------------------
-
 /// @title InvariantCheckerTest
-/// @notice Comprehensive tests for the InvariantChecker module.
-contract InvariantCheckerTest is Test {
+/// @notice Exercises the InvariantChecker registry facet through a REAL {Diamond} assembled by the ready-to-deploy
+///         {DeployInvariantChecker} script (see {InvariantCheckerTestBase}) — every registry call below routes
+///         through the diamond's `delegatecall` dispatch, not a flattened inheritance mock. Admin gating on
+///         registration is enforced by the cut-in `AccessControl` facet; `supportsInterface` by the cut-in
+///         `ERC165Facet`.
+contract InvariantCheckerTest is InvariantCheckerTestBase {
     bytes32 private constant DEFAULT_ADMIN_ROLE = 0x00;
     bytes32 private constant KEY_TRUE = keccak256("KEY_TRUE");
     bytes32 private constant KEY_FALSE = keccak256("KEY_FALSE");
     bytes32 private constant KEY_REVERT = keccak256("KEY_REVERT");
     bytes32 private constant KEY_UNREGISTERED = keccak256("KEY_UNREGISTERED");
 
-    MockInvariantCheckerContract internal mock;
     AlwaysTrueInvariant internal trueInv;
     AlwaysFalseInvariant internal falseInv;
     RevertingInvariant internal revertInv;
@@ -79,8 +53,8 @@ contract InvariantCheckerTest is Test {
     address internal nonAdmin = address(0xB2);
 
     function setUp() public {
-        mock = new MockInvariantCheckerContract();
-        mock.initialize(admin);
+        diamond = _deployInvariantChecker(admin);
+        checker = InvariantChecker(diamond);
 
         trueInv = new AlwaysTrueInvariant();
         falseInv = new AlwaysFalseInvariant();
@@ -92,7 +66,7 @@ contract InvariantCheckerTest is Test {
     // -------------------------------------------------------------------------
 
     function test_ERC165RegisteredIInvariantChecker() public view {
-        assertTrue(mock.supportsInterface(type(IInvariantChecker).interfaceId));
+        assertTrue(ERC165Facet(diamond).supportsInterface(type(IInvariantChecker).interfaceId));
     }
 
     // -------------------------------------------------------------------------
@@ -106,7 +80,7 @@ contract InvariantCheckerTest is Test {
                 IAccessControl.AccessControlUnauthorizedAccount.selector, nonAdmin, DEFAULT_ADMIN_ROLE
             )
         );
-        mock.registerInvariant(KEY_TRUE, address(trueInv), AlwaysTrueInvariant.alwaysTrue.selector);
+        checker.registerInvariant(KEY_TRUE, address(trueInv), AlwaysTrueInvariant.alwaysTrue.selector);
     }
 
     // -------------------------------------------------------------------------
@@ -116,7 +90,7 @@ contract InvariantCheckerTest is Test {
     function test_RegisterWithZeroTargetReverts() public {
         vm.prank(admin);
         vm.expectRevert(abi.encodeWithSelector(IInvariantChecker.InvariantInvalidTarget.selector));
-        mock.registerInvariant(KEY_TRUE, address(0), AlwaysTrueInvariant.alwaysTrue.selector);
+        checker.registerInvariant(KEY_TRUE, address(0), AlwaysTrueInvariant.alwaysTrue.selector);
     }
 
     // -------------------------------------------------------------------------
@@ -125,9 +99,9 @@ contract InvariantCheckerTest is Test {
 
     function test_RegisterStoresValues() public {
         vm.prank(admin);
-        mock.registerInvariant(KEY_TRUE, address(trueInv), AlwaysTrueInvariant.alwaysTrue.selector);
+        checker.registerInvariant(KEY_TRUE, address(trueInv), AlwaysTrueInvariant.alwaysTrue.selector);
 
-        (address t, bytes4 sel) = mock.getInvariant(KEY_TRUE);
+        (address t, bytes4 sel) = checker.getInvariant(KEY_TRUE);
         assertEq(t, address(trueInv));
         assertEq(sel, AlwaysTrueInvariant.alwaysTrue.selector);
     }
@@ -136,7 +110,7 @@ contract InvariantCheckerTest is Test {
         vm.prank(admin);
         vm.expectEmit(true, true, true, true);
         emit IInvariantChecker.InvariantRegistered(KEY_TRUE, address(trueInv), AlwaysTrueInvariant.alwaysTrue.selector);
-        mock.registerInvariant(KEY_TRUE, address(trueInv), AlwaysTrueInvariant.alwaysTrue.selector);
+        checker.registerInvariant(KEY_TRUE, address(trueInv), AlwaysTrueInvariant.alwaysTrue.selector);
     }
 
     // -------------------------------------------------------------------------
@@ -145,13 +119,13 @@ contract InvariantCheckerTest is Test {
 
     function test_RegisterInvariantOverwritesSilently() public {
         vm.prank(admin);
-        mock.registerInvariant(KEY_TRUE, address(trueInv), AlwaysTrueInvariant.alwaysTrue.selector);
+        checker.registerInvariant(KEY_TRUE, address(trueInv), AlwaysTrueInvariant.alwaysTrue.selector);
 
         // Overwrite with a different target — should succeed silently and update the entry.
         vm.prank(admin);
-        mock.registerInvariant(KEY_TRUE, address(falseInv), AlwaysFalseInvariant.alwaysFalse.selector);
+        checker.registerInvariant(KEY_TRUE, address(falseInv), AlwaysFalseInvariant.alwaysFalse.selector);
 
-        (address t, bytes4 sel) = mock.getInvariant(KEY_TRUE);
+        (address t, bytes4 sel) = checker.getInvariant(KEY_TRUE);
         assertEq(t, address(falseInv));
         assertEq(sel, AlwaysFalseInvariant.alwaysFalse.selector);
     }
@@ -162,7 +136,7 @@ contract InvariantCheckerTest is Test {
 
     function test_UnregisterByNonAdminReverts() public {
         vm.prank(admin);
-        mock.registerInvariant(KEY_TRUE, address(trueInv), AlwaysTrueInvariant.alwaysTrue.selector);
+        checker.registerInvariant(KEY_TRUE, address(trueInv), AlwaysTrueInvariant.alwaysTrue.selector);
 
         vm.prank(nonAdmin);
         vm.expectRevert(
@@ -170,7 +144,7 @@ contract InvariantCheckerTest is Test {
                 IAccessControl.AccessControlUnauthorizedAccount.selector, nonAdmin, DEFAULT_ADMIN_ROLE
             )
         );
-        mock.unregisterInvariant(KEY_TRUE);
+        checker.unregisterInvariant(KEY_TRUE);
     }
 
     // -------------------------------------------------------------------------
@@ -180,7 +154,7 @@ contract InvariantCheckerTest is Test {
     function test_UnregisterNeverRegisteredKeyReverts() public {
         vm.prank(admin);
         vm.expectRevert(abi.encodeWithSelector(IInvariantChecker.InvariantNotRegistered.selector, KEY_UNREGISTERED));
-        mock.unregisterInvariant(KEY_UNREGISTERED);
+        checker.unregisterInvariant(KEY_UNREGISTERED);
     }
 
     // -------------------------------------------------------------------------
@@ -189,34 +163,34 @@ contract InvariantCheckerTest is Test {
 
     function test_UnregisterRemovesEntry() public {
         vm.prank(admin);
-        mock.registerInvariant(KEY_TRUE, address(trueInv), AlwaysTrueInvariant.alwaysTrue.selector);
+        checker.registerInvariant(KEY_TRUE, address(trueInv), AlwaysTrueInvariant.alwaysTrue.selector);
 
         vm.prank(admin);
-        mock.unregisterInvariant(KEY_TRUE);
+        checker.unregisterInvariant(KEY_TRUE);
 
-        (address t,) = mock.getInvariant(KEY_TRUE);
+        (address t,) = checker.getInvariant(KEY_TRUE);
         assertEq(t, address(0));
     }
 
     function test_UnregisterEmitsEvent() public {
         vm.prank(admin);
-        mock.registerInvariant(KEY_TRUE, address(trueInv), AlwaysTrueInvariant.alwaysTrue.selector);
+        checker.registerInvariant(KEY_TRUE, address(trueInv), AlwaysTrueInvariant.alwaysTrue.selector);
 
         vm.prank(admin);
         vm.expectEmit(true, true, true, true);
         emit IInvariantChecker.InvariantUnregistered(KEY_TRUE);
-        mock.unregisterInvariant(KEY_TRUE);
+        checker.unregisterInvariant(KEY_TRUE);
     }
 
     function test_CheckAfterUnregisterReverts() public {
         vm.prank(admin);
-        mock.registerInvariant(KEY_TRUE, address(trueInv), AlwaysTrueInvariant.alwaysTrue.selector);
+        checker.registerInvariant(KEY_TRUE, address(trueInv), AlwaysTrueInvariant.alwaysTrue.selector);
 
         vm.prank(admin);
-        mock.unregisterInvariant(KEY_TRUE);
+        checker.unregisterInvariant(KEY_TRUE);
 
         vm.expectRevert(abi.encodeWithSelector(IInvariantChecker.InvariantNotRegistered.selector, KEY_TRUE));
-        mock.checkInvariant(KEY_TRUE);
+        checker.checkInvariant(KEY_TRUE);
     }
 
     // -------------------------------------------------------------------------
@@ -225,7 +199,7 @@ contract InvariantCheckerTest is Test {
 
     function test_CheckUnregisteredReverts() public {
         vm.expectRevert(abi.encodeWithSelector(IInvariantChecker.InvariantNotRegistered.selector, KEY_UNREGISTERED));
-        mock.checkInvariant(KEY_UNREGISTERED);
+        checker.checkInvariant(KEY_UNREGISTERED);
     }
 
     // -------------------------------------------------------------------------
@@ -234,9 +208,9 @@ contract InvariantCheckerTest is Test {
 
     function test_CheckPassingInvariantSucceeds() public {
         vm.prank(admin);
-        mock.registerInvariant(KEY_TRUE, address(trueInv), AlwaysTrueInvariant.alwaysTrue.selector);
+        checker.registerInvariant(KEY_TRUE, address(trueInv), AlwaysTrueInvariant.alwaysTrue.selector);
 
-        mock.checkInvariant(KEY_TRUE); // must not revert
+        checker.checkInvariant(KEY_TRUE); // must not revert
     }
 
     // -------------------------------------------------------------------------
@@ -245,10 +219,10 @@ contract InvariantCheckerTest is Test {
 
     function test_CheckFailingInvariantReverts() public {
         vm.prank(admin);
-        mock.registerInvariant(KEY_FALSE, address(falseInv), AlwaysFalseInvariant.alwaysFalse.selector);
+        checker.registerInvariant(KEY_FALSE, address(falseInv), AlwaysFalseInvariant.alwaysFalse.selector);
 
         vm.expectRevert(abi.encodeWithSelector(IInvariantChecker.InvariantViolatedError.selector, KEY_FALSE));
-        mock.checkInvariant(KEY_FALSE);
+        checker.checkInvariant(KEY_FALSE);
     }
 
     // -------------------------------------------------------------------------
@@ -257,10 +231,10 @@ contract InvariantCheckerTest is Test {
 
     function test_CheckRevertingTargetReverts() public {
         vm.prank(admin);
-        mock.registerInvariant(KEY_REVERT, address(revertInv), RevertingInvariant.alwaysReverts.selector);
+        checker.registerInvariant(KEY_REVERT, address(revertInv), RevertingInvariant.alwaysReverts.selector);
 
         vm.expectRevert(abi.encodeWithSelector(IInvariantChecker.InvariantCheckFailed.selector, KEY_REVERT));
-        mock.checkInvariant(KEY_REVERT);
+        checker.checkInvariant(KEY_REVERT);
     }
 
     // -------------------------------------------------------------------------
@@ -269,20 +243,20 @@ contract InvariantCheckerTest is Test {
 
     function test_BatchCheckAllPassingSucceeds() public {
         vm.prank(admin);
-        mock.registerInvariant(KEY_TRUE, address(trueInv), AlwaysTrueInvariant.alwaysTrue.selector);
+        checker.registerInvariant(KEY_TRUE, address(trueInv), AlwaysTrueInvariant.alwaysTrue.selector);
 
         bytes32[] memory keys = new bytes32[](2);
         keys[0] = KEY_TRUE;
         keys[1] = KEY_TRUE;
 
-        mock.checkInvariants(keys); // must not revert
+        checker.checkInvariants(keys); // must not revert
     }
 
     function test_BatchCheckFailsOnFirstFalse() public {
         vm.prank(admin);
-        mock.registerInvariant(KEY_TRUE, address(trueInv), AlwaysTrueInvariant.alwaysTrue.selector);
+        checker.registerInvariant(KEY_TRUE, address(trueInv), AlwaysTrueInvariant.alwaysTrue.selector);
         vm.prank(admin);
-        mock.registerInvariant(KEY_FALSE, address(falseInv), AlwaysFalseInvariant.alwaysFalse.selector);
+        checker.registerInvariant(KEY_FALSE, address(falseInv), AlwaysFalseInvariant.alwaysFalse.selector);
 
         bytes32[] memory keys = new bytes32[](3);
         keys[0] = KEY_TRUE;
@@ -290,19 +264,19 @@ contract InvariantCheckerTest is Test {
         keys[2] = KEY_TRUE;
 
         vm.expectRevert(abi.encodeWithSelector(IInvariantChecker.InvariantViolatedError.selector, KEY_FALSE));
-        mock.checkInvariants(keys);
+        checker.checkInvariants(keys);
     }
 
     function test_BatchCheckRevertsOnFirstUnregistered() public {
         vm.prank(admin);
-        mock.registerInvariant(KEY_TRUE, address(trueInv), AlwaysTrueInvariant.alwaysTrue.selector);
+        checker.registerInvariant(KEY_TRUE, address(trueInv), AlwaysTrueInvariant.alwaysTrue.selector);
 
         bytes32[] memory keys = new bytes32[](2);
         keys[0] = KEY_TRUE;
         keys[1] = KEY_UNREGISTERED;
 
         vm.expectRevert(abi.encodeWithSelector(IInvariantChecker.InvariantNotRegistered.selector, KEY_UNREGISTERED));
-        mock.checkInvariants(keys);
+        checker.checkInvariants(keys);
     }
 
     // -------------------------------------------------------------------------
@@ -310,7 +284,7 @@ contract InvariantCheckerTest is Test {
     // -------------------------------------------------------------------------
 
     function test_GetInvariantReturnsZeroForUnregistered() public view {
-        (address t, bytes4 sel) = mock.getInvariant(KEY_UNREGISTERED);
+        (address t, bytes4 sel) = checker.getInvariant(KEY_UNREGISTERED);
         assertEq(t, address(0));
         assertEq(sel, bytes4(0));
     }

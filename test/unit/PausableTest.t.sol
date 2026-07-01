@@ -1,56 +1,28 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
-import {AccessControl} from "@lattice/access/AccessControl.sol";
-import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
+import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
+import {PausableTestBase} from "@lattice-test/base/PausableTestBase.sol";
+import {PausableTestFacet} from "@lattice-test/helpers/PausableTestFacet.sol";
+import {DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
 import {IAccessControl} from "@lattice/interfaces/access/IAccessControl.sol";
 import {IPausable} from "@lattice/interfaces/security/IPausable.sol";
 import {Pausable} from "@lattice/security/Pausable.sol";
-import {PausableLib} from "@lattice/security/libraries/PausableLib.sol";
-import {Test} from "forge-std/Test.sol";
-import {Vm} from "forge-std/Vm.sol";
-
-/// @title MockPausableContract
-/// @notice Test double combining Pausable + AccessControl with an external gate function.
-contract MockPausableContract is Pausable, AccessControl {
-    /// @notice Initializes both AccessControl and Pausable modules.
-    function initialize(address _admin) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
-        AccessControlLib.__AccessControl_init(_admin);
-        PausableLib.__Pausable_init();
-        InitializableLib.postInitializer(s);
-    }
-
-    /// @notice External function that reverts when paused (tests `whenNotPaused` gate).
-    function gatedAction() external view {
-        PausableLib.whenNotPaused();
-    }
-
-    /// @notice External function that reverts when NOT paused (tests `whenPaused` gate).
-    function pausedOnlyAction() external view {
-        PausableLib.whenPaused();
-    }
-
-    function supportsInterface(bytes4 _interfaceId) public view returns (bool) {
-        return ERC165Lib.supportsInterface(_interfaceId);
-    }
-}
 
 /// @title PausableTest
-/// @notice Comprehensive tests for the Pausable module.
-contract PausableTest is Test {
-    bytes32 private constant DEFAULT_ADMIN_ROLE = 0x00;
-
-    MockPausableContract internal mock;
+/// @notice Exercises the Pausable facet through a REAL {Diamond} assembled by the ready-to-deploy
+///         {DeployPausable} script (see {PausableTestBase}) — every call below routes through the diamond's
+///         `delegatecall` dispatch, not a flattened inheritance mock. Admin gating is enforced by the cut-in
+///         `AccessControl` facet; `supportsInterface` by the cut-in `ERC165Facet`; the `whenNotPaused`/
+///         `whenPaused` guards by the appended test-only {PausableTestFacet}.
+contract PausableTest is PausableTestBase {
     address internal admin = address(0xA1);
     address internal nonAdmin = address(0xB2);
 
     function setUp() public {
-        mock = new MockPausableContract();
-        mock.initialize(admin);
+        diamond = _deployPausable(admin);
+        pausable = Pausable(diamond);
+        guard = PausableTestFacet(diamond);
     }
 
     // -------------------------------------------------------------------------
@@ -58,11 +30,11 @@ contract PausableTest is Test {
     // -------------------------------------------------------------------------
 
     function test_InitiallyNotPaused() public view {
-        assertFalse(mock.paused());
+        assertFalse(pausable.paused());
     }
 
     function test_ERC165RegisteredIPausable() public view {
-        assertTrue(mock.supportsInterface(type(IPausable).interfaceId));
+        assertTrue(ERC165Facet(diamond).supportsInterface(type(IPausable).interfaceId));
     }
 
     // -------------------------------------------------------------------------
@@ -71,15 +43,15 @@ contract PausableTest is Test {
 
     function test_PauseFlipsState() public {
         vm.prank(admin);
-        mock.pause();
-        assertTrue(mock.paused());
+        pausable.pause();
+        assertTrue(pausable.paused());
     }
 
     function test_PauseEmitsEvent() public {
         vm.prank(admin);
         vm.expectEmit(true, true, true, true);
         emit IPausable.Paused(admin);
-        mock.pause();
+        pausable.pause();
     }
 
     function test_PauseRevertsForNonAdmin() public {
@@ -89,16 +61,16 @@ contract PausableTest is Test {
                 IAccessControl.AccessControlUnauthorizedAccount.selector, nonAdmin, DEFAULT_ADMIN_ROLE
             )
         );
-        mock.pause();
+        pausable.pause();
     }
 
     function test_DoublePauseRevertsEnforcedPause() public {
         vm.prank(admin);
-        mock.pause();
+        pausable.pause();
 
         vm.prank(admin);
         vm.expectRevert(abi.encodeWithSelector(IPausable.EnforcedPause.selector));
-        mock.pause();
+        pausable.pause();
     }
 
     // -------------------------------------------------------------------------
@@ -107,26 +79,26 @@ contract PausableTest is Test {
 
     function test_UnpauseFlipsState() public {
         vm.prank(admin);
-        mock.pause();
+        pausable.pause();
 
         vm.prank(admin);
-        mock.unpause();
-        assertFalse(mock.paused());
+        pausable.unpause();
+        assertFalse(pausable.paused());
     }
 
     function test_UnpauseEmitsEvent() public {
         vm.prank(admin);
-        mock.pause();
+        pausable.pause();
 
         vm.prank(admin);
         vm.expectEmit(true, true, true, true);
         emit IPausable.Unpaused(admin);
-        mock.unpause();
+        pausable.unpause();
     }
 
     function test_UnpauseRevertsForNonAdmin() public {
         vm.prank(admin);
-        mock.pause();
+        pausable.pause();
 
         vm.prank(nonAdmin);
         vm.expectRevert(
@@ -134,25 +106,25 @@ contract PausableTest is Test {
                 IAccessControl.AccessControlUnauthorizedAccount.selector, nonAdmin, DEFAULT_ADMIN_ROLE
             )
         );
-        mock.unpause();
+        pausable.unpause();
     }
 
     function test_UnpauseWhenNotPausedRevertsExpectedPause() public {
         vm.prank(admin);
         vm.expectRevert(abi.encodeWithSelector(IPausable.ExpectedPause.selector));
-        mock.unpause();
+        pausable.unpause();
     }
 
     function test_DoubleUnpauseRevertsExpectedPause() public {
         vm.prank(admin);
-        mock.pause();
+        pausable.pause();
 
         vm.prank(admin);
-        mock.unpause();
+        pausable.unpause();
 
         vm.prank(admin);
         vm.expectRevert(abi.encodeWithSelector(IPausable.ExpectedPause.selector));
-        mock.unpause();
+        pausable.unpause();
     }
 
     // -------------------------------------------------------------------------
@@ -160,26 +132,26 @@ contract PausableTest is Test {
     // -------------------------------------------------------------------------
 
     function test_GatedActionSucceedsWhenNotPaused() public view {
-        mock.gatedAction(); // should not revert
+        guard.gatedAction(); // should not revert
     }
 
     function test_GatedActionRevertsWhenPaused() public {
         vm.prank(admin);
-        mock.pause();
+        pausable.pause();
 
         vm.expectRevert(abi.encodeWithSelector(IPausable.EnforcedPause.selector));
-        mock.gatedAction();
+        guard.gatedAction();
     }
 
     function test_PausedOnlyActionSucceedsWhenPaused() public {
         vm.prank(admin);
-        mock.pause();
-        mock.pausedOnlyAction(); // should not revert
+        pausable.pause();
+        guard.pausedOnlyAction(); // should not revert
     }
 
     function test_PausedOnlyActionRevertsWhenNotPaused() public {
         vm.expectRevert(abi.encodeWithSelector(IPausable.ExpectedPause.selector));
-        mock.pausedOnlyAction();
+        guard.pausedOnlyAction();
     }
 
     // -------------------------------------------------------------------------
@@ -188,16 +160,16 @@ contract PausableTest is Test {
 
     function test_PauseUnpauseCycle() public {
         vm.prank(admin);
-        mock.pause();
-        assertTrue(mock.paused());
+        pausable.pause();
+        assertTrue(pausable.paused());
 
         vm.prank(admin);
-        mock.unpause();
-        assertFalse(mock.paused());
+        pausable.unpause();
+        assertFalse(pausable.paused());
 
         vm.prank(admin);
-        mock.pause();
-        assertTrue(mock.paused());
+        pausable.pause();
+        assertTrue(pausable.paused());
     }
 
     // -------------------------------------------------------------------------
@@ -207,7 +179,7 @@ contract PausableTest is Test {
     /// @notice Verifies that the initializer leaves the paused state explicitly false,
     /// matching OZ v5.1.0's defensive `_paused = false` write in the constructor.
     function test_PauseInitialStateIsExplicitlyFalse() public view {
-        // After setUp() the contract is freshly initialised. The state must be false.
-        assertFalse(mock.paused());
+        // After setUp() the diamond is freshly initialised. The state must be false.
+        assertFalse(pausable.paused());
     }
 }

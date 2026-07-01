@@ -1,48 +1,20 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
+import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
+import {AccessControlTestBase} from "@lattice-test/base/AccessControlTestBase.sol";
+import {AccessControlTestFacet} from "@lattice-test/helpers/AccessControlTestFacet.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
-import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {IAccessControl} from "@lattice/interfaces/access/IAccessControl.sol";
-import {Test} from "forge-std/Test.sol";
 import {Vm} from "forge-std/Vm.sol";
 
-/// @title MockAccessControlContract
-/// @notice Mock contract using AccessControl for testing
-contract MockAccessControlContract is AccessControl {
-    bytes32 public constant RESTRICTED_ROLE = keccak256("RESTRICTED_ROLE");
-
-    /// @notice Initializes access control with an admin
-    function initialize(address _admin) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
-        AccessControlLib.__AccessControl_init(_admin);
-        InitializableLib.postInitializer(s);
-    }
-
-    /// @notice Example function that requires a role
-    /// @dev Demonstrates role-based access control
-    function restrictedFunction() external {
-        AccessControlLib.checkRole(RESTRICTED_ROLE);
-    }
-
-    /// @notice Helper to set role admin from tests
-    function setRoleAdminHelper(bytes32 _role, bytes32 _adminRole) external {
-        AccessControlLib.setRoleAdmin(_role, _adminRole);
-    }
-
-    function supportsInterface(bytes4 _interfaceId) public view returns (bool) {
-        return ERC165Lib.supportsInterface(_interfaceId);
-    }
-}
-
 /// @title AccessControlTest
-/// @notice Comprehensive tests for AccessControl contract and library
-contract AccessControlTest is Test {
-    MockAccessControlContract accessControl;
-
+/// @notice Exercises the AccessControl role facet through a REAL {Diamond} assembled by the ready-to-deploy
+///         {DeployAccessControl} script (see {AccessControlTestBase}) — every call below routes through the
+///         diamond's `delegatecall` dispatch, not a flattened inheritance mock. The internal `setRoleAdmin` and
+///         `onlyRole` gate are driven through the cut-in test-only {AccessControlTestFacet}; `supportsInterface`
+///         through the cut-in `ERC165Facet`.
+contract AccessControlTest is AccessControlTestBase {
     bytes32 private constant DEFAULT_ADMIN_ROLE = 0x00;
     bytes32 private constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 private constant BURNER_ROLE = keccak256("BURNER_ROLE");
@@ -58,8 +30,9 @@ contract AccessControlTest is Test {
     event RoleAdminChanged(bytes32 indexed role, bytes32 indexed previousAdminRole, bytes32 indexed newAdminRole);
 
     function setUp() public {
-        accessControl = new MockAccessControlContract();
-        accessControl.initialize(admin);
+        diamond = _deployAccessControl(admin);
+        accessControl = AccessControl(diamond);
+        helper = AccessControlTestFacet(diamond);
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -123,7 +96,7 @@ contract AccessControlTest is Test {
 
         // setRoleAdmin operates on shared storage, so we just test via getRoleAdmin
         vm.prank(admin);
-        accessControl.setRoleAdminHelper(MINTER_ROLE, ADMIN_ROLE);
+        helper.setRoleAdminHelper(MINTER_ROLE, ADMIN_ROLE);
         // Now check via a new call to ensure it was set
         bytes32 actualAdmin = accessControl.getRoleAdmin(MINTER_ROLE);
         assertEq(actualAdmin, ADMIN_ROLE);
@@ -187,7 +160,7 @@ contract AccessControlTest is Test {
 
         // Set MINTER_ROLE admin to ADMIN_ROLE
         vm.prank(admin);
-        accessControl.setRoleAdminHelper(MINTER_ROLE, ADMIN_ROLE);
+        helper.setRoleAdminHelper(MINTER_ROLE, ADMIN_ROLE);
 
         // User should be able to grant MINTER_ROLE
         vm.prank(user);
@@ -260,7 +233,7 @@ contract AccessControlTest is Test {
 
         // Set MINTER_ROLE admin to ADMIN_ROLE
         vm.prank(admin);
-        accessControl.setRoleAdminHelper(MINTER_ROLE, ADMIN_ROLE);
+        helper.setRoleAdminHelper(MINTER_ROLE, ADMIN_ROLE);
 
         // Grant MINTER_ROLE to other
         vm.prank(user);
@@ -357,7 +330,7 @@ contract AccessControlTest is Test {
 
         vm.prank(user);
         // This should not revert
-        accessControl.restrictedFunction();
+        helper.restrictedFunction();
     }
 
     /// @notice Function with onlyRole modifier reverts for account without role
@@ -366,7 +339,7 @@ contract AccessControlTest is Test {
         vm.expectRevert(
             abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, user, RESTRICTED_ROLE)
         );
-        accessControl.restrictedFunction();
+        helper.restrictedFunction();
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -380,13 +353,13 @@ contract AccessControlTest is Test {
         vm.prank(admin);
         vm.expectEmit(true, true, true, true);
         emit RoleAdminChanged(MINTER_ROLE, previousAdmin, ADMIN_ROLE);
-        accessControl.setRoleAdminHelper(MINTER_ROLE, ADMIN_ROLE);
+        helper.setRoleAdminHelper(MINTER_ROLE, ADMIN_ROLE);
     }
 
     /// @notice Role admin can be changed multiple times
     function test_RoleAdminCanBeChangedMultipleTimes() public {
         vm.prank(admin);
-        accessControl.setRoleAdminHelper(MINTER_ROLE, ADMIN_ROLE);
+        helper.setRoleAdminHelper(MINTER_ROLE, ADMIN_ROLE);
         assertEq(accessControl.getRoleAdmin(MINTER_ROLE), ADMIN_ROLE);
 
         // Now MINTER_ROLE's admin is ADMIN_ROLE; admin has DEFAULT_ADMIN_ROLE but not ADMIN_ROLE.
@@ -395,7 +368,7 @@ contract AccessControlTest is Test {
         accessControl.grantRole(ADMIN_ROLE, admin);
 
         vm.prank(admin);
-        accessControl.setRoleAdminHelper(MINTER_ROLE, BURNER_ROLE);
+        helper.setRoleAdminHelper(MINTER_ROLE, BURNER_ROLE);
         assertEq(accessControl.getRoleAdmin(MINTER_ROLE), BURNER_ROLE);
 
         // Grant admin the BURNER_ROLE so they can change MINTER_ROLE's admin again.
@@ -403,7 +376,7 @@ contract AccessControlTest is Test {
         accessControl.grantRole(BURNER_ROLE, admin);
 
         vm.prank(admin);
-        accessControl.setRoleAdminHelper(MINTER_ROLE, DEFAULT_ADMIN_ROLE);
+        helper.setRoleAdminHelper(MINTER_ROLE, DEFAULT_ADMIN_ROLE);
         assertEq(accessControl.getRoleAdmin(MINTER_ROLE), DEFAULT_ADMIN_ROLE);
     }
 
@@ -510,14 +483,14 @@ contract AccessControlTest is Test {
         // Set up hierarchy: DEFAULT_ADMIN -> SUPER_ADMIN -> MANAGER -> OPERATOR
         // admin has DEFAULT_ADMIN_ROLE which is the admin of all new roles by default.
         vm.prank(admin);
-        accessControl.setRoleAdminHelper(superAdminRole, DEFAULT_ADMIN_ROLE);
+        helper.setRoleAdminHelper(superAdminRole, DEFAULT_ADMIN_ROLE);
         vm.prank(admin);
-        accessControl.setRoleAdminHelper(managerRole, superAdminRole);
+        helper.setRoleAdminHelper(managerRole, superAdminRole);
         // Now managerRole's admin is superAdminRole; user must have superAdminRole to set operatorRole's admin.
         vm.prank(admin);
         accessControl.grantRole(superAdminRole, admin);
         vm.prank(admin);
-        accessControl.setRoleAdminHelper(operatorRole, managerRole);
+        helper.setRoleAdminHelper(operatorRole, managerRole);
 
         // Admin grants SUPER_ADMIN to user
         vm.prank(admin);
@@ -541,6 +514,6 @@ contract AccessControlTest is Test {
     function test_SupportsInterface() public view {
         // AccessControl should support IAccessControl interface
         bytes4 interfaceId = type(IAccessControl).interfaceId;
-        assertTrue(accessControl.supportsInterface(interfaceId));
+        assertTrue(ERC165Facet(diamond).supportsInterface(interfaceId));
     }
 }
