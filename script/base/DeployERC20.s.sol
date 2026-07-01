@@ -5,17 +5,7 @@ import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
 import {ERC20} from "@lattice/tokens/ERC20/ERC20.sol";
-import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
-
-/// @title ERC20Init
-/// @notice One-shot initializer for a base ERC-20 diamond — seeds name/symbol (and registers IERC20 via
-///         ERC-165). Delegatecalled by {Diamond.initialize} inside the initializing window, so it must NOT
-///         open its own pre/postInitializer; the `__ERC20_init` guard passes because the window is already open.
-contract ERC20Init {
-    function init(string memory name_, string memory symbol_) external {
-        ERC20Lib.__ERC20_init(name_, symbol_);
-    }
-}
+import {ERC20Init} from "@lattice/tokens/ERC20/ERC20Init.sol";
 
 /// @title DeployERC20
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
