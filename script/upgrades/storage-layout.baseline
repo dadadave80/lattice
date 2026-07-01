@@ -120,6 +120,14 @@
 7	0	_executed	t_mapping(t_uint256,t_mapping(t_bytes32,t_bool))
 8	0	_ccvConfigs	t_mapping(t_uint256,t_struct(CCVConfig)_storage)
 
+### LayerZeroGatewayAdapterStorage @ erc7201:lattice.storage.LayerZeroGatewayAdapter (slot 0xbca2daa6d08cb277e523bf7dcd928e312ddbb7f9ac88be435916dda92924d100)
+0	0	_endpoint	t_address
+1	0	_chainIdToEid	t_mapping(t_uint256,t_uint32)
+2	0	_eidToChainId	t_mapping(t_uint32,t_uint256)
+3	0	_peers	t_mapping(t_uint256,t_bytes32)
+4	0	_destConfig	t_mapping(t_uint256,t_struct(DestinationConfig)_storage)
+5	0	_executed	t_mapping(t_uint256,t_mapping(t_bytes32,t_bool))
+
 ### PythEntropyAdapterStorage @ erc7201:lattice.storage.PythEntropyAdapter (slot 0xf5638fd8a7410f61ded501225ccb03fd632a93dd0cfb1615ce2666e2781d4f00)
 0	0	_entropy	t_address
 1	0	_provider	t_address
