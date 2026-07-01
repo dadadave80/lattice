@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
-import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
+import {Diamond} from "@diamond/Diamond.sol";
+import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
+import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
+import {SafeHarborAdopterTestBase} from "@lattice-test/base/SafeHarborAdopterTestBase.sol";
 import {SafeHarborAdopter} from "@lattice/governance/SafeHarborAdopter.sol";
-import {SAFE_HARBOR_ADMIN_ROLE, SafeHarborAdopterLib} from "@lattice/governance/libraries/SafeHarborAdopterLib.sol";
+import {SAFE_HARBOR_ADMIN_ROLE} from "@lattice/governance/libraries/SafeHarborAdopterLib.sol";
 import {IAccessControl} from "@lattice/interfaces/access/IAccessControl.sol";
 import {
     Account as ShAccount,
@@ -19,7 +20,6 @@ import {
 } from "@lattice/interfaces/external/IAgreementFactory.sol";
 import {ISafeHarborRegistry} from "@lattice/interfaces/external/ISafeHarborRegistry.sol";
 import {ISafeHarborAdopter} from "@lattice/interfaces/governance/ISafeHarborAdopter.sol";
-import {Test} from "forge-std/Test.sol";
 
 /// @title MockSafeHarborRegistry
 /// @notice Minimal SEAL registry: records adoption keyed by msg.sender; reverts on empty getAgreement.
@@ -75,32 +75,18 @@ contract MockRevertingRegistry is ISafeHarborRegistry {
     }
 }
 
-/// @title MockSafeHarborAdopterContract
-/// @notice Wrapper that inherits the SafeHarborAdopter facet and wires AccessControl + init.
-contract MockSafeHarborAdopterContract is SafeHarborAdopter {
-    function initialize(address admin, address registry, address factory) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
-        AccessControlLib.__AccessControl_init(admin);
-        SafeHarborAdopterLib.__SafeHarborAdopter_init(registry, factory);
-        InitializableLib.postInitializer(s);
-    }
-
-    function grantRole(bytes32 role, address account) external {
-        AccessControlLib.grantRole(role, account);
-    }
-
-    function supportsInterface(bytes4 interfaceId) external view returns (bool) {
-        return ERC165Lib.supportsInterface(interfaceId);
-    }
-}
-
 /// @title SafeHarborAdopterTest
-/// @notice Unit tests for the SEAL Safe Harbor adopter facet.
-contract SafeHarborAdopterTest is Test {
-    MockSafeHarborAdopterContract adopter;
-    MockSafeHarborRegistry registry;
-    MockAgreementFactory factory;
+/// @notice Exercises the SEAL Safe Harbor adopter facet through a REAL {Diamond} assembled by the
+///         ready-to-deploy {DeploySafeHarborAdopter} script (see {SafeHarborAdopterTestBase}) — every call
+///         below routes through the diamond's `delegatecall` dispatch (so the diamond itself is `msg.sender`
+///         toward the SEAL registry), not a flattened inheritance mock. Role gating is enforced by the cut-in
+///         `AccessControl` facet; `supportsInterface` by the cut-in `ERC165Facet`. The registry/factory mocks
+///         remain in-file as EXTERNAL-contract fixtures.
+contract SafeHarborAdopterTest is SafeHarborAdopterTestBase {
+    address internal diamond; // the assembled Safe Harbor adopter diamond
+    SafeHarborAdopter internal adopter; // typed handle on the diamond (adoption calls dispatch through it)
+    MockSafeHarborRegistry internal registry;
+    MockAgreementFactory internal factory;
 
     address admin = address(0xA1);
     address manager = address(0xB2);
@@ -116,10 +102,10 @@ contract SafeHarborAdopterTest is Test {
     function setUp() public {
         registry = new MockSafeHarborRegistry();
         factory = new MockAgreementFactory();
-        adopter = new MockSafeHarborAdopterContract();
-        adopter.initialize(admin, address(registry), address(factory));
+        diamond = _deploySafeHarborAdopter(admin, address(registry), address(factory));
+        adopter = SafeHarborAdopter(diamond);
         vm.prank(admin);
-        adopter.grantRole(SAFE_HARBOR_ADMIN_ROLE, manager);
+        IAccessControl(diamond).grantRole(SAFE_HARBOR_ADMIN_ROLE, manager);
     }
 
     function _details() internal pure returns (AgreementDetails memory d) {
@@ -213,15 +199,14 @@ contract SafeHarborAdopterTest is Test {
     }
 
     function test_CreateAndAdoptNoFactoryReverts() public {
-        // Deploy an adopter with no factory configured.
-        MockSafeHarborAdopterContract noFactory = new MockSafeHarborAdopterContract();
-        noFactory.initialize(admin, address(registry), address(0));
+        // Assemble an adopter diamond with no factory configured.
+        address noFactory = _deploySafeHarborAdopter(admin, address(registry), address(0));
         vm.prank(admin);
-        noFactory.grantRole(SAFE_HARBOR_ADMIN_ROLE, manager);
+        IAccessControl(noFactory).grantRole(SAFE_HARBOR_ADMIN_ROLE, manager);
 
         vm.expectRevert(ISafeHarborAdopter.SafeHarborAdopterZeroFactory.selector);
         vm.prank(manager);
-        noFactory.createAndAdopt(_details(), chainValidator, agreementOwner, bytes32(0));
+        SafeHarborAdopter(noFactory).createAndAdopt(_details(), chainValidator, agreementOwner, bytes32(0));
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -274,9 +259,12 @@ contract SafeHarborAdopterTest is Test {
     }
 
     function test_InitZeroRegistryReverts() public {
-        MockSafeHarborAdopterContract c = new MockSafeHarborAdopterContract();
+        // A zero registry must abort assembly inside the {SafeHarborAdopterInit} delegatecall window.
+        (FacetCut[] memory cuts, address init, bytes memory initCalldata) =
+            _buildCuts(admin, address(0), address(factory));
+        Diamond d = new Diamond();
         vm.expectRevert(ISafeHarborAdopter.SafeHarborAdopterZeroRegistry.selector);
-        c.initialize(admin, address(0), address(factory));
+        d.initialize(cuts, init, initCalldata);
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -284,7 +272,7 @@ contract SafeHarborAdopterTest is Test {
     //////////////////////////////////////////////////////////////////////////*//
 
     function test_SupportsISafeHarborAdopter() public view {
-        assertTrue(adopter.supportsInterface(type(ISafeHarborAdopter).interfaceId));
+        assertTrue(ERC165Facet(diamond).supportsInterface(type(ISafeHarborAdopter).interfaceId));
     }
 
     function test_InterfaceIdMatchesConstant() public pure {
