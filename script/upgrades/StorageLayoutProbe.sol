@@ -343,6 +343,28 @@ contract StorageLayoutProbe {
         mapping(uint256 chainId => mapping(bytes32 guid => bool used)) _executed;
     }
 
+    /// @dev Verbatim mirror of
+    ///      `L2ToL2CrossDomainMessengerGatewayAdapterLib.L2ToL2CrossDomainMessengerGatewayAdapterStorage`
+    ///      (`@custom:storage-location erc7201:lattice.storage.L2ToL2CrossDomainMessengerGatewayAdapter`).
+    ///      Append-only.
+    struct L2ToL2CrossDomainMessengerGatewayAdapterStorage {
+        mapping(uint256 chainId => address remoteAdapter) _remoteAdapters;
+        mapping(uint256 chainId => mapping(bytes32 id => bool used)) _executed;
+        uint256 _outboundNonce;
+    }
+
+    /// @dev Verbatim mirror of
+    ///      `L1ToL2CrossDomainMessengerGatewayAdapterLib.L1ToL2CrossDomainMessengerGatewayAdapterStorage`
+    ///      (`@custom:storage-location erc7201:lattice.storage.L1ToL2CrossDomainMessengerGatewayAdapter`).
+    ///      Append-only.
+    struct L1ToL2CrossDomainMessengerGatewayAdapterStorage {
+        uint256 _counterpartChainId;
+        address _counterpartAdapter;
+        uint32 _minGasLimit;
+        mapping(bytes32 id => bool used) _executed;
+        uint256 _outboundNonce;
+    }
+
     /// @dev Verbatim mirror of `MarketplaceZoneLib.MarketplaceZoneStorage`
     ///      (`@custom:storage-location erc7201:lattice.storage.MarketplaceZone`). Append-only.
     struct MarketplaceZoneStorage {
@@ -516,6 +538,8 @@ contract StorageLayoutProbe {
     ERC7786OpenBridgeStorage internal _unusedERC7786OpenBridge;
     CCIPGatewayAdapterStorage internal _unusedCCIPGatewayAdapter;
     LayerZeroGatewayAdapterStorage internal _unusedLayerZeroGatewayAdapter;
+    L2ToL2CrossDomainMessengerGatewayAdapterStorage internal _unusedL2ToL2CrossDomainMessengerGatewayAdapter;
+    L1ToL2CrossDomainMessengerGatewayAdapterStorage internal _unusedL1ToL2CrossDomainMessengerGatewayAdapter;
     PythEntropyAdapterStorage internal _unusedPythEntropyAdapter;
     GelatoVRFAdapterStorage internal _unusedGelatoVRFAdapter;
     API3QRNGAdapterStorage internal _unusedAPI3QRNGAdapter;
