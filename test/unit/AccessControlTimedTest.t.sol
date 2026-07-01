@@ -1,36 +1,27 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
+import {AccessControlTimedTestBase} from "@lattice-test/base/AccessControlTimedTestBase.sol";
 import {AccessControlTimed} from "@lattice/access/AccessControlTimed.sol";
-import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
-import {AccessControlTimedLib} from "@lattice/access/libraries/AccessControlTimedLib.sol";
 import {IAccessControl} from "@lattice/interfaces/access/IAccessControl.sol";
 import {IAccessControlTimed} from "@lattice/interfaces/access/IAccessControlTimed.sol";
-import {Test} from "forge-std/Test.sol";
 
-contract MockAccessControlTimedContract is AccessControlTimed {
-    function initialize(address _admin) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
-        AccessControlLib.__AccessControl_init(_admin);
-        AccessControlTimedLib.__AccessControlTimed_init();
-        InitializableLib.postInitializer(s);
-    }
-}
-
-contract AccessControlTimedTest is Test {
+/// @title AccessControlTimedTest
+/// @notice Exercises the AccessControlTimed facet through a REAL {Diamond} assembled by the ready-to-deploy
+///         {DeployAccessControlTimed} script (see {AccessControlTimedTestBase}) — the timed flavor is cut in
+///         place of the base `AccessControl` facet, so every role + timed-window call routes through the
+///         diamond's `delegatecall` dispatch, not a flattened inheritance mock.
+contract AccessControlTimedTest is AccessControlTimedTestBase {
     bytes32 constant DEFAULT_ADMIN_ROLE = 0x00;
     bytes32 constant MINTER_ROLE = keccak256("MINTER_ROLE");
 
-    MockAccessControlTimedContract internal ac;
     address internal admin = address(0xA1);
     address internal alice = address(0xA11CE);
 
     function setUp() public {
         vm.warp(1_000_000);
-        ac = new MockAccessControlTimedContract();
-        ac.initialize(admin);
+        diamond = _deployAccessControlTimed(admin);
+        ac = AccessControlTimed(diamond);
     }
 
     function test_GrantRoleTimedSetsWindow() public {

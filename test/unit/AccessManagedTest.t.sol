@@ -1,48 +1,44 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
+import {Diamond} from "@diamond/Diamond.sol";
+import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
+import {AccessManagedTestBase} from "@lattice-test/base/AccessManagedTestBase.sol";
+import {AccessManagedTestFacet} from "@lattice-test/helpers/AccessManagedTestFacet.sol";
 import {AccessManaged} from "@lattice/access/AccessManaged.sol";
-import {AccessManagerStandalone} from "@lattice/access/AccessManagerStandalone.sol";
-import {AccessManagedLib} from "@lattice/access/libraries/AccessManagedLib.sol";
+import {AccessManager} from "@lattice/access/AccessManager.sol";
 import {IAccessManaged} from "@lattice/interfaces/access/IAccessManaged.sol";
 import {IAccessManager} from "@lattice/interfaces/access/IAccessManager.sol";
-import {Test} from "forge-std/Test.sol";
 
-contract MockAccessManagedContract is AccessManaged {
-    function initialize(address _authority) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
-        AccessManagedLib.__AccessManaged_init(_authority);
-        InitializableLib.postInitializer(s);
-    }
-
-    function restrictedFn() external view {
-        AccessManagedLib.restrictedCheck();
-    }
-}
-
-contract AccessManagedTest is Test {
-    AccessManagerStandalone internal mgr;
-    MockAccessManagedContract internal managed;
+/// @title AccessManagedTest
+/// @notice Exercises the AccessManaged facet through a REAL {Diamond} pair assembled by the ready-to-deploy
+///         {DeployAccessManager} (authority) and {DeployAccessManaged} (managed) scripts (see
+///         {AccessManagedTestBase}) — every call routes through diamond `delegatecall` dispatch, not flattened
+///         mocks. The managed target's gated `restrictedFn` lives on the cut-in test-only {AccessManagedTestFacet};
+///         the full authority round-trip (direct `canCall`, matured `schedule`/`execute`) is proven end-to-end.
+contract AccessManagedTest is AccessManagedTestBase {
     address internal admin = address(0xA1);
     address internal alice = address(0xA11CE);
     uint64 constant CALLER_ROLE = 1;
 
     function setUp() public {
-        mgr = new AccessManagerStandalone(admin);
-        managed = new MockAccessManagedContract();
-        managed.initialize(address(mgr));
+        authority = _deployAuthority(admin);
+        mgr = AccessManager(authority);
+
+        diamond = _deployManaged(authority);
+        managed = AccessManaged(diamond);
+        managedHelper = AccessManagedTestFacet(diamond);
     }
 
     function test_AuthorityIsSet() public view {
-        assertEq(managed.authority(), address(mgr));
+        assertEq(managed.authority(), authority);
     }
 
     function test_InitWithZeroAuthorityReverts() public {
-        MockAccessManagedContract m2 = new MockAccessManagedContract();
+        (FacetCut[] memory cuts, address init, bytes memory initCalldata) = _managedCuts(address(0));
+        Diamond d = new Diamond();
         vm.expectRevert(abi.encodeWithSelector(IAccessManaged.AccessManagedInvalidAuthority.selector, address(0)));
-        m2.initialize(address(0));
+        d.initialize(cuts, init, initCalldata);
     }
 
     function test_SetAuthorityByNonAuthorityReverts() public {
@@ -52,47 +48,48 @@ contract AccessManagedTest is Test {
     }
 
     function test_SetAuthorityByAuthorityWorks() public {
-        AccessManagerStandalone newMgr = new AccessManagerStandalone(admin);
-        vm.prank(address(mgr));
-        managed.setAuthority(address(newMgr));
-        assertEq(managed.authority(), address(newMgr));
+        address newAuthority = _deployAuthority(admin);
+        vm.prank(authority);
+        managed.setAuthority(newAuthority);
+        assertEq(managed.authority(), newAuthority);
     }
 
     function test_SetAuthorityEOAReverts() public {
         address eoa = address(0xDEAD);
-        vm.prank(address(mgr));
+        vm.prank(authority);
         vm.expectRevert(abi.encodeWithSelector(IAccessManaged.AccessManagedInvalidAuthority.selector, eoa));
         managed.setAuthority(eoa);
     }
 
     function test_InitWithEOAAuthorityReverts() public {
         address eoa = address(0xBEEF);
-        MockAccessManagedContract m2 = new MockAccessManagedContract();
+        (FacetCut[] memory cuts, address init, bytes memory initCalldata) = _managedCuts(eoa);
+        Diamond d = new Diamond();
         vm.expectRevert(abi.encodeWithSelector(IAccessManaged.AccessManagedInvalidAuthority.selector, eoa));
-        m2.initialize(eoa);
+        d.initialize(cuts, init, initCalldata);
     }
 
     function test_RestrictedFnUnauthorizedReverts() public {
         vm.prank(alice);
         vm.expectRevert(abi.encodeWithSelector(IAccessManaged.AccessManagedUnauthorized.selector, alice));
-        managed.restrictedFn();
+        managedHelper.restrictedFn();
     }
 
     function test_RestrictedFnAuthorizedPasses() public {
         bytes4[] memory selectors = new bytes4[](1);
-        selectors[0] = managed.restrictedFn.selector;
+        selectors[0] = managedHelper.restrictedFn.selector;
         vm.prank(admin);
         mgr.setTargetFunctionRole(address(managed), selectors, type(uint64).max);
 
         vm.prank(alice);
-        managed.restrictedFn();
+        managedHelper.restrictedFn();
     }
 
     /// @notice T-1 / H-1 regression: a caller with an execution delay gets
     ///         AccessManagedRequiredDelay when calling directly (without schedule+execute).
     function test_RestrictedFnWithDelayRevertsDirectly() public {
         bytes4[] memory selectors = new bytes4[](1);
-        selectors[0] = managed.restrictedFn.selector;
+        selectors[0] = managedHelper.restrictedFn.selector;
 
         vm.prank(admin);
         mgr.setTargetFunctionRole(address(managed), selectors, CALLER_ROLE);
@@ -103,7 +100,7 @@ contract AccessManagedTest is Test {
         vm.expectRevert(
             abi.encodeWithSelector(IAccessManaged.AccessManagedRequiredDelay.selector, alice, uint32(1 days))
         );
-        managed.restrictedFn();
+        managedHelper.restrictedFn();
     }
 
     /// @notice T-1 / H-1 regression: a caller with an execution delay can succeed through
@@ -111,14 +108,14 @@ contract AccessManagedTest is Test {
     ///         bypass is working end-to-end.
     function test_RestrictedFnViaManagerExecuteAfterDelaySucceeds() public {
         bytes4[] memory selectors = new bytes4[](1);
-        selectors[0] = managed.restrictedFn.selector;
+        selectors[0] = managedHelper.restrictedFn.selector;
 
         vm.prank(admin);
         mgr.setTargetFunctionRole(address(managed), selectors, CALLER_ROLE);
         vm.prank(admin);
         mgr.grantRole(CALLER_ROLE, alice, uint32(1 days)); // execution delay
 
-        bytes memory data = abi.encodeCall(MockAccessManagedContract.restrictedFn, ());
+        bytes memory data = abi.encodeCall(AccessManagedTestFacet.restrictedFn, ());
 
         // Schedule the operation
         vm.prank(alice);

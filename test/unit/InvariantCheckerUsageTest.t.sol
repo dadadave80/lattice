@@ -1,15 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
-import {AccessControl} from "@lattice/access/AccessControl.sol";
-import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
+import {InvariantCheckerTestBase} from "@lattice-test/base/InvariantCheckerTestBase.sol";
+import {InvariantCheckerTestFacet} from "@lattice-test/helpers/InvariantCheckerTestFacet.sol";
 import {IAccessControl} from "@lattice/interfaces/access/IAccessControl.sol";
 import {IInvariantChecker} from "@lattice/interfaces/security/IInvariantChecker.sol";
 import {InvariantChecker} from "@lattice/security/InvariantChecker.sol";
-import {InvariantCheckerLib} from "@lattice/security/libraries/InvariantCheckerLib.sol";
-import {Test} from "forge-std/Test.sol";
 
 // =============================================================================
 // Worked example: wiring InvariantChecker to a real protocol invariant.
@@ -20,6 +16,13 @@ import {Test} from "forge-std/Test.sol";
 // functions, then gates sensitive operations on `checkInvariant` /
 // `checkInvariants`. This file is the canonical, copyable reference for that
 // pattern, exercised against a solvency-style invariant.
+//
+// The consumer protocol here IS the REAL diamond assembled by the ready-to-deploy
+// {DeployInvariantChecker} script (see {InvariantCheckerTestBase}): the registry
+// calls (`registerInvariant`/`checkInvariant`/…) dispatch through the cut-in
+// `InvariantChecker` facet, and the gated action (`distributeYield`) through the
+// test-only {InvariantCheckerTestFacet} — the copyable stand-in for a consumer's
+// own facet that forwards to {InvariantCheckerLib.checkInvariant}.
 // =============================================================================
 
 /// @notice A minimal consumer treasury that exposes a solvency invariant.
@@ -52,52 +55,27 @@ contract MockTreasury {
     }
 }
 
-/// @title MockSolventProtocol
-/// @notice A consumer Diamond facet combining InvariantChecker + AccessControl,
-///         demonstrating how a real protocol would gate an action on its own
-///         registered invariant.
-contract MockSolventProtocol is InvariantChecker, AccessControl {
-    /// @notice Initializes AccessControl and InvariantChecker for this consumer.
-    function initialize(address _admin) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
-        AccessControlLib.__AccessControl_init(_admin);
-        InvariantCheckerLib.__InvariantChecker_init();
-        InitializableLib.postInitializer(s);
-    }
-
-    /// @notice A sensitive action gated on the consumer's own solvency invariant:
-    ///         it reverts (via InvariantChecker) if the protocol is insolvent.
-    /// @dev This is the opt-in usage pattern — the consumer chooses which key(s)
-    ///      to assert before performing state-changing work.
-    function distributeYield(bytes32 solvencyKey) external view {
-        InvariantCheckerLib.checkInvariant(solvencyKey);
-        // ... real protocol would perform the distribution here ...
-    }
-
-    function supportsInterface(bytes4 _interfaceId) public view returns (bool) {
-        return ERC165Lib.supportsInterface(_interfaceId);
-    }
-}
-
 /// @title InvariantCheckerUsageTest
 /// @notice Executable documentation: the end-to-end opt-in pattern for wiring
-///         InvariantChecker to a consumer-defined protocol invariant. Covers the
-///         happy path (invariant holds), the violation path (invariant broken),
-///         batch checking, and the admin-only registration guard.
-contract InvariantCheckerUsageTest is Test {
+///         InvariantChecker to a consumer-defined protocol invariant, exercised on a REAL {Diamond}. Covers the
+///         happy path (invariant holds), the violation path (invariant broken), batch checking, and the
+///         admin-only registration guard. `protocol` is the InvariantChecker registry handle on the diamond;
+///         `gate` is the {InvariantCheckerTestFacet} that re-expresses a consumer's own gated action.
+contract InvariantCheckerUsageTest is InvariantCheckerTestBase {
     bytes32 private constant DEFAULT_ADMIN_ROLE = 0x00;
     bytes32 private constant SOLVENCY_KEY = keccak256("lattice.invariant.treasury.solvency");
 
-    MockSolventProtocol internal protocol;
+    InvariantChecker internal protocol; // registry facet handle on the diamond
+    InvariantCheckerTestFacet internal gate; // gated-action helper facet handle on the diamond
     MockTreasury internal treasury;
 
     address internal admin = address(0xA11CE);
     address internal attacker = address(0xBAD);
 
     function setUp() public {
-        protocol = new MockSolventProtocol();
-        protocol.initialize(admin);
+        diamond = _deployInvariantChecker(admin);
+        protocol = InvariantChecker(diamond);
+        gate = InvariantCheckerTestFacet(diamond);
 
         // Treasury starts solvent: 1_000 backing against 600 liabilities.
         treasury = new MockTreasury(1_000, 600);
@@ -144,7 +122,7 @@ contract InvariantCheckerUsageTest is Test {
 
         // And so does the action that gates on it (anyone may trigger the check).
         vm.prank(attacker);
-        protocol.distributeYield(SOLVENCY_KEY);
+        gate.distributeYield(SOLVENCY_KEY);
     }
 
     /// @notice At the exact boundary (backing == liabilities) the protocol is
@@ -154,7 +132,7 @@ contract InvariantCheckerUsageTest is Test {
         vm.prank(admin);
         protocol.registerInvariant(SOLVENCY_KEY, address(treasury), MockTreasury.isSolvent.selector);
 
-        protocol.distributeYield(SOLVENCY_KEY); // must not revert
+        gate.distributeYield(SOLVENCY_KEY); // must not revert
     }
 
     // -------------------------------------------------------------------------
@@ -176,7 +154,7 @@ contract InvariantCheckerUsageTest is Test {
 
         // The consumer's gated action inherits the same revert.
         vm.expectRevert(abi.encodeWithSelector(IInvariantChecker.InvariantViolatedError.selector, SOLVENCY_KEY));
-        protocol.distributeYield(SOLVENCY_KEY);
+        gate.distributeYield(SOLVENCY_KEY);
     }
 
     /// @notice Solvency can be restored and the gate re-opens — the check tracks
