@@ -343,6 +343,12 @@ contract StorageLayoutProbe {
         mapping(uint32 domain => DomainConfig config) _domainConfig;
     }
 
+    /// @dev Verbatim mirror of `AggregatorExecAdapterLib.AggregatorExecAdapterStorage`
+    ///      (`@custom:storage-location erc7201:lattice.storage.AggregatorExecAdapter`). Append-only.
+    struct AggregatorExecAdapterStorage {
+        mapping(address aggregator => mapping(bytes4 selector => bool allowed)) _allowedCall;
+    }
+
     /// @dev Verbatim mirror of `LayerZeroGatewayAdapterLib.LayerZeroGatewayAdapterStorage` and its
     ///      `DestinationConfig` (`@custom:storage-location erc7201:lattice.storage.LayerZeroGatewayAdapter`).
     ///      Append-only.
@@ -566,6 +572,7 @@ contract StorageLayoutProbe {
     ERC7786OpenBridgeStorage internal _unusedERC7786OpenBridge;
     CCIPGatewayAdapterStorage internal _unusedCCIPGatewayAdapter;
     CCTPBridgeAdapterStorage internal _unusedCCTPBridgeAdapter;
+    AggregatorExecAdapterStorage internal _unusedAggregatorExecAdapter;
     LayerZeroGatewayAdapterStorage internal _unusedLayerZeroGatewayAdapter;
     L2ToL2CrossDomainMessengerGatewayAdapterStorage internal _unusedL2ToL2CrossDomainMessengerGatewayAdapter;
     ZetaChainGatewayAdapterStorage internal _unusedZetaChainGatewayAdapter;
