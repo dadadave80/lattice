@@ -1,45 +1,32 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
-import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
+import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
+import {SemaphoreTestBase} from "@lattice-test/base/SemaphoreTestBase.sol";
 import {ISemaphore} from "@lattice/interfaces/privacy/ISemaphore.sol";
 import {Semaphore} from "@lattice/privacy/Semaphore.sol";
-import {SemaphoreLib} from "@lattice/privacy/libraries/SemaphoreLib.sol";
 import {SemaphoreVerifier} from "@semaphore/SemaphoreVerifier.sol";
-import {Test} from "forge-std/Test.sol";
-
-/// @notice Harness exposing init + ERC-165 discovery for the Semaphore facet.
-contract MockSemaphoreContract is Semaphore {
-    function initialize(address verifier_) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
-        AccessControlLib.__AccessControl_init(msg.sender);
-        SemaphoreLib.__Semaphore_init(verifier_);
-        InitializableLib.postInitializer(s);
-    }
-
-    function supportsInterface(bytes4 interfaceId) external view returns (bool) {
-        return ERC165Lib.supportsInterface(interfaceId);
-    }
-}
 
 /// @title SemaphoreTest
-/// @notice Tests the Semaphore membership/signaling facet against a REAL Semaphore v4 proof generated
-///         off-chain with the semaphore-protocol packages (3 members, depth 2, message 42, scope 7) that
-///         passes Semaphore's own proof verification. See test/fixtures/semaphore.
-contract SemaphoreTest is Test {
+/// @notice Tests the Semaphore membership/signaling facet through a REAL {Diamond} assembled by the
+///         ready-to-deploy {DeploySemaphore} script (see {SemaphoreTestBase}) against a REAL Semaphore v4 proof
+///         generated off-chain with the semaphore-protocol packages (3 members, depth 2, message 42, scope 7)
+///         that passes Semaphore's own proof verification. Every membership/signaling call routes through the
+///         diamond's `delegatecall` dispatch; `supportsInterface` is served by the cut-in `ERC165Facet`. The
+///         off-chain `SemaphoreVerifier` stays an external dependency (NOT the facet under test). See
+///         test/fixtures/semaphore.
+contract SemaphoreTest is SemaphoreTestBase {
     uint256 constant ROOT = 5504274371000021352836406185992230687759203853005470845011606913465462220001;
 
-    MockSemaphoreContract s;
+    Semaphore s; // typed handle on the diamond (this test contract is the Semaphore admin)
 
     address bob = address(0xB0B);
 
     function setUp() public {
         SemaphoreVerifier ver = new SemaphoreVerifier();
-        s = new MockSemaphoreContract();
-        s.initialize(address(ver));
+        diamond = _deploySemaphore(address(this), address(ver));
+        s = Semaphore(diamond);
+        semaphore = s;
     }
 
     function _commitments() internal pure returns (uint256[] memory c) {
@@ -157,6 +144,6 @@ contract SemaphoreTest is Test {
     }
 
     function test_SupportsInterface() public view {
-        assertTrue(s.supportsInterface(type(ISemaphore).interfaceId));
+        assertTrue(ERC165Facet(diamond).supportsInterface(type(ISemaphore).interfaceId));
     }
 }

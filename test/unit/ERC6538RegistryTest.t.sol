@@ -1,29 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
+import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
+import {ERC6538RegistryTestBase} from "@lattice-test/base/ERC6538RegistryTestBase.sol";
 import {IERC6538Registry} from "@lattice/interfaces/privacy/IERC6538Registry.sol";
 import {ERC6538Registry} from "@lattice/privacy/ERC6538Registry.sol";
-import {ERC6538RegistryLib} from "@lattice/privacy/libraries/ERC6538RegistryLib.sol";
-import {EIP712Lib} from "@lattice/utils/libraries/EIP712Lib.sol";
-import {Test} from "forge-std/Test.sol";
-
-/// @title MockERC6538RegistryContract
-/// @notice Wrapper that inherits the ERC6538Registry facet and wires the shared EIP712 init.
-contract MockERC6538RegistryContract is ERC6538Registry {
-    function initialize() external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
-        EIP712Lib.__EIP712_init("ERC6538Registry", "1.0");
-        ERC6538RegistryLib.__ERC6538Registry_init();
-        InitializableLib.postInitializer(s);
-    }
-
-    function supportsInterface(bytes4 interfaceId) external view returns (bool) {
-        return ERC165Lib.supportsInterface(interfaceId);
-    }
-}
 
 /// @title Mock1271Wallet
 /// @notice Minimal ERC-1271 wallet that accepts a signature iff it recovers to a fixed owner key.
@@ -49,10 +30,13 @@ contract Mock1271Wallet {
 }
 
 /// @title ERC6538RegistryTest
-/// @notice Unit tests for the ERC-6538 stealth meta-address registry facet.
-contract ERC6538RegistryTest is Test {
-    MockERC6538RegistryContract registry;
-
+/// @notice Exercises the ERC-6538 stealth meta-address registry through a REAL {Diamond} assembled by the
+///         ready-to-deploy {DeployERC6538Registry} script (see {ERC6538RegistryTestBase}) — every registration and
+///         the EIP-712 `registerKeysOnBehalf` signature path route through the diamond's `delegatecall` dispatch,
+///         not a flattened inheritance mock. The registry facet `is EIP712`, so `DOMAIN_SEPARATOR`/`eip712Domain`
+///         are served by the same facet; `supportsInterface` by the cut-in `ERC165Facet`. `Mock1271Wallet` is kept
+///         as a test fixture (it is NOT the facet under test).
+contract ERC6538RegistryTest is ERC6538RegistryTestBase {
     uint256 registrantKey = 0xA11CE;
     address registrant;
     address relayer = address(0xBEEF);
@@ -64,8 +48,8 @@ contract ERC6538RegistryTest is Test {
 
     function setUp() public {
         registrant = vm.addr(registrantKey);
-        registry = new MockERC6538RegistryContract();
-        registry.initialize();
+        diamond = _deployERC6538Registry();
+        registry = ERC6538Registry(diamond);
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -220,7 +204,7 @@ contract ERC6538RegistryTest is Test {
     }
 
     function test_SupportsIERC6538Registry() public view {
-        assertTrue(registry.supportsInterface(type(IERC6538Registry).interfaceId));
+        assertTrue(ERC165Facet(diamond).supportsInterface(type(IERC6538Registry).interfaceId));
     }
 
     function test_InterfaceIdMatchesConstant() public pure {

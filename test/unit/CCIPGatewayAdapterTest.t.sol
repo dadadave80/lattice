@@ -1,12 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
-import {AccessControl} from "@lattice/access/AccessControl.sol";
-import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
+import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
+import {CCIPGatewayAdapterTestBase} from "@lattice-test/base/CCIPGatewayAdapterTestBase.sol";
 import {CCIPGatewayAdapter} from "@lattice/crosschain/CCIPGatewayAdapter.sol";
-import {CCIPGatewayAdapterLib} from "@lattice/crosschain/libraries/CCIPGatewayAdapterLib.sol";
 import {ICCIPGatewayAdapter} from "@lattice/interfaces/crosschain/ICCIPGatewayAdapter.sol";
 import {Client} from "@lattice/interfaces/external/CCIPClient.sol";
 import {IAny2EVMMessageReceiver} from "@lattice/interfaces/external/IAny2EVMMessageReceiver.sol";
@@ -15,7 +12,6 @@ import {IERC7786GatewaySource, IERC7786Recipient} from "@lattice/interfaces/exte
 import {IRouterClient} from "@lattice/interfaces/external/IRouterClient.sol";
 import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
 import {InteroperableAddress} from "@lattice/utils/libraries/InteroperableAddress.sol";
-import {Test} from "forge-std/Test.sol";
 
 /// @notice Minimal CCIP router mock. Records the last `ccipSend`, pulls fees the way the real router does
 ///         (native via `msg.value`, ERC-20 via `transferFrom`), and returns a deterministic message id.
@@ -116,22 +112,7 @@ contract MockRecipient is IERC7786Recipient {
     }
 }
 
-contract MockCCIPAdapter is AccessControl, CCIPGatewayAdapter {
-    function initialize(address admin_, address router_, address feeToken_) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
-        AccessControlLib.__AccessControl_init(admin_);
-        CCIPGatewayAdapterLib.__CCIPGatewayAdapter_init(router_, feeToken_);
-        InitializableLib.postInitializer(s);
-    }
-
-    function supportsInterface(bytes4 id) public view returns (bool) {
-        return ERC165Lib.supportsInterface(id);
-    }
-}
-
-contract CCIPGatewayAdapterTest is Test {
-    MockCCIPAdapter adapter;
+contract CCIPGatewayAdapterTest is CCIPGatewayAdapterTestBase {
     MockCCIPRouter ccipRouter;
     MockRecipient recipient;
     MockERC20 link;
@@ -150,8 +131,8 @@ contract CCIPGatewayAdapterTest is Test {
 
     function setUp() public {
         ccipRouter = new MockCCIPRouter();
-        adapter = new MockCCIPAdapter();
-        adapter.initialize(admin, address(ccipRouter), address(0)); // native fee by default
+        diamond = _deployCCIPGatewayAdapter(admin, address(ccipRouter), address(0)); // native fee by default
+        adapter = CCIPGatewayAdapter(payable(diamond));
         recipient = new MockRecipient();
         link = new MockERC20();
 
@@ -233,12 +214,12 @@ contract CCIPGatewayAdapterTest is Test {
     }
 
     function test_SupportsInterfaceGatewaySource() public view {
-        assertTrue(adapter.supportsInterface(type(IERC7786GatewaySource).interfaceId));
+        assertTrue(ERC165Facet(diamond).supportsInterface(type(IERC7786GatewaySource).interfaceId));
     }
 
     function test_SupportsInterfaceCCIPReceiver() public view {
         // The router calls supportsInterface(0x85572ffb) BEFORE delivery; must be true.
-        assertTrue(adapter.supportsInterface(type(IAny2EVMMessageReceiver).interfaceId));
+        assertTrue(ERC165Facet(diamond).supportsInterface(type(IAny2EVMMessageReceiver).interfaceId));
         assertEq(type(IAny2EVMMessageReceiver).interfaceId, bytes4(0x85572ffb));
     }
 
@@ -438,7 +419,7 @@ contract CCIPGatewayAdapterTest is Test {
         // CCV-enabled lanes detect the receiver via the V2 interfaceId. Solidity's type().interfaceId
         // excludes inherited functions, so V2's id is the getCCVsAndFinalityConfig selector — exactly the
         // value the CCIP router queries.
-        assertTrue(adapter.supportsInterface(type(IAny2EVMMessageReceiverV2).interfaceId));
+        assertTrue(ERC165Facet(diamond).supportsInterface(type(IAny2EVMMessageReceiverV2).interfaceId));
         assertEq(type(IAny2EVMMessageReceiverV2).interfaceId, bytes4(0x1bfc84d0));
     }
 
