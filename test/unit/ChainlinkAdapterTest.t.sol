@@ -1,15 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
-import {AccessControl} from "@lattice/access/AccessControl.sol";
-import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
+import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
+import {ChainlinkAdapterTestBase} from "@lattice-test/base/ChainlinkAdapterTestBase.sol";
 import {IAggregatorV3} from "@lattice/interfaces/external/IAggregatorV3.sol";
 import {IChainlinkAdapter} from "@lattice/interfaces/oracles/IChainlinkAdapter.sol";
 import {ChainlinkAdapter} from "@lattice/oracles/ChainlinkAdapter.sol";
-import {ChainlinkAdapterLib} from "@lattice/oracles/libraries/ChainlinkAdapterLib.sol";
-import {Test} from "forge-std/Test.sol";
 
 // ---------------------------------------------------------------------------
 //                              MOCKS
@@ -49,27 +45,17 @@ contract MockAggregator is IAggregatorV3 {
     }
 }
 
-/// @notice Combines AccessControl + ChainlinkAdapter for testing.
-contract MockChainlinkAdapterContract is AccessControl, ChainlinkAdapter {
-    function initialize(address _admin) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
-        AccessControlLib.__AccessControl_init(_admin);
-        ChainlinkAdapterLib.__ChainlinkAdapter_init();
-        InitializableLib.postInitializer(s);
-    }
-
-    function supportsInterface(bytes4 _interfaceId) public view returns (bool) {
-        return ERC165Lib.supportsInterface(_interfaceId);
-    }
-}
-
 // ---------------------------------------------------------------------------
 //                              TESTS
 // ---------------------------------------------------------------------------
 
-contract ChainlinkAdapterTest is Test {
-    MockChainlinkAdapterContract adapter;
+/// @title ChainlinkAdapterTest
+/// @notice Exercises the Chainlink price-feed adapter through a REAL {Diamond} assembled by the ready-to-deploy
+///         {DeployChainlinkAdapter} script (see {ChainlinkAdapterTestBase}) — every call routes through the
+///         diamond's `delegatecall` dispatch, not a flattened inheritance mock. Admin gating is enforced by the
+///         cut-in `AccessControl` facet; `supportsInterface` by the cut-in `ERC165Facet`. The external
+///         `MockAggregator` feeds are kept as test fixtures (they are NOT the facet under test).
+contract ChainlinkAdapterTest is ChainlinkAdapterTestBase {
     MockAggregator feed8; // 8-decimal (typical Chainlink USD feeds)
     MockAggregator feed18; // 18-decimal
     MockAggregator feed6; // 6-decimal
@@ -94,8 +80,8 @@ contract ChainlinkAdapterTest is Test {
         // Start from a non-zero timestamp so subtractions don't underflow.
         vm.warp(10_000);
 
-        adapter = new MockChainlinkAdapterContract();
-        adapter.initialize(admin);
+        diamond = _deployChainlinkAdapter(admin);
+        adapter = ChainlinkAdapter(diamond);
 
         feed8 = new MockAggregator(8);
         feed18 = new MockAggregator(18);
@@ -356,6 +342,6 @@ contract ChainlinkAdapterTest is Test {
 
     /// @notice supportsInterface returns true for IChainlinkAdapter after init.
     function test_SupportsInterfaceChainlinkAdapter() public view {
-        assertTrue(adapter.supportsInterface(type(IChainlinkAdapter).interfaceId));
+        assertTrue(ERC165Facet(diamond).supportsInterface(type(IChainlinkAdapter).interfaceId));
     }
 }

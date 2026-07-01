@@ -1,41 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
-import {AccessControl} from "@lattice/access/AccessControl.sol";
-import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
+import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
+import {ChainlinkAutomationAdapterTestBase} from "@lattice-test/base/ChainlinkAutomationAdapterTestBase.sol";
 import {IChainlinkAutomationAdapter} from "@lattice/interfaces/oracles/IChainlinkAutomationAdapter.sol";
 import {ChainlinkAutomationAdapter} from "@lattice/oracles/ChainlinkAutomationAdapter.sol";
-import {ChainlinkAutomationAdapterLib} from "@lattice/oracles/libraries/ChainlinkAutomationAdapterLib.sol";
-import {Test} from "forge-std/Test.sol";
 
-// ---------------------------------------------------------------------------
-//                              MOCK CONTRACT
-// ---------------------------------------------------------------------------
-
-/// @notice Combines AccessControl + ChainlinkAutomationAdapter for testing.
-contract MockChainlinkAutomationAdapterContract is AccessControl, ChainlinkAutomationAdapter {
-    function initialize(address _admin) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
-        AccessControlLib.__AccessControl_init(_admin);
-        ChainlinkAutomationAdapterLib.__ChainlinkAutomationAdapter_init();
-        InitializableLib.postInitializer(s);
-    }
-
-    function supportsInterface(bytes4 _interfaceId) public view returns (bool) {
-        return ERC165Lib.supportsInterface(_interfaceId);
-    }
-}
-
-// ---------------------------------------------------------------------------
-//                              TESTS
-// ---------------------------------------------------------------------------
-
-contract ChainlinkAutomationAdapterTest is Test {
-    MockChainlinkAutomationAdapterContract automation;
-
+/// @title ChainlinkAutomationAdapterTest
+/// @notice Exercises the ChainlinkAutomationAdapter facet through a REAL {Diamond} assembled by the
+///         ready-to-deploy {DeployChainlinkAutomationAdapter} script (see {ChainlinkAutomationAdapterTestBase}) —
+///         every call below routes through the diamond's `delegatecall` dispatch, not a flattened inheritance
+///         mock. Admin gating is enforced by the cut-in `AccessControl` facet; `supportsInterface` by the cut-in
+///         `ERC165Facet`.
+contract ChainlinkAutomationAdapterTest is ChainlinkAutomationAdapterTestBase {
     address admin = address(0x1);
     address user = address(0x2);
     address forwarder = address(0xF0);
@@ -45,8 +22,8 @@ contract ChainlinkAutomationAdapterTest is Test {
     function setUp() public {
         vm.warp(1_000_000);
 
-        automation = new MockChainlinkAutomationAdapterContract();
-        automation.initialize(admin);
+        diamond = _deployChainlinkAutomationAdapter(admin);
+        automation = ChainlinkAutomationAdapter(diamond);
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -213,6 +190,6 @@ contract ChainlinkAutomationAdapterTest is Test {
 
     /// @notice supportsInterface returns true for IChainlinkAutomationAdapter after init.
     function test_SupportsInterfaceChainlinkAutomationAdapter() public view {
-        assertTrue(automation.supportsInterface(type(IChainlinkAutomationAdapter).interfaceId));
+        assertTrue(ERC165Facet(diamond).supportsInterface(type(IChainlinkAutomationAdapter).interfaceId));
     }
 }

@@ -1,15 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
-import {AccessControl} from "@lattice/access/AccessControl.sol";
-import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
+import {Diamond} from "@diamond/Diamond.sol";
+import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
+import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
+import {DeployBandAdapter} from "@lattice-script/base/DeployBandAdapter.s.sol";
+import {BandAdapterTestBase} from "@lattice-test/base/BandAdapterTestBase.sol";
 import {IStdReference} from "@lattice/interfaces/external/IStdReference.sol";
 import {IBandAdapter} from "@lattice/interfaces/oracles/IBandAdapter.sol";
 import {BandAdapter} from "@lattice/oracles/BandAdapter.sol";
-import {BandAdapterLib} from "@lattice/oracles/libraries/BandAdapterLib.sol";
-import {Test} from "forge-std/Test.sol";
 
 // ---------------------------------------------------------------------------
 //                              MOCKS
@@ -32,29 +31,17 @@ contract MockStdReference is IStdReference {
     }
 }
 
-/// @notice Combines AccessControl + BandAdapter for testing.
-contract MockBandAdapterContract is AccessControl, BandAdapter {
-    function initialize(address admin, address reference_) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
-        AccessControlLib.__AccessControl_init(admin);
-        BandAdapterLib.__BandAdapter_init(reference_);
-        InitializableLib.postInitializer(s);
-    }
-
-    function supportsInterface(bytes4 interfaceId) external view returns (bool) {
-        return ERC165Lib.supportsInterface(interfaceId);
-    }
-}
-
 // ---------------------------------------------------------------------------
 //                              TESTS
 // ---------------------------------------------------------------------------
 
 /// @title BandAdapterTest
-/// @notice Unit tests for the Band price-oracle adapter against a mock StdReference.
-contract BandAdapterTest is Test {
-    MockBandAdapterContract adapter;
+/// @notice Exercises the Band price-feed adapter through a REAL {Diamond} assembled by the ready-to-deploy
+///         {DeployBandAdapter} script (see {BandAdapterTestBase}) — every call routes through the diamond's
+///         `delegatecall` dispatch, not a flattened inheritance mock. Admin gating is enforced by the cut-in
+///         `AccessControl` facet; `supportsInterface` by the cut-in `ERC165Facet`. The external `MockStdReference`
+///         is kept as a test fixture (it is NOT the facet under test).
+contract BandAdapterTest is BandAdapterTestBase {
     MockStdReference stdRef;
 
     address admin = address(0xA11CE);
@@ -72,8 +59,8 @@ contract BandAdapterTest is Test {
     function setUp() public {
         vm.warp(1_000_000);
         stdRef = new MockStdReference();
-        adapter = new MockBandAdapterContract();
-        adapter.initialize(admin, address(stdRef));
+        diamond = _deployBandAdapter(admin, address(stdRef));
+        adapter = BandAdapter(diamond);
 
         stdRef.set(RATE, block.timestamp - 5, block.timestamp - 5);
     }
@@ -88,9 +75,12 @@ contract BandAdapterTest is Test {
     //////////////////////////////////////////////////////////////////////////*//
 
     function test_InitRevertsOnZeroReference() public {
-        MockBandAdapterContract a = new MockBandAdapterContract();
+        // Assembling the production recipe with a zero StdReference must revert inside the init delegatecall.
+        DeployBandAdapter d = new DeployBandAdapter();
+        (FacetCut[] memory cuts, address init, bytes memory initCalldata) = d.buildCuts(admin, address(0));
+        Diamond diamond_ = new Diamond();
         vm.expectRevert(IBandAdapter.BandReferenceIsZero.selector);
-        a.initialize(admin, address(0));
+        diamond_.initialize(cuts, init, initCalldata);
     }
 
     function test_ReferenceSetOnInit() public view {
@@ -287,6 +277,6 @@ contract BandAdapterTest is Test {
     }
 
     function test_SupportsInterface() public view {
-        assertTrue(adapter.supportsInterface(type(IBandAdapter).interfaceId));
+        assertTrue(ERC165Facet(diamond).supportsInterface(type(IBandAdapter).interfaceId));
     }
 }

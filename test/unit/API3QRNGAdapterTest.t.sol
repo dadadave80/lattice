@@ -1,21 +1,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
-import {AccessControl} from "@lattice/access/AccessControl.sol";
-import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
+import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
+import {API3QRNGAdapterTestBase} from "@lattice-test/base/API3QRNGAdapterTestBase.sol";
 import {IAirnodeRrpV0} from "@lattice/interfaces/external/IAirnodeRrpV0.sol";
 import {IAPI3QRNGAdapter} from "@lattice/interfaces/oracles/IAPI3QRNGAdapter.sol";
 import {API3QRNGAdapter} from "@lattice/oracles/API3QRNGAdapter.sol";
-import {API3QRNGAdapterLib} from "@lattice/oracles/libraries/API3QRNGAdapterLib.sol";
-import {Test} from "forge-std/Test.sol";
 
 // ---------------------------------------------------------------------------
-//                              MOCKS
+//                          EXTERNAL FIXTURE (Airnode RRP)
 // ---------------------------------------------------------------------------
 
-/// @notice Mock Airnode RRP that records calls and returns deterministic request IDs.
+/// @notice Mock Airnode RRP that records calls and returns deterministic request IDs. This is the EXTERNAL API3
+///         Airnode protocol the facet talks to (NOT the facet under test) — kept as a test fixture that drives
+///         the `fulfillRandomNumber` callback into the diamond.
 contract MockAirnodeRrp is IAirnodeRrpV0 {
     uint256 private _nonce;
 
@@ -69,27 +67,15 @@ contract MockAirnodeRrp is IAirnodeRrpV0 {
     }
 }
 
-/// @notice Combines AccessControl + API3QRNGAdapter for testing.
-contract MockAPI3QRNGAdapterContract is AccessControl, API3QRNGAdapter {
-    function initialize(address _admin) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
-        AccessControlLib.__AccessControl_init(_admin);
-        API3QRNGAdapterLib.__API3QRNGAdapter_init();
-        InitializableLib.postInitializer(s);
-    }
-
-    function supportsInterface(bytes4 _interfaceId) public view returns (bool) {
-        return ERC165Lib.supportsInterface(_interfaceId);
-    }
-}
-
 // ---------------------------------------------------------------------------
 //                              TESTS
 // ---------------------------------------------------------------------------
 
-contract API3QRNGAdapterTest is Test {
-    MockAPI3QRNGAdapterContract qrng;
+/// @notice Exercises the API3 QRNG facet through a REAL {Diamond} assembled by the ready-to-deploy
+///         {DeployAPI3QRNGAdapter} script (see {API3QRNGAdapterTestBase}) — every call below routes through the
+///         diamond's `delegatecall` dispatch, not a flattened inheritance mock. Admin gating is enforced by the
+///         cut-in `AccessControl` facet; `supportsInterface` by the cut-in `ERC165Facet`.
+contract API3QRNGAdapterTest is API3QRNGAdapterTestBase {
     MockAirnodeRrp rrp;
 
     address admin = address(0x1);
@@ -103,8 +89,8 @@ contract API3QRNGAdapterTest is Test {
     IAPI3QRNGAdapter.QRNGConfig validConfig;
 
     function setUp() public {
-        qrng = new MockAPI3QRNGAdapterContract();
-        qrng.initialize(admin);
+        diamond = _deployAPI3QRNGAdapter(admin);
+        qrng = API3QRNGAdapter(diamond);
 
         rrp = new MockAirnodeRrp();
 
@@ -199,8 +185,8 @@ contract API3QRNGAdapterTest is Test {
         vm.stopPrank();
 
         (address sponsor, address requester, bool status) = rrp.lastSponsorship();
-        assertEq(sponsor, address(qrng), "sponsor should be the adapter");
-        assertEq(requester, address(qrng), "requester should be the adapter");
+        assertEq(sponsor, diamond, "sponsor should be the adapter");
+        assertEq(requester, diamond, "requester should be the adapter");
         assertTrue(status, "status should be true");
     }
 
@@ -265,9 +251,9 @@ contract API3QRNGAdapterTest is Test {
         ) = rrp.requests(requestId);
         assertEq(reqAirnode, airnode, "airnode mismatch");
         assertEq(reqEndpoint, ENDPOINT_ID, "endpoint mismatch");
-        assertEq(reqSponsor, address(qrng), "sponsor should be the adapter");
+        assertEq(reqSponsor, diamond, "sponsor should be the adapter");
         assertEq(reqSponsorWallet, sponsorWallet, "sponsorWallet mismatch");
-        assertEq(reqFulfillAddress, address(qrng), "fulfillAddress should be the adapter");
+        assertEq(reqFulfillAddress, diamond, "fulfillAddress should be the adapter");
         assertEq(
             reqFulfillFunctionId,
             IAPI3QRNGAdapter.fulfillRandomNumber.selector,
@@ -329,7 +315,7 @@ contract API3QRNGAdapterTest is Test {
 
         bytes32 unknownId = keccak256("UNKNOWN");
         vm.expectRevert(abi.encodeWithSelector(IAPI3QRNGAdapter.QRNGRequestNotFound.selector, unknownId));
-        rrp.fulfill(address(qrng), unknownId, abi.encode(uint256(777)));
+        rrp.fulfill(diamond, unknownId, abi.encode(uint256(777)));
     }
 
     /// @notice RRP fulfillment decodes the random number, clears the entry, and emits.
@@ -346,7 +332,7 @@ contract API3QRNGAdapterTest is Test {
 
         vm.expectEmit(true, true, false, true);
         emit IAPI3QRNGAdapter.RandomNumberFulfilled(requestId, USER_KEY, rand);
-        rrp.fulfill(address(qrng), requestId, abi.encode(rand));
+        rrp.fulfill(diamond, requestId, abi.encode(rand));
 
         // Pending entry should be cleared.
         assertEq(qrng.getUserKey(requestId), bytes32(0));
@@ -358,6 +344,6 @@ contract API3QRNGAdapterTest is Test {
 
     /// @notice supportsInterface returns true for IAPI3QRNGAdapter after init.
     function test_SupportsInterfaceAPI3QRNGAdapter() public view {
-        assertTrue(qrng.supportsInterface(type(IAPI3QRNGAdapter).interfaceId));
+        assertTrue(ERC165Facet(diamond).supportsInterface(type(IAPI3QRNGAdapter).interfaceId));
     }
 }

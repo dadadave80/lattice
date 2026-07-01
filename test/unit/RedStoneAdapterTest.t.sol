@@ -1,15 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
-import {AccessControl} from "@lattice/access/AccessControl.sol";
-import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
+import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
+import {RedStoneAdapterTestBase} from "@lattice-test/base/RedStoneAdapterTestBase.sol";
 import {IRedstonePriceFeedsAdapter} from "@lattice/interfaces/external/IRedstonePriceFeedsAdapter.sol";
 import {IRedStoneAdapter} from "@lattice/interfaces/oracles/IRedStoneAdapter.sol";
 import {RedStoneAdapter} from "@lattice/oracles/RedStoneAdapter.sol";
-import {RedStoneAdapterLib} from "@lattice/oracles/libraries/RedStoneAdapterLib.sol";
-import {Test} from "forge-std/Test.sol";
 
 // ---------------------------------------------------------------------------
 //                              MOCKS
@@ -36,27 +32,17 @@ contract MockRedstoneAdapter is IRedstonePriceFeedsAdapter {
     }
 }
 
-/// @notice Combines AccessControl + RedStoneAdapter for testing.
-contract MockRedStoneAdapterContract is AccessControl, RedStoneAdapter {
-    function initialize(address _admin) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
-        AccessControlLib.__AccessControl_init(_admin);
-        RedStoneAdapterLib.__RedStoneAdapter_init();
-        InitializableLib.postInitializer(s);
-    }
-
-    function supportsInterface(bytes4 _interfaceId) public view returns (bool) {
-        return ERC165Lib.supportsInterface(_interfaceId);
-    }
-}
-
 // ---------------------------------------------------------------------------
 //                              TESTS
 // ---------------------------------------------------------------------------
 
-contract RedStoneAdapterTest is Test {
-    MockRedStoneAdapterContract adapter;
+/// @title RedStoneAdapterTest
+/// @notice Exercises the RedStone Push price-feed adapter through a REAL {Diamond} assembled by the ready-to-deploy
+///         {DeployRedStoneAdapter} script (see {RedStoneAdapterTestBase}) — every call routes through the
+///         diamond's `delegatecall` dispatch, not a flattened inheritance mock. Admin gating is enforced by the
+///         cut-in `AccessControl` facet; `supportsInterface` by the cut-in `ERC165Facet`. The external
+///         `MockRedstoneAdapter` is kept as a test fixture (it is NOT the facet under test).
+contract RedStoneAdapterTest is RedStoneAdapterTestBase {
     MockRedstoneAdapter feed;
 
     address admin = address(0x1);
@@ -71,8 +57,8 @@ contract RedStoneAdapterTest is Test {
 
     function setUp() public {
         vm.warp(1_000_000);
-        adapter = new MockRedStoneAdapterContract();
-        adapter.initialize(admin);
+        diamond = _deployRedStoneAdapter(admin);
+        adapter = RedStoneAdapter(diamond);
 
         feed = new MockRedstoneAdapter();
         feed.set(PRICE, uint128(block.timestamp - 5));
@@ -221,6 +207,6 @@ contract RedStoneAdapterTest is Test {
     }
 
     function test_SupportsInterface() public view {
-        assertTrue(adapter.supportsInterface(type(IRedStoneAdapter).interfaceId));
+        assertTrue(ERC165Facet(diamond).supportsInterface(type(IRedStoneAdapter).interfaceId));
     }
 }
