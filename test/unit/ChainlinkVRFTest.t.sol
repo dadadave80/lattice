@@ -1,21 +1,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
-import {AccessControl} from "@lattice/access/AccessControl.sol";
-import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
+import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
+import {ChainlinkVRFTestBase} from "@lattice-test/base/ChainlinkVRFTestBase.sol";
 import {IVRFCoordinatorV2Plus} from "@lattice/interfaces/external/IVRFCoordinatorV2Plus.sol";
 import {IChainlinkVRF} from "@lattice/interfaces/oracles/IChainlinkVRF.sol";
 import {ChainlinkVRF} from "@lattice/oracles/ChainlinkVRF.sol";
-import {ChainlinkVRFLib} from "@lattice/oracles/libraries/ChainlinkVRFLib.sol";
-import {Test} from "forge-std/Test.sol";
 
 // ---------------------------------------------------------------------------
-//                              MOCKS
+//                          EXTERNAL FIXTURE (coordinator)
 // ---------------------------------------------------------------------------
 
-/// @notice Mock VRF coordinator that returns incrementing request IDs.
+/// @notice Mock VRF coordinator that returns incrementing request IDs. This is the EXTERNAL Chainlink
+///         coordinator the facet talks to (NOT the facet under test) — kept as a test fixture that drives the
+///         `rawFulfillRandomWords` callback into the diamond.
 contract MockVRFCoordinator is IVRFCoordinatorV2Plus {
     uint256 private _nextRequestId = 1;
 
@@ -46,27 +44,15 @@ contract MockVRFCoordinator is IVRFCoordinatorV2Plus {
     }
 }
 
-/// @notice Combines AccessControl + ChainlinkVRF for testing.
-contract MockChainlinkVRFContract is AccessControl, ChainlinkVRF {
-    function initialize(address _admin) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
-        AccessControlLib.__AccessControl_init(_admin);
-        ChainlinkVRFLib.__ChainlinkVRF_init();
-        InitializableLib.postInitializer(s);
-    }
-
-    function supportsInterface(bytes4 _interfaceId) public view returns (bool) {
-        return ERC165Lib.supportsInterface(_interfaceId);
-    }
-}
-
 // ---------------------------------------------------------------------------
 //                              TESTS
 // ---------------------------------------------------------------------------
 
-contract ChainlinkVRFTest is Test {
-    MockChainlinkVRFContract vrfContract;
+/// @notice Exercises the Chainlink VRF facet through a REAL {Diamond} assembled by the ready-to-deploy
+///         {DeployChainlinkVRF} script (see {ChainlinkVRFTestBase}) — every call below routes through the
+///         diamond's `delegatecall` dispatch, not a flattened inheritance mock. Admin gating is enforced by the
+///         cut-in `AccessControl` facet; `supportsInterface` by the cut-in `ERC165Facet`.
+contract ChainlinkVRFTest is ChainlinkVRFTestBase {
     MockVRFCoordinator coordinator;
 
     address admin = address(0x1);
@@ -81,8 +67,8 @@ contract ChainlinkVRFTest is Test {
     IChainlinkVRF.VRFConfig validConfig;
 
     function setUp() public {
-        vrfContract = new MockChainlinkVRFContract();
-        vrfContract.initialize(admin);
+        diamond = _deployChainlinkVRF(admin);
+        vrf = ChainlinkVRF(diamond);
 
         coordinator = new MockVRFCoordinator();
 
@@ -107,7 +93,7 @@ contract ChainlinkVRFTest is Test {
                 bytes4(keccak256("AccessControlUnauthorizedAccount(address,bytes32)")), user, bytes32(0)
             )
         );
-        vrfContract.setConfig(validConfig);
+        vrf.setConfig(validConfig);
     }
 
     /// @notice setConfig with zero coordinator reverts VRFInvalidConfig.
@@ -116,7 +102,7 @@ contract ChainlinkVRFTest is Test {
         cfg.coordinator = address(0);
         vm.prank(admin);
         vm.expectRevert(abi.encodeWithSelector(IChainlinkVRF.VRFInvalidConfig.selector));
-        vrfContract.setConfig(cfg);
+        vrf.setConfig(cfg);
     }
 
     /// @notice setConfig with zero subscriptionId reverts VRFInvalidConfig.
@@ -125,7 +111,7 @@ contract ChainlinkVRFTest is Test {
         cfg.subscriptionId = 0;
         vm.prank(admin);
         vm.expectRevert(abi.encodeWithSelector(IChainlinkVRF.VRFInvalidConfig.selector));
-        vrfContract.setConfig(cfg);
+        vrf.setConfig(cfg);
     }
 
     /// @notice setConfig with zero keyHash reverts VRFInvalidConfig.
@@ -134,15 +120,15 @@ contract ChainlinkVRFTest is Test {
         cfg.keyHash = bytes32(0);
         vm.prank(admin);
         vm.expectRevert(abi.encodeWithSelector(IChainlinkVRF.VRFInvalidConfig.selector));
-        vrfContract.setConfig(cfg);
+        vrf.setConfig(cfg);
     }
 
     /// @notice Admin can set config and it is stored correctly.
     function test_SetConfigByAdmin() public {
         vm.prank(admin);
-        vrfContract.setConfig(validConfig);
+        vrf.setConfig(validConfig);
 
-        IChainlinkVRF.VRFConfig memory stored = vrfContract.getConfig();
+        IChainlinkVRF.VRFConfig memory stored = vrf.getConfig();
         assertEq(stored.coordinator, address(coordinator));
         assertEq(stored.subscriptionId, SUB_ID);
         assertEq(stored.keyHash, KEY_HASH);
@@ -155,7 +141,7 @@ contract ChainlinkVRFTest is Test {
         vm.prank(admin);
         vm.expectEmit(false, false, false, true);
         emit IChainlinkVRF.VRFConfigSet(address(coordinator), SUB_ID, KEY_HASH);
-        vrfContract.setConfig(validConfig);
+        vrf.setConfig(validConfig);
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -165,28 +151,28 @@ contract ChainlinkVRFTest is Test {
     /// @notice requestRandomWords stores userKey, returns ID, emits event.
     function test_RequestRandomWordsStoresAndEmits() public {
         vm.startPrank(admin);
-        vrfContract.setConfig(validConfig);
+        vrf.setConfig(validConfig);
 
         vm.expectEmit(true, true, false, true);
         emit IChainlinkVRF.RandomWordsRequested(1, USER_KEY, 1);
-        uint256 requestId = vrfContract.requestRandomWords(USER_KEY, 1);
+        uint256 requestId = vrf.requestRandomWords(USER_KEY, 1);
         vm.stopPrank();
 
         assertEq(requestId, 1);
-        assertEq(vrfContract.getUserKey(requestId), USER_KEY);
+        assertEq(vrf.getUserKey(requestId), USER_KEY);
     }
 
     /// @notice requestRandomWords without config reverts VRFNotConfigured.
     function test_RequestRandomWordsRevertsWhenNotConfigured() public {
         vm.prank(admin);
         vm.expectRevert(abi.encodeWithSelector(IChainlinkVRF.VRFNotConfigured.selector));
-        vrfContract.requestRandomWords(USER_KEY, 1);
+        vrf.requestRandomWords(USER_KEY, 1);
     }
 
     /// @notice Non-admin cannot call requestRandomWords.
     function test_RequestRandomWordsRevertsForNonAdmin() public {
         vm.prank(admin);
-        vrfContract.setConfig(validConfig);
+        vrf.setConfig(validConfig);
 
         vm.prank(user);
         vm.expectRevert(
@@ -194,7 +180,7 @@ contract ChainlinkVRFTest is Test {
                 bytes4(keccak256("AccessControlUnauthorizedAccount(address,bytes32)")), user, bytes32(0)
             )
         );
-        vrfContract.requestRandomWords(USER_KEY, 1);
+        vrf.requestRandomWords(USER_KEY, 1);
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -204,48 +190,48 @@ contract ChainlinkVRFTest is Test {
     /// @notice rawFulfillRandomWords from a non-coordinator reverts VRFOnlyCoordinator.
     function test_RawFulfillRevertsFromNonCoordinator() public {
         vm.prank(admin);
-        vrfContract.setConfig(validConfig);
+        vrf.setConfig(validConfig);
 
         uint256[] memory words = new uint256[](1);
         words[0] = 12345;
 
         vm.prank(user);
         vm.expectRevert(abi.encodeWithSelector(IChainlinkVRF.VRFOnlyCoordinator.selector, user));
-        vrfContract.rawFulfillRandomWords(1, words);
+        vrf.rawFulfillRandomWords(1, words);
     }
 
     /// @notice rawFulfillRandomWords for unknown requestId reverts VRFRequestNotFound.
     function test_RawFulfillRevertsOnUnknownRequestId() public {
         vm.prank(admin);
-        vrfContract.setConfig(validConfig);
+        vrf.setConfig(validConfig);
 
         uint256[] memory words = new uint256[](1);
         words[0] = 12345;
 
         vm.prank(address(coordinator));
         vm.expectRevert(abi.encodeWithSelector(IChainlinkVRF.VRFRequestNotFound.selector, uint256(999)));
-        vrfContract.rawFulfillRandomWords(999, words);
+        vrf.rawFulfillRandomWords(999, words);
     }
 
     /// @notice Coordinator fulfillment clears pending entry and emits event.
     function test_RawFulfillFromCoordinatorClearsAndEmits() public {
         vm.startPrank(admin);
-        vrfContract.setConfig(validConfig);
-        uint256 requestId = vrfContract.requestRandomWords(USER_KEY, 1);
+        vrf.setConfig(validConfig);
+        uint256 requestId = vrf.requestRandomWords(USER_KEY, 1);
         vm.stopPrank();
 
         // Verify pending entry exists
-        assertEq(vrfContract.getUserKey(requestId), USER_KEY);
+        assertEq(vrf.getUserKey(requestId), USER_KEY);
 
         uint256[] memory words = new uint256[](1);
         words[0] = 777;
 
         vm.expectEmit(true, true, false, false);
         emit IChainlinkVRF.RandomWordsFulfilled(requestId, USER_KEY);
-        coordinator.fulfillRandomWords(address(vrfContract), requestId, words);
+        coordinator.fulfillRandomWords(diamond, requestId, words);
 
         // Pending entry should be cleared
-        assertEq(vrfContract.getUserKey(requestId), bytes32(0));
+        assertEq(vrf.getUserKey(requestId), bytes32(0));
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -257,26 +243,26 @@ contract ChainlinkVRFTest is Test {
     ///      rawFulfillRandomWords to detect a missing pending request.
     function test_RequestRandomWordsRejectsZeroUserKey() public {
         vm.prank(admin);
-        vrfContract.setConfig(validConfig);
+        vrf.setConfig(validConfig);
 
         vm.prank(admin);
         vm.expectRevert(abi.encodeWithSelector(IChainlinkVRF.VRFInvalidUserKey.selector));
-        vrfContract.requestRandomWords(bytes32(0), 1);
+        vrf.requestRandomWords(bytes32(0), 1);
     }
 
     /// @notice Fulfilling a request with a non-zero userKey still works after
     ///         the zero-userKey guard is in place (regression test).
     function test_FulfillmentUnaffectedByZeroKeyGuard() public {
         vm.startPrank(admin);
-        vrfContract.setConfig(validConfig);
-        uint256 requestId = vrfContract.requestRandomWords(USER_KEY, 1);
+        vrf.setConfig(validConfig);
+        uint256 requestId = vrf.requestRandomWords(USER_KEY, 1);
         vm.stopPrank();
 
         uint256[] memory words = new uint256[](1);
         words[0] = 42;
-        coordinator.fulfillRandomWords(address(vrfContract), requestId, words);
+        coordinator.fulfillRandomWords(diamond, requestId, words);
 
-        assertEq(vrfContract.getUserKey(requestId), bytes32(0), "pending entry should be cleared");
+        assertEq(vrf.getUserKey(requestId), bytes32(0), "pending entry should be cleared");
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -285,6 +271,6 @@ contract ChainlinkVRFTest is Test {
 
     /// @notice supportsInterface returns true for IChainlinkVRF after init.
     function test_SupportsInterfaceChainlinkVRF() public view {
-        assertTrue(vrfContract.supportsInterface(type(IChainlinkVRF).interfaceId));
+        assertTrue(ERC165Facet(diamond).supportsInterface(type(IChainlinkVRF).interfaceId));
     }
 }

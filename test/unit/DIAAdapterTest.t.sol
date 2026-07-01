@@ -1,15 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
-import {AccessControl} from "@lattice/access/AccessControl.sol";
-import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
+import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
+import {DIAAdapterTestBase} from "@lattice-test/base/DIAAdapterTestBase.sol";
 import {IDIAOracleV2} from "@lattice/interfaces/external/IDIAOracleV2.sol";
 import {IDIAAdapter} from "@lattice/interfaces/oracles/IDIAAdapter.sol";
 import {DIAAdapter} from "@lattice/oracles/DIAAdapter.sol";
-import {DIAAdapterLib} from "@lattice/oracles/libraries/DIAAdapterLib.sol";
-import {Test} from "forge-std/Test.sol";
 
 // ---------------------------------------------------------------------------
 //                              MOCKS
@@ -43,27 +39,17 @@ contract MockDIAOracle is IDIAOracleV2 {
     }
 }
 
-/// @notice Combines AccessControl + DIAAdapter for testing.
-contract MockDIAAdapterContract is AccessControl, DIAAdapter {
-    function initialize(address _admin) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
-        AccessControlLib.__AccessControl_init(_admin);
-        DIAAdapterLib.__DIAAdapter_init();
-        InitializableLib.postInitializer(s);
-    }
-
-    function supportsInterface(bytes4 _interfaceId) public view returns (bool) {
-        return ERC165Lib.supportsInterface(_interfaceId);
-    }
-}
-
 // ---------------------------------------------------------------------------
 //                              TESTS
 // ---------------------------------------------------------------------------
 
-contract DIAAdapterTest is Test {
-    MockDIAAdapterContract adapter;
+/// @title DIAAdapterTest
+/// @notice Exercises the DIA OracleV2 price-feed adapter through a REAL {Diamond} assembled by the ready-to-deploy
+///         {DeployDIAAdapter} script (see {DIAAdapterTestBase}) — every call routes through the diamond's
+///         `delegatecall` dispatch, not a flattened inheritance mock. Admin gating is enforced by the cut-in
+///         `AccessControl` facet; `supportsInterface` by the cut-in `ERC165Facet`. The external `MockDIAOracle`
+///         is kept as a test fixture (it is NOT the facet under test).
+contract DIAAdapterTest is DIAAdapterTestBase {
     MockDIAOracle oracle;
 
     address admin = address(0x1);
@@ -80,8 +66,8 @@ contract DIAAdapterTest is Test {
 
     function setUp() public {
         vm.warp(10_000);
-        adapter = new MockDIAAdapterContract();
-        adapter.initialize(admin);
+        diamond = _deployDIAAdapter(admin);
+        adapter = DIAAdapter(diamond);
 
         oracle = new MockDIAOracle();
         oracle.set(PRICE_8DEC, uint128(block.timestamp - 5));
@@ -248,6 +234,6 @@ contract DIAAdapterTest is Test {
     }
 
     function test_SupportsInterface() public view {
-        assertTrue(adapter.supportsInterface(type(IDIAAdapter).interfaceId));
+        assertTrue(ERC165Facet(diamond).supportsInterface(type(IDIAAdapter).interfaceId));
     }
 }
