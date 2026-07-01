@@ -1,15 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
-import {AccessControl} from "@lattice/access/AccessControl.sol";
-import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
+import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
+import {API3AdapterTestBase} from "@lattice-test/base/API3AdapterTestBase.sol";
 import {IApi3Proxy} from "@lattice/interfaces/external/IApi3Proxy.sol";
 import {IAPI3Adapter} from "@lattice/interfaces/oracles/IAPI3Adapter.sol";
 import {API3Adapter} from "@lattice/oracles/API3Adapter.sol";
-import {API3AdapterLib} from "@lattice/oracles/libraries/API3AdapterLib.sol";
-import {Test} from "forge-std/Test.sol";
 
 // ---------------------------------------------------------------------------
 //                              MOCKS
@@ -30,27 +26,17 @@ contract MockApi3Proxy is IApi3Proxy {
     }
 }
 
-/// @notice Combines AccessControl + API3Adapter for testing.
-contract MockAPI3AdapterContract is AccessControl, API3Adapter {
-    function initialize(address _admin) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
-        AccessControlLib.__AccessControl_init(_admin);
-        API3AdapterLib.__API3Adapter_init();
-        InitializableLib.postInitializer(s);
-    }
-
-    function supportsInterface(bytes4 _interfaceId) public view returns (bool) {
-        return ERC165Lib.supportsInterface(_interfaceId);
-    }
-}
-
 // ---------------------------------------------------------------------------
 //                              TESTS
 // ---------------------------------------------------------------------------
 
-contract API3AdapterTest is Test {
-    MockAPI3AdapterContract adapter;
+/// @title API3AdapterTest
+/// @notice Exercises the API3 dAPI price-feed adapter through a REAL {Diamond} assembled by the ready-to-deploy
+///         {DeployAPI3Adapter} script (see {API3AdapterTestBase}) — every call routes through the diamond's
+///         `delegatecall` dispatch, not a flattened inheritance mock. Admin gating is enforced by the cut-in
+///         `AccessControl` facet; `supportsInterface` by the cut-in `ERC165Facet`. The external `MockApi3Proxy`
+///         is kept as a test fixture (it is NOT the facet under test).
+contract API3AdapterTest is API3AdapterTestBase {
     MockApi3Proxy proxy;
 
     address admin = address(0x1);
@@ -64,8 +50,8 @@ contract API3AdapterTest is Test {
 
     function setUp() public {
         vm.warp(10_000);
-        adapter = new MockAPI3AdapterContract();
-        adapter.initialize(admin);
+        diamond = _deployAPI3Adapter(admin);
+        adapter = API3Adapter(diamond);
 
         proxy = new MockApi3Proxy();
         proxy.set(PRICE, uint32(block.timestamp - 5));
@@ -216,6 +202,6 @@ contract API3AdapterTest is Test {
     }
 
     function test_SupportsInterface() public view {
-        assertTrue(adapter.supportsInterface(type(IAPI3Adapter).interfaceId));
+        assertTrue(ERC165Facet(diamond).supportsInterface(type(IAPI3Adapter).interfaceId));
     }
 }

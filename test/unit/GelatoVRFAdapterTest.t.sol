@@ -1,42 +1,22 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
-import {AccessControl} from "@lattice/access/AccessControl.sol";
-import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
+import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
+import {GelatoVRFAdapterTestBase} from "@lattice-test/base/GelatoVRFAdapterTestBase.sol";
 import {IGelatoVRFConsumer} from "@lattice/interfaces/external/IGelatoVRFConsumer.sol";
 import {IGelatoVRFAdapter} from "@lattice/interfaces/oracles/IGelatoVRFAdapter.sol";
 import {GelatoVRFAdapter} from "@lattice/oracles/GelatoVRFAdapter.sol";
-import {GelatoVRFAdapterLib} from "@lattice/oracles/libraries/GelatoVRFAdapterLib.sol";
-import {Test} from "forge-std/Test.sol";
-
-// ---------------------------------------------------------------------------
-//                              MOCK CONTRACT
-// ---------------------------------------------------------------------------
-
-/// @notice Combines AccessControl + GelatoVRFAdapter for testing.
-contract MockGelatoVRFAdapterContract is AccessControl, GelatoVRFAdapter {
-    function initialize(address _admin) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
-        AccessControlLib.__AccessControl_init(_admin);
-        GelatoVRFAdapterLib.__GelatoVRFAdapter_init();
-        InitializableLib.postInitializer(s);
-    }
-
-    function supportsInterface(bytes4 _interfaceId) public view returns (bool) {
-        return ERC165Lib.supportsInterface(_interfaceId);
-    }
-}
 
 // ---------------------------------------------------------------------------
 //                              TESTS
 // ---------------------------------------------------------------------------
 
-contract GelatoVRFAdapterTest is Test {
-    MockGelatoVRFAdapterContract adapter;
-
+/// @notice Exercises the Gelato VRF facet through a REAL {Diamond} assembled by the ready-to-deploy
+///         {DeployGelatoVRFAdapter} script (see {GelatoVRFAdapterTestBase}) — every call below routes through
+///         the diamond's `delegatecall` dispatch, not a flattened inheritance mock. The Gelato `operator`
+///         (an EOA in these tests) drives the `fulfillRandomness` callback into the diamond. Admin gating is
+///         enforced by the cut-in `AccessControl` facet; `supportsInterface` by the cut-in `ERC165Facet`.
+contract GelatoVRFAdapterTest is GelatoVRFAdapterTestBase {
     address admin = address(0x1);
     address user = address(0x2);
     address operator = address(0xBEEF);
@@ -48,8 +28,8 @@ contract GelatoVRFAdapterTest is Test {
     uint256 constant PERIOD = 3;
 
     function setUp() public {
-        adapter = new MockGelatoVRFAdapterContract();
-        adapter.initialize(admin);
+        diamond = _deployGelatoVRFAdapter(admin);
+        adapter = GelatoVRFAdapter(diamond);
 
         // Warp to a realistic timestamp so _round() returns a realistic round.
         vm.warp(1_700_000_000);
@@ -245,6 +225,6 @@ contract GelatoVRFAdapterTest is Test {
 
     /// @notice supportsInterface returns true for IGelatoVRFAdapter after init.
     function test_SupportsInterfaceGelatoVRFAdapter() public view {
-        assertTrue(adapter.supportsInterface(type(IGelatoVRFAdapter).interfaceId));
+        assertTrue(ERC165Facet(diamond).supportsInterface(type(IGelatoVRFAdapter).interfaceId));
     }
 }

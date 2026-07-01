@@ -1,15 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
-import {AccessControl} from "@lattice/access/AccessControl.sol";
-import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
+import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
+import {ChronicleAdapterTestBase} from "@lattice-test/base/ChronicleAdapterTestBase.sol";
 import {IChronicle} from "@lattice/interfaces/external/IChronicle.sol";
 import {IChronicleAdapter} from "@lattice/interfaces/oracles/IChronicleAdapter.sol";
 import {ChronicleAdapter} from "@lattice/oracles/ChronicleAdapter.sol";
-import {ChronicleAdapterLib} from "@lattice/oracles/libraries/ChronicleAdapterLib.sol";
-import {Test} from "forge-std/Test.sol";
 
 // ---------------------------------------------------------------------------
 //                              MOCKS
@@ -34,27 +30,17 @@ contract MockChronicle is IChronicle {
     }
 }
 
-/// @notice Combines AccessControl + ChronicleAdapter for testing.
-contract MockChronicleAdapterContract is AccessControl, ChronicleAdapter {
-    function initialize(address _admin) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
-        AccessControlLib.__AccessControl_init(_admin);
-        ChronicleAdapterLib.__ChronicleAdapter_init();
-        InitializableLib.postInitializer(s);
-    }
-
-    function supportsInterface(bytes4 _interfaceId) public view returns (bool) {
-        return ERC165Lib.supportsInterface(_interfaceId);
-    }
-}
-
 // ---------------------------------------------------------------------------
 //                              TESTS
 // ---------------------------------------------------------------------------
 
-contract ChronicleAdapterTest is Test {
-    MockChronicleAdapterContract adapter;
+/// @title ChronicleAdapterTest
+/// @notice Exercises the Chronicle price-feed adapter through a REAL {Diamond} assembled by the ready-to-deploy
+///         {DeployChronicleAdapter} script (see {ChronicleAdapterTestBase}) — every call routes through the
+///         diamond's `delegatecall` dispatch, not a flattened inheritance mock. Admin gating is enforced by the
+///         cut-in `AccessControl` facet; `supportsInterface` by the cut-in `ERC165Facet`. The external
+///         `MockChronicle` is kept as a test fixture (it is NOT the facet under test).
+contract ChronicleAdapterTest is ChronicleAdapterTestBase {
     MockChronicle chronicle;
 
     address admin = address(0x1);
@@ -68,8 +54,8 @@ contract ChronicleAdapterTest is Test {
 
     function setUp() public {
         vm.warp(10_000);
-        adapter = new MockChronicleAdapterContract();
-        adapter.initialize(admin);
+        diamond = _deployChronicleAdapter(admin);
+        adapter = ChronicleAdapter(diamond);
 
         chronicle = new MockChronicle();
         chronicle.set(PRICE, block.timestamp - 5);
@@ -225,6 +211,6 @@ contract ChronicleAdapterTest is Test {
     }
 
     function test_SupportsInterface() public view {
-        assertTrue(adapter.supportsInterface(type(IChronicleAdapter).interfaceId));
+        assertTrue(ERC165Facet(diamond).supportsInterface(type(IChronicleAdapter).interfaceId));
     }
 }

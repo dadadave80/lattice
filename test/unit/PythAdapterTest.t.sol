@@ -1,15 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
-import {AccessControl} from "@lattice/access/AccessControl.sol";
-import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
+import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
+import {PythAdapterTestBase} from "@lattice-test/base/PythAdapterTestBase.sol";
 import {IPyth} from "@lattice/interfaces/external/IPyth.sol";
 import {IPythAdapter} from "@lattice/interfaces/oracles/IPythAdapter.sol";
 import {PythAdapter} from "@lattice/oracles/PythAdapter.sol";
-import {PythAdapterLib} from "@lattice/oracles/libraries/PythAdapterLib.sol";
-import {Test} from "forge-std/Test.sol";
 
 /// @notice Minimal mock Pyth with settable price + fee, tracking received ETH.
 contract MockPyth is IPyth {
@@ -38,27 +34,13 @@ contract MockPyth is IPyth {
     }
 }
 
-/// @notice Combines AccessControl + PythAdapter for testing.
-contract MockPythAdapterContract is AccessControl, PythAdapter {
-    function initialize(address admin, address pyth_) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
-        AccessControlLib.__AccessControl_init(admin);
-        PythAdapterLib.__PythAdapter_init(pyth_);
-        InitializableLib.postInitializer(s);
-    }
-
-    function supportsInterface(bytes4 interfaceId) external view returns (bool) {
-        return ERC165Lib.supportsInterface(interfaceId);
-    }
-
-    receive() external payable {}
-}
-
 /// @title PythAdapterTest
-/// @notice Unit tests for the Pyth price-oracle adapter against a mock Pyth.
-contract PythAdapterTest is Test {
-    MockPythAdapterContract adapter;
+/// @notice Exercises the Pyth price-feed adapter through a REAL {Diamond} assembled by the ready-to-deploy
+///         {DeployPythAdapter} script (see {PythAdapterTestBase}) — every read and the payable `updatePriceFeeds`
+///         fee-forwarding path route through the diamond's `delegatecall` dispatch, not a flattened inheritance
+///         mock. Admin gating is enforced by the cut-in `AccessControl` facet; `supportsInterface` by the cut-in
+///         `ERC165Facet`. The external `MockPyth` is kept as a test fixture (it is NOT the facet under test).
+contract PythAdapterTest is PythAdapterTestBase {
     MockPyth pyth;
     address admin = address(0xA11CE);
 
@@ -69,8 +51,8 @@ contract PythAdapterTest is Test {
 
     function setUp() public {
         pyth = new MockPyth();
-        adapter = new MockPythAdapterContract();
-        adapter.initialize(admin, address(pyth));
+        diamond = _deployPythAdapter(admin, address(pyth));
+        adapter = PythAdapter(payable(diamond));
         vm.warp(1_000_000);
         vm.prank(admin);
         adapter.registerFeed(KEY, PRICE_ID, STALENESS, CONF_BPS);
@@ -259,7 +241,7 @@ contract PythAdapterTest is Test {
     }
 
     function test_SupportsInterface() public view {
-        assertTrue(adapter.supportsInterface(type(IPythAdapter).interfaceId));
+        assertTrue(ERC165Facet(diamond).supportsInterface(type(IPythAdapter).interfaceId));
     }
 
     receive() external payable {}

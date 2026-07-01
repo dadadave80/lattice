@@ -1,15 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
-import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
+import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
+import {StrategyManagerTestBase} from "@lattice-test/base/StrategyManagerTestBase.sol";
+import {DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
 import {StrategyManager} from "@lattice/defi/StrategyManager.sol";
-import {StrategyManagerLib} from "@lattice/defi/libraries/StrategyManagerLib.sol";
 import {IStrategyManager} from "@lattice/interfaces/defi/IStrategyManager.sol";
 import {IVaultCore} from "@lattice/interfaces/defi/IVaultCore.sol";
 import {IERC4626} from "@lattice/interfaces/tokens/IERC4626.sol";
-import {Test} from "forge-std/Test.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
 //                          MOCK UNDERLYING ERC20
@@ -219,32 +217,16 @@ contract ReentrantStrategy {
 }
 
 //*//////////////////////////////////////////////////////////////////////////
-//                       MOCK STRATEGY MANAGER CONTRACT
-//////////////////////////////////////////////////////////////////////////*//
-
-/// @notice StrategyManager mock that exposes init.
-contract MockStrategyManagerContract is StrategyManager {
-    function initialize(address admin_) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
-        AccessControlLib.__AccessControl_init(admin_);
-        StrategyManagerLib.__StrategyManager_init();
-        InitializableLib.postInitializer(s);
-    }
-
-    function supportsInterface(bytes4 interfaceId) public view returns (bool) {
-        return ERC165Lib.supportsInterface(interfaceId);
-    }
-}
-
-//*//////////////////////////////////////////////////////////////////////////
 //                                 TESTS
 //////////////////////////////////////////////////////////////////////////*//
 
 /// @title StrategyManagerTest
-/// @notice Tests for the StrategyManager three-layer module.
-contract StrategyManagerTest is Test {
-    MockStrategyManagerContract mgr;
+/// @notice Exercises the StrategyManager facet through a REAL {Diamond} assembled by the ready-to-deploy
+///         {DeployStrategyManager} script (see {StrategyManagerTestBase}) — every manager call routes through
+///         the diamond's `delegatecall` dispatch, not a flattened inheritance mock. Admin gating is enforced by
+///         the cut-in `AccessControl` facet; `supportsInterface` by the cut-in `ERC165Facet`. The vault,
+///         strategy and token fixtures below are the collaborators the manager drives — NOT the facet under test.
+contract StrategyManagerTest is StrategyManagerTestBase {
     MockToken token;
     MockVault mockVault;
     MockStrategy strategyA;
@@ -259,9 +241,8 @@ contract StrategyManagerTest is Test {
         strategyA = new MockStrategy(token);
         strategyB = new MockStrategy(token);
 
-        mgr = new MockStrategyManagerContract();
-        vm.prank(admin);
-        mgr.initialize(admin);
+        diamond = _deployStrategyManager(admin);
+        mgr = StrategyManager(diamond);
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -729,6 +710,6 @@ contract StrategyManagerTest is Test {
 
     /// @notice StrategyManager registers its interface.
     function test_SupportsInterface_IStrategyManager() public view {
-        assertTrue(mgr.supportsInterface(type(IStrategyManager).interfaceId));
+        assertTrue(ERC165Facet(diamond).supportsInterface(type(IStrategyManager).interfaceId));
     }
 }

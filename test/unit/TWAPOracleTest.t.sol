@@ -1,21 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
-import {AccessControl} from "@lattice/access/AccessControl.sol";
-import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
+import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
+import {TWAPOracleTestBase} from "@lattice-test/base/TWAPOracleTestBase.sol";
 import {IUniswapV2Pair} from "@lattice/interfaces/external/IUniswapV2Pair.sol";
 import {ITWAPOracle} from "@lattice/interfaces/oracles/ITWAPOracle.sol";
 import {TWAPOracle} from "@lattice/oracles/TWAPOracle.sol";
-import {TWAPOracleLib} from "@lattice/oracles/libraries/TWAPOracleLib.sol";
-import {Test} from "forge-std/Test.sol";
 
 // ---------------------------------------------------------------------------
 //                              MOCKS
 // ---------------------------------------------------------------------------
 
 /// @notice Mock Uniswap V2 pair with injectable cumulative prices.
+/// @dev An EXTERNAL fixture the TWAPOracle facet reads — NOT the facet under test.
 contract MockUniswapV2Pair is IUniswapV2Pair {
     uint256 public price0CumulativeLast;
     uint256 public price1CumulativeLast;
@@ -34,27 +31,16 @@ contract MockUniswapV2Pair is IUniswapV2Pair {
     }
 }
 
-/// @notice Combines AccessControl + TWAPOracle for testing.
-contract MockTWAPOracleContract is AccessControl, TWAPOracle {
-    function initialize(address _admin) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
-        AccessControlLib.__AccessControl_init(_admin);
-        TWAPOracleLib.__TWAPOracle_init();
-        InitializableLib.postInitializer(s);
-    }
-
-    function supportsInterface(bytes4 _interfaceId) public view returns (bool) {
-        return ERC165Lib.supportsInterface(_interfaceId);
-    }
-}
-
 // ---------------------------------------------------------------------------
 //                              TESTS
 // ---------------------------------------------------------------------------
 
-contract TWAPOracleTest is Test {
-    MockTWAPOracleContract oracle;
+/// @title TWAPOracleTest
+/// @notice Exercises the TWAPOracle facet through a REAL {Diamond} assembled by the ready-to-deploy
+///         {DeployTWAPOracle} script (see {TWAPOracleTestBase}) — every call below routes through the diamond's
+///         `delegatecall` dispatch, not a flattened inheritance mock. Admin gating is enforced by the cut-in
+///         `AccessControl` facet; `supportsInterface` by the cut-in `ERC165Facet`.
+contract TWAPOracleTest is TWAPOracleTestBase {
     MockUniswapV2Pair pair;
 
     address admin = address(0x1);
@@ -73,8 +59,8 @@ contract TWAPOracleTest is Test {
         // Start at a non-trivial timestamp.
         vm.warp(1_000_000);
 
-        oracle = new MockTWAPOracleContract();
-        oracle.initialize(admin);
+        diamond = _deployTWAPOracle(admin);
+        oracle = TWAPOracle(diamond);
 
         pair = new MockUniswapV2Pair();
         // Initial state: cumulatives = 0, timestamp = current block
@@ -419,6 +405,6 @@ contract TWAPOracleTest is Test {
 
     /// @notice supportsInterface returns true for ITWAPOracle after init.
     function test_SupportsInterfaceITWAPOracle() public view {
-        assertTrue(oracle.supportsInterface(type(ITWAPOracle).interfaceId));
+        assertTrue(ERC165Facet(diamond).supportsInterface(type(ITWAPOracle).interfaceId));
     }
 }
