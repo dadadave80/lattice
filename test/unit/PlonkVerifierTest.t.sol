@@ -1,40 +1,24 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
+import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
+import {PlonkVerifierTestBase} from "@lattice-test/base/PlonkVerifierTestBase.sol";
 import {IPlonkVerifier} from "@lattice/interfaces/privacy/IPlonkVerifier.sol";
 import {PlonkVerifier} from "@lattice/privacy/PlonkVerifier.sol";
-import {PlonkVerifierLib} from "@lattice/privacy/libraries/PlonkVerifierLib.sol";
-import {Test} from "forge-std/Test.sol";
-
-/// @notice Wrapper exposing init + ERC-165 discovery for the stateless verifier facet.
-contract MockPlonkVerifierContract is PlonkVerifier {
-    function initialize() external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
-        PlonkVerifierLib.__PlonkVerifier_init();
-        InitializableLib.postInitializer(s);
-    }
-
-    function supportsInterface(bytes4 interfaceId) external view returns (bool) {
-        return ERC165Lib.supportsInterface(interfaceId);
-    }
-}
 
 /// @title PlonkVerifierTest
-/// @notice Tests the generic PLONK verifier against a REAL proof generated off-chain with circom +
-///         snarkjs for `c = a * b` (a,c public, b private). The proof passes `snarkjs plonk verify`
-///         (OK) with public signals `[c, a] = [33, 3]`.
-contract PlonkVerifierTest is Test {
+/// @notice Tests the generic PLONK verifier through a REAL {Diamond} assembled by the ready-to-deploy
+///         {DeployPlonkVerifier} script (see {PlonkVerifierTestBase}) against a REAL proof generated off-chain
+///         with circom + snarkjs for `c = a * b` (a,c public, b private). The proof passes `snarkjs plonk verify`
+///         (OK) with public signals `[c, a] = [33, 3]`. Every `verifyProof` call routes through the diamond's
+///         `delegatecall` dispatch; `supportsInterface` is served by the cut-in `ERC165Facet`.
+contract PlonkVerifierTest is PlonkVerifierTestBase {
     uint256 constant Q = 21888242871839275222246405745257275088548364400416034343698204186575808495617;
     uint256 constant QF = 21888242871839275222246405745257275088696311157297823662689037894645226208583;
 
-    MockPlonkVerifierContract v;
-
     function setUp() public {
-        v = new MockPlonkVerifierContract();
-        v.initialize();
+        diamond = _deployPlonkVerifier();
+        verifier = PlonkVerifier(diamond);
     }
 
     function _vk() internal pure returns (IPlonkVerifier.VerifyingKey memory vk) {
@@ -136,13 +120,13 @@ contract PlonkVerifierTest is Test {
     //////////////////////////////////////////////////////////////////////////*//
 
     function test_VerifyValidProof() public view {
-        assertTrue(v.verifyProof(_vk(), _proof(), _input()));
+        assertTrue(verifier.verifyProof(_vk(), _proof(), _input()));
     }
 
     function test_RejectWrongPublicInput() public view {
         uint256[] memory bad = _input();
         bad[0] = 34;
-        assertFalse(v.verifyProof(_vk(), _proof(), bad));
+        assertFalse(verifier.verifyProof(_vk(), _proof(), bad));
     }
 
     function test_RejectTamperedProof() public view {
@@ -150,19 +134,19 @@ contract PlonkVerifierTest is Test {
         unchecked {
             p.a[0] = p.a[0] + 1; // off-curve -> rejected by isWellConstructed
         }
-        assertFalse(v.verifyProof(_vk(), p, _input()));
+        assertFalse(verifier.verifyProof(_vk(), p, _input()));
     }
 
     function test_RejectOutOfRangePublicInput() public view {
         uint256[] memory bad = _input();
         bad[0] = Q;
-        assertFalse(v.verifyProof(_vk(), _proof(), bad));
+        assertFalse(verifier.verifyProof(_vk(), _proof(), bad));
     }
 
     function test_RejectOutOfRangeProofCoordinate() public view {
         IPlonkVerifier.Proof memory p = _proof();
         p.a[0] = QF;
-        assertFalse(v.verifyProof(_vk(), p, _input()));
+        assertFalse(verifier.verifyProof(_vk(), p, _input()));
     }
 
     function test_RejectOutOfRangeEval() public view {
@@ -171,7 +155,7 @@ contract PlonkVerifierTest is Test {
         unchecked {
             p.eval_a = p.eval_a + Q;
         }
-        assertFalse(v.verifyProof(_vk(), p, _input()));
+        assertFalse(verifier.verifyProof(_vk(), p, _input()));
     }
 
     function test_RejectMalformedVerifyingKey() public view {
@@ -180,21 +164,21 @@ contract PlonkVerifierTest is Test {
         unchecked {
             vk.qm[0] = vk.qm[0] + 1; // off-curve
         }
-        assertFalse(v.verifyProof(vk, _proof(), _input()));
+        assertFalse(verifier.verifyProof(vk, _proof(), _input()));
     }
 
     function test_RejectBadDomainPower() public view {
         IPlonkVerifier.VerifyingKey memory vk = _vk();
         vk.power = 0;
-        assertFalse(v.verifyProof(vk, _proof(), _input()));
+        assertFalse(verifier.verifyProof(vk, _proof(), _input()));
         vk.power = 29; // beyond the BN254 2-adicity (28)
-        assertFalse(v.verifyProof(vk, _proof(), _input()));
+        assertFalse(verifier.verifyProof(vk, _proof(), _input()));
     }
 
     function test_RevertOnEmptyInput() public {
         uint256[] memory empty = new uint256[](0);
         vm.expectRevert(IPlonkVerifier.PlonkInvalidInputs.selector);
-        v.verifyProof(_vk(), _proof(), empty);
+        verifier.verifyProof(_vk(), _proof(), empty);
     }
 
     function test_InterfaceIdMatchesConstant() public pure {
@@ -202,6 +186,6 @@ contract PlonkVerifierTest is Test {
     }
 
     function test_SupportsInterface() public view {
-        assertTrue(v.supportsInterface(type(IPlonkVerifier).interfaceId));
+        assertTrue(ERC165Facet(diamond).supportsInterface(type(IPlonkVerifier).interfaceId));
     }
 }

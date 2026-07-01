@@ -1,40 +1,25 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
+import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
+import {Groth16VerifierTestBase} from "@lattice-test/base/Groth16VerifierTestBase.sol";
 import {IGroth16Verifier} from "@lattice/interfaces/privacy/IGroth16Verifier.sol";
 import {Groth16Verifier} from "@lattice/privacy/Groth16Verifier.sol";
-import {Groth16VerifierLib} from "@lattice/privacy/libraries/Groth16VerifierLib.sol";
-import {Test} from "forge-std/Test.sol";
-
-/// @notice Wrapper exposing init + ERC-165 discovery for the stateless verifier facet.
-contract MockGroth16VerifierContract is Groth16Verifier {
-    function initialize() external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
-        Groth16VerifierLib.__Groth16Verifier_init();
-        InitializableLib.postInitializer(s);
-    }
-
-    function supportsInterface(bytes4 interfaceId) external view returns (bool) {
-        return ERC165Lib.supportsInterface(interfaceId);
-    }
-}
 
 /// @title Groth16VerifierTest
-/// @notice Tests the generic Groth16 verifier against a REAL proof generated off-chain with circom +
-///         snarkjs for the circuit `c = a * b` (a,c public, b private). The proof verifies with
-///         `snarkjs groth16 verify` (OK) and the public signals are `[c, a] = [33, 3]` (a=3, b=11).
-contract Groth16VerifierTest is Test {
+/// @notice Tests the generic Groth16 verifier through a REAL {Diamond} assembled by the ready-to-deploy
+///         {DeployGroth16Verifier} script (see {Groth16VerifierTestBase}) against a REAL proof generated off-chain
+///         with circom + snarkjs for the circuit `c = a * b` (a,c public, b private). The proof verifies with
+///         `snarkjs groth16 verify` (OK) and the public signals are `[c, a] = [33, 3]` (a=3, b=11). Every
+///         `verifyProof` call routes through the diamond's `delegatecall` dispatch; `supportsInterface` is served
+///         by the cut-in `ERC165Facet`.
+contract Groth16VerifierTest is Groth16VerifierTestBase {
     uint256 constant R = 21888242871839275222246405745257275088548364400416034343698204186575808495617;
     uint256 constant Q = 21888242871839275222246405745257275088696311157297823662689037894645226208583;
 
-    MockGroth16VerifierContract v;
-
     function setUp() public {
-        v = new MockGroth16VerifierContract();
-        v.initialize();
+        diamond = _deployGroth16Verifier();
+        verifier = Groth16Verifier(diamond);
     }
 
     // ---- Fixture (snarkjs vkey.json with G2 coords swapped to (c1,c0); proof from soliditycalldata) ----
@@ -121,13 +106,13 @@ contract Groth16VerifierTest is Test {
     //////////////////////////////////////////////////////////////////////////*//
 
     function test_VerifyValidProof() public view {
-        assertTrue(v.verifyProof(_vk(), _proof(), _input()));
+        assertTrue(verifier.verifyProof(_vk(), _proof(), _input()));
     }
 
     function test_RejectWrongPublicInput() public view {
         uint256[] memory bad = _input();
         bad[0] = 34; // c should be 33; a wrong statement must not verify
-        assertFalse(v.verifyProof(_vk(), _proof(), bad));
+        assertFalse(verifier.verifyProof(_vk(), _proof(), bad));
     }
 
     function test_RejectTamperedProof() public view {
@@ -135,26 +120,26 @@ contract Groth16VerifierTest is Test {
         unchecked {
             p.a[0] = p.a[0] + 1; // off-curve point -> pairing precompile fails -> false
         }
-        assertFalse(v.verifyProof(_vk(), p, _input()));
+        assertFalse(verifier.verifyProof(_vk(), p, _input()));
     }
 
     function test_RejectOutOfRangePublicInput() public view {
         uint256[] memory bad = _input();
         bad[0] = R; // >= scalar field -> rejected by the range check
-        assertFalse(v.verifyProof(_vk(), _proof(), bad));
+        assertFalse(verifier.verifyProof(_vk(), _proof(), bad));
     }
 
     function test_RejectOutOfRangeProofCoordinate() public view {
         IGroth16Verifier.Proof memory p = _proof();
         p.a[0] = Q; // >= base field -> rejected by the coordinate range check
-        assertFalse(v.verifyProof(_vk(), p, _input()));
+        assertFalse(verifier.verifyProof(_vk(), p, _input()));
     }
 
     function test_RevertOnArityMismatch() public {
         uint256[] memory bad = new uint256[](1); // ic.length (3) != 1 + 1
         bad[0] = 33;
         vm.expectRevert(IGroth16Verifier.Groth16InvalidVerifyingKey.selector);
-        v.verifyProof(_vk(), _proof(), bad);
+        verifier.verifyProof(_vk(), _proof(), bad);
     }
 
     function test_InterfaceIdMatchesConstant() public pure {
@@ -162,6 +147,6 @@ contract Groth16VerifierTest is Test {
     }
 
     function test_SupportsInterface() public view {
-        assertTrue(v.supportsInterface(type(IGroth16Verifier).interfaceId));
+        assertTrue(ERC165Facet(diamond).supportsInterface(type(IGroth16Verifier).interfaceId));
     }
 }

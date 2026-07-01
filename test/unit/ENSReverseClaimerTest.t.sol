@@ -1,18 +1,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
-import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
+import {Diamond} from "@diamond/Diamond.sol";
+import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
+import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
+import {ENSReverseClaimerTestBase} from "@lattice-test/base/ENSReverseClaimerTestBase.sol";
 import {ENSReverseClaimer} from "@lattice/ens/ENSReverseClaimer.sol";
-import {ENSReverseClaimerLib, ENS_MANAGER_ROLE} from "@lattice/ens/libraries/ENSReverseClaimerLib.sol";
+import {ENS_MANAGER_ROLE} from "@lattice/ens/libraries/ENSReverseClaimerLib.sol";
 import {IAccessControl} from "@lattice/interfaces/access/IAccessControl.sol";
 import {IENSReverseClaimer} from "@lattice/interfaces/ens/IENSReverseClaimer.sol";
 import {IReverseRegistrar} from "@lattice/interfaces/external/IReverseRegistrar.sol";
-import {Test} from "forge-std/Test.sol";
 
 /// @title MockReverseRegistrar
-/// @notice Minimal ENS reverse registrar that records the name each caller sets for itself.
+/// @notice Minimal ENS reverse registrar that records the name each caller sets for itself. Kept as a test fixture
+///         (external contract the facet forwards to — NOT the facet under test).
 contract MockReverseRegistrar is IReverseRegistrar {
     mapping(address caller => string name) public nameOf;
 
@@ -33,30 +34,14 @@ contract MockL1ReverseRegistrar {
     }
 }
 
-/// @title MockENSReverseClaimerContract
-/// @notice Wrapper that inherits the ENSReverseClaimer facet and wires AccessControl + init.
-contract MockENSReverseClaimerContract is ENSReverseClaimer {
-    function initialize(address admin, address registrar) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
-        AccessControlLib.__AccessControl_init(admin);
-        ENSReverseClaimerLib.__ENSReverseClaimer_init(registrar);
-        InitializableLib.postInitializer(s);
-    }
-
-    function grantRole(bytes32 role, address account) external {
-        AccessControlLib.grantRole(role, account);
-    }
-
-    function supportsInterface(bytes4 interfaceId) external view returns (bool) {
-        return ERC165Lib.supportsInterface(interfaceId);
-    }
-}
-
 /// @title ENSReverseClaimerTest
-/// @notice Unit tests for the ENS reverse-claim facet.
-contract ENSReverseClaimerTest is Test {
-    MockENSReverseClaimerContract claimer;
+/// @notice Exercises the ENS reverse-claim facet through a REAL {Diamond} assembled by the ready-to-deploy
+///         {DeployENSReverseClaimer} script (see {ENSReverseClaimerTestBase}) — `setEnsName` forwards `setName` to
+///         the registrar AS the diamond (msg.sender == diamond) through the `delegatecall` dispatch, not a
+///         flattened inheritance mock. Role gating is enforced by the cut-in `AccessControl` facet;
+///         `supportsInterface` by the cut-in `ERC165Facet`. The external registrar mocks stay test fixtures (they
+///         are NOT the facet under test).
+contract ENSReverseClaimerTest is ENSReverseClaimerTestBase {
     MockReverseRegistrar registrar;
 
     address admin = address(0xA1);
@@ -70,10 +55,10 @@ contract ENSReverseClaimerTest is Test {
 
     function setUp() public {
         registrar = new MockReverseRegistrar();
-        claimer = new MockENSReverseClaimerContract();
-        claimer.initialize(admin, address(registrar));
+        diamond = _deployENSReverseClaimer(admin, address(registrar));
+        claimer = ENSReverseClaimer(diamond);
         vm.prank(admin);
-        claimer.grantRole(ENS_MANAGER_ROLE, manager);
+        IAccessControl(diamond).grantRole(ENS_MANAGER_ROLE, manager);
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -162,13 +147,14 @@ contract ENSReverseClaimerTest is Test {
     //////////////////////////////////////////////////////////////////////////*//
 
     function test_InitZeroRegistrarReverts() public {
-        MockENSReverseClaimerContract c = new MockENSReverseClaimerContract();
+        (FacetCut[] memory cuts, address init, bytes memory initCalldata) = deployer.buildCuts(admin, address(0));
+        Diamond d = new Diamond();
         vm.expectRevert(IENSReverseClaimer.ENSReverseClaimerZeroRegistrar.selector);
-        c.initialize(admin, address(0));
+        d.initialize(cuts, init, initCalldata);
     }
 
     function test_SupportsIENSReverseClaimer() public view {
-        assertTrue(claimer.supportsInterface(type(IENSReverseClaimer).interfaceId));
+        assertTrue(ERC165Facet(diamond).supportsInterface(type(IENSReverseClaimer).interfaceId));
     }
 
     function test_InterfaceIdMatchesConstant() public pure {

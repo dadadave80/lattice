@@ -1,15 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
-import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
+import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
+import {ShieldedPoolTestBase} from "@lattice-test/base/ShieldedPoolTestBase.sol";
 import {IGroth16Verifier} from "@lattice/interfaces/privacy/IGroth16Verifier.sol";
 import {IShieldedPool, IShieldedWithdrawVerifier} from "@lattice/interfaces/privacy/IShieldedPool.sol";
 import {Groth16Verifier} from "@lattice/privacy/Groth16Verifier.sol";
 import {ShieldedPool} from "@lattice/privacy/ShieldedPool.sol";
-import {ShieldedPoolLib} from "@lattice/privacy/libraries/ShieldedPoolLib.sol";
-import {Test} from "forge-std/Test.sol";
 
 /// @notice Minimal ERC-20 for the pool test.
 contract MockERC20 {
@@ -125,26 +122,14 @@ contract TestWithdrawVerifier is IShieldedWithdrawVerifier {
     }
 }
 
-/// @notice Harness exposing init + ERC-165 discovery for the ShieldedPool facet.
-contract MockShieldedPoolContract is ShieldedPool {
-    function initialize() external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
-        AccessControlLib.__AccessControl_init(msg.sender);
-        ShieldedPoolLib.__ShieldedPool_init();
-        InitializableLib.postInitializer(s);
-    }
-
-    function supportsInterface(bytes4 interfaceId) external view returns (bool) {
-        return ERC165Lib.supportsInterface(interfaceId);
-    }
-}
-
 /// @title ShieldedPoolTest
-/// @notice Tests the deposit -> withdraw flow with a REAL Groth16 withdrawal proof (3 commitments, depth
-///         2, recipient 0xbeef, relayer 0xc0fe, fee 5). The proof passes `snarkjs groth16 verify`.
-contract ShieldedPoolTest is Test {
-    MockShieldedPoolContract pool;
+/// @notice Tests the deposit -> withdraw flow through a REAL {Diamond} assembled by the ready-to-deploy
+///         {DeployShieldedPool} script (see {ShieldedPoolTestBase}) with a REAL Groth16 withdrawal proof (3
+///         commitments, depth 2, recipient 0xbeef, relayer 0xc0fe, fee 5). The proof passes `snarkjs groth16
+///         verify`. Every deposit/withdraw call routes through the diamond's `delegatecall` dispatch;
+///         `supportsInterface` is served by the cut-in `ERC165Facet`. The pool's ERC-20 token and its Groth16
+///         `TestWithdrawVerifier` adapter stay external dependencies (NOT the facet under test).
+contract ShieldedPoolTest is ShieldedPoolTestBase {
     MockERC20 token;
     TestWithdrawVerifier verifier;
 
@@ -161,8 +146,8 @@ contract ShieldedPoolTest is Test {
         Groth16Verifier g = new Groth16Verifier();
         verifier = new TestWithdrawVerifier(g);
         token = new MockERC20();
-        pool = new MockShieldedPoolContract();
-        pool.initialize();
+        diamond = _deployShieldedPool(address(this));
+        pool = ShieldedPool(diamond);
         poolId = pool.createPool(address(token), DENOM, address(verifier));
 
         // This contract is the depositor: fund + approve 3 deposits.
@@ -276,6 +261,6 @@ contract ShieldedPoolTest is Test {
     }
 
     function test_SupportsInterface() public view {
-        assertTrue(pool.supportsInterface(type(IShieldedPool).interfaceId));
+        assertTrue(ERC165Facet(diamond).supportsInterface(type(IShieldedPool).interfaceId));
     }
 }
