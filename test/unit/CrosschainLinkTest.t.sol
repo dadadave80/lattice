@@ -1,17 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
-import {AccessControl} from "@lattice/access/AccessControl.sol";
-import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
+import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
+import {CrosschainLinkTestBase} from "@lattice-test/base/CrosschainLinkTestBase.sol";
 import {CrosschainLink} from "@lattice/crosschain/CrosschainLink.sol";
-import {CrosschainLinkLib} from "@lattice/crosschain/libraries/CrosschainLinkLib.sol";
 import {ICrosschainLink} from "@lattice/interfaces/crosschain/ICrosschainLink.sol";
 import {IERC7786MessageHandler} from "@lattice/interfaces/crosschain/IERC7786MessageHandler.sol";
 import {IERC7786GatewaySource, IERC7786Recipient} from "@lattice/interfaces/external/IERC7786.sol";
 import {InteroperableAddress} from "@lattice/utils/libraries/InteroperableAddress.sol";
-import {Test} from "forge-std/Test.sol";
 
 // ---------------------------------------------------------------------------
 //                              MOCKS
@@ -53,27 +49,13 @@ contract MockHandler is IERC7786MessageHandler {
     }
 }
 
-/// @notice Combines AccessControl + CrosschainLink for testing.
-contract MockCrosschainLinkContract is AccessControl, CrosschainLink {
-    function initialize(address _admin) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
-        AccessControlLib.__AccessControl_init(_admin);
-        CrosschainLinkLib.__CrosschainLink_init();
-        InitializableLib.postInitializer(s);
-    }
-
-    function supportsInterface(bytes4 _interfaceId) public view returns (bool) {
-        return ERC165Lib.supportsInterface(_interfaceId);
-    }
-}
-
 // ---------------------------------------------------------------------------
 //                              TESTS
 // ---------------------------------------------------------------------------
 
-contract CrosschainLinkTest is Test {
-    MockCrosschainLinkContract link;
+contract CrosschainLinkTest is CrosschainLinkTestBase {
+    address internal diamond; // the assembled crosschain-link diamond
+    CrosschainLink link; // typed handle on the diamond (messaging calls dispatch through it)
     MockGateway gateway;
     MockHandler handler;
 
@@ -91,8 +73,8 @@ contract CrosschainLinkTest is Test {
     bytes4 constant UNAUTHORIZED_ACCOUNT = bytes4(keccak256("AccessControlUnauthorizedAccount(address,bytes32)"));
 
     function setUp() public {
-        link = new MockCrosschainLinkContract();
-        link.initialize(admin);
+        diamond = _deployCrosschainLink(admin);
+        link = CrosschainLink(diamond);
         gateway = new MockGateway();
         handler = new MockHandler();
 
@@ -288,6 +270,6 @@ contract CrosschainLinkTest is Test {
     //////////////////////////////////////////////////////////////////////////*//
 
     function test_SupportsInterfaceCrosschainLink() public view {
-        assertTrue(link.supportsInterface(type(ICrosschainLink).interfaceId));
+        assertTrue(ERC165Facet(diamond).supportsInterface(type(ICrosschainLink).interfaceId));
     }
 }

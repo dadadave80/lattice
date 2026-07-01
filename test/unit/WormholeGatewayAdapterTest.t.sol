@@ -1,18 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
-import {AccessControl} from "@lattice/access/AccessControl.sol";
-import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
+import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
+import {WormholeGatewayAdapterTestBase} from "@lattice-test/base/WormholeGatewayAdapterTestBase.sol";
 import {WormholeGatewayAdapter} from "@lattice/crosschain/WormholeGatewayAdapter.sol";
-import {WormholeGatewayAdapterLib} from "@lattice/crosschain/libraries/WormholeGatewayAdapterLib.sol";
 import {IWormholeGatewayAdapter} from "@lattice/interfaces/crosschain/IWormholeGatewayAdapter.sol";
 import {IERC7786GatewaySource, IERC7786Recipient} from "@lattice/interfaces/external/IERC7786.sol";
 import {IERC7786Attributes} from "@lattice/interfaces/external/IERC7786Attributes.sol";
 import {IWormholeRelayer} from "@lattice/interfaces/external/IWormholeRelayer.sol";
 import {InteroperableAddress} from "@lattice/utils/libraries/InteroperableAddress.sol";
-import {Test} from "forge-std/Test.sol";
 
 contract MockWormholeRelayer is IWormholeRelayer {
     uint16 public lastTargetChain;
@@ -63,22 +59,7 @@ contract MockRecipient is IERC7786Recipient {
     }
 }
 
-contract MockWormholeAdapter is AccessControl, WormholeGatewayAdapter {
-    function initialize(address admin_, address relayer_, uint16 chainId_) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
-        AccessControlLib.__AccessControl_init(admin_);
-        WormholeGatewayAdapterLib.__WormholeGatewayAdapter_init(relayer_, chainId_);
-        InitializableLib.postInitializer(s);
-    }
-
-    function supportsInterface(bytes4 id) public view returns (bool) {
-        return ERC165Lib.supportsInterface(id);
-    }
-}
-
-contract WormholeGatewayAdapterTest is Test {
-    MockWormholeAdapter adapter;
+contract WormholeGatewayAdapterTest is WormholeGatewayAdapterTestBase {
     MockWormholeRelayer relayer;
     MockRecipient recipient;
 
@@ -95,8 +76,8 @@ contract WormholeGatewayAdapterTest is Test {
 
     function setUp() public {
         relayer = new MockWormholeRelayer();
-        adapter = new MockWormholeAdapter();
-        adapter.initialize(admin, address(relayer), LOCAL_WORMHOLE);
+        diamond = _deployWormholeGatewayAdapter(admin, address(relayer), LOCAL_WORMHOLE);
+        adapter = WormholeGatewayAdapter(payable(diamond));
         recipient = new MockRecipient();
 
         recip = InteroperableAddress.formatEvmV1(REMOTE_CHAIN, address(0xCAFE));
@@ -243,6 +224,6 @@ contract WormholeGatewayAdapterTest is Test {
     }
 
     function test_SupportsInterfaceGatewaySource() public view {
-        assertTrue(adapter.supportsInterface(type(IERC7786GatewaySource).interfaceId));
+        assertTrue(ERC165Facet(diamond).supportsInterface(type(IERC7786GatewaySource).interfaceId));
     }
 }

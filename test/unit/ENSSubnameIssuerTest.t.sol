@@ -1,18 +1,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
-import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
+import {Diamond} from "@diamond/Diamond.sol";
+import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
+import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
+import {ENSSubnameIssuerTestBase} from "@lattice-test/base/ENSSubnameIssuerTestBase.sol";
 import {ENSSubnameIssuer} from "@lattice/ens/ENSSubnameIssuer.sol";
-import {ENSSubnameIssuerLib, ENS_SUBNAME_ISSUER_ROLE} from "@lattice/ens/libraries/ENSSubnameIssuerLib.sol";
+import {ENS_SUBNAME_ISSUER_ROLE} from "@lattice/ens/libraries/ENSSubnameIssuerLib.sol";
 import {IAccessControl} from "@lattice/interfaces/access/IAccessControl.sol";
 import {IENSSubnameIssuer} from "@lattice/interfaces/ens/IENSSubnameIssuer.sol";
 import {INameWrapper} from "@lattice/interfaces/external/INameWrapper.sol";
-import {Test} from "forge-std/Test.sol";
 
 /// @title MockNameWrapper
-/// @notice Minimal ENS NameWrapper that records the last setSubnodeRecord call and returns the node.
+/// @notice Minimal ENS NameWrapper that records the last setSubnodeRecord call and returns the node. Kept as a test
+///         fixture (external contract the facet forwards to — NOT the facet under test).
 contract MockNameWrapper is INameWrapper {
     bytes32 public lastParentNode;
     string public lastLabel;
@@ -42,30 +43,13 @@ contract MockNameWrapper is INameWrapper {
     }
 }
 
-/// @title MockENSSubnameIssuerContract
-/// @notice Wrapper that inherits the ENSSubnameIssuer facet and wires AccessControl + init.
-contract MockENSSubnameIssuerContract is ENSSubnameIssuer {
-    function initialize(address admin, address wrapper) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
-        AccessControlLib.__AccessControl_init(admin);
-        ENSSubnameIssuerLib.__ENSSubnameIssuer_init(wrapper);
-        InitializableLib.postInitializer(s);
-    }
-
-    function grantRole(bytes32 role, address account) external {
-        AccessControlLib.grantRole(role, account);
-    }
-
-    function supportsInterface(bytes4 interfaceId) external view returns (bool) {
-        return ERC165Lib.supportsInterface(interfaceId);
-    }
-}
-
 /// @title ENSSubnameIssuerTest
-/// @notice Unit tests for the ENS subname-issuer facet.
-contract ENSSubnameIssuerTest is Test {
-    MockENSSubnameIssuerContract subnameIssuer;
+/// @notice Exercises the ENS subname-issuer facet through a REAL {Diamond} assembled by the ready-to-deploy
+///         {DeployENSSubnameIssuer} script (see {ENSSubnameIssuerTestBase}) — `issueSubname` forwards
+///         `setSubnodeRecord` through the diamond's `delegatecall` dispatch, not a flattened inheritance mock.
+///         Role gating is enforced by the cut-in `AccessControl` facet; `supportsInterface` by the cut-in
+///         `ERC165Facet`. The external `MockNameWrapper` stays a test fixture (it is NOT the facet under test).
+contract ENSSubnameIssuerTest is ENSSubnameIssuerTestBase {
     MockNameWrapper nameWrapper;
 
     address admin = address(0xA1);
@@ -82,10 +66,10 @@ contract ENSSubnameIssuerTest is Test {
 
     function setUp() public {
         nameWrapper = new MockNameWrapper();
-        subnameIssuer = new MockENSSubnameIssuerContract();
-        subnameIssuer.initialize(admin, address(nameWrapper));
+        diamond = _deployENSSubnameIssuer(admin, address(nameWrapper));
+        subnameIssuer = ENSSubnameIssuer(diamond);
         vm.prank(admin);
-        subnameIssuer.grantRole(ENS_SUBNAME_ISSUER_ROLE, issuer);
+        IAccessControl(diamond).grantRole(ENS_SUBNAME_ISSUER_ROLE, issuer);
     }
 
     function _expectedNode() internal pure returns (bytes32) {
@@ -166,9 +150,10 @@ contract ENSSubnameIssuerTest is Test {
     }
 
     function test_InitZeroNameWrapperReverts() public {
-        MockENSSubnameIssuerContract c = new MockENSSubnameIssuerContract();
+        (FacetCut[] memory cuts, address init, bytes memory initCalldata) = deployer.buildCuts(admin, address(0));
+        Diamond d = new Diamond();
         vm.expectRevert(IENSSubnameIssuer.ENSSubnameIssuerZeroNameWrapper.selector);
-        c.initialize(admin, address(0));
+        d.initialize(cuts, init, initCalldata);
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -176,7 +161,7 @@ contract ENSSubnameIssuerTest is Test {
     //////////////////////////////////////////////////////////////////////////*//
 
     function test_SupportsIENSSubnameIssuer() public view {
-        assertTrue(subnameIssuer.supportsInterface(type(IENSSubnameIssuer).interfaceId));
+        assertTrue(ERC165Facet(diamond).supportsInterface(type(IENSSubnameIssuer).interfaceId));
     }
 
     function test_InterfaceIdMatchesConstant() public pure {

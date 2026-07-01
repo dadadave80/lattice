@@ -1,21 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
-import {AccessControl} from "@lattice/access/AccessControl.sol";
-import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
+import {Diamond} from "@diamond/Diamond.sol";
+import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
+import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
+import {BridgeERC7802TestBase} from "@lattice-test/base/BridgeERC7802TestBase.sol";
 import {BridgeERC7802} from "@lattice/crosschain/BridgeERC7802.sol";
 import {CrosschainLink} from "@lattice/crosschain/CrosschainLink.sol";
-import {BridgeERC7802Lib} from "@lattice/crosschain/libraries/BridgeERC7802Lib.sol";
 import {FUNGIBLE_BRIDGE_TAG} from "@lattice/crosschain/libraries/BridgeFungibleLib.sol";
-import {CrosschainLinkLib} from "@lattice/crosschain/libraries/CrosschainLinkLib.sol";
 import {IBridgeFungible} from "@lattice/interfaces/crosschain/IBridgeFungible.sol";
 import {IERC7786GatewaySource} from "@lattice/interfaces/external/IERC7786.sol";
 import {IERC7802} from "@lattice/interfaces/external/IERC7802.sol";
-import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib.sol";
 import {InteroperableAddress} from "@lattice/utils/libraries/InteroperableAddress.sol";
-import {Test} from "forge-std/Test.sol";
 
 // ---------------------------------------------------------------------------
 //                              MOCKS
@@ -64,29 +60,14 @@ contract MockERC7802 is IERC7802 {
     }
 }
 
-/// @notice Combines AccessControl + CrosschainLink + BridgeERC7802 for testing (co-mounted facets).
-contract MockBridgeERC7802Contract is AccessControl, CrosschainLink, BridgeERC7802 {
-    function initialize(address admin_, address token_) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
-        AccessControlLib.__AccessControl_init(admin_);
-        ReentrancyGuardLib.__ReentrancyGuard_init();
-        CrosschainLinkLib.__CrosschainLink_init();
-        BridgeERC7802Lib.__BridgeERC7802_init(token_);
-        InitializableLib.postInitializer(s);
-    }
-
-    function supportsInterface(bytes4 id) public view returns (bool) {
-        return ERC165Lib.supportsInterface(id);
-    }
-}
-
 // ---------------------------------------------------------------------------
 //                              TESTS
 // ---------------------------------------------------------------------------
 
-contract BridgeERC7802Test is Test {
-    MockBridgeERC7802Contract bridge;
+contract BridgeERC7802Test is BridgeERC7802TestBase {
+    address internal diamond; // the assembled ERC-7802 mint/burn bridge diamond
+    BridgeERC7802 bridge; // typed handle on the diamond (bridge calls dispatch through it)
+    CrosschainLink link; // typed handle for the co-mounted messaging registry
     MockERC7802 token;
     MockGateway gateway;
 
@@ -104,16 +85,17 @@ contract BridgeERC7802Test is Test {
 
     function setUp() public {
         token = new MockERC7802();
-        bridge = new MockBridgeERC7802Contract();
-        bridge.initialize(admin, address(token));
+        diamond = _deployBridgeERC7802(admin, address(token));
+        bridge = BridgeERC7802(diamond);
+        link = CrosschainLink(diamond);
         gateway = new MockGateway();
 
         counterpart = InteroperableAddress.formatEvmV1(REMOTE_CHAIN, remoteBridge);
         toRecipient = InteroperableAddress.formatEvmV1(REMOTE_CHAIN, recipient);
 
         vm.startPrank(admin);
-        bridge.setLink(address(gateway), counterpart, false);
-        bridge.setHandler(FUNGIBLE_BRIDGE_TAG, address(bridge));
+        link.setLink(address(gateway), counterpart, false);
+        link.setHandler(FUNGIBLE_BRIDGE_TAG, address(diamond));
         vm.stopPrank();
 
         token.mint(user, 1000e18);
@@ -141,9 +123,7 @@ contract BridgeERC7802Test is Test {
         vm.prank(address(gateway));
         vm.expectEmit(true, false, true, true);
         emit IBridgeFungible.CrosschainFungibleTransferReceived(RECEIVE_ID, counterpart, recipient, AMT);
-        bridge.receiveMessage(
-            RECEIVE_ID, counterpart, bytes.concat(FUNGIBLE_BRIDGE_TAG, _inboundPayload(recipient, AMT))
-        );
+        link.receiveMessage(RECEIVE_ID, counterpart, bytes.concat(FUNGIBLE_BRIDGE_TAG, _inboundPayload(recipient, AMT)));
 
         assertEq(token.balanceOf(recipient), AMT, "minted to recipient");
     }
@@ -155,9 +135,10 @@ contract BridgeERC7802Test is Test {
     }
 
     function test_InitRevertsZeroToken() public {
-        MockBridgeERC7802Contract b = new MockBridgeERC7802Contract();
+        (FacetCut[] memory cuts, address init, bytes memory initCalldata) = deployer.buildCuts(admin, address(0));
+        Diamond d = new Diamond();
         vm.expectRevert(IBridgeFungible.BridgeZeroToken.selector);
-        b.initialize(admin, address(0));
+        d.initialize(cuts, init, initCalldata);
     }
 
     function test_TokenGetter() public view {
@@ -165,6 +146,6 @@ contract BridgeERC7802Test is Test {
     }
 
     function test_SupportsInterfaceBridgeFungible() public view {
-        assertTrue(bridge.supportsInterface(type(IBridgeFungible).interfaceId));
+        assertTrue(ERC165Facet(diamond).supportsInterface(type(IBridgeFungible).interfaceId));
     }
 }

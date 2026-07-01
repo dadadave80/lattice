@@ -1,19 +1,20 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
-import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
+import {Diamond} from "@diamond/Diamond.sol";
+import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
+import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
+import {ENSResolverTestBase} from "@lattice-test/base/ENSResolverTestBase.sol";
 import {ENSResolver} from "@lattice/ens/ENSResolver.sol";
-import {ENSResolverLib, ENS_MANAGER_ROLE} from "@lattice/ens/libraries/ENSResolverLib.sol";
+import {ENS_MANAGER_ROLE} from "@lattice/ens/libraries/ENSResolverLib.sol";
 import {IAccessControl} from "@lattice/interfaces/access/IAccessControl.sol";
 import {IENSResolver} from "@lattice/interfaces/ens/IENSResolver.sol";
 import {IAddrResolver} from "@lattice/interfaces/external/IAddrResolver.sol";
 import {IENS} from "@lattice/interfaces/external/IENS.sol";
-import {Test} from "forge-std/Test.sol";
 
 /// @title MockENS
-/// @notice Minimal ENS registry storing a resolver + owner per node.
+/// @notice Minimal ENS registry storing a resolver + owner per node. Kept as a test fixture (external contract the
+///         facet reads — NOT the facet under test).
 contract MockENS is IENS {
     mapping(bytes32 => address) public resolver;
     mapping(bytes32 => address) public owner;
@@ -28,7 +29,7 @@ contract MockENS is IENS {
 }
 
 /// @title MockAddrResolver
-/// @notice Minimal EIP-137 address resolver.
+/// @notice Minimal EIP-137 address resolver. Kept as a test fixture.
 contract MockAddrResolver is IAddrResolver {
     mapping(bytes32 => address) public addrOf;
 
@@ -41,30 +42,13 @@ contract MockAddrResolver is IAddrResolver {
     }
 }
 
-/// @title MockENSResolverContract
-/// @notice Wrapper that inherits the ENSResolver facet and wires AccessControl + init.
-contract MockENSResolverContract is ENSResolver {
-    function initialize(address admin, address registry) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
-        AccessControlLib.__AccessControl_init(admin);
-        ENSResolverLib.__ENSResolver_init(registry);
-        InitializableLib.postInitializer(s);
-    }
-
-    function grantRole(bytes32 role, address account) external {
-        AccessControlLib.grantRole(role, account);
-    }
-
-    function supportsInterface(bytes4 interfaceId) external view returns (bool) {
-        return ERC165Lib.supportsInterface(interfaceId);
-    }
-}
-
 /// @title ENSResolverTest
-/// @notice Unit tests for the ENS forward-resolution facet.
-contract ENSResolverTest is Test {
-    MockENSResolverContract resolverFacet;
+/// @notice Exercises the ENS forward-resolution facet through a REAL {Diamond} assembled by the ready-to-deploy
+///         {DeployENSResolver} script (see {ENSResolverTestBase}) — every resolution read routes through the
+///         diamond's `delegatecall` dispatch, not a flattened inheritance mock. Role gating is enforced by the
+///         cut-in `AccessControl` facet; `supportsInterface` by the cut-in `ERC165Facet`. The external
+///         `MockENS`/`MockAddrResolver` stay test fixtures (they are NOT the facet under test).
+contract ENSResolverTest is ENSResolverTestBase {
     MockENS ens;
     MockAddrResolver addrResolver;
 
@@ -80,10 +64,10 @@ contract ENSResolverTest is Test {
     function setUp() public {
         ens = new MockENS();
         addrResolver = new MockAddrResolver();
-        resolverFacet = new MockENSResolverContract();
-        resolverFacet.initialize(admin, address(ens));
+        diamond = _deployENSResolver(admin, address(ens));
+        resolverFacet = ENSResolver(diamond);
         vm.prank(admin);
-        resolverFacet.grantRole(ENS_MANAGER_ROLE, manager);
+        IAccessControl(diamond).grantRole(ENS_MANAGER_ROLE, manager);
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -142,9 +126,10 @@ contract ENSResolverTest is Test {
     }
 
     function test_InitZeroRegistryReverts() public {
-        MockENSResolverContract c = new MockENSResolverContract();
+        (FacetCut[] memory cuts, address init, bytes memory initCalldata) = deployer.buildCuts(admin, address(0));
+        Diamond d = new Diamond();
         vm.expectRevert(IENSResolver.ENSResolverZeroRegistry.selector);
-        c.initialize(admin, address(0));
+        d.initialize(cuts, init, initCalldata);
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -152,7 +137,7 @@ contract ENSResolverTest is Test {
     //////////////////////////////////////////////////////////////////////////*//
 
     function test_SupportsIENSResolver() public view {
-        assertTrue(resolverFacet.supportsInterface(type(IENSResolver).interfaceId));
+        assertTrue(ERC165Facet(diamond).supportsInterface(type(IENSResolver).interfaceId));
     }
 
     function test_InterfaceIdMatchesConstant() public pure {

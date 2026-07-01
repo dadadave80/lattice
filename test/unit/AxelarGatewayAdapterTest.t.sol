@@ -1,18 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
-import {AccessControl} from "@lattice/access/AccessControl.sol";
-import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
+import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
+import {AxelarGatewayAdapterTestBase} from "@lattice-test/base/AxelarGatewayAdapterTestBase.sol";
 import {AxelarGatewayAdapter} from "@lattice/crosschain/AxelarGatewayAdapter.sol";
-import {AxelarGatewayAdapterLib} from "@lattice/crosschain/libraries/AxelarGatewayAdapterLib.sol";
 import {IAxelarGatewayAdapter} from "@lattice/interfaces/crosschain/IAxelarGatewayAdapter.sol";
 import {IAxelarGateway} from "@lattice/interfaces/external/IAxelarGateway.sol";
 import {IERC7786GatewaySource, IERC7786Recipient} from "@lattice/interfaces/external/IERC7786.sol";
 import {InteroperableAddress} from "@lattice/utils/libraries/InteroperableAddress.sol";
 import {Strings} from "@lattice/utils/libraries/Strings.sol";
-import {Test} from "forge-std/Test.sol";
 
 contract MockAxelarGateway is IAxelarGateway {
     string public lastDestChain;
@@ -52,22 +48,7 @@ contract MockRecipient is IERC7786Recipient {
     }
 }
 
-contract MockAxelarAdapter is AccessControl, AxelarGatewayAdapter {
-    function initialize(address admin_, address gateway_) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
-        AccessControlLib.__AccessControl_init(admin_);
-        AxelarGatewayAdapterLib.__AxelarGatewayAdapter_init(gateway_);
-        InitializableLib.postInitializer(s);
-    }
-
-    function supportsInterface(bytes4 id) public view returns (bool) {
-        return ERC165Lib.supportsInterface(id);
-    }
-}
-
-contract AxelarGatewayAdapterTest is Test {
-    MockAxelarAdapter adapter;
+contract AxelarGatewayAdapterTest is AxelarGatewayAdapterTestBase {
     MockAxelarGateway axelar;
     MockRecipient recipient;
 
@@ -86,8 +67,8 @@ contract AxelarGatewayAdapterTest is Test {
 
     function setUp() public {
         axelar = new MockAxelarGateway();
-        adapter = new MockAxelarAdapter();
-        adapter.initialize(admin, address(axelar));
+        diamond = _deployAxelarGatewayAdapter(admin, address(axelar));
+        adapter = AxelarGatewayAdapter(payable(diamond));
         recipient = new MockRecipient();
 
         chainOnly = InteroperableAddress.formatEvmV1(REMOTE_CHAIN);
@@ -204,6 +185,6 @@ contract AxelarGatewayAdapterTest is Test {
     }
 
     function test_SupportsInterfaceGatewaySource() public view {
-        assertTrue(adapter.supportsInterface(type(IERC7786GatewaySource).interfaceId));
+        assertTrue(ERC165Facet(diamond).supportsInterface(type(IERC7786GatewaySource).interfaceId));
     }
 }
