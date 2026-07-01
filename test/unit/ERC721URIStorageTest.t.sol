@@ -1,58 +1,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
-import {AccessControl} from "@lattice/access/AccessControl.sol";
-import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
+import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
+import {ERC721URIStorageTestBase} from "@lattice-test/base/ERC721URIStorageTestBase.sol";
+import {DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
 import {IAccessControl} from "@lattice/interfaces/access/IAccessControl.sol";
 import {IERC721} from "@lattice/interfaces/tokens/IERC721.sol";
-import {IERC721URIStorage} from "@lattice/interfaces/tokens/IERC721URIStorage.sol";
-import {ERC721URIStorage} from "@lattice/tokens/ERC721/ERC721URIStorage.sol";
-import {ERC721Lib} from "@lattice/tokens/ERC721/libraries/ERC721Lib.sol";
-import {ERC721URIStorageLib} from "@lattice/tokens/ERC721/libraries/ERC721URIStorageLib.sol";
-import {Test} from "forge-std/Test.sol";
-
-/// @title MockERC721URIStorageContract
-/// @notice Mock ERC-721 with per-token URI storage for testing.
-contract MockERC721URIStorageContract is ERC721URIStorage, AccessControl {
-    function initialize(string memory name_, string memory symbol_, address admin) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
-        ERC721Lib.__ERC721_init(name_, symbol_);
-        ERC721URIStorageLib.__ERC721URIStorage_init();
-        AccessControlLib.__AccessControl_init(admin);
-        InitializableLib.postInitializer(s);
-    }
-
-    /// @notice Admin-gated mint helper.
-    function mintHelper(address to, uint256 tokenId) external {
-        AccessControlLib.checkRole(DEFAULT_ADMIN_ROLE);
-        ERC721Lib._mint(to, tokenId);
-    }
-
-    /// @notice Admin-gated setTokenURI helper (for test use, bypasses facet auth check).
-    function setTokenURIHelper(uint256 tokenId, string memory uri) external {
-        AccessControlLib.checkRole(DEFAULT_ADMIN_ROLE);
-        ERC721URIStorageLib._setTokenURI(tokenId, uri);
-    }
-
-    /// @notice Admin-gated burn helper (calls ERC721Lib._burn directly).
-    function burnHelper(uint256 tokenId) external {
-        AccessControlLib.checkRole(DEFAULT_ADMIN_ROLE);
-        ERC721Lib._burn(tokenId);
-    }
-
-    function supportsInterface(bytes4 interfaceId) public view returns (bool) {
-        return ERC165Lib.supportsInterface(interfaceId);
-    }
-}
 
 /// @title ERC721URIStorageTest
-contract ERC721URIStorageTest is Test {
-    MockERC721URIStorageContract token;
-
-    address admin = address(0xA);
+/// @notice Exercises the ERC-721 per-token URI storage facet (EIP-4906) through a REAL {Diamond} assembled by
+///         the ready-to-deploy {DeployERC721URIStorage} script (see {ERC721URIStorageTestBase}) — every call
+///         routes through the diamond's `delegatecall` dispatch, not a flattened inheritance mock. `mint`/
+///         `burn` and direct URI seeding come from the test-only {ERC721TestFacet} (`helper`); the admin-gated
+///         `setTokenURI` and `supportsInterface` come from the cut-in production facets.
+contract ERC721URIStorageTest is ERC721URIStorageTestBase {
     address alice = address(0x1);
     address bob = address(0x2);
 
@@ -61,72 +22,55 @@ contract ERC721URIStorageTest is Test {
 
     event MetadataUpdate(uint256 _tokenId);
 
-    function setUp() public {
-        token = new MockERC721URIStorageContract();
-        token.initialize("Test NFT URI", "TNFTU", admin);
-    }
-
     //*//////////////////////////////////////////////////////////////////////////
     //                             URI STORAGE TESTS
     //////////////////////////////////////////////////////////////////////////*//
 
     function test_SetTokenURIStoresURI() public {
-        vm.prank(admin);
-        token.mintHelper(alice, TOKEN_1);
+        helper.mint(alice, TOKEN_1);
 
-        vm.prank(admin);
-        token.setTokenURIHelper(TOKEN_1, "ipfs://QmHash1");
+        helper.setTokenURIRaw(TOKEN_1, "ipfs://QmHash1");
 
         assertEq(token.tokenURI(TOKEN_1), "ipfs://QmHash1");
     }
 
     function test_SetTokenURIEmitsMetadataUpdate() public {
-        vm.prank(admin);
-        token.mintHelper(alice, TOKEN_1);
+        helper.mint(alice, TOKEN_1);
 
         vm.expectEmit(true, false, false, false);
         emit MetadataUpdate(TOKEN_1);
 
-        vm.prank(admin);
-        token.setTokenURIHelper(TOKEN_1, "ipfs://QmHash1");
+        helper.setTokenURIRaw(TOKEN_1, "ipfs://QmHash1");
     }
 
     function test_TokenURIReturnsStoredURI() public {
-        vm.prank(admin);
-        token.mintHelper(alice, TOKEN_1);
+        helper.mint(alice, TOKEN_1);
 
-        vm.prank(admin);
-        token.setTokenURIHelper(TOKEN_1, "https://example.com/token/1");
+        helper.setTokenURIRaw(TOKEN_1, "https://example.com/token/1");
 
         assertEq(token.tokenURI(TOKEN_1), "https://example.com/token/1");
     }
 
     function test_TokenURIWithoutPerTokenURIReturnsEmpty() public {
-        vm.prank(admin);
-        token.mintHelper(alice, TOKEN_1);
+        helper.mint(alice, TOKEN_1);
 
         // No base URI in default ERC721, no per-token URI set → returns empty
         assertEq(token.tokenURI(TOKEN_1), "");
     }
 
     function test_DifferentTokensHaveDifferentURIs() public {
-        vm.prank(admin);
-        token.mintHelper(alice, TOKEN_1);
-        vm.prank(admin);
-        token.mintHelper(alice, TOKEN_2);
+        helper.mint(alice, TOKEN_1);
+        helper.mint(alice, TOKEN_2);
 
-        vm.prank(admin);
-        token.setTokenURIHelper(TOKEN_1, "ipfs://token1");
-        vm.prank(admin);
-        token.setTokenURIHelper(TOKEN_2, "ipfs://token2");
+        helper.setTokenURIRaw(TOKEN_1, "ipfs://token1");
+        helper.setTokenURIRaw(TOKEN_2, "ipfs://token2");
 
         assertEq(token.tokenURI(TOKEN_1), "ipfs://token1");
         assertEq(token.tokenURI(TOKEN_2), "ipfs://token2");
     }
 
     function test_SetTokenURIViaFacetRequiresAdmin() public {
-        vm.prank(admin);
-        token.mintHelper(alice, TOKEN_1);
+        helper.mint(alice, TOKEN_1);
 
         // Non-admin call to setTokenURI on the facet should revert
         vm.expectRevert(
@@ -137,8 +81,7 @@ contract ERC721URIStorageTest is Test {
     }
 
     function test_AdminCanSetTokenURIViaFacet() public {
-        vm.prank(admin);
-        token.mintHelper(alice, TOKEN_1);
+        helper.mint(alice, TOKEN_1);
 
         vm.prank(admin);
         token.setTokenURI(TOKEN_1, "ipfs://QmHashAdmin");
@@ -156,9 +99,8 @@ contract ERC721URIStorageTest is Test {
     //////////////////////////////////////////////////////////////////////////*//
 
     function test_TokenURIPreSetBeforeMint_Reverts() public {
-        // Set a URI for token 999 before it is minted (admin can bypass existence check on _setTokenURI)
-        vm.prank(admin);
-        token.setTokenURIHelper(999, "ipfs://pre-mint-uri");
+        // Set a URI for token 999 before it is minted (helper bypasses existence check on _setTokenURI)
+        helper.setTokenURIRaw(999, "ipfs://pre-mint-uri");
 
         // tokenURI must still revert — existence check is in tokenURI, not _setTokenURI
         vm.expectRevert(abi.encodeWithSelector(IERC721.ERC721NonexistentToken.selector, uint256(999)));
@@ -166,13 +108,10 @@ contract ERC721URIStorageTest is Test {
     }
 
     function test_TokenURIAfterBurnRevertsEvenIfURISet() public {
-        vm.prank(admin);
-        token.mintHelper(alice, TOKEN_1);
-        vm.prank(admin);
-        token.setTokenURIHelper(TOKEN_1, "ipfs://Qm...");
+        helper.mint(alice, TOKEN_1);
+        helper.setTokenURIRaw(TOKEN_1, "ipfs://Qm...");
 
-        vm.prank(admin);
-        token.burnHelper(TOKEN_1);
+        helper.burn(TOKEN_1);
 
         vm.expectRevert(abi.encodeWithSelector(IERC721.ERC721NonexistentToken.selector, TOKEN_1));
         token.tokenURI(TOKEN_1);
@@ -183,10 +122,10 @@ contract ERC721URIStorageTest is Test {
     //////////////////////////////////////////////////////////////////////////*//
 
     function test_SupportsERC4906Interface() public view {
-        assertTrue(token.supportsInterface(0x49064906)); // ERC-4906
+        assertTrue(ERC165Facet(diamond).supportsInterface(0x49064906)); // ERC-4906
     }
 
     function test_SupportsERC721Interface() public view {
-        assertTrue(token.supportsInterface(0x80ac58cd)); // IERC721
+        assertTrue(ERC165Facet(diamond).supportsInterface(0x80ac58cd)); // IERC721
     }
 }

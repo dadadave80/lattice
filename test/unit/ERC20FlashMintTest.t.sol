@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
+import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
+import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
+import {DeployERC20FlashMint} from "@lattice-script/base/DeployERC20FlashMint.s.sol";
+import {ERC20TestBase} from "@lattice-test/base/ERC20TestBase.sol";
+import {TokenTestFacet} from "@lattice-test/helpers/TokenTestFacet.sol";
 import {IERC3156FlashBorrower} from "@lattice/interfaces/external/IERC3156FlashBorrower.sol";
 import {IERC3156FlashLender} from "@lattice/interfaces/external/IERC3156FlashLender.sol";
 import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
 import {IERC20FlashMint} from "@lattice/interfaces/tokens/IERC20FlashMint.sol";
 import {ERC20} from "@lattice/tokens/ERC20/ERC20.sol";
 import {ERC20FlashMint} from "@lattice/tokens/ERC20/ERC20FlashMint.sol";
-import {ERC20FlashMintLib} from "@lattice/tokens/ERC20/libraries/ERC20FlashMintLib.sol";
-import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
-import {Test} from "forge-std/Test.sol";
 
 /// @notice Reference borrower: records the callback args, approves repayment, echoes the ERC-3156 magic value.
 contract FlashBorrower is IERC3156FlashBorrower {
@@ -47,57 +47,55 @@ contract FlashBorrower is IERC3156FlashBorrower {
     }
 }
 
-contract MockERC20FlashMintContract is ERC20, ERC20FlashMint {
-    function initialize(string memory name_, string memory symbol_, address mintTo, uint256 mintAmount) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
-        ERC20Lib.__ERC20_init(name_, symbol_);
-        ERC20FlashMintLib.__ERC20FlashMint_init();
-        if (mintTo != address(0) && mintAmount > 0) ERC20Lib._mint(mintTo, mintAmount);
-        InitializableLib.postInitializer(s);
-    }
-
-    function supportsInterface(bytes4 interfaceId) public view returns (bool) {
-        return ERC165Lib.supportsInterface(interfaceId);
-    }
-}
-
 /// @title ERC20FlashMintTest
-/// @notice ERC20 batch (token-extension completion): ERC-3156 flash mint.
-contract ERC20FlashMintTest is Test {
-    MockERC20FlashMintContract token;
+/// @notice Exercises the {ERC20FlashMint} facet (ERC-3156 flash mint) through a REAL {Diamond} assembled by the
+///         ready-to-deploy {DeployERC20FlashMint} script (base ERC-20 + the additive flash-mint facet). Every call
+///         routes through the diamond's `delegatecall` dispatch, not a flattened inheritance mock; the initial
+///         supply is seeded via the test-only {TokenTestFacet} (`helper`).
+contract ERC20FlashMintTest is ERC20TestBase {
+    ERC20FlashMint internal flash;
     FlashBorrower borrower;
 
     address alice = address(0x1);
     uint256 constant INITIAL_SUPPLY = 1_000_000e18;
     uint256 constant LOAN = 5000e18;
 
-    function setUp() public {
-        token = new MockERC20FlashMintContract();
-        token.initialize("Flash Token", "FLASH", alice, INITIAL_SUPPLY);
+    function setUp() public override {
+        DeployERC20FlashMint d = new DeployERC20FlashMint();
+        (FacetCut[] memory cuts, address[] memory inits, bytes[] memory initCalldatas) =
+            d.buildCuts("Flash Token", "FLASH");
+        diamond = _deployWithHelper(cuts, inits, initCalldatas);
+        token = ERC20(diamond);
+        helper = TokenTestFacet(diamond);
+        flash = ERC20FlashMint(diamond);
+
+        helper.mint(alice, INITIAL_SUPPLY);
         borrower = new FlashBorrower();
     }
 
     function test_MaxFlashLoan() public view {
-        assertEq(token.maxFlashLoan(address(token)), type(uint256).max - INITIAL_SUPPLY);
-        assertEq(token.maxFlashLoan(address(0xdead)), 0);
+        assertEq(flash.maxFlashLoan(diamond), type(uint256).max - INITIAL_SUPPLY);
+        assertEq(flash.maxFlashLoan(address(0xdead)), 0);
     }
 
     function test_SupportsFlashLenderInterface() public view {
-        assertTrue(token.supportsInterface(type(IERC3156FlashLender).interfaceId), "registers IERC3156FlashLender");
+        assertTrue(
+            ERC165Facet(diamond).supportsInterface(type(IERC3156FlashLender).interfaceId),
+            "registers IERC3156FlashLender"
+        );
     }
 
     function test_FlashFeeIsZeroForToken() public view {
-        assertEq(token.flashFee(address(token), LOAN), 0);
+        assertEq(flash.flashFee(diamond, LOAN), 0);
     }
 
     function test_FlashFeeRevertsForUnsupportedToken() public {
         vm.expectRevert(abi.encodeWithSelector(IERC20FlashMint.ERC3156UnsupportedToken.selector, address(0xdead)));
-        token.flashFee(address(0xdead), LOAN);
+        flash.flashFee(address(0xdead), LOAN);
     }
 
     function test_FlashLoanMintsToBorrowerAndBurnsBack() public {
-        bool ok = token.flashLoan(borrower, address(token), LOAN, "");
+        bool ok = flash.flashLoan(borrower, diamond, LOAN, "");
         assertTrue(ok, "flashLoan returns true");
         // borrower actually held the principal during the callback...
         assertEq(borrower.balanceDuringCallback(), LOAN, "borrower funded during callback");
@@ -110,16 +108,16 @@ contract ERC20FlashMintTest is Test {
     }
 
     function test_FlashLoanRevertsWhenExceedingMax() public {
-        uint256 tooMuch = token.maxFlashLoan(address(token)) + 1;
+        uint256 tooMuch = flash.maxFlashLoan(diamond) + 1;
         vm.expectRevert(
             abi.encodeWithSelector(IERC20FlashMint.ERC3156ExceededMaxLoan.selector, type(uint256).max - INITIAL_SUPPLY)
         );
-        token.flashLoan(borrower, address(token), tooMuch, "");
+        flash.flashLoan(borrower, diamond, tooMuch, "");
     }
 
     function test_FlashLoanRevertsOnBadCallbackReturn() public {
         borrower.setReturn(keccak256("wrong"));
         vm.expectRevert(abi.encodeWithSelector(IERC20FlashMint.ERC3156InvalidReceiver.selector, address(borrower)));
-        token.flashLoan(borrower, address(token), LOAN, "");
+        flash.flashLoan(borrower, diamond, LOAN, "");
     }
 }
