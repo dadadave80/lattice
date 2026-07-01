@@ -7,6 +7,7 @@ import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
 import {IERC20Capped} from "@lattice/interfaces/tokens/IERC20Capped.sol";
+import {ERC20} from "@lattice/tokens/ERC20/ERC20.sol";
 import {ERC20Capped} from "@lattice/tokens/ERC20/ERC20Capped.sol";
 import {ERC20CappedLib} from "@lattice/tokens/ERC20/libraries/ERC20CappedLib.sol";
 import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
@@ -15,7 +16,7 @@ import {Test} from "forge-std/Test.sol";
 /// @title MockERC20CappedContract
 /// @notice Mock combining AccessControl + ERC20Capped. The MINTER_ROLE gate
 ///         is enforced in the external mint function.
-contract MockERC20CappedContract is AccessControl, ERC20Capped {
+contract MockERC20CappedContract is AccessControl, ERC20, ERC20Capped {
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
 
     function initialize(string memory name_, string memory symbol_, uint256 cap_, address admin) external {

@@ -12,6 +12,7 @@ import {VotesLib} from "@lattice/governance/libraries/VotesLib.sol";
 import {IGovernor} from "@lattice/interfaces/governance/IGovernor.sol";
 import {ITimelockController} from "@lattice/interfaces/governance/ITimelockController.sol";
 import {IVotes} from "@lattice/interfaces/governance/IVotes.sol";
+import {ERC20} from "@lattice/tokens/ERC20/ERC20.sol";
 import {ERC20Votes} from "@lattice/tokens/ERC20/ERC20Votes.sol";
 import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
 import {ERC20VotesLib} from "@lattice/tokens/ERC20/libraries/ERC20VotesLib.sol";
@@ -25,7 +26,15 @@ import {Vm} from "forge-std/Vm.sol";
 //////////////////////////////////////////////////////////////////////////*//
 
 /// @notice Mock ERC20Votes token used in Governor tests.
-contract MockERC20VotesContract is ERC20Votes {
+contract MockERC20VotesContract is ERC20, ERC20Votes {
+    function transfer(address to, uint256 value) public override(ERC20, ERC20Votes) returns (bool) {
+        return ERC20Votes.transfer(to, value);
+    }
+
+    function transferFrom(address from, address to, uint256 value) public override(ERC20, ERC20Votes) returns (bool) {
+        return ERC20Votes.transferFrom(from, to, value);
+    }
+
     function initialize(string memory name_, string memory symbol_, address admin) external {
         bytes32 s = InitializableLib.initializableSlot();
         InitializableLib.preInitializer(s);

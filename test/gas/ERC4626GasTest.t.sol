@@ -4,6 +4,7 @@ pragma solidity ^0.8.30;
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {VotesLib} from "@lattice/governance/libraries/VotesLib.sol";
+import {ERC20} from "@lattice/tokens/ERC20/ERC20.sol";
 import {ERC20Votes} from "@lattice/tokens/ERC20/ERC20Votes.sol";
 import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
 import {ERC20VotesLib} from "@lattice/tokens/ERC20/libraries/ERC20VotesLib.sol";
@@ -14,7 +15,15 @@ import {NoncesLib} from "@lattice/utils/libraries/NoncesLib.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @notice Mintable ERC20Votes token used as the vault's underlying asset.
-contract GasERC20Votes is ERC20Votes {
+contract GasERC20Votes is ERC20, ERC20Votes {
+    function transfer(address to, uint256 value) public override(ERC20, ERC20Votes) returns (bool) {
+        return ERC20Votes.transfer(to, value);
+    }
+
+    function transferFrom(address from, address to, uint256 value) public override(ERC20, ERC20Votes) returns (bool) {
+        return ERC20Votes.transferFrom(from, to, value);
+    }
+
     function initialize(string memory name_, string memory symbol_, address admin) external {
         bytes32 s = InitializableLib.initializableSlot();
         InitializableLib.preInitializer(s);

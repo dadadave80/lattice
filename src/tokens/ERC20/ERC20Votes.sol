@@ -4,8 +4,6 @@ pragma solidity ^0.8.30;
 import {Votes} from "@lattice/governance/Votes.sol";
 import {VotesLib} from "@lattice/governance/libraries/VotesLib.sol";
 import {IVotes} from "@lattice/interfaces/governance/IVotes.sol";
-import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
-import {ERC20} from "@lattice/tokens/ERC20/ERC20.sol";
 import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
 import {ERC20VotesLib} from "@lattice/tokens/ERC20/libraries/ERC20VotesLib.sol";
 import {Checkpoints} from "@lattice/utils/libraries/Checkpoints.sol";
@@ -25,20 +23,18 @@ import {Checkpoints} from "@lattice/utils/libraries/Checkpoints.sol";
 ///        - ERC20VotesLib.__ERC20Votes_init()
 /// @custom:lattice-version 0.1.0
 /// @custom:lattice-source OpenZeppelin v5.1.0
-contract ERC20Votes is ERC20, Votes {
+contract ERC20Votes is Votes {
     //*//////////////////////////////////////////////////////////////////////////
     //                        IERC20 — TRANSFER OVERRIDES
     //////////////////////////////////////////////////////////////////////////*//
 
-    /// @inheritdoc IERC20
-    /// @dev Routes through ERC20VotesLib to update vote checkpoints alongside balances.
-    function transfer(address to, uint256 value) public override returns (bool) {
+    /// @notice Transfers, updating vote checkpoints alongside balances (replaces the base transfer).
+    function transfer(address to, uint256 value) public virtual returns (bool) {
         return ERC20VotesLib.transfer(to, value);
     }
 
-    /// @inheritdoc IERC20
-    /// @dev Routes through ERC20VotesLib to update vote checkpoints alongside balances.
-    function transferFrom(address from, address to, uint256 value) public override returns (bool) {
+    /// @notice Transfers from, updating vote checkpoints alongside balances (replaces the base transferFrom).
+    function transferFrom(address from, address to, uint256 value) public virtual returns (bool) {
         return ERC20VotesLib.transferFrom(from, to, value);
     }
 
