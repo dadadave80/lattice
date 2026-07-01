@@ -326,6 +326,23 @@ contract StorageLayoutProbe {
         mapping(uint256 chainId => CCVConfig) _ccvConfigs;
     }
 
+    /// @dev Verbatim mirror of `LayerZeroGatewayAdapterLib.LayerZeroGatewayAdapterStorage` and its
+    ///      `DestinationConfig` (`@custom:storage-location erc7201:lattice.storage.LayerZeroGatewayAdapter`).
+    ///      Append-only.
+    struct DestinationConfig {
+        uint128 gas;
+        uint128 msgValue;
+    }
+
+    struct LayerZeroGatewayAdapterStorage {
+        address _endpoint;
+        mapping(uint256 chainId => uint32 eid) _chainIdToEid;
+        mapping(uint32 eid => uint256 chainId) _eidToChainId;
+        mapping(uint256 chainId => bytes32 peer) _peers;
+        mapping(uint256 chainId => DestinationConfig) _destConfig;
+        mapping(uint256 chainId => mapping(bytes32 guid => bool used)) _executed;
+    }
+
     /// @dev Verbatim mirror of `MarketplaceZoneLib.MarketplaceZoneStorage`
     ///      (`@custom:storage-location erc7201:lattice.storage.MarketplaceZone`). Append-only.
     struct MarketplaceZoneStorage {
@@ -498,6 +515,7 @@ contract StorageLayoutProbe {
     WormholeGatewayAdapterStorage internal _unusedWormholeGatewayAdapter;
     ERC7786OpenBridgeStorage internal _unusedERC7786OpenBridge;
     CCIPGatewayAdapterStorage internal _unusedCCIPGatewayAdapter;
+    LayerZeroGatewayAdapterStorage internal _unusedLayerZeroGatewayAdapter;
     PythEntropyAdapterStorage internal _unusedPythEntropyAdapter;
     GelatoVRFAdapterStorage internal _unusedGelatoVRFAdapter;
     API3QRNGAdapterStorage internal _unusedAPI3QRNGAdapter;
