@@ -1,21 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
-import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
-import {VotesLib} from "@lattice/governance/libraries/VotesLib.sol";
+import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
+import {ERC4626TestBase} from "@lattice-test/base/ERC4626TestBase.sol";
 import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
 import {IERC4626} from "@lattice/interfaces/tokens/IERC4626.sol";
-import {ERC20} from "@lattice/tokens/ERC20/ERC20.sol";
-import {ERC20Votes} from "@lattice/tokens/ERC20/ERC20Votes.sol";
-import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
-import {ERC20VotesLib} from "@lattice/tokens/ERC20/libraries/ERC20VotesLib.sol";
 import {ERC4626} from "@lattice/tokens/ERC4626/ERC4626.sol";
-import {ERC4626Lib} from "@lattice/tokens/ERC4626/libraries/ERC4626Lib.sol";
-import {EIP712Lib} from "@lattice/utils/libraries/EIP712Lib.sol";
-import {NoncesLib} from "@lattice/utils/libraries/NoncesLib.sol";
-import {Test} from "forge-std/Test.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
 //                    MOCK USDT-STYLE TOKEN (no return value)
@@ -23,6 +13,8 @@ import {Test} from "forge-std/Test.sol";
 
 /// @notice Mimics USDT / BNB: transferFrom and transfer do NOT return a bool.
 /// The ABI omits the return value so the encoded returndata length is 0.
+/// @dev An EXTERNAL weird-token fixture (not the facet under test) — the vault itself still runs in a real
+///      diamond. Kept to prove the vault's SafeERC20 handling and oversize-decimals fallback.
 contract MockNoReturnERC20 {
     mapping(address => uint256) public balanceOf;
     mapping(address => mapping(address => uint256)) public allowance;
@@ -71,67 +63,16 @@ contract MockNoReturnERC20 {
 }
 
 //*//////////////////////////////////////////////////////////////////////////
-//                          MOCK UNDERLYING ERC20
-//////////////////////////////////////////////////////////////////////////*//
-
-/// @notice A simple mintable ERC20Votes token used as the vault's underlying asset.
-contract MockERC20VotesContract is ERC20, ERC20Votes {
-    function transfer(address to, uint256 value) public override(ERC20, ERC20Votes) returns (bool) {
-        return ERC20Votes.transfer(to, value);
-    }
-
-    function transferFrom(address from, address to, uint256 value) public override(ERC20, ERC20Votes) returns (bool) {
-        return ERC20Votes.transferFrom(from, to, value);
-    }
-
-    function initialize(string memory name_, string memory symbol_, address admin) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
-        ERC20Lib.__ERC20_init(name_, symbol_);
-        EIP712Lib.__EIP712_init(name_, "1");
-        NoncesLib.__Nonces_init();
-        VotesLib.__Votes_init();
-        ERC20VotesLib.__ERC20Votes_init();
-        AccessControlLib.__AccessControl_init(admin);
-        InitializableLib.postInitializer(s);
-    }
-
-    function mint(address to, uint256 value) external {
-        ERC20VotesLib._mint(to, value);
-    }
-}
-
-//*//////////////////////////////////////////////////////////////////////////
-//                              MOCK VAULT
-//////////////////////////////////////////////////////////////////////////*//
-
-/// @notice Mock ERC4626 vault for testing, combining ERC4626 share token with AccessControl.
-contract MockVaultContract is ERC4626 {
-    function initialize(address asset_, string memory name_, string memory symbol_, uint8 decimalsOffset_) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
-        ERC20Lib.__ERC20_init(name_, symbol_);
-        ERC4626Lib.__ERC4626_init(asset_, decimalsOffset_);
-        AccessControlLib.__AccessControl_init(msg.sender);
-        InitializableLib.postInitializer(s);
-    }
-
-    function supportsInterface(bytes4 interfaceId) public view returns (bool) {
-        return ERC165Lib.supportsInterface(interfaceId);
-    }
-}
-
-//*//////////////////////////////////////////////////////////////////////////
 //                                 TESTS
 //////////////////////////////////////////////////////////////////////////*//
 
 /// @title ERC4626Test
-/// @notice Comprehensive tests for the ERC-4626 tokenized vault module.
-contract ERC4626Test is Test {
-    MockVaultContract vault;
-    MockERC20VotesContract underlying;
-
-    address admin = address(0xAD);
+/// @notice Comprehensive tests for the ERC-4626 tokenized vault module, exercised through a REAL {Diamond}
+///         assembled by the ready-to-deploy {DeployERC4626} script (see {ERC4626TestBase}). The underlying
+///         asset is itself a real base ERC-20 diamond ({DeployERC20} + {TokenTestFacet}); every vault call
+///         routes through the diamond's `delegatecall` dispatch, not a flattened inheritance mock.
+///         `supportsInterface` comes from the cut-in `ERC165Facet`.
+contract ERC4626Test is ERC4626TestBase {
     address alice = address(0xA1);
     address bob = address(0xB0B);
     address charlie = address(0xC4);
@@ -143,20 +84,12 @@ contract ERC4626Test is Test {
         address indexed sender, address indexed receiver, address indexed owner, uint256 assets, uint256 shares
     );
 
-    function setUp() public {
-        // Deploy underlying token
-        underlying = new MockERC20VotesContract();
-        underlying.initialize("Vault Token", "VTK", admin);
+    function setUp() public override {
+        super.setUp(); // deploys the underlying ERC-20 diamond + the ERC-4626 vault diamond, wires handles
 
-        // Mint initial supply to alice and bob
-        vm.prank(admin);
+        // Mint initial supply to alice and bob.
         underlying.mint(alice, INITIAL_MINT);
-        vm.prank(admin);
         underlying.mint(bob, INITIAL_MINT);
-
-        // Deploy vault
-        vault = new MockVaultContract();
-        vault.initialize(address(underlying), "Vault Token", "vVTK", 0);
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -164,7 +97,7 @@ contract ERC4626Test is Test {
     //////////////////////////////////////////////////////////////////////////*//
 
     function test_AssetReturnsUnderlying() public view {
-        assertEq(vault.asset(), address(underlying));
+        assertEq(vault.asset(), underlyingAddr);
     }
 
     function test_TotalAssetsStartsAtZero() public view {
@@ -238,7 +171,7 @@ contract ERC4626Test is Test {
         uint256 assets = 100e18;
 
         vm.prank(alice);
-        underlying.approve(address(vault), assets);
+        underlying.approve(vaultAddr, assets);
 
         vm.prank(alice);
         uint256 shares = vault.deposit(assets, alice);
@@ -248,7 +181,7 @@ contract ERC4626Test is Test {
         assertEq(vault.balanceOf(alice), shares);
         assertEq(vault.totalAssets(), assets);
         assertEq(vault.totalSupply(), shares);
-        assertEq(underlying.balanceOf(address(vault)), assets);
+        assertEq(underlying.balanceOf(vaultAddr), assets);
         assertEq(underlying.balanceOf(alice), INITIAL_MINT - assets);
     }
 
@@ -256,9 +189,9 @@ contract ERC4626Test is Test {
         uint256 assets = 100e18;
 
         vm.prank(alice);
-        underlying.approve(address(vault), assets);
+        underlying.approve(vaultAddr, assets);
 
-        vm.expectEmit(true, true, false, true, address(vault));
+        vm.expectEmit(true, true, false, true, vaultAddr);
         emit Deposit(alice, alice, assets, assets);
 
         vm.prank(alice);
@@ -269,7 +202,7 @@ contract ERC4626Test is Test {
         uint256 assets = 100e18;
 
         vm.prank(alice);
-        underlying.approve(address(vault), assets);
+        underlying.approve(vaultAddr, assets);
 
         vm.prank(alice);
         uint256 shares = vault.deposit(assets, bob);
@@ -283,7 +216,7 @@ contract ERC4626Test is Test {
         uint256 expectedShares = vault.previewDeposit(assets);
 
         vm.prank(alice);
-        underlying.approve(address(vault), assets);
+        underlying.approve(vaultAddr, assets);
 
         vm.prank(alice);
         uint256 actualShares = vault.deposit(assets, alice);
@@ -294,13 +227,13 @@ contract ERC4626Test is Test {
     function test_SecondDepositSharesProportional() public {
         // Alice deposits 100 first
         vm.prank(alice);
-        underlying.approve(address(vault), type(uint256).max);
+        underlying.approve(vaultAddr, type(uint256).max);
         vm.prank(alice);
         vault.deposit(100e18, alice);
 
         // Bob deposits 100 after — should get equal shares since rate is 1:1
         vm.prank(bob);
-        underlying.approve(address(vault), type(uint256).max);
+        underlying.approve(vaultAddr, type(uint256).max);
         vm.prank(bob);
         uint256 bobShares = vault.deposit(100e18, bob);
 
@@ -310,17 +243,16 @@ contract ERC4626Test is Test {
     function test_SecondDepositAfterYieldAdjustsShares() public {
         // Alice deposits 100
         vm.prank(alice);
-        underlying.approve(address(vault), type(uint256).max);
+        underlying.approve(vaultAddr, type(uint256).max);
         vm.prank(alice);
         vault.deposit(100e18, alice);
 
         // Simulate yield: donate 100 underlying to vault (totalAssets doubles to 200, supply stays 100)
-        vm.prank(admin);
-        underlying.mint(address(vault), 100e18);
+        underlying.mint(vaultAddr, 100e18);
 
         // Bob deposits 100 — rate is now 100/200 so he should get 50 shares
         vm.prank(bob);
-        underlying.approve(address(vault), type(uint256).max);
+        underlying.approve(vaultAddr, type(uint256).max);
         vm.prank(bob);
         uint256 bobShares = vault.deposit(100e18, bob);
 
@@ -336,7 +268,7 @@ contract ERC4626Test is Test {
         uint256 expectedAssets = vault.previewMint(shares);
 
         vm.prank(alice);
-        underlying.approve(address(vault), expectedAssets);
+        underlying.approve(vaultAddr, expectedAssets);
 
         vm.prank(alice);
         uint256 assets = vault.mint(shares, alice);
@@ -351,7 +283,7 @@ contract ERC4626Test is Test {
         uint256 expectedAssets = vault.previewMint(shares);
 
         vm.prank(alice);
-        underlying.approve(address(vault), expectedAssets);
+        underlying.approve(vaultAddr, expectedAssets);
 
         vm.prank(alice);
         uint256 actualAssets = vault.mint(shares, alice);
@@ -367,7 +299,7 @@ contract ERC4626Test is Test {
         uint256 depositAmount = 100e18;
 
         vm.prank(alice);
-        underlying.approve(address(vault), depositAmount);
+        underlying.approve(vaultAddr, depositAmount);
         vm.prank(alice);
         vault.deposit(depositAmount, alice);
 
@@ -385,14 +317,14 @@ contract ERC4626Test is Test {
     function test_WithdrawEmitsEvent() public {
         uint256 depositAmount = 100e18;
         vm.prank(alice);
-        underlying.approve(address(vault), depositAmount);
+        underlying.approve(vaultAddr, depositAmount);
         vm.prank(alice);
         vault.deposit(depositAmount, alice);
 
         uint256 withdrawAmount = 50e18;
         uint256 expectedShares = vault.previewWithdraw(withdrawAmount);
 
-        vm.expectEmit(true, true, true, true, address(vault));
+        vm.expectEmit(true, true, true, true, vaultAddr);
         emit Withdraw(alice, alice, alice, withdrawAmount, expectedShares);
 
         vm.prank(alice);
@@ -402,7 +334,7 @@ contract ERC4626Test is Test {
     function test_PreviewWithdrawMatchesActualWithdraw() public {
         uint256 depositAmount = 100e18;
         vm.prank(alice);
-        underlying.approve(address(vault), depositAmount);
+        underlying.approve(vaultAddr, depositAmount);
         vm.prank(alice);
         vault.deposit(depositAmount, alice);
 
@@ -418,7 +350,7 @@ contract ERC4626Test is Test {
     function test_WithdrawToSendToDifferentReceiver() public {
         uint256 depositAmount = 100e18;
         vm.prank(alice);
-        underlying.approve(address(vault), depositAmount);
+        underlying.approve(vaultAddr, depositAmount);
         vm.prank(alice);
         vault.deposit(depositAmount, alice);
 
@@ -436,7 +368,7 @@ contract ERC4626Test is Test {
     function test_RedeemBurnsSharesAndTransfersAssets() public {
         uint256 depositAmount = 100e18;
         vm.prank(alice);
-        underlying.approve(address(vault), depositAmount);
+        underlying.approve(vaultAddr, depositAmount);
         vm.prank(alice);
         vault.deposit(depositAmount, alice);
 
@@ -454,7 +386,7 @@ contract ERC4626Test is Test {
     function test_PreviewRedeemMatchesActualRedeem() public {
         uint256 depositAmount = 100e18;
         vm.prank(alice);
-        underlying.approve(address(vault), depositAmount);
+        underlying.approve(vaultAddr, depositAmount);
         vm.prank(alice);
         vault.deposit(depositAmount, alice);
 
@@ -474,7 +406,7 @@ contract ERC4626Test is Test {
     function test_MaxWithdrawAfterDeposit() public {
         uint256 depositAmount = 100e18;
         vm.prank(alice);
-        underlying.approve(address(vault), depositAmount);
+        underlying.approve(vaultAddr, depositAmount);
         vm.prank(alice);
         vault.deposit(depositAmount, alice);
 
@@ -484,7 +416,7 @@ contract ERC4626Test is Test {
     function test_MaxRedeemAfterDeposit() public {
         uint256 depositAmount = 100e18;
         vm.prank(alice);
-        underlying.approve(address(vault), depositAmount);
+        underlying.approve(vaultAddr, depositAmount);
         vm.prank(alice);
         vault.deposit(depositAmount, alice);
 
@@ -498,7 +430,7 @@ contract ERC4626Test is Test {
     function test_WithdrawByNonOwnerWithoutAllowanceReverts() public {
         uint256 depositAmount = 100e18;
         vm.prank(alice);
-        underlying.approve(address(vault), depositAmount);
+        underlying.approve(vaultAddr, depositAmount);
         vm.prank(alice);
         vault.deposit(depositAmount, alice);
 
@@ -511,7 +443,7 @@ contract ERC4626Test is Test {
     function test_RedeemByNonOwnerWithoutAllowanceReverts() public {
         uint256 depositAmount = 100e18;
         vm.prank(alice);
-        underlying.approve(address(vault), depositAmount);
+        underlying.approve(vaultAddr, depositAmount);
         vm.prank(alice);
         vault.deposit(depositAmount, alice);
 
@@ -523,7 +455,7 @@ contract ERC4626Test is Test {
     function test_WithdrawByNonOwnerWithAllowanceSucceeds() public {
         uint256 depositAmount = 100e18;
         vm.prank(alice);
-        underlying.approve(address(vault), depositAmount);
+        underlying.approve(vaultAddr, depositAmount);
         vm.prank(alice);
         vault.deposit(depositAmount, alice);
 
@@ -541,7 +473,7 @@ contract ERC4626Test is Test {
     function test_RedeemByNonOwnerWithAllowanceSucceeds() public {
         uint256 depositAmount = 100e18;
         vm.prank(alice);
-        underlying.approve(address(vault), depositAmount);
+        underlying.approve(vaultAddr, depositAmount);
         vm.prank(alice);
         vault.deposit(depositAmount, alice);
 
@@ -558,7 +490,7 @@ contract ERC4626Test is Test {
     function test_WithdrawConsumesAllowance() public {
         uint256 depositAmount = 100e18;
         vm.prank(alice);
-        underlying.approve(address(vault), depositAmount);
+        underlying.approve(vaultAddr, depositAmount);
         vm.prank(alice);
         vault.deposit(depositAmount, alice);
 
@@ -584,26 +516,24 @@ contract ERC4626Test is Test {
         address attacker = address(0xDEAD);
         address victim = address(0xBEEF);
 
-        vm.prank(admin);
         underlying.mint(attacker, 1000e18);
-        vm.prank(admin);
         underlying.mint(victim, 1000e18);
 
         // Step 1: attacker deposits 1 wei
         vm.prank(attacker);
-        underlying.approve(address(vault), 1);
+        underlying.approve(vaultAddr, 1);
         vm.prank(attacker);
         vault.deposit(1, attacker);
         // attacker has 1 share, vault has 1 asset
 
         // Step 2: attacker donates 999e18 underlying directly (inflate rate)
         vm.prank(attacker);
-        underlying.transfer(address(vault), 999e18);
+        underlying.transfer(vaultAddr, 999e18);
         // Now vault has 999e18 + 1 assets, 1 share outstanding
 
         // Step 3: victim deposits 1000e18
         vm.prank(victim);
-        underlying.approve(address(vault), 1000e18);
+        underlying.approve(vaultAddr, 1000e18);
         vm.prank(victim);
         uint256 victimShares = vault.deposit(1000e18, victim);
 
@@ -615,32 +545,30 @@ contract ERC4626Test is Test {
 
     function test_DecimalsOffsetMitigatesInflation() public {
         // Deploy a vault with decimalsOffset = 3 for stronger inflation protection
-        MockVaultContract vaultWithOffset = new MockVaultContract();
-        vaultWithOffset.initialize(address(underlying), "Protected Vault", "pvTK", 3);
+        ERC4626 vaultWithOffset = ERC4626(_deployVault(underlyingAddr, "Protected Vault", "pvTK", 3));
+        address vaultWithOffsetAddr = address(vaultWithOffset);
 
         address attacker2 = address(0xDEAD2);
         address victim2 = address(0xBEEF2);
 
-        vm.prank(admin);
         underlying.mint(attacker2, 1000e18);
-        vm.prank(admin);
         underlying.mint(victim2, 1000e18);
 
         // Attacker deposits 1 wei
         vm.prank(attacker2);
-        underlying.approve(address(vaultWithOffset), 1);
+        underlying.approve(vaultWithOffsetAddr, 1);
         vm.prank(attacker2);
         vaultWithOffset.deposit(1, attacker2);
 
         // Attacker donates large amount
         vm.prank(attacker2);
-        underlying.transfer(address(vaultWithOffset), 999e18);
+        underlying.transfer(vaultWithOffsetAddr, 999e18);
 
         // Victim deposits 1000e18
         // With offset=3, virtualShares = supply + 10**3 = 1 + 1000
         // victimShares ≈ 1000e18 * 1001 / (999e18+1+1) ≈ 1001 shares
         vm.prank(victim2);
-        underlying.approve(address(vaultWithOffset), 1000e18);
+        underlying.approve(vaultWithOffsetAddr, 1000e18);
         vm.prank(victim2);
         uint256 victimShares2 = vaultWithOffset.deposit(1000e18, victim2);
 
@@ -652,12 +580,12 @@ contract ERC4626Test is Test {
     //////////////////////////////////////////////////////////////////////////*//
 
     function test_SupportsIERC4626() public view {
-        assertTrue(vault.supportsInterface(type(IERC4626).interfaceId));
+        assertTrue(ERC165Facet(vaultAddr).supportsInterface(type(IERC4626).interfaceId));
     }
 
     function test_SupportsIERC20() public view {
         // ERC4626Lib registers IERC4626, ERC20Lib registers IERC20
-        assertTrue(vault.supportsInterface(type(IERC20).interfaceId));
+        assertTrue(ERC165Facet(vaultAddr).supportsInterface(type(IERC20).interfaceId));
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -669,20 +597,20 @@ contract ERC4626Test is Test {
         MockNoReturnERC20 usdtLike = new MockNoReturnERC20();
         usdtLike.mint(alice, 1000e18);
 
-        MockVaultContract usdtVault = new MockVaultContract();
         // The vault will call decimals() on usdtLike — it returns 300 so underlyingDecimals stays 18
-        usdtVault.initialize(address(usdtLike), "USDT Vault", "vUSDT", 0);
+        ERC4626 usdtVault = ERC4626(_deployVault(address(usdtLike), "USDT Vault", "vUSDT", 0));
+        address usdtVaultAddr = address(usdtVault);
         assertEq(usdtVault.decimals(), 18, "oversize decimals should default to 18");
 
         vm.prank(alice);
-        usdtLike.approve(address(usdtVault), 100e18);
+        usdtLike.approve(usdtVaultAddr, 100e18);
 
         vm.prank(alice);
         uint256 shares = usdtVault.deposit(100e18, alice);
 
         assertEq(shares, 100e18);
         assertEq(usdtVault.balanceOf(alice), shares);
-        assertEq(usdtLike.balanceOf(address(usdtVault)), 100e18);
+        assertEq(usdtLike.balanceOf(usdtVaultAddr), 100e18);
     }
 
     /// @notice Withdraw must succeed with a token whose transfer() returns no bool (USDT-style).
@@ -690,12 +618,12 @@ contract ERC4626Test is Test {
         MockNoReturnERC20 usdtLike = new MockNoReturnERC20();
         usdtLike.mint(alice, 1000e18);
 
-        MockVaultContract usdtVault = new MockVaultContract();
-        usdtVault.initialize(address(usdtLike), "USDT Vault", "vUSDT", 0);
+        ERC4626 usdtVault = ERC4626(_deployVault(address(usdtLike), "USDT Vault", "vUSDT", 0));
+        address usdtVaultAddr = address(usdtVault);
 
         // Deposit first
         vm.prank(alice);
-        usdtLike.approve(address(usdtVault), 500e18);
+        usdtLike.approve(usdtVaultAddr, 500e18);
         vm.prank(alice);
         usdtVault.deposit(500e18, alice);
 
@@ -716,10 +644,9 @@ contract ERC4626Test is Test {
     function test_MulDivOverflowProtection() public {
         // Fund vault so totalAssets ~ type(uint128).max
         uint256 bigAmount = type(uint128).max;
-        vm.prank(admin);
         underlying.mint(alice, bigAmount);
         vm.prank(alice);
-        underlying.approve(address(vault), bigAmount);
+        underlying.approve(vaultAddr, bigAmount);
         vm.prank(alice);
         vault.deposit(bigAmount, alice);
 
@@ -742,8 +669,7 @@ contract ERC4626Test is Test {
         MockNoReturnERC20 weirdToken = new MockNoReturnERC20();
         // weirdToken.decimals() returns 300 — above type(uint8).max
 
-        MockVaultContract weirdVault = new MockVaultContract();
-        weirdVault.initialize(address(weirdToken), "Weird Vault", "vW", 0);
+        ERC4626 weirdVault = ERC4626(_deployVault(address(weirdToken), "Weird Vault", "vW", 0));
 
         // Should default to 18, not truncate 300 to 44 (300 mod 256 = 44)
         assertEq(weirdVault.decimals(), 18, "should default to 18 not truncate 300 to 44");

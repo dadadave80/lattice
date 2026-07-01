@@ -3,6 +3,7 @@ pragma solidity ^0.8.30;
 
 import {GetSelectors} from "@diamond-test/helpers/GetSelectors.sol";
 import {Diamond} from "@diamond/Diamond.sol";
+import {MultiInit} from "@diamond/initializers/MultiInit.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {DeployERC20} from "@lattice-script/base/DeployERC20.s.sol";
 import {TokenTestFacet} from "@lattice-test/helpers/TokenTestFacet.sol";
@@ -14,14 +15,25 @@ import {ERC20} from "@lattice/tokens/ERC20/ERC20.sol";
 ///         `setUp` assembles the production {DeployERC20} recipe (ERC165 + ERC20 + {ERC20Init}) and appends a
 ///         test-only {TokenTestFacet} for balance seeding — so every standard call in a subclass test routes
 ///         through the diamond's `delegatecall` dispatch, catching selector/storage/init bugs a mock hides.
-/// @dev Extension-token tests override `setUp` to pass their additive facet cuts via `_deployERC20(.., extraCuts)`
-///      (base ERC-20 needs only the single {ERC20Init}; facets requiring their own init compose via MultiInit —
-///      see {BaseDeploy._assembleMulti}).
+/// @dev Extension-token tests build their production recipe from a ready-to-deploy `DeployERC20<Ext>.buildCuts`
+///      (which returns the full cut set + the ordered initializer list), then call {_deployWithHelper} to append
+///      the {TokenTestFacet} and assemble the diamond running every initializer in one window via {MultiInit}
+///      (the same composition {BaseDeploy._assembleMulti} performs in production). Additive extensions
+///      (Burnable/FlashMint) append their facet cut; override extensions (Pausable/Wrapper) `Replace` selectors.
 abstract contract ERC20TestBase is GetSelectors {
     DeployERC20 internal deployer;
     address internal diamond; // the assembled ERC-20 token diamond
     ERC20 internal token; // typed handle on the diamond (standard ERC-20 calls dispatch through it)
     TokenTestFacet internal helper; // typed handle for test-only mint/burn
+
+    /// @notice Builds the test-only {TokenTestFacet} cut appended on top of every production recipe.
+    function _helperCut() internal returns (FacetCut memory) {
+        return FacetCut({
+            facetAddress: address(new TokenTestFacet()),
+            action: FacetCutAction.Add,
+            functionSelectors: _getSelectors("TokenTestFacet")
+        });
+    }
 
     /// @notice Assembles the production ERC-20 diamond + the test helper facet (+ any `extraCuts`).
     /// @param name_ Token name. @param symbol_ Token symbol.
@@ -38,17 +50,36 @@ abstract contract ERC20TestBase is GetSelectors {
         for (uint256 i; i < prod.length; ++i) {
             cuts[i] = prod[i];
         }
-        cuts[prod.length] = FacetCut({
-            facetAddress: address(new TokenTestFacet()),
-            action: FacetCutAction.Add,
-            functionSelectors: _getSelectors("TokenTestFacet")
-        });
+        cuts[prod.length] = _helperCut();
         for (uint256 j; j < extraCuts.length; ++j) {
             cuts[prod.length + 1 + j] = extraCuts[j];
         }
 
         Diamond d = new Diamond();
         d.initialize(cuts, init, initCalldata);
+        diamond_ = address(d);
+    }
+
+    /// @notice Assembles an extension recipe (`prodCuts` + its ordered `inits`) with the test helper facet cut
+    ///         appended, running every initializer in ONE initializing window via {MultiInit} — exactly the
+    ///         composition {BaseDeploy._assembleMulti} performs in production.
+    /// @param prodCuts The production facet cuts from a `DeployERC20<Ext>.buildCuts`.
+    /// @param inits The ordered initializer contracts.
+    /// @param initCalldatas The calldata matching each initializer.
+    /// @return diamond_ The deployed extension token diamond.
+    function _deployWithHelper(FacetCut[] memory prodCuts, address[] memory inits, bytes[] memory initCalldatas)
+        internal
+        returns (address diamond_)
+    {
+        FacetCut[] memory cuts = new FacetCut[](prodCuts.length + 1);
+        for (uint256 i; i < prodCuts.length; ++i) {
+            cuts[i] = prodCuts[i];
+        }
+        cuts[prodCuts.length] = _helperCut();
+
+        MultiInit multiInit = new MultiInit();
+        Diamond d = new Diamond();
+        d.initialize(cuts, address(multiInit), abi.encodeCall(MultiInit.multiInit, (inits, initCalldatas)));
         diamond_ = address(d);
     }
 

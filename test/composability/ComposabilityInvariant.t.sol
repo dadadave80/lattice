@@ -34,10 +34,11 @@ contract ComposabilityInvariant is GetSelectors {
             "ERC20Votes", base, _sels("transfer(address,uint256)", "transferFrom(address,address,uint256)")
         );
 
-        // Completeness: every ERC-20 facet file (src/tokens/ERC20/*.sol minus the ERC20.sol base) must be checked
-        // above, so adding a facet without a `_noReExport` line fails the build instead of going unguarded.
+        // Completeness: every ERC-20 extension facet file (src/tokens/ERC20/*.sol minus the ERC20.sol base and the
+        // *Init.sol deploy initializers) must be checked above, so adding a facet without a `_noReExport` line fails
+        // the build instead of going unguarded.
         assertEq(
-            checked, _erc20ExtensionFileCount(), "an ERC-20 facet is unregistered here -> add its _noReExport line"
+            checked, _erc20ExtensionFacetCount(), "an ERC-20 facet is unregistered here -> add its _noReExport line"
         );
     }
 
@@ -65,13 +66,19 @@ contract ComposabilityInvariant is GetSelectors {
         return 1;
     }
 
-    /// @dev FFI-counts ERC-20 facet contracts on disk (every `src/tokens/ERC20/*.sol` except the `ERC20.sol` base).
-    function _erc20ExtensionFileCount() internal returns (uint256) {
+    /// @dev FFI-lists the ERC-20 EXTENSION facet files on disk — every `src/tokens/ERC20/*.sol` except the
+    ///      `ERC20.sol` base and the `*Init.sol` deploy initializers (not facets) — and counts them. Uses a newline
+    ///      list (not `wc -l`) so the result is never a bare 2-digit decimal that `vm.ffi` would hex-decode into a
+    ///      control byte (e.g. "14" -> 0x14), which would otherwise break the count as the facet family grows.
+    function _erc20ExtensionFacetCount() internal returns (uint256 count) {
         string[] memory cmd = new string[](3);
         cmd[0] = "sh";
         cmd[1] = "-c";
-        cmd[2] = "ls src/tokens/ERC20/*.sol | grep -v '/ERC20.sol$' | wc -l | tr -d '[:space:]'";
-        return vm.parseUint(string(vm.ffi(cmd)));
+        cmd[2] = "ls src/tokens/ERC20/*.sol | grep -v '/ERC20.sol$' | grep -v 'Init.sol$'";
+        string[] memory lines = vm.split(string(vm.ffi(cmd)), "\n");
+        for (uint256 i; i < lines.length; ++i) {
+            if (bytes(lines[i]).length > 0) ++count;
+        }
     }
 
     function _has(bytes4[] memory arr, bytes4 x) private pure returns (bool) {

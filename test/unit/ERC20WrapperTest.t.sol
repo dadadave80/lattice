@@ -1,95 +1,74 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
+import {Diamond} from "@diamond/Diamond.sol";
+import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
+import {MultiInit} from "@diamond/initializers/MultiInit.sol";
+import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
+import {DeployERC20Wrapper} from "@lattice-script/base/DeployERC20Wrapper.s.sol";
+import {ERC20TestBase} from "@lattice-test/base/ERC20TestBase.sol";
+import {TokenTestFacet} from "@lattice-test/helpers/TokenTestFacet.sol";
 import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
 import {IERC20Wrapper} from "@lattice/interfaces/tokens/IERC20Wrapper.sol";
 import {ERC20} from "@lattice/tokens/ERC20/ERC20.sol";
 import {ERC20Wrapper} from "@lattice/tokens/ERC20/ERC20Wrapper.sol";
-import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
-import {ERC20WrapperLib} from "@lattice/tokens/ERC20/libraries/ERC20WrapperLib.sol";
-import {Test} from "forge-std/Test.sol";
-
-/// @notice A plain ERC-20 underlying with 6 decimals, used to verify the wrapper mirrors decimals.
-contract MockUnderlying is ERC20 {
-    function initialize(address mintTo, uint256 amount) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
-        ERC20Lib.__ERC20_init("Underlying", "UND");
-        ERC20Lib._mint(mintTo, amount);
-        InitializableLib.postInitializer(s);
-    }
-
-    function decimals() public view virtual override returns (uint8) {
-        return 6;
-    }
-
-    function mint(address to, uint256 amount) external {
-        ERC20Lib._mint(to, amount);
-    }
-}
-
-contract MockWrapperContract is ERC20, ERC20Wrapper {
-    function decimals() public view override(ERC20, ERC20Wrapper) returns (uint8) {
-        return ERC20Wrapper.decimals();
-    }
-
-    function initialize(address underlying_) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
-        ERC20Lib.__ERC20_init("Wrapped Underlying", "wUND");
-        ERC20WrapperLib.__ERC20Wrapper_init(underlying_);
-        InitializableLib.postInitializer(s);
-    }
-
-    /// @dev Test-only exposure of the access-controlled recover().
-    function recover(address account) external returns (uint256) {
-        return ERC20WrapperLib.recover(account);
-    }
-
-    function supportsInterface(bytes4 interfaceId) public view returns (bool) {
-        return ERC165Lib.supportsInterface(interfaceId);
-    }
-}
 
 /// @title ERC20WrapperTest
-/// @notice ERC20 batch (token-extension completion): 1:1 wrapping of an underlying ERC-20.
-contract ERC20WrapperTest is Test {
-    MockUnderlying underlying;
-    MockWrapperContract wrapper;
+/// @notice Exercises the {ERC20Wrapper} facet (1:1 wrapping of an underlying ERC-20) through a REAL {Diamond}
+///         assembled by the ready-to-deploy {DeployERC20Wrapper} script. The underlying is itself a REAL base
+///         ERC-20 diamond (via {DeployERC20}); the wrapper facet is a MIXED cut whose `decimals()` REPLACES the
+///         base and whose `underlying`/`depositFor`/`withdrawTo` are ADDED. `recover()` is access-controlled on the
+///         production facet, so it is driven through the test-only {TokenTestFacet} (`helper`). Every call routes
+///         through the diamond's `delegatecall` dispatch, not a flattened inheritance mock.
+contract ERC20WrapperTest is ERC20TestBase {
+    ERC20Wrapper internal wrapper;
+
+    address internal underlyingAddr;
+    ERC20 internal underlyingToken;
+    TokenTestFacet internal underlyingHelper;
 
     address alice = address(0x1);
     address bob = address(0x2);
     uint256 constant START = 1000e6;
     uint256 constant AMT = 250e6;
 
-    function setUp() public {
-        underlying = new MockUnderlying();
-        underlying.initialize(alice, START);
-        wrapper = new MockWrapperContract();
-        wrapper.initialize(address(underlying));
+    function setUp() public override {
+        // Underlying: a real base ERC-20 diamond, seeded with a balance for alice via the test helper facet.
+        underlyingAddr = _deployERC20("Underlying", "UND", new FacetCut[](0));
+        underlyingToken = ERC20(underlyingAddr);
+        underlyingHelper = TokenTestFacet(underlyingAddr);
+        underlyingHelper.mint(alice, START);
+
+        // Wrapper: a real diamond wrapping the underlying 1:1.
+        DeployERC20Wrapper d = new DeployERC20Wrapper();
+        (FacetCut[] memory cuts, address[] memory inits, bytes[] memory initCalldatas) =
+            d.buildCuts("Wrapped Underlying", "wUND", underlyingAddr);
+        diamond = _deployWithHelper(cuts, inits, initCalldatas);
+        token = ERC20(diamond);
+        helper = TokenTestFacet(diamond);
+        wrapper = ERC20Wrapper(diamond);
+
         vm.prank(alice);
-        underlying.approve(address(wrapper), type(uint256).max);
+        underlyingToken.approve(diamond, type(uint256).max);
     }
 
     function test_UnderlyingAndMirroredDecimals() public view {
-        assertEq(wrapper.underlying(), address(underlying), "underlying recorded");
-        assertEq(wrapper.decimals(), 6, "decimals mirror underlying");
+        assertEq(wrapper.underlying(), underlyingAddr, "underlying recorded");
+        assertEq(wrapper.decimals(), underlyingToken.decimals(), "decimals mirror underlying");
     }
 
     function test_SupportsWrapperInterface() public view {
-        assertTrue(wrapper.supportsInterface(type(IERC20Wrapper).interfaceId), "registers IERC20Wrapper");
+        assertTrue(ERC165Facet(diamond).supportsInterface(type(IERC20Wrapper).interfaceId), "registers IERC20Wrapper");
     }
 
     function test_DepositForPullsUnderlyingAndMintsWrapped() public {
         vm.prank(alice);
         bool ok = wrapper.depositFor(bob, AMT);
         assertTrue(ok);
-        assertEq(underlying.balanceOf(address(wrapper)), AMT, "underlying escrowed");
-        assertEq(underlying.balanceOf(alice), START - AMT, "underlying debited from caller");
-        assertEq(wrapper.balanceOf(bob), AMT, "wrapped minted to account");
-        assertEq(wrapper.totalSupply(), AMT, "wrapped supply tracks deposit");
+        assertEq(underlyingToken.balanceOf(diamond), AMT, "underlying escrowed");
+        assertEq(underlyingToken.balanceOf(alice), START - AMT, "underlying debited from caller");
+        assertEq(token.balanceOf(bob), AMT, "wrapped minted to account");
+        assertEq(token.totalSupply(), AMT, "wrapped supply tracks deposit");
     }
 
     function test_WithdrawToBurnsWrappedAndReturnsUnderlying() public {
@@ -98,36 +77,48 @@ contract ERC20WrapperTest is Test {
         vm.prank(alice);
         bool ok = wrapper.withdrawTo(bob, AMT);
         assertTrue(ok);
-        assertEq(wrapper.balanceOf(alice), 0, "wrapped burned");
-        assertEq(wrapper.totalSupply(), 0, "supply back to zero");
-        assertEq(underlying.balanceOf(bob), AMT, "underlying released to account");
+        assertEq(token.balanceOf(alice), 0, "wrapped burned");
+        assertEq(token.totalSupply(), 0, "supply back to zero");
+        assertEq(underlyingToken.balanceOf(bob), AMT, "underlying released to account");
     }
 
     function test_DepositRevertsForSelfReceiver() public {
         vm.prank(alice);
-        vm.expectRevert(abi.encodeWithSelector(IERC20.ERC20InvalidReceiver.selector, address(wrapper)));
-        wrapper.depositFor(address(wrapper), AMT);
+        vm.expectRevert(abi.encodeWithSelector(IERC20.ERC20InvalidReceiver.selector, diamond));
+        wrapper.depositFor(diamond, AMT);
     }
 
     function test_WithdrawRevertsForSelfReceiver() public {
         vm.prank(alice);
         wrapper.depositFor(alice, AMT);
         vm.prank(alice);
-        vm.expectRevert(abi.encodeWithSelector(IERC20.ERC20InvalidReceiver.selector, address(wrapper)));
-        wrapper.withdrawTo(address(wrapper), AMT);
+        vm.expectRevert(abi.encodeWithSelector(IERC20.ERC20InvalidReceiver.selector, diamond));
+        wrapper.withdrawTo(diamond, AMT);
     }
 
     function test_RecoverMintsSurplus() public {
         // tokens sent directly to the wrapper (not via depositFor) leave supply < underlying balance
-        underlying.mint(address(wrapper), AMT);
-        uint256 recovered = wrapper.recover(bob);
+        underlyingHelper.mint(diamond, AMT);
+        uint256 recovered = helper.recover(bob);
         assertEq(recovered, AMT, "surplus recovered");
-        assertEq(wrapper.balanceOf(bob), AMT, "wrapped minted for surplus");
+        assertEq(token.balanceOf(bob), AMT, "wrapped minted for surplus");
     }
 
     function test_InitRevertsWhenUnderlyingIsSelf() public {
-        MockWrapperContract w = new MockWrapperContract();
-        vm.expectRevert(abi.encodeWithSelector(IERC20Wrapper.ERC20InvalidUnderlying.selector, address(w)));
-        w.initialize(address(w));
+        // Pre-deploy the diamond so its address is known, then init the wrapper with itself as the underlying.
+        Diamond d = new Diamond();
+        DeployERC20Wrapper dep = new DeployERC20Wrapper();
+        (FacetCut[] memory prodCuts, address[] memory inits, bytes[] memory initCalldatas) =
+            dep.buildCuts("Wrapped Underlying", "wUND", address(d));
+
+        FacetCut[] memory cuts = new FacetCut[](prodCuts.length + 1);
+        for (uint256 i; i < prodCuts.length; ++i) {
+            cuts[i] = prodCuts[i];
+        }
+        cuts[prodCuts.length] = _helperCut();
+
+        MultiInit mi = new MultiInit();
+        vm.expectRevert(abi.encodeWithSelector(IERC20Wrapper.ERC20InvalidUnderlying.selector, address(d)));
+        d.initialize(cuts, address(mi), abi.encodeCall(MultiInit.multiInit, (inits, initCalldatas)));
     }
 }

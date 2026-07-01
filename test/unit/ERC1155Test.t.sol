@@ -1,14 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
-import {AccessControl} from "@lattice/access/AccessControl.sol";
-import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
-import {IERC1155, IERC1155Receiver} from "@lattice/interfaces/tokens/IERC1155.sol";
-import {ERC1155} from "@lattice/tokens/ERC1155/ERC1155.sol";
-import {ERC1155Lib} from "@lattice/tokens/ERC1155/libraries/ERC1155Lib.sol";
-import {Test} from "forge-std/Test.sol";
+import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
+import {ERC1155TestBase} from "@lattice-test/base/ERC1155TestBase.sol";
+import {IERC1155} from "@lattice/interfaces/tokens/IERC1155.sol";
 
 /// @notice ERC1155 receiver that returns correct selectors.
 contract Good1155Receiver {
@@ -57,40 +52,13 @@ contract Reverting1155Receiver {
     }
 }
 
-/// @title MockERC1155Contract
-/// @notice Mock ERC-1155 multi-token for testing.
-contract MockERC1155Contract is ERC1155, AccessControl {
-    function initialize(string memory uri_, address admin) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
-        ERC1155Lib.__ERC1155_init(uri_);
-        AccessControlLib.__AccessControl_init(admin);
-        InitializableLib.postInitializer(s);
-    }
-
-    /// @notice Admin-gated single-mint helper.
-    function mintHelper(address to, uint256 id, uint256 value, bytes calldata data) external {
-        AccessControlLib.checkRole(DEFAULT_ADMIN_ROLE);
-        ERC1155Lib._mint(to, id, value, data);
-    }
-
-    /// @notice Admin-gated batch-mint helper.
-    function mintBatchHelper(address to, uint256[] calldata ids, uint256[] calldata values, bytes calldata data)
-        external
-    {
-        AccessControlLib.checkRole(DEFAULT_ADMIN_ROLE);
-        ERC1155Lib._mintBatch(to, ids, values, data);
-    }
-
-    function supportsInterface(bytes4 interfaceId) public view returns (bool) {
-        return ERC165Lib.supportsInterface(interfaceId);
-    }
-}
-
 /// @title ERC1155Test
-contract ERC1155Test is Test {
-    MockERC1155Contract token;
-
+/// @notice Exercises the base ERC-1155 facet through a REAL {Diamond} assembled by the ready-to-deploy
+///         {DeployERC1155} script (see {ERC1155TestBase}) — every call below routes through the diamond's
+///         `delegatecall` dispatch, not a flattened inheritance mock. `mint`/`mintBatch`/`burn` come from the
+///         test-only {ERC1155TestFacet} (`helper`); `supportsInterface` from the cut-in `ERC165Facet`. Mint
+///         calls are pranked from `admin` to preserve the `operator == admin` event assertions.
+contract ERC1155Test is ERC1155TestBase {
     address admin = address(0xA);
     address alice = address(0x1);
     address bob = address(0x2);
@@ -105,11 +73,6 @@ contract ERC1155Test is Test {
         address indexed operator, address indexed from, address indexed to, uint256[] ids, uint256[] values
     );
     event ApprovalForAll(address indexed account, address indexed operator, bool approved);
-
-    function setUp() public {
-        token = new MockERC1155Contract();
-        token.initialize("https://example.com/{id}", admin);
-    }
 
     //*//////////////////////////////////////////////////////////////////////////
     //                              URI TESTS
@@ -126,7 +89,7 @@ contract ERC1155Test is Test {
 
     function test_MintUpdatesBalance() public {
         vm.prank(admin);
-        token.mintHelper(alice, ID_1, 100, "");
+        helper.mint(alice, ID_1, 100, "");
 
         assertEq(token.balanceOf(alice, ID_1), 100);
     }
@@ -136,7 +99,7 @@ contract ERC1155Test is Test {
         emit TransferSingle(admin, address(0), alice, ID_1, 100);
 
         vm.prank(admin);
-        token.mintHelper(alice, ID_1, 100, "");
+        helper.mint(alice, ID_1, 100, "");
     }
 
     function test_MintBatchUpdatesBalances() public {
@@ -148,7 +111,7 @@ contract ERC1155Test is Test {
         values[1] = 200;
 
         vm.prank(admin);
-        token.mintBatchHelper(alice, ids, values, "");
+        helper.mintBatch(alice, ids, values, "");
 
         assertEq(token.balanceOf(alice, ID_1), 100);
         assertEq(token.balanceOf(alice, ID_2), 200);
@@ -166,7 +129,7 @@ contract ERC1155Test is Test {
         emit TransferBatch(admin, address(0), alice, ids, values);
 
         vm.prank(admin);
-        token.mintBatchHelper(alice, ids, values, "");
+        helper.mintBatch(alice, ids, values, "");
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -175,11 +138,11 @@ contract ERC1155Test is Test {
 
     function test_BalanceOfBatchReturnsCorrectValues() public {
         vm.prank(admin);
-        token.mintHelper(alice, ID_1, 10, "");
+        helper.mint(alice, ID_1, 10, "");
         vm.prank(admin);
-        token.mintHelper(alice, ID_2, 20, "");
+        helper.mint(alice, ID_2, 20, "");
         vm.prank(admin);
-        token.mintHelper(bob, ID_1, 5, "");
+        helper.mint(bob, ID_1, 5, "");
 
         address[] memory accounts = new address[](3);
         accounts[0] = alice;
@@ -203,7 +166,7 @@ contract ERC1155Test is Test {
 
     function test_SafeTransferFromByOwner() public {
         vm.prank(admin);
-        token.mintHelper(alice, ID_1, 100, "");
+        helper.mint(alice, ID_1, 100, "");
 
         vm.prank(alice);
         token.safeTransferFrom(alice, bob, ID_1, 60, "");
@@ -214,7 +177,7 @@ contract ERC1155Test is Test {
 
     function test_SafeTransferFromByApprovedOperator() public {
         vm.prank(admin);
-        token.mintHelper(alice, ID_1, 100, "");
+        helper.mint(alice, ID_1, 100, "");
 
         vm.prank(alice);
         token.setApprovalForAll(bob, true);
@@ -228,7 +191,7 @@ contract ERC1155Test is Test {
 
     function test_SafeTransferFromWithoutApprovalReverts() public {
         vm.prank(admin);
-        token.mintHelper(alice, ID_1, 100, "");
+        helper.mint(alice, ID_1, 100, "");
 
         vm.expectRevert(abi.encodeWithSelector(IERC1155.ERC1155MissingApprovalForAll.selector, charlie, alice));
         vm.prank(charlie);
@@ -237,7 +200,7 @@ contract ERC1155Test is Test {
 
     function test_SafeTransferFromInsufficientBalanceReverts() public {
         vm.prank(admin);
-        token.mintHelper(alice, ID_1, 10, "");
+        helper.mint(alice, ID_1, 10, "");
 
         vm.expectRevert(abi.encodeWithSelector(IERC1155.ERC1155InsufficientBalance.selector, alice, 10, 100, ID_1));
         vm.prank(alice);
@@ -246,7 +209,7 @@ contract ERC1155Test is Test {
 
     function test_SafeBatchTransferFromMismatchedArrayLengthsReverts() public {
         vm.prank(admin);
-        token.mintHelper(alice, ID_1, 100, "");
+        helper.mint(alice, ID_1, 100, "");
 
         uint256[] memory ids = new uint256[](2);
         ids[0] = ID_1;
@@ -267,7 +230,7 @@ contract ERC1155Test is Test {
         Good1155Receiver receiver = new Good1155Receiver();
 
         vm.prank(admin);
-        token.mintHelper(alice, ID_1, 100, "");
+        helper.mint(alice, ID_1, 100, "");
 
         vm.prank(alice);
         token.safeTransferFrom(alice, address(receiver), ID_1, 50, "");
@@ -279,7 +242,7 @@ contract ERC1155Test is Test {
         Bad1155Receiver receiver = new Bad1155Receiver();
 
         vm.prank(admin);
-        token.mintHelper(alice, ID_1, 100, "");
+        helper.mint(alice, ID_1, 100, "");
 
         vm.expectRevert(abi.encodeWithSelector(IERC1155.ERC1155InvalidReceiver.selector, address(receiver)));
         vm.prank(alice);
@@ -309,11 +272,11 @@ contract ERC1155Test is Test {
     //////////////////////////////////////////////////////////////////////////*//
 
     function test_SupportsERC1155Interface() public view {
-        assertTrue(token.supportsInterface(0xd9b67a26)); // IERC1155
+        assertTrue(ERC165Facet(diamond).supportsInterface(0xd9b67a26)); // IERC1155
     }
 
     function test_SupportsERC1155MetadataURIInterface() public view {
-        assertTrue(token.supportsInterface(0x0e89341c)); // IERC1155MetadataURI
+        assertTrue(ERC165Facet(diamond).supportsInterface(0x0e89341c)); // IERC1155MetadataURI
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -325,7 +288,7 @@ contract ERC1155Test is Test {
 
         vm.expectRevert(Reverting1155Receiver.TransferBlocked.selector);
         vm.prank(admin);
-        token.mintHelper(address(receiver), ID_1, 100, "");
+        helper.mint(address(receiver), ID_1, 100, "");
     }
 
     function test_MintBatchToRevertingReceiver_BubblesCustomError() public {
@@ -340,14 +303,14 @@ contract ERC1155Test is Test {
 
         vm.expectRevert(Reverting1155Receiver.TransferBlocked.selector);
         vm.prank(admin);
-        token.mintBatchHelper(address(receiver), ids, values, "");
+        helper.mintBatch(address(receiver), ids, values, "");
     }
 
     function test_SafeTransferToRevertingReceiver_BubblesCustomError() public {
         Reverting1155Receiver receiver = new Reverting1155Receiver();
 
         vm.prank(admin);
-        token.mintHelper(alice, ID_1, 100, "");
+        helper.mint(alice, ID_1, 100, "");
 
         vm.expectRevert(Reverting1155Receiver.TransferBlocked.selector);
         vm.prank(alice);
