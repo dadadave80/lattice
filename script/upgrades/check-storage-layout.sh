@@ -87,6 +87,7 @@ GUARDED_STRUCTS=(
     "WormholeGatewayAdapterStorage lattice.storage.WormholeGatewayAdapter"
     "ERC7786OpenBridgeStorage lattice.storage.ERC7786OpenBridge"
     "CCIPGatewayAdapterStorage lattice.storage.CCIPGatewayAdapter"
+    "CCTPBridgeAdapterStorage lattice.storage.CCTPBridgeAdapter"
     "LayerZeroGatewayAdapterStorage lattice.storage.LayerZeroGatewayAdapter"
     "L2ToL2CrossDomainMessengerGatewayAdapterStorage lattice.storage.L2ToL2CrossDomainMessengerGatewayAdapter"
     "ZetaChainGatewayAdapterStorage lattice.storage.ZetaChainGatewayAdapter"

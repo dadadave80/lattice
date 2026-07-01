@@ -326,6 +326,23 @@ contract StorageLayoutProbe {
         mapping(uint256 chainId => CCVConfig) _ccvConfigs;
     }
 
+    /// @dev Verbatim mirror of `CCTPBridgeAdapterLib.CCTPBridgeAdapterStorage` and its `DomainConfig`
+    ///      (`@custom:storage-location erc7201:lattice.storage.CCTPBridgeAdapter`). Append-only.
+    struct DomainConfig {
+        uint256 maxFee;
+        uint32 minFinalityThreshold;
+        bytes32 destinationCaller;
+    }
+
+    struct CCTPBridgeAdapterStorage {
+        address _tokenMessenger;
+        address _messageTransmitter;
+        address _usdc;
+        mapping(uint256 chainId => uint32 domain) _chainIdToDomain;
+        mapping(uint256 chainId => bool registered) _chainRegistered;
+        mapping(uint32 domain => DomainConfig config) _domainConfig;
+    }
+
     /// @dev Verbatim mirror of `LayerZeroGatewayAdapterLib.LayerZeroGatewayAdapterStorage` and its
     ///      `DestinationConfig` (`@custom:storage-location erc7201:lattice.storage.LayerZeroGatewayAdapter`).
     ///      Append-only.
@@ -548,6 +565,7 @@ contract StorageLayoutProbe {
     WormholeGatewayAdapterStorage internal _unusedWormholeGatewayAdapter;
     ERC7786OpenBridgeStorage internal _unusedERC7786OpenBridge;
     CCIPGatewayAdapterStorage internal _unusedCCIPGatewayAdapter;
+    CCTPBridgeAdapterStorage internal _unusedCCTPBridgeAdapter;
     LayerZeroGatewayAdapterStorage internal _unusedLayerZeroGatewayAdapter;
     L2ToL2CrossDomainMessengerGatewayAdapterStorage internal _unusedL2ToL2CrossDomainMessengerGatewayAdapter;
     ZetaChainGatewayAdapterStorage internal _unusedZetaChainGatewayAdapter;
