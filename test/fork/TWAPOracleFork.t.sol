@@ -15,7 +15,7 @@ import {Test} from "forge-std/Test.sol";
 // ---------------------------------------------------------------------------
 
 /// @notice Mock Diamond that combines AccessControl + TWAPOracle, matching
-///         the pattern from TWAPOracleTester.t.sol.
+///         the pattern from TWAPOracleTest.t.sol.
 contract MockTWAPOracleForkContract is AccessControl, TWAPOracle {
     function initialize(address _admin) external {
         bytes32 s = InitializableLib.initializableSlot();

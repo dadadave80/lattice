@@ -1,6 +1,6 @@
 # Semaphore test vector
 
-A real Semaphore v4 proof used by `test/unit/SemaphoreTester.t.sol` to validate the `Semaphore` facet
+A real Semaphore v4 proof used by `test/unit/SemaphoreTest.t.sol` to validate the `Semaphore` facet
 end-to-end against the vendored audited verifier (`lib/semaphore/SemaphoreVerifier.sol`).
 
 - `proof.json` — a group of 3 member identity commitments, a membership + signaling proof by member 0
