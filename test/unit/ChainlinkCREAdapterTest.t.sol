@@ -1,34 +1,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
-import {AccessControl} from "@lattice/access/AccessControl.sol";
-import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
+import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
+import {ChainlinkCREAdapterTestBase} from "@lattice-test/base/ChainlinkCREAdapterTestBase.sol";
 import {IReceiver} from "@lattice/interfaces/external/IReceiver.sol";
 import {IChainlinkCREAdapter} from "@lattice/interfaces/oracles/IChainlinkCREAdapter.sol";
 import {ChainlinkCREAdapter} from "@lattice/oracles/ChainlinkCREAdapter.sol";
-import {ChainlinkCREAdapterLib} from "@lattice/oracles/libraries/ChainlinkCREAdapterLib.sol";
-import {Test} from "forge-std/Test.sol";
 
-/// @notice Combines AccessControl + ChainlinkCREAdapter for testing.
-contract MockChainlinkCREContract is AccessControl, ChainlinkCREAdapter {
-    function initialize(address _admin) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
-        AccessControlLib.__AccessControl_init(_admin);
-        ChainlinkCREAdapterLib.__ChainlinkCREAdapter_init();
-        InitializableLib.postInitializer(s);
-    }
-
-    function supportsInterface(bytes4 _interfaceId) public view returns (bool) {
-        return ERC165Lib.supportsInterface(_interfaceId);
-    }
-}
-
-contract ChainlinkCREAdapterTest is Test {
-    MockChainlinkCREContract cre;
-
+/// @title ChainlinkCREAdapterTest
+/// @notice Exercises the ChainlinkCREAdapter facet through a REAL {Diamond} assembled by the ready-to-deploy
+///         {DeployChainlinkCREAdapter} script (see {ChainlinkCREAdapterTestBase}) — every call below routes
+///         through the diamond's `delegatecall` dispatch, not a flattened inheritance mock. Admin gating is
+///         enforced by the cut-in `AccessControl` facet; `supportsInterface` (canonical IReceiver id) by the
+///         cut-in `ERC165Facet`.
+contract ChainlinkCREAdapterTest is ChainlinkCREAdapterTestBase {
     address admin = address(0x1);
     address user = address(0x2);
     address forwarder = address(0xF0);
@@ -41,8 +26,8 @@ contract ChainlinkCREAdapterTest is Test {
     bytes report = abi.encode(uint256(42), uint256(1700000000));
 
     function setUp() public {
-        cre = new MockChainlinkCREContract();
-        cre.initialize(admin);
+        diamond = _deployChainlinkCREAdapter(admin);
+        cre = ChainlinkCREAdapter(diamond);
     }
 
     /// @dev Builds 64-byte KeystoneForwarder metadata: workflowId ++ name ++ owner ++ reportId.
@@ -185,6 +170,6 @@ contract ChainlinkCREAdapterTest is Test {
     //////////////////////////////////////////////////////////////////////////*//
 
     function test_SupportsCanonicalIReceiverInterface() public view {
-        assertTrue(cre.supportsInterface(type(IReceiver).interfaceId));
+        assertTrue(ERC165Facet(diamond).supportsInterface(type(IReceiver).interfaceId));
     }
 }

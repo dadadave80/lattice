@@ -1,15 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
-import {AccessControl} from "@lattice/access/AccessControl.sol";
-import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
+import {Diamond} from "@diamond/Diamond.sol";
+import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
+import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
+import {DeployTellorAdapter} from "@lattice-script/base/DeployTellorAdapter.s.sol";
+import {TellorAdapterTestBase} from "@lattice-test/base/TellorAdapterTestBase.sol";
 import {ITellor} from "@lattice/interfaces/external/ITellor.sol";
 import {ITellorAdapter} from "@lattice/interfaces/oracles/ITellorAdapter.sol";
 import {TellorAdapter} from "@lattice/oracles/TellorAdapter.sol";
-import {TellorAdapterLib} from "@lattice/oracles/libraries/TellorAdapterLib.sol";
-import {Test} from "forge-std/Test.sol";
 
 // ---------------------------------------------------------------------------
 //                              MOCKS
@@ -39,29 +38,17 @@ contract MockTellor is ITellor {
     }
 }
 
-/// @notice Combines AccessControl + TellorAdapter for testing.
-contract MockTellorAdapterContract is AccessControl, TellorAdapter {
-    function initialize(address admin, address tellor_) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
-        AccessControlLib.__AccessControl_init(admin);
-        TellorAdapterLib.__TellorAdapter_init(tellor_);
-        InitializableLib.postInitializer(s);
-    }
-
-    function supportsInterface(bytes4 interfaceId) external view returns (bool) {
-        return ERC165Lib.supportsInterface(interfaceId);
-    }
-}
-
 // ---------------------------------------------------------------------------
 //                              TESTS
 // ---------------------------------------------------------------------------
 
 /// @title TellorAdapterTest
-/// @notice Unit tests for the Tellor price-oracle adapter against a mock Tellor.
-contract TellorAdapterTest is Test {
-    MockTellorAdapterContract adapter;
+/// @notice Exercises the Tellor price-feed adapter through a REAL {Diamond} assembled by the ready-to-deploy
+///         {DeployTellorAdapter} script (see {TellorAdapterTestBase}) — every call routes through the diamond's
+///         `delegatecall` dispatch, not a flattened inheritance mock. Admin gating is enforced by the cut-in
+///         `AccessControl` facet; `supportsInterface` by the cut-in `ERC165Facet`. The external `MockTellor` is
+///         kept as a test fixture (it is NOT the facet under test).
+contract TellorAdapterTest is TellorAdapterTestBase {
     MockTellor tellor;
 
     address admin = address(0xA11CE);
@@ -78,8 +65,8 @@ contract TellorAdapterTest is Test {
     function setUp() public {
         vm.warp(1_000_000);
         tellor = new MockTellor();
-        adapter = new MockTellorAdapterContract();
-        adapter.initialize(admin, address(tellor));
+        diamond = _deployTellorAdapter(admin, address(tellor));
+        adapter = TellorAdapter(diamond);
 
         vm.prank(admin);
         adapter.registerFeed(KEY, QUERY_ID, DISPUTE_BUFFER, MAX_STALENESS);
@@ -92,9 +79,12 @@ contract TellorAdapterTest is Test {
     //////////////////////////////////////////////////////////////////////////*//
 
     function test_InitRevertsOnZeroTellor() public {
-        MockTellorAdapterContract a = new MockTellorAdapterContract();
+        // Assembling the production recipe with a zero Tellor oracle must revert inside the init delegatecall.
+        DeployTellorAdapter d = new DeployTellorAdapter();
+        (FacetCut[] memory cuts, address init, bytes memory initCalldata) = d.buildCuts(admin, address(0));
+        Diamond diamond_ = new Diamond();
         vm.expectRevert(ITellorAdapter.TellorContractIsZero.selector);
-        a.initialize(admin, address(0));
+        diamond_.initialize(cuts, init, initCalldata);
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -279,6 +269,6 @@ contract TellorAdapterTest is Test {
     }
 
     function test_SupportsInterface() public view {
-        assertTrue(adapter.supportsInterface(type(ITellorAdapter).interfaceId));
+        assertTrue(ERC165Facet(diamond).supportsInterface(type(ITellorAdapter).interfaceId));
     }
 }

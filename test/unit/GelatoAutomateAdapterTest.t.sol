@@ -1,21 +1,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
-import {AccessControl} from "@lattice/access/AccessControl.sol";
-import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
+import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
+import {GelatoAutomateAdapterTestBase} from "@lattice-test/base/GelatoAutomateAdapterTestBase.sol";
+import {GelatoAutomateAdapterTestFacet} from "@lattice-test/helpers/GelatoAutomateAdapterTestFacet.sol";
 import {IGelatoAutomate} from "@lattice/interfaces/external/IGelatoAutomate.sol";
 import {IGelatoAutomateAdapter} from "@lattice/interfaces/oracles/IGelatoAutomateAdapter.sol";
 import {GelatoAutomateAdapter} from "@lattice/oracles/GelatoAutomateAdapter.sol";
-import {GelatoAutomateAdapterLib} from "@lattice/oracles/libraries/GelatoAutomateAdapterLib.sol";
-import {Test} from "forge-std/Test.sol";
 
 // ---------------------------------------------------------------------------
-//                              MOCKS
+//                              EXTERNAL MOCK FIXTURE
 // ---------------------------------------------------------------------------
 
-/// @notice Mock Gelato Automate that returns deterministic task IDs and records args.
+/// @notice Mock Gelato Automate that returns deterministic task IDs and records args. This is the EXTERNAL
+///         contract the adapter integrates with (not the facet under test) — kept as a test fixture.
 contract MockAutomate is IGelatoAutomate {
     uint256 private _nonce;
 
@@ -42,32 +40,17 @@ contract MockAutomate is IGelatoAutomate {
     }
 }
 
-/// @notice Combines AccessControl + GelatoAutomateAdapter for testing.
-contract MockGelatoAutomateContract is AccessControl, GelatoAutomateAdapter {
-    function initialize(address _admin) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
-        AccessControlLib.__AccessControl_init(_admin);
-        GelatoAutomateAdapterLib.__GelatoAutomateAdapter_init();
-        InitializableLib.postInitializer(s);
-    }
-
-    /// @notice Guarded exec entrypoint proving the dedicated-msg.sender gate.
-    function exec() external {
-        GelatoAutomateAdapterLib.requireDedicatedMsgSender();
-    }
-
-    function supportsInterface(bytes4 _interfaceId) public view returns (bool) {
-        return ERC165Lib.supportsInterface(_interfaceId);
-    }
-}
-
 // ---------------------------------------------------------------------------
 //                              TESTS
 // ---------------------------------------------------------------------------
 
-contract GelatoAutomateAdapterTest is Test {
-    MockGelatoAutomateContract gelato;
+/// @title GelatoAutomateAdapterTest
+/// @notice Exercises the GelatoAutomateAdapter facet through a REAL {Diamond} assembled by the ready-to-deploy
+///         {DeployGelatoAutomateAdapter} script (see {GelatoAutomateAdapterTestBase}) — every call below routes
+///         through the diamond's `delegatecall` dispatch, not a flattened inheritance mock. Admin gating is
+///         enforced by the cut-in `AccessControl` facet; the dedicated-msg.sender exec gate by the test-only
+///         {GelatoAutomateAdapterTestFacet}; `supportsInterface` by the cut-in `ERC165Facet`.
+contract GelatoAutomateAdapterTest is GelatoAutomateAdapterTestBase {
     MockAutomate automate;
 
     address admin = address(0x1);
@@ -77,8 +60,9 @@ contract GelatoAutomateAdapterTest is Test {
     address feeToken = address(0);
 
     function setUp() public {
-        gelato = new MockGelatoAutomateContract();
-        gelato.initialize(admin);
+        diamond = _deployGelatoAutomateAdapter(admin);
+        gelato = GelatoAutomateAdapter(diamond);
+        execGuard = GelatoAutomateAdapterTestFacet(diamond);
 
         automate = new MockAutomate();
     }
@@ -239,7 +223,7 @@ contract GelatoAutomateAdapterTest is Test {
         vm.expectRevert(
             abi.encodeWithSelector(IGelatoAutomateAdapter.GelatoAutomateOnlyDedicatedMsgSender.selector, user)
         );
-        gelato.exec();
+        execGuard.exec();
     }
 
     /// @notice exec() from the dedicated msg.sender succeeds.
@@ -248,7 +232,7 @@ contract GelatoAutomateAdapterTest is Test {
         gelato.setConfig(address(automate), dedicatedMsgSender);
 
         vm.prank(dedicatedMsgSender);
-        gelato.exec();
+        execGuard.exec();
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -257,6 +241,6 @@ contract GelatoAutomateAdapterTest is Test {
 
     /// @notice supportsInterface returns true for IGelatoAutomateAdapter after init.
     function test_SupportsInterfaceGelatoAutomateAdapter() public view {
-        assertTrue(gelato.supportsInterface(type(IGelatoAutomateAdapter).interfaceId));
+        assertTrue(ERC165Facet(diamond).supportsInterface(type(IGelatoAutomateAdapter).interfaceId));
     }
 }

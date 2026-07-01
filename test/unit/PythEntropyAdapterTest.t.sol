@@ -1,21 +1,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
-import {AccessControl} from "@lattice/access/AccessControl.sol";
-import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
+import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
+import {PythEntropyAdapterTestBase} from "@lattice-test/base/PythEntropyAdapterTestBase.sol";
 import {IEntropy} from "@lattice/interfaces/external/IEntropy.sol";
 import {IPythEntropyAdapter} from "@lattice/interfaces/oracles/IPythEntropyAdapter.sol";
 import {PythEntropyAdapter} from "@lattice/oracles/PythEntropyAdapter.sol";
-import {PythEntropyAdapterLib} from "@lattice/oracles/libraries/PythEntropyAdapterLib.sol";
-import {Test} from "forge-std/Test.sol";
 
 // ---------------------------------------------------------------------------
-//                              MOCKS
+//                          EXTERNAL FIXTURE (Pyth Entropy)
 // ---------------------------------------------------------------------------
 
-/// @notice Mock Pyth Entropy contract that returns incrementing sequence numbers.
+/// @notice Mock Pyth Entropy contract that returns incrementing sequence numbers. This is the EXTERNAL Pyth
+///         Entropy protocol the facet talks to (NOT the facet under test) — kept as a test fixture that drives
+///         the `entropyCallback` callback into the diamond.
 contract MockEntropy is IEntropy {
     address public defaultProvider;
     uint128 public fee;
@@ -51,27 +49,15 @@ contract MockEntropy is IEntropy {
     }
 }
 
-/// @notice Combines AccessControl + PythEntropyAdapter for testing.
-contract MockPythEntropyAdapterContract is AccessControl, PythEntropyAdapter {
-    function initialize(address _admin) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
-        AccessControlLib.__AccessControl_init(_admin);
-        PythEntropyAdapterLib.__PythEntropyAdapter_init();
-        InitializableLib.postInitializer(s);
-    }
-
-    function supportsInterface(bytes4 _interfaceId) public view returns (bool) {
-        return ERC165Lib.supportsInterface(_interfaceId);
-    }
-}
-
 // ---------------------------------------------------------------------------
 //                              TESTS
 // ---------------------------------------------------------------------------
 
-contract PythEntropyAdapterTest is Test {
-    MockPythEntropyAdapterContract entropyContract;
+/// @notice Exercises the Pyth Entropy facet through a REAL {Diamond} assembled by the ready-to-deploy
+///         {DeployPythEntropyAdapter} script (see {PythEntropyAdapterTestBase}) — every call below routes
+///         through the diamond's `delegatecall` dispatch, not a flattened inheritance mock. Admin gating is
+///         enforced by the cut-in `AccessControl` facet; `supportsInterface` by the cut-in `ERC165Facet`.
+contract PythEntropyAdapterTest is PythEntropyAdapterTestBase {
     MockEntropy entropy;
 
     address admin = address(0x1);
@@ -87,8 +73,8 @@ contract PythEntropyAdapterTest is Test {
     IPythEntropyAdapter.EntropyConfig validConfig;
 
     function setUp() public {
-        entropyContract = new MockPythEntropyAdapterContract();
-        entropyContract.initialize(admin);
+        diamond = _deployPythEntropyAdapter(admin);
+        entropyContract = PythEntropyAdapter(diamond);
 
         entropy = new MockEntropy(defaultProvider, FEE);
 
@@ -251,7 +237,7 @@ contract PythEntropyAdapterTest is Test {
         entropyContract.setConfig(validConfig);
 
         vm.expectRevert(abi.encodeWithSelector(IPythEntropyAdapter.EntropyRequestNotFound.selector, uint64(999)));
-        entropy.fulfill(address(entropyContract), 999, defaultProvider, keccak256("RAND"));
+        entropy.fulfill(diamond, 999, defaultProvider, keccak256("RAND"));
     }
 
     /// @notice Successful callback clears the pending entry and emits RandomNumberFulfilled.
@@ -269,7 +255,7 @@ contract PythEntropyAdapterTest is Test {
         bytes32 rand = keccak256("DELIVERED_RANDOM");
         vm.expectEmit(true, true, false, true);
         emit IPythEntropyAdapter.RandomNumberFulfilled(seq, USER_KEY, rand);
-        entropy.fulfill(address(entropyContract), seq, defaultProvider, rand);
+        entropy.fulfill(diamond, seq, defaultProvider, rand);
 
         // Pending entry should be cleared.
         assertEq(entropyContract.getUserKey(seq), bytes32(0));
@@ -281,6 +267,6 @@ contract PythEntropyAdapterTest is Test {
 
     /// @notice supportsInterface returns true for IPythEntropyAdapter after init.
     function test_SupportsInterfacePythEntropyAdapter() public view {
-        assertTrue(entropyContract.supportsInterface(type(IPythEntropyAdapter).interfaceId));
+        assertTrue(ERC165Facet(diamond).supportsInterface(type(IPythEntropyAdapter).interfaceId));
     }
 }

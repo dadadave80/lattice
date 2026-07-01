@@ -1,16 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
-import {AccessControl} from "@lattice/access/AccessControl.sol";
-import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
+import {Diamond} from "@diamond/Diamond.sol";
+import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
+import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
+import {ConstantProductTestBase} from "@lattice-test/base/ConstantProductTestBase.sol";
+import {IMintableToken} from "@lattice-test/helpers/IMintableToken.sol";
 import {ConstantProduct} from "@lattice/amm/ConstantProduct.sol";
-import {ConstantProductLib} from "@lattice/amm/libraries/ConstantProductLib.sol";
 import {IConstantProduct} from "@lattice/interfaces/amm/IConstantProduct.sol";
 import {IReentrancyGuard} from "@lattice/interfaces/security/IReentrancyGuard.sol";
-import {Test} from "forge-std/Test.sol";
-import {Vm} from "forge-std/Vm.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
 //                               TEST ERC-20
@@ -63,36 +61,21 @@ contract TestERC20 {
 }
 
 //*//////////////////////////////////////////////////////////////////////////
-//                               MOCK CONTRACT
-//////////////////////////////////////////////////////////////////////////*//
-
-/// @notice Mock Diamond contract that combines ConstantProduct and AccessControl for testing.
-contract MockConstantProduct is ConstantProduct, AccessControl {
-    function initialize(address token0_, address token1_, address admin_) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
-        AccessControlLib.__AccessControl_init(admin_);
-        ConstantProductLib.__ConstantProduct_init(token0_, token1_);
-        InitializableLib.postInitializer(s);
-    }
-
-    function supportsInterface(bytes4 interfaceId_) public view returns (bool) {
-        return ERC165Lib.supportsInterface(interfaceId_);
-    }
-}
-
-//*//////////////////////////////////////////////////////////////////////////
 //                                   TESTS
 //////////////////////////////////////////////////////////////////////////*//
 
 /// @title ConstantProductTest
-/// @notice Comprehensive tests for the ConstantProduct AMM module.
-contract ConstantProductTest is Test {
-    MockConstantProduct pool;
-    TestERC20 tokenA;
-    TestERC20 tokenB;
-    TestERC20 token0; // lower address after sort
-    TestERC20 token1; // higher address after sort
+/// @notice Exercises the ConstantProduct AMM facet through a REAL {Diamond} assembled by the ready-to-deploy
+///         {DeployConstantProduct} script (see {ConstantProductTestBase}) — every pool call routes through the
+///         diamond's `delegatecall` dispatch, not a flattened inheritance mock. The two reserve tokens are REAL
+///         base ERC-20 diamonds ({DeployERC20} + {TokenTestFacet}); `supportsInterface` comes from the cut-in
+///         `ERC165Facet`. The malicious-token fixtures below are EXTERNAL attackers the pool transacts with —
+///         NOT the facet under test.
+contract ConstantProductTest is ConstantProductTestBase {
+    address diamond; // the assembled pool diamond
+    ConstantProduct pool; // typed handle on the pool diamond
+    IMintableToken token0; // lower address after sort (real ERC-20 diamond)
+    IMintableToken token1; // higher address after sort (real ERC-20 diamond)
 
     address admin = address(0xA11CE);
     address alice = address(0xA11CE2);
@@ -101,21 +84,17 @@ contract ConstantProductTest is Test {
     uint256 constant MINIMUM_LIQUIDITY = 1000;
 
     function setUp() public {
-        // Deploy two tokens.
-        tokenA = new TestERC20("TokenA", "TKA");
-        tokenB = new TestERC20("TokenB", "TKB");
+        // Deploy two real base ERC-20 diamonds as the pair reserve tokens.
+        address ta = _deployMintableERC20("TokenA", "TKA");
+        address tb = _deployMintableERC20("TokenB", "TKB");
 
         // Determine sort order so tests can refer to token0/token1 unambiguously.
-        if (address(tokenA) < address(tokenB)) {
-            token0 = tokenA;
-            token1 = tokenB;
-        } else {
-            token0 = tokenB;
-            token1 = tokenA;
-        }
+        (address t0Addr, address t1Addr) = ta < tb ? (ta, tb) : (tb, ta);
+        token0 = IMintableToken(t0Addr);
+        token1 = IMintableToken(t1Addr);
 
-        pool = new MockConstantProduct();
-        pool.initialize(address(tokenA), address(tokenB), admin);
+        diamond = _deployPool(admin, ta, tb);
+        pool = ConstantProduct(diamond);
 
         // Mint tokens to alice and bob.
         token0.mint(alice, 1_000_000e18);
@@ -130,23 +109,29 @@ contract ConstantProductTest is Test {
 
     /// @notice Initializing with identical token addresses reverts.
     function test_InitSameTokenReverts() public {
-        MockConstantProduct p = new MockConstantProduct();
+        (FacetCut[] memory cuts, address init, bytes memory initCalldata) =
+            _buildPoolCuts(admin, address(token0), address(token0));
+        Diamond d = new Diamond();
         vm.expectRevert(IConstantProduct.ConstantProductInvalidTokens.selector);
-        p.initialize(address(tokenA), address(tokenA), admin);
+        d.initialize(cuts, init, initCalldata);
     }
 
     /// @notice Initializing with zero token0 reverts.
     function test_InitZeroToken0Reverts() public {
-        MockConstantProduct p = new MockConstantProduct();
+        (FacetCut[] memory cuts, address init, bytes memory initCalldata) =
+            _buildPoolCuts(admin, address(0), address(token1));
+        Diamond d = new Diamond();
         vm.expectRevert(IConstantProduct.ConstantProductInvalidTokens.selector);
-        p.initialize(address(0), address(tokenB), admin);
+        d.initialize(cuts, init, initCalldata);
     }
 
     /// @notice Initializing with zero token1 reverts.
     function test_InitZeroToken1Reverts() public {
-        MockConstantProduct p = new MockConstantProduct();
+        (FacetCut[] memory cuts, address init, bytes memory initCalldata) =
+            _buildPoolCuts(admin, address(token0), address(0));
+        Diamond d = new Diamond();
         vm.expectRevert(IConstantProduct.ConstantProductInvalidTokens.selector);
-        p.initialize(address(tokenA), address(0), admin);
+        d.initialize(cuts, init, initCalldata);
     }
 
     /// @notice Tokens are always sorted: token0 < token1 by address.
@@ -156,7 +141,7 @@ contract ConstantProductTest is Test {
         assertTrue(t0 < t1, "token0 should be the lower address");
         // One of the two supplied tokens must be each slot.
         assertTrue(
-            (t0 == address(tokenA) || t0 == address(tokenB)) && (t1 == address(tokenA) || t1 == address(tokenB)),
+            (t0 == address(token0) || t0 == address(token1)) && (t1 == address(token0) || t1 == address(token1)),
             "tokens should match supplied addresses"
         );
     }
@@ -168,7 +153,7 @@ contract ConstantProductTest is Test {
 
     /// @notice ERC-165 reports IConstantProduct support.
     function test_SupportsInterfaceIConstantProduct() public view {
-        assertTrue(pool.supportsInterface(type(IConstantProduct).interfaceId));
+        assertTrue(ERC165Facet(diamond).supportsInterface(type(IConstantProduct).interfaceId));
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -646,8 +631,7 @@ contract ConstantProductTest is Test {
         address t1Addr = address(safeToken) < address(malToken) ? address(malToken) : address(safeToken);
         bool safeIsToken0 = (t0Addr == address(safeToken));
 
-        MockConstantProduct malPool = new MockConstantProduct();
-        malPool.initialize(t0Addr, t1Addr, admin);
+        ConstantProduct malPool = ConstantProduct(_deployPool(admin, t0Addr, t1Addr));
 
         // Seed pool — no reentry armed yet.
         safeToken.mint(alice, 200e18);
@@ -683,8 +667,7 @@ contract ConstantProductTest is Test {
         address t0Addr = address(safeToken) < address(malToken) ? address(safeToken) : address(malToken);
         address t1Addr = address(safeToken) < address(malToken) ? address(malToken) : address(safeToken);
 
-        MockConstantProduct malPool = new MockConstantProduct();
-        malPool.initialize(t0Addr, t1Addr, admin);
+        ConstantProduct malPool = ConstantProduct(_deployPool(admin, t0Addr, t1Addr));
         malToken.setPool(address(malPool));
 
         safeToken.mint(alice, 200e18);
@@ -706,8 +689,7 @@ contract ConstantProductTest is Test {
         address t0Addr = address(safeToken) < address(malToken2) ? address(safeToken) : address(malToken2);
         address t1Addr = address(safeToken) < address(malToken2) ? address(malToken2) : address(safeToken);
 
-        MockConstantProduct malPool = new MockConstantProduct();
-        malPool.initialize(t0Addr, t1Addr, admin);
+        ConstantProduct malPool = ConstantProduct(_deployPool(admin, t0Addr, t1Addr));
 
         // Seed pool with honest tokens first (no reentry on first add).
         safeToken.mint(alice, 300e18);
