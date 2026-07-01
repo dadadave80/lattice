@@ -1,57 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
-import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
-import {VaultCore} from "@lattice/defi/VaultCore.sol";
-import {VaultCoreLib} from "@lattice/defi/libraries/VaultCoreLib.sol";
+import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
+import {VaultCoreTestBase} from "@lattice-test/base/VaultCoreTestBase.sol";
+import {DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
 import {IVaultCore} from "@lattice/interfaces/defi/IVaultCore.sol";
-import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
 import {IERC4626} from "@lattice/interfaces/tokens/IERC4626.sol";
-import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
-import {ERC4626Lib} from "@lattice/tokens/ERC4626/libraries/ERC4626Lib.sol";
-import {Test} from "forge-std/Test.sol";
-
-//*//////////////////////////////////////////////////////////////////////////
-//                          MOCK UNDERLYING ERC20
-//////////////////////////////////////////////////////////////////////////*//
-
-/// @notice Simple mintable ERC-20 used as the vault's underlying asset.
-contract MockERC20 {
-    string public name = "Mock Token";
-    string public symbol = "MTK";
-    uint8 public decimals = 18;
-    uint256 public totalSupply;
-    mapping(address => uint256) public balanceOf;
-    mapping(address => mapping(address => uint256)) public allowance;
-
-    function mint(address to, uint256 amount) external {
-        totalSupply += amount;
-        balanceOf[to] += amount;
-    }
-
-    function transfer(address to, uint256 amount) external returns (bool) {
-        require(balanceOf[msg.sender] >= amount, "insufficient");
-        balanceOf[msg.sender] -= amount;
-        balanceOf[to] += amount;
-        return true;
-    }
-
-    function transferFrom(address from, address to, uint256 amount) external returns (bool) {
-        require(balanceOf[from] >= amount, "insufficient");
-        require(allowance[from][msg.sender] >= amount, "allowance");
-        allowance[from][msg.sender] -= amount;
-        balanceOf[from] -= amount;
-        balanceOf[to] += amount;
-        return true;
-    }
-
-    function approve(address spender, uint256 amount) external returns (bool) {
-        allowance[msg.sender][spender] = amount;
-        return true;
-    }
-}
 
 //*//////////////////////////////////////////////////////////////////////////
 //                         MOCK STRATEGY MANAGER
@@ -79,49 +33,26 @@ contract RevertingStrategyManager {
 }
 
 //*//////////////////////////////////////////////////////////////////////////
-//                           MOCK VAULT CONTRACT
-//////////////////////////////////////////////////////////////////////////*//
-
-/// @notice VaultCore mock that also exposes VaultCoreLib's init.
-contract MockVaultCoreContract is VaultCore {
-    function initialize(address asset_, address admin_) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
-        AccessControlLib.__AccessControl_init(admin_);
-        ERC20Lib.__ERC20_init("Vault Share", "vSHARE");
-        ERC4626Lib.__ERC4626_init(asset_, 0);
-        VaultCoreLib.__VaultCore_init();
-        InitializableLib.postInitializer(s);
-    }
-
-    function supportsInterface(bytes4 interfaceId) public view returns (bool) {
-        return ERC165Lib.supportsInterface(interfaceId);
-    }
-}
-
-//*//////////////////////////////////////////////////////////////////////////
 //                                 TESTS
 //////////////////////////////////////////////////////////////////////////*//
 
 /// @title VaultCoreTest
-/// @notice Tests for the VaultCore three-layer module.
-contract VaultCoreTest is Test {
-    MockVaultCoreContract vault;
-    MockERC20 underlying;
+/// @notice Tests for the VaultCore three-layer module, exercised through a REAL {Diamond} assembled by the
+///         ready-to-deploy {DeployVaultCore} script (see {VaultCoreTestBase}). The underlying asset is itself a
+///         real base ERC-20 diamond; every vault/strategy call routes through the diamond's `delegatecall`
+///         dispatch, not a flattened inheritance mock. `supportsInterface` comes from the cut-in `ERC165Facet`;
+///         `DEFAULT_ADMIN_ROLE` is granted to `admin` at init (see {VaultCoreInit}).
+contract VaultCoreTest is VaultCoreTestBase {
     MockStrategyManager stratManager;
 
-    address admin = address(0xAD);
     address user = address(0xA1);
     address manager = address(0); // set to stratManager after deploy
 
-    function setUp() public {
-        underlying = new MockERC20();
-        vault = new MockVaultCoreContract();
+    function setUp() public override {
+        super.setUp(); // deploys the underlying ERC-20 diamond + the VaultCore diamond, wires handles, admin=0xAD
+
         stratManager = new MockStrategyManager();
         manager = address(stratManager);
-
-        vm.prank(admin);
-        vault.initialize(address(underlying), admin);
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -167,7 +98,7 @@ contract VaultCoreTest is Test {
 
     /// @notice Without a manager, totalAssets equals idle balance.
     function test_TotalAssets_NoManager_EqualsIdle() public {
-        underlying.mint(address(vault), 1000e18);
+        underlying.mint(vaultAddr, 1000e18);
         assertEq(vault.totalAssets(), 1000e18);
         assertEq(vault.idleAssets(), 1000e18);
     }
@@ -177,7 +108,7 @@ contract VaultCoreTest is Test {
         vm.prank(admin);
         vault.setStrategyManager(manager);
 
-        underlying.mint(address(vault), 600e18);
+        underlying.mint(vaultAddr, 600e18);
         stratManager.setTotalAllocated(400e18);
 
         assertEq(vault.idleAssets(), 600e18);
@@ -187,7 +118,7 @@ contract VaultCoreTest is Test {
 
     /// @notice allocatedAssets returns 0 when no manager is set.
     function test_AllocatedAssets_NoManager_IsZero() public {
-        underlying.mint(address(vault), 500e18);
+        underlying.mint(vaultAddr, 500e18);
         assertEq(vault.allocatedAssets(), 0);
     }
 
@@ -211,13 +142,13 @@ contract VaultCoreTest is Test {
         vault.setStrategyManager(manager);
 
         address strategy = address(0x5678);
-        underlying.mint(address(vault), 500e18);
+        underlying.mint(vaultAddr, 500e18);
 
         vm.prank(manager);
         vault.allocateToStrategy(strategy, 200e18);
 
         // Assets moved from vault to strategy
-        assertEq(underlying.balanceOf(address(vault)), 300e18);
+        assertEq(underlying.balanceOf(vaultAddr), 300e18);
         assertEq(underlying.balanceOf(strategy), 200e18);
     }
 
@@ -227,7 +158,7 @@ contract VaultCoreTest is Test {
         vault.setStrategyManager(manager);
 
         address strategy = address(0x5678);
-        underlying.mint(address(vault), 500e18);
+        underlying.mint(vaultAddr, 500e18);
 
         vm.prank(manager);
         vm.expectEmit(true, false, false, true);
@@ -276,7 +207,7 @@ contract VaultCoreTest is Test {
         vault.setStrategyManager(address(badManager));
 
         // Mint idle assets to vault.
-        underlying.mint(address(vault), 500e18);
+        underlying.mint(vaultAddr, 500e18);
 
         // totalAssets() must not revert; it should return idle only.
         uint256 total = vault.totalAssets();
@@ -291,7 +222,7 @@ contract VaultCoreTest is Test {
         // Deposit before setting bricked manager so shares exist.
         underlying.mint(user, 1000e18);
         vm.startPrank(user);
-        underlying.approve(address(vault), 1000e18);
+        underlying.approve(vaultAddr, 1000e18);
         vault.deposit(1000e18, user);
         vm.stopPrank();
 
@@ -315,12 +246,12 @@ contract VaultCoreTest is Test {
     /// @notice VaultCore registers IVaultCore interface ID.
     function test_SupportsInterface_IVaultCore() public view {
         bytes4 id = type(IVaultCore).interfaceId;
-        assertTrue(vault.supportsInterface(id), "should support IVaultCore");
+        assertTrue(ERC165Facet(vaultAddr).supportsInterface(id), "should support IVaultCore");
     }
 
     /// @notice VaultCore still supports IERC4626 interface.
     function test_SupportsInterface_IERC4626() public view {
         bytes4 id = type(IERC4626).interfaceId;
-        assertTrue(vault.supportsInterface(id), "should support IERC4626");
+        assertTrue(ERC165Facet(vaultAddr).supportsInterface(id), "should support IERC4626");
     }
 }
