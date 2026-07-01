@@ -128,6 +128,11 @@
 4	0	_destConfig	t_mapping(t_uint256,t_struct(DestinationConfig)_storage)
 5	0	_executed	t_mapping(t_uint256,t_mapping(t_bytes32,t_bool))
 
+### L2ToL2CrossDomainMessengerGatewayAdapterStorage @ erc7201:lattice.storage.L2ToL2CrossDomainMessengerGatewayAdapter (slot 0x7d097b8d74c3eca1712de7b01bb2e081ac18f7660e60d35d0a11a670a90beb00)
+0	0	_remoteAdapters	t_mapping(t_uint256,t_address)
+1	0	_executed	t_mapping(t_uint256,t_mapping(t_bytes32,t_bool))
+2	0	_outboundNonce	t_uint256
+
 ### PythEntropyAdapterStorage @ erc7201:lattice.storage.PythEntropyAdapter (slot 0xf5638fd8a7410f61ded501225ccb03fd632a93dd0cfb1615ce2666e2781d4f00)
 0	0	_entropy	t_address
 1	0	_provider	t_address
