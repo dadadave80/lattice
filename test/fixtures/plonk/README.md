@@ -1,6 +1,6 @@
 # PLONK test vector
 
-A real PLONK proof used by `test/unit/PlonkVerifierTester.t.sol` to validate the generic
+A real PLONK proof used by `test/unit/PlonkVerifierTest.t.sol` to validate the generic
 `PlonkVerifier` against ground truth. Same circuit as the Groth16 fixture — `c = a * b` with `a`/`c`
 public, `b` private (`nPublic = 2`) — proven with `snarkjs plonk` (universal setup, no per-circuit
 ceremony). Public signals are `[c, a] = [33, 3]`.

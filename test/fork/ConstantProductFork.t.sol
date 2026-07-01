@@ -16,7 +16,7 @@ import {Test} from "forge-std/Test.sol";
 // ---------------------------------------------------------------------------
 
 /// @notice Mock Diamond that combines AccessControl + ConstantProduct, matching
-///         the pattern from ConstantProductTester.t.sol.
+///         the pattern from ConstantProductTest.t.sol.
 contract MockConstantProductFork is ConstantProduct, AccessControl {
     function initialize(address token0_, address token1_, address admin_) external {
         bytes32 s = InitializableLib.initializableSlot();
