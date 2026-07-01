@@ -1,36 +1,26 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
+import {AccessControlEnumerableTestBase} from "@lattice-test/base/AccessControlEnumerableTestBase.sol";
 import {AccessControlEnumerable} from "@lattice/access/AccessControlEnumerable.sol";
-import {AccessControlEnumerableLib} from "@lattice/access/libraries/AccessControlEnumerableLib.sol";
-import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
-import {IAccessControl} from "@lattice/interfaces/access/IAccessControl.sol";
-import {Test} from "forge-std/Test.sol";
 
-contract MockAccessControlEnumerableContract is AccessControlEnumerable {
-    function initialize(address _admin) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
-        AccessControlLib.__AccessControl_init(_admin);
-        AccessControlEnumerableLib.__AccessControlEnumerable_init();
-        InitializableLib.postInitializer(s);
-    }
-}
-
-contract AccessControlEnumerableTest is Test {
+/// @title AccessControlEnumerableTest
+/// @notice Exercises the AccessControlEnumerable facet through a REAL {Diamond} assembled by the ready-to-deploy
+///         {DeployAccessControlEnumerable} script (see {AccessControlEnumerableTestBase}) — the enumerable flavor
+///         is cut in place of the base `AccessControl` facet, so every role + enumeration call routes through the
+///         diamond's `delegatecall` dispatch, not a flattened inheritance mock.
+contract AccessControlEnumerableTest is AccessControlEnumerableTestBase {
     bytes32 constant DEFAULT_ADMIN_ROLE = 0x00;
     bytes32 constant MINTER_ROLE = keccak256("MINTER_ROLE");
 
-    MockAccessControlEnumerableContract internal ac;
     address internal admin = address(0xA1);
     address internal alice = address(0xA11CE);
     address internal bob = address(0xB0B);
     address internal carol = address(0xCA101);
 
     function setUp() public {
-        ac = new MockAccessControlEnumerableContract();
-        ac.initialize(admin);
+        diamond = _deployAccessControlEnumerable(admin);
+        ac = AccessControlEnumerable(diamond);
     }
 
     function test_GrantRoleAddsMember() public {
