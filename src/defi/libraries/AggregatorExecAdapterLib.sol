@@ -16,9 +16,10 @@ import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib
 bytes32 constant AGGREGATOR_EXEC_ADAPTER_STORAGE_SLOT =
     0xa2d04b4e843f01463940d93cd4d536111875b48fb08f2c3a7d094e91e39a5100;
 
-/// @dev ERC-165 storage root of the diamond's ERC165 map (`diamond.lib.storage.ERC165`).
-bytes32 constant AGGREGATOR_EXEC_ERC165_STORAGE_LOCATION =
-    0x9ca7f3e2e2bfb15fdf072b85dde92837cddacee6cf2f6b38cd06c9457c1c4200;
+/// @dev 0xe95f85f2 is `type(IAggregatorExecAdapter).interfaceId`.
+/// `keccak256(abi.encode(bytes4(0xe95f85f2), 0x9ca7f3e2e2bfb15fdf072b85dde92837cddacee6cf2f6b38cd06c9457c1c4200))`.
+bytes32 constant ERC165_MAP_IAGGREGATOREXECADAPTER_SLOT =
+    0x3b0da15f74db1bb0d7ebc58a8d802243b2c7050873887bf8e60ab5b971b5a8e9;
 
 /// @notice ERC-7201 namespaced storage for the aggregator execution adapter.
 /// @custom:storage-location erc7201:lattice.storage.AggregatorExecAdapter
@@ -72,11 +73,8 @@ library AggregatorExecAdapterLib {
 
     /// @notice Writes `true` to the ERC-165 map slot for `IAggregatorExecAdapter`.
     function registerInterface() internal {
-        bytes4 id = type(IAggregatorExecAdapter).interfaceId;
         assembly ("memory-safe") {
-            mstore(0x00, id)
-            mstore(0x20, AGGREGATOR_EXEC_ERC165_STORAGE_LOCATION)
-            sstore(keccak256(0x00, 0x40), true)
+            sstore(ERC165_MAP_IAGGREGATOREXECADAPTER_SLOT, true)
         }
     }
 
