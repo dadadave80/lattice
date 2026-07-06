@@ -30,6 +30,7 @@ struct AggregatorExecAdapterStorage {
 
 /// @title AggregatorExecAdapterLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from LI.FI (https://github.com/lifinance/contracts)
 /// @notice Logic + ERC-7201 storage for the generic swap/bridge EXECUTION adapter. {execute} forwards
 ///         off-chain-built calldata to an admin-allow-listed `(aggregator, selector)` pair, making an ARBITRARY
 ///         external call from a fund-holding diamond — so the entire design is confused-deputy prevention.

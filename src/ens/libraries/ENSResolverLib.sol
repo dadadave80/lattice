@@ -38,6 +38,7 @@ struct ENSResolverStorage {
 
 /// @title ENSResolverLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from ENS (https://github.com/ensdomains/ens-contracts)
 /// @notice Library for on-chain ENS forward resolution: looks up an ENS node's resolver in the
 ///         configured registry and reads its `addr` record.
 /// @dev Three-layer pattern: this library holds the logic and namespaced storage; the stateless

@@ -40,6 +40,7 @@ struct ERC4337ValidationStorage {
 
 /// @title ERC4337ValidationLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from eth-infinitism account-abstraction (https://github.com/eth-infinitism/account-abstraction)
 /// @notice Logic + ERC-7201 storage for the ERC-4337 validation facet. `validateUserOp` is gated to the
 ///         configured EntryPoint, validates the user op signature against the `AccountSigner` owner, and pays
 ///         the EntryPoint its prefund.

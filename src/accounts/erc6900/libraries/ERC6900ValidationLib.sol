@@ -24,6 +24,7 @@ import {EnumerableSet} from "@lattice/utils/libraries/EnumerableSet.sol";
 
 /// @title ERC6900ValidationLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from ERC-6900 reference implementation (https://github.com/erc6900/reference-implementation)
 /// @notice The ERC-6900 ERC-4337 userOp validation path: decodes the validation `ModuleEntity` from the userOp
 ///         signature prefix, checks applicability (reusing the executor's gate), runs pre-userOp-validation hooks
 ///         (sparse-segmented), gates on the `isUserOpValidation` flag, calls the validation module's

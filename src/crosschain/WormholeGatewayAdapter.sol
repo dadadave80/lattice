@@ -8,7 +8,7 @@ import {IWormholeReceiver} from "@lattice/interfaces/external/IWormholeRelayer.s
 
 /// @title WormholeGatewayAdapter
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
-/// @author Adapted for EIP-2535 from OpenZeppelin community-contracts `WormholeGatewayAdapter` (commit f7e5f08)
+/// @author Adapted for EIP-2535 from OpenZeppelin community-contracts `WormholeGatewayAdapter` (https://github.com/OpenZeppelin/openzeppelin-community-contracts, commit f7e5f08)
 ///         (https://github.com/OpenZeppelin/openzeppelin-community-contracts/blob/f7e5f08e8fd42023084eb41f4a992d7be897b915/contracts/crosschain/wormhole/WormholeGatewayAdapter.sol)
 /// @notice Dual-mode ERC-7786 gateway facet over the Wormhole relayer. Two-phase send (pending +
 ///         `requestRelay`, or immediate via a `requestRelay` attribute); `receiveWormholeMessages` is the

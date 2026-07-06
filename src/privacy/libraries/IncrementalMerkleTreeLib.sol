@@ -5,6 +5,7 @@ import {InternalLeanIMT, LeanIMTData} from "@zk-kit/lean-imt.sol/InternalLeanIMT
 
 /// @title IncrementalMerkleTreeLib
 /// @author David Dada
+/// @author Modified from zk-kit Solidity (https://github.com/privacy-scaling-explorations/zk-kit.solidity)
 /// @notice Poseidon-hashed, dynamic-depth incremental Merkle tree with a recent-root
 ///         history ring. The commitment accumulator for nullifier-based privacy schemes:
 ///         insert commitments as leaves, then prove membership in a ZK circuit against

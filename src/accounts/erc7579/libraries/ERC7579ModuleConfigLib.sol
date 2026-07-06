@@ -59,6 +59,7 @@ struct ERC7579ModuleConfigStorage {
 
 /// @title ERC7579ModuleConfigLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from ERC-7579 reference implementation (https://github.com/erc7579/erc7579-implementation)
 /// @notice Logic + ERC-7201 storage for the ERC-7579 module registry, consuming all four module types:
 ///         EXECUTOR (2 — drives batches via `executeFromExecutor`), VALIDATOR (1 — authorizes user ops in
 ///         `ERC4337Validation`), HOOK (4 — the single global hook wrapping execution), and FALLBACK (3 —

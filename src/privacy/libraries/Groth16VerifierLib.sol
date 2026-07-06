@@ -19,6 +19,7 @@ bytes32 constant ERC165_MAP_IGROTH16VERIFIER_SLOT = 0x65fb5f0c2dd2a1b03fcdcf0085
 
 /// @title Groth16VerifierLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from snarkjs (https://github.com/iden3/snarkjs)
 /// @notice Library implementing a generic Groth16 verifier over BN254 (alt_bn128): the verifying key is
 ///         a parameter, so one deployment verifies proofs for any circuit. Logic mirrors the audited
 ///         snarkjs verifier template (PR#36 hardening) but reads the key from calldata.

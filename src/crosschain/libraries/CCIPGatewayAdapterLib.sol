@@ -71,6 +71,7 @@ struct CCIPGatewayAdapterStorage {
 
 /// @title CCIPGatewayAdapterLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from Chainlink CCIP (https://github.com/smartcontractkit/chainlink-ccip)
 /// @notice Logic + ERC-7201 storage for the Chainlink CCIP ERC-7786 gateway adapter. `sendMessage` builds a
 ///         CCIP `EVM2AnyMessage`, quotes `getFee`, and submits via `ccipSend` (native or ERC-20 fee);
 ///         `ccipReceive` is the router-gated delivery callback that validates the source selector + trusted

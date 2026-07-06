@@ -6,6 +6,7 @@ import {IERC7579ModuleConfig} from "@lattice/interfaces/external/IERC7579.sol";
 
 /// @title ERC7579ModuleConfig
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from ERC-7579 reference implementation (https://github.com/erc7579/erc7579-implementation)
 /// @notice ERC-7579 module-management facet: registers/uninstalls modules and runs batches submitted by an
 ///         installed executor module. v1 supports EXECUTOR modules (type 2). Together with the
 ///         `ERC7821Executor` facet (`execute` / `supportsExecutionMode`) the Diamond presents the ERC-7579

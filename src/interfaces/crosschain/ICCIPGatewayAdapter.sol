@@ -3,6 +3,7 @@ pragma solidity >=0.8.4;
 
 /// @title ICCIPGatewayAdapter
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from Chainlink CCIP (https://github.com/smartcontractkit/chainlink-ccip)
 /// @notice Admin/read surface of the Chainlink CCIP ERC-7786 gateway adapter. The standard source-gateway ABI
 ///         (`sendMessage`/`supportsAttribute`) is on `IERC7786GatewaySource`; the inbound callback is
 ///         `IAny2EVMMessageReceiver.ccipReceive`. EVM chains only.

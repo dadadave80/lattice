@@ -3,6 +3,7 @@ pragma solidity >=0.8.4;
 
 /// @title IENSSubnameIssuer
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from ENS (https://github.com/ensdomains/ens-contracts)
 /// @author Integrates the ENS NameWrapper (https://docs.ens.domains/wrapper/overview)
 /// @notice External interface for the ENS subname-issuer facet: lets a diamond that owns a parent ENS
 ///         name mint subnames (e.g. `treasury.myproto.eth`) via the ENS NameWrapper.

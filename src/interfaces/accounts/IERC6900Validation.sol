@@ -3,6 +3,7 @@ pragma solidity >=0.8.4;
 
 /// @title IERC6900Validation
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from ERC-6900 reference implementation (https://github.com/erc6900/reference-implementation)
 /// @notice Errors for the ERC-6900 ERC-4337 userOp validation (`ERC6900Validation` facet) and ERC-1271
 ///         signature validation (`ERC6900Signature` facet) paths. The applicability reverts
 ///         ({ValidationFunctionMissing}, {SelfCallRecursionDepthExceeded}, {UnrecognizedFunction}) are shared

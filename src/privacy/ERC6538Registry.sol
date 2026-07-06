@@ -8,6 +8,7 @@ import {EIP712Lib} from "@lattice/utils/libraries/EIP712Lib.sol";
 
 /// @title ERC6538Registry
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from ScopeLift (https://github.com/ScopeLift/stealth-address-erc-contracts)
 /// @author Conforms to ERC-6538 (https://eips.ethereum.org/EIPS/eip-6538)
 /// @notice Stateless Diamond facet implementing the ERC-6538 stealth meta-address registry.
 /// @dev All logic lives in {ERC6538RegistryLib}. Inherits EIP712 for ERC-5267 domain discovery.

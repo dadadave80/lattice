@@ -2,6 +2,7 @@
 pragma solidity ^0.8.30;
 
 /// @title ISuperchainETHBridge
+/// @author Vendored minimal subset of Optimism's `SuperchainETHBridge` (https://github.com/ethereum-optimism/optimism). Upstream is MIT.
 /// @notice Minimal vendored subset of the OP Stack `SuperchainETHBridge` predeploy
 ///         (`0x4200000000000000000000000000000000000024`) — the canonical native-ETH interop bridge across the
 ///         Superchain interop set. Only the outbound `sendETH` entrypoint is vendored; inbound `relayETH` is

@@ -7,6 +7,7 @@ import {IAccount, PackedUserOperation} from "@lattice/interfaces/external/IAccou
 
 /// @title ERC4337Validation
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from eth-infinitism account-abstraction (https://github.com/eth-infinitism/account-abstraction)
 /// @notice ERC-4337 validation facet — makes the Diamond a smart account drivable by a configured EntryPoint.
 ///         `validateUserOp` gates on the EntryPoint, validates the user op signature against the `AccountSigner`
 ///         owner, and pays the EntryPoint its prefund.

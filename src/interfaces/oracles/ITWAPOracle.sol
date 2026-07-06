@@ -2,6 +2,7 @@
 pragma solidity >=0.8.4;
 
 /// @title ITWAPOracle
+/// @author Modified from Uniswap V2 (https://github.com/Uniswap/v2-periphery/blob/master/contracts/examples/ExampleSlidingWindowOracle.sol)
 /// @notice Interface for the TWAPOracle Diamond facet.
 /// @dev Implements a Uniswap V2-style time-weighted average price oracle.  Any
 ///      address can call `recordObservation` to push a new snapshot; `consult`

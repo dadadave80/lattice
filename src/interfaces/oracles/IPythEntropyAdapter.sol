@@ -2,6 +2,7 @@
 pragma solidity >=0.8.4;
 
 /// @title IPythEntropyAdapter
+/// @author Modified from Pyth (https://github.com/pyth-network/pyth-crosschain)
 /// @notice Interface for the PythEntropyAdapter Diamond facet — on-demand (commit/reveal) randomness.
 /// @dev Request/track layer over Pyth Entropy. A request is caller-funded (the Entropy fee is quoted
 ///      via {getFee} and any excess `msg.value` is refunded); the provider fulfils via

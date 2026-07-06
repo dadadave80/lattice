@@ -15,6 +15,7 @@ bytes32 constant ERC165_MAP_ISUPERCHAINETHBRIDGEADAPTER_SLOT =
 
 /// @title SuperchainETHBridgeAdapterLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from Optimism (https://github.com/ethereum-optimism/optimism)
 /// @notice Logic for the OP Stack `SuperchainETHBridge` interop adapter. A thin, OUTBOUND-ONLY payable
 ///         passthrough: `sendETH` forwards `msg.value` to the {SUPERCHAIN_ETH_BRIDGE} predeploy, which burns the
 ///         ETH, messages the destination via the `L2ToL2CrossDomainMessenger`, and force-sends it to the

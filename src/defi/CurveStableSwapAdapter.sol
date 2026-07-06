@@ -10,6 +10,7 @@ import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib
 
 /// @title CurveStableSwapAdapter
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from Curve (https://github.com/curvefi/curve-contract)
 /// @notice Diamond facet adapting a single-sided Curve StableSwap LP position into a Lattice vault
 ///         strategy. Implements `IStrategy` (funds routing), `IProtocolAdapter` (sidecar), and
 ///         `ICurveStableSwapAdapter` (Curve config). Deposits the configured `asset` into one side

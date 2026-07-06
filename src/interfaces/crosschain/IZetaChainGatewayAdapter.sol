@@ -3,6 +3,7 @@ pragma solidity >=0.8.4;
 
 /// @title IZetaChainGatewayAdapter
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from ZetaChain (https://github.com/zeta-chain/protocol-contracts)
 /// @notice Admin/read surface of the ZetaChain `GatewayEVM` ERC-7786 gateway adapter. The standard source-gateway
 ///         ABI (`sendMessage`/`supportsAttribute`) is on `IERC7786GatewaySource`; the inbound delivery hook the
 ///         `GatewayEVM` invokes on this adapter is `Callable.onCall`. EVM chains only.

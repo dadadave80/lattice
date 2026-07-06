@@ -68,6 +68,7 @@ struct CurveStableSwapAdapterStorage {
 
 /// @title CurveStableSwapAdapterLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from Curve (https://github.com/curvefi/curve-contract)
 /// @notice Logic for a single-asset, single-sided Curve StableSwap LP strategy. Deposits the
 ///         configured `asset` into one side of a 2-coin pool, holds (or stakes) the LP, and values
 ///         the position in `asset` units via `get_virtual_price`. Reentrancy-gated,

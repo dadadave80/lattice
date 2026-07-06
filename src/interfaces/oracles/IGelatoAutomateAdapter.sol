@@ -4,6 +4,7 @@ pragma solidity >=0.8.4;
 import {IGelatoAutomate} from "@lattice/interfaces/external/IGelatoAutomate.sol";
 
 /// @title IGelatoAutomateAdapter
+/// @author Modified from Gelato (https://github.com/gelatodigital/automate)
 /// @notice Interface for the GelatoAutomateAdapter Diamond facet — Gelato Automate (Web3 Functions)
 ///         task management. Establishes the automation/keeper family.
 /// @dev Lets a Diamond create, track, and cancel Gelato Automate tasks. Gelato executes a task through

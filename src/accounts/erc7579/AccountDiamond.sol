@@ -11,6 +11,7 @@ import {IModuleConfig} from "@lattice/interfaces/accounts/IModuleConfig.sol";
 
 /// @title AccountDiamond
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from ERC-7579 reference implementation (https://github.com/erc7579/erc7579-implementation)
 /// @notice An EIP-2535 Diamond whose fallback adds ERC-7579 FALLBACK (type 3) handler dispatch LAYERED UNDER the
 ///         facet map (#58 follow-on): a selector the diamond owns is dispatched to its facet exactly as before,
 ///         and only an otherwise-unhandled selector falls through to an installed fallback handler. `diamondCut`

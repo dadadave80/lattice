@@ -37,6 +37,7 @@ struct ENSSubnameIssuerStorage {
 
 /// @title ENSSubnameIssuerLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from ENS (https://github.com/ensdomains/ens-contracts)
 /// @notice Library letting a diamond that owns a parent ENS name mint subnames via the ENS NameWrapper.
 /// @dev Three-layer pattern: this library holds the logic and namespaced storage; the stateless
 ///      {ENSSubnameIssuer} facet forwards to it. A thin, role-gated wrapper over the canonical

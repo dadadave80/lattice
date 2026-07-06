@@ -6,6 +6,7 @@ import {IENSReverseClaimer} from "@lattice/interfaces/ens/IENSReverseClaimer.sol
 
 /// @title ENSReverseClaimer
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from ENS (https://github.com/ensdomains/ens-contracts)
 /// @author Conforms to ENS reverse resolution (https://docs.ens.domains/learn/protocol#reverse-resolution)
 /// @notice Stateless Diamond facet letting a diamond claim and advertise its own primary ENS name via
 ///         ENS reverse resolution. Inherit this in your Diamond to make the contract resolve to e.g.

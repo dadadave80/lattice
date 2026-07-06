@@ -53,6 +53,7 @@ struct LayerZeroGatewayAdapterStorage {
 
 /// @title LayerZeroGatewayAdapterLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from LayerZero v2 (https://github.com/LayerZero-Labs/LayerZero-v2)
 /// @notice Logic + ERC-7201 storage for the LayerZero v2 ERC-7786 gateway adapter. `sendMessage` builds a
 ///         LayerZero `MessagingParams`, quotes the native fee via `endpoint.quote`, and dispatches via
 ///         `endpoint.send` (native fee only, excess refunded); `lzReceive` is the endpoint-gated delivery

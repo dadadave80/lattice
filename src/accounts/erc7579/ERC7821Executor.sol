@@ -6,6 +6,7 @@ import {IERC7821} from "@lattice/interfaces/external/IERC7821.sol";
 
 /// @title ERC7821Executor
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from Solady (https://github.com/Vectorized/solady)
 /// @notice ERC-7821 minimal batch executor facet. Executes a batch of calls from the account, authorized for
 ///         the account itself, the configured ERC-4337 EntryPoint, or a `DEFAULT_ADMIN_ROLE` holder.
 /// @dev Stateless delegator — logic lives in {ERC7821ExecutorLib}. Following the ERC-7821 reference, execution

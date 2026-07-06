@@ -6,6 +6,7 @@ import {ExecutionManifest, ModuleEntity, ValidationConfig} from "@lattice/interf
 
 /// @title ERC6900ModuleManager
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from ERC-6900 reference implementation (https://github.com/erc6900/reference-implementation)
 /// @notice ERC-6900 module-configuration facet: installs/uninstalls execution modules (selector → module +
 ///         execution hooks) and validation modules (`ModuleEntity` → flags + selectors + validation/exec hooks).
 ///         The `execute` / `executeBatch` / `executeWithRuntimeValidation` dispatch surface (the rest of

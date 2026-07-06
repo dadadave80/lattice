@@ -5,6 +5,7 @@ import {Schema, ZoneParameters} from "@lattice/interfaces/external/SeaportStruct
 
 /// @title ZoneInterface (Seaport 1.6) — vendored subset
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Vendored minimal subset of Seaport 1.6's `ZoneInterface` (https://github.com/ProjectOpenSea/seaport). Upstream is MIT.
 /// @notice The three Seaport 1.6 zone hooks a restricted-order zone must implement. A zone returns its own
 ///         function selector as the magic value to authorize/validate; any other value (or a revert) makes
 ///         Seaport reject the order with `InvalidRestrictedOrder`.

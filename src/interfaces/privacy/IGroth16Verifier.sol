@@ -3,6 +3,7 @@ pragma solidity >=0.8.4;
 
 /// @title IGroth16Verifier
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from snarkjs (https://github.com/iden3/snarkjs)
 /// @notice External interface for a GENERIC Groth16 proof verifier over BN254 (alt_bn128). Unlike a
 ///         snarkjs-generated verifier (which bakes one circuit's verifying key into bytecode), this
 ///         takes the verifying key as a parameter, so a single deployed facet verifies proofs for ANY

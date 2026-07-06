@@ -3,6 +3,7 @@ pragma solidity >=0.8.4;
 
 /// @title IERC6538Registry
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from ScopeLift (https://github.com/ScopeLift/stealth-address-erc-contracts)
 /// @author Conforms to ERC-6538 (https://eips.ethereum.org/EIPS/eip-6538)
 /// @notice External interface for the ERC-6538 stealth meta-address registry: an on-chain mapping
 ///         from a registrant address to the stealth meta-address others use to pay them privately.

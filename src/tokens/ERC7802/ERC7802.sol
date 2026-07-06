@@ -6,6 +6,7 @@ import {ERC7802Lib} from "@lattice/tokens/ERC7802/libraries/ERC7802Lib.sol";
 
 /// @title ERC7802
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from ERC-7802 (https://eips.ethereum.org/EIPS/eip-7802)
 /// @notice ERC-7802 crosschain-native ERC-20 extension facet: a trusted bridge (holder of
 ///         `CROSSCHAIN_BRIDGE_ROLE`) mints on the destination chain and burns on the source. Mount
 ///         alongside the {ERC20} facet; pairs with a {BridgeERC7802} that holds the role.

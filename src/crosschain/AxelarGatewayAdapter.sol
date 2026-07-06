@@ -7,7 +7,7 @@ import {IERC7786GatewaySource} from "@lattice/interfaces/external/IERC7786.sol";
 
 /// @title AxelarGatewayAdapter
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
-/// @author Adapted for EIP-2535 from OpenZeppelin community-contracts `AxelarGatewayAdapter` (commit f7e5f08)
+/// @author Adapted for EIP-2535 from OpenZeppelin community-contracts `AxelarGatewayAdapter` (https://github.com/OpenZeppelin/openzeppelin-community-contracts, commit f7e5f08)
 ///         (https://github.com/OpenZeppelin/openzeppelin-community-contracts/blob/f7e5f08e8fd42023084eb41f4a992d7be897b915/contracts/crosschain/axelar/AxelarGatewayAdapter.sol)
 /// @notice Dual-mode ERC-7786 gateway facet over Axelar GMP: `sendMessage` (source) emits an Axelar
 ///         `callContract`; `execute` (destination, called by the Axelar relayer) validates the approved

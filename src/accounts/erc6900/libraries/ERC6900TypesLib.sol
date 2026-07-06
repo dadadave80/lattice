@@ -5,6 +5,7 @@ import {HookConfig, ModuleEntity, ValidationConfig, ValidationFlags} from "@latt
 
 /// @title ERC6900TypesLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from ERC-6900 reference implementation (https://github.com/erc6900/reference-implementation)
 /// @notice Pure pack/unpack helpers for the ERC-6900 packed value types {ModuleEntity} / {ValidationConfig} /
 ///         {HookConfig}. The encodings are the spec (pinned to erc6900/reference-implementation @ 65892c2 — see
 ///         {IERC6900}); these helpers are written fresh. Layout (big-endian / left-aligned within the type):

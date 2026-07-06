@@ -3,6 +3,7 @@ pragma solidity >=0.8.4;
 
 /// @title IERC5564Announcer
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from ScopeLift (https://github.com/ScopeLift/stealth-address-erc-contracts)
 /// @author Conforms to ERC-5564 (https://eips.ethereum.org/EIPS/eip-5564)
 /// @notice External interface for the ERC-5564 stealth-address announcer: a permissionless event
 ///         emitter that lets a sender publish the data a stealth-payment recipient needs to detect

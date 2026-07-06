@@ -4,6 +4,7 @@ pragma solidity >=0.8.4;
 import {IERC4626} from "@lattice/interfaces/tokens/IERC4626.sol";
 
 /// @title IVaultCore
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/extensions/ERC4626.sol)
 /// @notice Interface for the VaultCore Diamond facet, extending ERC-4626 with strategy hooks.
 /// @dev The vault tracks "idle" assets (held in this contract) vs "allocated" assets
 ///      (held by registered external strategies managed by the StrategyManager).
