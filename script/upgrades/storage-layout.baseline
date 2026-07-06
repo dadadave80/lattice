@@ -128,6 +128,9 @@
 4	0	_chainRegistered	t_mapping(t_uint256,t_bool)
 5	0	_domainConfig	t_mapping(t_uint32,t_struct(DomainConfig)_storage)
 
+### AggregatorExecAdapterStorage @ erc7201:lattice.storage.AggregatorExecAdapter (slot 0xa2d04b4e843f01463940d93cd4d536111875b48fb08f2c3a7d094e91e39a5100)
+0	0	_allowedCall	t_mapping(t_address,t_mapping(t_bytes4,t_bool))
+
 ### LayerZeroGatewayAdapterStorage @ erc7201:lattice.storage.LayerZeroGatewayAdapter (slot 0xbca2daa6d08cb277e523bf7dcd928e312ddbb7f9ac88be435916dda92924d100)
 0	0	_endpoint	t_address
 1	0	_chainIdToEid	t_mapping(t_uint256,t_uint32)
