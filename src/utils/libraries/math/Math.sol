@@ -7,6 +7,7 @@ import {Panic} from "../Panic.sol";
 import {SafeCast} from "./SafeCast.sol";
 
 /**
+ * @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/utils/math/Math.sol)
  * @dev Standard math utilities missing in the Solidity language.
  */
 library Math {

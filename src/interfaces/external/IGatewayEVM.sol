@@ -28,6 +28,7 @@ struct MessageContext {
 
 /// @title IGatewayEVM (ZetaChain) — vendored subset
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Vendored minimal subset of ZetaChain's `IGatewayEVM` (https://github.com/zeta-chain/protocol-contracts). Upstream is MIT.
 /// @notice Minimal vendored subset of the ZetaChain `GatewayEVM` — the DEPLOYED (per-connected-chain) gateway that
 ///         relays a message to a ZEVM universal app (the hub). `call` dispatches an outbound arbitrary-message
 ///         call (native `msg.value` is the messaging fee); the ZetaChain TSS/observer set later invokes the

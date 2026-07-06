@@ -7,6 +7,7 @@ import {ERC6900ExecutorLib} from "@lattice/accounts/erc6900/libraries/ERC6900Exe
 
 /// @title ModularAccount6900
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from ERC-6900 reference implementation (https://github.com/erc6900/reference-implementation)
 /// @notice An EIP-2535 Diamond whose fallback adds ERC-6900 execution-module dispatch LAYERED UNDER the facet
 ///         map (#74): a selector the diamond owns is delegatecalled to its facet exactly as before; an otherwise
 ///         unhandled selector is dispatched to the installed ERC-6900 execution MODULE that owns it — via CALL

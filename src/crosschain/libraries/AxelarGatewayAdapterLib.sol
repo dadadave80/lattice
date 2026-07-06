@@ -38,7 +38,7 @@ struct AxelarGatewayAdapterStorage {
 
 /// @title AxelarGatewayAdapterLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
-/// @author Adapted for EIP-2535 from OpenZeppelin community-contracts `AxelarGatewayAdapter` (commit f7e5f08).
+/// @author Adapted for EIP-2535 from OpenZeppelin community-contracts `AxelarGatewayAdapter` (https://github.com/OpenZeppelin/openzeppelin-community-contracts, commit f7e5f08).
 /// @notice Dual-mode ERC-7786 gateway over Axelar GMP: `sendMessage` (source) calls the Axelar gateway's
 ///         `callContract`; `execute` (destination) validates an approved call + the trusted source gateway,
 ///         then delivers to the ERC-7786 recipient. EVM chains only. Gas is handled off-band (no gas service).

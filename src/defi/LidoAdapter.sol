@@ -10,6 +10,7 @@ import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib
 
 /// @title LidoAdapter
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from Lido (https://github.com/lidofinance/core)
 /// @notice Diamond facet adapting a Lido staking position into a Lattice vault strategy under the
 ///         **buffer model**. Implements `IStrategy` (funds routing), `IProtocolAdapter` (sidecar),
 ///         and `ILidoAdapter` (Lido config + async-queue keeper). The asset is **WETH**; native ETH

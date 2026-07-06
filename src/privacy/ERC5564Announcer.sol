@@ -6,6 +6,7 @@ import {ERC5564AnnouncerLib} from "@lattice/privacy/libraries/ERC5564AnnouncerLi
 
 /// @title ERC5564Announcer
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from ScopeLift (https://github.com/ScopeLift/stealth-address-erc-contracts)
 /// @author Conforms to ERC-5564 (https://eips.ethereum.org/EIPS/eip-5564)
 /// @notice Stateless Diamond facet implementing the ERC-5564 stealth-address announcer.
 /// @dev All logic lives in {ERC5564AnnouncerLib}. Inherit this in your Diamond to let any account

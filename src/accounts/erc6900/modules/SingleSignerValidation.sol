@@ -8,6 +8,7 @@ import {SignatureChecker} from "@lattice/utils/libraries/SignatureChecker.sol";
 
 /// @title SingleSignerValidation
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from ERC-6900 reference implementation (https://github.com/erc6900/reference-implementation)
 /// @notice A reference ERC-6900 validation module: one signer per `(account, entityId)`. Validates user
 ///         operations (ECDSA over the EIP-191 user-op-hash), runtime calls (the caller must be the signer), and
 ///         ERC-1271 signatures (against the digest the account hands it).

@@ -3,7 +3,7 @@ pragma solidity >=0.8.4;
 
 /// @title IAxelarGatewayAdapter
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
-/// @author Adapted for EIP-2535 from OpenZeppelin community-contracts `AxelarGatewayAdapter`
+/// @author Adapted for EIP-2535 from OpenZeppelin community-contracts `AxelarGatewayAdapter` (https://github.com/OpenZeppelin/openzeppelin-community-contracts)
 ///         (https://github.com/OpenZeppelin/openzeppelin-community-contracts/blob/f7e5f08e8fd42023084eb41f4a992d7be897b915/contracts/crosschain/axelar/AxelarGatewayAdapter.sol)
 /// @notice Admin/read/inbound surface of the Axelar ERC-7786 gateway adapter. The standard source-gateway
 ///         ABI (`sendMessage`/`supportsAttribute`) is declared by `IERC7786GatewaySource`; this adds the

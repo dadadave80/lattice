@@ -66,6 +66,7 @@ struct ERC6900ModuleManagerStorage {
 
 /// @title ERC6900ModuleManagerLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from ERC-6900 reference implementation (https://github.com/erc6900/reference-implementation)
 /// @notice Logic + ERC-7201 storage for the ERC-6900 module registry: the execution registry (selector →
 ///         module + exec hooks) and the validation registry (`ModuleEntity` → flags + selectors + validation
 ///         /exec hooks). Backs the `ERC6900ModuleManager` config facet and (via the read helpers) the

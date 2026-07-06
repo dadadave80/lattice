@@ -3,6 +3,7 @@ pragma solidity >=0.8.4;
 
 /// @title IMarketplaceZone
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from Seaport (https://github.com/ProjectOpenSea/seaport)
 /// @notice Admin/read surface of the Seaport `MarketplaceZone` facet. The Seaport hooks themselves
 ///         (`authorizeOrder` / `validateOrder` / `getSeaportMetadata`) are on the vendored `ZoneInterface`.
 /// @dev The zone authorizes RESTRICTED Seaport orders that name the Diamond as their zone. v1 policy:

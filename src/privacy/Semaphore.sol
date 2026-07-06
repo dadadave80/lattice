@@ -6,6 +6,7 @@ import {SemaphoreLib} from "@lattice/privacy/libraries/SemaphoreLib.sol";
 
 /// @title Semaphore
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from Semaphore (https://github.com/semaphore-protocol/semaphore)
 /// @notice Stateless Diamond facet for Semaphore anonymous membership / signaling: create groups, add
 ///         identity commitments, and validate zero-knowledge membership + signaling proofs.
 /// @dev All logic lives in {SemaphoreLib}. Membership uses the Poseidon incremental Merkle tree; proof

@@ -10,6 +10,7 @@ import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib
 
 /// @title CompoundV3Adapter
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from Compound V3 (https://github.com/compound-finance/comet)
 /// @notice Diamond facet adapting a Compound v3 (Comet) base-asset supply position into a Lattice
 ///         vault strategy. Implements `IStrategy` (funds routing), `IProtocolAdapter` (sidecar),
 ///         and `ICompoundV3Adapter` (Comet config). Supply-only (no leverage); 1:1 base accounting,

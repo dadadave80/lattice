@@ -3,6 +3,7 @@ pragma solidity >=0.8.4;
 
 /// @title IENS
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Vendored minimal subset of the ENS registry `ENS` interface (https://github.com/ensdomains/ens-contracts). Upstream is MIT.
 /// @notice Minimal vendored interface for the ENS registry, used by {ENSResolver} for forward
 ///         resolution. A minimal read subset: `resolver` (used for resolution) and `owner` (provided
 ///         for ownership checks).

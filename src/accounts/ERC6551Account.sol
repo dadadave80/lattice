@@ -6,6 +6,7 @@ import {IERC6551Account, IERC6551Executable} from "@lattice/interfaces/external/
 
 /// @title ERC6551Account
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from ERC-6551 reference (https://github.com/erc6551/reference)
 /// @notice ERC-6551 token-bound account facet. The Diamond becomes an account owned by a specific ERC-721
 ///         token; the token's current owner is the sole valid signer and the only caller of `execute`.
 /// @dev Stateless delegator — logic/storage live in {ERC6551AccountLib}. v1 supports `operation == 0` (CALL)

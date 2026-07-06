@@ -42,6 +42,7 @@ struct ERC6538RegistryStorage {
 
 /// @title ERC6538RegistryLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from ScopeLift (https://github.com/ScopeLift/stealth-address-erc-contracts)
 /// @author Conforms to ERC-6538 (https://eips.ethereum.org/EIPS/eip-6538)
 /// @notice Library implementing the ERC-6538 stealth meta-address registry.
 /// @dev Reuses the shared EIP712 module for the domain separator + typed-data hashing, and

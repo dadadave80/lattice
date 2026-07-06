@@ -2,6 +2,7 @@
 pragma solidity >=0.8.4;
 
 /// @title IChainlinkAutomationAdapter
+/// @author Modified from Chainlink (https://github.com/smartcontractkit/chainlink-evm)
 /// @notice Interface for the ChainlinkAutomationAdapter Diamond facet — Chainlink Automation (keepers),
 ///         consumer side.
 /// @dev Implements the Chainlink `AutomationCompatibleInterface` consumer surface with a canonical

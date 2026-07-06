@@ -3,6 +3,7 @@ pragma solidity >=0.8.4;
 
 /// @title IENSReverseClaimer
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from ENS (https://github.com/ensdomains/ens-contracts)
 /// @author Conforms to ENS reverse resolution (https://docs.ens.domains/learn/protocol#reverse-resolution)
 /// @notice External interface for the ENS reverse-claim facet: lets a diamond set and advertise its own
 ///         primary ENS name, so resolving the diamond address returns e.g. `treasury.myproto.eth`.

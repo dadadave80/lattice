@@ -19,7 +19,7 @@ struct BridgeERC20Storage {
 
 /// @title BridgeERC20Lib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
-/// @author Adapted for EIP-2535 from OpenZeppelin `BridgeERC20` v5.6.1.
+/// @author Adapted for EIP-2535 from OpenZeppelin `BridgeERC20` v5.6.1 (https://github.com/OpenZeppelin/openzeppelin-contracts).
 /// @notice Custody bridge for legacy ERC-20s: locks tokens on send, releases them on receive. Acts as an
 ///         {IERC7786MessageHandler} co-mounted with a {CrosschainLink} facet.
 library BridgeERC20Lib {

@@ -3,7 +3,7 @@ pragma solidity >=0.8.4;
 
 /// @title IERC7786OpenBridge
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
-/// @author Adapted for EIP-2535 from OpenZeppelin community-contracts `ERC7786OpenBridge` (commit f7e5f08)
+/// @author Adapted for EIP-2535 from OpenZeppelin community-contracts `ERC7786OpenBridge` (https://github.com/OpenZeppelin/openzeppelin-community-contracts, commit f7e5f08)
 ///         (https://github.com/OpenZeppelin/openzeppelin-community-contracts/blob/f7e5f08e8fd42023084eb41f4a992d7be897b915/contracts/crosschain/ERC7786OpenBridge.sol)
 /// @notice Admin/read surface of the ERC-7786 OpenBridge: an N-of-M aggregator that fans a message out
 ///         across M gateways and delivers to the recipient once N independent gateways have attested it.

@@ -53,6 +53,7 @@ struct CCTPBridgeAdapterStorage {
 
 /// @title CCTPBridgeAdapterLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from Circle CCTP v2 (https://github.com/circlefin/evm-cctp-contracts)
 /// @notice Logic + ERC-7201 storage for the Circle CCTP v2 USDC token-bridge adapter. Outbound
 ///         `depositForBurn` pulls exactly `amount` USDC from the caller, force-approves the TokenMessenger for
 ///         exactly that amount, burns via CCTP, then resets the allowance to 0 (approval hygiene). Inbound

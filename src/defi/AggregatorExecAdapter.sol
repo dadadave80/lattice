@@ -6,6 +6,7 @@ import {IAggregatorExecAdapter} from "@lattice/interfaces/defi/IAggregatorExecAd
 
 /// @title AggregatorExecAdapter
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from LI.FI (https://github.com/lifinance/contracts)
 /// @notice Generic swap/bridge EXECUTION facet: forwards user-supplied, off-chain-built calldata to an
 ///         admin-ALLOW-LISTED `(aggregator, selector)` pair (the LI.FI Diamond is the canonical first
 ///         aggregator). The MOST security-sensitive adapter in the suite — it makes an ARBITRARY external call

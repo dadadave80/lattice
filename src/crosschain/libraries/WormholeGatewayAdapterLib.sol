@@ -53,7 +53,7 @@ struct WormholeGatewayAdapterStorage {
 
 /// @title WormholeGatewayAdapterLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
-/// @author Adapted for EIP-2535 from OpenZeppelin community-contracts `WormholeGatewayAdapter` (commit f7e5f08).
+/// @author Adapted for EIP-2535 from OpenZeppelin community-contracts `WormholeGatewayAdapter` (https://github.com/OpenZeppelin/openzeppelin-community-contracts, commit f7e5f08).
 /// @notice Dual-mode ERC-7786 gateway over the Wormhole relayer. Two-phase send (pending → `requestRelay`,
 ///         or immediate via a `requestRelay` attribute); inbound `receiveWormholeMessages` validates the
 ///         relayer + trusted source gateway, de-duplicates per (chainId, sendId), and delivers. EVM only.

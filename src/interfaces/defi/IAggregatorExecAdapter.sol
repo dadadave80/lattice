@@ -3,6 +3,7 @@ pragma solidity >=0.8.4;
 
 /// @title IAggregatorExecAdapter
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from LI.FI (https://github.com/lifinance/contracts)
 /// @notice Admin / read / action surface of the generic swap/bridge EXECUTION adapter. It forwards
 ///         user-supplied calldata (built off-chain by an aggregator's API/SDK — the LI.FI Diamond being the
 ///         canonical first aggregator) to an admin-ALLOW-LISTED `(aggregator, selector)` pair. This is the most
