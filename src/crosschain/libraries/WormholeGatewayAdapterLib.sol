@@ -17,6 +17,11 @@ import {InteroperableAddress} from "@lattice/utils/libraries/InteroperableAddres
 bytes32 constant WORMHOLE_GATEWAY_ADAPTER_STORAGE_SLOT =
     0x46329d8c82c4b2643a1707018dd8f47f4e747c04259ec1eec95a00ddfb1bd600;
 
+/// @dev ERC-165 map slot for `IERC7786GatewaySource` (`0x11967553`). SHARED by all gateway adapters —
+///      `keccak256(abi.encode(bytes4(0x11967553), 0x9ca7f3e2e2bfb15fdf072b85dde92837cddacee6cf2f6b38cd06c9457c1c4200))`.
+bytes32 constant ERC165_MAP_IERC7786GATEWAYSOURCE_SLOT =
+    0x3c75b8ea75c097979221eb9302e2f0f6009b4ffe0a7198db5dc29979e09ea0e3;
+
 /// @notice A message awaiting a relay request (no-attribute send path).
 struct PendingMessage {
     address sender;
@@ -72,7 +77,7 @@ library WormholeGatewayAdapterLib {
     ///         Same slot the Axelar/OpenBridge adapters register; a Diamond mounts at most one gateway.
     function registerInterface() internal {
         assembly ("memory-safe") {
-            sstore(0x3c75b8ea75c097979221eb9302e2f0f6009b4ffe0a7198db5dc29979e09ea0e3, true)
+            sstore(ERC165_MAP_IERC7786GATEWAYSOURCE_SLOT, true)
         }
     }
 
