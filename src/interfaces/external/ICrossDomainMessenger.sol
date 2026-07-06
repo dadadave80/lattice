@@ -3,6 +3,7 @@ pragma solidity ^0.8.30;
 
 /// @title ICrossDomainMessenger (OP Stack, canonical L1<->L2) — vendored subset
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Vendored minimal subset of Optimism's `CrossDomainMessenger` (https://github.com/ethereum-optimism/optimism). Upstream is MIT.
 /// @notice Minimal vendored subset of the canonical OP Stack `CrossDomainMessenger` — the CANONICAL L1<->L2
 ///         messenger (`L1CrossDomainMessenger` on L1, `L2CrossDomainMessenger` predeploy on L2) that carries
 ///         deposits (L1->L2) and withdrawals (L2->L1). `sendMessage` enqueues an outbound message to the paired

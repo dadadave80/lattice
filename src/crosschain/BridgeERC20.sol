@@ -7,7 +7,7 @@ import {IERC7786MessageHandler} from "@lattice/interfaces/crosschain/IERC7786Mes
 
 /// @title BridgeERC20
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
-/// @author Adapted for EIP-2535 from OpenZeppelin `BridgeERC20` v5.6.1
+/// @author Adapted for EIP-2535 from OpenZeppelin `BridgeERC20` v5.6.1 (https://github.com/OpenZeppelin/openzeppelin-contracts)
 ///         (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/5fd1781b1454fd1ef8e722282f86f9293cacf256/contracts/crosschain/bridges/BridgeERC20.sol)
 /// @notice Custody bridge facet for legacy ERC-20 tokens: locks tokens on `crosschainTransfer`, releases
 ///         them on an inbound message. Registered as a handler on a co-mounted {CrosschainLink} facet.

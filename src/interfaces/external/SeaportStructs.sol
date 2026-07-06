@@ -3,6 +3,7 @@ pragma solidity ^0.8.30;
 
 /// @title Seaport order structs (vendored subset)
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Vendored minimal subset of Seaport 1.6's zone-facing types (https://github.com/ProjectOpenSea/seaport). Upstream is MIT.
 /// @notice The minimal Seaport 1.6 enums + structs a {MarketplaceZone} receives in its `authorizeOrder` /
 ///         `validateOrder` hooks. Per the repo "vendor, don't install" policy, only the zone-facing types are
 ///         copied — not the full order/fulfillment surface.

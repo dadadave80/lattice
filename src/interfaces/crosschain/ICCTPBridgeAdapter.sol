@@ -3,6 +3,7 @@ pragma solidity >=0.8.4;
 
 /// @title ICCTPBridgeAdapter
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from Circle CCTP v2 (https://github.com/circlefin/evm-cctp-contracts)
 /// @notice Admin / read / action surface of the Circle CCTP v2 USDC token-bridge adapter. CCTP is a BURN-AND-
 ///         MINT token bridge (USDC is burned on the source chain and minted on the destination via an
 ///         off-chain Iris attestation), NOT an ERC-7786 message gateway — it is deliberately not wrapped as a

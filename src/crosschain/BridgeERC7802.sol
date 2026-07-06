@@ -7,7 +7,7 @@ import {IERC7786MessageHandler} from "@lattice/interfaces/crosschain/IERC7786Mes
 
 /// @title BridgeERC7802
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
-/// @author Adapted for EIP-2535 from OpenZeppelin `BridgeERC7802` v5.6.1
+/// @author Adapted for EIP-2535 from OpenZeppelin `BridgeERC7802` v5.6.1 (https://github.com/OpenZeppelin/openzeppelin-contracts)
 ///         (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/5fd1781b1454fd1ef8e722282f86f9293cacf256/contracts/crosschain/bridges/BridgeERC7802.sol)
 /// @notice Mint/burn bridge facet for ERC-7802 tokens: burns on `crosschainTransfer`, mints on an inbound
 ///         message. Registered as a handler on a co-mounted {CrosschainLink} facet.

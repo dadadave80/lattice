@@ -19,6 +19,7 @@ bytes32 constant ERC165_MAP_IERC5564ANNOUNCER_SLOT = 0xa57260aa5166ddbfa7edd847f
 
 /// @title ERC5564AnnouncerLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from ScopeLift (https://github.com/ScopeLift/stealth-address-erc-contracts)
 /// @author Conforms to ERC-5564 (https://eips.ethereum.org/EIPS/eip-5564)
 /// @notice Library implementing the ERC-5564 stealth-address announcer.
 /// @dev Stateless apart from one ERC-165 flag — `announce` only emits {IERC5564Announcer.Announcement}.

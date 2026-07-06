@@ -3,6 +3,7 @@ pragma solidity >=0.8.4;
 
 /// @title ISafeHarborRegistry
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Vendored minimal subset of SEAL Safe Harbor's `SafeHarborRegistry` (https://github.com/security-alliance/safe-harbor).
 /// @notice Minimal vendored interface for the SEAL `SafeHarborRegistry` (registry v3.0.0), used by
 ///         {SafeHarborAdopter}. Adoption is keyed by `msg.sender` — the adopter is whoever calls
 ///         `adoptSafeHarbor`, so a diamond must make the call itself to be recorded as the adopter.

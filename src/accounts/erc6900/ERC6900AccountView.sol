@@ -11,6 +11,7 @@ import {
 
 /// @title ERC6900AccountView
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from ERC-6900 reference implementation (https://github.com/erc6900/reference-implementation)
 /// @notice ERC-6900 account-introspection facet (the "loupe"): `getExecutionData` reports the install state of an
 ///         execution selector (module + validation flags + execution hooks; a native facet selector reports the
 ///         account itself as the implementer), and `getValidationData` reports a validation function's flags,

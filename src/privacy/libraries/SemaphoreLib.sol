@@ -46,6 +46,7 @@ struct SemaphoreStorage {
 
 /// @title SemaphoreLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from Semaphore (https://github.com/semaphore-protocol/semaphore)
 /// @notice Library implementing the Semaphore anonymous-membership / signaling module: groups of identity
 ///         commitments (Poseidon incremental Merkle trees) and zero-knowledge membership + signaling
 ///         proofs validated against the audited Semaphore v4 verifier, with per-group scope nullifiers.

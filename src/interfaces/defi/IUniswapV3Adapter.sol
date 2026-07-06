@@ -3,6 +3,7 @@ pragma solidity >=0.8.4;
 
 /// @title IUniswapV3Adapter
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from Uniswap V3 (https://github.com/Uniswap/v3-periphery)
 /// @notice Uniswap-V3-specific config ABI. The adapter also implements `IStrategy` +
 ///         `IProtocolAdapter`. A **CUSTOM** adapter: a Uniswap V3 LP is a two-token, NFT-wrapped
 ///         concentrated-liquidity position, which does not map cleanly onto the single-asset

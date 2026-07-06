@@ -5,6 +5,7 @@
 pragma solidity ^0.8.20;
 
 /**
+ * @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/utils/math/SafeCast.sol)
  * @dev Wrappers over Solidity's uintXX/intXX/bool casting operators with added overflow
  * checks.
  *

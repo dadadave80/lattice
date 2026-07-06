@@ -10,6 +10,7 @@ import {IERC7786GatewaySource} from "@lattice/interfaces/external/IERC7786.sol";
 
 /// @title CCIPGatewayAdapter
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from Chainlink CCIP (https://github.com/smartcontractkit/chainlink-ccip)
 /// @notice ERC-7786 cross-chain gateway facet over Chainlink CCIP. `sendMessage` quotes + submits a CCIP
 ///         message via the router; `ccipReceive` is the router's delivery callback. EVM chains only.
 /// @dev Stateless delegator — logic/storage live in {CCIPGatewayAdapterLib}. CCIP routes by `uint64` chain

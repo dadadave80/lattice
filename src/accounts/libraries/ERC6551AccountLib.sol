@@ -36,6 +36,7 @@ struct ERC6551AccountStorage {
 
 /// @title ERC6551AccountLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from ERC-6551 reference (https://github.com/erc6551/reference)
 /// @notice Logic + ERC-7201 storage for the ERC-6551 token-bound account. The account is controlled by the
 ///         current owner of the bound ERC-721 token: that owner is the sole valid signer and the only caller of
 ///         `execute`. The binding is set once at init.

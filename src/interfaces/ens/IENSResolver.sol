@@ -3,6 +3,7 @@ pragma solidity >=0.8.4;
 
 /// @title IENSResolver
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from ENS (https://github.com/ensdomains/ens-contracts)
 /// @author Conforms to ENS forward resolution (EIP-137)
 /// @notice External interface for the ENS forward-resolution facet: lets a diamond look up ENS
 ///         names -> addresses on-chain via the configured ENS registry.

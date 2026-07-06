@@ -5,6 +5,7 @@ import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
 
 /// @title AdapterBaseLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/utils/SafeERC20.sol)
 /// @notice Shared, security-critical primitives reused by every Lattice protocol adapter:
 ///         exact-amount `forceApprove` (USDT/no-return safe), raw reward forwarding that
 ///         reports the real received delta (fee-on-transfer safe), and shortfall-honest

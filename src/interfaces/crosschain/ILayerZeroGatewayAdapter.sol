@@ -3,6 +3,7 @@ pragma solidity >=0.8.4;
 
 /// @title ILayerZeroGatewayAdapter
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from LayerZero v2 (https://github.com/LayerZero-Labs/LayerZero-v2)
 /// @notice Admin/read surface of the LayerZero v2 ERC-7786 gateway adapter. The standard source-gateway ABI
 ///         (`sendMessage`/`supportsAttribute`) is on `IERC7786GatewaySource`; the inbound callback + path policy
 ///         are `ILayerZeroReceiver` (`lzReceive`/`allowInitializePath`/`nextNonce`). EVM chains only.

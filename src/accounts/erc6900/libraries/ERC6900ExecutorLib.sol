@@ -39,6 +39,7 @@ enum ValidationCheckType {
 
 /// @title ERC6900ExecutorLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from ERC-6900 reference implementation (https://github.com/erc6900/reference-implementation)
 /// @notice The ERC-6900 RUNTIME executor + dispatch pipeline: the `ModularAccount6900` fallback dispatch for
 ///         installed execution-module selectors, the native `execute` / `executeBatch`, and the explicit-auth
 ///         `executeWithRuntimeValidation`, plus the runtime-validation pipeline and the execution-hook engine.

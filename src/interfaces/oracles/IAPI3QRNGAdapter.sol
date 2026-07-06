@@ -2,6 +2,7 @@
 pragma solidity >=0.8.4;
 
 /// @title IAPI3QRNGAdapter
+/// @author Modified from API3 (https://github.com/api3dao/airnode)
 /// @notice Interface for the API3QRNGAdapter Diamond facet — quantum randomness via API3 Airnode RRP.
 /// @dev Request/track layer over the Airnode Request-Response Protocol. The diamond is its own sponsor
 ///      (self-sponsoring): {setSelfSponsorship} registers it with the RRP, then {requestRandomNumber}

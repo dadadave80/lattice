@@ -9,6 +9,7 @@ import {ILayerZeroReceiver} from "@lattice/interfaces/external/ILayerZeroReceive
 
 /// @title LayerZeroGatewayAdapter
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from LayerZero v2 (https://github.com/LayerZero-Labs/LayerZero-v2)
 /// @notice ERC-7786 cross-chain gateway facet over the LayerZero v2 EndpointV2 (OApp). `sendMessage` quotes +
 ///         dispatches a LayerZero message via the endpoint; `lzReceive` is the endpoint's delivery callback.
 ///         EVM chains only.

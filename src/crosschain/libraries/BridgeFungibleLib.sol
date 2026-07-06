@@ -14,7 +14,7 @@ bytes4 constant FUNGIBLE_BRIDGE_TAG = 0xde362b7d;
 
 /// @title BridgeFungibleLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
-/// @author Adapted for EIP-2535 from OpenZeppelin `BridgeFungible` v5.6.1
+/// @author Adapted for EIP-2535 from OpenZeppelin `BridgeFungible` v5.6.1 (https://github.com/OpenZeppelin/openzeppelin-contracts)
 ///         (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/5fd1781b1454fd1ef8e722282f86f9293cacf256/contracts/crosschain/bridges/abstract/BridgeFungible.sol).
 /// @notice Stateless shared helpers for the fungible bridge facets: the shared ERC-165 registration, the
 ///         common payload codec (interop-compatible with OZ's encoding), and USDT-safe ERC-20 transfers.

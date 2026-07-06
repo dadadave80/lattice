@@ -3,6 +3,7 @@ pragma solidity ^0.8.30;
 
 /// @title Client (Chainlink CCIP) — vendored subset
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Vendored minimal subset of Chainlink CCIP's `Client` library (https://github.com/smartcontractkit/chainlink-ccip). Upstream is MIT.
 /// @notice Minimal vendored subset of Chainlink CCIP's `Client` library: the EVM messaging structs and the
 ///         `GenericExtraArgsV2` encoder used by {CCIPGatewayAdapter}. Per the repo "vendor, don't install"
 ///         policy, only the surface this Diamond uses is copied — not the SVM/Sui/legacy types.

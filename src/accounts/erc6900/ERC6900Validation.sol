@@ -6,6 +6,7 @@ import {PackedUserOperation} from "@lattice/interfaces/external/IAccount.sol";
 
 /// @title ERC6900Validation
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from ERC-6900 reference implementation (https://github.com/erc6900/reference-implementation)
 /// @notice ERC-6900 ERC-4337 validation facet: the EntryPoint's `validateUserOp` entrypoint, routing to the
 ///         validation module named by the userOp signature prefix. Part of the ERC-6900 account blueprint
 ///         (an alternative to the ERC-7579 `ERC4337Validation` facet); the two are never cut into the same

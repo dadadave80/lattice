@@ -3,6 +3,7 @@ pragma solidity ^0.8.30;
 
 /// @title ILayerZeroEndpointV2 (LayerZero v2 EndpointV2) — vendored subset
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Vendored minimal subset of LayerZero v2's `ILayerZeroEndpointV2` (https://github.com/LayerZero-Labs/LayerZero-v2). Upstream is MIT.
 /// @notice Minimal vendored subset of the LayerZero v2 `EndpointV2` (the OApp messaging endpoint): the `quote`
 ///         / `send` pair the adapter dispatches through, plus the `setDelegate` / `eid` / `lzToken` /
 ///         `nativeToken` reads. LayerZero routes by `uint32` endpoint id (eid), not EVM chainId.

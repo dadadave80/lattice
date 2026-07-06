@@ -5,6 +5,7 @@ import {ERC6900SignatureLib} from "@lattice/accounts/erc6900/libraries/ERC6900Si
 
 /// @title ERC6900Signature
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from ERC-6900 reference implementation (https://github.com/erc6900/reference-implementation)
 /// @notice ERC-6900 ERC-1271 signature-validation facet: `isValidSignature` routes to the validation module
 ///         named by the signature prefix, after binding the digest to this account's domain via ERC-7739. Part
 ///         of the ERC-6900 account blueprint (an alternative to the ERC-7579 `ERC1271Signature` facet); the two

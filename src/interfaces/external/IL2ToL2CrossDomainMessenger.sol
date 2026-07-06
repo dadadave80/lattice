@@ -14,6 +14,7 @@ struct Identifier {
 
 /// @title IL2ToL2CrossDomainMessenger (OP Superchain) — vendored subset
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Vendored minimal subset of Optimism's `L2ToL2CrossDomainMessenger` (https://github.com/ethereum-optimism/optimism). Upstream is MIT.
 /// @notice Minimal vendored subset of the OP Superchain `L2ToL2CrossDomainMessenger` predeploy — the
 ///         same-domain (L2→L2) messenger that lets contracts on one Superchain chain call contracts on another,
 ///         routed purely by destination `chainId`. `sendMessage` enqueues an outbound message; `relayMessage`

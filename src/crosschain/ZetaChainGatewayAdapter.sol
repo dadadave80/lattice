@@ -8,6 +8,7 @@ import {Callable, MessageContext} from "@lattice/interfaces/external/IGatewayEVM
 
 /// @title ZetaChainGatewayAdapter
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from ZetaChain (https://github.com/zeta-chain/protocol-contracts)
 /// @notice ERC-7786 cross-chain gateway facet over ZetaChain's `GatewayEVM`. `sendMessage` dispatches a message
 ///         via the gateway to the destination's ZEVM universal app (the hub); `onCall` is the gateway's inbound
 ///         delivery hook. EVM chains only. HUB-ROUTED — messages flow through a ZetaChain ZEVM universal app, not

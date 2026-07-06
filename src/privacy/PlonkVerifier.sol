@@ -6,6 +6,7 @@ import {PlonkVerifierLib} from "@lattice/privacy/libraries/PlonkVerifierLib.sol"
 
 /// @title PlonkVerifier
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from snarkjs (https://github.com/iden3/snarkjs)
 /// @notice Stateless Diamond facet exposing a GENERIC PLONK verifier over BN254. The verifying key is a
 ///         parameter, so one deployment verifies proofs for any circuit — a reusable verifier primitive
 ///         for the ZK privacy modules and consumers who bring PLONK circuits.

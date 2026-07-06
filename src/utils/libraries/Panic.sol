@@ -4,6 +4,7 @@
 pragma solidity ^0.8.20;
 
 /**
+ * @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/utils/Panic.sol)
  * @dev Helper library for emitting standardized panic codes.
  *
  * ```solidity

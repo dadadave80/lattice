@@ -2,6 +2,8 @@
 pragma solidity >=0.8.4;
 
 /// @title IChainlinkCREAdapter
+/// @author Modified from the Chainlink CRE consumer-contract guide
+///         (https://docs.chain.link/cre/guides/workflow/using-evm-client/onchain-write/building-consumer-contracts)
 /// @notice Interface for the ChainlinkCREAdapter Diamond facet — a Chainlink CRE (Chainlink Runtime
 ///         Environment) workflow-report receiver.
 /// @dev Push receiver (the inverse of the price adapters' pull model). The `KeystoneForwarder`

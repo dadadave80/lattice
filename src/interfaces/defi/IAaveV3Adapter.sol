@@ -3,6 +3,7 @@ pragma solidity >=0.8.4;
 
 /// @title IAaveV3Adapter
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from Aave V3 (https://github.com/aave-dao/aave-v3-origin)
 /// @notice Aave-v3-specific configuration ABI for the Lattice Aave adapter. The adapter also
 ///         implements `IStrategy` (asset/totalAssetsManaged/withdraw) and `IProtocolAdapter`
 ///         (deploy/harvest/emergencyWithdraw/health views).

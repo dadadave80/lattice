@@ -11,6 +11,7 @@ import {IERC7786GatewaySource} from "@lattice/interfaces/external/IERC7786.sol";
 
 /// @title L2ToL2CrossDomainMessengerGatewayAdapter
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from Optimism (https://github.com/ethereum-optimism/optimism)
 /// @notice ERC-7786 cross-chain gateway facet over the OP Superchain `L2ToL2CrossDomainMessenger` predeploy.
 ///         `sendMessage` dispatches a message via the messenger (no fee); `receiveCrossChainMessage` is the
 ///         messenger-invoked delivery callback on the destination adapter. EVM (Superchain) chains only.

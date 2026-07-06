@@ -5,6 +5,7 @@ import {Client} from "@lattice/interfaces/external/CCIPClient.sol";
 
 /// @title IRouterClient (Chainlink CCIP) — vendored subset
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Vendored minimal subset of Chainlink CCIP's `IRouterClient` (https://github.com/smartcontractkit/chainlink-ccip). Upstream is MIT.
 /// @notice Minimal vendored subset of Chainlink CCIP's `IRouterClient`: the source-side `ccipSend`/`getFee`
 ///         surface used by {CCIPGatewayAdapter}. `getSupportedTokens` is intentionally omitted — upstream it
 ///         lives on `IEVM2AnyOnRampClient`, not here.

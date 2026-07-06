@@ -3,6 +3,7 @@ pragma solidity >=0.8.4;
 
 /// @title ILidoAdapter
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from Lido (https://github.com/lidofinance/core)
 /// @notice Lido-staking-specific config + keeper ABI. The adapter also implements `IStrategy` +
 ///         `IProtocolAdapter`. The asset is **WETH** (so the position fits the ERC-20 `IStrategy`
 ///         surface); native ETH is only an intermediate hop.

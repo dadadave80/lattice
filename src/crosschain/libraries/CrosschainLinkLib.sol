@@ -42,7 +42,7 @@ struct CrosschainLinkStorage {
 
 /// @title CrosschainLinkLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
-/// @author Adapted for EIP-2535 from OpenZeppelin `CrosschainLinked` + `ERC7786Recipient` v5.6.1
+/// @author Adapted for EIP-2535 from OpenZeppelin `CrosschainLinked` + `ERC7786Recipient` v5.6.1 (https://github.com/OpenZeppelin/openzeppelin-contracts)
 ///         (https://github.com/OpenZeppelin/openzeppelin-contracts/tree/5fd1781b1454fd1ef8e722282f86f9293cacf256/contracts/crosschain).
 /// @notice Logic + ERC-7201 storage for the {CrosschainLink} facet: an ERC-7786 send + receive endpoint
 ///         with a per-chain `(gateway, counterpart)` link registry and tag-routed inbound handlers.

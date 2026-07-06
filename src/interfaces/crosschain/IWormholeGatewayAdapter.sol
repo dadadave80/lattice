@@ -3,7 +3,7 @@ pragma solidity >=0.8.4;
 
 /// @title IWormholeGatewayAdapter
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
-/// @author Adapted for EIP-2535 from OpenZeppelin community-contracts `WormholeGatewayAdapter` (commit f7e5f08)
+/// @author Adapted for EIP-2535 from OpenZeppelin community-contracts `WormholeGatewayAdapter` (https://github.com/OpenZeppelin/openzeppelin-community-contracts, commit f7e5f08)
 ///         (https://github.com/OpenZeppelin/openzeppelin-community-contracts/blob/f7e5f08e8fd42023084eb41f4a992d7be897b915/contracts/crosschain/wormhole/WormholeGatewayAdapter.sol)
 /// @notice Admin/read/relay surface of the Wormhole ERC-7786 gateway adapter. The standard source-gateway
 ///         ABI (`sendMessage`/`supportsAttribute`) is on `IERC7786GatewaySource`; the inbound callback is

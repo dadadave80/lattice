@@ -6,6 +6,7 @@ import {Groth16VerifierLib} from "@lattice/privacy/libraries/Groth16VerifierLib.
 
 /// @title Groth16Verifier
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from snarkjs (https://github.com/iden3/snarkjs)
 /// @notice Stateless Diamond facet exposing a GENERIC Groth16 verifier over BN254. The verifying key is
 ///         a parameter, so one deployment verifies proofs for any circuit — the primitive the ZK
 ///         privacy modules plug their circuit's key into.

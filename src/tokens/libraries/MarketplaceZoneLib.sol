@@ -40,6 +40,7 @@ struct MarketplaceZoneStorage {
 
 /// @title MarketplaceZoneLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from Seaport (https://github.com/ProjectOpenSea/seaport)
 /// @notice Logic + ERC-7201 storage for the Seaport `MarketplaceZone` facet. `authorizeOrder` (pre-fulfillment)
 ///         enforces the pause + offerer/fulfiller blocklist; `validateOrder` (post-fulfillment) enforces that
 ///         opt-in collections receive their ERC-2981 royalty in the order's consideration. Each returns its

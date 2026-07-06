@@ -34,6 +34,7 @@ bytes32 constant EXECUTE_TYPEHASH = 0xb63526befbf5b966e64c36954eb12c5d09096e0b0a
 
 /// @title ERC7821ExecutorLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from Solady (https://github.com/Vectorized/solady)
 /// @notice Logic for the ERC-7821 minimal batch executor facet. Stateless: authorization is derived from the
 ///         caller (self / configured EntryPoint / `DEFAULT_ADMIN_ROLE`) and the calls run from the account.
 /// @dev Authorization is either direct (caller is self / EntryPoint / `DEFAULT_ADMIN_ROLE`) or, for the opData
