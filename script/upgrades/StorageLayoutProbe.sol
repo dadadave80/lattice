@@ -550,6 +550,16 @@ contract StorageLayoutProbe {
         address _spokePool;
     }
 
+    /// @dev Verbatim mirror of `StarknetGatewayAdapterLib.StarknetGatewayAdapterStorage`
+    ///      (`@custom:storage-location erc7201:lattice.storage.StarknetGatewayAdapter`). Append-only.
+    struct StarknetGatewayAdapterStorage {
+        address _starknetCore;
+        bytes _expectedChainReference;
+        mapping(uint256 l2Target => uint256 selector) _l1HandlerSelector;
+        mapping(uint256 fromAddress => bool trusted) _trustedL2Senders;
+        mapping(bytes32 msgHash => address initiator) _initiators;
+    }
+
     /// @dev Forces solc to emit the struct types into `storageLayout`. Never read, never deployed.
     GovernedDiamondCutStorage internal _unusedGovernedDiamondCut;
     SafeDiamondCutStorage internal _unusedSafeDiamondCut;
@@ -597,4 +607,5 @@ contract StorageLayoutProbe {
     ERC6551AccountStorage internal _unusedERC6551Account;
     ERC6900ModuleManagerStorage internal _unusedERC6900ModuleManager;
     AcrossBridgeAdapterStorage internal _unusedAcrossBridgeAdapter;
+    StarknetGatewayAdapterStorage internal _unusedStarknetGatewayAdapter;
 }
