@@ -544,6 +544,12 @@ contract StorageLayoutProbe {
         mapping(bytes32 workflowId => CREReport report) _latestReports;
     }
 
+    /// @dev Verbatim mirror of `AcrossBridgeAdapterLib.AcrossBridgeAdapterStorage`
+    ///      (`@custom:storage-location erc7201:lattice.storage.AcrossBridgeAdapter`). Append-only.
+    struct AcrossBridgeAdapterStorage {
+        address _spokePool;
+    }
+
     /// @dev Forces solc to emit the struct types into `storageLayout`. Never read, never deployed.
     GovernedDiamondCutStorage internal _unusedGovernedDiamondCut;
     SafeDiamondCutStorage internal _unusedSafeDiamondCut;
@@ -590,4 +596,5 @@ contract StorageLayoutProbe {
     ERC7579ModuleConfigStorage internal _unusedERC7579ModuleConfig;
     ERC6551AccountStorage internal _unusedERC6551Account;
     ERC6900ModuleManagerStorage internal _unusedERC6900ModuleManager;
+    AcrossBridgeAdapterStorage internal _unusedAcrossBridgeAdapter;
 }
