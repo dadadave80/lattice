@@ -8,9 +8,10 @@ import {ISuperchainETHBridge} from "@lattice/interfaces/external/ISuperchainETHB
 /// @dev The canonical OP Stack `SuperchainETHBridge` predeploy (same address on every Superchain interop chain).
 address constant SUPERCHAIN_ETH_BRIDGE = 0x4200000000000000000000000000000000000024;
 
-/// @dev ERC-165 storage root of the diamond's ERC165 map (`diamond.lib.storage.ERC165`).
-bytes32 constant SUPERCHAIN_ETH_BRIDGE_ERC165_STORAGE_LOCATION =
-    0x9ca7f3e2e2bfb15fdf072b85dde92837cddacee6cf2f6b38cd06c9457c1c4200;
+/// @dev 0x832d7d61 is `type(ISuperchainETHBridgeAdapter).interfaceId`.
+/// `keccak256(abi.encode(bytes4(0x832d7d61), 0x9ca7f3e2e2bfb15fdf072b85dde92837cddacee6cf2f6b38cd06c9457c1c4200))`.
+bytes32 constant ERC165_MAP_ISUPERCHAINETHBRIDGEADAPTER_SLOT =
+    0x3e08ed85f4544feff1f3f78c34d4e426159248bf51477cf7b08dde93bbe30744;
 
 /// @title SuperchainETHBridgeAdapterLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
@@ -32,11 +33,8 @@ library SuperchainETHBridgeAdapterLib {
 
     /// @notice Writes `true` to the ERC-165 map slot for {ISuperchainETHBridgeAdapter}.
     function registerInterface() internal {
-        bytes4 id = type(ISuperchainETHBridgeAdapter).interfaceId;
         assembly ("memory-safe") {
-            mstore(0x00, id)
-            mstore(0x20, SUPERCHAIN_ETH_BRIDGE_ERC165_STORAGE_LOCATION)
-            sstore(keccak256(0x00, 0x40), true)
+            sstore(ERC165_MAP_ISUPERCHAINETHBRIDGEADAPTER_SLOT, true)
         }
     }
 

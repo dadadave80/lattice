@@ -18,8 +18,10 @@ import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib
 /// @dev `keccak256(abi.encode(uint256(keccak256("lattice.storage.CCTPBridgeAdapter")) - 1)) & ~bytes32(uint256(0xff))`.
 bytes32 constant CCTP_BRIDGE_ADAPTER_STORAGE_SLOT = 0x94bcfd23a6ef7deebf3dfac9da6ba8c390ae8a620c8a163523fd263b20958b00;
 
-/// @dev ERC-165 storage root of the diamond's ERC165 map (`diamond.lib.storage.ERC165`).
-bytes32 constant CCTP_ERC165_STORAGE_LOCATION = 0x9ca7f3e2e2bfb15fdf072b85dde92837cddacee6cf2f6b38cd06c9457c1c4200;
+/// @dev 0xa777cf1b is `type(ICCTPBridgeAdapter).interfaceId`.
+/// `keccak256(abi.encode(bytes4(0xa777cf1b), 0x9ca7f3e2e2bfb15fdf072b85dde92837cddacee6cf2f6b38cd06c9457c1c4200))`.
+bytes32 constant ERC165_MAP_ICCTPBRIDGEADAPTER_SLOT =
+    0x30c377002135d1e8af7caedae6ec2adb3221e5a36ce695d62defb43a35cd29eb;
 
 /// @notice Per-CCTP-domain outbound config, all admin-registered. Used verbatim as the trailing args of
 ///         `ITokenMessengerV2.depositForBurn`. APPEND-ONLY.
@@ -84,11 +86,8 @@ library CCTPBridgeAdapterLib {
 
     /// @notice Writes `true` to the ERC-165 map slot for `ICCTPBridgeAdapter`.
     function registerInterface() internal {
-        bytes4 id = type(ICCTPBridgeAdapter).interfaceId;
         assembly ("memory-safe") {
-            mstore(0x00, id)
-            mstore(0x20, CCTP_ERC165_STORAGE_LOCATION)
-            sstore(keccak256(0x00, 0x40), true)
+            sstore(ERC165_MAP_ICCTPBRIDGEADAPTER_SLOT, true)
         }
     }
 

@@ -15,6 +15,11 @@ import {InteroperableAddress} from "@lattice/utils/libraries/InteroperableAddres
 /// @dev `keccak256(abi.encode(uint256(keccak256("lattice.storage.ERC7786OpenBridge")) - 1)) & ~bytes32(uint256(0xff))`.
 bytes32 constant ERC7786_OPEN_BRIDGE_STORAGE_SLOT = 0xca75154ce55fdf901a786b6fa60962886fadca5cda61c777098bc66b49134a00;
 
+/// @dev ERC-165 map slot for `IERC7786GatewaySource` (`0x11967553`). SHARED by all gateway adapters —
+///      `keccak256(abi.encode(bytes4(0x11967553), 0x9ca7f3e2e2bfb15fdf072b85dde92837cddacee6cf2f6b38cd06c9457c1c4200))`.
+bytes32 constant ERC165_MAP_IERC7786GATEWAYSOURCE_SLOT =
+    0x3c75b8ea75c097979221eb9302e2f0f6009b4ffe0a7198db5dc29979e09ea0e3;
+
 /// @notice Per-message attestation tracker (N-of-M).
 struct OpenBridgeTracker {
     mapping(address gateway => bool received) receivedBy;
@@ -61,7 +66,7 @@ library ERC7786OpenBridgeLib {
     /// @notice Writes `true` to the SHARED IERC7786GatewaySource ERC-165 map slot (0x11967553 → ...).
     function registerInterface() internal {
         assembly ("memory-safe") {
-            sstore(0x3c75b8ea75c097979221eb9302e2f0f6009b4ffe0a7198db5dc29979e09ea0e3, true)
+            sstore(ERC165_MAP_IERC7786GATEWAYSOURCE_SLOT, true)
         }
     }
 
