@@ -3,6 +3,7 @@ pragma solidity >=0.8.4;
 
 /// @title IERC6900Executor
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from ERC-6900 reference implementation (https://github.com/erc6900/reference-implementation)
 /// @notice Errors for the ERC-6900 runtime executor + dispatch pipeline (`ERC6900Executor` facet /
 ///         `ModularAccount6900` fallback). The execution + config functions live on the vendored
 ///         `IERC6900Account`; these cover the runtime dispatch / validation / hook failure modes.

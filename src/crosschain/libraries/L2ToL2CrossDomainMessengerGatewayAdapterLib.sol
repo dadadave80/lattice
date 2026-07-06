@@ -43,6 +43,7 @@ struct L2ToL2CrossDomainMessengerGatewayAdapterStorage {
 
 /// @title L2ToL2CrossDomainMessengerGatewayAdapterLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from Optimism (https://github.com/ethereum-optimism/optimism)
 /// @notice Logic + ERC-7201 storage for the OP Superchain `L2ToL2CrossDomainMessenger` ERC-7786 gateway adapter.
 ///         `sendMessage` wraps the ERC-7930 envelope as the calldata the messenger will execute on the sibling
 ///         adapter and dispatches via `messenger.sendMessage` (no fee — the relayer pays gas at `relayMessage`);

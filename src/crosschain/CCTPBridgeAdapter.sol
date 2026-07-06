@@ -6,6 +6,7 @@ import {ICCTPBridgeAdapter} from "@lattice/interfaces/crosschain/ICCTPBridgeAdap
 
 /// @title CCTPBridgeAdapter
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from Circle CCTP v2 (https://github.com/circlefin/evm-cctp-contracts)
 /// @notice Circle CCTP v2 USDC token-bridge facet: `depositForBurn` burns USDC on this chain toward an
 ///         ERC-7930 recipient, `relayMessage` forwards an Iris-attested inbound message to the CCTP
 ///         transmitter for minting. CCTP is a TOKEN BRIDGE (burn-and-mint), NOT an ERC-7786 message gateway —

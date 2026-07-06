@@ -56,6 +56,7 @@ struct CompoundV3AdapterStorage {
 
 /// @title CompoundV3AdapterLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from Compound V3 (https://github.com/compound-finance/comet)
 /// @notice Logic for the Compound v3 supply adapter. 1:1 base-asset accounting (no oracle).
 ///         Reentrancy-gated, pause/emergency-aware, shortfall-honest. Rewards forwarded raw.
 library CompoundV3AdapterLib {

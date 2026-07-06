@@ -2,6 +2,7 @@
 pragma solidity >=0.8.4;
 
 /// @title IGelatoVRFAdapter
+/// @author Modified from Gelato (https://github.com/gelatodigital/vrf-contracts)
 /// @notice Interface for the GelatoVRFAdapter Diamond facet — drand-backed randomness (no on-chain fee).
 /// @dev Request/track layer over Gelato VRF. A request emits `RequestedRandomness` (the Gelato
 ///      `IGelatoVRFConsumer` event) for the dedicated operator to pick up; the operator fulfils via

@@ -44,6 +44,7 @@ struct SafeHarborAdopterStorage {
 
 /// @title SafeHarborAdopterLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Integrates the SEAL Whitehat Safe Harbor (https://github.com/security-alliance/safe-harbor)
 /// @notice Library letting a diamond adopt the SEAL Whitehat Safe Harbor agreement on-chain — the legal
 ///         half of incident response, complementing the EmergencyStop technical half.
 /// @dev Three-layer pattern: this library holds the logic + namespaced storage; the stateless

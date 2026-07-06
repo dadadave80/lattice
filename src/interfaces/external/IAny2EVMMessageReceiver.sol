@@ -5,6 +5,7 @@ import {Client} from "@lattice/interfaces/external/CCIPClient.sol";
 
 /// @title IAny2EVMMessageReceiver (Chainlink CCIP) — vendored subset
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Vendored minimal subset of Chainlink CCIP's `IAny2EVMMessageReceiver` (https://github.com/smartcontractkit/chainlink-ccip). Upstream is MIT.
 /// @notice Minimal vendored subset of Chainlink CCIP's `IAny2EVMMessageReceiver` (interfaceId `0x85572ffb`),
 ///         the destination-side delivery callback the router invokes.
 /// @dev Verified verbatim against `smartcontractkit/chainlink-ccip` @ `main` commit `828897a` (2026-06-24):

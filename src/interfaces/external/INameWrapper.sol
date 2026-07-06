@@ -3,6 +3,7 @@ pragma solidity >=0.8.4;
 
 /// @title INameWrapper
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Vendored minimal subset of ENS's `INameWrapper` (https://github.com/ensdomains/ens-contracts). Upstream is MIT.
 /// @notice Minimal vendored interface for the ENS NameWrapper, used by {ENSSubnameIssuer} to mint
 ///         subnames. Only `setSubnodeRecord` is declared.
 /// @dev VERIFY the exact `setSubnodeRecord` signature (parameter order, fuses/expiry widths) against

@@ -2,6 +2,7 @@
 pragma solidity >=0.8.4;
 
 /// @title IChainlinkVRF
+/// @author Modified from Chainlink (https://github.com/smartcontractkit/chainlink-evm/blob/develop/contracts/src/v0.8/vrf/VRFConsumerBaseV2Plus.sol)
 /// @notice Interface for the ChainlinkVRF Diamond facet.
 /// @dev This module handles request tracking for Chainlink VRF V2.5
 ///      (subscription-funded).  The `rawFulfillRandomWords` entry point is called

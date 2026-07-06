@@ -3,6 +3,7 @@ pragma solidity >=0.8.4;
 
 /// @title ICompoundV3Adapter
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from Compound V3 (https://github.com/compound-finance/comet)
 /// @notice Compound-v3-specific config ABI. The adapter also implements `IStrategy` +
 ///         `IProtocolAdapter`. Supply-only: no leverage, no oracle (1:1 base-asset accounting).
 interface ICompoundV3Adapter {

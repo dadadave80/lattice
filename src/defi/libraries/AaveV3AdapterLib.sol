@@ -70,6 +70,7 @@ struct AaveV3AdapterStorage {
 
 /// @title AaveV3AdapterLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from Aave V3 (https://github.com/aave-dao/aave-v3-origin)
 /// @notice All logic for the Aave v3 adapter facet. Supply leg values 1:1 via aToken.balanceOf;
 ///         leverage leg values net equity via Aave's OWN price oracle (single self-consistent source
 ///         with `getUserAccountData`, no cross-oracle drift). Reentrancy-gated, pause/emergency-aware,

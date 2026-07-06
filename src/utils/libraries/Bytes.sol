@@ -6,6 +6,7 @@ pragma solidity ^0.8.24;
 import {Math} from "./math/Math.sol";
 
 /**
+ * @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/utils/Bytes.sol)
  * @dev Bytes operations.
  */
 library Bytes {

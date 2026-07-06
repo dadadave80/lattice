@@ -15,6 +15,7 @@ uint8 constant RESERVED_VALIDATION_DATA_INDEX = 0xff;
 
 /// @title SparseCalldataSegmentLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from ERC-6900 reference implementation (https://github.com/erc6900/reference-implementation)
 /// @notice Reads an ERC-6900 sparse-segment signature/authorization blob: a sequence of
 ///         `[uint8 index][uint32 length][length bytes body]` per-hook segments, in strictly increasing index
 ///         order (a hook with no data is OMITTED, never zero-length), terminated by a final

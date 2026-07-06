@@ -3,6 +3,7 @@ pragma solidity >=0.8.4;
 
 /// @title IL1ToL2CrossDomainMessengerGatewayAdapter
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from Optimism (https://github.com/ethereum-optimism/optimism)
 /// @notice Admin/read surface of the canonical OP Stack L1<->L2 `CrossDomainMessenger` ERC-7786 gateway adapter.
 ///         The standard source-gateway ABI (`sendMessage`/`supportsAttribute`) is on `IERC7786GatewaySource`; the
 ///         inbound delivery callback the messenger invokes on the destination adapter is `receiveCrossChainMessage`.

@@ -3,7 +3,7 @@ pragma solidity >=0.8.4;
 
 /// @title ICrosschainLink
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
-/// @author Adapted for EIP-2535 from OpenZeppelin `CrosschainLinked` v5.6.1
+/// @author Adapted for EIP-2535 from OpenZeppelin `CrosschainLinked` v5.6.1 (https://github.com/OpenZeppelin/openzeppelin-contracts)
 ///         (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/5fd1781b1454fd1ef8e722282f86f9293cacf256/contracts/crosschain/CrosschainLinked.sol)
 /// @notice Admin/read surface for the {CrosschainLink} facet: an ERC-7786 send + receive endpoint that
 ///         registers per-chain `(gateway, counterpart)` links and routes inbound messages to handlers by

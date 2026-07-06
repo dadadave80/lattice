@@ -8,6 +8,7 @@ import {MarketplaceZoneLib} from "@lattice/tokens/libraries/MarketplaceZoneLib.s
 
 /// @title MarketplaceZone
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from Seaport (https://github.com/ProjectOpenSea/seaport)
 /// @notice Seaport 1.6 zone facet. The Diamond acts as the `zone` for RESTRICTED orders trading its tokens,
 ///         authorizing them only when policy holds: not paused, offerer/fulfiller not blocked, and the
 ///         ERC-2981 royalty present for opt-in collections.

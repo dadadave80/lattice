@@ -5,6 +5,7 @@ import {Origin} from "@lattice/interfaces/external/ILayerZeroEndpointV2.sol";
 
 /// @title ILayerZeroReceiver (LayerZero v2) — vendored subset
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Vendored minimal subset of LayerZero v2's `ILayerZeroReceiver` (https://github.com/LayerZero-Labs/LayerZero-v2). Upstream is MIT.
 /// @notice Minimal vendored subset of the LayerZero v2 `ILayerZeroReceiver` — the destination-side interface an
 ///         OApp implements so the endpoint can deliver inbound messages via `lzReceive` and query the OApp's
 ///         nonce/path acceptance policy.

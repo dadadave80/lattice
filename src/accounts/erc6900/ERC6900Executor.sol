@@ -6,6 +6,7 @@ import {Call} from "@lattice/interfaces/external/IERC6900.sol";
 
 /// @title ERC6900Executor
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from ERC-6900 reference implementation (https://github.com/erc6900/reference-implementation)
 /// @notice ERC-6900 execution facet: the native `execute` / `executeBatch` (validation-gated, exec-hook-wrapped
 ///         calls to arbitrary targets) and the explicit-auth `executeWithRuntimeValidation`. Together with the
 ///         `ModularAccount6900` fallback (which dispatches installed execution-module selectors) this completes

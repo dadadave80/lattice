@@ -10,7 +10,7 @@ import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
 
 /// @title ERC20CrosschainLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
-/// @author Adapted for EIP-2535 from OpenZeppelin `ERC20Crosschain` v5.6.1
+/// @author Adapted for EIP-2535 from OpenZeppelin `ERC20Crosschain` v5.6.1 (https://github.com/OpenZeppelin/openzeppelin-contracts)
 ///         (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/5fd1781b1454fd1ef8e722282f86f9293cacf256/contracts/token/ERC20/extensions/ERC20Crosschain.sol).
 /// @notice Self-bridging ERC-20: the token embeds the {BridgeFungible} logic, burning its OWN supply on
 ///         send and minting it on receive — no separate bridge contract or custodied/external token.

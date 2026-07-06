@@ -6,6 +6,7 @@ import {ISuperchainETHBridgeAdapter} from "@lattice/interfaces/crosschain/ISuper
 
 /// @title SuperchainETHBridgeAdapter
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from Optimism (https://github.com/ethereum-optimism/optimism)
 /// @notice OP Stack `SuperchainETHBridge` interop facet: `sendETH` forwards `msg.value` native ETH to the
 ///         canonical predeploy (`0x…0024`) to bridge it to another Superchain chain. OUTBOUND-ONLY native-ETH
 ///         interop — NOT the removed `SuperchainERC20` token bridge, and NOT an `IERC7786GatewaySource`.

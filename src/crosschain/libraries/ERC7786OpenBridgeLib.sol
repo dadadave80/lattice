@@ -44,7 +44,7 @@ struct ERC7786OpenBridgeStorage {
 
 /// @title ERC7786OpenBridgeLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
-/// @author Adapted for EIP-2535 from OpenZeppelin community-contracts `ERC7786OpenBridge` (commit f7e5f08).
+/// @author Adapted for EIP-2535 from OpenZeppelin community-contracts `ERC7786OpenBridge` (https://github.com/OpenZeppelin/openzeppelin-community-contracts, commit f7e5f08).
 /// @notice N-of-M ERC-7786 aggregator: `sendMessage` fans a wrapped message out across M gateways;
 ///         `receiveMessage` counts independent gateway attestations and delivers to the recipient once N
 ///         agree (retry-on-failure, executed-flag reentrancy guard). Both a source gateway and a recipient.

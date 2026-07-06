@@ -5,6 +5,7 @@ import {HookConfig, ModuleEntity} from "@lattice/interfaces/external/IERC6900.so
 
 /// @title IERC6900ModuleManager
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from ERC-6900 reference implementation (https://github.com/erc6900/reference-implementation)
 /// @notice Lattice-specific errors for the ERC-6900 module manager (`ERC6900ModuleManager` facet). The standard
 ///         install/uninstall functions + lifecycle events live on the vendored `IERC6900Account`; these errors
 ///         cover the install/uninstall failure modes of the FRESH Lattice implementation.

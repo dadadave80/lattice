@@ -25,6 +25,7 @@ bytes32 constant ERC7739_SENTINEL_HASH = 0x7739773977397739773977397739773977397
 
 /// @title ERC1271SignatureLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/utils/cryptography/draft-ERC7739Utils.sol)
 /// @notice Logic for the ERC-1271 contract-signature facet. Stateless — delegates verification to the
 ///         configured owner via {AccountSignerLib}.
 /// @dev Implements ERC-7739: `isValidSignature` accepts only a nested `TypedDataSign` (EIP-712) or

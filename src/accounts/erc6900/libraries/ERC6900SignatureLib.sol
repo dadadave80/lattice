@@ -28,6 +28,7 @@ import {EIP712Lib} from "@lattice/utils/libraries/EIP712Lib.sol";
 
 /// @title ERC6900SignatureLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from ERC-6900 reference implementation (https://github.com/erc6900/reference-implementation)
 /// @notice The ERC-6900 ERC-1271 signature-validation path: decodes the validation `ModuleEntity` from the
 ///         signature prefix, runs pre-signature-validation hooks (sparse-segmented), gates on the
 ///         `isSignatureValidation` flag, and routes to the validation module's `validateSignature`.

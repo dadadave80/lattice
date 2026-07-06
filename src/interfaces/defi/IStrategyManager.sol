@@ -2,6 +2,7 @@
 pragma solidity >=0.8.4;
 
 /// @title IStrategyManager
+/// @author Modified from Yearn V3 (https://github.com/yearn/yearn-vaults-v3/blob/master/contracts/VaultV3.vy)
 /// @notice Interface for the StrategyManager Diamond facet.
 /// @dev The StrategyManager maintains a list of registered yield strategies for a single vault,
 ///      tracks allocation targets (in basis points), and orchestrates rebalancing.

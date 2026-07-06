@@ -3,6 +3,7 @@ pragma solidity >=0.8.4;
 
 /// @title ISemaphore
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from Semaphore (https://github.com/semaphore-protocol/semaphore)
 /// @notice External interface for the Semaphore anonymous-membership / signaling module. Members join a
 ///         group (a Poseidon incremental Merkle tree of identity commitments) and later prove membership
 ///         in zero knowledge while broadcasting a message under a scope — without revealing which member

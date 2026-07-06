@@ -67,6 +67,7 @@ struct LidoAdapterStorage {
 
 /// @title LidoAdapterLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from Lido (https://github.com/lidofinance/core)
 /// @notice Logic for a Lido staking strategy under the **buffer model**. The asset is WETH; on
 ///         `deploy` idle WETH is unwrapped to ETH, staked via `Lido.submit`, and the resulting stETH
 ///         wrapped into wstETH (held). The synchronous `IStrategy.withdraw` is served **only** from

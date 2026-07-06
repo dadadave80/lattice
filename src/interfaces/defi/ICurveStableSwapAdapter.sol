@@ -3,6 +3,7 @@ pragma solidity >=0.8.4;
 
 /// @title ICurveStableSwapAdapter
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from Curve (https://github.com/curvefi/curve-contract)
 /// @notice Curve-StableSwap-specific config ABI. The adapter also implements `IStrategy` +
 ///         `IProtocolAdapter`. Single-asset, single-sided LP adapter over a **2-coin** Curve
 ///         StableSwap pool: deposits the configured `asset` at `coinIndex`, holds (or stakes in a

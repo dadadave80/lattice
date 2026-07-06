@@ -3,6 +3,7 @@ pragma solidity >=0.8.4;
 
 /// @title IReverseRegistrar
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Vendored minimal subset of ENS's `ReverseRegistrar` / ENSIP-11 `L2ReverseRegistrar` (https://github.com/ensdomains/ens-contracts). Upstream is MIT.
 /// @notice Minimal vendored interface for the ENS Reverse Registrar — the L1 `ReverseRegistrar` and the
 ///         ENSIP-11 `L2ReverseRegistrar` — used by the {ENSReverseClaimer} facet for self-claim.
 /// @dev Only `setName` is declared, deliberately with NO return value. The L1 `ReverseRegistrar.setName`

@@ -20,7 +20,7 @@ struct BridgeERC7802Storage {
 
 /// @title BridgeERC7802Lib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
-/// @author Adapted for EIP-2535 from OpenZeppelin `BridgeERC7802` v5.6.1.
+/// @author Adapted for EIP-2535 from OpenZeppelin `BridgeERC7802` v5.6.1 (https://github.com/OpenZeppelin/openzeppelin-contracts).
 /// @notice Mint/burn bridge for ERC-7802 tokens (approval-free): burns on send, mints on receive. Acts as
 ///         an {IERC7786MessageHandler} co-mounted with a {CrosschainLink} facet.
 library BridgeERC7802Lib {

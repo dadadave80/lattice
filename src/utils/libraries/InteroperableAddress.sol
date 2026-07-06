@@ -9,6 +9,7 @@ import {Math} from "./math/Math.sol";
 import {SafeCast} from "./math/SafeCast.sol";
 
 /**
+ * @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/utils/draft-InteroperableAddress.sol)
  * @dev Helper library to format and parse https://ethereum-magicians.org/t/erc-7930-interoperable-addresses/23365[ERC-7930] interoperable
  * addresses.
  */

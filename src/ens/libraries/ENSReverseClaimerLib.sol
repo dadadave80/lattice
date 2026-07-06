@@ -40,6 +40,7 @@ struct ENSReverseClaimerStorage {
 
 /// @title ENSReverseClaimerLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from ENS (https://github.com/ensdomains/ens-contracts)
 /// @notice Library letting a diamond claim and advertise its own primary ENS name via ENS reverse
 ///         resolution, so resolving the diamond address returns its name (e.g. `treasury.myproto.eth`).
 /// @dev Three-layer pattern: this library holds all logic and the namespaced storage; the stateless

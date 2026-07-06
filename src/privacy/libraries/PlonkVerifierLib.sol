@@ -19,6 +19,7 @@ bytes32 constant ERC165_MAP_IPLONKVERIFIER_SLOT = 0xb1e78a1a6e11f30e01de857f602d
 
 /// @title PlonkVerifierLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from snarkjs (https://github.com/iden3/snarkjs)
 /// @notice Library implementing a generic PLONK verifier over BN254 (alt_bn128): the verifying key is a
 ///         parameter, so one deployment verifies proofs for any circuit. Faithful port of the snarkjs
 ///         (iden3) PLONK verifier (eprint 2019/953) — keccak256 Fiat-Shamir transcript, Lagrange

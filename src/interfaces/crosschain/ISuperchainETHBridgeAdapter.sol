@@ -3,6 +3,7 @@ pragma solidity >=0.8.4;
 
 /// @title ISuperchainETHBridgeAdapter
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from Optimism (https://github.com/ethereum-optimism/optimism)
 /// @notice Surface of the OP Stack `SuperchainETHBridge` interop adapter facet: a thin, OUTBOUND-ONLY payable
 ///         passthrough that forwards `msg.value` to the canonical `SuperchainETHBridge` predeploy
 ///         (`0x4200000000000000000000000000000000000024`) to bridge native ETH to another Superchain chain.

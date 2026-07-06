@@ -44,6 +44,7 @@ struct ZetaChainGatewayAdapterStorage {
 
 /// @title ZetaChainGatewayAdapterLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from ZetaChain (https://github.com/zeta-chain/protocol-contracts)
 /// @notice Logic + ERC-7201 storage for the ZetaChain `GatewayEVM` ERC-7786 gateway adapter. `sendMessage` builds
 ///         the ERC-7930 envelope and dispatches it via `gateway.call` to the destination's ZEVM universal app
 ///         (the hub), forwarding `msg.value` as the native messaging fee; `onCall` is the gateway-invoked delivery
