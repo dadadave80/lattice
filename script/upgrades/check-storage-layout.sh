@@ -107,6 +107,7 @@ GUARDED_STRUCTS=(
     "ERC6551AccountStorage lattice.storage.ERC6551Account"
     "ERC6900ModuleManagerStorage lattice.storage.ERC6900ModuleManager"
     "AcrossBridgeAdapterStorage lattice.storage.AcrossBridgeAdapter"
+    "StarknetGatewayAdapterStorage lattice.storage.StarknetGatewayAdapter"
 )
 
 command -v forge >/dev/null 2>&1 || { echo "ERROR: forge not found on PATH" >&2; exit 2; }
