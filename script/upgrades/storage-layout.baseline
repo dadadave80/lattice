@@ -230,3 +230,10 @@
 
 ### AcrossBridgeAdapterStorage @ erc7201:lattice.storage.AcrossBridgeAdapter (slot 0xd1f2b3a38609618605209c75d051e4ac61236c94f39400c851dd252f5fe1d000)
 0	0	_spokePool	t_address
+
+### StarknetGatewayAdapterStorage @ erc7201:lattice.storage.StarknetGatewayAdapter (slot 0x3f9fd8bc99bc5c4e4ff64e899fbe5f73a1a0f6c02aaa904e7184494718213e00)
+0	0	_starknetCore	t_address
+1	0	_expectedChainReference	t_bytes_storage
+2	0	_l1HandlerSelector	t_mapping(t_uint256,t_uint256)
+3	0	_trustedL2Senders	t_mapping(t_uint256,t_bool)
+4	0	_initiators	t_mapping(t_bytes32,t_address)

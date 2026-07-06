@@ -23,6 +23,14 @@ contract NonEvmAddressHarness {
     {
         return NonEvmAddress.formatV1(chainType, chainReference, addr);
     }
+
+    function parseV1ToFelt252(bytes memory self)
+        external
+        pure
+        returns (bytes2 chainType, bytes memory chainReference, uint256 felt)
+    {
+        return NonEvmAddress.parseV1ToFelt252(self);
+    }
 }
 
 /// @title NonEvmAddressTest
@@ -104,6 +112,45 @@ contract NonEvmAddressTest is Test {
         bytes memory chainOnly = InteroperableAddress.formatEvmV1(8453); // chain reference only, no address
         vm.expectRevert(NonEvmAddress.NonEvmAddressEmpty.selector);
         harness.parseV1ToBytes32(chainOnly);
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                           FELT252 (STARKNET)
+    //////////////////////////////////////////////////////////////////////////*//
+
+    bytes constant SN_MAIN = hex"534e5f4d41494e"; // "SN_MAIN" chain reference (CASA starknet CAIP-350)
+
+    /// @notice The boundary felt FIELD_PRIME - 1 is accepted (strict-less-than range check), and the
+    ///         chainType/chainReference pass through the felt down-convert unchanged.
+    function test_ParseFeltAcceptsFieldPrimeMinusOne() public view {
+        uint256 boundary = NonEvmAddress.FIELD_PRIME - 1;
+        bytes memory encoded = NonEvmAddress.formatV1(NonEvmAddress.STARKNET_CHAIN_TYPE, SN_MAIN, bytes32(boundary));
+        (bytes2 chainType, bytes memory chainRef, uint256 felt) = harness.parseV1ToFelt252(encoded);
+        assertEq(chainType, NonEvmAddress.STARKNET_CHAIN_TYPE, "starknet chainType (0x0003)");
+        assertEq(chainRef, SN_MAIN, "UTF-8 chain-id reference preserved");
+        assertEq(felt, boundary, "boundary felt accepted verbatim");
+    }
+
+    /// @notice A value equal to the Stark field prime is NOT a felt252 and must revert.
+    function test_ParseFeltRevertsOnFieldPrime() public {
+        bytes memory encoded =
+            NonEvmAddress.formatV1(NonEvmAddress.STARKNET_CHAIN_TYPE, SN_MAIN, bytes32(NonEvmAddress.FIELD_PRIME));
+        vm.expectRevert(abi.encodeWithSelector(NonEvmAddress.NonEvmAddressNotAFelt.selector, NonEvmAddress.FIELD_PRIME));
+        harness.parseV1ToFelt252(encoded);
+    }
+
+    /// @notice The zero felt is rejected (no valid Starknet contract lives at 0).
+    function test_ParseFeltRevertsOnZeroFelt() public {
+        bytes memory encoded = NonEvmAddress.formatV1(NonEvmAddress.STARKNET_CHAIN_TYPE, SN_MAIN, bytes32(0));
+        vm.expectRevert(NonEvmAddress.NonEvmAddressZeroFelt.selector);
+        harness.parseV1ToFelt252(encoded);
+    }
+
+    /// @notice The wrapped bytes32 down-convert rules still apply: a 33-byte address field reverts TooLong.
+    function test_ParseFeltRevertsOnAddressTooLong() public {
+        bytes memory tooLong = InteroperableAddress.formatV1(NonEvmAddress.STARKNET_CHAIN_TYPE, SN_MAIN, new bytes(33));
+        vm.expectRevert(abi.encodeWithSelector(NonEvmAddress.NonEvmAddressTooLong.selector, uint256(33)));
+        harness.parseV1ToFelt252(tooLong);
     }
 
     /// @dev Left-pads a short chain reference into a 32-byte word (helper for the chainId assertion).
