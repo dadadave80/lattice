@@ -227,3 +227,6 @@
 0	0	_executions	t_mapping(t_bytes4,t_struct(ExecutionStorage)_storage)
 1	0	_validations	t_mapping(t_userDefinedValueType(ModuleEntity),t_struct(ValidationStorage)_storage)
 2	0	_interfaceRefCount	t_mapping(t_bytes4,t_uint256)
+
+### AcrossBridgeAdapterStorage @ erc7201:lattice.storage.AcrossBridgeAdapter (slot 0xd1f2b3a38609618605209c75d051e4ac61236c94f39400c851dd252f5fe1d000)
+0	0	_spokePool	t_address
