@@ -562,6 +562,18 @@ contract StorageLayoutProbe {
         mapping(bytes32 msgHash => address initiator) _initiators;
     }
 
+    /// @dev Verbatim mirror of `HyperlaneGatewayAdapterLib.HyperlaneGatewayAdapterStorage`
+    ///      (`@custom:storage-location erc7201:lattice.storage.HyperlaneGatewayAdapter`). Append-only.
+    struct HyperlaneGatewayAdapterStorage {
+        address _mailbox;
+        mapping(uint256 chainId => uint32 domain) _chainIdToDomain;
+        mapping(uint32 domain => uint256 chainId) _domainToChainId;
+        mapping(uint256 chainId => bytes32 remote) _trustedRemotes;
+        mapping(uint256 chainId => uint256 gasLimit) _destGasLimit;
+        uint256 _lastNonce;
+        mapping(uint256 chainId => mapping(bytes32 sendId => bool executed)) _executed;
+    }
+
     /// @dev Verbatim mirror of `ChainRegistryLib.ChainRegistryStorage` and its `ChainRecord`
     ///      (`@custom:storage-location erc7201:lattice.storage.ChainRegistry`; the nested `NativeIds` lives
     ///      in {IChainRegistry} and is imported, not re-declared). Append-only.
@@ -628,4 +640,5 @@ contract StorageLayoutProbe {
     AcrossBridgeAdapterStorage internal _unusedAcrossBridgeAdapter;
     StarknetGatewayAdapterStorage internal _unusedStarknetGatewayAdapter;
     ChainRegistryStorage internal _unusedChainRegistry;
+    HyperlaneGatewayAdapterStorage internal _unusedHyperlaneGatewayAdapter;
 }

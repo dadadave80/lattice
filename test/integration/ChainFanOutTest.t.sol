@@ -11,6 +11,7 @@ import {CCIPGatewayAdapter} from "@lattice/crosschain/CCIPGatewayAdapter.sol";
 import {CCTPBridgeAdapter} from "@lattice/crosschain/CCTPBridgeAdapter.sol";
 import {ChainRegistry} from "@lattice/crosschain/ChainRegistry.sol";
 import {ChainRegistryInit} from "@lattice/crosschain/ChainRegistryInit.sol";
+import {HyperlaneGatewayAdapter} from "@lattice/crosschain/HyperlaneGatewayAdapter.sol";
 import {
     L2ToL2CrossDomainMessengerGatewayAdapter
 } from "@lattice/crosschain/L2ToL2CrossDomainMessengerGatewayAdapter.sol";
@@ -34,7 +35,7 @@ contract WormholeRemoteReadProbe {
 }
 
 /// @notice THE COMPOSABILITY PROOF for the chain-registry fan-out (#77 sub-task 10): ONE diamond cuts the
-///         chain registry alongside ALL SEVEN gateway/bridge adapters, `addEvmChain` is called ONCE as the
+///         chain registry alongside ALL EIGHT gateway/bridge adapters, `addEvmChain` is called ONCE as the
 ///         admin, and each adapter's OWN read surface must show its hot-path config landed — proving the
 ///         fan-out reaches every adapter lib's ERC-7201 storage through direct internal calls (msg.sender
 ///         stays the admin for each lib's own role check; never external self-calls).
@@ -57,6 +58,7 @@ contract ChainFanOutTest is Test, GetSelectors {
     uint32 constant LZ_EID = 30184;
     uint16 constant WORMHOLE_ID = 30;
     uint32 constant CCTP_DOMAIN = 6;
+    uint32 constant HYPERLANE_DOMAIN = 8453; // Hyperlane's Base domain HAPPENS to equal the chainId
 
     address ccipRemote = address(0xCC1);
     bytes32 lzPeer = bytes32(uint256(uint160(address(0x1AE0))));
@@ -64,6 +66,7 @@ contract ChainFanOutTest is Test, GetSelectors {
     address axelarRemote = address(0xA8e1);
     address zetaApp = address(0x2E7A);
     address opRemoteAdapter = address(0x0FF2);
+    bytes32 hyperlaneRemote = bytes32(uint256(uint160(address(0x437E))));
 
     address covDirect1 = address(0xAD01);
     address covDirect2 = address(0xAD02);
@@ -90,7 +93,7 @@ contract ChainFanOutTest is Test, GetSelectors {
     }
 
     function setUp() public {
-        FacetCut[] memory cuts = new FacetCut[](11);
+        FacetCut[] memory cuts = new FacetCut[](12);
         cuts[0] = _cutUnique(address(new ERC165Facet()), "ERC165Facet");
         cuts[1] = _cutUnique(address(new AccessControl()), "AccessControl");
         cuts[2] = _cutUnique(address(new ChainRegistry()), "ChainRegistry");
@@ -103,7 +106,8 @@ contract ChainFanOutTest is Test, GetSelectors {
             address(new L2ToL2CrossDomainMessengerGatewayAdapter()), "L2ToL2CrossDomainMessengerGatewayAdapter"
         );
         cuts[9] = _cutUnique(address(new CCTPBridgeAdapter()), "CCTPBridgeAdapter");
-        cuts[10] = _cutUnique(address(new WormholeRemoteReadProbe()), "WormholeRemoteReadProbe");
+        cuts[10] = _cutUnique(address(new HyperlaneGatewayAdapter()), "HyperlaneGatewayAdapter");
+        cuts[11] = _cutUnique(address(new WormholeRemoteReadProbe()), "WormholeRemoteReadProbe");
 
         Diamond d = new Diamond();
         d.initialize(cuts, address(new ChainRegistryInit()), abi.encodeCall(ChainRegistryInit.init, (admin)));
@@ -134,6 +138,9 @@ contract ChainFanOutTest is Test, GetSelectors {
         cfg.cctp = IChainRegistry.CctpSection({
             enabled: true, domain: CCTP_DOMAIN, maxFee: 500, minFinalityThreshold: 2000, destinationCaller: bytes32(0)
         });
+        cfg.hyperlane = IChainRegistry.HyperlaneSection({
+            enabled: true, domain: HYPERLANE_DOMAIN, remote: hyperlaneRemote, gasLimit: 400_000
+        });
         cfg.coverage.gateways = new address[](3);
         cfg.coverage.hubRouted = new bool[](3);
         cfg.coverage.gateways[0] = covDirect1;
@@ -162,6 +169,7 @@ contract ChainFanOutTest is Test, GetSelectors {
         _assertAxelarLanded();
         _assertZetaAndOpLanded();
         _assertCctpLanded();
+        _assertHyperlaneLanded();
         _assertRegistryLanded(chainKey);
     }
 
@@ -227,6 +235,16 @@ contract ChainFanOutTest is Test, GetSelectors {
         assertEq(destCaller, bytes32(0), "cctp destinationCaller");
     }
 
+    /// @dev Hyperlane: domain map (both directions) + trusted remote + destination gas, through the
+    ///      Hyperlane facet.
+    function _assertHyperlaneLanded() internal view {
+        HyperlaneGatewayAdapter hyperlane = HyperlaneGatewayAdapter(diamond);
+        assertEq(hyperlane.domainOf(BASE_CHAIN_ID), HYPERLANE_DOMAIN, "hyperlane domain");
+        assertEq(hyperlane.chainIdOf(HYPERLANE_DOMAIN), BASE_CHAIN_ID, "hyperlane reverse domain");
+        assertEq(hyperlane.trustedRemoteOf(BASE_CHAIN_ID), hyperlaneRemote, "hyperlane remote");
+        assertEq(hyperlane.destGasLimitOf(BASE_CHAIN_ID), 400_000, "hyperlane gas limit");
+    }
+
     /// @dev Registry: identity + native ids + coverage math (hub-routed excluded from direct).
     function _assertRegistryLanded(bytes32 chainKey) internal view {
         assertTrue(registry.isRegistered(chainKey));
@@ -241,6 +259,7 @@ contract ChainFanOutTest is Test, GetSelectors {
         assertEq(ids.wormholeId, WORMHOLE_ID);
         assertEq(ids.cctpDomain, CCTP_DOMAIN);
         assertEq(ids.axelarName, "base");
+        assertEq(ids.hyperlaneDomain, HYPERLANE_DOMAIN);
 
         assertEq(registry.coverageOf(chainKey), 3, "total coverage");
         assertEq(registry.directCoverageOf(chainKey), 2, "hub-routed never counts as direct");
@@ -282,6 +301,8 @@ contract ChainFanOutTest is Test, GetSelectors {
         assertEq(
             L2ToL2CrossDomainMessengerGatewayAdapter(diamond).getRemoteAdapter(chainId), address(0), "op untouched"
         );
+        assertEq(HyperlaneGatewayAdapter(diamond).domainOf(chainId), 0, "hyperlane untouched");
+        assertEq(HyperlaneGatewayAdapter(diamond).trustedRemoteOf(chainId), bytes32(0), "hyperlane remote untouched");
 
         // Registry: only the enabled sections' native ids are set.
         bytes32 chainKey = registry.chainKeyEvm(chainId);
@@ -291,6 +312,7 @@ contract ChainFanOutTest is Test, GetSelectors {
         assertEq(ids.wormholeId, 0);
         assertEq(ids.cctpDomain, 3);
         assertEq(ids.axelarName, "");
+        assertEq(ids.hyperlaneDomain, 0);
         assertEq(registry.coverageOf(chainKey), 1);
         assertEq(registry.directCoverageOf(chainKey), 1);
     }
