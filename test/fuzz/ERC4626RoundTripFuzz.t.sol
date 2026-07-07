@@ -5,6 +5,7 @@ import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
 import {IERC4626} from "@lattice/interfaces/tokens/IERC4626.sol";
+import {ERC20} from "@lattice/tokens/ERC20/ERC20.sol";
 import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
 import {ERC4626} from "@lattice/tokens/ERC4626/ERC4626.sol";
 import {ERC4626Lib} from "@lattice/tokens/ERC4626/libraries/ERC4626Lib.sol";
@@ -47,8 +48,10 @@ contract FuzzUnderlying {
     }
 }
 
-/// @notice Minimal ERC-4626 vault with zero decimals offset.
-contract FuzzVault is ERC4626 {
+/// @notice Minimal ERC-4626 vault with zero decimals offset. Flattens the composable {ERC20} share facet and the
+///         {ERC4626} vault facet into one mock (both delegate to their namespaced-storage libs); `decimals` is
+///         disambiguated to the ERC-4626 share-offset variant.
+contract FuzzVault is ERC20, ERC4626 {
     function initialize(address asset_) external {
         bytes32 s = InitializableLib.initializableSlot();
         InitializableLib.preInitializer(s);
@@ -56,6 +59,11 @@ contract FuzzVault is ERC4626 {
         ERC4626Lib.__ERC4626_init(asset_, 0);
         AccessControlLib.__AccessControl_init(msg.sender);
         InitializableLib.postInitializer(s);
+    }
+
+    /// @dev Resolves the `decimals()` clash between the flattened {ERC20} and {ERC4626} facets.
+    function decimals() public view override(ERC20, ERC4626) returns (uint8) {
+        return ERC4626.decimals();
     }
 }
 
