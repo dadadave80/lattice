@@ -50,8 +50,9 @@ contract InvAsset is ERC20, ERC20Votes {
 //                                MOCK VAULT
 //////////////////////////////////////////////////////////////////////////*//
 
-/// @notice ERC4626 vault for invariant testing.
-contract InvVault is ERC4626 {
+/// @notice ERC4626 vault for invariant testing. Flattens the composable {ERC20} share facet and the {ERC4626}
+///         vault facet into one mock; `decimals` is disambiguated to the ERC-4626 share-offset variant.
+contract InvVault is ERC20, ERC4626 {
     function initialize(address asset_) external {
         bytes32 s = InitializableLib.initializableSlot();
         InitializableLib.preInitializer(s);
@@ -59,6 +60,11 @@ contract InvVault is ERC4626 {
         ERC4626Lib.__ERC4626_init(asset_, 0);
         AccessControlLib.__AccessControl_init(msg.sender);
         InitializableLib.postInitializer(s);
+    }
+
+    /// @dev Resolves the `decimals()` clash between the flattened {ERC20} and {ERC4626} facets.
+    function decimals() public view override(ERC20, ERC4626) returns (uint8) {
+        return ERC4626.decimals();
     }
 }
 
