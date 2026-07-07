@@ -227,6 +227,7 @@ and a row here.
 | CurveStableSwapAdapter | `lattice.storage.CurveStableSwapAdapter` | `0x9a875cb7e904ab3576fe7e6b7405b28b9f810acb5bf4def0fec57c5e754def00` | `IProtocolAdapter` + `ICurveStableSwapAdapter` | `0x8f7783e6` / `0xfa38ccb7` | `0x789387b95720f4aa713e912bc377a2f999f1310b69003727d9c01b7ea1494c77` / `0x5d7c390f2f6bf0ca6f51b6ea0940c100b21726e3e202811c94c2ff39040d4299` |
 | LidoAdapter | `lattice.storage.LidoAdapter` | `0x3d4dff0246f0af54636d62603e75b921d2876c293bb97376b20bb8265ecb3900` | `IProtocolAdapter` + `ILidoAdapter` | `0x8f7783e6` / `0x83d0afd2` | `0x789387b95720f4aa713e912bc377a2f999f1310b69003727d9c01b7ea1494c77` / `0x6167b6f3924e213fbc2c85ec2d6ca3e7f5267a73935588adb9fb05f57a52b315` |
 | UniswapV3Adapter | `lattice.storage.UniswapV3Adapter` | `0x6f3c1f877b0bf340477364a294f77f49bff3a5479f70012a0fb5cb2803b61e00` | `IProtocolAdapter` + `IUniswapV3Adapter` | `0x8f7783e6` / `0xf723aa17` | `0x789387b95720f4aa713e912bc377a2f999f1310b69003727d9c01b7ea1494c77` / `0x18cf2bfdc937c75408cba5cf015af2a2f8d21a881c553ac382a288bcae5dc1c8` |
+| AggregatorExecAdapter | `lattice.storage.AggregatorExecAdapter` | `0xa2d04b4e843f01463940d93cd4d536111875b48fb08f2c3a7d094e91e39a5100` | `IAggregatorExecAdapter` | `0xe95f85f2` | `0x3b0da15f74db1bb0d7ebc58a8d802243b2c7050873887bf8e60ab5b971b5a8e9` |
 
 ### AMM
 
@@ -266,6 +267,18 @@ and a row here.
 | WormholeGatewayAdapter | `lattice.storage.WormholeGatewayAdapter` | `0x46329d8c82c4b2643a1707018dd8f47f4e747c04259ec1eec95a00ddfb1bd600` | `IERC7786GatewaySource` | `0x11967553` | `0x3c75b8ea75c097979221eb9302e2f0f6009b4ffe0a7198db5dc29979e09ea0e3` |
 | ERC7786OpenBridge | `lattice.storage.ERC7786OpenBridge` | `0xca75154ce55fdf901a786b6fa60962886fadca5cda61c777098bc66b49134a00` | `IERC7786GatewaySource` | `0x11967553` | `0x3c75b8ea75c097979221eb9302e2f0f6009b4ffe0a7198db5dc29979e09ea0e3` |
 | CCIPGatewayAdapter | `lattice.storage.CCIPGatewayAdapter` | `0xfc37dafbf0181d0474cf94e236f0ede0d369aab52659fb134d4be3b15fbb8e00` | `IERC7786GatewaySource` + `IAny2EVMMessageReceiver` + `IAny2EVMMessageReceiverV2` | `0x11967553` / `0x85572ffb` / `0x1bfc84d0` | `0x3c75b8ea75c097979221eb9302e2f0f6009b4ffe0a7198db5dc29979e09ea0e3` / `0x800eb085c0ca5e4523c112cc053bae87b4696eb6a3bf735b4b8b0a9d09be1465` / `0x9baecadb3e37f7ef6c6624a337da384f68e7fa9684795d0ccbd7f9f089dee070` |
+| LayerZeroGatewayAdapter | `lattice.storage.LayerZeroGatewayAdapter` | `0xbca2daa6d08cb277e523bf7dcd928e312ddbb7f9ac88be435916dda92924d100` | `IERC7786GatewaySource` | `0x11967553` | `0x3c75b8ea75c097979221eb9302e2f0f6009b4ffe0a7198db5dc29979e09ea0e3` |
+| L2ToL2CrossDomainMessengerGatewayAdapter | `lattice.storage.L2ToL2CrossDomainMessengerGatewayAdapter` | `0x7d097b8d74c3eca1712de7b01bb2e081ac18f7660e60d35d0a11a670a90beb00` | `IERC7786GatewaySource` | `0x11967553` | `0x3c75b8ea75c097979221eb9302e2f0f6009b4ffe0a7198db5dc29979e09ea0e3` |
+| L1ToL2CrossDomainMessengerGatewayAdapter | `lattice.storage.L1ToL2CrossDomainMessengerGatewayAdapter` | `0xba3de3e77bc32833730368f3190597d7121922af189304a06067265b4d53a500` | `IERC7786GatewaySource` | `0x11967553` | `0x3c75b8ea75c097979221eb9302e2f0f6009b4ffe0a7198db5dc29979e09ea0e3` |
+| ZetaChainGatewayAdapter | `lattice.storage.ZetaChainGatewayAdapter` | `0x7529f1b714a55f00ea95d180ad0c2a53651f18a834ecec0ff1f9af59ddf74000` | `IERC7786GatewaySource` | `0x11967553` | `0x3c75b8ea75c097979221eb9302e2f0f6009b4ffe0a7198db5dc29979e09ea0e3` |
+| CCTPBridgeAdapter | `lattice.storage.CCTPBridgeAdapter` | `0x94bcfd23a6ef7deebf3dfac9da6ba8c390ae8a620c8a163523fd263b20958b00` | `ICCTPBridgeAdapter` | `0x9868b584` | `0xc99af2d75b4d69e472159c90d5028834f8137d465c0aaebc7a1ffe39b3c97dee` |
+| SuperchainETHBridgeAdapter | (stateless — no ERC-7201 storage) | — | `ISuperchainETHBridgeAdapter` | `0x832d7d61` | `0x3e08ed85f4544feff1f3f78c34d4e426159248bf51477cf7b08dde93bbe30744` |
+| AcrossBridgeAdapter | `lattice.storage.AcrossBridgeAdapter` | `0xd1f2b3a38609618605209c75d051e4ac61236c94f39400c851dd252f5fe1d000` | `IAcrossBridgeAdapter` | `0x4615a4f1` | `0xd64961c0a774526940a248ad01e6f5f33fadd297074bcba45861d774858b837c` |
+| StarknetGatewayAdapter | `lattice.storage.StarknetGatewayAdapter` | `0x3f9fd8bc99bc5c4e4ff64e899fbe5f73a1a0f6c02aaa904e7184494718213e00` | `IStarknetGatewayAdapter` | `0x7dfd78ca` | `0xbcf162df5dae478299124881124442c9a950f7c7a4c96c5d289b1c3a20b1dd53` |
+| ChainRegistry | `lattice.storage.ChainRegistry` | `0x3d04730f387c3a41671abdc91e43582ee4d80e460792f9c401b5acc80eab5b00` | `IChainRegistry` | `0x137e339e` | `0x0a0affa1c3cd17b5e25d35fd719de9756671b9a056876933fee65c04fc5735d3` |
+| HyperlaneGatewayAdapter | `lattice.storage.HyperlaneGatewayAdapter` | `0x8a4b1302312d119abfdb0305131f00457b784ef22f6824db37cbaed84bba5600` | `IERC7786GatewaySource` + `IHyperlaneGatewayAdapter` | `0x11967553` / `0xb4f23f37` | `0x3c75b8ea75c097979221eb9302e2f0f6009b4ffe0a7198db5dc29979e09ea0e3` / `0xda64faf279e491b8914ea1bd5a229e6b869c7ceecd7af74ddf271e5df1381612` |
+| StargateBridgeAdapter | `lattice.storage.StargateBridgeAdapter` | `0x2076bfc799b61fb4ea9b1d4a406060be54015b08cd19ef147b102a3e634c0800` | `IStargateBridgeAdapter` | `0x199fc6b0` | `0x326cc60e86592cbb0d41c91042ab150a4f99ae6dd5d49d392cfc87d10b32650d` |
+| HyperbridgeGatewayAdapter | `lattice.storage.HyperbridgeGatewayAdapter` | `0x51a6b52d433abb3ae06100272e5ee46754531b734f9cac910997924c61569700` | `IERC7786GatewaySource` + `IHyperbridgeGatewayAdapter` | `0x11967553` / `0x9c48e32e` | `0x3c75b8ea75c097979221eb9302e2f0f6009b4ffe0a7198db5dc29979e09ea0e3` / `0xb7ece225a1d7ee3cb3d032ac79e8edc4e7bc0b80a422071828120db87beadfcb` |
 
 ### Markets
 
@@ -327,7 +340,7 @@ and a row here.
 
 ---
 
-**Counts:** 74 storage-bearing modules (74 unique ERC-7201 slots) and 78 ERC-165 interface
+**Counts:** 86 storage-bearing modules (86 unique ERC-7201 slots) and 87 ERC-165 interface
 map slots (the privacy track adds the stateful `ERC6538Registry` — one ERC-7201 slot and one
 `IERC6538Registry` ERC-165 slot — plus the stateless `ERC5564Announcer` — no ERC-7201 slot, one
 `IERC5564Announcer` ERC-165 slot — and the stateless `Groth16Verifier` — no ERC-7201 slot, one
@@ -351,15 +364,32 @@ only its protocol-specific `ICurveStableSwapAdapter` slot — one ERC-7201 slot 
 map slot; LidoAdapter likewise reuses the shared `IProtocolAdapter` map slot and adds only its
 protocol-specific `ILidoAdapter` slot — one ERC-7201 slot and one new ERC-165 map slot;
 UniswapV3Adapter likewise reuses the shared `IProtocolAdapter` map slot and adds only its
-protocol-specific `IUniswapV3Adapter` slot — one ERC-7201 slot and one new ERC-165 map slot). The
-crosschain track adds seven storage-bearing modules — `CrosschainLink`, `BridgeERC20`, `BridgeERC7802`,
-`AxelarGatewayAdapter`, `WormholeGatewayAdapter`, `ERC7786OpenBridge`, `CCIPGatewayAdapter` — each with its
-own ERC-7201 slot; the two bridges share the `IBridgeFungible` (`0x28dcc8d8`) ERC-165 slot and the four
-gateways share the `IERC7786GatewaySource` (`0x11967553`) ERC-165 slot — `CCIPGatewayAdapter` additionally
+protocol-specific `IUniswapV3Adapter` slot — one ERC-7201 slot and one new ERC-165 map slot;
+AggregatorExecAdapter — the type-C quote-API execution adapter, homed in the DeFi table because the module
+lives under `src/defi/` — registers ONLY its own `IAggregatorExecAdapter` (`0xe95f85f2`), not the shared
+`IProtocolAdapter` id, so it adds one ERC-7201 slot and one new ERC-165 map slot). The
+crosschain track adds eighteen storage-bearing modules — `CrosschainLink`, `BridgeERC20`, `BridgeERC7802`,
+`AxelarGatewayAdapter`, `WormholeGatewayAdapter`, `ERC7786OpenBridge`, `CCIPGatewayAdapter`,
+`LayerZeroGatewayAdapter`, `L2ToL2CrossDomainMessengerGatewayAdapter`,
+`L1ToL2CrossDomainMessengerGatewayAdapter`, `ZetaChainGatewayAdapter`, `CCTPBridgeAdapter`,
+`AcrossBridgeAdapter`, `StarknetGatewayAdapter`, `ChainRegistry`, `HyperlaneGatewayAdapter`,
+`StargateBridgeAdapter`, `HyperbridgeGatewayAdapter` — each with its own ERC-7201 slot, plus the stateless
+`SuperchainETHBridgeAdapter` (a pure payable passthrough to the OP interop predeploy — no ERC-7201 slot,
+one `ISuperchainETHBridgeAdapter` (`0x832d7d61`) ERC-165 slot). The two bridges share the `IBridgeFungible`
+(`0x28dcc8d8`) ERC-165 slot and the ten ERC-7786 gateways — `AxelarGatewayAdapter`,
+`WormholeGatewayAdapter`, `ERC7786OpenBridge`, `CCIPGatewayAdapter`, `LayerZeroGatewayAdapter`, the two OP
+messenger adapters, `ZetaChainGatewayAdapter`, `HyperlaneGatewayAdapter`, `HyperbridgeGatewayAdapter` —
+share the `IERC7786GatewaySource` (`0x11967553`) ERC-165 slot. `CCIPGatewayAdapter` additionally
 registers `IAny2EVMMessageReceiver` (`0x85572ffb`, required for the CCIP router's pre-delivery
 `supportsInterface` check) and `IAny2EVMMessageReceiverV2` (`0x1bfc84d0` — Solidity's `type().interfaceId`
 excludes the inherited `ccipReceive`, so the V2 id is the `getCCVsAndFinalityConfig` selector — for CCV-enabled
-lanes) — so crosschain adds seven ERC-7201 slots and five new ERC-165 map slots. The randomness/automation adapters — `PythEntropyAdapter`, `GelatoVRFAdapter`,
+lanes); `HyperlaneGatewayAdapter` and `HyperbridgeGatewayAdapter` each additionally mint their own
+protocol-surface id (`IHyperlaneGatewayAdapter` `0xb4f23f37`, `IHyperbridgeGatewayAdapter` `0x9c48e32e`) on
+top of the shared gateway slot; the token bridges and the non-EVM connector register their own ids only —
+`ICCTPBridgeAdapter` (`0x9868b584`), `IAcrossBridgeAdapter` (`0x4615a4f1`), `IStargateBridgeAdapter`
+(`0x199fc6b0`), `IStarknetGatewayAdapter` (`0x7dfd78ca`; NOT an ERC-7786 gateway — it does not register the
+shared `0x11967553` id) — and `ChainRegistry` mints `IChainRegistry` (`0x137e339e`) — so crosschain adds
+eighteen ERC-7201 slots and thirteen new ERC-165 map slots. The randomness/automation adapters — `PythEntropyAdapter`, `GelatoVRFAdapter`,
 `API3QRNGAdapter`, `GelatoAutomateAdapter`, `ChainlinkAutomationAdapter` (alongside the existing
 `ChainlinkVRF`) — each add one ERC-7201 storage slot and one unique ERC-165 map slot; the five new modules
 add five ERC-7201 slots and five ERC-165 map slots. Randomness/automation adapters currently live under

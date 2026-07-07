@@ -28,7 +28,7 @@ bytes32 constant ERC165_MAP_ICCTPBRIDGEADAPTER_SLOT =
 struct DomainConfig {
     /// @notice Maximum fee (in USDC units) payable to CCTP for a burn toward this domain.
     uint256 maxFee;
-    /// @notice Minimum finality threshold before Iris attests (e.g. 1000 standard / 2000 fast).
+    /// @notice Minimum finality threshold before Iris attests (e.g. 1000 fast / 2000 standard-finalized).
     uint32 minFinalityThreshold;
     /// @notice Optional destination caller lock (`bytes32(0)` = permissionless mint).
     bytes32 destinationCaller;
