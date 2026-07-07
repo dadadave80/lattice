@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
-import {DeployAccount} from "@lattice-script/base/access/DeployAccount.s.sol";
+import {DeployAccount} from "@lattice-script/base/accounts/DeployAccount.s.sol";
 import {AccountInit} from "@lattice/accounts/erc7579/AccountInit.sol";
 import {Test} from "forge-std/Test.sol";
 
