@@ -11,6 +11,7 @@ import {CCIPGatewayAdapter} from "@lattice/crosschain/CCIPGatewayAdapter.sol";
 import {CCTPBridgeAdapter} from "@lattice/crosschain/CCTPBridgeAdapter.sol";
 import {ChainRegistry} from "@lattice/crosschain/ChainRegistry.sol";
 import {ChainRegistryInit} from "@lattice/crosschain/ChainRegistryInit.sol";
+import {HyperbridgeGatewayAdapter} from "@lattice/crosschain/HyperbridgeGatewayAdapter.sol";
 import {HyperlaneGatewayAdapter} from "@lattice/crosschain/HyperlaneGatewayAdapter.sol";
 import {
     L2ToL2CrossDomainMessengerGatewayAdapter
@@ -37,7 +38,7 @@ contract WormholeRemoteReadProbe {
 }
 
 /// @notice THE COMPOSABILITY PROOF for the chain-registry fan-out (#77 sub-task 10): ONE diamond cuts the
-///         chain registry alongside ALL NINE gateway/bridge adapters, `addEvmChain` is called ONCE as the
+///         chain registry alongside ALL TEN gateway/bridge adapters, `addEvmChain` is called ONCE as the
 ///         admin, and each adapter's OWN read surface must show its hot-path config landed — proving the
 ///         fan-out reaches every adapter lib's ERC-7201 storage through direct internal calls (msg.sender
 ///         stays the admin for each lib's own role check; never external self-calls).
@@ -70,6 +71,8 @@ contract ChainFanOutTest is Test, GetSelectors {
     address zetaApp = address(0x2E7A);
     address opRemoteAdapter = address(0x0FF2);
     bytes32 hyperlaneRemote = bytes32(uint256(uint160(address(0x437E))));
+    bytes hyperbridgeModule = abi.encodePacked(address(0x15D1)); // counterpart ISMP module on Base
+    uint64 constant HYPERBRIDGE_TIMEOUT = 3600;
 
     address covDirect1 = address(0xAD01);
     address covDirect2 = address(0xAD02);
@@ -96,7 +99,7 @@ contract ChainFanOutTest is Test, GetSelectors {
     }
 
     function setUp() public {
-        FacetCut[] memory cuts = new FacetCut[](13);
+        FacetCut[] memory cuts = new FacetCut[](14);
         cuts[0] = _cutUnique(address(new ERC165Facet()), "ERC165Facet");
         cuts[1] = _cutUnique(address(new AccessControl()), "AccessControl");
         cuts[2] = _cutUnique(address(new ChainRegistry()), "ChainRegistry");
@@ -111,7 +114,8 @@ contract ChainFanOutTest is Test, GetSelectors {
         cuts[9] = _cutUnique(address(new CCTPBridgeAdapter()), "CCTPBridgeAdapter");
         cuts[10] = _cutUnique(address(new HyperlaneGatewayAdapter()), "HyperlaneGatewayAdapter");
         cuts[11] = _cutUnique(address(new StargateBridgeAdapter()), "StargateBridgeAdapter");
-        cuts[12] = _cutUnique(address(new WormholeRemoteReadProbe()), "WormholeRemoteReadProbe");
+        cuts[12] = _cutUnique(address(new HyperbridgeGatewayAdapter()), "HyperbridgeGatewayAdapter");
+        cuts[13] = _cutUnique(address(new WormholeRemoteReadProbe()), "WormholeRemoteReadProbe");
 
         Diamond d = new Diamond();
         d.initialize(cuts, address(new ChainRegistryInit()), abi.encodeCall(ChainRegistryInit.init, (admin)));
@@ -146,6 +150,9 @@ contract ChainFanOutTest is Test, GetSelectors {
             enabled: true, domain: HYPERLANE_DOMAIN, remote: hyperlaneRemote, gasLimit: 400_000
         });
         cfg.stargate = IChainRegistry.StargateSection({enabled: true, eid: STARGATE_EID});
+        cfg.hyperbridge = IChainRegistry.HyperbridgeSection({
+            enabled: true, remoteModule: hyperbridgeModule, timeout: HYPERBRIDGE_TIMEOUT
+        });
         cfg.coverage.gateways = new address[](3);
         cfg.coverage.hubRouted = new bool[](3);
         cfg.coverage.gateways[0] = covDirect1;
@@ -176,6 +183,7 @@ contract ChainFanOutTest is Test, GetSelectors {
         _assertCctpLanded();
         _assertHyperlaneLanded();
         _assertStargateLanded();
+        _assertHyperbridgeLanded();
         _assertRegistryLanded(chainKey);
     }
 
@@ -260,6 +268,17 @@ contract ChainFanOutTest is Test, GetSelectors {
         assertEq(StargateBridgeAdapter(diamond).stargateChainIdOf(STARGATE_EID), BASE_CHAIN_ID, "stargate reverse eid");
     }
 
+    /// @dev Hyperbridge: the state machine id must equal the HAND-BUILT canonical `bytes("EVM-8453")` — the
+    ///      fan-out derives it from `cfg.chainId`, never from caller-supplied bytes — plus the reverse map,
+    ///      trusted remote module and dispatch timeout, through the Hyperbridge facet.
+    function _assertHyperbridgeLanded() internal view {
+        HyperbridgeGatewayAdapter hyperbridge = HyperbridgeGatewayAdapter(payable(diamond));
+        assertEq(hyperbridge.stateMachineIdOf(BASE_CHAIN_ID), bytes("EVM-8453"), "hyperbridge derived id");
+        assertEq(hyperbridge.chainIdOfStateMachine(bytes("EVM-8453")), BASE_CHAIN_ID, "hyperbridge reverse id");
+        assertEq(hyperbridge.hyperbridgeRemoteModuleOf(BASE_CHAIN_ID), hyperbridgeModule, "hyperbridge module");
+        assertEq(hyperbridge.hyperbridgeDestTimeoutOf(BASE_CHAIN_ID), HYPERBRIDGE_TIMEOUT, "hyperbridge timeout");
+    }
+
     /// @dev Registry: identity + native ids + coverage math (hub-routed excluded from direct).
     function _assertRegistryLanded(bytes32 chainKey) internal view {
         assertTrue(registry.isRegistered(chainKey));
@@ -320,6 +339,14 @@ contract ChainFanOutTest is Test, GetSelectors {
         assertEq(HyperlaneGatewayAdapter(diamond).trustedRemoteOf(chainId), bytes32(0), "hyperlane remote untouched");
         assertEq(StargateBridgeAdapter(diamond).stargateEidOf(chainId), 0, "stargate untouched");
         assertEq(StargateBridgeAdapter(diamond).stargateChainIdOf(30110), 0, "stargate reverse map untouched");
+        assertEq(
+            HyperbridgeGatewayAdapter(payable(diamond)).stateMachineIdOf(chainId).length, 0, "hyperbridge untouched"
+        );
+        assertEq(
+            HyperbridgeGatewayAdapter(payable(diamond)).hyperbridgeRemoteModuleOf(chainId).length,
+            0,
+            "hyperbridge module untouched"
+        );
 
         // Registry: only the enabled sections' native ids are set.
         bytes32 chainKey = registry.chainKeyEvm(chainId);

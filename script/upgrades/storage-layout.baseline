@@ -273,3 +273,12 @@
 0	0	_chainIdToEid	t_mapping(t_uint256,t_uint32)
 1	0	_eidToChainId	t_mapping(t_uint32,t_uint256)
 2	0	_pools	t_mapping(t_address,t_address)
+
+### HyperbridgeGatewayAdapterStorage @ erc7201:lattice.storage.HyperbridgeGatewayAdapter (slot 0x51a6b52d433abb3ae06100272e5ee46754531b734f9cac910997924c61569700)
+0	0	_host	t_address
+1	0	_stateMachineIds	t_mapping(t_uint256,t_bytes_storage)
+2	0	_chainIds	t_mapping(t_bytes32,t_uint256)
+3	0	_trustedRemotes	t_mapping(t_uint256,t_bytes_storage)
+4	0	_destTimeout	t_mapping(t_uint256,t_uint64)
+5	0	_lastNonce	t_uint256
+6	0	_executed	t_mapping(t_uint256,t_mapping(t_bytes32,t_bool))

@@ -113,6 +113,17 @@ interface IChainRegistry {
         uint32 eid;
     }
 
+    /// @notice Hyperbridge (ISMP) fan-out section of {AddEvmChainConfig}. The destination state machine id is
+    ///         DERIVED from `chainId` as the canonical `bytes("EVM-" + chainId)` — never caller-supplied
+    ///         (fail-closed); `remoteModule` is the counterpart adapter module on the chain being added and
+    ///         `timeout` the per-destination dispatch timeout in seconds (0 = no explicit timeout — the
+    ///         host's default handling).
+    struct HyperbridgeSection {
+        bool enabled;
+        bytes remoteModule;
+        uint64 timeout;
+    }
+
     /// @notice Coverage entries recorded for the new chain (parallel arrays; empty = no coverage recorded).
     struct CoverageSection {
         address[] gateways;
@@ -134,6 +145,7 @@ interface IChainRegistry {
         CctpSection cctp;
         HyperlaneSection hyperlane;
         StargateSection stargate;
+        HyperbridgeSection hyperbridge;
         CoverageSection coverage;
     }
 

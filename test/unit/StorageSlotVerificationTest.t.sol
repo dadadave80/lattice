@@ -105,6 +105,10 @@ import {
 } from "@lattice/crosschain/libraries/CrosschainLinkLib.sol";
 import {ERC7786_OPEN_BRIDGE_STORAGE_SLOT} from "@lattice/crosschain/libraries/ERC7786OpenBridgeLib.sol";
 import {
+    ERC165_MAP_IHYPERBRIDGEGATEWAYADAPTER_SLOT,
+    HYPERBRIDGE_GATEWAY_ADAPTER_STORAGE_SLOT
+} from "@lattice/crosschain/libraries/HyperbridgeGatewayAdapterLib.sol";
+import {
     ERC165_MAP_IHYPERLANEGATEWAYADAPTER_SLOT,
     HYPERLANE_GATEWAY_ADAPTER_STORAGE_SLOT
 } from "@lattice/crosschain/libraries/HyperlaneGatewayAdapterLib.sol";
@@ -321,6 +325,7 @@ import {IBridgeFungible} from "@lattice/interfaces/crosschain/IBridgeFungible.so
 import {ICCTPBridgeAdapter} from "@lattice/interfaces/crosschain/ICCTPBridgeAdapter.sol";
 import {IChainRegistry} from "@lattice/interfaces/crosschain/IChainRegistry.sol";
 import {ICrosschainLink} from "@lattice/interfaces/crosschain/ICrosschainLink.sol";
+import {IHyperbridgeGatewayAdapter} from "@lattice/interfaces/crosschain/IHyperbridgeGatewayAdapter.sol";
 import {IHyperlaneGatewayAdapter} from "@lattice/interfaces/crosschain/IHyperlaneGatewayAdapter.sol";
 import {IStargateBridgeAdapter} from "@lattice/interfaces/crosschain/IStargateBridgeAdapter.sol";
 import {IStarknetGatewayAdapter} from "@lattice/interfaces/crosschain/IStarknetGatewayAdapter.sol";
@@ -881,6 +886,14 @@ contract StorageSlotVerificationTest is Test {
             HYPERLANE_GATEWAY_ADAPTER_STORAGE_SLOT,
             _erc7201Slot("lattice.storage.HyperlaneGatewayAdapter"),
             "HyperlaneGatewayAdapter storage slot mismatch"
+        );
+    }
+
+    function test_HyperbridgeGatewayAdapterStorageSlot() public pure {
+        assertEq(
+            HYPERBRIDGE_GATEWAY_ADAPTER_STORAGE_SLOT,
+            _erc7201Slot("lattice.storage.HyperbridgeGatewayAdapter"),
+            "HyperbridgeGatewayAdapter storage slot mismatch"
         );
     }
 
@@ -1582,10 +1595,26 @@ contract StorageSlotVerificationTest is Test {
         );
     }
 
+    /// @dev Hyperbridge mints its own IHyperbridgeGatewayAdapter map slot ON TOP of the shared
+    ///      IERC7786GatewaySource slot (already counted once in the uniqueness array).
+    function test_Erc165MapIHyperbridgeGatewayAdapterSlot() public pure {
+        bytes4 interfaceId = type(IHyperbridgeGatewayAdapter).interfaceId;
+        assertEq(interfaceId, bytes4(0x9c48e32e), "IHyperbridgeGatewayAdapter interfaceId comment is stale");
+        assertEq(
+            ERC165_MAP_IHYPERBRIDGEGATEWAYADAPTER_SLOT,
+            _erc165MapSlot(interfaceId, ERC165_STORAGE_LOCATION),
+            "ERC165 IHyperbridgeGatewayAdapter map slot mismatch"
+        );
+    }
+
+    /// @dev The IChainRegistry id changes whenever a section is appended to `AddEvmChainConfig` (the struct
+    ///      rides in the `addEvmChain` signature) — last recomputed for `HyperbridgeSection`.
     function test_Erc165MapIChainRegistrySlot() public pure {
+        bytes4 interfaceId = type(IChainRegistry).interfaceId;
+        assertEq(interfaceId, bytes4(0x137e339e), "IChainRegistry interfaceId comment is stale");
         assertEq(
             ERC165_MAP_ICHAINREGISTRY_SLOT,
-            _erc165MapSlot(type(IChainRegistry).interfaceId, ERC165_STORAGE_LOCATION),
+            _erc165MapSlot(interfaceId, ERC165_STORAGE_LOCATION),
             "ERC165 IChainRegistry map slot mismatch"
         );
     }
@@ -1917,7 +1946,7 @@ contract StorageSlotVerificationTest is Test {
     // ======================== Slot inventories ========================
 
     function _allStorageSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](86);
+        slots = new bytes32[](87);
         uint256 i;
         // access
         slots[i++] = ACCESS_CONTROL_STORAGE_SLOT;
@@ -1989,6 +2018,7 @@ contract StorageSlotVerificationTest is Test {
         slots[i++] = CHAIN_REGISTRY_STORAGE_SLOT;
         slots[i++] = HYPERLANE_GATEWAY_ADAPTER_STORAGE_SLOT;
         slots[i++] = STARGATE_BRIDGE_ADAPTER_STORAGE_SLOT;
+        slots[i++] = HYPERBRIDGE_GATEWAY_ADAPTER_STORAGE_SLOT;
         // markets
         slots[i++] = MARKETPLACE_ZONE_STORAGE_SLOT;
         // accounts
@@ -2021,7 +2051,7 @@ contract StorageSlotVerificationTest is Test {
     }
 
     function _allErc165MapSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](87);
+        slots = new bytes32[](88);
         uint256 i;
         // access
         slots[i++] = ERC165_MAP_IACCESSCONTROL_SLOT;
@@ -2103,6 +2133,9 @@ contract StorageSlotVerificationTest is Test {
         // Hyperlane reuses the shared IERC7786GatewaySource slot (counted once above) and only adds its
         // adapter-specific IHyperlaneGatewayAdapter slot.
         slots[i++] = ERC165_MAP_IHYPERLANEGATEWAYADAPTER_SLOT;
+        // Hyperbridge likewise reuses the shared IERC7786GatewaySource slot and only adds its
+        // adapter-specific IHyperbridgeGatewayAdapter slot.
+        slots[i++] = ERC165_MAP_IHYPERBRIDGEGATEWAYADAPTER_SLOT;
         slots[i++] = ERC165_MAP_ISTARGATEBRIDGEADAPTER_SLOT;
         slots[i++] = ERC165_MAP_IANY2EVMMESSAGERECEIVER_SLOT;
         slots[i++] = ERC165_MAP_IANY2EVMMESSAGERECEIVERV2_SLOT;
