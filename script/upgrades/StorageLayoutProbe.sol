@@ -583,6 +583,18 @@ contract StorageLayoutProbe {
         mapping(address token => address pool) _pools;
     }
 
+    /// @dev Verbatim mirror of `HyperbridgeGatewayAdapterLib.HyperbridgeGatewayAdapterStorage`
+    ///      (`@custom:storage-location erc7201:lattice.storage.HyperbridgeGatewayAdapter`). Append-only.
+    struct HyperbridgeGatewayAdapterStorage {
+        address _host;
+        mapping(uint256 chainId => bytes stateMachineId) _stateMachineIds;
+        mapping(bytes32 smHash => uint256 chainId) _chainIds;
+        mapping(uint256 chainId => bytes remoteModule) _trustedRemotes;
+        mapping(uint256 chainId => uint64 timeout) _destTimeout;
+        uint256 _lastNonce;
+        mapping(uint256 chainId => mapping(bytes32 dedupKey => bool executed)) _executed;
+    }
+
     /// @dev Verbatim mirror of `ChainRegistryLib.ChainRegistryStorage` and its `ChainRecord`
     ///      (`@custom:storage-location erc7201:lattice.storage.ChainRegistry`; the nested `NativeIds` lives
     ///      in {IChainRegistry} and is imported, not re-declared). Append-only.
@@ -651,4 +663,5 @@ contract StorageLayoutProbe {
     ChainRegistryStorage internal _unusedChainRegistry;
     HyperlaneGatewayAdapterStorage internal _unusedHyperlaneGatewayAdapter;
     StargateBridgeAdapterStorage internal _unusedStargateBridgeAdapter;
+    HyperbridgeGatewayAdapterStorage internal _unusedHyperbridgeGatewayAdapter;
 }

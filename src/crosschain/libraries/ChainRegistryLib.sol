@@ -6,6 +6,7 @@ import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/Ac
 import {AxelarGatewayAdapterLib} from "@lattice/crosschain/libraries/AxelarGatewayAdapterLib.sol";
 import {CCIPGatewayAdapterLib} from "@lattice/crosschain/libraries/CCIPGatewayAdapterLib.sol";
 import {CCTPBridgeAdapterLib} from "@lattice/crosschain/libraries/CCTPBridgeAdapterLib.sol";
+import {HyperbridgeGatewayAdapterLib} from "@lattice/crosschain/libraries/HyperbridgeGatewayAdapterLib.sol";
 import {HyperlaneGatewayAdapterLib} from "@lattice/crosschain/libraries/HyperlaneGatewayAdapterLib.sol";
 import {
     L2ToL2CrossDomainMessengerGatewayAdapterLib
@@ -25,10 +26,10 @@ import {InteroperableAddress} from "@lattice/utils/libraries/InteroperableAddres
 /// @dev `keccak256(abi.encode(uint256(keccak256("lattice.storage.ChainRegistry")) - 1)) & ~bytes32(uint256(0xff))`.
 bytes32 constant CHAIN_REGISTRY_STORAGE_SLOT = 0x3d04730f387c3a41671abdc91e43582ee4d80e460792f9c401b5acc80eab5b00;
 
-/// @dev 0xc33bc2a3 is `type(IChainRegistry).interfaceId` (changed when `StargateSection` was appended to
+/// @dev 0x137e339e is `type(IChainRegistry).interfaceId` (changed when `HyperbridgeSection` was appended to
 /// `AddEvmChainConfig` — the struct rides in the `addEvmChain` signature).
-/// `keccak256(abi.encode(bytes4(0xc33bc2a3), 0x9ca7f3e2e2bfb15fdf072b85dde92837cddacee6cf2f6b38cd06c9457c1c4200))`.
-bytes32 constant ERC165_MAP_ICHAINREGISTRY_SLOT = 0x25b8c0b3172ce39fbddf418094344f1ea18ff535d754d95b368966efd593fd97;
+/// `keccak256(abi.encode(bytes4(0x137e339e), 0x9ca7f3e2e2bfb15fdf072b85dde92837cddacee6cf2f6b38cd06c9457c1c4200))`.
+bytes32 constant ERC165_MAP_ICHAINREGISTRY_SLOT = 0x0a0affa1c3cd17b5e25d35fd719de9756671b9a056876933fee65c04fc5735d3;
 
 /// @notice Per-chain registry record, keyed by the ERC-7930 chain key. APPEND-ONLY.
 struct ChainRecord {
@@ -263,6 +264,14 @@ library ChainRegistryLib {
                 revert IChainRegistry.ChainRegistryStargateEidMismatch(cfg.layerZero.eid, cfg.stargate.eid);
             }
             StargateBridgeAdapterLib.registerStargateEid(cfg.chainId, cfg.stargate.eid);
+        }
+        // Hyperbridge routes by BYTES state machine ids DERIVED from the chainId (`bytes("EVM-" + chainId)`)
+        // — the section carries no id, so a typoed id can never misroute (fail-closed by construction). The
+        // derived id is not recorded in NativeIds: it is a pure function of the chainId.
+        if (cfg.hyperbridge.enabled) {
+            HyperbridgeGatewayAdapterLib.registerStateMachine(cfg.chainId);
+            HyperbridgeGatewayAdapterLib.registerRemoteModule(cfg.chainId, cfg.hyperbridge.remoteModule);
+            HyperbridgeGatewayAdapterLib.configureDestinationTimeout(cfg.chainId, cfg.hyperbridge.timeout);
         }
 
         // 4) Record the coverage entries (parallel arrays, length-checked).
