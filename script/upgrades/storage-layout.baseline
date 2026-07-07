@@ -128,6 +128,7 @@
 3	0	_chainIdToDomain	t_mapping(t_uint256,t_uint32)
 4	0	_chainRegistered	t_mapping(t_uint256,t_bool)
 5	0	_domainConfig	t_mapping(t_uint32,t_struct(DomainConfig)_storage)
+6	0	_domainOwner	t_mapping(t_uint32,t_uint256)
 
 ### AggregatorExecAdapterStorage @ erc7201:lattice.storage.AggregatorExecAdapter (slot 0xa2d04b4e843f01463940d93cd4d536111875b48fb08f2c3a7d094e91e39a5100)
 0	0	_allowedCall	t_mapping(t_address,t_mapping(t_bytes4,t_bool))
@@ -243,6 +244,13 @@
 0	0	_chains	t_mapping(t_bytes32,t_struct(ChainRecord)_storage)
 
 ### ChainRecord @ erc7201:lattice.storage.ChainRegistry (slot 0x3d04730f387c3a41671abdc91e43582ee4d80e460792f9c401b5acc80eab5b00)
+0	0	registered	t_bool
+0	1	chainType	t_bytes2
+1	0	chainReference	t_bytes_storage
+2	0	evmChainId	t_uint256
+3	0	ids	t_struct(NativeIds)_storage
+6	0	gateways	t_struct(AddressSet)_storage
+8	0	hubRouted	t_mapping(t_address,t_bool)
 
 ### NativeIds @ erc7201:lattice.storage.ChainRegistry (slot 0x3d04730f387c3a41671abdc91e43582ee4d80e460792f9c401b5acc80eab5b00)
 0	0	ccipSelector	t_uint64
@@ -260,3 +268,8 @@
 4	0	_destGasLimit	t_mapping(t_uint256,t_uint256)
 5	0	_lastNonce	t_uint256
 6	0	_executed	t_mapping(t_uint256,t_mapping(t_bytes32,t_bool))
+
+### StargateBridgeAdapterStorage @ erc7201:lattice.storage.StargateBridgeAdapter (slot 0x2076bfc799b61fb4ea9b1d4a406060be54015b08cd19ef147b102a3e634c0800)
+0	0	_chainIdToEid	t_mapping(t_uint256,t_uint32)
+1	0	_eidToChainId	t_mapping(t_uint32,t_uint256)
+2	0	_pools	t_mapping(t_address,t_address)

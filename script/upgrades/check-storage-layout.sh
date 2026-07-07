@@ -112,6 +112,7 @@ GUARDED_STRUCTS=(
     "ChainRecord lattice.storage.ChainRegistry"
     "NativeIds lattice.storage.ChainRegistry"
     "HyperlaneGatewayAdapterStorage lattice.storage.HyperlaneGatewayAdapter"
+    "StargateBridgeAdapterStorage lattice.storage.StargateBridgeAdapter"
 )
 
 command -v forge >/dev/null 2>&1 || { echo "ERROR: forge not found on PATH" >&2; exit 2; }
@@ -140,14 +141,25 @@ generate_layout() {
         echo "${header}"
 
         # Pull the struct's members; strip volatile numeric AST ids from composite
-        # type names so the baseline is recompile-stable.
-        echo "${raw}" | jq -r --arg n "${name}" '
+        # type names so the baseline is recompile-stable. The match is anchored to REAL struct
+        # entries ("^t_struct(Name)") — an unanchored match also hits mapping/array type keys
+        # that EMBED the struct name (e.g. t_mapping(...,t_struct(Name)...)) whose .members is
+        # null, aborting jq mid-stream and silently emitting an EMPTY (vacuous) section.
+        local members
+        members="$(echo "${raw}" | jq -r --arg n "${name}" '
             .types
             | to_entries[]
-            | select(.key | test("\\(" + $n + "\\)"))
-            | .value.members[]
+            | select(.key | test("^t_struct\\(" + $n + "\\)"))
+            | (.value.members // [])[]
             | "\(.slot)\t\(.offset)\t\(.label)\t\(.type)"
-        ' | sed -E 's/\)[0-9]+/)/g' | sort -n -k1,1 -k2,2
+        ' | sed -E 's/\)[0-9]+/)/g' | sort -n -k1,1 -k2,2)"
+        # FAIL LOUD on an empty section: a guarded struct with zero member rows means the guard
+        # is vacuous (wrong name, missing probe mirror, or a filter regression like the above).
+        if [[ -z "${members}" ]]; then
+            echo "ERROR: guarded struct '${name}' produced ZERO member rows — vacuous guard." >&2
+            exit 2
+        fi
+        echo "${members}"
         echo ""
     done
 }
