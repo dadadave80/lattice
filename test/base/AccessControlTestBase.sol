@@ -4,7 +4,7 @@ pragma solidity ^0.8.30;
 import {GetSelectors} from "@diamond-test/helpers/GetSelectors.sol";
 import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
-import {DeployAccessControl} from "@lattice-script/base/DeployAccessControl.s.sol";
+import {DeployAccessControl} from "@lattice-script/base/access/DeployAccessControl.s.sol";
 import {AccessControlTestFacet} from "@lattice-test/helpers/AccessControlTestFacet.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {Test} from "forge-std/Test.sol";

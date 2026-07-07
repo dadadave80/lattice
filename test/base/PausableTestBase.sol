@@ -4,7 +4,7 @@ pragma solidity ^0.8.30;
 import {GetSelectors} from "@diamond-test/helpers/GetSelectors.sol";
 import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
-import {DeployPausable} from "@lattice-script/base/DeployPausable.s.sol";
+import {DeployPausable} from "@lattice-script/base/security/DeployPausable.s.sol";
 import {PausableTestFacet} from "@lattice-test/helpers/PausableTestFacet.sol";
 import {Pausable} from "@lattice/security/Pausable.sol";
 import {Test} from "forge-std/Test.sol";

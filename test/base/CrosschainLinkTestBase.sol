@@ -4,7 +4,7 @@ pragma solidity ^0.8.30;
 import {GetSelectors} from "@diamond-test/helpers/GetSelectors.sol";
 import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
-import {DeployCrosschainLink} from "@lattice-script/base/DeployCrosschainLink.s.sol";
+import {DeployCrosschainLink} from "@lattice-script/base/crosschain/DeployCrosschainLink.s.sol";
 import {CrosschainLink} from "@lattice/crosschain/CrosschainLink.sol";
 import {Test} from "forge-std/Test.sol";
 

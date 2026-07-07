@@ -4,7 +4,7 @@ pragma solidity ^0.8.30;
 import {GetSelectors} from "@diamond-test/helpers/GetSelectors.sol";
 import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
-import {DeployStrategyManager} from "@lattice-script/base/DeployStrategyManager.s.sol";
+import {DeployStrategyManager} from "@lattice-script/base/defi/DeployStrategyManager.s.sol";
 import {StrategyManager} from "@lattice/defi/StrategyManager.sol";
 import {Test} from "forge-std/Test.sol";
 
