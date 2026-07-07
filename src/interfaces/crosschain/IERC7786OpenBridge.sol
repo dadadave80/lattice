@@ -36,6 +36,9 @@ interface IERC7786OpenBridge {
     /// @notice Emitted when the N threshold changes.
     event ThresholdUpdated(uint8 threshold);
 
+    /// @notice Emitted when the minimum direct-coverage requirement changes (0 = check disabled).
+    event MinDirectCoverageUpdated(uint8 minDirectCoverage);
+
     // -------------------------------------------------------------------------
     //                                  Errors
     // -------------------------------------------------------------------------
@@ -55,6 +58,10 @@ interface IERC7786OpenBridge {
     /// @notice The threshold must satisfy `0 < N <= M` (M = number of gateways).
     error ThresholdViolation();
 
+    /// @notice The destination chain's DIRECT gateway coverage in the {IChainRegistry} is below the configured
+    ///         minimum (hub-routed coverage never counts) — the route is refused as too centralized.
+    error OpenBridgeInsufficientCoverage(uint256 have, uint256 want);
+
     // -------------------------------------------------------------------------
     //                                  Reads
     // -------------------------------------------------------------------------
@@ -62,6 +69,9 @@ interface IERC7786OpenBridge {
     function getGateways() external view returns (address[] memory);
     function getThreshold() external view returns (uint8);
     function getRemoteBridge(bytes calldata chain) external view returns (bytes memory);
+
+    /// @notice The minimum DIRECT registry coverage `sendMessage` requires of a destination (0 = disabled).
+    function minDirectCoverage() external view returns (uint8);
 
     // -------------------------------------------------------------------------
     //                                  Admin
@@ -73,4 +83,9 @@ interface IERC7786OpenBridge {
 
     /// @notice Registers the matching OpenBridge on a remote chain (full ERC-7930 interoperable address).
     function registerRemoteBridge(bytes calldata bridge) external;
+
+    /// @notice Sets the M-of-N coverage-awareness knob: when non-zero, `sendMessage` hard-refuses destinations
+    ///         whose DIRECT gateway coverage in the {IChainRegistry} is below `minDirectCoverage_` (set 2+ to
+    ///         refuse M=1 routes; 0 — the default — disables the check and preserves prior behavior).
+    function setMinDirectCoverage(uint8 minDirectCoverage_) external;
 }

@@ -61,6 +61,11 @@ contract CCTPBridgeAdapter is ICCTPBridgeAdapter {
     }
 
     /// @inheritdoc ICCTPBridgeAdapter
+    function domainOwner(uint32 domain) external view virtual returns (uint256) {
+        return CCTPBridgeAdapterLib.domainOwner(domain);
+    }
+
+    /// @inheritdoc ICCTPBridgeAdapter
     function isChainRegistered(uint256 chainId) external view virtual returns (bool) {
         return CCTPBridgeAdapterLib.isChainRegistered(chainId);
     }
