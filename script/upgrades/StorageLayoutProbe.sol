@@ -595,6 +595,12 @@ contract StorageLayoutProbe {
         mapping(uint256 chainId => mapping(bytes32 dedupKey => bool executed)) _executed;
     }
 
+    /// @dev Verbatim mirror of `GovernedVaultLib.GovernedVaultStorage`
+    ///      (`@custom:storage-location erc7201:lattice.storage.GovernedVault`). Append-only.
+    struct GovernedVaultStorage {
+        mapping(address voter => uint256 nonce) _ballotNonces;
+    }
+
     /// @dev Verbatim mirror of `ChainRegistryLib.ChainRegistryStorage` and its `ChainRecord`
     ///      (`@custom:storage-location erc7201:lattice.storage.ChainRegistry`; the nested `NativeIds` lives
     ///      in {IChainRegistry} and is imported, not re-declared). Append-only.
@@ -664,4 +670,5 @@ contract StorageLayoutProbe {
     HyperlaneGatewayAdapterStorage internal _unusedHyperlaneGatewayAdapter;
     StargateBridgeAdapterStorage internal _unusedStargateBridgeAdapter;
     HyperbridgeGatewayAdapterStorage internal _unusedHyperbridgeGatewayAdapter;
+    GovernedVaultStorage internal _unusedGovernedVault;
 }

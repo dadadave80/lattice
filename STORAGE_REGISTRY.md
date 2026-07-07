@@ -228,6 +228,7 @@ and a row here.
 | LidoAdapter | `lattice.storage.LidoAdapter` | `0x3d4dff0246f0af54636d62603e75b921d2876c293bb97376b20bb8265ecb3900` | `IProtocolAdapter` + `ILidoAdapter` | `0x8f7783e6` / `0x83d0afd2` | `0x789387b95720f4aa713e912bc377a2f999f1310b69003727d9c01b7ea1494c77` / `0x6167b6f3924e213fbc2c85ec2d6ca3e7f5267a73935588adb9fb05f57a52b315` |
 | UniswapV3Adapter | `lattice.storage.UniswapV3Adapter` | `0x6f3c1f877b0bf340477364a294f77f49bff3a5479f70012a0fb5cb2803b61e00` | `IProtocolAdapter` + `IUniswapV3Adapter` | `0x8f7783e6` / `0xf723aa17` | `0x789387b95720f4aa713e912bc377a2f999f1310b69003727d9c01b7ea1494c77` / `0x18cf2bfdc937c75408cba5cf015af2a2f8d21a881c553ac382a288bcae5dc1c8` |
 | AggregatorExecAdapter | `lattice.storage.AggregatorExecAdapter` | `0xa2d04b4e843f01463940d93cd4d536111875b48fb08f2c3a7d094e91e39a5100` | `IAggregatorExecAdapter` | `0xe95f85f2` | `0x3b0da15f74db1bb0d7ebc58a8d802243b2c7050873887bf8e60ab5b971b5a8e9` |
+| GovernedVault | `lattice.storage.GovernedVault` | `0xce91473269200f209353d1f9f84b7900d57f30b14d017212fb8c61b25320cc00` | `IGovernedVault` | `0xd5cae628` | `0xce6fd43da1904d8f433b8bce181e4722445e0a5f694993acc9f150691da893d1` |
 
 ### AMM
 
