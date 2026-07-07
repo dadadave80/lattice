@@ -1,41 +1,21 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
+import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
+import {ERC20PermitTestBase} from "@lattice-test/base/ERC20PermitTestBase.sol";
+import {TokenTestFacet} from "@lattice-test/helpers/TokenTestFacet.sol";
 import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
 import {IERC20Permit} from "@lattice/interfaces/tokens/IERC20Permit.sol";
 import {ERC20} from "@lattice/tokens/ERC20/ERC20.sol";
-import {ERC20Permit} from "@lattice/tokens/ERC20/ERC20Permit.sol";
-import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
-import {ERC20PermitLib} from "@lattice/tokens/ERC20/libraries/ERC20PermitLib.sol";
-import {EIP712Lib} from "@lattice/utils/libraries/EIP712Lib.sol";
-import {NoncesLib} from "@lattice/utils/libraries/NoncesLib.sol";
-import {Test} from "forge-std/Test.sol";
-
-/// @title MockERC20PermitContract
-contract MockERC20PermitContract is ERC20, ERC20Permit {
-    function initialize(string memory name_, string memory symbol_, address mintTo, uint256 mintAmount) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
-        ERC20Lib.__ERC20_init(name_, symbol_);
-        EIP712Lib.__EIP712_init(name_, "1");
-        NoncesLib.__Nonces_init();
-        ERC20PermitLib.__ERC20Permit_init();
-        if (mintTo != address(0) && mintAmount > 0) {
-            ERC20Lib._mint(mintTo, mintAmount);
-        }
-        InitializableLib.postInitializer(s);
-    }
-
-    function supportsInterface(bytes4 interfaceId) public view returns (bool) {
-        return ERC165Lib.supportsInterface(interfaceId);
-    }
-}
 
 /// @title ERC20PermitTest
-contract ERC20PermitTest is Test {
-    MockERC20PermitContract token;
+/// @notice Exercises the {ERC20Permit} facet (ERC-2612) through a REAL {Diamond} assembled by the ready-to-deploy
+///         {DeployERC20Permit} script (base ERC-20 + the additive permit facet, EIP-712 domain + nonce storage
+///         seeded by {ERC20PermitInit}). Every `permit`/`nonces`/`DOMAIN_SEPARATOR` call routes through the
+///         diamond's `delegatecall` dispatch, not a flattened inheritance mock; `mint` comes from the test-only
+///         {TokenTestFacet} (`helper`) and `supportsInterface` from the cut-in `ERC165Facet`.
+contract ERC20PermitTest is ERC20PermitTestBase {
+    IERC20Permit internal permitToken;
 
     uint256 ownerKey = 0xA11CE;
     address owner;
@@ -46,10 +26,14 @@ contract ERC20PermitTest is Test {
 
     event Approval(address indexed owner_, address indexed spender_, uint256 value);
 
-    function setUp() public {
+    function setUp() public override {
         owner = vm.addr(ownerKey);
-        token = new MockERC20PermitContract();
-        token.initialize("Permit Token", "PRMT", owner, INITIAL_SUPPLY);
+        diamond = _deployERC20Permit("Permit Token", "PRMT");
+        token = ERC20(diamond);
+        permitToken = IERC20Permit(diamond);
+        helper = TokenTestFacet(diamond);
+
+        helper.mint(owner, INITIAL_SUPPLY);
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -62,7 +46,7 @@ contract ERC20PermitTest is Test {
         returns (bytes32)
     {
         bytes32 structHash = keccak256(abi.encode(PERMIT_TYPEHASH(), owner_, spender_, value, nonce, deadline));
-        return keccak256(abi.encodePacked("\x19\x01", token.DOMAIN_SEPARATOR(), structHash));
+        return keccak256(abi.encodePacked("\x19\x01", permitToken.DOMAIN_SEPARATOR(), structHash));
     }
 
     function PERMIT_TYPEHASH() internal pure returns (bytes32) {
@@ -80,12 +64,12 @@ contract ERC20PermitTest is Test {
     function test_ValidPermitGrantsAllowance() public {
         uint256 value = 500e18;
         uint256 deadline = block.timestamp + 1 hours;
-        uint256 nonce = token.nonces(owner);
+        uint256 nonce = permitToken.nonces(owner);
 
         bytes32 digest = _permitHash(owner, spender, value, nonce, deadline);
         (uint8 v, bytes32 r, bytes32 s) = _sign(digest, ownerKey);
 
-        token.permit(owner, spender, value, deadline, v, r, s);
+        permitToken.permit(owner, spender, value, deadline, v, r, s);
 
         assertEq(token.allowance(owner, spender), value);
     }
@@ -93,14 +77,14 @@ contract ERC20PermitTest is Test {
     function test_ValidPermitEmitsApprovalEvent() public {
         uint256 value = 100e18;
         uint256 deadline = block.timestamp + 1 hours;
-        uint256 nonce = token.nonces(owner);
+        uint256 nonce = permitToken.nonces(owner);
 
         bytes32 digest = _permitHash(owner, spender, value, nonce, deadline);
         (uint8 v, bytes32 r, bytes32 s) = _sign(digest, ownerKey);
 
         vm.expectEmit(true, true, false, true, address(token));
         emit Approval(owner, spender, value);
-        token.permit(owner, spender, value, deadline, v, r, s);
+        permitToken.permit(owner, spender, value, deadline, v, r, s);
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -110,13 +94,13 @@ contract ERC20PermitTest is Test {
     function test_ExpiredSignatureReverts() public {
         uint256 value = 100e18;
         uint256 deadline = block.timestamp - 1; // already expired
-        uint256 nonce = token.nonces(owner);
+        uint256 nonce = permitToken.nonces(owner);
 
         bytes32 digest = _permitHash(owner, spender, value, nonce, deadline);
         (uint8 v, bytes32 r, bytes32 s) = _sign(digest, ownerKey);
 
         vm.expectRevert(abi.encodeWithSelector(IERC20Permit.ERC2612ExpiredSignature.selector, deadline));
-        token.permit(owner, spender, value, deadline, v, r, s);
+        permitToken.permit(owner, spender, value, deadline, v, r, s);
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -129,13 +113,13 @@ contract ERC20PermitTest is Test {
 
         uint256 value = 100e18;
         uint256 deadline = block.timestamp + 1 hours;
-        uint256 nonce = token.nonces(owner);
+        uint256 nonce = permitToken.nonces(owner);
 
         bytes32 digest = _permitHash(owner, spender, value, nonce, deadline);
         (uint8 v, bytes32 r, bytes32 s) = _sign(digest, wrongKey);
 
         vm.expectRevert(abi.encodeWithSelector(IERC20Permit.ERC2612InvalidSigner.selector, wrongSigner, owner));
-        token.permit(owner, spender, value, deadline, v, r, s);
+        permitToken.permit(owner, spender, value, deadline, v, r, s);
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -143,28 +127,28 @@ contract ERC20PermitTest is Test {
     //////////////////////////////////////////////////////////////////////////*//
 
     function test_NonceIsConsumedAfterPermit() public {
-        uint256 nonceBefore = token.nonces(owner);
+        uint256 nonceBefore = permitToken.nonces(owner);
         uint256 value = 100e18;
         uint256 deadline = block.timestamp + 1 hours;
 
         bytes32 digest = _permitHash(owner, spender, value, nonceBefore, deadline);
         (uint8 v, bytes32 r, bytes32 s) = _sign(digest, ownerKey);
 
-        token.permit(owner, spender, value, deadline, v, r, s);
+        permitToken.permit(owner, spender, value, deadline, v, r, s);
 
-        assertEq(token.nonces(owner), nonceBefore + 1);
+        assertEq(permitToken.nonces(owner), nonceBefore + 1);
     }
 
     function test_ReplayWithSameSignatureReverts() public {
         uint256 value = 100e18;
         uint256 deadline = block.timestamp + 1 hours;
-        uint256 nonce = token.nonces(owner);
+        uint256 nonce = permitToken.nonces(owner);
 
         bytes32 digest = _permitHash(owner, spender, value, nonce, deadline);
         (uint8 v, bytes32 r, bytes32 s) = _sign(digest, ownerKey);
 
         // First use succeeds (increments nonce to 1)
-        token.permit(owner, spender, value, deadline, v, r, s);
+        permitToken.permit(owner, spender, value, deadline, v, r, s);
 
         // For the replay the permit function will compute a new digest with nonce=1,
         // so ecrecover returns a different (stale) signer. Compute that digest to derive
@@ -173,7 +157,7 @@ contract ERC20PermitTest is Test {
         address staleSigner = ecrecover(staleDigest, v, r, s);
 
         vm.expectRevert(abi.encodeWithSelector(IERC20Permit.ERC2612InvalidSigner.selector, staleSigner, owner));
-        token.permit(owner, spender, value, deadline, v, r, s);
+        permitToken.permit(owner, spender, value, deadline, v, r, s);
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -181,7 +165,7 @@ contract ERC20PermitTest is Test {
     //////////////////////////////////////////////////////////////////////////*//
 
     function test_DomainSeparatorIsNonZero() public view {
-        assertNotEq(token.DOMAIN_SEPARATOR(), bytes32(0));
+        assertNotEq(permitToken.DOMAIN_SEPARATOR(), bytes32(0));
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -189,10 +173,10 @@ contract ERC20PermitTest is Test {
     //////////////////////////////////////////////////////////////////////////*//
 
     function test_SupportsIERC20Permit() public view {
-        assertTrue(token.supportsInterface(type(IERC20Permit).interfaceId));
+        assertTrue(ERC165Facet(diamond).supportsInterface(type(IERC20Permit).interfaceId));
     }
 
     function test_SupportsIERC20() public view {
-        assertTrue(token.supportsInterface(type(IERC20).interfaceId));
+        assertTrue(ERC165Facet(diamond).supportsInterface(type(IERC20).interfaceId));
     }
 }

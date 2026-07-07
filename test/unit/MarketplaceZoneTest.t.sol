@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
+import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
+import {MarketplaceZoneTestBase} from "@lattice-test/base/MarketplaceZoneTestBase.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
-import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {
     ItemType,
     ReceivedItem,
@@ -15,10 +14,10 @@ import {
 import {ZoneInterface} from "@lattice/interfaces/external/ZoneInterface.sol";
 import {IMarketplaceZone} from "@lattice/interfaces/tokens/IMarketplaceZone.sol";
 import {MarketplaceZone} from "@lattice/tokens/MarketplaceZone.sol";
-import {MARKETPLACE_BLOCKED_ROLE, MarketplaceZoneLib} from "@lattice/tokens/libraries/MarketplaceZoneLib.sol";
-import {Test} from "forge-std/Test.sol";
+import {MARKETPLACE_BLOCKED_ROLE} from "@lattice/tokens/libraries/MarketplaceZoneLib.sol";
 
-/// @notice Minimal ERC-2981 NFT: royaltyInfo returns `salePrice * bps / 10000` to `receiver`.
+/// @notice Minimal ERC-2981 NFT: royaltyInfo returns `salePrice * bps / 10000` to `receiver`. A third-party
+///         royalty contract fixture (NOT a facet) — the zone consults it via `royaltyInfo` during validation.
 contract MockERC2981 {
     address public receiver;
     uint96 public bps;
@@ -37,22 +36,16 @@ contract MockERC2981 {
     }
 }
 
-contract MockMarketplaceZone is AccessControl, MarketplaceZone {
-    function initialize(address admin_) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
-        AccessControlLib.__AccessControl_init(admin_);
-        MarketplaceZoneLib.__MarketplaceZone_init();
-        InitializableLib.postInitializer(s);
-    }
-
-    function supportsInterface(bytes4 id) public view returns (bool) {
-        return ERC165Lib.supportsInterface(id);
-    }
-}
-
-contract MarketplaceZoneTest is Test {
-    MockMarketplaceZone zone;
+/// @title MarketplaceZoneTest
+/// @notice Exercises the {MarketplaceZone} facet through a REAL {Diamond} assembled by the ready-to-deploy
+///         {DeployMarketplaceZone} script (ERC165 + AccessControl + MarketplaceZone). Every zone hook
+///         (`authorizeOrder`/`validateOrder`), admin config (`setPaused`/`setRoyaltyRequired`), and blocklist
+///         grant routes through the diamond's `delegatecall` dispatch, not a flattened inheritance mock;
+///         `supportsInterface` comes from the cut-in `ERC165Facet` and role grants from the `AccessControl` facet.
+///         The `MockERC2981` external fixture stands in for a third-party royalty contract (not a facet).
+contract MarketplaceZoneTest is MarketplaceZoneTestBase {
+    MarketplaceZone zone; // zone surface on the diamond
+    AccessControl ac; // role surface on the same diamond
     MockERC2981 nft;
 
     address admin = address(0x1);
@@ -70,8 +63,9 @@ contract MarketplaceZoneTest is Test {
     bytes4 constant UNAUTHORIZED_ACCOUNT = bytes4(keccak256("AccessControlUnauthorizedAccount(address,bytes32)"));
 
     function setUp() public {
-        zone = new MockMarketplaceZone();
-        zone.initialize(admin);
+        diamond = _deployMarketplaceZone(admin);
+        zone = MarketplaceZone(diamond);
+        ac = AccessControl(diamond);
         nft = new MockERC2981(royaltyRecv, BPS);
     }
 
@@ -114,7 +108,7 @@ contract MarketplaceZoneTest is Test {
 
     function test_SupportsInterfaceZone() public view {
         assertEq(type(ZoneInterface).interfaceId, bytes4(0x3822a094));
-        assertTrue(zone.supportsInterface(type(ZoneInterface).interfaceId));
+        assertTrue(ERC165Facet(diamond).supportsInterface(type(ZoneInterface).interfaceId));
     }
 
     function test_GetSeaportMetadata() public view {
@@ -176,14 +170,14 @@ contract MarketplaceZoneTest is Test {
 
     function test_AuthorizeOrderBlockedOffererReverts() public {
         vm.prank(admin);
-        zone.grantRole(MARKETPLACE_BLOCKED_ROLE, seller);
+        ac.grantRole(MARKETPLACE_BLOCKED_ROLE, seller);
         vm.expectRevert(abi.encodeWithSelector(IMarketplaceZone.BlockedParticipant.selector, seller));
         zone.authorizeOrder(_basicOrder());
     }
 
     function test_AuthorizeOrderBlockedFulfillerReverts() public {
         vm.prank(admin);
-        zone.grantRole(MARKETPLACE_BLOCKED_ROLE, buyer);
+        ac.grantRole(MARKETPLACE_BLOCKED_ROLE, buyer);
         vm.expectRevert(abi.encodeWithSelector(IMarketplaceZone.BlockedParticipant.selector, buyer));
         zone.authorizeOrder(_basicOrder());
     }
