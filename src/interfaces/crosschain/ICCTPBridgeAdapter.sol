@@ -53,6 +53,18 @@ interface ICCTPBridgeAdapter {
     /// @notice The CCTP transmitter's `receiveMessage` returned false (attestation invalid / already used).
     error CCTPRelayFailed();
 
+    /// @notice `registerChainDomain` was called with `chainId` 0 (reserved as the unregistered sentinel).
+    error CCTPZeroChainId();
+
+    /// @notice The chainId is already registered — identity registers exactly once (fail-loud, no overwrite).
+    error CCTPChainAlreadyRegistered(uint256 chainId);
+
+    /// @notice The domain is already owned by `ownerChainId` — two chains can never share a CCTP domain.
+    error CCTPDomainAlreadyRegistered(uint32 domain, uint256 ownerChainId);
+
+    /// @notice `configureDomain` targeted a domain no chain has registered.
+    error CCTPDomainNotRegistered(uint32 domain);
+
     // -------------------------------------------------------------------------
     //                                  Reads
     // -------------------------------------------------------------------------
@@ -71,6 +83,9 @@ interface ICCTPBridgeAdapter {
 
     /// @notice Whether `chainId` has a registered CCTP domain (distinguishes domain 0 = Ethereum from unset).
     function isChainRegistered(uint256 chainId) external view returns (bool);
+
+    /// @notice The chainId that registered `domain` (0 = unregistered).
+    function domainOwner(uint32 domain) external view returns (uint256);
 
     /// @notice The per-domain config used when burning toward `domain`.
     function getDomainConfig(uint32 domain)

@@ -58,6 +58,11 @@ contract ERC7786OpenBridge is IERC7786GatewaySource, IERC7786Recipient, IERC7786
     }
 
     /// @inheritdoc IERC7786OpenBridge
+    function minDirectCoverage() external view virtual returns (uint8) {
+        return ERC7786OpenBridgeLib.minDirectCoverage();
+    }
+
+    /// @inheritdoc IERC7786OpenBridge
     function addGateway(address gateway) external virtual {
         ERC7786OpenBridgeLib.addGateway(gateway);
     }
@@ -75,5 +80,10 @@ contract ERC7786OpenBridge is IERC7786GatewaySource, IERC7786Recipient, IERC7786
     /// @inheritdoc IERC7786OpenBridge
     function registerRemoteBridge(bytes calldata bridge) external virtual {
         ERC7786OpenBridgeLib.registerRemoteBridge(bridge);
+    }
+
+    /// @inheritdoc IERC7786OpenBridge
+    function setMinDirectCoverage(uint8 minDirectCoverage_) external virtual {
+        ERC7786OpenBridgeLib.setMinDirectCoverage(minDirectCoverage_);
     }
 }

@@ -3,6 +3,7 @@ pragma solidity ^0.8.30;
 
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
+import {ChainRegistryLib} from "@lattice/crosschain/libraries/ChainRegistryLib.sol";
 import {IERC7786OpenBridge} from "@lattice/interfaces/crosschain/IERC7786OpenBridge.sol";
 import {IERC7786GatewaySource, IERC7786Recipient} from "@lattice/interfaces/external/IERC7786.sol";
 import {EnumerableSet} from "@lattice/utils/libraries/EnumerableSet.sol";
@@ -40,6 +41,9 @@ struct ERC7786OpenBridgeStorage {
     mapping(bytes2 chainType => mapping(bytes chainReference => bytes bridge)) _remotes;
     /// @notice Inbound attestation trackers by message id. APPEND-ONLY.
     mapping(bytes32 id => OpenBridgeTracker tracker) _trackers;
+    /// @notice Minimum DIRECT {ChainRegistryLib} coverage `sendMessage` requires of a destination
+    ///         (0 = check disabled, the default — preserves pre-registry behavior). APPEND-ONLY.
+    uint8 _minDirectCoverage;
 }
 
 /// @title ERC7786OpenBridgeLib
@@ -87,6 +91,10 @@ library ERC7786OpenBridgeLib {
         return erc7786OpenBridgeStorage()._remotes[chainType][chainReference];
     }
 
+    function minDirectCoverage() internal view returns (uint8) {
+        return erc7786OpenBridgeStorage()._minDirectCoverage;
+    }
+
     function supportsAttribute(bytes4) internal pure returns (bool) {
         return false;
     }
@@ -117,6 +125,15 @@ library ERC7786OpenBridgeLib {
         emit IERC7786OpenBridge.ThresholdUpdated(threshold);
     }
 
+    /// @notice Sets the M-of-N coverage-awareness knob (issue #77 Q5): when non-zero, {sendMessage} refuses
+    ///         destinations whose DIRECT registry coverage is below it (set 2+ to hard-refuse M=1 routes; 0 —
+    ///         the default — disables the check entirely, so a diamond without a chain registry keeps working).
+    function setMinDirectCoverage(uint8 minDirectCoverage_) internal {
+        AccessControlLib.checkRole(DEFAULT_ADMIN_ROLE);
+        erc7786OpenBridgeStorage()._minDirectCoverage = minDirectCoverage_;
+        emit IERC7786OpenBridge.MinDirectCoverageUpdated(minDirectCoverage_);
+    }
+
     function registerRemoteBridge(bytes calldata bridge) internal {
         AccessControlLib.checkRole(DEFAULT_ADMIN_ROLE);
         (bytes2 chainType, bytes memory chainReference,) = InteroperableAddress.parseV1(bridge);
@@ -136,6 +153,10 @@ library ERC7786OpenBridgeLib {
 
     /// @notice ERC-7786 source: wraps the message and fans it out across all gateways to the matching
     ///         remote bridge. Rejects value + attributes. `sendId` = keccak of the per-gateway ids (or 0).
+    /// @dev COVERAGE GATE (issue #77 Q5): when the admin has set `_minDirectCoverage` non-zero, the parsed
+    ///      destination chain must have at least that many DIRECT (non-hub-routed) gateways recorded in the
+    ///      chain registry — {OpenBridgeInsufficientCoverage} otherwise. The default 0 skips the registry
+    ///      read entirely, so a diamond without a chain registry record (or facet) behaves exactly as before.
     function sendMessage(bytes calldata recipient, bytes calldata payload, bytes[] calldata attributes)
         internal
         returns (bytes32 sendId)
@@ -146,8 +167,28 @@ library ERC7786OpenBridgeLib {
         ERC7786OpenBridgeStorage storage $ = erc7786OpenBridgeStorage();
         bytes memory sender = InteroperableAddress.formatEvmV1(block.chainid, msg.sender);
         bytes memory wrapped = abi.encode(++$._nonce, sender, recipient, payload);
-        sendId = _fanOut($, getRemoteBridge(recipient), wrapped, attributes);
+        sendId = _fanOut($, _resolveRemoteBridge($, recipient), wrapped, attributes);
         emit IERC7786GatewaySource.MessageSent(sendId, sender, recipient, payload, 0, attributes);
+    }
+
+    /// @notice Parses the destination chain out of `recipient` ONCE, enforces the coverage gate on it, and
+    ///         resolves the matching remote bridge (split into a helper to stay under the non-via-IR stack
+    ///         limit — see {sendMessage} for the gate semantics).
+    function _resolveRemoteBridge(ERC7786OpenBridgeStorage storage $, bytes calldata recipient)
+        private
+        view
+        returns (bytes memory bridge)
+    {
+        (bytes2 chainType, bytes calldata chainReference,) = InteroperableAddress.parseV1Calldata(recipient);
+        uint8 wantCoverage = $._minDirectCoverage;
+        if (wantCoverage != 0) {
+            uint256 haveCoverage =
+                ChainRegistryLib.directCoverageOf(ChainRegistryLib.chainKeyOf(chainType, chainReference));
+            if (haveCoverage < wantCoverage) {
+                revert IERC7786OpenBridge.OpenBridgeInsufficientCoverage(haveCoverage, wantCoverage);
+            }
+        }
+        bridge = $._remotes[chainType][chainReference];
     }
 
     /// @notice ERC-7786 recipient: count an attesting gateway and, once the N threshold is met, deliver
