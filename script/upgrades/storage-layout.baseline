@@ -282,3 +282,6 @@
 4	0	_destTimeout	t_mapping(t_uint256,t_uint64)
 5	0	_lastNonce	t_uint256
 6	0	_executed	t_mapping(t_uint256,t_mapping(t_bytes32,t_bool))
+
+### GovernedVaultStorage @ erc7201:lattice.storage.GovernedVault (slot 0xce91473269200f209353d1f9f84b7900d57f30b14d017212fb8c61b25320cc00)
+0	0	_ballotNonces	t_mapping(t_address,t_uint256)
