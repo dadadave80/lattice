@@ -11,6 +11,7 @@ import {
     L2ToL2CrossDomainMessengerGatewayAdapterLib
 } from "@lattice/crosschain/libraries/L2ToL2CrossDomainMessengerGatewayAdapterLib.sol";
 import {LayerZeroGatewayAdapterLib} from "@lattice/crosschain/libraries/LayerZeroGatewayAdapterLib.sol";
+import {StargateBridgeAdapterLib} from "@lattice/crosschain/libraries/StargateBridgeAdapterLib.sol";
 import {WormholeGatewayAdapterLib} from "@lattice/crosschain/libraries/WormholeGatewayAdapterLib.sol";
 import {ZetaChainGatewayAdapterLib} from "@lattice/crosschain/libraries/ZetaChainGatewayAdapterLib.sol";
 import {IChainRegistry} from "@lattice/interfaces/crosschain/IChainRegistry.sol";
@@ -24,10 +25,10 @@ import {InteroperableAddress} from "@lattice/utils/libraries/InteroperableAddres
 /// @dev `keccak256(abi.encode(uint256(keccak256("lattice.storage.ChainRegistry")) - 1)) & ~bytes32(uint256(0xff))`.
 bytes32 constant CHAIN_REGISTRY_STORAGE_SLOT = 0x3d04730f387c3a41671abdc91e43582ee4d80e460792f9c401b5acc80eab5b00;
 
-/// @dev 0x5319a265 is `type(IChainRegistry).interfaceId` (changed when `hyperlaneDomain` was appended to
-/// `NativeIds` — the struct rides in the `setNativeIds`/`nativeIdsOf` signatures).
-/// `keccak256(abi.encode(bytes4(0x5319a265), 0x9ca7f3e2e2bfb15fdf072b85dde92837cddacee6cf2f6b38cd06c9457c1c4200))`.
-bytes32 constant ERC165_MAP_ICHAINREGISTRY_SLOT = 0xd96305f89087b6842e5e913cd0561490d9251ae6b5fdbfc9b2e5c4add69bd3d9;
+/// @dev 0xc33bc2a3 is `type(IChainRegistry).interfaceId` (changed when `StargateSection` was appended to
+/// `AddEvmChainConfig` — the struct rides in the `addEvmChain` signature).
+/// `keccak256(abi.encode(bytes4(0xc33bc2a3), 0x9ca7f3e2e2bfb15fdf072b85dde92837cddacee6cf2f6b38cd06c9457c1c4200))`.
+bytes32 constant ERC165_MAP_ICHAINREGISTRY_SLOT = 0x25b8c0b3172ce39fbddf418094344f1ea18ff535d754d95b368966efd593fd97;
 
 /// @notice Per-chain registry record, keyed by the ERC-7930 chain key. APPEND-ONLY.
 struct ChainRecord {
@@ -250,6 +251,18 @@ library ChainRegistryLib {
             HyperlaneGatewayAdapterLib.registerDomain(cfg.chainId, cfg.hyperlane.domain);
             HyperlaneGatewayAdapterLib.registerRemote(cfg.chainId, cfg.hyperlane.remote);
             HyperlaneGatewayAdapterLib.configureDestination(cfg.chainId, cfg.hyperlane.gasLimit);
+        }
+        // Stargate rides LayerZero: the section's eid equals the LZ section's eid, recorded in the Stargate
+        // adapter's OWN map (no NativeIds field — `NativeIds.lzEid` is the informational record; per-token
+        // pools are registered separately via `registerPool`, never through the fan-out).
+        if (cfg.stargate.enabled) {
+            // FAIL-CLOSED cross-check (review finding): when both sections are enabled the two eids MUST agree
+            // — a typoed Stargate eid would silently route user funds to the WRONG chain on every later
+            // sendToken. When layerZero is disabled no cross-check is possible (residual admin trust).
+            if (cfg.layerZero.enabled && cfg.stargate.eid != cfg.layerZero.eid) {
+                revert IChainRegistry.ChainRegistryStargateEidMismatch(cfg.layerZero.eid, cfg.stargate.eid);
+            }
+            StargateBridgeAdapterLib.registerStargateEid(cfg.chainId, cfg.stargate.eid);
         }
 
         // 4) Record the coverage entries (parallel arrays, length-checked).

@@ -116,6 +116,10 @@ import {
 } from "@lattice/crosschain/libraries/L2ToL2CrossDomainMessengerGatewayAdapterLib.sol";
 import {LAYERZERO_GATEWAY_ADAPTER_STORAGE_SLOT} from "@lattice/crosschain/libraries/LayerZeroGatewayAdapterLib.sol";
 import {
+    ERC165_MAP_ISTARGATEBRIDGEADAPTER_SLOT,
+    STARGATE_BRIDGE_ADAPTER_STORAGE_SLOT
+} from "@lattice/crosschain/libraries/StargateBridgeAdapterLib.sol";
+import {
     ERC165_MAP_ISTARKNETGATEWAYADAPTER_SLOT,
     STARKNET_GATEWAY_ADAPTER_STORAGE_SLOT
 } from "@lattice/crosschain/libraries/StarknetGatewayAdapterLib.sol";
@@ -318,6 +322,7 @@ import {ICCTPBridgeAdapter} from "@lattice/interfaces/crosschain/ICCTPBridgeAdap
 import {IChainRegistry} from "@lattice/interfaces/crosschain/IChainRegistry.sol";
 import {ICrosschainLink} from "@lattice/interfaces/crosschain/ICrosschainLink.sol";
 import {IHyperlaneGatewayAdapter} from "@lattice/interfaces/crosschain/IHyperlaneGatewayAdapter.sol";
+import {IStargateBridgeAdapter} from "@lattice/interfaces/crosschain/IStargateBridgeAdapter.sol";
 import {IStarknetGatewayAdapter} from "@lattice/interfaces/crosschain/IStarknetGatewayAdapter.sol";
 import {IAaveV3Adapter} from "@lattice/interfaces/defi/IAaveV3Adapter.sol";
 import {IAggregatorExecAdapter} from "@lattice/interfaces/defi/IAggregatorExecAdapter.sol";
@@ -844,6 +849,14 @@ contract StorageSlotVerificationTest is Test {
             ACROSS_BRIDGE_ADAPTER_STORAGE_SLOT,
             _erc7201Slot("lattice.storage.AcrossBridgeAdapter"),
             "AcrossBridgeAdapter storage slot mismatch"
+        );
+    }
+
+    function test_StargateBridgeAdapterStorageSlot() public pure {
+        assertEq(
+            STARGATE_BRIDGE_ADAPTER_STORAGE_SLOT,
+            _erc7201Slot("lattice.storage.StargateBridgeAdapter"),
+            "StargateBridgeAdapter storage slot mismatch"
         );
     }
 
@@ -1539,6 +1552,16 @@ contract StorageSlotVerificationTest is Test {
         );
     }
 
+    function test_Erc165MapIStargateBridgeAdapterSlot() public pure {
+        bytes4 interfaceId = type(IStargateBridgeAdapter).interfaceId;
+        assertEq(interfaceId, bytes4(0x199fc6b0), "IStargateBridgeAdapter interfaceId comment is stale");
+        assertEq(
+            ERC165_MAP_ISTARGATEBRIDGEADAPTER_SLOT,
+            _erc165MapSlot(interfaceId, ERC165_STORAGE_LOCATION),
+            "ERC165 IStargateBridgeAdapter map slot mismatch"
+        );
+    }
+
     function test_Erc165MapIStarknetGatewayAdapterSlot() public pure {
         assertEq(
             ERC165_MAP_ISTARKNETGATEWAYADAPTER_SLOT,
@@ -1894,7 +1917,7 @@ contract StorageSlotVerificationTest is Test {
     // ======================== Slot inventories ========================
 
     function _allStorageSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](85);
+        slots = new bytes32[](86);
         uint256 i;
         // access
         slots[i++] = ACCESS_CONTROL_STORAGE_SLOT;
@@ -1965,6 +1988,7 @@ contract StorageSlotVerificationTest is Test {
         slots[i++] = STARKNET_GATEWAY_ADAPTER_STORAGE_SLOT;
         slots[i++] = CHAIN_REGISTRY_STORAGE_SLOT;
         slots[i++] = HYPERLANE_GATEWAY_ADAPTER_STORAGE_SLOT;
+        slots[i++] = STARGATE_BRIDGE_ADAPTER_STORAGE_SLOT;
         // markets
         slots[i++] = MARKETPLACE_ZONE_STORAGE_SLOT;
         // accounts
@@ -1997,7 +2021,7 @@ contract StorageSlotVerificationTest is Test {
     }
 
     function _allErc165MapSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](86);
+        slots = new bytes32[](87);
         uint256 i;
         // access
         slots[i++] = ERC165_MAP_IACCESSCONTROL_SLOT;
@@ -2079,6 +2103,7 @@ contract StorageSlotVerificationTest is Test {
         // Hyperlane reuses the shared IERC7786GatewaySource slot (counted once above) and only adds its
         // adapter-specific IHyperlaneGatewayAdapter slot.
         slots[i++] = ERC165_MAP_IHYPERLANEGATEWAYADAPTER_SLOT;
+        slots[i++] = ERC165_MAP_ISTARGATEBRIDGEADAPTER_SLOT;
         slots[i++] = ERC165_MAP_IANY2EVMMESSAGERECEIVER_SLOT;
         slots[i++] = ERC165_MAP_IANY2EVMMESSAGERECEIVERV2_SLOT;
         // markets

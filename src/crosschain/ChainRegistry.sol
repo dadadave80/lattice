@@ -11,8 +11,8 @@ import {IChainRegistry} from "@lattice/interfaces/crosschain/IChainRegistry.sol"
 ///         {addEvmChain} — the one-action admin fan-out that adds an EVM chain across every enabled gateway
 ///         adapter in a single structured call.
 /// @dev Stateless delegator — logic/storage live in {ChainRegistryLib}. FAN-OUT COUPLING: this facet compiles
-///      in the admin write paths of all seven adapter libs (CCIP, LayerZero, Wormhole, Axelar, ZetaChain,
-///      OP L2-to-L2, CCTP) as INTERNAL calls only. A diamond that cuts ChainRegistry without some adapter
+///      in the admin write paths of all nine adapter libs (CCIP, LayerZero, Wormhole, Axelar, ZetaChain,
+///      OP L2-to-L2, CCTP, Hyperlane, Stargate) as INTERNAL calls only. A diamond that cuts ChainRegistry without some adapter
 ///      facet still works — the libs write to ERC-7201 slots that simply go unread until that facet is cut;
 ///      leaving a section for an un-hosted adapter disabled is the admin's responsibility (see
 ///      {IChainRegistry.AddEvmChainConfig}).

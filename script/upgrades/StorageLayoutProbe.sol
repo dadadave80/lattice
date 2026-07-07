@@ -343,6 +343,7 @@ contract StorageLayoutProbe {
         mapping(uint256 chainId => uint32 domain) _chainIdToDomain;
         mapping(uint256 chainId => bool registered) _chainRegistered;
         mapping(uint32 domain => DomainConfig config) _domainConfig;
+        mapping(uint32 domain => uint256 chainId) _domainOwner;
     }
 
     /// @dev Verbatim mirror of `AggregatorExecAdapterLib.AggregatorExecAdapterStorage`
@@ -574,6 +575,14 @@ contract StorageLayoutProbe {
         mapping(uint256 chainId => mapping(bytes32 sendId => bool executed)) _executed;
     }
 
+    /// @dev Verbatim mirror of `StargateBridgeAdapterLib.StargateBridgeAdapterStorage`
+    ///      (`@custom:storage-location erc7201:lattice.storage.StargateBridgeAdapter`). Append-only.
+    struct StargateBridgeAdapterStorage {
+        mapping(uint256 chainId => uint32 eid) _chainIdToEid;
+        mapping(uint32 eid => uint256 chainId) _eidToChainId;
+        mapping(address token => address pool) _pools;
+    }
+
     /// @dev Verbatim mirror of `ChainRegistryLib.ChainRegistryStorage` and its `ChainRecord`
     ///      (`@custom:storage-location erc7201:lattice.storage.ChainRegistry`; the nested `NativeIds` lives
     ///      in {IChainRegistry} and is imported, not re-declared). Append-only.
@@ -641,4 +650,5 @@ contract StorageLayoutProbe {
     StarknetGatewayAdapterStorage internal _unusedStarknetGatewayAdapter;
     ChainRegistryStorage internal _unusedChainRegistry;
     HyperlaneGatewayAdapterStorage internal _unusedHyperlaneGatewayAdapter;
+    StargateBridgeAdapterStorage internal _unusedStargateBridgeAdapter;
 }
