@@ -104,6 +104,15 @@ interface IChainRegistry {
         uint256 gasLimit;
     }
 
+    /// @notice Stargate token-bridge fan-out section of {AddEvmChainConfig}. Stargate rides LayerZero, so
+    ///         `eid` equals the LayerZero section's eid for the same chain — recorded in the Stargate
+    ///         adapter's OWN chainId ⇄ eid map (adapters never share hot-path storage; no separate NativeIds
+    ///         field — `NativeIds.lzEid` is the informational record).
+    struct StargateSection {
+        bool enabled;
+        uint32 eid;
+    }
+
     /// @notice Coverage entries recorded for the new chain (parallel arrays; empty = no coverage recorded).
     struct CoverageSection {
         address[] gateways;
@@ -124,6 +133,7 @@ interface IChainRegistry {
         OpL2ToL2Section opL2ToL2;
         CctpSection cctp;
         HyperlaneSection hyperlane;
+        StargateSection stargate;
         CoverageSection coverage;
     }
 
@@ -167,6 +177,10 @@ interface IChainRegistry {
 
     /// @notice The Axelar section's `remote7930` does not address the `chainId` being added.
     error ChainRegistryAxelarRemoteMismatch();
+
+    /// @notice The stargate section's eid contradicts the layerZero section's eid in the same config —
+    ///         Stargate rides LayerZero, so when both sections are enabled the eids must be equal.
+    error ChainRegistryStargateEidMismatch(uint32 lzEid, uint32 stargateEid);
 
     /// @notice An eip-155 registration whose `chainReference` is not the canonical minimal-big-endian encoding
     ///         of `evmChainId` (or whose `evmChainId` is 0) — such a key could never match send-time derivation.
