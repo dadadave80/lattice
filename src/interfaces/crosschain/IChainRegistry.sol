@@ -34,6 +34,8 @@ interface IChainRegistry {
         uint32 cctpDomain;
         /// @notice Axelar chain name (empty = unset).
         string axelarName;
+        /// @notice Hyperlane domain (0 = unset; usually — but NOT guaranteed — the EVM chainId). APPENDED.
+        uint32 hyperlaneDomain;
     }
 
     /// @notice CCIP fan-out section of {AddEvmChainConfig} (disabled sections are skipped entirely).
@@ -93,6 +95,15 @@ interface IChainRegistry {
         bytes32 destinationCaller;
     }
 
+    /// @notice Hyperlane fan-out section of {AddEvmChainConfig} (`remote` is the 32-byte counterpart adapter;
+    ///         `gasLimit` 0 = the adapter's default `handle` gas).
+    struct HyperlaneSection {
+        bool enabled;
+        uint32 domain;
+        bytes32 remote;
+        uint256 gasLimit;
+    }
+
     /// @notice Coverage entries recorded for the new chain (parallel arrays; empty = no coverage recorded).
     struct CoverageSection {
         address[] gateways;
@@ -112,6 +123,7 @@ interface IChainRegistry {
         ZetaSection zeta;
         OpL2ToL2Section opL2ToL2;
         CctpSection cctp;
+        HyperlaneSection hyperlane;
         CoverageSection coverage;
     }
 

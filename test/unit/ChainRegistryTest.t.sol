@@ -169,7 +169,12 @@ contract ChainRegistryTest is ChainRegistryTestBase {
 
     function _baseNativeIds() internal pure returns (IChainRegistry.NativeIds memory) {
         return IChainRegistry.NativeIds({
-            ccipSelector: 15971525489660198786, lzEid: 30184, wormholeId: 30, cctpDomain: 6, axelarName: "base"
+            ccipSelector: 15971525489660198786,
+            lzEid: 30184,
+            wormholeId: 30,
+            cctpDomain: 6,
+            axelarName: "base",
+            hyperlaneDomain: 8453
         });
     }
 
@@ -188,6 +193,7 @@ contract ChainRegistryTest is ChainRegistryTestBase {
         assertEq(got.wormholeId, ids.wormholeId);
         assertEq(got.cctpDomain, ids.cctpDomain);
         assertEq(got.axelarName, ids.axelarName);
+        assertEq(got.hyperlaneDomain, ids.hyperlaneDomain);
     }
 
     function test_SetNativeIdsUnregisteredReverts() public {
