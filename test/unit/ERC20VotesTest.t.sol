@@ -1,73 +1,27 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
-import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
-import {VotesLib} from "@lattice/governance/libraries/VotesLib.sol";
+import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
+import {ERC20VotesTestBase} from "@lattice-test/base/ERC20VotesTestBase.sol";
+import {ERC20VotesTestFacet} from "@lattice-test/helpers/ERC20VotesTestFacet.sol";
 import {IVotes} from "@lattice/interfaces/governance/IVotes.sol";
 import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
 import {IERC20Votes} from "@lattice/interfaces/tokens/IERC20Votes.sol";
 import {INonces} from "@lattice/interfaces/utils/INonces.sol";
-import {ERC20} from "@lattice/tokens/ERC20/ERC20.sol";
 import {ERC20Votes} from "@lattice/tokens/ERC20/ERC20Votes.sol";
-import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
-import {ERC20VotesLib} from "@lattice/tokens/ERC20/libraries/ERC20VotesLib.sol";
-import {EIP712Lib} from "@lattice/utils/libraries/EIP712Lib.sol";
-import {NoncesLib} from "@lattice/utils/libraries/NoncesLib.sol";
-import {Test} from "forge-std/Test.sol";
-
-/// @title MockERC20VotesContract
-/// @notice Mock ERC20Votes token for testing.
-contract MockERC20VotesContract is ERC20, ERC20Votes {
-    function transfer(address to, uint256 value) public override(ERC20, ERC20Votes) returns (bool) {
-        return ERC20Votes.transfer(to, value);
-    }
-
-    function transferFrom(address from, address to, uint256 value) public override(ERC20, ERC20Votes) returns (bool) {
-        return ERC20Votes.transferFrom(from, to, value);
-    }
-
-    function initialize(string memory name_, string memory symbol_, address admin) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
-        ERC20Lib.__ERC20_init(name_, symbol_);
-        EIP712Lib.__EIP712_init(name_, "1");
-        NoncesLib.__Nonces_init();
-        VotesLib.__Votes_init();
-        ERC20VotesLib.__ERC20Votes_init();
-        AccessControlLib.__AccessControl_init(admin);
-        InitializableLib.postInitializer(s);
-    }
-
-    /// @notice Mint with vote-checkpoint tracking (enforces uint208 cap).
-    function mint(address to, uint256 value) external {
-        ERC20VotesLib._mint(to, value);
-    }
-
-    /// @notice Burn with vote-checkpoint tracking.
-    function burn(address from, uint256 value) external {
-        ERC20VotesLib._burn(from, value);
-    }
-
-    function supportsInterface(bytes4 interfaceId) public view returns (bool) {
-        return ERC165Lib.supportsInterface(interfaceId);
-    }
-
-    /// @notice Expose nonces for testing (ERC20Permit-style).
-    function nonces(address account) public view returns (uint256) {
-        return NoncesLib.nonces(account);
-    }
-
-    /// @notice Domain separator for EIP-712 sig tests.
-    function DOMAIN_SEPARATOR() public view returns (bytes32) {
-        return EIP712Lib.domainSeparatorV4();
-    }
-}
 
 /// @title ERC20VotesTest
-contract ERC20VotesTest is Test {
-    MockERC20VotesContract token;
+/// @notice Exercises the {ERC20Votes} facet through a REAL {Diamond} assembled by the ready-to-deploy
+///         {DeployERC20Votes} script (base ERC-20 + the ERC20Votes mixed cut that REPLACES transfer/transferFrom
+///         and ADDS the ERC-5805 delegation surface + AccessControl). Every delegation, checkpoint, and
+///         `delegateBySig` call routes through the diamond's `delegatecall` dispatch, not a flattened inheritance
+///         mock; the checkpoint/cap `mint`/`burn` and the `nonces`/`DOMAIN_SEPARATOR` reads come from the
+///         test-only {ERC20VotesTestFacet} (`helper`), `approve`/`totalSupply` from the base ERC-20 facet
+///         (`erc20`), and `supportsInterface` from the cut-in `ERC165Facet`.
+contract ERC20VotesTest is ERC20VotesTestBase {
+    ERC20Votes internal token; // votes surface (getVotes/delegate/transfer/checkpoints/clock/…) on the diamond
+    IERC20 internal erc20; // base ERC-20 surface (approve/totalSupply) on the same diamond
+    ERC20VotesTestFacet internal helper; // test-only mint/burn/nonces/DOMAIN_SEPARATOR
 
     address admin = address(0xAD);
     address alice;
@@ -84,10 +38,12 @@ contract ERC20VotesTest is Test {
 
     function setUp() public {
         alice = vm.addr(aliceKey);
-        token = new MockERC20VotesContract();
-        token.initialize("Vote Token", "VOTE", admin);
+        diamond = _deployERC20Votes("Vote Token", "VOTE", admin);
+        token = ERC20Votes(diamond);
+        erc20 = IERC20(diamond);
+        helper = ERC20VotesTestFacet(diamond);
         // Mint initial supply to alice
-        token.mint(alice, INITIAL_SUPPLY);
+        helper.mint(alice, INITIAL_SUPPLY);
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -96,7 +52,7 @@ contract ERC20VotesTest is Test {
 
     function _delegationHash(address delegatee, uint256 nonce, uint256 expiry) internal view returns (bytes32) {
         bytes32 structHash = keccak256(abi.encode(DELEGATION_TYPEHASH, delegatee, nonce, expiry));
-        return keccak256(abi.encodePacked("\x19\x01", token.DOMAIN_SEPARATOR(), structHash));
+        return keccak256(abi.encodePacked("\x19\x01", helper.DOMAIN_SEPARATOR(), structHash));
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -192,7 +148,7 @@ contract ERC20VotesTest is Test {
     function test_TransferBetweenNonDelegators_TotalSupplyCheckpointUpdates() public {
         uint256 ts = block.timestamp;
         // Mint more to observe total supply checkpoint
-        token.mint(bob, 500e18);
+        helper.mint(bob, 500e18);
 
         vm.warp(ts + 1);
         assertEq(token.getPastTotalSupply(ts), INITIAL_SUPPLY + 500e18);
@@ -226,7 +182,7 @@ contract ERC20VotesTest is Test {
 
         // Alice approves charlie
         vm.prank(alice);
-        token.approve(charlie, 300e18);
+        erc20.approve(charlie, 300e18);
 
         vm.prank(charlie);
         token.transferFrom(alice, bob, 300e18);
@@ -293,7 +249,7 @@ contract ERC20VotesTest is Test {
 
     function test_GetPastTotalSupply_AfterMint() public {
         uint256 ts = block.timestamp;
-        token.mint(bob, 500e18);
+        helper.mint(bob, 500e18);
 
         vm.warp(ts + 1);
         assertEq(token.getPastTotalSupply(ts), INITIAL_SUPPLY + 500e18);
@@ -301,7 +257,7 @@ contract ERC20VotesTest is Test {
 
     function test_GetPastTotalSupply_AfterBurn() public {
         uint256 ts = block.timestamp;
-        token.burn(alice, 100e18);
+        helper.burn(alice, 100e18);
 
         vm.warp(ts + 1);
         assertEq(token.getPastTotalSupply(ts), INITIAL_SUPPLY - 100e18);
@@ -317,7 +273,7 @@ contract ERC20VotesTest is Test {
     //////////////////////////////////////////////////////////////////////////*//
 
     function test_DelegateBySig_ValidSig_Delegates() public {
-        uint256 nonce = token.nonces(alice);
+        uint256 nonce = helper.nonces(alice);
         uint256 expiry = block.timestamp + 1 hours;
 
         bytes32 digest = _delegationHash(bob, nonce, expiry);
@@ -330,7 +286,7 @@ contract ERC20VotesTest is Test {
     }
 
     function test_DelegateBySig_ConsumesNonce() public {
-        uint256 nonceBefore = token.nonces(alice);
+        uint256 nonceBefore = helper.nonces(alice);
         uint256 expiry = block.timestamp + 1 hours;
 
         bytes32 digest = _delegationHash(bob, nonceBefore, expiry);
@@ -338,11 +294,11 @@ contract ERC20VotesTest is Test {
 
         token.delegateBySig(bob, nonceBefore, expiry, v, r, s);
 
-        assertEq(token.nonces(alice), nonceBefore + 1);
+        assertEq(helper.nonces(alice), nonceBefore + 1);
     }
 
     function test_DelegateBySig_ExpiredSignatureReverts() public {
-        uint256 nonce = token.nonces(alice);
+        uint256 nonce = helper.nonces(alice);
         uint256 expiry = block.timestamp - 1; // already expired
 
         bytes32 digest = _delegationHash(bob, nonce, expiry);
@@ -364,7 +320,7 @@ contract ERC20VotesTest is Test {
     }
 
     function test_DelegateBySig_ReplaySameSignatureReverts() public {
-        uint256 nonce = token.nonces(alice);
+        uint256 nonce = helper.nonces(alice);
         uint256 expiry = block.timestamp + 1 hours;
 
         bytes32 digest = _delegationHash(bob, nonce, expiry);
@@ -389,14 +345,14 @@ contract ERC20VotesTest is Test {
         vm.expectRevert(
             abi.encodeWithSelector(IERC20Votes.ERC20ExceededSafeSupply.selector, INITIAL_SUPPLY + excess, cap)
         );
-        token.mint(bob, excess);
+        helper.mint(bob, excess);
     }
 
     function test_MintExactlyAtCap_Succeeds() public {
         uint256 cap = type(uint208).max;
         uint256 remaining = cap - INITIAL_SUPPLY;
-        token.mint(bob, remaining);
-        assertEq(token.totalSupply(), cap);
+        helper.mint(bob, remaining);
+        assertEq(erc20.totalSupply(), cap);
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -416,11 +372,11 @@ contract ERC20VotesTest is Test {
     //////////////////////////////////////////////////////////////////////////*//
 
     function test_SupportsIVotes() public view {
-        assertTrue(token.supportsInterface(type(IVotes).interfaceId));
+        assertTrue(ERC165Facet(diamond).supportsInterface(type(IVotes).interfaceId));
     }
 
     function test_SupportsIERC20() public view {
-        assertTrue(token.supportsInterface(type(IERC20).interfaceId));
+        assertTrue(ERC165Facet(diamond).supportsInterface(type(IERC20).interfaceId));
     }
 
     //*//////////////////////////////////////////////////////////////////////////
