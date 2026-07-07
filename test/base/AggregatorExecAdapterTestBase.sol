@@ -4,7 +4,7 @@ pragma solidity ^0.8.30;
 import {GetSelectors} from "@diamond-test/helpers/GetSelectors.sol";
 import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
-import {DeployAggregatorExecAdapter} from "@lattice-script/base/DeployAggregatorExecAdapter.s.sol";
+import {DeployAggregatorExecAdapter} from "@lattice-script/base/defi/DeployAggregatorExecAdapter.s.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @title AggregatorExecAdapterTestBase

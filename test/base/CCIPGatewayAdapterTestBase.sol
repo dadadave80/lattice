@@ -4,7 +4,7 @@ pragma solidity ^0.8.30;
 import {GetSelectors} from "@diamond-test/helpers/GetSelectors.sol";
 import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
-import {DeployCCIPGatewayAdapter} from "@lattice-script/base/DeployCCIPGatewayAdapter.s.sol";
+import {DeployCCIPGatewayAdapter} from "@lattice-script/base/crosschain/DeployCCIPGatewayAdapter.s.sol";
 import {CCIPGatewayAdapter} from "@lattice/crosschain/CCIPGatewayAdapter.sol";
 import {Test} from "forge-std/Test.sol";
 

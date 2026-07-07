@@ -5,7 +5,7 @@ import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {ERC4626TestBase} from "@lattice-test/base/ERC4626TestBase.sol";
 import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
 import {IERC4626} from "@lattice/interfaces/tokens/IERC4626.sol";
-import {ERC4626} from "@lattice/tokens/ERC4626/ERC4626.sol";
+import {IERC4626} from "@lattice/interfaces/tokens/IERC4626.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
 //                    MOCK USDT-STYLE TOKEN (no return value)
@@ -545,7 +545,7 @@ contract ERC4626Test is ERC4626TestBase {
 
     function test_DecimalsOffsetMitigatesInflation() public {
         // Deploy a vault with decimalsOffset = 3 for stronger inflation protection
-        ERC4626 vaultWithOffset = ERC4626(_deployVault(underlyingAddr, "Protected Vault", "pvTK", 3));
+        IERC4626 vaultWithOffset = IERC4626(_deployVault(underlyingAddr, "Protected Vault", "pvTK", 3));
         address vaultWithOffsetAddr = address(vaultWithOffset);
 
         address attacker2 = address(0xDEAD2);
@@ -598,7 +598,7 @@ contract ERC4626Test is ERC4626TestBase {
         usdtLike.mint(alice, 1000e18);
 
         // The vault will call decimals() on usdtLike — it returns 300 so underlyingDecimals stays 18
-        ERC4626 usdtVault = ERC4626(_deployVault(address(usdtLike), "USDT Vault", "vUSDT", 0));
+        IERC4626 usdtVault = IERC4626(_deployVault(address(usdtLike), "USDT Vault", "vUSDT", 0));
         address usdtVaultAddr = address(usdtVault);
         assertEq(usdtVault.decimals(), 18, "oversize decimals should default to 18");
 
@@ -618,7 +618,7 @@ contract ERC4626Test is ERC4626TestBase {
         MockNoReturnERC20 usdtLike = new MockNoReturnERC20();
         usdtLike.mint(alice, 1000e18);
 
-        ERC4626 usdtVault = ERC4626(_deployVault(address(usdtLike), "USDT Vault", "vUSDT", 0));
+        IERC4626 usdtVault = IERC4626(_deployVault(address(usdtLike), "USDT Vault", "vUSDT", 0));
         address usdtVaultAddr = address(usdtVault);
 
         // Deposit first
@@ -669,7 +669,7 @@ contract ERC4626Test is ERC4626TestBase {
         MockNoReturnERC20 weirdToken = new MockNoReturnERC20();
         // weirdToken.decimals() returns 300 — above type(uint8).max
 
-        ERC4626 weirdVault = ERC4626(_deployVault(address(weirdToken), "Weird Vault", "vW", 0));
+        IERC4626 weirdVault = IERC4626(_deployVault(address(weirdToken), "Weird Vault", "vW", 0));
 
         // Should default to 18, not truncate 300 to 44 (300 mod 256 = 44)
         assertEq(weirdVault.decimals(), 18, "should default to 18 not truncate 300 to 44");

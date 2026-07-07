@@ -4,7 +4,7 @@ pragma solidity ^0.8.30;
 import {GetSelectors} from "@diamond-test/helpers/GetSelectors.sol";
 import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
-import {DeployAPI3QRNGAdapter} from "@lattice-script/base/DeployAPI3QRNGAdapter.s.sol";
+import {DeployAPI3QRNGAdapter} from "@lattice-script/base/oracles/DeployAPI3QRNGAdapter.s.sol";
 import {API3QRNGAdapter} from "@lattice/oracles/API3QRNGAdapter.sol";
 import {Test} from "forge-std/Test.sol";
 

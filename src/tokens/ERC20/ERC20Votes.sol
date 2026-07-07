@@ -1,19 +1,20 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {Votes} from "@lattice/governance/Votes.sol";
-import {VotesLib} from "@lattice/governance/libraries/VotesLib.sol";
-import {IVotes} from "@lattice/interfaces/governance/IVotes.sol";
-import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
+import {IERC20Votes} from "@lattice/interfaces/tokens/IERC20Votes.sol";
 import {ERC20VotesLib} from "@lattice/tokens/ERC20/libraries/ERC20VotesLib.sol";
 import {Checkpoints} from "@lattice/utils/libraries/Checkpoints.sol";
 
 /// @title ERC20Votes
 /// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/extensions/ERC20Votes.sol)
 /// @notice Stateless Diamond facet combining ERC-20 with checkpoint-based voting power.
-/// @dev Inherits ERC20 (delegates IERC20 calls to ERC20Lib) and Votes (delegates IVotes calls
-///      to VotesLib). Overrides transfer/transferFrom/delegate/delegateBySig to route through
-///      ERC20VotesLib, which updates both ERC-20 balances and vote checkpoints atomically.
+/// @dev Owns ONLY its own selectors — the checkpoint-updating `transfer`/`transferFrom` (which REPLACE the base
+///      {ERC20} variants) plus the balance-aware `delegate`/`delegateBySig` (which REPLACE the base {Votes}
+///      variants) and the OZ checkpoint accessors `numCheckpoints`/`checkpoints`. It does NOT inherit the {ERC20}
+///      or {Votes} facets — doing so would re-export their selectors and collide with those standalone facets in a
+///      Diamond. The ERC-20 share surface comes from a separately-cut {ERC20} facet and the ERC-5805 voting-power
+///      surface (`getVotes`/`getPastVotes`/`getPastTotalSupply`/`delegates`/`clock`/`CLOCK_MODE`) from a
+///      separately-cut {Votes} facet; {DeployERC20Votes} composes all three.
 ///
 ///      Callers must initialize the following modules in their initializer:
 ///        - ERC20Lib.__ERC20_init(name, symbol)
@@ -23,7 +24,7 @@ import {Checkpoints} from "@lattice/utils/libraries/Checkpoints.sol";
 ///        - ERC20VotesLib.__ERC20Votes_init()
 /// @custom:lattice-version 0.1.0
 /// @custom:lattice-source OpenZeppelin v5.1.0
-contract ERC20Votes is Votes {
+contract ERC20Votes is IERC20Votes {
     //*//////////////////////////////////////////////////////////////////////////
     //                        IERC20 — TRANSFER OVERRIDES
     //////////////////////////////////////////////////////////////////////////*//
@@ -42,17 +43,17 @@ contract ERC20Votes is Votes {
     //                       IVOTES — DELEGATION OVERRIDES
     //////////////////////////////////////////////////////////////////////////*//
 
-    /// @inheritdoc IVotes
+    /// @notice Delegates votes from the caller to `delegatee` (replaces the base {Votes} variant).
     /// @dev Uses caller's ERC-20 balance as voting units.
-    function delegate(address delegatee) public override {
+    function delegate(address delegatee) public virtual {
         ERC20VotesLib.delegate(delegatee);
     }
 
-    /// @inheritdoc IVotes
+    /// @notice Delegates votes from the signer to `delegatee` via EIP-712 (replaces the base {Votes} variant).
     /// @dev Recovers signer, reads their ERC-20 balance, then delegates.
     function delegateBySig(address delegatee, uint256 nonce, uint256 expiry, uint8 v, bytes32 r, bytes32 s)
         public
-        override
+        virtual
     {
         ERC20VotesLib.delegateBySig(delegatee, nonce, expiry, v, r, s);
     }

@@ -4,7 +4,7 @@ pragma solidity ^0.8.30;
 import {GetSelectors} from "@diamond-test/helpers/GetSelectors.sol";
 import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
-import {DeployERC5564Announcer} from "@lattice-script/base/DeployERC5564Announcer.s.sol";
+import {DeployERC5564Announcer} from "@lattice-script/base/privacy/DeployERC5564Announcer.s.sol";
 import {ERC5564Announcer} from "@lattice/privacy/ERC5564Announcer.sol";
 import {Test} from "forge-std/Test.sol";
 

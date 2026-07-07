@@ -4,7 +4,7 @@ pragma solidity ^0.8.30;
 import {GetSelectors} from "@diamond-test/helpers/GetSelectors.sol";
 import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
-import {DeployBridgeERC7802} from "@lattice-script/base/DeployBridgeERC7802.s.sol";
+import {DeployBridgeERC7802} from "@lattice-script/base/crosschain/DeployBridgeERC7802.s.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @title BridgeERC7802TestBase

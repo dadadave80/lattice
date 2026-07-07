@@ -4,7 +4,7 @@ pragma solidity ^0.8.30;
 import {GetSelectors} from "@diamond-test/helpers/GetSelectors.sol";
 import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
-import {DeployDIAAdapter} from "@lattice-script/base/DeployDIAAdapter.s.sol";
+import {DeployDIAAdapter} from "@lattice-script/base/oracles/DeployDIAAdapter.s.sol";
 import {DIAAdapter} from "@lattice/oracles/DIAAdapter.sol";
 import {Test} from "forge-std/Test.sol";
 

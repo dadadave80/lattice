@@ -4,7 +4,7 @@ pragma solidity ^0.8.30;
 import {GetSelectors} from "@diamond-test/helpers/GetSelectors.sol";
 import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
-import {DeployENSResolver} from "@lattice-script/base/DeployENSResolver.s.sol";
+import {DeployENSResolver} from "@lattice-script/base/ens/DeployENSResolver.s.sol";
 import {ENSResolver} from "@lattice/ens/ENSResolver.sol";
 import {Test} from "forge-std/Test.sol";
 
