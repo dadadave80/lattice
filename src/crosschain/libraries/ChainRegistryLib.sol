@@ -6,6 +6,7 @@ import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/Ac
 import {AxelarGatewayAdapterLib} from "@lattice/crosschain/libraries/AxelarGatewayAdapterLib.sol";
 import {CCIPGatewayAdapterLib} from "@lattice/crosschain/libraries/CCIPGatewayAdapterLib.sol";
 import {CCTPBridgeAdapterLib} from "@lattice/crosschain/libraries/CCTPBridgeAdapterLib.sol";
+import {HyperlaneGatewayAdapterLib} from "@lattice/crosschain/libraries/HyperlaneGatewayAdapterLib.sol";
 import {
     L2ToL2CrossDomainMessengerGatewayAdapterLib
 } from "@lattice/crosschain/libraries/L2ToL2CrossDomainMessengerGatewayAdapterLib.sol";
@@ -23,9 +24,10 @@ import {InteroperableAddress} from "@lattice/utils/libraries/InteroperableAddres
 /// @dev `keccak256(abi.encode(uint256(keccak256("lattice.storage.ChainRegistry")) - 1)) & ~bytes32(uint256(0xff))`.
 bytes32 constant CHAIN_REGISTRY_STORAGE_SLOT = 0x3d04730f387c3a41671abdc91e43582ee4d80e460792f9c401b5acc80eab5b00;
 
-/// @dev 0xc3da81e5 is `type(IChainRegistry).interfaceId`.
-/// `keccak256(abi.encode(bytes4(0xc3da81e5), 0x9ca7f3e2e2bfb15fdf072b85dde92837cddacee6cf2f6b38cd06c9457c1c4200))`.
-bytes32 constant ERC165_MAP_ICHAINREGISTRY_SLOT = 0x1f4678578aa1cdecc12b4881f8b17f771dd18d86e6d6e4f7735514c07b2f71d9;
+/// @dev 0x5319a265 is `type(IChainRegistry).interfaceId` (changed when `hyperlaneDomain` was appended to
+/// `NativeIds` — the struct rides in the `setNativeIds`/`nativeIdsOf` signatures).
+/// `keccak256(abi.encode(bytes4(0x5319a265), 0x9ca7f3e2e2bfb15fdf072b85dde92837cddacee6cf2f6b38cd06c9457c1c4200))`.
+bytes32 constant ERC165_MAP_ICHAINREGISTRY_SLOT = 0xd96305f89087b6842e5e913cd0561490d9251ae6b5fdbfc9b2e5c4add69bd3d9;
 
 /// @notice Per-chain registry record, keyed by the ERC-7930 chain key. APPEND-ONLY.
 struct ChainRecord {
@@ -207,6 +209,7 @@ library ChainRegistryLib {
         if (cfg.wormhole.enabled) ids.wormholeId = cfg.wormhole.wormholeId;
         if (cfg.cctp.enabled) ids.cctpDomain = cfg.cctp.domain;
         if (cfg.axelar.enabled) ids.axelarName = cfg.axelar.axelarName;
+        if (cfg.hyperlane.enabled) ids.hyperlaneDomain = cfg.hyperlane.domain;
         _setNativeIds(chainKey, ids);
 
         // 3) Fan out into every enabled adapter lib's own ERC-7201 storage (internal admin writes only).
@@ -242,6 +245,11 @@ library ChainRegistryLib {
             CCTPBridgeAdapterLib.configureDomain(
                 cfg.cctp.domain, cfg.cctp.maxFee, cfg.cctp.minFinalityThreshold, cfg.cctp.destinationCaller
             );
+        }
+        if (cfg.hyperlane.enabled) {
+            HyperlaneGatewayAdapterLib.registerDomain(cfg.chainId, cfg.hyperlane.domain);
+            HyperlaneGatewayAdapterLib.registerRemote(cfg.chainId, cfg.hyperlane.remote);
+            HyperlaneGatewayAdapterLib.configureDestination(cfg.chainId, cfg.hyperlane.gasLimit);
         }
 
         // 4) Record the coverage entries (parallel arrays, length-checked).
