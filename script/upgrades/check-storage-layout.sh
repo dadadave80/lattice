@@ -113,6 +113,7 @@ GUARDED_STRUCTS=(
     "NativeIds lattice.storage.ChainRegistry"
     "HyperlaneGatewayAdapterStorage lattice.storage.HyperlaneGatewayAdapter"
     "StargateBridgeAdapterStorage lattice.storage.StargateBridgeAdapter"
+    "HyperbridgeGatewayAdapterStorage lattice.storage.HyperbridgeGatewayAdapter"
 )
 
 command -v forge >/dev/null 2>&1 || { echo "ERROR: forge not found on PATH" >&2; exit 2; }
