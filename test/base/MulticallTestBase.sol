@@ -4,7 +4,7 @@ pragma solidity ^0.8.30;
 import {GetSelectors} from "@diamond-test/helpers/GetSelectors.sol";
 import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
-import {DeployMulticall} from "@lattice-script/base/DeployMulticall.s.sol";
+import {DeployMulticall} from "@lattice-script/base/utils/DeployMulticall.s.sol";
 import {MulticallTestFacet} from "@lattice-test/helpers/MulticallTestFacet.sol";
 import {Test} from "forge-std/Test.sol";
 

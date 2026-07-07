@@ -4,7 +4,7 @@ pragma solidity ^0.8.30;
 import {GetSelectors} from "@diamond-test/helpers/GetSelectors.sol";
 import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
-import {DeployChainlinkVRF} from "@lattice-script/base/DeployChainlinkVRF.s.sol";
+import {DeployChainlinkVRF} from "@lattice-script/base/oracles/DeployChainlinkVRF.s.sol";
 import {ChainlinkVRF} from "@lattice/oracles/ChainlinkVRF.sol";
 import {Test} from "forge-std/Test.sol";
 

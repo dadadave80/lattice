@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
-import {DeployERC20Permit} from "@lattice-script/base/DeployERC20Permit.s.sol";
+import {DeployERC20Permit} from "@lattice-script/base/tokens/DeployERC20Permit.s.sol";
 import {ERC20TestBase} from "@lattice-test/base/ERC20TestBase.sol";
 
 /// @title ERC20PermitTestBase

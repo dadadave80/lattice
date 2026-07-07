@@ -4,7 +4,7 @@ pragma solidity ^0.8.30;
 import {GetSelectors} from "@diamond-test/helpers/GetSelectors.sol";
 import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
-import {DeployGelatoAutomateAdapter} from "@lattice-script/base/DeployGelatoAutomateAdapter.s.sol";
+import {DeployGelatoAutomateAdapter} from "@lattice-script/base/oracles/DeployGelatoAutomateAdapter.s.sol";
 import {GelatoAutomateAdapterTestFacet} from "@lattice-test/helpers/GelatoAutomateAdapterTestFacet.sol";
 import {GelatoAutomateAdapter} from "@lattice/oracles/GelatoAutomateAdapter.sol";
 import {Test} from "forge-std/Test.sol";

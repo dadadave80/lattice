@@ -4,7 +4,7 @@ pragma solidity ^0.8.30;
 import {GetSelectors} from "@diamond-test/helpers/GetSelectors.sol";
 import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
-import {DeployInvariantChecker} from "@lattice-script/base/DeployInvariantChecker.s.sol";
+import {DeployInvariantChecker} from "@lattice-script/base/security/DeployInvariantChecker.s.sol";
 import {InvariantCheckerTestFacet} from "@lattice-test/helpers/InvariantCheckerTestFacet.sol";
 import {InvariantChecker} from "@lattice/security/InvariantChecker.sol";
 import {Test} from "forge-std/Test.sol";

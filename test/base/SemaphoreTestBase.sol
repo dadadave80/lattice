@@ -4,7 +4,7 @@ pragma solidity ^0.8.30;
 import {GetSelectors} from "@diamond-test/helpers/GetSelectors.sol";
 import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
-import {DeploySemaphore} from "@lattice-script/base/DeploySemaphore.s.sol";
+import {DeploySemaphore} from "@lattice-script/base/privacy/DeploySemaphore.s.sol";
 import {Semaphore} from "@lattice/privacy/Semaphore.sol";
 import {Test} from "forge-std/Test.sol";
 

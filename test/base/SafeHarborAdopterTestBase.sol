@@ -4,7 +4,7 @@ pragma solidity ^0.8.30;
 import {GetSelectors} from "@diamond-test/helpers/GetSelectors.sol";
 import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
-import {DeploySafeHarborAdopter} from "@lattice-script/base/DeploySafeHarborAdopter.s.sol";
+import {DeploySafeHarborAdopter} from "@lattice-script/base/governance/DeploySafeHarborAdopter.s.sol";
 import {SafeHarborAdopter} from "@lattice/governance/SafeHarborAdopter.sol";
 import {Test} from "forge-std/Test.sol";
 

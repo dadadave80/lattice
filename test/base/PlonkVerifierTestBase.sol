@@ -4,7 +4,7 @@ pragma solidity ^0.8.30;
 import {GetSelectors} from "@diamond-test/helpers/GetSelectors.sol";
 import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
-import {DeployPlonkVerifier} from "@lattice-script/base/DeployPlonkVerifier.s.sol";
+import {DeployPlonkVerifier} from "@lattice-script/base/privacy/DeployPlonkVerifier.s.sol";
 import {PlonkVerifier} from "@lattice/privacy/PlonkVerifier.sol";
 import {Test} from "forge-std/Test.sol";
 

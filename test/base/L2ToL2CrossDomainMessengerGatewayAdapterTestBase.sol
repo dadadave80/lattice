@@ -6,7 +6,7 @@ import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {
     DeployL2ToL2CrossDomainMessengerGatewayAdapter
-} from "@lattice-script/base/DeployL2ToL2CrossDomainMessengerGatewayAdapter.s.sol";
+} from "@lattice-script/base/crosschain/DeployL2ToL2CrossDomainMessengerGatewayAdapter.s.sol";
 import {
     L2ToL2CrossDomainMessengerGatewayAdapter
 } from "@lattice/crosschain/L2ToL2CrossDomainMessengerGatewayAdapter.sol";
