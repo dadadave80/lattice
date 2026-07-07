@@ -16,8 +16,10 @@ import {
     L2ToL2CrossDomainMessengerGatewayAdapter
 } from "@lattice/crosschain/L2ToL2CrossDomainMessengerGatewayAdapter.sol";
 import {LayerZeroGatewayAdapter} from "@lattice/crosschain/LayerZeroGatewayAdapter.sol";
+import {StargateBridgeAdapter} from "@lattice/crosschain/StargateBridgeAdapter.sol";
 import {WormholeGatewayAdapter} from "@lattice/crosschain/WormholeGatewayAdapter.sol";
 import {ZetaChainGatewayAdapter} from "@lattice/crosschain/ZetaChainGatewayAdapter.sol";
+import {StargateBridgeAdapterLib} from "@lattice/crosschain/libraries/StargateBridgeAdapterLib.sol";
 import {WormholeGatewayAdapterLib} from "@lattice/crosschain/libraries/WormholeGatewayAdapterLib.sol";
 import {ICCTPBridgeAdapter} from "@lattice/interfaces/crosschain/ICCTPBridgeAdapter.sol";
 import {IChainRegistry} from "@lattice/interfaces/crosschain/IChainRegistry.sol";
@@ -35,7 +37,7 @@ contract WormholeRemoteReadProbe {
 }
 
 /// @notice THE COMPOSABILITY PROOF for the chain-registry fan-out (#77 sub-task 10): ONE diamond cuts the
-///         chain registry alongside ALL EIGHT gateway/bridge adapters, `addEvmChain` is called ONCE as the
+///         chain registry alongside ALL NINE gateway/bridge adapters, `addEvmChain` is called ONCE as the
 ///         admin, and each adapter's OWN read surface must show its hot-path config landed — proving the
 ///         fan-out reaches every adapter lib's ERC-7201 storage through direct internal calls (msg.sender
 ///         stays the admin for each lib's own role check; never external self-calls).
@@ -59,6 +61,7 @@ contract ChainFanOutTest is Test, GetSelectors {
     uint16 constant WORMHOLE_ID = 30;
     uint32 constant CCTP_DOMAIN = 6;
     uint32 constant HYPERLANE_DOMAIN = 8453; // Hyperlane's Base domain HAPPENS to equal the chainId
+    uint32 constant STARGATE_EID = LZ_EID; // Stargate rides LayerZero — the eid IS the LZ eid (own map)
 
     address ccipRemote = address(0xCC1);
     bytes32 lzPeer = bytes32(uint256(uint160(address(0x1AE0))));
@@ -93,7 +96,7 @@ contract ChainFanOutTest is Test, GetSelectors {
     }
 
     function setUp() public {
-        FacetCut[] memory cuts = new FacetCut[](12);
+        FacetCut[] memory cuts = new FacetCut[](13);
         cuts[0] = _cutUnique(address(new ERC165Facet()), "ERC165Facet");
         cuts[1] = _cutUnique(address(new AccessControl()), "AccessControl");
         cuts[2] = _cutUnique(address(new ChainRegistry()), "ChainRegistry");
@@ -107,7 +110,8 @@ contract ChainFanOutTest is Test, GetSelectors {
         );
         cuts[9] = _cutUnique(address(new CCTPBridgeAdapter()), "CCTPBridgeAdapter");
         cuts[10] = _cutUnique(address(new HyperlaneGatewayAdapter()), "HyperlaneGatewayAdapter");
-        cuts[11] = _cutUnique(address(new WormholeRemoteReadProbe()), "WormholeRemoteReadProbe");
+        cuts[11] = _cutUnique(address(new StargateBridgeAdapter()), "StargateBridgeAdapter");
+        cuts[12] = _cutUnique(address(new WormholeRemoteReadProbe()), "WormholeRemoteReadProbe");
 
         Diamond d = new Diamond();
         d.initialize(cuts, address(new ChainRegistryInit()), abi.encodeCall(ChainRegistryInit.init, (admin)));
@@ -141,6 +145,7 @@ contract ChainFanOutTest is Test, GetSelectors {
         cfg.hyperlane = IChainRegistry.HyperlaneSection({
             enabled: true, domain: HYPERLANE_DOMAIN, remote: hyperlaneRemote, gasLimit: 400_000
         });
+        cfg.stargate = IChainRegistry.StargateSection({enabled: true, eid: STARGATE_EID});
         cfg.coverage.gateways = new address[](3);
         cfg.coverage.hubRouted = new bool[](3);
         cfg.coverage.gateways[0] = covDirect1;
@@ -170,6 +175,7 @@ contract ChainFanOutTest is Test, GetSelectors {
         _assertZetaAndOpLanded();
         _assertCctpLanded();
         _assertHyperlaneLanded();
+        _assertStargateLanded();
         _assertRegistryLanded(chainKey);
     }
 
@@ -245,6 +251,15 @@ contract ChainFanOutTest is Test, GetSelectors {
         assertEq(hyperlane.destGasLimitOf(BASE_CHAIN_ID), 400_000, "hyperlane gas limit");
     }
 
+    /// @dev Stargate: chainId ⇄ eid map (both directions) landed in the Stargate adapter's OWN storage —
+    ///      same eid value as LayerZero's (Stargate rides LayerZero) but a SEPARATE ERC-7201 map (adapters
+    ///      never share hot-path storage), through the Stargate facet; the reverse map via its lib-read probe
+    ///      (the `stargateChainIdOf(uint32)` selector is owned by the Hyperlane facet in this composition).
+    function _assertStargateLanded() internal view {
+        assertEq(StargateBridgeAdapter(diamond).stargateEidOf(BASE_CHAIN_ID), STARGATE_EID, "stargate eid");
+        assertEq(StargateBridgeAdapter(diamond).stargateChainIdOf(STARGATE_EID), BASE_CHAIN_ID, "stargate reverse eid");
+    }
+
     /// @dev Registry: identity + native ids + coverage math (hub-routed excluded from direct).
     function _assertRegistryLanded(bytes32 chainKey) internal view {
         assertTrue(registry.isRegistered(chainKey));
@@ -303,6 +318,8 @@ contract ChainFanOutTest is Test, GetSelectors {
         );
         assertEq(HyperlaneGatewayAdapter(diamond).domainOf(chainId), 0, "hyperlane untouched");
         assertEq(HyperlaneGatewayAdapter(diamond).trustedRemoteOf(chainId), bytes32(0), "hyperlane remote untouched");
+        assertEq(StargateBridgeAdapter(diamond).stargateEidOf(chainId), 0, "stargate untouched");
+        assertEq(StargateBridgeAdapter(diamond).stargateChainIdOf(30110), 0, "stargate reverse map untouched");
 
         // Registry: only the enabled sections' native ids are set.
         bytes32 chainKey = registry.chainKeyEvm(chainId);
@@ -346,6 +363,20 @@ contract ChainFanOutTest is Test, GetSelectors {
         (uint256 maxFee,,) = cctp.getDomainConfig(CCTP_DOMAIN);
         assertEq(maxFee, 500, "original domain config not clobbered");
         assertEq(cctp.domainOwner(CCTP_DOMAIN), BASE_CHAIN_ID, "domain owner is the first chain");
+    }
+
+    /// @notice STARGATE/LZ EID CROSS-CHECK (review finding): a typoed Stargate eid contradicting the
+    ///         layerZero section fails loudly instead of silently routing funds to the wrong chain.
+    function test_AddEvmChainStargateEidMismatchReverts() public {
+        IChainRegistry.AddEvmChainConfig memory cfg = _fullConfig();
+        cfg.stargate.eid = STARGATE_EID + 1; // contradicts cfg.layerZero.eid
+        vm.prank(admin);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IChainRegistry.ChainRegistryStargateEidMismatch.selector, STARGATE_EID, STARGATE_EID + 1
+            )
+        );
+        registry.addEvmChain(cfg);
     }
 
     function test_AddEvmChainNonAdminReverts() public {
