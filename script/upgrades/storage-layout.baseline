@@ -250,3 +250,13 @@
 0	12	wormholeId	t_uint16
 0	14	cctpDomain	t_uint32
 1	0	axelarName	t_string_storage
+2	0	hyperlaneDomain	t_uint32
+
+### HyperlaneGatewayAdapterStorage @ erc7201:lattice.storage.HyperlaneGatewayAdapter (slot 0x8a4b1302312d119abfdb0305131f00457b784ef22f6824db37cbaed84bba5600)
+0	0	_mailbox	t_address
+1	0	_chainIdToDomain	t_mapping(t_uint256,t_uint32)
+2	0	_domainToChainId	t_mapping(t_uint32,t_uint256)
+3	0	_trustedRemotes	t_mapping(t_uint256,t_bytes32)
+4	0	_destGasLimit	t_mapping(t_uint256,t_uint256)
+5	0	_lastNonce	t_uint256
+6	0	_executed	t_mapping(t_uint256,t_mapping(t_bytes32,t_bool))

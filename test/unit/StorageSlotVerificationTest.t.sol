@@ -105,6 +105,10 @@ import {
 } from "@lattice/crosschain/libraries/CrosschainLinkLib.sol";
 import {ERC7786_OPEN_BRIDGE_STORAGE_SLOT} from "@lattice/crosschain/libraries/ERC7786OpenBridgeLib.sol";
 import {
+    ERC165_MAP_IHYPERLANEGATEWAYADAPTER_SLOT,
+    HYPERLANE_GATEWAY_ADAPTER_STORAGE_SLOT
+} from "@lattice/crosschain/libraries/HyperlaneGatewayAdapterLib.sol";
+import {
     L1_TO_L2_CROSS_DOMAIN_MESSENGER_GATEWAY_ADAPTER_STORAGE_SLOT
 } from "@lattice/crosschain/libraries/L1ToL2CrossDomainMessengerGatewayAdapterLib.sol";
 import {
@@ -313,6 +317,7 @@ import {IBridgeFungible} from "@lattice/interfaces/crosschain/IBridgeFungible.so
 import {ICCTPBridgeAdapter} from "@lattice/interfaces/crosschain/ICCTPBridgeAdapter.sol";
 import {IChainRegistry} from "@lattice/interfaces/crosschain/IChainRegistry.sol";
 import {ICrosschainLink} from "@lattice/interfaces/crosschain/ICrosschainLink.sol";
+import {IHyperlaneGatewayAdapter} from "@lattice/interfaces/crosschain/IHyperlaneGatewayAdapter.sol";
 import {IStarknetGatewayAdapter} from "@lattice/interfaces/crosschain/IStarknetGatewayAdapter.sol";
 import {IAaveV3Adapter} from "@lattice/interfaces/defi/IAaveV3Adapter.sol";
 import {IAggregatorExecAdapter} from "@lattice/interfaces/defi/IAggregatorExecAdapter.sol";
@@ -855,6 +860,14 @@ contract StorageSlotVerificationTest is Test {
             CHAIN_REGISTRY_STORAGE_SLOT,
             _erc7201Slot("lattice.storage.ChainRegistry"),
             "ChainRegistry storage slot mismatch"
+        );
+    }
+
+    function test_HyperlaneGatewayAdapterStorageSlot() public pure {
+        assertEq(
+            HYPERLANE_GATEWAY_ADAPTER_STORAGE_SLOT,
+            _erc7201Slot("lattice.storage.HyperlaneGatewayAdapter"),
+            "HyperlaneGatewayAdapter storage slot mismatch"
         );
     }
 
@@ -1534,6 +1547,18 @@ contract StorageSlotVerificationTest is Test {
         );
     }
 
+    /// @dev Hyperlane mints its own IHyperlaneGatewayAdapter map slot ON TOP of the shared
+    ///      IERC7786GatewaySource slot (already counted once in the uniqueness array).
+    function test_Erc165MapIHyperlaneGatewayAdapterSlot() public pure {
+        bytes4 interfaceId = type(IHyperlaneGatewayAdapter).interfaceId;
+        assertEq(interfaceId, bytes4(0xb4f23f37), "IHyperlaneGatewayAdapter interfaceId comment is stale");
+        assertEq(
+            ERC165_MAP_IHYPERLANEGATEWAYADAPTER_SLOT,
+            _erc165MapSlot(interfaceId, ERC165_STORAGE_LOCATION),
+            "ERC165 IHyperlaneGatewayAdapter map slot mismatch"
+        );
+    }
+
     function test_Erc165MapIChainRegistrySlot() public pure {
         assertEq(
             ERC165_MAP_ICHAINREGISTRY_SLOT,
@@ -1869,7 +1894,7 @@ contract StorageSlotVerificationTest is Test {
     // ======================== Slot inventories ========================
 
     function _allStorageSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](84);
+        slots = new bytes32[](85);
         uint256 i;
         // access
         slots[i++] = ACCESS_CONTROL_STORAGE_SLOT;
@@ -1939,6 +1964,7 @@ contract StorageSlotVerificationTest is Test {
         slots[i++] = ACROSS_BRIDGE_ADAPTER_STORAGE_SLOT;
         slots[i++] = STARKNET_GATEWAY_ADAPTER_STORAGE_SLOT;
         slots[i++] = CHAIN_REGISTRY_STORAGE_SLOT;
+        slots[i++] = HYPERLANE_GATEWAY_ADAPTER_STORAGE_SLOT;
         // markets
         slots[i++] = MARKETPLACE_ZONE_STORAGE_SLOT;
         // accounts
@@ -1971,7 +1997,7 @@ contract StorageSlotVerificationTest is Test {
     }
 
     function _allErc165MapSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](85);
+        slots = new bytes32[](86);
         uint256 i;
         // access
         slots[i++] = ERC165_MAP_IACCESSCONTROL_SLOT;
@@ -2050,6 +2076,9 @@ contract StorageSlotVerificationTest is Test {
         slots[i++] = ERC165_MAP_IACROSSBRIDGEADAPTER_SLOT;
         slots[i++] = ERC165_MAP_ISTARKNETGATEWAYADAPTER_SLOT;
         slots[i++] = ERC165_MAP_ICHAINREGISTRY_SLOT;
+        // Hyperlane reuses the shared IERC7786GatewaySource slot (counted once above) and only adds its
+        // adapter-specific IHyperlaneGatewayAdapter slot.
+        slots[i++] = ERC165_MAP_IHYPERLANEGATEWAYADAPTER_SLOT;
         slots[i++] = ERC165_MAP_IANY2EVMMESSAGERECEIVER_SLOT;
         slots[i++] = ERC165_MAP_IANY2EVMMESSAGERECEIVERV2_SLOT;
         // markets
