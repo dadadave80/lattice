@@ -22,6 +22,7 @@ import {DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol
 import {GovernedDiamondCut} from "@lattice/governance/GovernedDiamondCut.sol";
 import {Governor} from "@lattice/governance/Governor.sol";
 import {TimelockController} from "@lattice/governance/TimelockController.sol";
+import {Votes} from "@lattice/governance/Votes.sol";
 import {GovernedDiamondCutLib, UPGRADE_EXECUTOR_ROLE} from "@lattice/governance/libraries/GovernedDiamondCutLib.sol";
 import {GovernorLib} from "@lattice/governance/libraries/GovernorLib.sol";
 import {TimelockControllerLib} from "@lattice/governance/libraries/TimelockControllerLib.sol";
@@ -44,14 +45,26 @@ import {Test} from "forge-std/Test.sol";
 //                             MOCKS
 //////////////////////////////////////////////////////////////////////////*//
 
-/// @notice ERC20Votes governance token (copied from GovernanceStackTest).
-contract GovToken is ERC20, ERC20Votes {
+/// @notice ERC20Votes governance token (copied from GovernanceStackTest). Flattens the composable {ERC20},
+///         {Votes}, and {ERC20Votes} facets into one mock; the checkpoint/balance-aware overrides win the clashes.
+contract GovToken is ERC20, Votes, ERC20Votes {
     function transfer(address to, uint256 value) public override(ERC20, ERC20Votes) returns (bool) {
         return ERC20Votes.transfer(to, value);
     }
 
     function transferFrom(address from, address to, uint256 value) public override(ERC20, ERC20Votes) returns (bool) {
         return ERC20Votes.transferFrom(from, to, value);
+    }
+
+    function delegate(address delegatee) public override(Votes, ERC20Votes) {
+        ERC20Votes.delegate(delegatee);
+    }
+
+    function delegateBySig(address delegatee, uint256 nonce, uint256 expiry, uint8 v, bytes32 r, bytes32 s)
+        public
+        override(Votes, ERC20Votes)
+    {
+        ERC20Votes.delegateBySig(delegatee, nonce, expiry, v, r, s);
     }
 
     function initialize(string memory name_, string memory symbol_, address admin_) external {

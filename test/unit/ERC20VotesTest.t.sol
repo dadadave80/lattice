@@ -8,7 +8,15 @@ import {IVotes} from "@lattice/interfaces/governance/IVotes.sol";
 import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
 import {IERC20Votes} from "@lattice/interfaces/tokens/IERC20Votes.sol";
 import {INonces} from "@lattice/interfaces/utils/INonces.sol";
-import {ERC20Votes} from "@lattice/tokens/ERC20/ERC20Votes.sol";
+import {Checkpoints} from "@lattice/utils/libraries/Checkpoints.sol";
+
+/// @notice Combined handle over the composed votes-token diamond: the ERC-5805 voting surface ({IVotes}, served by
+///         the separately-cut {Votes} facet), the ERC-20 share surface ({IERC20}), and the OZ checkpoint accessors
+///         (served by the {ERC20Votes} facet) — all on ONE diamond assembled by {DeployERC20Votes}.
+interface IVotesTokenHandle is IVotes, IERC20 {
+    function numCheckpoints(address account) external view returns (uint32);
+    function checkpoints(address account, uint32 pos) external view returns (Checkpoints.Checkpoint208 memory);
+}
 
 /// @title ERC20VotesTest
 /// @notice Exercises the {ERC20Votes} facet through a REAL {Diamond} assembled by the ready-to-deploy
@@ -19,7 +27,7 @@ import {ERC20Votes} from "@lattice/tokens/ERC20/ERC20Votes.sol";
 ///         test-only {ERC20VotesTestFacet} (`helper`), `approve`/`totalSupply` from the base ERC-20 facet
 ///         (`erc20`), and `supportsInterface` from the cut-in `ERC165Facet`.
 contract ERC20VotesTest is ERC20VotesTestBase {
-    ERC20Votes internal token; // votes surface (getVotes/delegate/transfer/checkpoints/clock/…) on the diamond
+    IVotesTokenHandle internal token; // votes surface (getVotes/delegate/transfer/checkpoints/clock/…) on the diamond
     IERC20 internal erc20; // base ERC-20 surface (approve/totalSupply) on the same diamond
     ERC20VotesTestFacet internal helper; // test-only mint/burn/nonces/DOMAIN_SEPARATOR
 
@@ -39,7 +47,7 @@ contract ERC20VotesTest is ERC20VotesTestBase {
     function setUp() public {
         alice = vm.addr(aliceKey);
         diamond = _deployERC20Votes("Vote Token", "VOTE", admin);
-        token = ERC20Votes(diamond);
+        token = IVotesTokenHandle(diamond);
         erc20 = IERC20(diamond);
         helper = ERC20VotesTestFacet(diamond);
         // Mint initial supply to alice

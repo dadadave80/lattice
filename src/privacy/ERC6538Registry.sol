@@ -3,7 +3,6 @@ pragma solidity ^0.8.30;
 
 import {IERC6538Registry} from "@lattice/interfaces/privacy/IERC6538Registry.sol";
 import {ERC6538RegistryLib} from "@lattice/privacy/libraries/ERC6538RegistryLib.sol";
-import {EIP712} from "@lattice/utils/EIP712.sol";
 import {EIP712Lib} from "@lattice/utils/libraries/EIP712Lib.sol";
 
 /// @title ERC6538Registry
@@ -11,12 +10,14 @@ import {EIP712Lib} from "@lattice/utils/libraries/EIP712Lib.sol";
 /// @author Modified from ScopeLift (https://github.com/ScopeLift/stealth-address-erc-contracts)
 /// @author Conforms to ERC-6538 (https://eips.ethereum.org/EIPS/eip-6538)
 /// @notice Stateless Diamond facet implementing the ERC-6538 stealth meta-address registry.
-/// @dev All logic lives in {ERC6538RegistryLib}. Inherits EIP712 for ERC-5267 domain discovery.
-///      EIP712 (with name "ERC6538Registry" / version "1.0") and the registry must be initialized in
-///      the diamond initializer.
+/// @dev All logic lives in {ERC6538RegistryLib}. Owns ONLY the registry selectors. It does NOT inherit the
+///      {EIP712} facet — doing so would re-export `eip712Domain()` and collide with the standalone {EIP712}
+///      facet in a Diamond. ERC-5267 domain discovery comes from a separately-cut {EIP712} facet;
+///      {DeployERC6538Registry} composes both. The EIP-712 domain (name "ERC6538Registry" / version "1.0")
+///      and the registry must be initialized in the diamond initializer.
 /// @custom:lattice-version 0.1.0
 /// @custom:lattice-source Lattice original
-contract ERC6538Registry is EIP712, IERC6538Registry {
+contract ERC6538Registry is IERC6538Registry {
     /// @inheritdoc IERC6538Registry
     function registerKeys(uint256 schemeId, bytes calldata stealthMetaAddress) external virtual {
         ERC6538RegistryLib.registerKeys(schemeId, stealthMetaAddress);
