@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {IChainRegistry} from "@lattice/interfaces/crosschain/IChainRegistry.sol";
 import {HookConfig, ModuleEntity, ValidationFlags} from "@lattice/interfaces/external/IERC6900.sol";
 import {IUpgradeRegistry} from "@lattice/interfaces/governance/IUpgradeRegistry.sol";
 import {ICommitReveal} from "@lattice/interfaces/privacy/ICommitReveal.sol";
@@ -303,6 +304,7 @@ contract StorageLayoutProbe {
         uint256 _nonce;
         mapping(bytes2 chainType => mapping(bytes chainReference => bytes bridge)) _remotes;
         mapping(bytes32 id => OpenBridgeTracker tracker) _trackers;
+        uint8 _minDirectCoverage;
     }
 
     /// @dev Verbatim mirror of `CCIPGatewayAdapterLib.CCIPGatewayAdapterStorage` and its `CCVConfig`
@@ -560,6 +562,23 @@ contract StorageLayoutProbe {
         mapping(bytes32 msgHash => address initiator) _initiators;
     }
 
+    /// @dev Verbatim mirror of `ChainRegistryLib.ChainRegistryStorage` and its `ChainRecord`
+    ///      (`@custom:storage-location erc7201:lattice.storage.ChainRegistry`; the nested `NativeIds` lives
+    ///      in {IChainRegistry} and is imported, not re-declared). Append-only.
+    struct ChainRecord {
+        bool registered;
+        bytes2 chainType;
+        bytes chainReference;
+        uint256 evmChainId;
+        IChainRegistry.NativeIds ids;
+        EnumerableSet.AddressSet gateways;
+        mapping(address gateway => bool hubRouted) hubRouted;
+    }
+
+    struct ChainRegistryStorage {
+        mapping(bytes32 chainKey => ChainRecord record) _chains;
+    }
+
     /// @dev Forces solc to emit the struct types into `storageLayout`. Never read, never deployed.
     GovernedDiamondCutStorage internal _unusedGovernedDiamondCut;
     SafeDiamondCutStorage internal _unusedSafeDiamondCut;
@@ -608,4 +627,5 @@ contract StorageLayoutProbe {
     ERC6900ModuleManagerStorage internal _unusedERC6900ModuleManager;
     AcrossBridgeAdapterStorage internal _unusedAcrossBridgeAdapter;
     StarknetGatewayAdapterStorage internal _unusedStarknetGatewayAdapter;
+    ChainRegistryStorage internal _unusedChainRegistry;
 }

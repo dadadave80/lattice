@@ -76,6 +76,10 @@ import {
 } from "@lattice/accounts/libraries/ERC6551AccountLib.sol";
 import {SESSION_KEY_STORAGE_SLOT} from "@lattice/accounts/libraries/SessionKeyLib.sol";
 import {
+    ACROSS_BRIDGE_ADAPTER_STORAGE_SLOT,
+    ERC165_MAP_IACROSSBRIDGEADAPTER_SLOT
+} from "@lattice/crosschain/libraries/AcrossBridgeAdapterLib.sol";
+import {
     AXELAR_GATEWAY_ADAPTER_STORAGE_SLOT,
     ERC165_MAP_IERC7786GATEWAYSOURCE_SLOT
 } from "@lattice/crosschain/libraries/AxelarGatewayAdapterLib.sol";
@@ -88,11 +92,35 @@ import {
     ERC165_MAP_IANY2EVMMESSAGERECEIVER_SLOT
 } from "@lattice/crosschain/libraries/CCIPGatewayAdapterLib.sol";
 import {
+    CCTP_BRIDGE_ADAPTER_STORAGE_SLOT,
+    ERC165_MAP_ICCTPBRIDGEADAPTER_SLOT
+} from "@lattice/crosschain/libraries/CCTPBridgeAdapterLib.sol";
+import {
+    CHAIN_REGISTRY_STORAGE_SLOT,
+    ERC165_MAP_ICHAINREGISTRY_SLOT
+} from "@lattice/crosschain/libraries/ChainRegistryLib.sol";
+import {
     CROSSCHAIN_LINK_STORAGE_SLOT,
     ERC165_MAP_ICROSSCHAINLINK_SLOT
 } from "@lattice/crosschain/libraries/CrosschainLinkLib.sol";
 import {ERC7786_OPEN_BRIDGE_STORAGE_SLOT} from "@lattice/crosschain/libraries/ERC7786OpenBridgeLib.sol";
+import {
+    L1_TO_L2_CROSS_DOMAIN_MESSENGER_GATEWAY_ADAPTER_STORAGE_SLOT
+} from "@lattice/crosschain/libraries/L1ToL2CrossDomainMessengerGatewayAdapterLib.sol";
+import {
+    L2_TO_L2_CROSS_DOMAIN_MESSENGER_GATEWAY_ADAPTER_STORAGE_SLOT
+} from "@lattice/crosschain/libraries/L2ToL2CrossDomainMessengerGatewayAdapterLib.sol";
+import {LAYERZERO_GATEWAY_ADAPTER_STORAGE_SLOT} from "@lattice/crosschain/libraries/LayerZeroGatewayAdapterLib.sol";
+import {
+    ERC165_MAP_ISTARKNETGATEWAYADAPTER_SLOT,
+    STARKNET_GATEWAY_ADAPTER_STORAGE_SLOT
+} from "@lattice/crosschain/libraries/StarknetGatewayAdapterLib.sol";
 import {WORMHOLE_GATEWAY_ADAPTER_STORAGE_SLOT} from "@lattice/crosschain/libraries/WormholeGatewayAdapterLib.sol";
+import {ZETACHAIN_GATEWAY_ADAPTER_STORAGE_SLOT} from "@lattice/crosschain/libraries/ZetaChainGatewayAdapterLib.sol";
+import {
+    AGGREGATOR_EXEC_ADAPTER_STORAGE_SLOT,
+    ERC165_MAP_IAGGREGATOREXECADAPTER_SLOT
+} from "@lattice/defi/libraries/AggregatorExecAdapterLib.sol";
 import {GOVERNED_DIAMOND_CUT_STORAGE_SLOT} from "@lattice/governance/libraries/GovernedDiamondCutLib.sol";
 import {
     ERC165_MAP_IGOVERNEDSAFEDIAMONDCUT_SLOT,
@@ -280,9 +308,14 @@ import {IAccessControlTimed} from "@lattice/interfaces/access/IAccessControlTime
 import {IAccessManaged} from "@lattice/interfaces/access/IAccessManaged.sol";
 import {IAccessManager} from "@lattice/interfaces/access/IAccessManager.sol";
 import {IConstantProduct} from "@lattice/interfaces/amm/IConstantProduct.sol";
+import {IAcrossBridgeAdapter} from "@lattice/interfaces/crosschain/IAcrossBridgeAdapter.sol";
 import {IBridgeFungible} from "@lattice/interfaces/crosschain/IBridgeFungible.sol";
+import {ICCTPBridgeAdapter} from "@lattice/interfaces/crosschain/ICCTPBridgeAdapter.sol";
+import {IChainRegistry} from "@lattice/interfaces/crosschain/IChainRegistry.sol";
 import {ICrosschainLink} from "@lattice/interfaces/crosschain/ICrosschainLink.sol";
+import {IStarknetGatewayAdapter} from "@lattice/interfaces/crosschain/IStarknetGatewayAdapter.sol";
 import {IAaveV3Adapter} from "@lattice/interfaces/defi/IAaveV3Adapter.sol";
+import {IAggregatorExecAdapter} from "@lattice/interfaces/defi/IAggregatorExecAdapter.sol";
 import {ICompoundV3Adapter} from "@lattice/interfaces/defi/ICompoundV3Adapter.sol";
 import {ICurveStableSwapAdapter} from "@lattice/interfaces/defi/ICurveStableSwapAdapter.sol";
 import {IERC4626Adapter} from "@lattice/interfaces/defi/IERC4626Adapter.sol";
@@ -750,6 +783,78 @@ contract StorageSlotVerificationTest is Test {
             CCIP_GATEWAY_ADAPTER_STORAGE_SLOT,
             _erc7201Slot("lattice.storage.CCIPGatewayAdapter"),
             "CCIPGatewayAdapter storage slot mismatch"
+        );
+    }
+
+    function test_LayerZeroGatewayAdapterStorageSlot() public pure {
+        assertEq(
+            LAYERZERO_GATEWAY_ADAPTER_STORAGE_SLOT,
+            _erc7201Slot("lattice.storage.LayerZeroGatewayAdapter"),
+            "LayerZeroGatewayAdapter storage slot mismatch"
+        );
+    }
+
+    function test_L2ToL2CrossDomainMessengerGatewayAdapterStorageSlot() public pure {
+        assertEq(
+            L2_TO_L2_CROSS_DOMAIN_MESSENGER_GATEWAY_ADAPTER_STORAGE_SLOT,
+            _erc7201Slot("lattice.storage.L2ToL2CrossDomainMessengerGatewayAdapter"),
+            "L2ToL2CrossDomainMessengerGatewayAdapter storage slot mismatch"
+        );
+    }
+
+    function test_L1ToL2CrossDomainMessengerGatewayAdapterStorageSlot() public pure {
+        assertEq(
+            L1_TO_L2_CROSS_DOMAIN_MESSENGER_GATEWAY_ADAPTER_STORAGE_SLOT,
+            _erc7201Slot("lattice.storage.L1ToL2CrossDomainMessengerGatewayAdapter"),
+            "L1ToL2CrossDomainMessengerGatewayAdapter storage slot mismatch"
+        );
+    }
+
+    function test_ZetaChainGatewayAdapterStorageSlot() public pure {
+        assertEq(
+            ZETACHAIN_GATEWAY_ADAPTER_STORAGE_SLOT,
+            _erc7201Slot("lattice.storage.ZetaChainGatewayAdapter"),
+            "ZetaChainGatewayAdapter storage slot mismatch"
+        );
+    }
+
+    function test_CCTPBridgeAdapterStorageSlot() public pure {
+        assertEq(
+            CCTP_BRIDGE_ADAPTER_STORAGE_SLOT,
+            _erc7201Slot("lattice.storage.CCTPBridgeAdapter"),
+            "CCTPBridgeAdapter storage slot mismatch"
+        );
+    }
+
+    function test_AggregatorExecAdapterStorageSlot() public pure {
+        assertEq(
+            AGGREGATOR_EXEC_ADAPTER_STORAGE_SLOT,
+            _erc7201Slot("lattice.storage.AggregatorExecAdapter"),
+            "AggregatorExecAdapter storage slot mismatch"
+        );
+    }
+
+    function test_AcrossBridgeAdapterStorageSlot() public pure {
+        assertEq(
+            ACROSS_BRIDGE_ADAPTER_STORAGE_SLOT,
+            _erc7201Slot("lattice.storage.AcrossBridgeAdapter"),
+            "AcrossBridgeAdapter storage slot mismatch"
+        );
+    }
+
+    function test_StarknetGatewayAdapterStorageSlot() public pure {
+        assertEq(
+            STARKNET_GATEWAY_ADAPTER_STORAGE_SLOT,
+            _erc7201Slot("lattice.storage.StarknetGatewayAdapter"),
+            "StarknetGatewayAdapter storage slot mismatch"
+        );
+    }
+
+    function test_ChainRegistryStorageSlot() public pure {
+        assertEq(
+            CHAIN_REGISTRY_STORAGE_SLOT,
+            _erc7201Slot("lattice.storage.ChainRegistry"),
+            "ChainRegistry storage slot mismatch"
         );
     }
 
@@ -1397,6 +1502,46 @@ contract StorageSlotVerificationTest is Test {
         );
     }
 
+    function test_Erc165MapICCTPBridgeAdapterSlot() public pure {
+        assertEq(
+            ERC165_MAP_ICCTPBRIDGEADAPTER_SLOT,
+            _erc165MapSlot(type(ICCTPBridgeAdapter).interfaceId, ERC165_STORAGE_LOCATION),
+            "ERC165 ICCTPBridgeAdapter map slot mismatch"
+        );
+    }
+
+    function test_Erc165MapIAggregatorExecAdapterSlot() public pure {
+        assertEq(
+            ERC165_MAP_IAGGREGATOREXECADAPTER_SLOT,
+            _erc165MapSlot(type(IAggregatorExecAdapter).interfaceId, ERC165_STORAGE_LOCATION),
+            "ERC165 IAggregatorExecAdapter map slot mismatch"
+        );
+    }
+
+    function test_Erc165MapIAcrossBridgeAdapterSlot() public pure {
+        assertEq(
+            ERC165_MAP_IACROSSBRIDGEADAPTER_SLOT,
+            _erc165MapSlot(type(IAcrossBridgeAdapter).interfaceId, ERC165_STORAGE_LOCATION),
+            "ERC165 IAcrossBridgeAdapter map slot mismatch"
+        );
+    }
+
+    function test_Erc165MapIStarknetGatewayAdapterSlot() public pure {
+        assertEq(
+            ERC165_MAP_ISTARKNETGATEWAYADAPTER_SLOT,
+            _erc165MapSlot(type(IStarknetGatewayAdapter).interfaceId, ERC165_STORAGE_LOCATION),
+            "ERC165 IStarknetGatewayAdapter map slot mismatch"
+        );
+    }
+
+    function test_Erc165MapIChainRegistrySlot() public pure {
+        assertEq(
+            ERC165_MAP_ICHAINREGISTRY_SLOT,
+            _erc165MapSlot(type(IChainRegistry).interfaceId, ERC165_STORAGE_LOCATION),
+            "ERC165 IChainRegistry map slot mismatch"
+        );
+    }
+
     /// @dev CCIP uniquely registers IAny2EVMMessageReceiver so the router's pre-delivery supportsInterface
     ///      check passes; this map slot is NOT shared with the other gateways.
     function test_Erc165MapIAny2EVMMessageReceiverSlot() public pure {
@@ -1724,7 +1869,7 @@ contract StorageSlotVerificationTest is Test {
     // ======================== Slot inventories ========================
 
     function _allStorageSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](75);
+        slots = new bytes32[](84);
         uint256 i;
         // access
         slots[i++] = ACCESS_CONTROL_STORAGE_SLOT;
@@ -1785,6 +1930,15 @@ contract StorageSlotVerificationTest is Test {
         slots[i++] = WORMHOLE_GATEWAY_ADAPTER_STORAGE_SLOT;
         slots[i++] = ERC7786_OPEN_BRIDGE_STORAGE_SLOT;
         slots[i++] = CCIP_GATEWAY_ADAPTER_STORAGE_SLOT;
+        slots[i++] = LAYERZERO_GATEWAY_ADAPTER_STORAGE_SLOT;
+        slots[i++] = L2_TO_L2_CROSS_DOMAIN_MESSENGER_GATEWAY_ADAPTER_STORAGE_SLOT;
+        slots[i++] = L1_TO_L2_CROSS_DOMAIN_MESSENGER_GATEWAY_ADAPTER_STORAGE_SLOT;
+        slots[i++] = ZETACHAIN_GATEWAY_ADAPTER_STORAGE_SLOT;
+        slots[i++] = CCTP_BRIDGE_ADAPTER_STORAGE_SLOT;
+        slots[i++] = AGGREGATOR_EXEC_ADAPTER_STORAGE_SLOT;
+        slots[i++] = ACROSS_BRIDGE_ADAPTER_STORAGE_SLOT;
+        slots[i++] = STARKNET_GATEWAY_ADAPTER_STORAGE_SLOT;
+        slots[i++] = CHAIN_REGISTRY_STORAGE_SLOT;
         // markets
         slots[i++] = MARKETPLACE_ZONE_STORAGE_SLOT;
         // accounts
@@ -1817,7 +1971,7 @@ contract StorageSlotVerificationTest is Test {
     }
 
     function _allErc165MapSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](80);
+        slots = new bytes32[](85);
         uint256 i;
         // access
         slots[i++] = ERC165_MAP_IACCESSCONTROL_SLOT;
@@ -1891,6 +2045,11 @@ contract StorageSlotVerificationTest is Test {
         slots[i++] = ERC165_MAP_ICROSSCHAINLINK_SLOT;
         slots[i++] = ERC165_MAP_IBRIDGEFUNGIBLE_SLOT;
         slots[i++] = ERC165_MAP_IERC7786GATEWAYSOURCE_SLOT;
+        slots[i++] = ERC165_MAP_ICCTPBRIDGEADAPTER_SLOT;
+        slots[i++] = ERC165_MAP_IAGGREGATOREXECADAPTER_SLOT;
+        slots[i++] = ERC165_MAP_IACROSSBRIDGEADAPTER_SLOT;
+        slots[i++] = ERC165_MAP_ISTARKNETGATEWAYADAPTER_SLOT;
+        slots[i++] = ERC165_MAP_ICHAINREGISTRY_SLOT;
         slots[i++] = ERC165_MAP_IANY2EVMMESSAGERECEIVER_SLOT;
         slots[i++] = ERC165_MAP_IANY2EVMMESSAGERECEIVERV2_SLOT;
         // markets

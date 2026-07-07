@@ -18,10 +18,10 @@ import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib
 /// @dev `keccak256(abi.encode(uint256(keccak256("lattice.storage.CCTPBridgeAdapter")) - 1)) & ~bytes32(uint256(0xff))`.
 bytes32 constant CCTP_BRIDGE_ADAPTER_STORAGE_SLOT = 0x94bcfd23a6ef7deebf3dfac9da6ba8c390ae8a620c8a163523fd263b20958b00;
 
-/// @dev 0xa777cf1b is `type(ICCTPBridgeAdapter).interfaceId`.
-/// `keccak256(abi.encode(bytes4(0xa777cf1b), 0x9ca7f3e2e2bfb15fdf072b85dde92837cddacee6cf2f6b38cd06c9457c1c4200))`.
+/// @dev 0x9868b584 is `type(ICCTPBridgeAdapter).interfaceId`.
+/// `keccak256(abi.encode(bytes4(0x9868b584), 0x9ca7f3e2e2bfb15fdf072b85dde92837cddacee6cf2f6b38cd06c9457c1c4200))`.
 bytes32 constant ERC165_MAP_ICCTPBRIDGEADAPTER_SLOT =
-    0x30c377002135d1e8af7caedae6ec2adb3221e5a36ce695d62defb43a35cd29eb;
+    0xc99af2d75b4d69e472159c90d5028834f8137d465c0aaebc7a1ffe39b3c97dee;
 
 /// @notice Per-CCTP-domain outbound config, all admin-registered. Used verbatim as the trailing args of
 ///         `ITokenMessengerV2.depositForBurn`. APPEND-ONLY.
@@ -49,6 +49,9 @@ struct CCTPBridgeAdapterStorage {
     mapping(uint256 chainId => bool registered) _chainRegistered;
     /// @notice CCTP domain id => per-domain outbound config. APPEND-ONLY.
     mapping(uint32 domain => DomainConfig config) _domainConfig;
+    /// @notice CCTP domain id => the chainId that registered it (0 = unregistered; chainId 0 is rejected, so 0
+    ///         is a safe sentinel). Loud-duplicate reverse map — two chains can NEVER share a domain. APPEND-ONLY.
+    mapping(uint32 domain => uint256 chainId) _domainOwner;
 }
 
 /// @title CCTPBridgeAdapterLib
@@ -112,6 +115,10 @@ library CCTPBridgeAdapterLib {
         return cctpBridgeAdapterStorage()._chainIdToDomain[chainId];
     }
 
+    function domainOwner(uint32 domain) internal view returns (uint256) {
+        return cctpBridgeAdapterStorage()._domainOwner[domain];
+    }
+
     function isChainRegistered(uint256 chainId) internal view returns (bool) {
         return cctpBridgeAdapterStorage()._chainRegistered[chainId];
     }
@@ -130,19 +137,34 @@ library CCTPBridgeAdapterLib {
     //////////////////////////////////////////////////////////////////////////*//
 
     /// @notice Registers `chainId` ⇒ CCTP `domain` (the domain table is caller-supplied, never inferred). Admin.
+    /// @dev FAIL-LOUD identity registration (mirrors every other adapter's AlreadyRegistered guards): a chainId
+    ///      registers exactly once ({CCTPChainAlreadyRegistered}) and a domain belongs to exactly one chainId
+    ///      ({CCTPDomainAlreadyRegistered}) — a fat-fingered duplicate can no longer silently remap USDC burns
+    ///      to the wrong destination or clobber another chain's domain config. `chainId` 0 is rejected so the
+    ///      `_domainOwner` zero-sentinel stays unambiguous.
     function registerChainDomain(uint256 chainId, uint32 domain) internal {
         AccessControlLib.checkRole(DEFAULT_ADMIN_ROLE);
+        if (chainId == 0) revert ICCTPBridgeAdapter.CCTPZeroChainId();
         CCTPBridgeAdapterStorage storage $ = cctpBridgeAdapterStorage();
+        if ($._chainRegistered[chainId]) revert ICCTPBridgeAdapter.CCTPChainAlreadyRegistered(chainId);
+        uint256 owner = $._domainOwner[domain];
+        if (owner != 0) revert ICCTPBridgeAdapter.CCTPDomainAlreadyRegistered(domain, owner);
         $._chainIdToDomain[chainId] = domain;
         $._chainRegistered[chainId] = true;
+        $._domainOwner[domain] = chainId;
         emit ICCTPBridgeAdapter.RegisteredChainDomain(chainId, domain);
     }
 
     /// @notice Sets the per-domain outbound config (`maxFee`, `minFinalityThreshold`, `destinationCaller`). Admin.
+    /// @dev Tunables stay UPDATABLE (unlike identity), but only for a registered domain
+    ///      ({CCTPDomainNotRegistered}) — configuring an unowned domain is always a misconfiguration.
     function configureDomain(uint32 domain, uint256 maxFee, uint32 minFinalityThreshold, bytes32 destinationCaller)
         internal
     {
         AccessControlLib.checkRole(DEFAULT_ADMIN_ROLE);
+        if (cctpBridgeAdapterStorage()._domainOwner[domain] == 0) {
+            revert ICCTPBridgeAdapter.CCTPDomainNotRegistered(domain);
+        }
         DomainConfig storage cfg = cctpBridgeAdapterStorage()._domainConfig[domain];
         cfg.maxFee = maxFee;
         cfg.minFinalityThreshold = minFinalityThreshold;

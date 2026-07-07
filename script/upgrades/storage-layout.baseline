@@ -108,6 +108,7 @@
 3	0	_nonce	t_uint256
 4	0	_remotes	t_mapping(t_bytes2,t_mapping(t_bytes_memory_ptr,t_bytes_storage))
 5	0	_trackers	t_mapping(t_bytes32,t_struct(OpenBridgeTracker)_storage)
+6	0	_minDirectCoverage	t_uint8
 
 ### CCIPGatewayAdapterStorage @ erc7201:lattice.storage.CCIPGatewayAdapter (slot 0xfc37dafbf0181d0474cf94e236f0ede0d369aab52659fb134d4be3b15fbb8e00)
 0	0	_router	t_address
@@ -237,3 +238,15 @@
 2	0	_l1HandlerSelector	t_mapping(t_uint256,t_uint256)
 3	0	_trustedL2Senders	t_mapping(t_uint256,t_bool)
 4	0	_initiators	t_mapping(t_bytes32,t_address)
+
+### ChainRegistryStorage @ erc7201:lattice.storage.ChainRegistry (slot 0x3d04730f387c3a41671abdc91e43582ee4d80e460792f9c401b5acc80eab5b00)
+0	0	_chains	t_mapping(t_bytes32,t_struct(ChainRecord)_storage)
+
+### ChainRecord @ erc7201:lattice.storage.ChainRegistry (slot 0x3d04730f387c3a41671abdc91e43582ee4d80e460792f9c401b5acc80eab5b00)
+
+### NativeIds @ erc7201:lattice.storage.ChainRegistry (slot 0x3d04730f387c3a41671abdc91e43582ee4d80e460792f9c401b5acc80eab5b00)
+0	0	ccipSelector	t_uint64
+0	8	lzEid	t_uint32
+0	12	wormholeId	t_uint16
+0	14	cctpDomain	t_uint32
+1	0	axelarName	t_string_storage
