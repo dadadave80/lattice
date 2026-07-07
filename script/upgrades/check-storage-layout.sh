@@ -114,6 +114,7 @@ GUARDED_STRUCTS=(
     "HyperlaneGatewayAdapterStorage lattice.storage.HyperlaneGatewayAdapter"
     "StargateBridgeAdapterStorage lattice.storage.StargateBridgeAdapter"
     "HyperbridgeGatewayAdapterStorage lattice.storage.HyperbridgeGatewayAdapter"
+    "GovernedVaultStorage lattice.storage.GovernedVault"
 )
 
 command -v forge >/dev/null 2>&1 || { echo "ERROR: forge not found on PATH" >&2; exit 2; }

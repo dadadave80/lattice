@@ -133,6 +133,10 @@ import {
     AGGREGATOR_EXEC_ADAPTER_STORAGE_SLOT,
     ERC165_MAP_IAGGREGATOREXECADAPTER_SLOT
 } from "@lattice/defi/libraries/AggregatorExecAdapterLib.sol";
+import {
+    ERC165_MAP_IGOVERNEDVAULT_SLOT,
+    GOVERNED_VAULT_STORAGE_SLOT
+} from "@lattice/defi/libraries/GovernedVaultLib.sol";
 import {GOVERNED_DIAMOND_CUT_STORAGE_SLOT} from "@lattice/governance/libraries/GovernedDiamondCutLib.sol";
 import {
     ERC165_MAP_IGOVERNEDSAFEDIAMONDCUT_SLOT,
@@ -149,6 +153,7 @@ import {
     TIMELOCK_CONTROLLER_STORAGE_SLOT
 } from "@lattice/governance/libraries/TimelockControllerLib.sol";
 import {ERC165_MAP_IVOTES_SLOT, VOTES_STORAGE_SLOT} from "@lattice/governance/libraries/VotesLib.sol";
+import {IGovernedVault} from "@lattice/interfaces/defi/IGovernedVault.sol";
 import {IERC1271} from "@lattice/interfaces/external/IERC1271.sol";
 import {IERC6551Account, IERC6551Executable} from "@lattice/interfaces/external/IERC6551.sol";
 import {
@@ -846,6 +851,14 @@ contract StorageSlotVerificationTest is Test {
             AGGREGATOR_EXEC_ADAPTER_STORAGE_SLOT,
             _erc7201Slot("lattice.storage.AggregatorExecAdapter"),
             "AggregatorExecAdapter storage slot mismatch"
+        );
+    }
+
+    function test_GovernedVaultStorageSlot() public pure {
+        assertEq(
+            GOVERNED_VAULT_STORAGE_SLOT,
+            _erc7201Slot("lattice.storage.GovernedVault"),
+            "GovernedVault storage slot mismatch"
         );
     }
 
@@ -1557,6 +1570,14 @@ contract StorageSlotVerificationTest is Test {
         );
     }
 
+    function test_Erc165MapIGovernedVaultSlot() public pure {
+        assertEq(
+            ERC165_MAP_IGOVERNEDVAULT_SLOT,
+            _erc165MapSlot(type(IGovernedVault).interfaceId, ERC165_STORAGE_LOCATION),
+            "ERC165 IGovernedVault map slot mismatch"
+        );
+    }
+
     function test_Erc165MapIAcrossBridgeAdapterSlot() public pure {
         assertEq(
             ERC165_MAP_IACROSSBRIDGEADAPTER_SLOT,
@@ -1946,7 +1967,7 @@ contract StorageSlotVerificationTest is Test {
     // ======================== Slot inventories ========================
 
     function _allStorageSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](87);
+        slots = new bytes32[](88);
         uint256 i;
         // access
         slots[i++] = ACCESS_CONTROL_STORAGE_SLOT;
@@ -2016,6 +2037,7 @@ contract StorageSlotVerificationTest is Test {
         slots[i++] = ACROSS_BRIDGE_ADAPTER_STORAGE_SLOT;
         slots[i++] = STARKNET_GATEWAY_ADAPTER_STORAGE_SLOT;
         slots[i++] = CHAIN_REGISTRY_STORAGE_SLOT;
+        slots[i++] = GOVERNED_VAULT_STORAGE_SLOT;
         slots[i++] = HYPERLANE_GATEWAY_ADAPTER_STORAGE_SLOT;
         slots[i++] = STARGATE_BRIDGE_ADAPTER_STORAGE_SLOT;
         slots[i++] = HYPERBRIDGE_GATEWAY_ADAPTER_STORAGE_SLOT;
@@ -2051,7 +2073,7 @@ contract StorageSlotVerificationTest is Test {
     }
 
     function _allErc165MapSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](88);
+        slots = new bytes32[](89);
         uint256 i;
         // access
         slots[i++] = ERC165_MAP_IACCESSCONTROL_SLOT;
@@ -2130,6 +2152,7 @@ contract StorageSlotVerificationTest is Test {
         slots[i++] = ERC165_MAP_IACROSSBRIDGEADAPTER_SLOT;
         slots[i++] = ERC165_MAP_ISTARKNETGATEWAYADAPTER_SLOT;
         slots[i++] = ERC165_MAP_ICHAINREGISTRY_SLOT;
+        slots[i++] = ERC165_MAP_IGOVERNEDVAULT_SLOT;
         // Hyperlane reuses the shared IERC7786GatewaySource slot (counted once above) and only adds its
         // adapter-specific IHyperlaneGatewayAdapter slot.
         slots[i++] = ERC165_MAP_IHYPERLANEGATEWAYADAPTER_SLOT;
