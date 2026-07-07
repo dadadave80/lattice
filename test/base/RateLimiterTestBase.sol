@@ -4,7 +4,7 @@ pragma solidity ^0.8.30;
 import {GetSelectors} from "@diamond-test/helpers/GetSelectors.sol";
 import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
-import {DeployRateLimiter} from "@lattice-script/base/DeployRateLimiter.s.sol";
+import {DeployRateLimiter} from "@lattice-script/base/security/DeployRateLimiter.s.sol";
 import {RateLimiter} from "@lattice/security/RateLimiter.sol";
 import {Test} from "forge-std/Test.sol";
 

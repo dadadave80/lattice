@@ -5,7 +5,7 @@ import {Diamond} from "@diamond/Diamond.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {MultiInit} from "@diamond/initializers/MultiInit.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
-import {DeployERC20Capped} from "@lattice-script/base/DeployERC20Capped.s.sol";
+import {DeployERC20Capped} from "@lattice-script/base/tokens/DeployERC20Capped.s.sol";
 import {ERC20TestBase} from "@lattice-test/base/ERC20TestBase.sol";
 import {TokenTestFacet} from "@lattice-test/helpers/TokenTestFacet.sol";
 import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";

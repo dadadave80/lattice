@@ -3,7 +3,7 @@ pragma solidity ^0.8.30;
 
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
-import {DeployERC20} from "@lattice-script/base/DeployERC20.s.sol";
+import {DeployERC20} from "@lattice-script/base/tokens/DeployERC20.s.sol";
 import {Pausable} from "@lattice/security/Pausable.sol";
 import {ERC20Pausable} from "@lattice/tokens/ERC20/ERC20Pausable.sol";
 import {ERC20PausableInit} from "@lattice/tokens/ERC20/ERC20PausableInit.sol";

@@ -4,7 +4,7 @@ pragma solidity ^0.8.30;
 import {GetSelectors} from "@diamond-test/helpers/GetSelectors.sol";
 import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
-import {DeployERC721} from "@lattice-script/base/DeployERC721.s.sol";
+import {DeployERC721} from "@lattice-script/base/tokens/DeployERC721.s.sol";
 import {ERC721TestFacet} from "@lattice-test/helpers/ERC721TestFacet.sol";
 import {ERC721} from "@lattice/tokens/ERC721/ERC721.sol";
 

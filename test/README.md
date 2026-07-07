@@ -6,7 +6,7 @@ Structured per the **Testing** and **Deployment** sections of the Cyfrin Solidit
 
 | Path | Contents |
 | --- | --- |
-| `test/Base.t.sol` | Shared base test — `setUp` composes the system through the **same deploy code production uses** (`script/base/DeployAccount`). New system-level tests extend this instead of re-assembling facet cuts. |
+| `test/Base.t.sol` | Shared base test — `setUp` composes the system through the **same deploy code production uses** (`script/base/accounts/DeployAccount`). New system-level tests extend this instead of re-assembling facet cuts. |
 | `test/unit/` | Per-facet / per-library unit tests. |
 | `test/integration/` | Multi-facet / cross-module flows. |
 | `test/invariant/` | Stateful (invariant) fuzz tests for core protocol properties. |
@@ -35,9 +35,14 @@ Structured per the **Testing** and **Deployment** sections of the Cyfrin Solidit
 
 Production deploy logic lives in `script/`:
 
-- `script/base/` — canonical facet-set compositions (`DeployAccount`, `DeployAccount6900`), the single
-  source of truth reused by both production deploys and test setup (mirrors diamond-lib's
-  `DeployDiamond`/`DeployedDiamondState` split).
+- `script/base/` — canonical facet-set compositions, the single source of truth reused by both production
+  deploys and test setup (mirrors diamond-lib's `DeployDiamond`/`DeployedDiamondState` split). `BaseDeploy.s.sol`
+  is the shared primitive (`_cut`/`_cutExcept`/`_assemble`/`_assembleMulti`); the `Deploy*` recipes are
+  organized into per-domain subfolders **mirroring `src/`** — `script/base/{access,accounts,amm,crosschain,defi,ens,governance,oracles,privacy,security,tokens,utils}/`.
+  A recipe is a collection of facets (modified or as-is) composed to work together; e.g.
+  `script/base/defi/DeployGovernedVault.s.sol` cuts `VaultCore` + `ERC20Votes` + `Governor` +
+  `TimelockController` + a thin reconciliation facet.
+- `script/config/` — one-action post-deploy configuration scripts (e.g. `EnableAurora`, `EnableRelay`).
 - `script/deploy/`, `script/governance/`, `script/lib/`, `script/upgrades/` (storage-layout guard).
 
 Tests must build the system through this shared code (via `Base.t.sol` or the blueprint helpers), never a

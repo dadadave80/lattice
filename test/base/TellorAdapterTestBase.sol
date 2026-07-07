@@ -4,7 +4,7 @@ pragma solidity ^0.8.30;
 import {GetSelectors} from "@diamond-test/helpers/GetSelectors.sol";
 import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
-import {DeployTellorAdapter} from "@lattice-script/base/DeployTellorAdapter.s.sol";
+import {DeployTellorAdapter} from "@lattice-script/base/oracles/DeployTellorAdapter.s.sol";
 import {TellorAdapter} from "@lattice/oracles/TellorAdapter.sol";
 import {Test} from "forge-std/Test.sol";
 

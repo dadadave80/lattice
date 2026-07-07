@@ -4,11 +4,11 @@ pragma solidity ^0.8.30;
 import {GetSelectors} from "@diamond-test/helpers/GetSelectors.sol";
 import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
-import {DeployERC20} from "@lattice-script/base/DeployERC20.s.sol";
-import {DeployVaultCore} from "@lattice-script/base/DeployVaultCore.s.sol";
+import {DeployVaultCore} from "@lattice-script/base/defi/DeployVaultCore.s.sol";
+import {DeployERC20} from "@lattice-script/base/tokens/DeployERC20.s.sol";
 import {IMintableToken} from "@lattice-test/helpers/IMintableToken.sol";
 import {TokenTestFacet} from "@lattice-test/helpers/TokenTestFacet.sol";
-import {VaultCore} from "@lattice/defi/VaultCore.sol";
+import {IVaultCore} from "@lattice/interfaces/defi/IVaultCore.sol";
 
 /// @title VaultCoreTestBase
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
@@ -27,7 +27,7 @@ abstract contract VaultCoreTestBase is GetSelectors {
     address internal underlyingAddr; // the underlying-asset ERC-20 diamond
     IMintableToken internal underlying; // typed handle on the underlying (mint/approve/transfer/balanceOf)
     address internal vaultAddr; // the assembled VaultCore diamond
-    VaultCore internal vault; // typed handle on the vault (ERC-20 + ERC-4626 + strategy calls dispatch through it)
+    IVaultCore internal vault; // typed handle on the vault (ERC-20 + ERC-4626 + strategy calls dispatch through it)
 
     address internal admin = address(0xAD);
 
@@ -72,6 +72,6 @@ abstract contract VaultCoreTestBase is GetSelectors {
         underlying = IMintableToken(underlyingAddr);
 
         vaultAddr = _deployVault(underlyingAddr, "Vault Share", "vSHARE", admin);
-        vault = VaultCore(vaultAddr);
+        vault = IVaultCore(vaultAddr);
     }
 }

@@ -4,12 +4,11 @@ pragma solidity ^0.8.30;
 import {GovernedVaultTestBase} from "@lattice-test/base/GovernedVaultTestBase.sol";
 import {GovernedVault} from "@lattice/defi/GovernedVault.sol";
 import {GovernedVaultParams} from "@lattice/defi/GovernedVaultInit.sol";
-import {VaultCore} from "@lattice/defi/VaultCore.sol";
 import {Governor} from "@lattice/governance/Governor.sol";
 import {IVaultCore} from "@lattice/interfaces/defi/IVaultCore.sol";
 import {IGovernor} from "@lattice/interfaces/governance/IGovernor.sol";
+import {IVotes} from "@lattice/interfaces/governance/IVotes.sol";
 import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
-import {ERC20Votes} from "@lattice/tokens/ERC20/ERC20Votes.sol";
 
 /// @notice Minimal mintable ERC-20 used as the vault's underlying asset.
 contract MockAsset is IERC20 {
@@ -63,8 +62,8 @@ contract MockAsset is IERC20 {
 contract GovernedVaultTest is GovernedVaultTestBase {
     GovernedVault internal vault; // deposit/withdraw/name/clock/transfer/ballotNonce/castVoteBySig
     Governor internal gov; // propose/castVote/queue/execute/token/timelock
-    ERC20Votes internal votes; // delegate/getVotes/getPastVotes
-    VaultCore internal vc; // balanceOf/strategyManager/totalAssets
+    IVotes internal votes; // delegate/getVotes/getPastVotes
+    IVaultCore internal vc; // balanceOf/strategyManager/totalAssets
     MockAsset internal asset;
 
     address internal alice = address(0xA11CE);
@@ -92,8 +91,8 @@ contract GovernedVaultTest is GovernedVaultTestBase {
         address d = _deployGovernedVault(address(asset), _params());
         vault = GovernedVault(d);
         gov = Governor(d);
-        votes = ERC20Votes(d);
-        vc = VaultCore(d);
+        votes = IVotes(d);
+        vc = IVaultCore(d);
 
         // Alice deposits the entire supply and activates her voting power by self-delegating.
         asset.mint(alice, DEPOSIT);

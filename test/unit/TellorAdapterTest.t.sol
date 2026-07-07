@@ -4,7 +4,7 @@ pragma solidity ^0.8.30;
 import {Diamond} from "@diamond/Diamond.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
-import {DeployTellorAdapter} from "@lattice-script/base/DeployTellorAdapter.s.sol";
+import {DeployTellorAdapter} from "@lattice-script/base/oracles/DeployTellorAdapter.s.sol";
 import {TellorAdapterTestBase} from "@lattice-test/base/TellorAdapterTestBase.sol";
 import {ITellor} from "@lattice/interfaces/external/ITellor.sol";
 import {ITellorAdapter} from "@lattice/interfaces/oracles/ITellorAdapter.sol";

@@ -4,7 +4,7 @@ pragma solidity ^0.8.30;
 import {GetSelectors} from "@diamond-test/helpers/GetSelectors.sol";
 import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
-import {DeployCrosschainTimelockHandler} from "@lattice-script/base/DeployCrosschainTimelockHandler.s.sol";
+import {DeployCrosschainTimelockHandler} from "@lattice-script/base/crosschain/DeployCrosschainTimelockHandler.s.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @title CrosschainTimelockHandlerTestBase

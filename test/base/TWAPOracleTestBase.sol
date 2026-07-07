@@ -4,7 +4,7 @@ pragma solidity ^0.8.30;
 import {GetSelectors} from "@diamond-test/helpers/GetSelectors.sol";
 import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
-import {DeployTWAPOracle} from "@lattice-script/base/DeployTWAPOracle.s.sol";
+import {DeployTWAPOracle} from "@lattice-script/base/oracles/DeployTWAPOracle.s.sol";
 import {TWAPOracle} from "@lattice/oracles/TWAPOracle.sol";
 import {Test} from "forge-std/Test.sol";
 

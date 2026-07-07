@@ -1,30 +1,33 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
-import {IERC4626} from "@lattice/interfaces/tokens/IERC4626.sol";
-import {ERC20} from "@lattice/tokens/ERC20/ERC20.sol";
 import {ERC4626Lib} from "@lattice/tokens/ERC4626/libraries/ERC4626Lib.sol";
 
 /// @title ERC4626
 /// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/extensions/ERC4626.sol)
 /// @notice Stateless Diamond facet for the ERC-4626 Tokenized Vault Standard.
-/// @dev All logic lives in ERC4626Lib. This contract is a pure delegator.
-///      Inherits ERC20 (the vault's share token) and implements IERC4626.
+/// @dev All logic lives in ERC4626Lib. This contract is a pure delegator. It owns ONLY the vault surface
+///      (`asset`/`totalAssets`/convert*/preview*/max*/deposit/mint/withdraw/redeem) plus the `decimals()`
+///      override (the share offset), which REPLACES the base {ERC20} variant. It does NOT inherit the {ERC20}
+///      facet — doing so would re-export the ERC-20 share selectors and collide with the standalone {ERC20}
+///      facet in a Diamond (and `is IERC4626` would drag in the whole IERC20 surface, forcing a re-export).
+///      The ERC-20 share surface comes from a separately-cut {ERC20} facet; {DeployERC4626} composes both over
+///      one shared storage layout. The assembled diamond IS-A ERC-4626 (IERC4626), enforced by the recipe, not
+///      by facet-level inheritance.
 ///
 ///      Callers must initialize the following modules in their initializer:
 ///        - ERC20Lib.__ERC20_init(name, symbol)
 ///        - ERC4626Lib.__ERC4626_init(asset, decimalsOffset)
 /// @custom:lattice-version 0.1.0
 /// @custom:lattice-source OpenZeppelin v5.1.0
-contract ERC4626 is ERC20, IERC4626 {
+contract ERC4626 {
     //*//////////////////////////////////////////////////////////////////////////
-    //                           ERC-20 OVERRIDES
+    //                           ERC-20 OVERRIDE
     //////////////////////////////////////////////////////////////////////////*//
 
     /// @notice Returns the vault's decimals: underlying asset decimals + offset.
-    /// @dev Overrides ERC20's default of 18.
-    function decimals() public view virtual override(ERC20, IERC20) returns (uint8) {
+    /// @dev Replaces the base {ERC20} default of 18.
+    function decimals() public view virtual returns (uint8) {
         return ERC4626Lib.decimals();
     }
 
@@ -32,62 +35,62 @@ contract ERC4626 is ERC20, IERC4626 {
     //                          IERC4626 — VIEW FUNCTIONS
     //////////////////////////////////////////////////////////////////////////*//
 
-    /// @inheritdoc IERC4626
+    /// @notice Returns the address of the underlying ERC-20 asset the vault holds.
     function asset() public view virtual returns (address) {
         return ERC4626Lib.asset();
     }
 
-    /// @inheritdoc IERC4626
+    /// @notice Returns the total amount of the underlying asset managed by the vault.
     function totalAssets() public view virtual returns (uint256) {
         return ERC4626Lib.totalAssets();
     }
 
-    /// @inheritdoc IERC4626
+    /// @notice Converts `assets` of the underlying to the equivalent amount of vault shares.
     function convertToShares(uint256 assets) public view virtual returns (uint256) {
         return ERC4626Lib.convertToShares(assets);
     }
 
-    /// @inheritdoc IERC4626
+    /// @notice Converts `shares` of the vault to the equivalent amount of underlying assets.
     function convertToAssets(uint256 shares) public view virtual returns (uint256) {
         return ERC4626Lib.convertToAssets(shares);
     }
 
-    /// @inheritdoc IERC4626
+    /// @notice Returns the maximum assets that can be deposited for `receiver`.
     function maxDeposit(address receiver) public view virtual returns (uint256) {
         return ERC4626Lib.maxDeposit(receiver);
     }
 
-    /// @inheritdoc IERC4626
+    /// @notice Returns the maximum shares that can be minted for `receiver`.
     function maxMint(address receiver) public view virtual returns (uint256) {
         return ERC4626Lib.maxMint(receiver);
     }
 
-    /// @inheritdoc IERC4626
+    /// @notice Returns the maximum assets that can be withdrawn by `owner`.
     function maxWithdraw(address owner) public view virtual returns (uint256) {
         return ERC4626Lib.maxWithdraw(owner);
     }
 
-    /// @inheritdoc IERC4626
+    /// @notice Returns the maximum shares that can be redeemed by `owner`.
     function maxRedeem(address owner) public view virtual returns (uint256) {
         return ERC4626Lib.maxRedeem(owner);
     }
 
-    /// @inheritdoc IERC4626
+    /// @notice Simulates the shares minted for a deposit of `assets` at the current block.
     function previewDeposit(uint256 assets) public view virtual returns (uint256) {
         return ERC4626Lib.previewDeposit(assets);
     }
 
-    /// @inheritdoc IERC4626
+    /// @notice Simulates the assets required to mint `shares` at the current block.
     function previewMint(uint256 shares) public view virtual returns (uint256) {
         return ERC4626Lib.previewMint(shares);
     }
 
-    /// @inheritdoc IERC4626
+    /// @notice Simulates the shares burned for a withdrawal of `assets` at the current block.
     function previewWithdraw(uint256 assets) public view virtual returns (uint256) {
         return ERC4626Lib.previewWithdraw(assets);
     }
 
-    /// @inheritdoc IERC4626
+    /// @notice Simulates the assets returned for redeeming `shares` at the current block.
     function previewRedeem(uint256 shares) public view virtual returns (uint256) {
         return ERC4626Lib.previewRedeem(shares);
     }
@@ -96,22 +99,22 @@ contract ERC4626 is ERC20, IERC4626 {
     //                     IERC4626 — STATE-CHANGING FUNCTIONS
     //////////////////////////////////////////////////////////////////////////*//
 
-    /// @inheritdoc IERC4626
+    /// @notice Deposits `assets` of the underlying and mints vault shares to `receiver`.
     function deposit(uint256 assets, address receiver) public virtual returns (uint256) {
         return ERC4626Lib.deposit(assets, receiver);
     }
 
-    /// @inheritdoc IERC4626
+    /// @notice Mints exactly `shares` to `receiver`, pulling the required underlying assets.
     function mint(uint256 shares, address receiver) public virtual returns (uint256) {
         return ERC4626Lib.mint(shares, receiver);
     }
 
-    /// @inheritdoc IERC4626
+    /// @notice Withdraws exactly `assets` to `receiver`, burning `owner`'s shares.
     function withdraw(uint256 assets, address receiver, address owner) public virtual returns (uint256) {
         return ERC4626Lib.withdraw(assets, receiver, owner);
     }
 
-    /// @inheritdoc IERC4626
+    /// @notice Redeems exactly `shares` from `owner`, sending the underlying assets to `receiver`.
     function redeem(uint256 shares, address receiver, address owner) public virtual returns (uint256) {
         return ERC4626Lib.redeem(shares, receiver, owner);
     }
