@@ -6,6 +6,7 @@ import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {GovernorStandalone} from "@lattice/governance/GovernorStandalone.sol";
 import {TimelockControllerStandalone} from "@lattice/governance/TimelockControllerStandalone.sol";
+import {Votes} from "@lattice/governance/Votes.sol";
 import {BALLOT_TYPEHASH, GovernorLib} from "@lattice/governance/libraries/GovernorLib.sol";
 import {TimelockControllerLib} from "@lattice/governance/libraries/TimelockControllerLib.sol";
 import {VotesLib} from "@lattice/governance/libraries/VotesLib.sol";
@@ -25,14 +26,27 @@ import {Vm} from "forge-std/Vm.sol";
 //                             MOCK CONTRACTS
 //////////////////////////////////////////////////////////////////////////*//
 
-/// @notice Mock ERC20Votes token used in Governor tests.
-contract MockERC20VotesContract is ERC20, ERC20Votes {
+/// @notice Mock ERC20Votes token used in Governor tests. Flattens the composable {ERC20} share facet, the {Votes}
+///         voting-power facet, and the {ERC20Votes} extension into one mock; the checkpoint/balance-aware movers
+///         and delegation win the base clashes.
+contract MockERC20VotesContract is ERC20, Votes, ERC20Votes {
     function transfer(address to, uint256 value) public override(ERC20, ERC20Votes) returns (bool) {
         return ERC20Votes.transfer(to, value);
     }
 
     function transferFrom(address from, address to, uint256 value) public override(ERC20, ERC20Votes) returns (bool) {
         return ERC20Votes.transferFrom(from, to, value);
+    }
+
+    function delegate(address delegatee) public override(Votes, ERC20Votes) {
+        ERC20Votes.delegate(delegatee);
+    }
+
+    function delegateBySig(address delegatee, uint256 nonce, uint256 expiry, uint8 v, bytes32 r, bytes32 s)
+        public
+        override(Votes, ERC20Votes)
+    {
+        ERC20Votes.delegateBySig(delegatee, nonce, expiry, v, r, s);
     }
 
     function initialize(string memory name_, string memory symbol_, address admin) external {

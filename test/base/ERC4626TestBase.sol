@@ -8,7 +8,7 @@ import {DeployERC20} from "@lattice-script/base/tokens/DeployERC20.s.sol";
 import {DeployERC4626} from "@lattice-script/base/tokens/DeployERC4626.s.sol";
 import {IMintableToken} from "@lattice-test/helpers/IMintableToken.sol";
 import {TokenTestFacet} from "@lattice-test/helpers/TokenTestFacet.sol";
-import {ERC4626} from "@lattice/tokens/ERC4626/ERC4626.sol";
+import {IERC4626} from "@lattice/interfaces/tokens/IERC4626.sol";
 
 /// @title ERC4626TestBase
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
@@ -27,7 +27,7 @@ abstract contract ERC4626TestBase is GetSelectors {
     address internal underlyingAddr; // the underlying-asset ERC-20 diamond
     IMintableToken internal underlying; // typed handle on the underlying (mint/approve/transfer/balanceOf)
     address internal vaultAddr; // the assembled ERC-4626 vault diamond
-    ERC4626 internal vault; // typed handle on the vault (ERC-20 share calls + vault calls dispatch through it)
+    IERC4626 internal vault; // typed handle on the vault (ERC-20 share calls + vault calls dispatch through it)
 
     /// @notice Assembles a base ERC-20 diamond + the {TokenTestFacet} so it can be freely minted as a vault asset.
     /// @return token_ The deployed mintable ERC-20 diamond.
@@ -70,6 +70,6 @@ abstract contract ERC4626TestBase is GetSelectors {
         underlying = IMintableToken(underlyingAddr);
 
         vaultAddr = _deployVault(underlyingAddr, "Vault Token", "vVTK", 0);
-        vault = ERC4626(vaultAddr);
+        vault = IERC4626(vaultAddr);
     }
 }
