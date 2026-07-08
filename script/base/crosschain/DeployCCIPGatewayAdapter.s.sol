@@ -29,8 +29,8 @@ contract DeployCCIPGatewayAdapter is BaseDeploy {
     {
         cuts = new FacetCut[](3);
         cuts[0] = _cut(address(new ERC165Facet()), "ERC165Facet");
-        cuts[1] = _cut(address(new AccessControl()), "AccessControl");
-        cuts[2] = _cut(address(new CCIPGatewayAdapter()), "CCIPGatewayAdapter");
+        cuts[1] = _cut(address(new AccessControl()));
+        cuts[2] = _cut(address(new CCIPGatewayAdapter()));
         init = address(new CCIPGatewayAdapterInit());
         initCalldata = abi.encodeCall(CCIPGatewayAdapterInit.init, (admin, router, feeToken));
     }

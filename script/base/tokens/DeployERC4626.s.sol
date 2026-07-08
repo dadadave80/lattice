@@ -35,7 +35,7 @@ contract DeployERC4626 is BaseDeploy {
 
         cuts = new FacetCut[](4);
         cuts[0] = _cut(address(new ERC165Facet()), "ERC165Facet");
-        cuts[1] = _cut(address(new ERC20()), "ERC20");
+        cuts[1] = _cut(address(new ERC20()));
         cuts[2] = FacetCut({facetAddress: vaultFacet, action: FacetCutAction.Add, functionSelectors: _vaultSurface()});
         // `decimals()` already exists on the base ERC-20 facet — replace it with the share-offset variant.
         cuts[3] = FacetCut({facetAddress: vaultFacet, action: FacetCutAction.Replace, functionSelectors: _decimals()});

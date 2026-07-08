@@ -37,8 +37,8 @@ contract DeployERC7802 is BaseDeploy {
         for (uint256 i; i < base.length; ++i) {
             cuts[i] = base[i];
         }
-        cuts[base.length] = _cut(address(new AccessControl()), "AccessControl");
-        cuts[base.length + 1] = _cut(address(new ERC7802()), "ERC7802");
+        cuts[base.length] = _cut(address(new AccessControl()));
+        cuts[base.length + 1] = _cut(address(new ERC7802()));
 
         init = address(new ERC7802Init());
         initCalldata = abi.encodeCall(ERC7802Init.init, (admin, bridge, name_, symbol_));

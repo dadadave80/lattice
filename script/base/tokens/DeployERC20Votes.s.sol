@@ -56,12 +56,12 @@ contract DeployERC20Votes is BaseDeploy {
             cuts[i] = baseCuts[i];
         }
         // The ERC-5805 delegation + ERC-6372 clock surface comes from the standalone {Votes} facet.
-        cuts[baseCuts.length] = _cut(address(new Votes()), "Votes");
+        cuts[baseCuts.length] = _cut(address(new Votes()));
         cuts[baseCuts.length + 1] =
             FacetCut({facetAddress: votesFacet, action: FacetCutAction.Add, functionSelectors: addSelectors});
         cuts[baseCuts.length + 2] =
             FacetCut({facetAddress: votesFacet, action: FacetCutAction.Replace, functionSelectors: replaceSelectors});
-        cuts[baseCuts.length + 3] = _cut(address(new AccessControl()), "AccessControl");
+        cuts[baseCuts.length + 3] = _cut(address(new AccessControl()));
 
         inits = new address[](2);
         inits[0] = baseInit;

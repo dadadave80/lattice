@@ -24,8 +24,8 @@ contract DeployTWAPOracle is BaseDeploy {
     function buildCuts(address admin) public returns (FacetCut[] memory cuts, address init, bytes memory initCalldata) {
         cuts = new FacetCut[](3);
         cuts[0] = _cut(address(new ERC165Facet()), "ERC165Facet");
-        cuts[1] = _cut(address(new AccessControl()), "AccessControl");
-        cuts[2] = _cut(address(new TWAPOracle()), "TWAPOracle");
+        cuts[1] = _cut(address(new AccessControl()));
+        cuts[2] = _cut(address(new TWAPOracle()));
         init = address(new TWAPOracleInit());
         initCalldata = abi.encodeCall(TWAPOracleInit.init, (admin));
     }

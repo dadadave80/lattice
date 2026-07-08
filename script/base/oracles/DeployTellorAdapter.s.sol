@@ -28,8 +28,8 @@ contract DeployTellorAdapter is BaseDeploy {
     {
         cuts = new FacetCut[](3);
         cuts[0] = _cut(address(new ERC165Facet()), "ERC165Facet");
-        cuts[1] = _cut(address(new AccessControl()), "AccessControl");
-        cuts[2] = _cut(address(new TellorAdapter()), "TellorAdapter");
+        cuts[1] = _cut(address(new AccessControl()));
+        cuts[2] = _cut(address(new TellorAdapter()));
         init = address(new TellorAdapterInit());
         initCalldata = abi.encodeCall(TellorAdapterInit.init, (admin, tellor));
     }

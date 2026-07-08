@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {GetSelectors} from "@diamond-test/helpers/GetSelectors.sol";
 import {Diamond} from "@diamond/Diamond.sol";
 import {DiamondCutFacet} from "@diamond/facets/DiamondCutFacet.sol";
 import {DiamondLoupeFacet} from "@diamond/facets/DiamondLoupeFacet.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
-import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
+import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
+import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccountInit6900} from "@lattice/accounts/erc6900/AccountInit6900.sol";
 import {ERC6900AccountView} from "@lattice/accounts/erc6900/ERC6900AccountView.sol";
@@ -14,7 +14,6 @@ import {ERC6900Executor} from "@lattice/accounts/erc6900/ERC6900Executor.sol";
 import {ERC6900ModuleManager} from "@lattice/accounts/erc6900/ERC6900ModuleManager.sol";
 import {ERC6900Signature} from "@lattice/accounts/erc6900/ERC6900Signature.sol";
 import {ERC6900Validation} from "@lattice/accounts/erc6900/ERC6900Validation.sol";
-import {Script} from "forge-std/Script.sol";
 
 /// @title DeployAccount6900
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
@@ -23,7 +22,7 @@ import {Script} from "forge-std/Script.sol";
 ///         Diamond core (cut/loupe/erc165/access) plus the five 6900 facets (module manager, executor,
 ///         userOp validation, signature, account view) replace the ERC-7579 stack. Companion to
 ///         {DeployAccount}; see it for the broadcast-free {buildCuts} vs broadcasting {run} split.
-contract DeployAccount6900 is Script, GetSelectors {
+contract DeployAccount6900 is BaseDeploy {
     /// @notice Builds the canonical ERC-6900 account facet cuts + initializer (no broadcast, no proxy deploy).
     /// @param entryPoint_ The EntryPoint the account's {AccountInit6900} seeds.
     /// @return cuts The 9 facet cuts (Add) wiring a complete ERC-6900 account.
@@ -33,12 +32,12 @@ contract DeployAccount6900 is Script, GetSelectors {
         cuts[0] = _cut(address(new DiamondCutFacet()), "DiamondCutFacet");
         cuts[1] = _cut(address(new DiamondLoupeFacet()), "DiamondLoupeFacet");
         cuts[2] = _cut(address(new ERC165Facet()), "ERC165Facet");
-        cuts[3] = _cut(address(new AccessControl()), "AccessControl");
-        cuts[4] = _cut(address(new ERC6900ModuleManager()), "ERC6900ModuleManager");
-        cuts[5] = _cut(address(new ERC6900Executor()), "ERC6900Executor");
-        cuts[6] = _cut(address(new ERC6900Validation()), "ERC6900Validation");
-        cuts[7] = _cut(address(new ERC6900Signature()), "ERC6900Signature");
-        cuts[8] = _cut(address(new ERC6900AccountView()), "ERC6900AccountView");
+        cuts[3] = _cut(address(new AccessControl()));
+        cuts[4] = _cut(address(new ERC6900ModuleManager()));
+        cuts[5] = _cut(address(new ERC6900Executor()));
+        cuts[6] = _cut(address(new ERC6900Validation()));
+        cuts[7] = _cut(address(new ERC6900Signature()));
+        cuts[8] = _cut(address(new ERC6900AccountView()));
         init = new AccountInit6900(entryPoint_);
     }
 
@@ -53,9 +52,5 @@ contract DeployAccount6900 is Script, GetSelectors {
         diamond.initialize(cuts, address(init), abi.encodeCall(AccountInit6900.init, (owner)));
         vm.stopBroadcast();
         account = address(diamond);
-    }
-
-    function _cut(address facet, string memory name) private returns (FacetCut memory) {
-        return FacetCut({facetAddress: facet, action: FacetCutAction.Add, functionSelectors: _getSelectors(name)});
     }
 }

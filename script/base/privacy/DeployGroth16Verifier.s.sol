@@ -21,7 +21,7 @@ contract DeployGroth16Verifier is BaseDeploy {
     function buildCuts() public returns (FacetCut[] memory cuts, address init, bytes memory initCalldata) {
         cuts = new FacetCut[](2);
         cuts[0] = _cut(address(new ERC165Facet()), "ERC165Facet");
-        cuts[1] = _cut(address(new Groth16Verifier()), "Groth16Verifier");
+        cuts[1] = _cut(address(new Groth16Verifier()));
         init = address(new Groth16VerifierInit());
         initCalldata = abi.encodeCall(Groth16VerifierInit.init, ());
     }

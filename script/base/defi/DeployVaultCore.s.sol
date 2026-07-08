@@ -42,8 +42,8 @@ contract DeployVaultCore is BaseDeploy {
 
         cuts = new FacetCut[](7);
         cuts[0] = _cut(address(new ERC165Facet()), "ERC165Facet");
-        cuts[1] = _cut(address(new AccessControl()), "AccessControl");
-        cuts[2] = _cut(address(new ERC20()), "ERC20");
+        cuts[1] = _cut(address(new AccessControl()));
+        cuts[2] = _cut(address(new ERC20()));
         // ERC-4626 vault surface over the ERC-20 shares: ADD the vault views/mutators, REPLACE `decimals`.
         cuts[3] = FacetCut({facetAddress: vaultFacet, action: FacetCutAction.Add, functionSelectors: _vaultSurface()});
         cuts[4] = FacetCut({facetAddress: vaultFacet, action: FacetCutAction.Replace, functionSelectors: _decimals()});

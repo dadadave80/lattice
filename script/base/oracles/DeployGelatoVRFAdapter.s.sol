@@ -23,8 +23,8 @@ contract DeployGelatoVRFAdapter is BaseDeploy {
     function buildCuts(address admin) public returns (FacetCut[] memory cuts, address init, bytes memory initCalldata) {
         cuts = new FacetCut[](3);
         cuts[0] = _cut(address(new ERC165Facet()), "ERC165Facet");
-        cuts[1] = _cut(address(new AccessControl()), "AccessControl");
-        cuts[2] = _cut(address(new GelatoVRFAdapter()), "GelatoVRFAdapter");
+        cuts[1] = _cut(address(new AccessControl()));
+        cuts[2] = _cut(address(new GelatoVRFAdapter()));
         init = address(new GelatoVRFAdapterInit());
         initCalldata = abi.encodeCall(GelatoVRFAdapterInit.init, (admin));
     }

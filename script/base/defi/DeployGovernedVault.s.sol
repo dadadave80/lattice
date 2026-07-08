@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
-import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
+import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {GovernedVault} from "@lattice/defi/GovernedVault.sol";
@@ -46,15 +46,15 @@ contract DeployGovernedVault is BaseDeploy {
     {
         cuts = new FacetCut[](10);
         cuts[0] = _cut(address(new ERC165Facet()), "ERC165Facet");
-        cuts[1] = _cut(address(new AccessControl()), "AccessControl");
-        cuts[2] = _cut(address(new TimelockController()), "TimelockController");
-        cuts[3] = _cutExcept(address(new ERC20()), "ERC20", _erc20Exclusions());
-        cuts[4] = _cutExcept(address(new ERC4626()), "ERC4626", _erc4626Exclusions());
-        cuts[5] = _cutExcept(address(new VaultCore()), "VaultCore", _vaultExclusions());
-        cuts[6] = _cutExcept(address(new Votes()), "Votes", _votesExclusions());
-        cuts[7] = _cutExcept(address(new ERC20Votes()), "ERC20Votes", _erc20VotesExclusions());
-        cuts[8] = _cutExcept(address(new Governor()), "Governor", _governorExclusions());
-        cuts[9] = _cut(address(new GovernedVault()), "GovernedVault");
+        cuts[1] = _cut(address(new AccessControl()));
+        cuts[2] = _cut(address(new TimelockController()));
+        cuts[3] = _cutExcept(address(new ERC20()), _erc20Exclusions());
+        cuts[4] = _cutExcept(address(new ERC4626()), _erc4626Exclusions());
+        cuts[5] = _cutExcept(address(new VaultCore()), _vaultExclusions());
+        cuts[6] = _cutExcept(address(new Votes()), _votesExclusions());
+        cuts[7] = _cutExcept(address(new ERC20Votes()), _erc20VotesExclusions());
+        cuts[8] = _cutExcept(address(new Governor()), _governorExclusions());
+        cuts[9] = _cut(address(new GovernedVault()));
 
         init = address(new GovernedVaultInit());
         initCalldata = abi.encodeCall(GovernedVaultInit.init, (p));
@@ -71,31 +71,6 @@ contract DeployGovernedVault is BaseDeploy {
     //*//////////////////////////////////////////////////////////////////////////
     //                          SELECTOR EXCLUSION
     //////////////////////////////////////////////////////////////////////////*//
-
-    /// @notice An `Add` cut of `facet`'s selectors MINUS `excluded` — for facets whose reconciled selectors are
-    ///         owned by {GovernedVault} (or by a sibling facet) instead.
-    function _cutExcept(address facet, string memory name, bytes4[] memory excluded)
-        internal
-        returns (FacetCut memory)
-    {
-        bytes4[] memory all = _getSelectors(name);
-        bytes4[] memory kept = new bytes4[](all.length);
-        uint256 n;
-        for (uint256 i; i < all.length; ++i) {
-            if (!_contains(excluded, all[i])) kept[n++] = all[i];
-        }
-        assembly ("memory-safe") {
-            mstore(kept, n)
-        }
-        return FacetCut({facetAddress: facet, action: FacetCutAction.Add, functionSelectors: kept});
-    }
-
-    function _contains(bytes4[] memory set, bytes4 sel) private pure returns (bool) {
-        for (uint256 i; i < set.length; ++i) {
-            if (set[i] == sel) return true;
-        }
-        return false;
-    }
 
     /// @notice ERC-20 base clashes: the share `name`, the ERC4626 `decimals`, and the checkpoint-seam movers.
     function _erc20Exclusions() private pure returns (bytes4[] memory e) {

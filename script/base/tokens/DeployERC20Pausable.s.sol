@@ -33,9 +33,9 @@ contract DeployERC20Pausable is BaseDeploy {
             cuts[i] = baseCuts[i];
         }
         // Additive pause/unpause/paused control.
-        cuts[baseCuts.length] = _cut(address(new Pausable()), "Pausable");
+        cuts[baseCuts.length] = _cut(address(new Pausable()));
         // Override the base transfer/transferFrom with pause-gated variants.
-        cuts[baseCuts.length + 1] = _replace(address(new ERC20Pausable()), "ERC20Pausable");
+        cuts[baseCuts.length + 1] = _replace(address(new ERC20Pausable()));
 
         inits = new address[](2);
         inits[0] = baseInit;

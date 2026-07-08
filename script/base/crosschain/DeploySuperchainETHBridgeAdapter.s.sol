@@ -22,7 +22,7 @@ contract DeploySuperchainETHBridgeAdapter is BaseDeploy {
     function buildCuts() public returns (FacetCut[] memory cuts, address init, bytes memory initCalldata) {
         cuts = new FacetCut[](2);
         cuts[0] = _cut(address(new ERC165Facet()), "ERC165Facet");
-        cuts[1] = _cut(address(new SuperchainETHBridgeAdapter()), "SuperchainETHBridgeAdapter");
+        cuts[1] = _cut(address(new SuperchainETHBridgeAdapter()));
         init = address(new SuperchainETHBridgeAdapterInit());
         initCalldata = abi.encodeCall(SuperchainETHBridgeAdapterInit.init, ());
     }

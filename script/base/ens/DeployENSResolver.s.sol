@@ -28,8 +28,8 @@ contract DeployENSResolver is BaseDeploy {
     {
         cuts = new FacetCut[](3);
         cuts[0] = _cut(address(new ERC165Facet()), "ERC165Facet");
-        cuts[1] = _cut(address(new AccessControl()), "AccessControl");
-        cuts[2] = _cut(address(new ENSResolver()), "ENSResolver");
+        cuts[1] = _cut(address(new AccessControl()));
+        cuts[2] = _cut(address(new ENSResolver()));
         init = address(new ENSResolverInit());
         initCalldata = abi.encodeCall(ENSResolverInit.init, (admin, registry));
     }

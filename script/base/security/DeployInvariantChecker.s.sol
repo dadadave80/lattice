@@ -24,8 +24,8 @@ contract DeployInvariantChecker is BaseDeploy {
     function buildCuts(address admin) public returns (FacetCut[] memory cuts, address init, bytes memory initCalldata) {
         cuts = new FacetCut[](3);
         cuts[0] = _cut(address(new ERC165Facet()), "ERC165Facet");
-        cuts[1] = _cut(address(new AccessControl()), "AccessControl");
-        cuts[2] = _cut(address(new InvariantChecker()), "InvariantChecker");
+        cuts[1] = _cut(address(new AccessControl()));
+        cuts[2] = _cut(address(new InvariantChecker()));
         init = address(new InvariantCheckerInit());
         initCalldata = abi.encodeCall(InvariantCheckerInit.init, (admin));
     }

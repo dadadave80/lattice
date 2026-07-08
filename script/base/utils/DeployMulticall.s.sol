@@ -25,8 +25,8 @@ contract DeployMulticall is BaseDeploy {
     function buildCuts(address admin) public returns (FacetCut[] memory cuts, address init, bytes memory initCalldata) {
         cuts = new FacetCut[](3);
         cuts[0] = _cut(address(new ERC165Facet()), "ERC165Facet");
-        cuts[1] = _cut(address(new AccessControl()), "AccessControl");
-        cuts[2] = _cut(address(new Multicall()), "Multicall");
+        cuts[1] = _cut(address(new AccessControl()));
+        cuts[2] = _cut(address(new Multicall()));
         init = address(new AccessControlInit());
         initCalldata = abi.encodeCall(AccessControlInit.init, (admin));
     }
