@@ -13,6 +13,10 @@ import {Test} from "forge-std/Test.sol";
 
 /// @dev Test harness: the signer facet + access facet, with an `initialize` that runs the module inits.
 contract MockAccountSigner is AccessControl, AccountSigner {
+    /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare
+    ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing.
+    function exportSelectors() external pure virtual override(AccessControl, AccountSigner) returns (bytes memory) {}
+
     function initialize(address admin_, address owner_) external {
         bytes32 s = InitializableLib.initializableSlot();
         InitializableLib.preInitializer(s);

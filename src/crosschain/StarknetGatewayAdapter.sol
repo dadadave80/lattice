@@ -93,4 +93,25 @@ contract StarknetGatewayAdapter is IStarknetGatewayAdapter {
     function starknetSelector(string calldata name) external pure virtual returns (uint256) {
         return StarknetGatewayAdapterLib.starknetSelector(name);
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect StarknetGatewayAdapter methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `cancel(bytes,uint256,bytes,uint256)` 0x71dcb2b0
+    ///      `consumeMessage(uint256,bytes)` 0x367bd9dd
+    ///      `expectedChainReference()` 0x743bb3f6
+    ///      `initiatorOf(bytes32)` 0x5b8cbad8
+    ///      `isTrustedL2Sender(uint256)` 0x3984b96c
+    ///      `l1HandlerSelector(uint256)` 0xc9aacd1d
+    ///      `registerL2Handler(uint256,uint256)` 0x3b70379a
+    ///      `sendMessage(bytes,bytes)` 0x48e6fa23
+    ///      `setTrustedL2Sender(uint256,bool)` 0x92126474
+    ///      `starknetCore()` 0x39e730ab
+    ///      `starknetSelector(string)` 0xeafe2ebf
+    ///      `startCancellation(bytes,uint256,bytes,uint256)` 0xd75ed921
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors =
+        hex"71dcb2b0367bd9dd743bb3f65b8cbad83984b96cc9aacd1d3b70379a48e6fa239212647439e730abeafe2ebfd75ed921";
+    }
 }

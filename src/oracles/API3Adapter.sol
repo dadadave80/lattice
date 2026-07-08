@@ -38,4 +38,17 @@ contract API3Adapter is IAPI3Adapter {
     function unregisterFeed(bytes32 key) external virtual override {
         API3AdapterLib.unregisterFeed(key);
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect API3Adapter methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `getFeed(bytes32)` 0x280aebcf
+    ///      `latestAnswer(bytes32)` 0x084d4783
+    ///      `read(bytes32)` 0x61da1439
+    ///      `registerFeed(bytes32,address,uint48)` 0x915d3063
+    ///      `unregisterFeed(bytes32)` 0x2a589908
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors = hex"280aebcf084d478361da1439915d30632a589908";
+    }
 }

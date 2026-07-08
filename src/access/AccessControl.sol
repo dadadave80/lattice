@@ -53,4 +53,17 @@ contract AccessControl {
     function renounceRole(bytes32 _role, address _callerConfirmation) public virtual {
         AccessControlLib.renounceRole(_role, _callerConfirmation);
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect AccessControl methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `getRoleAdmin(bytes32)` 0x248a9ca3
+    ///      `grantRole(bytes32,address)` 0x2f2ff15d
+    ///      `hasRole(bytes32,address)` 0x91d14854
+    ///      `renounceRole(bytes32,address)` 0x36568abe
+    ///      `revokeRole(bytes32,address)` 0xd547741f
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors = hex"248a9ca32f2ff15d91d1485436568abed547741f";
+    }
 }

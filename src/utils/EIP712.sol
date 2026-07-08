@@ -30,4 +30,13 @@ contract EIP712 {
     {
         return EIP712Lib.eip712Domain();
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect EIP712 methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `eip712Domain()` 0x84b0196e
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors = hex"84b0196e";
+    }
 }

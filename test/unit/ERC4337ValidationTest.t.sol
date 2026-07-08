@@ -17,6 +17,16 @@ import {Test} from "forge-std/Test.sol";
 
 /// @dev Harness: 4337 validation + signer + access + ERC-7579 module config (to install validators).
 contract MockERC4337 is AccessControl, AccountSigner, ERC4337Validation, ERC7579ModuleConfig {
+    /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare
+    ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing.
+    function exportSelectors()
+        external
+        pure
+        virtual
+        override(AccessControl, AccountSigner, ERC4337Validation)
+        returns (bytes memory)
+    {}
+
     function initialize(address admin_, address owner_, address entryPoint_) external {
         bytes32 s = InitializableLib.initializableSlot();
         InitializableLib.preInitializer(s);

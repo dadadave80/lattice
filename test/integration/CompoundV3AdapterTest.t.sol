@@ -184,6 +184,10 @@ contract CompoundV3AdapterTest is Test {
 /// @notice Flattens the composable {ERC20}, {ERC4626}, and {VaultCore} facets into one mock; the strategy-aware
 ///         {VaultCore} mutators win the clashes.
 contract CompoundVaultMock is ERC20, ERC4626, VaultCore {
+    /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare
+    ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing.
+    function exportSelectors() external pure virtual override(ERC20, ERC4626, VaultCore) returns (bytes memory) {}
+
     function initialize(address asset_, address admin_) external {
         bytes32 s = InitializableLib.initializableSlot();
         InitializableLib.preInitializer(s);

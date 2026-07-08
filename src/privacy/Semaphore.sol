@@ -80,4 +80,26 @@ contract Semaphore is ISemaphore {
     function verifier() external view virtual returns (address) {
         return SemaphoreLib.verifier();
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect Semaphore methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `addMember(uint256,uint256)` 0x1783efc3
+    ///      `addMembers(uint256,uint256[])` 0x04245371
+    ///      `createGroup()` 0x575185ed
+    ///      `createGroup(address)` 0x5c3f3b60
+    ///      `getMerkleTreeRoot(uint256)` 0xdabc4d51
+    ///      `getMerkleTreeSize(uint256)` 0x7ee35a0c
+    ///      `groupAdmin(uint256)` 0xbd883eb6
+    ///      `groupCount()` 0x8f23b326
+    ///      `hasMember(uint256,uint256)` 0x90509d44
+    ///      `setVerifier(address)` 0x5437988d
+    ///      `validateProof(uint256,(uint256,uint256,uint256,uint256,uint256,uint256[8]))` 0xd0d898dd
+    ///      `verifier()` 0x2b7ac3f3
+    ///      `verifyProof(uint256,(uint256,uint256,uint256,uint256,uint256,uint256[8]))` 0x456f4188
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors =
+            hex"1783efc304245371575185ed5c3f3b60dabc4d517ee35a0cbd883eb68f23b32690509d445437988dd0d898dd2b7ac3f3456f4188";
+    }
 }

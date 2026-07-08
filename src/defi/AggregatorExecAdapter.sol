@@ -37,4 +37,15 @@ contract AggregatorExecAdapter is IAggregatorExecAdapter {
     ) external payable virtual returns (bytes memory ret) {
         return AggregatorExecAdapterLib.execute(aggregator, inputToken, amount, outputToken, callData);
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect AggregatorExecAdapter methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `execute(address,address,uint256,address,bytes)` 0x8e845c30
+    ///      `isAllowedCall(address,bytes4)` 0x4cecd2a5
+    ///      `setAllowedCall(address,bytes4,bool)` 0x2b370b67
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors = hex"8e845c304cecd2a52b370b67";
+    }
 }

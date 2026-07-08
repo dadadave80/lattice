@@ -56,4 +56,19 @@ contract ERC1155 is IERC1155 {
     ) public virtual {
         ERC1155Lib.safeBatchTransferFrom(from, to, ids, values, data);
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect ERC1155 methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `balanceOf(address,uint256)` 0x00fdd58e
+    ///      `balanceOfBatch(address[],uint256[])` 0x4e1273f4
+    ///      `isApprovedForAll(address,address)` 0xe985e9c5
+    ///      `safeBatchTransferFrom(address,address,uint256[],uint256[],bytes)` 0x2eb2c2d6
+    ///      `safeTransferFrom(address,address,uint256,uint256,bytes)` 0xf242432a
+    ///      `setApprovalForAll(address,bool)` 0xa22cb465
+    ///      `uri(uint256)` 0x0e89341c
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors = hex"00fdd58e4e1273f4e985e9c52eb2c2d6f242432aa22cb4650e89341c";
+    }
 }

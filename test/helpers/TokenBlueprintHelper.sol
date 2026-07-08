@@ -56,10 +56,29 @@ abstract contract TokenBlueprintHelper is GetSelectors {
     }
 
     function _add(address facet, string memory name) private returns (FacetCut memory) {
-        return FacetCut({facetAddress: facet, action: FacetCutAction.Add, functionSelectors: _getSelectors(name)});
+        return
+            FacetCut({
+                facetAddress: facet, action: FacetCutAction.Add, functionSelectors: _strip8153(_getSelectors(name))
+            });
     }
 
     function _replace(address facet, string memory name) private returns (FacetCut memory) {
-        return FacetCut({facetAddress: facet, action: FacetCutAction.Replace, functionSelectors: _getSelectors(name)});
+        return FacetCut({
+            facetAddress: facet, action: FacetCutAction.Replace, functionSelectors: _strip8153(_getSelectors(name))
+        });
+    }
+
+    /// @dev Drops the ERC-8153 `exportSelectors()` selector (0x0ef22643): `forge inspect` lists it once a facet
+    ///      implements ERC-8153, and the diamond never cuts it — leaving it in would make the second facet's `Add`
+    ///      revert `CannotAddFunctionToDiamondThatAlreadyExists`.
+    function _strip8153(bytes4[] memory sels) private pure returns (bytes4[] memory kept) {
+        kept = new bytes4[](sels.length);
+        uint256 n;
+        for (uint256 i; i < sels.length; ++i) {
+            if (sels[i] != bytes4(0x0ef22643)) kept[n++] = sels[i];
+        }
+        assembly ("memory-safe") {
+            mstore(kept, n)
+        }
     }
 }

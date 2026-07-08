@@ -46,4 +46,18 @@ contract API3QRNGAdapter is IAPI3QRNGAdapter {
     function fulfillRandomNumber(bytes32 requestId, bytes calldata data) external virtual override {
         API3QRNGAdapterLib.fulfillRandomNumber(requestId, data);
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect API3QRNGAdapter methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `fulfillRandomNumber(bytes32,bytes)` 0xf43a72e3
+    ///      `getConfig()` 0xc3f909d4
+    ///      `getUserKey(bytes32)` 0xa1cfedf0
+    ///      `requestRandomNumber(bytes32)` 0xbd313d78
+    ///      `setConfig((address,address,bytes32,address))` 0xa601dfb6
+    ///      `setSelfSponsorship(bool)` 0x230bc58e
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors = hex"f43a72e3c3f909d4a1cfedf0bd313d78a601dfb6230bc58e";
+    }
 }

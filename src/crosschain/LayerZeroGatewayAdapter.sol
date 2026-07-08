@@ -104,4 +104,28 @@ contract LayerZeroGatewayAdapter is IERC7786GatewaySource, ILayerZeroReceiver, I
     function configureDestination(uint256 chainId, uint128 gas, uint128 msgValue) external virtual {
         LayerZeroGatewayAdapterLib.configureDestination(chainId, gas, msgValue);
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect LayerZeroGatewayAdapter methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `allowInitializePath((uint32,bytes32,uint64))` 0xff7bd03d
+    ///      `configureDestination(uint256,uint128,uint128)` 0xb3602f8d
+    ///      `endpoint()` 0x5e280f11
+    ///      `getChainId(uint32)` 0x94f79a53
+    ///      `getDestinationGas(uint256)` 0x73ad8334
+    ///      `getDestinationMsgValue(uint256)` 0x8c0b3902
+    ///      `getEid(uint256)` 0x193dc209
+    ///      `getPeer(uint256)` 0x67ebb6b2
+    ///      `lzReceive((uint32,bytes32,uint64),bytes32,bytes,address,bytes)` 0x13137d65
+    ///      `nextNonce(uint32,bytes32)` 0x7d25a05e
+    ///      `quoteFee(bytes,bytes)` 0x58d14c04
+    ///      `registerEid(uint256,uint32)` 0x5d6e12a2
+    ///      `registerPeer(uint256,bytes32)` 0x24ac554d
+    ///      `sendMessage(bytes,bytes,bytes[])` 0xcdfe7f5c
+    ///      `supportsAttribute(bytes4)` 0xdc680a0f
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors =
+            hex"ff7bd03db3602f8d5e280f1194f79a5373ad83348c0b3902193dc20967ebb6b213137d657d25a05e58d14c045d6e12a224ac554dcdfe7f5cdc680a0f";
+    }
 }

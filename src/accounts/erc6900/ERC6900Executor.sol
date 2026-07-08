@@ -40,4 +40,15 @@ contract ERC6900Executor {
     {
         return ERC6900ExecutorLib.executeWithRuntimeValidation(data, authorization);
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect ERC6900Executor methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `execute(address,uint256,bytes)` 0xb61d27f6
+    ///      `executeBatch((address,uint256,bytes)[])` 0x34fcd5be
+    ///      `executeWithRuntimeValidation(bytes,bytes)` 0xf2680c0f
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors = hex"b61d27f634fcd5bef2680c0f";
+    }
 }

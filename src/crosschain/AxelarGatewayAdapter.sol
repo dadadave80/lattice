@@ -71,4 +71,21 @@ contract AxelarGatewayAdapter is IERC7786GatewaySource, IAxelarGatewayAdapter {
     function registerRemoteGateway(bytes calldata remote) external virtual {
         AxelarGatewayAdapterLib.registerRemoteGateway(remote);
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect AxelarGatewayAdapter methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `execute(bytes32,string,string,bytes)` 0x49160658
+    ///      `gateway()` 0x116191b6
+    ///      `getAxelarChain(bytes)` 0x207b5e03
+    ///      `getErc7930Chain(string)` 0x5a4cb606
+    ///      `getRemoteGateway(bytes)` 0xef382213
+    ///      `registerChainEquivalence(bytes,string)` 0xbaf454d2
+    ///      `registerRemoteGateway(bytes)` 0xcb6782b2
+    ///      `sendMessage(bytes,bytes,bytes[])` 0xcdfe7f5c
+    ///      `supportsAttribute(bytes4)` 0xdc680a0f
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors = hex"49160658116191b6207b5e035a4cb606ef382213baf454d2cb6782b2cdfe7f5cdc680a0f";
+    }
 }

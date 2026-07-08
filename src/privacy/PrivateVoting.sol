@@ -48,4 +48,18 @@ contract PrivateVoting is IPrivateVoting {
     function hasVoted(uint256 pollId, uint256 nullifier) external view virtual returns (bool) {
         return PrivateVotingLib.hasVoted(pollId, nullifier);
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect PrivateVoting methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `createPoll(uint256,uint32,uint64,uint64)` 0x5fc5999b
+    ///      `getPoll(uint256)` 0x1a8cbcaa
+    ///      `getVotes(uint256,uint256)` 0x91f36633
+    ///      `hasVoted(uint256,uint256)` 0x64390ff1
+    ///      `pollCount()` 0x9207891d
+    ///      `vote(uint256,(uint256,uint256,uint256,uint256,uint256,uint256[8]))` 0xd5d4738f
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors = hex"5fc5999b1a8cbcaa91f3663364390ff19207891dd5d4738f";
+    }
 }

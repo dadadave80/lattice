@@ -20,4 +20,14 @@ contract ERC20Burnable is IERC20Burnable {
     function burnFrom(address account, uint256 value) public virtual {
         ERC20BurnableLib.burnFrom(account, value);
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect ERC20Burnable methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `burn(uint256)` 0x42966c68
+    ///      `burnFrom(address,uint256)` 0x79cc6790
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors = hex"42966c6879cc6790";
+    }
 }

@@ -11,6 +11,10 @@ import {Test} from "forge-std/Test.sol";
 
 /// @notice Minimal mock ERC721 for gas tests.
 contract GasERC721 is ERC721, AccessControl {
+    /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare
+    ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing.
+    function exportSelectors() external pure virtual override(ERC721, AccessControl) returns (bytes memory) {}
+
     function initialize(string memory name_, string memory symbol_, address admin) external {
         bytes32 s = InitializableLib.initializableSlot();
         InitializableLib.preInitializer(s);

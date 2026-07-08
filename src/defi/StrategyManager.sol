@@ -92,4 +92,25 @@ contract StrategyManager is IStrategyManager {
     function rebalance() external virtual override {
         StrategyManagerLib.rebalance();
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect StrategyManager methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `addStrategy(address,uint16)` 0xd11f519c
+    ///      `getStrategies()` 0xb49a60bb
+    ///      `getStrategyTarget(address)` 0x89355a28
+    ///      `harvest()` 0x4641257d
+    ///      `rebalance()` 0x7d7c2a1c
+    ///      `reentrancyGuardEntered()` 0xd2c725e0
+    ///      `removeStrategy(address)` 0x175188e8
+    ///      `setVault(address)` 0x6817031b
+    ///      `totalAllocated()` 0x45f7f249
+    ///      `totalTargetBps()` 0x5e02d602
+    ///      `updateStrategyTarget(address,uint16)` 0x8420bd02
+    ///      `vault()` 0xfbfa77cf
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors =
+        hex"d11f519cb49a60bb89355a284641257d7d7c2a1cd2c725e0175188e86817031b45f7f2495e02d6028420bd02fbfa77cf";
+    }
 }
