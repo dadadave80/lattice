@@ -39,4 +39,17 @@ contract ChronicleAdapter is IChronicleAdapter {
     function unregisterFeed(bytes32 key) external virtual override {
         ChronicleAdapterLib.unregisterFeed(key);
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect ChronicleAdapter methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `getFeed(bytes32)` 0x280aebcf
+    ///      `latestAnswer(bytes32)` 0x084d4783
+    ///      `readWithAge(bytes32)` 0xbccd5e4d
+    ///      `registerFeed(bytes32,address,uint48)` 0x915d3063
+    ///      `unregisterFeed(bytes32)` 0x2a589908
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors = hex"280aebcf084d4783bccd5e4d915d30632a589908";
+    }
 }

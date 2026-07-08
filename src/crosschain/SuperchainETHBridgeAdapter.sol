@@ -24,4 +24,14 @@ contract SuperchainETHBridgeAdapter is ISuperchainETHBridgeAdapter {
     function bridge() external pure virtual returns (address) {
         return SuperchainETHBridgeAdapterLib.bridge();
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect SuperchainETHBridgeAdapter methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `bridge()` 0xe78cea92
+    ///      `sendETH(address,uint256)` 0x64a197f3
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors = hex"e78cea9264a197f3";
+    }
 }

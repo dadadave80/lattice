@@ -43,6 +43,10 @@ contract MockSeaport {
 }
 
 contract Zone is AccessControl, MarketplaceZone {
+    /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare
+    ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing.
+    function exportSelectors() external pure virtual override(AccessControl, MarketplaceZone) returns (bytes memory) {}
+
     function initialize(address admin_) external {
         bytes32 s = InitializableLib.initializableSlot();
         InitializableLib.preInitializer(s);

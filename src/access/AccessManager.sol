@@ -152,4 +152,42 @@ contract AccessManager is IAccessManager {
     function cancel(address caller, address target, bytes calldata data) external virtual override returns (uint32) {
         return AccessManagerLib.cancel(caller, target, data);
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect AccessManager methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `ADMIN_ROLE()` 0x75b238fc
+    ///      `PUBLIC_ROLE()` 0x3ca7c02a
+    ///      `canCall(address,address,bytes4)` 0xb7009613
+    ///      `cancel(address,address,bytes)` 0xd6bb62c6
+    ///      `execute(address,bytes)` 0x1cff79cd
+    ///      `getAccess(uint64,address)` 0x3078f114
+    ///      `getNonce(bytes32)` 0x4136a33c
+    ///      `getRoleAdmin(uint64)` 0x530dd456
+    ///      `getRoleGrantDelay(uint64)` 0x12be8727
+    ///      `getRoleGuardian(uint64)` 0x0b0a93ba
+    ///      `getRoleMemberCount(uint64)` 0xfc8610d1
+    ///      `getRoleMembers(uint64)` 0xa5808e2f
+    ///      `getSchedule(bytes32)` 0x3adc277a
+    ///      `getTargetAdminDelay(address)` 0x4c1da1e2
+    ///      `getTargetFunctionRole(address,bytes4)` 0x6d5115bd
+    ///      `grantRole(uint64,address,uint32)` 0x25c471a0
+    ///      `hasRole(uint64,address)` 0xd1f856ee
+    ///      `hashOperation(address,address,bytes)` 0xabd9bd2a
+    ///      `isTargetClosed(address)` 0xa166aa89
+    ///      `labelRole(uint64,string)` 0x853551b8
+    ///      `renounceRole(uint64,address)` 0xfe0776f5
+    ///      `revokeRole(uint64,address)` 0xb7d2b162
+    ///      `schedule(address,bytes,uint48)` 0xf801a698
+    ///      `setGrantDelay(uint64,uint32)` 0xa64d95ce
+    ///      `setRoleAdmin(uint64,uint64)` 0x30cae187
+    ///      `setRoleGuardian(uint64,uint64)` 0x52962952
+    ///      `setTargetAdminDelay(address,uint32)` 0xd22b5989
+    ///      `setTargetClosed(address,bool)` 0x167bd395
+    ///      `setTargetFunctionRole(address,bytes4[],uint64)` 0x08d6122d
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors =
+            hex"75b238fc3ca7c02ab7009613d6bb62c61cff79cd3078f1144136a33c530dd45612be87270b0a93bafc8610d1a5808e2f3adc277a4c1da1e26d5115bd25c471a0d1f856eeabd9bd2aa166aa89853551b8fe0776f5b7d2b162f801a698a64d95ce30cae18752962952d22b5989167bd39508d6122d";
+    }
 }

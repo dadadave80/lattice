@@ -56,4 +56,19 @@ contract SafeHarborAdopter is ISafeHarborAdopter {
     function safeHarborAgreement() external view virtual returns (address) {
         return SafeHarborAdopterLib.safeHarborAgreement();
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect SafeHarborAdopter methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `adoptSafeHarbor(address)` 0x344fbd20
+    ///      `agreementFactory()` 0x4495ae68
+    ///      `createAndAdopt((string,(string,string)[],(string,(string,uint8)[],string)[],(uint256,uint256,bool,uint8,string,uint256),string),address,address,bytes32)` 0x99ce8f17
+    ///      `safeHarborAgreement()` 0x9bcc73cb
+    ///      `safeHarborRegistry()` 0x23dbb9f6
+    ///      `setAgreementFactory(address)` 0xb4e25f6f
+    ///      `setSafeHarborRegistry(address)` 0xcfdf871f
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors = hex"344fbd204495ae6899ce8f179bcc73cb23dbb9f6b4e25f6fcfdf871f";
+    }
 }

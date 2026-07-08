@@ -69,4 +69,19 @@ contract CrosschainLink is IERC7786Recipient, ICrosschainLink {
     {
         return CrosschainLinkLib.sendMessage(chain, payload, attributes);
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect CrosschainLink methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `getHandler(bytes4)` 0x6dd99bde
+    ///      `getLink(bytes)` 0x09b0b794
+    ///      `isProcessed(address,bytes32)` 0xffe32a6e
+    ///      `receiveMessage(bytes32,bytes,bytes)` 0x2432ef26
+    ///      `sendMessage(bytes,bytes,bytes[])` 0xcdfe7f5c
+    ///      `setHandler(bytes4,address)` 0x42b26650
+    ///      `setLink(address,bytes,bool)` 0xf54640d0
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors = hex"6dd99bde09b0b794ffe32a6e2432ef26cdfe7f5c42b26650f54640d0";
+    }
 }

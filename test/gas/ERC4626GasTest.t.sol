@@ -16,6 +16,10 @@ import {Test} from "forge-std/Test.sol";
 
 /// @notice Mintable ERC20Votes token used as the vault's underlying asset.
 contract GasERC20Votes is ERC20, ERC20Votes {
+    /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare
+    ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing.
+    function exportSelectors() external pure virtual override(ERC20, ERC20Votes) returns (bytes memory) {}
+
     function transfer(address to, uint256 value) public override(ERC20, ERC20Votes) returns (bool) {
         return ERC20Votes.transfer(to, value);
     }

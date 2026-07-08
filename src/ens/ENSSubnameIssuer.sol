@@ -37,4 +37,15 @@ contract ENSSubnameIssuer is IENSSubnameIssuer {
     function nameWrapper() external view virtual returns (address) {
         return ENSSubnameIssuerLib.nameWrapper();
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect ENSSubnameIssuer methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `issueSubname(bytes32,string,address,address,uint64,uint32,uint64)` 0xf15cd0d2
+    ///      `nameWrapper()` 0xa8e5fbc0
+    ///      `setNameWrapper(address)` 0x371412f1
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors = hex"f15cd0d2a8e5fbc0371412f1";
+    }
 }

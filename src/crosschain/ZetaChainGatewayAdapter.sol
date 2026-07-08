@@ -80,4 +80,22 @@ contract ZetaChainGatewayAdapter is IERC7786GatewaySource, Callable, IZetaChainG
     function setDefaultOnRevertGasLimit(uint256 onRevertGasLimit) external virtual {
         ZetaChainGatewayAdapterLib.setDefaultOnRevertGasLimit(onRevertGasLimit);
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect ZetaChainGatewayAdapter methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `defaultOnRevertGasLimit()` 0x6aff513e
+    ///      `gateway()` 0x116191b6
+    ///      `getChainIdForApp(address)` 0xbe7acd1a
+    ///      `getRemoteApp(uint256)` 0xb4a6414c
+    ///      `onCall((address),bytes)` 0x676cc054
+    ///      `registerRemote(uint256,address)` 0xb5efb8fd
+    ///      `sendMessage(bytes,bytes,bytes[])` 0xcdfe7f5c
+    ///      `setDefaultOnRevertGasLimit(uint256)` 0x80f9c692
+    ///      `setGateway(address)` 0x90646b4a
+    ///      `supportsAttribute(bytes4)` 0xdc680a0f
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors = hex"6aff513e116191b6be7acd1ab4a6414c676cc054b5efb8fdcdfe7f5c80f9c69290646b4adc680a0f";
+    }
 }

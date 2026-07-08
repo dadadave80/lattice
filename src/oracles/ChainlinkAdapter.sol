@@ -44,4 +44,17 @@ contract ChainlinkAdapter is IChainlinkAdapter {
     function unregisterFeed(bytes32 key) external virtual override {
         ChainlinkAdapterLib.unregisterFeed(key);
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect ChainlinkAdapter methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `getFeed(bytes32)` 0x280aebcf
+    ///      `latestAnswer(bytes32)` 0x084d4783
+    ///      `latestAnswerRaw(bytes32)` 0xad0ddbee
+    ///      `registerFeed(bytes32,address,uint48)` 0x915d3063
+    ///      `unregisterFeed(bytes32)` 0x2a589908
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors = hex"280aebcf084d4783ad0ddbee915d30632a589908";
+    }
 }

@@ -86,4 +86,25 @@ contract ERC7786OpenBridge is IERC7786GatewaySource, IERC7786Recipient, IERC7786
     function setMinDirectCoverage(uint8 minDirectCoverage_) external virtual {
         ERC7786OpenBridgeLib.setMinDirectCoverage(minDirectCoverage_);
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect ERC7786OpenBridge methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `addGateway(address)` 0x68bb3795
+    ///      `getGateways()` 0xd82778ce
+    ///      `getRemoteBridge(bytes)` 0xd0673410
+    ///      `getThreshold()` 0xe75235b8
+    ///      `minDirectCoverage()` 0xc62c2f15
+    ///      `receiveMessage(bytes32,bytes,bytes)` 0x2432ef26
+    ///      `registerRemoteBridge(bytes)` 0x7e1c8ae5
+    ///      `removeGateway(address)` 0x8a885e35
+    ///      `sendMessage(bytes,bytes,bytes[])` 0xcdfe7f5c
+    ///      `setMinDirectCoverage(uint8)` 0x10360b6b
+    ///      `setThreshold(uint8)` 0xe5a98603
+    ///      `supportsAttribute(bytes4)` 0xdc680a0f
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors =
+        hex"68bb3795d82778ced0673410e75235b8c62c2f152432ef267e1c8ae58a885e35cdfe7f5c10360b6be5a98603dc680a0f";
+    }
 }

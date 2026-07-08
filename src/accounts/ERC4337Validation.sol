@@ -34,4 +34,15 @@ contract ERC4337Validation is IAccount, IERC4337Validation {
     function setEntryPoint(address entryPoint_) external virtual {
         ERC4337ValidationLib.setEntryPoint(entryPoint_);
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect ERC4337Validation methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `entryPoint()` 0xb0d691fe
+    ///      `setEntryPoint(address)` 0x584465f2
+    ///      `validateUserOp((address,uint256,bytes,bytes,bytes32,uint256,bytes32,bytes,bytes),bytes32,uint256)` 0x19822f7c
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors = hex"b0d691fe584465f219822f7c";
+    }
 }

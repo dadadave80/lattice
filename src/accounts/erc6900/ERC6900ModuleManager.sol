@@ -55,4 +55,17 @@ contract ERC6900ModuleManager {
     function accountId() external view virtual returns (string memory) {
         return ERC6900ModuleManagerLib.accountId();
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect ERC6900ModuleManager methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `accountId()` 0x9cfd7cff
+    ///      `installExecution(address,((bytes4,bool,bool)[],(bytes4,uint32,bool,bool)[],bytes4[]),bytes)` 0x001a63e9
+    ///      `installValidation(bytes25,bytes4[],bytes,bytes[])` 0x1bbf564c
+    ///      `uninstallExecution(address,((bytes4,bool,bool)[],(bytes4,uint32,bool,bool)[],bytes4[]),bytes)` 0x93b1dc61
+    ///      `uninstallValidation(bytes24,bytes,bytes[])` 0xb6b1ccfe
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors = hex"9cfd7cff001a63e91bbf564c93b1dc61b6b1ccfe";
+    }
 }

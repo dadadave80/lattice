@@ -24,4 +24,13 @@ contract ERC20Capped is IERC20Capped {
         ERC20CappedLib._checkCap(ERC20Lib.totalSupply() + value);
         ERC20Lib._mint(to, value);
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect ERC20Capped methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `cap()` 0x355274ea
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors = hex"355274ea";
+    }
 }

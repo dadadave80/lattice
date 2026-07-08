@@ -17,6 +17,16 @@ import {TimelockControllerLib} from "@lattice/governance/libraries/TimelockContr
 /// @custom:lattice-version 0.1.0
 /// @custom:lattice-source OpenZeppelin v5.1.0
 contract TimelockControllerStandalone is TimelockController, AccessControl {
+    /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare
+    ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing.
+    function exportSelectors()
+        external
+        pure
+        virtual
+        override(TimelockController, AccessControl)
+        returns (bytes memory)
+    {}
+
     /// @param minDelay The initial minimum delay for operations.
     /// @param proposers The addresses to grant PROPOSER_ROLE + CANCELLER_ROLE.
     /// @param executors The addresses to grant EXECUTOR_ROLE.

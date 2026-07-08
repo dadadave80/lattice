@@ -63,6 +63,10 @@ contract AmmToken {
 
 /// @notice Mock combining ConstantProduct + AccessControl.
 contract MockAmmPool is ConstantProduct, AccessControl {
+    /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare
+    ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing.
+    function exportSelectors() external pure virtual override(ConstantProduct, AccessControl) returns (bytes memory) {}
+
     function initialize(address tokenA_, address tokenB_, address admin_) external {
         bytes32 s = InitializableLib.initializableSlot();
         InitializableLib.preInitializer(s);

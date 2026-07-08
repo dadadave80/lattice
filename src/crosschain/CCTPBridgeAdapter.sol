@@ -79,4 +79,23 @@ contract CCTPBridgeAdapter is ICCTPBridgeAdapter {
     {
         return CCTPBridgeAdapterLib.getDomainConfig(domain);
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect CCTPBridgeAdapter methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `configureDomain(uint32,uint256,uint32,bytes32)` 0x4736cc95
+    ///      `depositForBurn(uint256,bytes)` 0x3d8f1160
+    ///      `domainOwner(uint32)` 0x3f1f7a9f
+    ///      `getDomain(uint256)` 0x1a7a98e2
+    ///      `getDomainConfig(uint32)` 0xf7d38221
+    ///      `isChainRegistered(uint256)` 0xb9e06402
+    ///      `messageTransmitter()` 0x7b04c181
+    ///      `registerChainDomain(uint256,uint32)` 0xa3e6f535
+    ///      `relayMessage(bytes,bytes)` 0x29351b45
+    ///      `tokenMessenger()` 0x46117830
+    ///      `usdc()` 0x3e413bee
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors = hex"4736cc953d8f11603f1f7a9f1a7a98e2f7d38221b9e064027b04c181a3e6f53529351b45461178303e413bee";
+    }
 }

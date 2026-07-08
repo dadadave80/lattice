@@ -60,4 +60,19 @@ contract StargateBridgeAdapter is IStargateBridgeAdapter {
     function quoteSendFee(SendTokenParams calldata p) external view virtual returns (uint256 nativeFee) {
         return StargateBridgeAdapterLib.quoteSendFee(p);
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect StargateBridgeAdapter methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `poolOf(address)` 0x988b1fa7
+    ///      `quoteSendFee((bytes,address,uint256,uint256,uint256))` 0x248b67b0
+    ///      `registerPool(address,address)` 0x7286e5e5
+    ///      `registerStargateEid(uint256,uint32)` 0xb18dcea7
+    ///      `sendToken((bytes,address,uint256,uint256,uint256))` 0x396e0d4c
+    ///      `stargateChainIdOf(uint32)` 0x67a67974
+    ///      `stargateEidOf(uint256)` 0x385ce1dd
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors = hex"988b1fa7248b67b07286e5e5b18dcea7396e0d4c67a67974385ce1dd";
+    }
 }

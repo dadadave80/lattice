@@ -21,6 +21,10 @@ import {Test} from "forge-std/Test.sol";
 
 /// @notice Simple mintable ERC20Votes used as the vault's underlying asset.
 contract InvAsset is ERC20, ERC20Votes {
+    /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare
+    ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing.
+    function exportSelectors() external pure virtual override(ERC20, ERC20Votes) returns (bytes memory) {}
+
     function transfer(address to, uint256 value) public override(ERC20, ERC20Votes) returns (bool) {
         return ERC20Votes.transfer(to, value);
     }
@@ -53,6 +57,10 @@ contract InvAsset is ERC20, ERC20Votes {
 /// @notice ERC4626 vault for invariant testing. Flattens the composable {ERC20} share facet and the {ERC4626}
 ///         vault facet into one mock; `decimals` is disambiguated to the ERC-4626 share-offset variant.
 contract InvVault is ERC20, ERC4626 {
+    /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare
+    ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing.
+    function exportSelectors() external pure virtual override(ERC20, ERC4626) returns (bytes memory) {}
+
     function initialize(address asset_) external {
         bytes32 s = InitializableLib.initializableSlot();
         InitializableLib.preInitializer(s);

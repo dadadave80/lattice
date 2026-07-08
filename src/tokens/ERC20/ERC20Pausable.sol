@@ -26,4 +26,14 @@ contract ERC20Pausable {
         PausableLib.whenNotPaused();
         return ERC20Lib.transferFrom(from, to, value);
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect ERC20Pausable methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `transfer(address,uint256)` 0xa9059cbb
+    ///      `transferFrom(address,address,uint256)` 0x23b872dd
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors = hex"a9059cbb23b872dd";
+    }
 }

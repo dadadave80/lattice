@@ -88,4 +88,25 @@ contract WormholeGatewayAdapter is IERC7786GatewaySource, IWormholeReceiver, IWo
     function registerRemoteGateway(uint256 chainId, address remote) external virtual {
         WormholeGatewayAdapterLib.registerRemoteGateway(chainId, remote);
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect WormholeGatewayAdapter methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `getChainId(uint16)` 0x6986e77d
+    ///      `getRemoteGateway(uint256)` 0x752bcf06
+    ///      `getWormholeChain(uint256)` 0x674f6f4e
+    ///      `quoteRelay(bytes,uint256)` 0x29ff017c
+    ///      `receiveWormholeMessages(bytes,bytes[],bytes32,uint16,bytes32)` 0x529dca32
+    ///      `registerChainEquivalence(uint256,uint16)` 0x1d03ada8
+    ///      `registerRemoteGateway(uint256,address)` 0x997ce1f0
+    ///      `relayer()` 0x8406c079
+    ///      `requestRelay(bytes32,uint256,address)` 0xa4766700
+    ///      `sendMessage(bytes,bytes,bytes[])` 0xcdfe7f5c
+    ///      `supportsAttribute(bytes4)` 0xdc680a0f
+    ///      `wormholeChainId()` 0x793e64e3
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors =
+        hex"6986e77d752bcf06674f6f4e29ff017c529dca321d03ada8997ce1f08406c079a4766700cdfe7f5cdc680a0f793e64e3";
+    }
 }

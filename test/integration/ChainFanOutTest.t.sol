@@ -88,6 +88,8 @@ contract ChainFanOutTest is Test, GetSelectors {
         bytes4[] memory keep = new bytes4[](selectors.length);
         uint256 kept;
         for (uint256 i; i < selectors.length; ++i) {
+            // Never cut the ERC-8153 `exportSelectors()` selector (0x0ef22643) onto a diamond.
+            if (selectors[i] == bytes4(0x0ef22643)) continue;
             if (_seen[selectors[i]]) continue;
             _seen[selectors[i]] = true;
             keep[kept++] = selectors[i];

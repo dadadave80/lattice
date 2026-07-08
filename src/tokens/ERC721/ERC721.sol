@@ -70,4 +70,25 @@ contract ERC721 is IERC721 {
     function safeTransferFrom(address from, address to, uint256 tokenId, bytes calldata data) public virtual {
         ERC721Lib.safeTransferFrom(from, to, tokenId, data);
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect ERC721 methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `approve(address,uint256)` 0x095ea7b3
+    ///      `balanceOf(address)` 0x70a08231
+    ///      `getApproved(uint256)` 0x081812fc
+    ///      `isApprovedForAll(address,address)` 0xe985e9c5
+    ///      `name()` 0x06fdde03
+    ///      `ownerOf(uint256)` 0x6352211e
+    ///      `safeTransferFrom(address,address,uint256)` 0x42842e0e
+    ///      `safeTransferFrom(address,address,uint256,bytes)` 0xb88d4fde
+    ///      `setApprovalForAll(address,bool)` 0xa22cb465
+    ///      `symbol()` 0x95d89b41
+    ///      `tokenURI(uint256)` 0xc87b56dd
+    ///      `transferFrom(address,address,uint256)` 0x23b872dd
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors =
+        hex"095ea7b370a08231081812fce985e9c506fdde036352211e42842e0eb88d4fdea22cb46595d89b41c87b56dd23b872dd";
+    }
 }
