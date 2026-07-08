@@ -34,9 +34,9 @@ contract DeploySafeDiamondCut is BaseDeploy {
         cuts = new FacetCut[](5);
         cuts[0] = _cut(address(new ERC165Facet()), "ERC165Facet");
         cuts[1] = _cut(address(new DiamondLoupeFacet()), "DiamondLoupeFacet");
-        cuts[2] = _cut(address(new AccessControl()), "AccessControl");
-        cuts[3] = _cut(address(new EmergencyStop()), "EmergencyStop");
-        cuts[4] = _cut(address(new SafeDiamondCut()), "SafeDiamondCut");
+        cuts[2] = _cut(address(new AccessControl()));
+        cuts[3] = _cut(address(new EmergencyStop()));
+        cuts[4] = _cut(address(new SafeDiamondCut()));
         init = address(new SafeDiamondCutInit());
         initCalldata = abi.encodeCall(SafeDiamondCutInit.init, (admin, safe, minThreshold));
     }

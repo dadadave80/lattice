@@ -30,9 +30,8 @@ contract DeployL2ToL2CrossDomainMessengerGatewayAdapter is BaseDeploy {
     function buildCuts(address admin) public returns (FacetCut[] memory cuts, address init, bytes memory initCalldata) {
         cuts = new FacetCut[](3);
         cuts[0] = _cut(address(new ERC165Facet()), "ERC165Facet");
-        cuts[1] = _cut(address(new AccessControl()), "AccessControl");
-        cuts[2] =
-            _cut(address(new L2ToL2CrossDomainMessengerGatewayAdapter()), "L2ToL2CrossDomainMessengerGatewayAdapter");
+        cuts[1] = _cut(address(new AccessControl()));
+        cuts[2] = _cut(address(new L2ToL2CrossDomainMessengerGatewayAdapter()));
         init = address(new L2ToL2CrossDomainMessengerGatewayAdapterInit());
         initCalldata = abi.encodeCall(L2ToL2CrossDomainMessengerGatewayAdapterInit.init, (admin));
     }

@@ -28,8 +28,8 @@ contract DeployENSReverseClaimer is BaseDeploy {
     {
         cuts = new FacetCut[](3);
         cuts[0] = _cut(address(new ERC165Facet()), "ERC165Facet");
-        cuts[1] = _cut(address(new AccessControl()), "AccessControl");
-        cuts[2] = _cut(address(new ENSReverseClaimer()), "ENSReverseClaimer");
+        cuts[1] = _cut(address(new AccessControl()));
+        cuts[2] = _cut(address(new ENSReverseClaimer()));
         init = address(new ENSReverseClaimerInit());
         initCalldata = abi.encodeCall(ENSReverseClaimerInit.init, (admin, registrar));
     }

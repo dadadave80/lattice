@@ -21,7 +21,7 @@ contract DeployCommitReveal is BaseDeploy {
     function buildCuts() public returns (FacetCut[] memory cuts, address init, bytes memory initCalldata) {
         cuts = new FacetCut[](2);
         cuts[0] = _cut(address(new ERC165Facet()), "ERC165Facet");
-        cuts[1] = _cut(address(new CommitReveal()), "CommitReveal");
+        cuts[1] = _cut(address(new CommitReveal()));
         init = address(new CommitRevealInit());
         initCalldata = abi.encodeCall(CommitRevealInit.init, ());
     }

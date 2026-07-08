@@ -24,8 +24,8 @@ contract DeployStrategyManager is BaseDeploy {
     function buildCuts(address admin) public returns (FacetCut[] memory cuts, address init, bytes memory initCalldata) {
         cuts = new FacetCut[](3);
         cuts[0] = _cut(address(new ERC165Facet()), "ERC165Facet");
-        cuts[1] = _cut(address(new AccessControl()), "AccessControl");
-        cuts[2] = _cut(address(new StrategyManager()), "StrategyManager");
+        cuts[1] = _cut(address(new AccessControl()));
+        cuts[2] = _cut(address(new StrategyManager()));
         init = address(new StrategyManagerInit());
         initCalldata = abi.encodeCall(StrategyManagerInit.init, (admin));
     }

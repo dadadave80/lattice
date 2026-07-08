@@ -25,8 +25,8 @@ contract DeployERC7786OpenBridge is BaseDeploy {
     function buildCuts(address admin) public returns (FacetCut[] memory cuts, address init, bytes memory initCalldata) {
         cuts = new FacetCut[](3);
         cuts[0] = _cut(address(new ERC165Facet()), "ERC165Facet");
-        cuts[1] = _cut(address(new AccessControl()), "AccessControl");
-        cuts[2] = _cut(address(new ERC7786OpenBridge()), "ERC7786OpenBridge");
+        cuts[1] = _cut(address(new AccessControl()));
+        cuts[2] = _cut(address(new ERC7786OpenBridge()));
         init = address(new ERC7786OpenBridgeInit());
         initCalldata = abi.encodeCall(ERC7786OpenBridgeInit.init, (admin));
     }

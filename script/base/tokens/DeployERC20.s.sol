@@ -26,7 +26,7 @@ contract DeployERC20 is BaseDeploy {
     {
         cuts = new FacetCut[](2);
         cuts[0] = _cut(address(new ERC165Facet()), "ERC165Facet");
-        cuts[1] = _cut(address(new ERC20()), "ERC20");
+        cuts[1] = _cut(address(new ERC20()));
         init = address(new ERC20Init());
         initCalldata = abi.encodeCall(ERC20Init.init, (name_, symbol_));
     }
