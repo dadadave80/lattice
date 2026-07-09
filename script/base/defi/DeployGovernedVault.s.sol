@@ -44,6 +44,14 @@ contract DeployGovernedVault is BaseDeploy {
         public
         returns (FacetCut[] memory cuts, address init, bytes memory initCalldata)
     {
+        cuts = _buildBaseCuts();
+        init = address(new GovernedVaultInit());
+        initCalldata = abi.encodeCall(GovernedVaultInit.init, (p));
+    }
+
+    /// @dev The 10 base facet cuts alone — shared with recipes that EXTEND this one under a different
+    ///      initializer (they must not pay for a discarded {GovernedVaultInit} deployment).
+    function _buildBaseCuts() internal returns (FacetCut[] memory cuts) {
         cuts = new FacetCut[](10);
         cuts[0] = _cut(address(new ERC165Facet()), "ERC165Facet");
         cuts[1] = _cut(address(new AccessControl()));
@@ -55,9 +63,6 @@ contract DeployGovernedVault is BaseDeploy {
         cuts[7] = _cutExcept(address(new ERC20Votes()), _erc20VotesExclusions());
         cuts[8] = _cutExcept(address(new Governor()), _governorExclusions());
         cuts[9] = _cut(address(new GovernedVault()));
-
-        init = address(new GovernedVaultInit());
-        initCalldata = abi.encodeCall(GovernedVaultInit.init, (p));
     }
 
     /// @notice Deploys a self-governed vault diamond (broadcasting entrypoint for `forge script ... --broadcast`).
