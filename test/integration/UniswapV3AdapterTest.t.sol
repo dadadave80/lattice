@@ -6,8 +6,8 @@ import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {UniswapV3Adapter} from "@lattice/defi/UniswapV3Adapter.sol";
 import {UniswapV3AdapterLib} from "@lattice/defi/libraries/UniswapV3AdapterLib.sol";
-import {IProtocolAdapter} from "@lattice/interfaces/IProtocolAdapter.sol";
-import {IUniswapV3Adapter} from "@lattice/interfaces/IUniswapV3Adapter.sol";
+import {IProtocolAdapter} from "@lattice/interfaces/defi/IProtocolAdapter.sol";
+import {IUniswapV3Adapter} from "@lattice/interfaces/defi/IUniswapV3Adapter.sol";
 import {INonfungiblePositionManager} from "@lattice/interfaces/external/INonfungiblePositionManager.sol";
 import {EmergencyStop} from "@lattice/security/EmergencyStop.sol";
 import {Pausable} from "@lattice/security/Pausable.sol";
@@ -285,6 +285,10 @@ contract MockPositionManager {
 
 /// @notice Adapter composed with Pausable + EmergencyStop facets (as a real Diamond would).
 contract MockUniV3Adapter is UniswapV3Adapter, Pausable, EmergencyStop {
+    /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare
+    ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing.
+    function exportSelectors() external pure virtual override(Pausable, EmergencyStop) returns (bytes memory) {}
+
     function initialize(
         address admin_,
         address positionManager_,

@@ -2,9 +2,9 @@
 pragma solidity ^0.8.30;
 
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
-import {UpgradeDiamond} from "@lattice-script/UpgradeDiamond.s.sol";
+import {UpgradeDiamond} from "@lattice-script/governance/UpgradeDiamond.s.sol";
 import {CreateXDeployer} from "@lattice-script/lib/CreateXDeployer.sol";
-import {IGovernedDiamondCut} from "@lattice/interfaces/IGovernedDiamondCut.sol";
+import {IGovernedDiamondCut} from "@lattice/interfaces/governance/IGovernedDiamondCut.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @notice A trivial facet-like contract (constructor-less) to deploy via the script's CREATE3 path.

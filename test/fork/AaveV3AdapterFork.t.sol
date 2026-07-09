@@ -6,7 +6,7 @@ import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {AaveV3Adapter} from "@lattice/defi/AaveV3Adapter.sol";
 import {AaveV3AdapterLib} from "@lattice/defi/libraries/AaveV3AdapterLib.sol";
-import {IERC20} from "@lattice/interfaces/IERC20.sol";
+import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
 import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib.sol";
 import {Test} from "forge-std/Test.sol";
 

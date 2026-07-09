@@ -4,8 +4,8 @@ pragma solidity ^0.8.30;
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
 import {AdapterBaseLib} from "@lattice/defi/libraries/AdapterBaseLib.sol";
-import {ILidoAdapter} from "@lattice/interfaces/ILidoAdapter.sol";
-import {IProtocolAdapter} from "@lattice/interfaces/IProtocolAdapter.sol";
+import {ILidoAdapter} from "@lattice/interfaces/defi/ILidoAdapter.sol";
+import {IProtocolAdapter} from "@lattice/interfaces/defi/IProtocolAdapter.sol";
 import {ILido} from "@lattice/interfaces/external/ILido.sol";
 import {ILidoWithdrawalQueue} from "@lattice/interfaces/external/ILidoWithdrawalQueue.sol";
 import {IWETH9} from "@lattice/interfaces/external/IWETH9.sol";
@@ -67,6 +67,7 @@ struct LidoAdapterStorage {
 
 /// @title LidoAdapterLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from Lido (https://github.com/lidofinance/core)
 /// @notice Logic for a Lido staking strategy under the **buffer model**. The asset is WETH; on
 ///         `deploy` idle WETH is unwrapped to ETH, staked via `Lido.submit`, and the resulting stETH
 ///         wrapped into wstETH (held). The synchronous `IStrategy.withdraw` is served **only** from

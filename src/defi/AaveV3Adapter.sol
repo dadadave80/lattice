@@ -2,14 +2,15 @@
 pragma solidity ^0.8.30;
 
 import {AaveV3AdapterLib} from "@lattice/defi/libraries/AaveV3AdapterLib.sol";
-import {IAaveV3Adapter} from "@lattice/interfaces/IAaveV3Adapter.sol";
-import {IAdapterOperator} from "@lattice/interfaces/IAdapterOperator.sol";
-import {IProtocolAdapter} from "@lattice/interfaces/IProtocolAdapter.sol";
+import {IAaveV3Adapter} from "@lattice/interfaces/defi/IAaveV3Adapter.sol";
+import {IAdapterOperator} from "@lattice/interfaces/defi/IAdapterOperator.sol";
+import {IProtocolAdapter} from "@lattice/interfaces/defi/IProtocolAdapter.sol";
 import {IStrategy} from "@lattice/interfaces/external/IStrategy.sol";
 import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib.sol";
 
 /// @title AaveV3Adapter
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from Aave V3 (https://github.com/aave-dao/aave-v3-origin)
 /// @notice Diamond facet adapting an Aave v3 supply (+ optional leverage) position into a Lattice
 ///         vault strategy. Implements `IStrategy` (funds routing), `IProtocolAdapter` (sidecar),
 ///         and `IAaveV3Adapter` (Aave config). All logic lives in AaveV3AdapterLib.

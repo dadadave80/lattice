@@ -2,3 +2,286 @@
 0	0	_cutCount	t_uint256
 1	0	_cutRegistry	t_mapping(t_uint256,t_struct(CutRecord)_storage)
 2	0	_frozenSelectors	t_struct(Bytes4Set)_storage
+
+### SafeDiamondCutStorage @ erc7201:lattice.storage.SafeDiamondCut (slot 0xdfdae3ef74d2f2c31fc34cd5e60ae4b170cd90587a13d52debd5569f575e7900)
+0	0	_safe	t_address
+1	0	_cutCount	t_uint256
+2	0	_cutRegistry	t_mapping(t_uint256,t_struct(CutRecord)_storage)
+3	0	_frozenSelectors	t_struct(Bytes4Set)_storage
+
+### GovernedSafeDiamondCutStorage @ erc7201:lattice.storage.GovernedSafeDiamondCut (slot 0x67b04bedb2ce49892ef6d6cc51adf679ddefc544b7aca2da8ae73f02694ff300)
+0	0	_safe	t_address
+1	0	_minDelay	t_uint256
+2	0	_scheduledAt	t_mapping(t_bytes32,t_uint256)
+3	0	_cutCount	t_uint256
+4	0	_cutRegistry	t_mapping(t_uint256,t_struct(CutRecord)_storage)
+5	0	_frozenSelectors	t_struct(Bytes4Set)_storage
+
+### ERC6538RegistryStorage @ erc7201:lattice.storage.ERC6538Registry (slot 0x77e72c5973ed8cfb58126100bfd525d25949aa328155f37334e51548cdc80100)
+0	0	_stealthMetaAddresses	t_mapping(t_address,t_mapping(t_uint256,t_bytes_storage))
+1	0	_nonces	t_mapping(t_address,t_uint256)
+
+### ENSReverseClaimerStorage @ erc7201:lattice.storage.ENSReverseClaimer (slot 0x4490f19c91eeff7574cc9707696b972040b89f54488ef7fa354afe94a194c100)
+0	0	_reverseRegistrar	t_address
+1	0	_ensName	t_string_storage
+
+### ENSResolverStorage @ erc7201:lattice.storage.ENSResolver (slot 0x33f26d8db6499021a25127a427a9f060956987880daa3f7db97807f377225300)
+0	0	_ensRegistry	t_address
+
+### ENSSubnameIssuerStorage @ erc7201:lattice.storage.ENSSubnameIssuer (slot 0xecd97908615d460a8806be2f460463395b75373d406444064e9704ed5d892e00)
+0	0	_nameWrapper	t_address
+
+### SafeHarborAdopterStorage @ erc7201:lattice.storage.SafeHarborAdopter (slot 0xaaf15994f2af30ab6b279714cd625e3af0592976549136cf56b423f8b1439400)
+0	0	_safeHarborRegistry	t_address
+1	0	_agreementFactory	t_address
+
+### CommitRevealStorage @ erc7201:lattice.storage.CommitReveal (slot 0xd3109411a8705fe8e8868eda2607aae4e6b37bb0d383a8a9e1c55c78e6853e00)
+0	0	_commitments	t_mapping(t_bytes32,t_struct(Commitment)_storage)
+
+### SemaphoreStorage @ erc7201:lattice.storage.Semaphore (slot 0x9014b6f2f89a94726c6607d3b9e5562f77c44e9f80791dbbfea2ef3de33d0300)
+0	0	groups	t_mapping(t_uint256,t_struct(Group)_storage)
+1	0	groupCount	t_uint256
+2	0	verifier	t_address
+
+### PrivateVotingStorage @ erc7201:lattice.storage.PrivateVoting (slot 0x366a7e9d1ddfe6eaa85ec4e6a71a0be592797e3e9ab0151a827465f6ed6bb900)
+0	0	_polls	t_mapping(t_uint256,t_struct(Poll)_storage)
+1	0	_pollCount	t_uint256
+
+### ShieldedPoolStorage @ erc7201:lattice.storage.ShieldedPool (slot 0xa961220e87963afb8adc0f7621a90ce1922bf3bb438109c43cc7dacbc8e06600)
+0	0	_pools	t_mapping(t_uint256,t_struct(ShieldedPool)_storage)
+1	0	_poolCount	t_uint256
+
+### PythAdapterStorage @ erc7201:lattice.storage.PythAdapter (slot 0x4f06923ad9b02e8a3ff8edafe956de2290e9ad8f87494c6f70ad4259b24ff100)
+0	0	_feeds	t_mapping(t_bytes32,t_struct(PythFeed)_storage)
+1	0	_pyth	t_address
+
+### API3AdapterStorage @ erc7201:lattice.storage.API3Adapter (slot 0xdedf34315ce34cb136d15a8f1bef434dfd97b5e1960d065caa42769bce24e700)
+0	0	_feeds	t_mapping(t_bytes32,t_struct(API3Feed)_storage)
+
+### ChronicleAdapterStorage @ erc7201:lattice.storage.ChronicleAdapter (slot 0xfc08f646a4b61c410e914db3efd5dca6935b089749eb55e38d0c450dddbb7600)
+0	0	_feeds	t_mapping(t_bytes32,t_struct(ChronicleFeed)_storage)
+
+### DIAAdapterStorage @ erc7201:lattice.storage.DIAAdapter (slot 0x96676e4e566fe60ae3185e7bd982de2eb1f4d0f9b85c8e29200af4e575d6c400)
+0	0	_feeds	t_mapping(t_bytes32,t_struct(DIAFeed)_storage)
+
+### BandAdapterStorage @ erc7201:lattice.storage.BandAdapter (slot 0xf5012e750700459bfafa131fc1c12ce6e9c0f0209cb29cbc1f960c4760a00a00)
+0	0	_feeds	t_mapping(t_bytes32,t_struct(BandFeed)_storage)
+1	0	_reference	t_address
+
+### TellorAdapterStorage @ erc7201:lattice.storage.TellorAdapter (slot 0xf830cd05b050ba9ecf73559ef9b50793eb6cd90a674e3621847f667a1210d100)
+0	0	_feeds	t_mapping(t_bytes32,t_struct(TellorFeed)_storage)
+1	0	_tellor	t_address
+
+### RedStoneAdapterStorage @ erc7201:lattice.storage.RedStoneAdapter (slot 0x6c77ff7037fedb1e7737bf925fac4c87e7cc2c960916dee7790d2d73271bc700)
+0	0	_feeds	t_mapping(t_bytes32,t_struct(RedStoneFeed)_storage)
+
+### CrosschainLinkStorage @ erc7201:lattice.storage.CrosschainLink (slot 0x018a2157cdb5adbb1b39e614b18b4d8eae2cba40cdae1a4ba3100cc857e64900)
+0	0	_links	t_mapping(t_bytes_memory_ptr,t_struct(Link)_storage)
+1	0	_handlers	t_mapping(t_bytes4,t_address)
+2	0	_used	t_mapping(t_bytes32,t_bool)
+
+### BridgeERC20Storage @ erc7201:lattice.storage.BridgeERC20 (slot 0x0e9006c16c4f5fe9e0e3215c8af601bd97024c6bebdfa0efe51c092276cd7c00)
+0	0	_token	t_address
+
+### BridgeERC7802Storage @ erc7201:lattice.storage.BridgeERC7802 (slot 0x9d1b234db7644d1f76207933d92c2e89140027741ab600a4ff4b12a8d51e4b00)
+0	0	_token	t_address
+
+### AxelarGatewayAdapterStorage @ erc7201:lattice.storage.AxelarGatewayAdapter (slot 0xeb5bee64b500c298be8b1e9f77b8505f5c8c9cdd4c45b490c069ffc446e8fd00)
+0	0	_gateway	t_address
+1	0	_remoteGateways	t_mapping(t_bytes2,t_mapping(t_bytes_memory_ptr,t_bytes_storage))
+2	0	_erc7930ToAxelar	t_mapping(t_bytes_memory_ptr,t_string_storage)
+3	0	_axelarToErc7930	t_mapping(t_string_memory_ptr,t_bytes_storage)
+
+### WormholeGatewayAdapterStorage @ erc7201:lattice.storage.WormholeGatewayAdapter (slot 0x46329d8c82c4b2643a1707018dd8f47f4e747c04259ec1eec95a00ddfb1bd600)
+0	0	_relayer	t_address
+0	20	_wormholeChainId	t_uint16
+1	0	_lastMsgId	t_uint256
+2	0	_remoteGateways	t_mapping(t_uint256,t_address)
+3	0	_chainIdToWormhole	t_mapping(t_uint256,t_uint16)
+4	0	_wormholeToChainId	t_mapping(t_uint16,t_uint256)
+5	0	_pending	t_mapping(t_bytes32,t_struct(PendingMessage)_storage)
+6	0	_executed	t_mapping(t_uint256,t_mapping(t_uint256,t_bool))
+
+### ERC7786OpenBridgeStorage @ erc7201:lattice.storage.ERC7786OpenBridge (slot 0xca75154ce55fdf901a786b6fa60962886fadca5cda61c777098bc66b49134a00)
+0	0	_gateways	t_struct(AddressSet)_storage
+2	0	_threshold	t_uint8
+3	0	_nonce	t_uint256
+4	0	_remotes	t_mapping(t_bytes2,t_mapping(t_bytes_memory_ptr,t_bytes_storage))
+5	0	_trackers	t_mapping(t_bytes32,t_struct(OpenBridgeTracker)_storage)
+6	0	_minDirectCoverage	t_uint8
+
+### CCIPGatewayAdapterStorage @ erc7201:lattice.storage.CCIPGatewayAdapter (slot 0xfc37dafbf0181d0474cf94e236f0ede0d369aab52659fb134d4be3b15fbb8e00)
+0	0	_router	t_address
+1	0	_feeToken	t_address
+2	0	_chainIdToSelector	t_mapping(t_uint256,t_uint64)
+3	0	_selectorToChainId	t_mapping(t_uint64,t_uint256)
+4	0	_remoteGateways	t_mapping(t_uint256,t_address)
+5	0	_destGasLimit	t_mapping(t_uint256,t_uint256)
+6	0	_destAllowOutOfOrder	t_mapping(t_uint256,t_bool)
+7	0	_executed	t_mapping(t_uint256,t_mapping(t_bytes32,t_bool))
+8	0	_ccvConfigs	t_mapping(t_uint256,t_struct(CCVConfig)_storage)
+
+### CCTPBridgeAdapterStorage @ erc7201:lattice.storage.CCTPBridgeAdapter (slot 0x94bcfd23a6ef7deebf3dfac9da6ba8c390ae8a620c8a163523fd263b20958b00)
+0	0	_tokenMessenger	t_address
+1	0	_messageTransmitter	t_address
+2	0	_usdc	t_address
+3	0	_chainIdToDomain	t_mapping(t_uint256,t_uint32)
+4	0	_chainRegistered	t_mapping(t_uint256,t_bool)
+5	0	_domainConfig	t_mapping(t_uint32,t_struct(DomainConfig)_storage)
+6	0	_domainOwner	t_mapping(t_uint32,t_uint256)
+
+### AggregatorExecAdapterStorage @ erc7201:lattice.storage.AggregatorExecAdapter (slot 0xa2d04b4e843f01463940d93cd4d536111875b48fb08f2c3a7d094e91e39a5100)
+0	0	_allowedCall	t_mapping(t_address,t_mapping(t_bytes4,t_bool))
+
+### LayerZeroGatewayAdapterStorage @ erc7201:lattice.storage.LayerZeroGatewayAdapter (slot 0xbca2daa6d08cb277e523bf7dcd928e312ddbb7f9ac88be435916dda92924d100)
+0	0	_endpoint	t_address
+1	0	_chainIdToEid	t_mapping(t_uint256,t_uint32)
+2	0	_eidToChainId	t_mapping(t_uint32,t_uint256)
+3	0	_peers	t_mapping(t_uint256,t_bytes32)
+4	0	_destConfig	t_mapping(t_uint256,t_struct(DestinationConfig)_storage)
+5	0	_executed	t_mapping(t_uint256,t_mapping(t_bytes32,t_bool))
+
+### L2ToL2CrossDomainMessengerGatewayAdapterStorage @ erc7201:lattice.storage.L2ToL2CrossDomainMessengerGatewayAdapter (slot 0x7d097b8d74c3eca1712de7b01bb2e081ac18f7660e60d35d0a11a670a90beb00)
+0	0	_remoteAdapters	t_mapping(t_uint256,t_address)
+1	0	_executed	t_mapping(t_uint256,t_mapping(t_bytes32,t_bool))
+2	0	_outboundNonce	t_uint256
+
+### ZetaChainGatewayAdapterStorage @ erc7201:lattice.storage.ZetaChainGatewayAdapter (slot 0x7529f1b714a55f00ea95d180ad0c2a53651f18a834ecec0ff1f9af59ddf74000)
+0	0	_gateway	t_address
+1	0	_defaultOnRevertGasLimit	t_uint256
+2	0	_remoteApps	t_mapping(t_uint256,t_address)
+3	0	_appToChainId	t_mapping(t_address,t_uint256)
+4	0	_executed	t_mapping(t_uint256,t_mapping(t_bytes32,t_bool))
+5	0	_outboundNonce	t_uint256
+
+### L1ToL2CrossDomainMessengerGatewayAdapterStorage @ erc7201:lattice.storage.L1ToL2CrossDomainMessengerGatewayAdapter (slot 0xba3de3e77bc32833730368f3190597d7121922af189304a06067265b4d53a500)
+0	0	_counterpartChainId	t_uint256
+1	0	_counterpartAdapter	t_address
+1	20	_minGasLimit	t_uint32
+2	0	_executed	t_mapping(t_bytes32,t_bool)
+3	0	_outboundNonce	t_uint256
+
+### PythEntropyAdapterStorage @ erc7201:lattice.storage.PythEntropyAdapter (slot 0xf5638fd8a7410f61ded501225ccb03fd632a93dd0cfb1615ce2666e2781d4f00)
+0	0	_entropy	t_address
+1	0	_provider	t_address
+2	0	_pendingRequests	t_mapping(t_uint64,t_bytes32)
+
+### GelatoVRFAdapterStorage @ erc7201:lattice.storage.GelatoVRFAdapter (slot 0x411b018662c29400f5f1d8919575dbc72aa8b7559a2445103c6d3b36a4058500)
+0	0	_operator	t_address
+1	0	_nextRequestId	t_uint256
+2	0	_pendingRequests	t_mapping(t_uint256,t_bytes32)
+
+### API3QRNGAdapterStorage @ erc7201:lattice.storage.API3QRNGAdapter (slot 0xb551ab661bfaed153d497ffdaa9cbb1d46fa1d799d8e6f2a2aa8ecfb66104b00)
+0	0	_airnodeRrp	t_address
+1	0	_airnode	t_address
+2	0	_endpointId	t_bytes32
+3	0	_sponsorWallet	t_address
+4	0	_pendingRequests	t_mapping(t_bytes32,t_bytes32)
+
+### GelatoAutomateAdapterStorage @ erc7201:lattice.storage.GelatoAutomateAdapter (slot 0x2e009cfe8b023d727b88173e4903cf45c68c8d769ec207081d89791b624d6900)
+0	0	_automate	t_address
+1	0	_dedicatedMsgSender	t_address
+2	0	_tasks	t_mapping(t_bytes32,t_bool)
+
+### ChainlinkAutomationAdapterStorage @ erc7201:lattice.storage.ChainlinkAutomationAdapter (slot 0x79ff96d501e28b99bca4f72c19ec619bce29c1cac16a5bcab62634e5e94dcb00)
+0	0	_forwarder	t_address
+1	0	_interval	t_uint256
+2	0	_lastTimeStamp	t_uint256
+3	0	_counter	t_uint256
+
+### ChainlinkCREAdapterStorage @ erc7201:lattice.storage.ChainlinkCREAdapter (slot 0x38811f86f85f0447c0970d57466dc7a3c4187640f04a44e7622c183e45f90b00)
+0	0	_forwarder	t_address
+1	0	_workflows	t_mapping(t_bytes32,t_bool)
+2	0	_latestReports	t_mapping(t_bytes32,t_struct(CREReport)_storage)
+
+### MarketplaceZoneStorage @ erc7201:lattice.storage.MarketplaceZone (slot 0xe77b1be4866c120f9cf1b3ac35bdd606adb1b331ef4d920e5a5993f90d992800)
+0	0	_paused	t_bool
+1	0	_royaltyRequired	t_mapping(t_address,t_bool)
+
+### AccountSignerStorage @ erc7201:lattice.storage.AccountSigner (slot 0x0da6d1e39c7e91c8bb664dbc699f525d1effdcf9e745a754a440ffebe67feb00)
+0	0	_owner	t_address
+0	20	_signerType	t_uint8
+0	21	_requireUV	t_bool
+1	0	_p256X	t_bytes32
+2	0	_p256Y	t_bytes32
+
+### ERC4337ValidationStorage @ erc7201:lattice.storage.ERC4337Validation (slot 0x63f3a16063eb3400d0c49a9883f78e71c0740febe009dfe0af21003612fc2a00)
+0	0	_entryPoint	t_address
+
+### SessionKeyStorage @ erc7201:lattice.storage.SessionKey (slot 0xd72f45b3818762a6cc49804ed52c577908badd7fff8bbd7849829b4fc764ae00)
+0	0	_keys	t_mapping(t_address,t_struct(SessionKeyData)_storage)
+1	0	_allowed	t_mapping(t_address,t_mapping(t_bytes32,t_bool))
+2	0	_spend	t_mapping(t_address,t_mapping(t_address,t_struct(SpendLimit)_storage))
+3	0	_cappedTokens	t_mapping(t_address,t_array(t_address)dyn_storage)
+
+### ERC7579ModuleConfigStorage @ erc7201:lattice.storage.ERC7579ModuleConfig (slot 0xf5855f8dc57bbb54955d6871575c862d7a11401119f5a873c91e7ac60628d800)
+0	0	_installed	t_mapping(t_uint256,t_mapping(t_address,t_bool))
+1	0	_hook	t_address
+2	0	_fallbacks	t_mapping(t_bytes4,t_struct(FallbackHandler)_storage)
+
+### ERC6551AccountStorage @ erc7201:lattice.storage.ERC6551Account (slot 0x5d509296c8693d1a2071f7702ffb166090e7cdcee4fc11a42df61b6a19026100)
+0	0	_chainId	t_uint256
+1	0	_tokenContract	t_address
+2	0	_tokenId	t_uint256
+3	0	_state	t_uint256
+
+### ERC6900ModuleManagerStorage @ erc7201:lattice.storage.ERC6900ModuleManager (slot 0x498a44bfdab4c9c01e0c660bf3b7240261bf444dc4c542e64dac94a83f534500)
+0	0	_executions	t_mapping(t_bytes4,t_struct(ExecutionStorage)_storage)
+1	0	_validations	t_mapping(t_userDefinedValueType(ModuleEntity),t_struct(ValidationStorage)_storage)
+2	0	_interfaceRefCount	t_mapping(t_bytes4,t_uint256)
+
+### AcrossBridgeAdapterStorage @ erc7201:lattice.storage.AcrossBridgeAdapter (slot 0xd1f2b3a38609618605209c75d051e4ac61236c94f39400c851dd252f5fe1d000)
+0	0	_spokePool	t_address
+
+### StarknetGatewayAdapterStorage @ erc7201:lattice.storage.StarknetGatewayAdapter (slot 0x3f9fd8bc99bc5c4e4ff64e899fbe5f73a1a0f6c02aaa904e7184494718213e00)
+0	0	_starknetCore	t_address
+1	0	_expectedChainReference	t_bytes_storage
+2	0	_l1HandlerSelector	t_mapping(t_uint256,t_uint256)
+3	0	_trustedL2Senders	t_mapping(t_uint256,t_bool)
+4	0	_initiators	t_mapping(t_bytes32,t_address)
+
+### ChainRegistryStorage @ erc7201:lattice.storage.ChainRegistry (slot 0x3d04730f387c3a41671abdc91e43582ee4d80e460792f9c401b5acc80eab5b00)
+0	0	_chains	t_mapping(t_bytes32,t_struct(ChainRecord)_storage)
+
+### ChainRecord @ erc7201:lattice.storage.ChainRegistry (slot 0x3d04730f387c3a41671abdc91e43582ee4d80e460792f9c401b5acc80eab5b00)
+0	0	registered	t_bool
+0	1	chainType	t_bytes2
+1	0	chainReference	t_bytes_storage
+2	0	evmChainId	t_uint256
+3	0	ids	t_struct(NativeIds)_storage
+6	0	gateways	t_struct(AddressSet)_storage
+8	0	hubRouted	t_mapping(t_address,t_bool)
+
+### NativeIds @ erc7201:lattice.storage.ChainRegistry (slot 0x3d04730f387c3a41671abdc91e43582ee4d80e460792f9c401b5acc80eab5b00)
+0	0	ccipSelector	t_uint64
+0	8	lzEid	t_uint32
+0	12	wormholeId	t_uint16
+0	14	cctpDomain	t_uint32
+1	0	axelarName	t_string_storage
+2	0	hyperlaneDomain	t_uint32
+
+### HyperlaneGatewayAdapterStorage @ erc7201:lattice.storage.HyperlaneGatewayAdapter (slot 0x8a4b1302312d119abfdb0305131f00457b784ef22f6824db37cbaed84bba5600)
+0	0	_mailbox	t_address
+1	0	_chainIdToDomain	t_mapping(t_uint256,t_uint32)
+2	0	_domainToChainId	t_mapping(t_uint32,t_uint256)
+3	0	_trustedRemotes	t_mapping(t_uint256,t_bytes32)
+4	0	_destGasLimit	t_mapping(t_uint256,t_uint256)
+5	0	_lastNonce	t_uint256
+6	0	_executed	t_mapping(t_uint256,t_mapping(t_bytes32,t_bool))
+
+### StargateBridgeAdapterStorage @ erc7201:lattice.storage.StargateBridgeAdapter (slot 0x2076bfc799b61fb4ea9b1d4a406060be54015b08cd19ef147b102a3e634c0800)
+0	0	_chainIdToEid	t_mapping(t_uint256,t_uint32)
+1	0	_eidToChainId	t_mapping(t_uint32,t_uint256)
+2	0	_pools	t_mapping(t_address,t_address)
+
+### HyperbridgeGatewayAdapterStorage @ erc7201:lattice.storage.HyperbridgeGatewayAdapter (slot 0x51a6b52d433abb3ae06100272e5ee46754531b734f9cac910997924c61569700)
+0	0	_host	t_address
+1	0	_stateMachineIds	t_mapping(t_uint256,t_bytes_storage)
+2	0	_chainIds	t_mapping(t_bytes32,t_uint256)
+3	0	_trustedRemotes	t_mapping(t_uint256,t_bytes_storage)
+4	0	_destTimeout	t_mapping(t_uint256,t_uint64)
+5	0	_lastNonce	t_uint256
+6	0	_executed	t_mapping(t_uint256,t_mapping(t_bytes32,t_bool))
+
+### GovernedVaultStorage @ erc7201:lattice.storage.GovernedVault (slot 0xce91473269200f209353d1f9f84b7900d57f30b14d017212fb8c61b25320cc00)
+0	0	_ballotNonces	t_mapping(t_address,t_uint256)

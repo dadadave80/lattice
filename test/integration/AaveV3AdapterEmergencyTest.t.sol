@@ -6,7 +6,7 @@ import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
 import {AaveV3Adapter} from "@lattice/defi/AaveV3Adapter.sol";
 import {AaveV3AdapterLib} from "@lattice/defi/libraries/AaveV3AdapterLib.sol";
-import {IProtocolAdapter} from "@lattice/interfaces/IProtocolAdapter.sol";
+import {IProtocolAdapter} from "@lattice/interfaces/defi/IProtocolAdapter.sol";
 import {EmergencyStop} from "@lattice/security/EmergencyStop.sol";
 import {Pausable} from "@lattice/security/Pausable.sol";
 import {EMERGENCY_GUARDIAN_ROLE, EmergencyStopLib} from "@lattice/security/libraries/EmergencyStopLib.sol";
@@ -18,6 +18,10 @@ import {MockAToken, MockAaveV3Pool, MockAsset} from "./AaveV3AdapterSupplyTest.t
 
 /// @notice Adapter composed with Pausable + EmergencyStop facets (as a real Diamond would).
 contract MockGuardedAdapter is AaveV3Adapter, Pausable, EmergencyStop {
+    /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare
+    ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing.
+    function exportSelectors() external pure virtual override(Pausable, EmergencyStop) returns (bytes memory) {}
+
     function initialize(
         address admin_,
         address provider_,

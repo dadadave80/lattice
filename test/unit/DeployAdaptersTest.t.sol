@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {DeployAdapters} from "@lattice-script/DeployAdapters.s.sol";
+import {DeployAdapters} from "@lattice-script/deploy/DeployAdapters.s.sol";
 import {CreateXDeployer} from "@lattice-script/lib/CreateXDeployer.sol";
 import {Test} from "forge-std/Test.sol";
 

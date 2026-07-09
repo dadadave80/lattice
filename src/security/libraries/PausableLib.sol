@@ -3,7 +3,7 @@ pragma solidity ^0.8.30;
 
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
-import {IPausable} from "@lattice/interfaces/IPausable.sol";
+import {IPausable} from "@lattice/interfaces/security/IPausable.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
 //                                  STORAGE

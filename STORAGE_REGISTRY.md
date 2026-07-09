@@ -53,11 +53,120 @@ and a row here.
   **no** new ERC-165 id (the pinned `0x1f931c1c` is unchanged) and **no** new storage slot (the
   `_frozenSelectors` set is APPENDED to the existing `GovernedDiamondCutStorage`, leaving the namespace
   string and slot untouched).
+- **SafeDiamondCut** is the multisig-gated analogue of GovernedDiamondCut: it pins a Gnosis Safe address
+  as the cut authority instead of a self-held role. Like GovernedDiamondCut it exposes only the canonical
+  cut selector `diamondCut` (`0x1f931c1c` == `IDiamondCut`) for ERC-165 purposes, so it likewise **reuses**
+  diamond-lib's `ERC165_MAP_ICUT_SLOT` (`0xa0f80413692945aab97c6ef0328381ebb94e4b17a84d11ebf6b61f73435b6d7e`)
+  — already registered by `DiamondLib.registerInterface()` — and adds a unique ERC-7201 storage slot but
+  **no** new ERC-165 row. Its Safe-authority surface (`ISafeDiamondCut`/`ISafeAuthority`: `setSafe` /
+  `safe`) plus the frozen-selector / registry / emergency surfaces are plain facet functions sharing the
+  same ERC-7201 slot — they add no ERC-165 id and no new storage slot (`_safe` and the registry/frozen
+  fields live in the single `SafeDiamondCutStorage`).
+- **GovernedSafeDiamondCut** is the Safe-gated, built-in-timelock variant. Unlike SafeDiamondCut it does
+  **not** serve a synchronous cut at `0x1f931c1c` (every cut travels schedule → delay → execute), so its
+  scheduling surface is a genuinely **new** interface, `IGovernedSafeDiamondCut` (`0xacb1aeb6`), which mints
+  its **own** ERC-165 map slot (`0xe71618ea5c7977b34866901ace6d6c6585c16253798f12024e30133e7fb7b675`). It
+  therefore adds one ERC-7201 storage slot and one new ERC-165 map slot. Its shared Safe-authority /
+  registry / frozen / emergency surfaces are plain facet functions sharing the same ERC-7201 slot.
 - Utility libraries that hold no own ERC-7201 storage slot (`EnumerableSet`, `TimelockLib`) and
   token-extension libraries that declare no `*_STORAGE_SLOT` (`ERC20Burnable`, `ERC20Permit`,
-  `ERC20Votes`) are intentionally **not** listed here. (`ERC20Permit`, `ERC20Votes`, and
-  `ERC20Burnable` do register ERC-165 ids but reuse the underlying `ERC20`/`Votes`/`Nonces`
+  `ERC20Votes`, `ERC7802`) are intentionally **not** listed here. (`ERC20Permit`, `ERC20Votes`,
+  `ERC20Burnable`, and `ERC7802` do register ERC-165 ids but reuse the underlying `ERC20`/`Votes`/`Nonces`
   storage, so they have no row of their own.)
+- **ERC7802** is the crosschain-native ERC-20 extension (ERC-7802: `crosschainMint`/`crosschainBurn`,
+  role-gated to `CROSSCHAIN_BRIDGE_ROLE`). It registers the **canonical** ERC-7802 id
+  `type(IERC7802).interfaceId == 0x33331994` (the vendored `IERC7802` omits `IERC165` so the derived id
+  matches the standard) at map slot `0x8874437f0039021364a4853ff7e826b818ba7233f378ea008f000746be5d784a`,
+  and reuses the `ERC20` balances — no storage row of its own. It gives a `BridgeERC7802` a native
+  mint/burn token.
+- **ERC20Crosschain** is the self-bridging ERC-20 variant of {BridgeFungible}: the token burns its OWN
+  supply on send and mints it on receive (no separate bridge / external token). It is co-mounted with
+  `CrosschainLink` + `ERC20`, registered under the shared `FUNGIBLE_BRIDGE_TAG`, and **reuses** the
+  `IBridgeFungible` ERC-165 id (`0x28dcc8d8`) and the `ERC20` balances — so it adds **no** new storage
+  slot and **no** new ERC-165 row of its own.
+- **ERC5564Announcer** is a stateless ERC-5564 announcer (it only emits `Announcement`), so it has
+  **no** ERC-7201 storage slot and **no** row in the storage-uniqueness array — only an ERC-165 map slot
+  for `IERC5564Announcer` (`0x4d1f9583`). Its function/event ABI is byte-identical to the canonical
+  ERC-5564 announcer. **ERC6538Registry** matches the canonical ERC-6538 reference ABI exactly
+  (address-keyed registrant in the event/getter/nonce, single `registerKeysOnBehalf(address,...)`,
+  `Erc6538RegistryEntry` EIP-712 entry, `ERC6538Registry__InvalidSignature` error), so `type(IERC6538Registry).interfaceId`
+  is the conformant `0x7b1f57cb`. It keeps its `ERC6538RegistryStorage` (the stealth-meta-address map plus
+  a **registry-local** per-registrant nonce — independent of the diamond-wide `Nonces` module, matching the
+  canonical per-registry nonce semantics) at a unique ERC-7201 slot, and reuses only the shared `EIP712`
+  domain for typed-data hashing. CONFORMANCE CAVEAT: as a Diamond facet the EIP-712 `verifyingContract`
+  is the host diamond, so relayers/wallets must read the live domain via `DOMAIN_SEPARATOR()` /
+  `eip712Domain()` rather than a fixed singleton address. Together the two stealth-address modules add
+  **one** ERC-7201 storage slot and **two** ERC-165 map slots.
+- **CommitReveal** is a generic commit–reveal primitive (sealed bids / auctions / MEV mitigation) — no ZK
+  / circuits, just keccak256. The commitment binds the committer's address, so only the bound committer can
+  reveal it (front-run-proof). It keeps its `CommitRevealStorage` (the commitment map) at a unique ERC-7201
+  slot and mints `ICommitReveal` (`0xe371e8b7`); it is permissionless (no role gating). It is the
+  circuit-free first deliverable of the privacy-track part 2 (#10); the remaining ZK-dependent modules
+  (shielded transfers, private voting, Semaphore membership, ZK verifiers, Merkle/nullifier lib) await the
+  proving-system decision.
+- **Groth16Verifier** is a stateless, generic Groth16 proof verifier over BN254 (alt_bn128) — the
+  verifying key is a parameter, so one deployment verifies proofs for any circuit. The verification logic
+  generalizes the audited snarkjs (iden3) verifier template (PR#36 hardening: public inputs `< r`, proof
+  coordinates `< q`) and evaluates the pairing check with the BN254 precompiles. It holds **no** ERC-7201
+  storage (only registers `IGroth16Verifier`, `0x6d832d8e`, for ERC-165), so it adds **zero** storage slots
+  and **one** ERC-165 map slot. It is the proving-system primitive (#10, Groth16 ratified) the ZK privacy
+  modules plug their circuit key into.
+- **PlonkVerifier** is a stateless, generic PLONK verifier over BN254 — like {Groth16Verifier} the
+  verifying key is a parameter, so one deployment verifies proofs for any PLONK circuit. It is a faithful
+  port of the snarkjs (iden3) PLONK verifier (eprint 2019/953): keccak256 Fiat-Shamir transcript, Lagrange
+  evaluation at xi, and the batched KZG pairing check, evaluated with the BN254 precompiles. It holds
+  **no** ERC-7201 storage (only registers `IPlonkVerifier`, `0x5d484314`, for ERC-165), so it adds **zero**
+  storage slots and **one** ERC-165 map slot. Provided as a reusable verifier for consumers who bring PLONK
+  circuits, alongside the ratified-primary Groth16 path.
+- **Semaphore** is the anonymous-membership / signaling module: members join groups (Poseidon incremental
+  Merkle trees of identity commitments) and prove membership in zero knowledge while broadcasting a message
+  under a scope, without revealing which member they are. It keeps its `SemaphoreStorage` (group map +
+  counter + verifier address) at a unique ERC-7201 slot and mints `ISemaphore` (`0xf497879d`). Group
+  membership uses the shared `IncrementalMerkleTreeLib` (Poseidon LeanIMT + recent-root history) and
+  double-signaling protection uses a per-group `NullifierRegistryLib`; the Groth16 verification is delegated
+  to the **audited Semaphore v4 verifier** (vendored under `lib/semaphore/`, deployed separately and set via
+  `setVerifier`, gated on `DEFAULT_ADMIN_ROLE`). Each group has its own admin address (Semaphore-style, not a
+  global role). It adds **one** ERC-7201 storage slot and **one** ERC-165 map slot.
+- **PrivateVoting** is anonymous one-person-one-vote polling that composes the `Semaphore` module: a poll is
+  bound to a Semaphore group, and a member casts an anonymous ballot with a Semaphore proof whose `scope` is
+  the poll id and whose `message` is the choice. It reuses `SemaphoreLib`'s membership + audited verifier for
+  the zero-knowledge check and keeps its OWN per-poll `NullifierRegistryLib` (so voting nullifiers never
+  collide with general Semaphore signalling). Polls are created by the group admin; the scope-bound nullifier
+  gives each member exactly one ballot per poll. It keeps its `PrivateVotingStorage` (poll map + counter) at a
+  unique ERC-7201 slot and mints `IPrivateVoting` (`0xf750b661`); it adds **one** ERC-7201 storage slot and
+  **one** ERC-165 map slot. 1-person-1-vote, not token-weighted (private weighted voting needs a bespoke
+  circuit and is out of scope).
+- **ShieldedPool** is fixed-denomination shielded (private) ERC-20 transfers (Tornado-style): a depositor
+  inserts `Poseidon(nullifier, secret)` into the pool's Poseidon LeanIMT (`IncrementalMerkleTreeLib`), and a
+  later withdrawal proves membership in zero knowledge and burns a one-time nullifier hash
+  (`NullifierRegistryLib`) to an arbitrary recipient. The on-chain mechanics are the library's value-add;
+  the withdraw CIRCUIT + its verifier are consumer-supplied per pool (5 public signals `[root,
+  nullifierHash, recipient, relayer, fee]`), so the cryptography is wrapped, not hand-rolled. Withdrawals
+  follow strict CEI (nullifier spent before any ERC-20 transfer). It keeps its `ShieldedPoolStorage` (pool
+  map + counter) at a unique ERC-7201 slot and mints `IShieldedPool` (`0x8f5cc2c7`); pool creation is gated
+  on `DEFAULT_ADMIN_ROLE`. It adds **one** ERC-7201 storage slot and **one** ERC-165 map slot. SECURITY:
+  this module escrows funds and must be deployed with an audited circuit/verifier + honest trusted setup
+  before any mainnet-with-funds use.
+- **ENSReverseClaimer** lets a diamond claim its own primary ENS name via reverse resolution. It stores
+  the configured reverse registrar + cached name in its own `ENSReverseClaimerStorage` at a unique
+  ERC-7201 slot and mints `IENSReverseClaimer` (`0x84019dd8`); the identity setters are gated on
+  `ENS_MANAGER_ROLE` (`keccak256("ENS_MANAGER_ROLE")`). It adds one ERC-7201 slot and one ERC-165 map slot.
+- **ENSResolver** and **ENSSubnameIssuer** are the ENS-identity forward path. **ENSResolver** does on-chain
+  forward resolution (registry → resolver → `addr`) and stores the configurable ENS registry at its own
+  ERC-7201 slot, gated on `ENS_MANAGER_ROLE`; it mints `IENSResolver` (`0x566ec67d`). **ENSSubnameIssuer**
+  mints subnames via the ENS NameWrapper, stores the configurable NameWrapper at its own ERC-7201 slot, and
+  is gated on the dedicated `ENS_SUBNAME_ISSUER_ROLE` (`keccak256("ENS_SUBNAME_ISSUER_ROLE")`); it mints
+  `IENSSubnameIssuer` (`0x6ead39e3`). Both vendor minimal external ENS interfaces (`IENS`, `IAddrResolver`,
+  `INameWrapper`) under `interfaces/external/` and never hardcode ENS addresses. Together they add **two**
+  ERC-7201 storage slots and **two** ERC-165 map slots.
+- **SafeHarborAdopter** lets a diamond adopt the SEAL Whitehat Safe Harbor agreement on-chain (the legal
+  half of incident response, complementing EmergencyStop). It stores the configurable SEAL registry +
+  agreement factory in its own `SafeHarborAdopterStorage` at a unique ERC-7201 slot and mints
+  `ISafeHarborAdopter` (`0x2a3e8e12`). The diamond calls the registry itself (`msg.sender == diamond`),
+  so it is recorded as the adopter; adoption / creation are gated on the dedicated `SAFE_HARBOR_ADMIN_ROLE`
+  (`keccak256("SAFE_HARBOR_ADMIN_ROLE")`) because the agreement designates the asset-recovery address.
+  The vendored SEAL interfaces (`ISafeHarborRegistry`, `IAgreementFactory` + `AgreementDetails` types) live
+  under `interfaces/external/`; the deployed SEAL addresses + struct ABI must be verified per chain.
 - **IAdapterOperator** (`setOperator` / `operator`) is the authorized-operator surface co-implemented
   by **every** protocol adapter facet alongside `IProtocolAdapter`. It is a **separate** interface on
   purpose: adding its two functions to `IProtocolAdapter` would change that interface's pinned id
@@ -102,6 +211,9 @@ and a row here.
 | Governor | `lattice.storage.Governor` | `0x20a7901cc1c78eb01d63d9c1875355513c3dabc82d8607ad0f82e1312f750c00` | `IGovernor` | `0x220cdebb` | `0x16d0785b1b0d3d2d988cff60fd273da31ad0fc5acccec3792316ca40dcc33977` |
 | TimelockController | `lattice.storage.TimelockController` | `0x87f5daf40fea2daee0a93658693902d7cd9e07fa1a4f16f2e8eb4a4e9d433000` | `ITimelockController` | `0xd826478e` | `0xc0a085cd59634eff50a01907a25e03eb6a55bd6279462a3ac6a99ce44b9c2f08` |
 | GovernedDiamondCut | `lattice.storage.GovernedDiamondCut` | `0x9a46da229426897da8e8df190858c430564a988584235445fd229e2bef8a8700` | `IDiamondCut` (reused, EIP-2535) | `0x1f931c1c` | `0xa0f80413692945aab97c6ef0328381ebb94e4b17a84d11ebf6b61f73435b6d7e` (shared) |
+| SafeDiamondCut | `lattice.storage.SafeDiamondCut` | `0xdfdae3ef74d2f2c31fc34cd5e60ae4b170cd90587a13d52debd5569f575e7900` | `IDiamondCut` (reused, EIP-2535) | `0x1f931c1c` | `0xa0f80413692945aab97c6ef0328381ebb94e4b17a84d11ebf6b61f73435b6d7e` (shared) |
+| GovernedSafeDiamondCut | `lattice.storage.GovernedSafeDiamondCut` | `0x67b04bedb2ce49892ef6d6cc51adf679ddefc544b7aca2da8ae73f02694ff300` | `IGovernedSafeDiamondCut` | `0xacb1aeb6` | `0xe71618ea5c7977b34866901ace6d6c6585c16253798f12024e30133e7fb7b675` |
+| SafeHarborAdopter | `lattice.storage.SafeHarborAdopter` | `0xaaf15994f2af30ab6b279714cd625e3af0592976549136cf56b423f8b1439400` | `ISafeHarborAdopter` | `0x2a3e8e12` | `0xc27d89bdc7ce502086d0749a1bda2c210ca866065fa49ea19147ad53e8e018ad` |
 
 ### DeFi
 
@@ -115,6 +227,8 @@ and a row here.
 | CurveStableSwapAdapter | `lattice.storage.CurveStableSwapAdapter` | `0x9a875cb7e904ab3576fe7e6b7405b28b9f810acb5bf4def0fec57c5e754def00` | `IProtocolAdapter` + `ICurveStableSwapAdapter` | `0x8f7783e6` / `0xfa38ccb7` | `0x789387b95720f4aa713e912bc377a2f999f1310b69003727d9c01b7ea1494c77` / `0x5d7c390f2f6bf0ca6f51b6ea0940c100b21726e3e202811c94c2ff39040d4299` |
 | LidoAdapter | `lattice.storage.LidoAdapter` | `0x3d4dff0246f0af54636d62603e75b921d2876c293bb97376b20bb8265ecb3900` | `IProtocolAdapter` + `ILidoAdapter` | `0x8f7783e6` / `0x83d0afd2` | `0x789387b95720f4aa713e912bc377a2f999f1310b69003727d9c01b7ea1494c77` / `0x6167b6f3924e213fbc2c85ec2d6ca3e7f5267a73935588adb9fb05f57a52b315` |
 | UniswapV3Adapter | `lattice.storage.UniswapV3Adapter` | `0x6f3c1f877b0bf340477364a294f77f49bff3a5479f70012a0fb5cb2803b61e00` | `IProtocolAdapter` + `IUniswapV3Adapter` | `0x8f7783e6` / `0xf723aa17` | `0x789387b95720f4aa713e912bc377a2f999f1310b69003727d9c01b7ea1494c77` / `0x18cf2bfdc937c75408cba5cf015af2a2f8d21a881c553ac382a288bcae5dc1c8` |
+| AggregatorExecAdapter | `lattice.storage.AggregatorExecAdapter` | `0xa2d04b4e843f01463940d93cd4d536111875b48fb08f2c3a7d094e91e39a5100` | `IAggregatorExecAdapter` | `0xe95f85f2` | `0x3b0da15f74db1bb0d7ebc58a8d802243b2c7050873887bf8e60ab5b971b5a8e9` |
+| GovernedVault | `lattice.storage.GovernedVault` | `0xce91473269200f209353d1f9f84b7900d57f30b14d017212fb8c61b25320cc00` | `IGovernedVault` | `0xd5cae628` | `0xce6fd43da1904d8f433b8bce181e4722445e0a5f694993acc9f150691da893d1` |
 
 ### AMM
 
@@ -127,8 +241,63 @@ and a row here.
 | Module | ERC-7201 namespace | Storage slot (hex) | Interface | interfaceId | ERC-165 map slot (hex) |
 |---|---|---|---|---|---|
 | ChainlinkAdapter | `lattice.storage.ChainlinkAdapter` | `0xdbb02d424081d7fb4c59a631e74d23250f514b627bc328ad0ec973d94b228000` | `IChainlinkAdapter` | `0x364fdec9` | `0x65e721c748691ae5a9544827b82a8602440249a42e1438a441599564727a3bd2` |
+| PythAdapter | `lattice.storage.PythAdapter` | `0x4f06923ad9b02e8a3ff8edafe956de2290e9ad8f87494c6f70ad4259b24ff100` | `IPythAdapter` | `0x3839468c` | `0x8285166a3f9489792233ccce4dfcee0aa88473267c0fab1b647d041fceb112c6` |
+| API3Adapter | `lattice.storage.API3Adapter` | `0xdedf34315ce34cb136d15a8f1bef434dfd97b5e1960d065caa42769bce24e700` | `IAPI3Adapter` | `0xfa98111e` | `0x21168d66e590ee042a818ed855046fa88c4c6601cbf29cfcb9e870d054a8cb77` |
+| ChronicleAdapter | `lattice.storage.ChronicleAdapter` | `0xfc08f646a4b61c410e914db3efd5dca6935b089749eb55e38d0c450dddbb7600` | `IChronicleAdapter` | `0x278f5b6a` | `0xfbb4f19de9230b60c572e8ff078c06c8112306947245c1d5058d08359436c1ca` |
+| DIAAdapter | `lattice.storage.DIAAdapter` | `0x96676e4e566fe60ae3185e7bd982de2eb1f4d0f9b85c8e29200af4e575d6c400` | `IDIAAdapter` | `0xec319d60` | `0xac3b2e96bffda1d6525b62f471f6722940d02b7c74a1e8090cae939120be2443` |
+| BandAdapter | `lattice.storage.BandAdapter` | `0xf5012e750700459bfafa131fc1c12ce6e9c0f0209cb29cbc1f960c4760a00a00` | `IBandAdapter` | `0xebdf87c5` | `0xc004cf02eead1d879bc806deefbe1f4228491d4cea98d16c38bf22274d73f5ac` |
+| TellorAdapter | `lattice.storage.TellorAdapter` | `0xf830cd05b050ba9ecf73559ef9b50793eb6cd90a674e3621847f667a1210d100` | `ITellorAdapter` | `0xddc762ca` | `0xd0880994b1b91b07c905771aa510c46b61d48fe80d33acc431dc49f1cf7b22c5` |
+| RedStoneAdapter | `lattice.storage.RedStoneAdapter` | `0x6c77ff7037fedb1e7737bf925fac4c87e7cc2c960916dee7790d2d73271bc700` | `IRedStoneAdapter` | `0xd5afaecd` | `0x48fa637c6327d1b003860a80c88da58028cdc6c0ad566c17cfe6e68792096327` |
 | ChainlinkVRF | `lattice.storage.ChainlinkVRF` | `0x296a09c3f1dda7c7057a0d3e9cfd88b1666f0f2ebdcbdc2f576bbcf22db0d200` | `IChainlinkVRF` | `0xed74ccf3` | `0x5e805972aa7ebffe06f2b61cc9d80c103d549fa32d030cc2918893026547c07e` |
+| PythEntropyAdapter | `lattice.storage.PythEntropyAdapter` | `0xf5638fd8a7410f61ded501225ccb03fd632a93dd0cfb1615ce2666e2781d4f00` | `IPythEntropyAdapter` | `0x4da4fb45` | `0x0b3233815ce1b1f92051bbb497fa74751e231e11c662dee243cd17d8f2a816f7` |
+| GelatoVRFAdapter | `lattice.storage.GelatoVRFAdapter` | `0x411b018662c29400f5f1d8919575dbc72aa8b7559a2445103c6d3b36a4058500` | `IGelatoVRFAdapter` | `0x648cc6c7` | `0x96d079b02f2bbbe165b473b6ab18c1244741cc699c115aaf2550dd64c3fba9dd` |
+| API3QRNGAdapter | `lattice.storage.API3QRNGAdapter` | `0xb551ab661bfaed153d497ffdaa9cbb1d46fa1d799d8e6f2a2aa8ecfb66104b00` | `IAPI3QRNGAdapter` | `0xae37b187` | `0x686b5c002fca8114a8568270b3aef529a60083a8d9c09dbd16e3a0bb6b30bfcf` |
+| GelatoAutomateAdapter | `lattice.storage.GelatoAutomateAdapter` | `0x2e009cfe8b023d727b88173e4903cf45c68c8d769ec207081d89791b624d6900` | `IGelatoAutomateAdapter` | `0xa5503dc2` | `0x266c2a44ce0cae7d2ae6065711c72b357de4f867c756d7ce5224cd89d213768f` |
+| ChainlinkAutomationAdapter | `lattice.storage.ChainlinkAutomationAdapter` | `0x79ff96d501e28b99bca4f72c19ec619bce29c1cac16a5bcab62634e5e94dcb00` | `IChainlinkAutomationAdapter` | `0x97290114` | `0xda518c4395658f1bda3e69bd76a71c3cebddb4103a2ca4f795abdfcb18525c7c` |
+| ChainlinkCREAdapter | `lattice.storage.ChainlinkCREAdapter` | `0x38811f86f85f0447c0970d57466dc7a3c4187640f04a44e7622c183e45f90b00` | `IReceiver` (canonical CRE id) | `0x805f2132` | `0x441e497903b68a1fc13e526fe3469e615b027289cdd3d767c8ce4993ccc4bf83` |
 | TWAPOracle | `lattice.storage.TWAPOracle` | `0xc2bcc163613aea761b734a9692ad3548aab9088be29b53e03facf6a2a351df00` | `ITWAPOracle` | `0xd1baebe0` | `0x3edcb012a40cef5fed8aba3a5816c3233af9ecd91b8a1965a2b67b8940a0f49f` |
+
+### Crosschain
+
+| Module | ERC-7201 namespace | Storage slot (hex) | Interface | interfaceId | ERC-165 map slot (hex) |
+|---|---|---|---|---|---|
+| CrosschainLink | `lattice.storage.CrosschainLink` | `0x018a2157cdb5adbb1b39e614b18b4d8eae2cba40cdae1a4ba3100cc857e64900` | `ICrosschainLink` | `0xe1805ff8` | `0x9ddc11a88c7ecd9ccccbcd59cd7f34c709ebe70b4507cbaed74ad8b1267235ef` |
+| BridgeERC20 | `lattice.storage.BridgeERC20` | `0x0e9006c16c4f5fe9e0e3215c8af601bd97024c6bebdfa0efe51c092276cd7c00` | `IBridgeFungible` | `0x28dcc8d8` | `0xc98ec5eb76ed7701e7884a55fd8dcc6ba54f192d7f68011281537265c16215d4` |
+| BridgeERC7802 | `lattice.storage.BridgeERC7802` | `0x9d1b234db7644d1f76207933d92c2e89140027741ab600a4ff4b12a8d51e4b00` | `IBridgeFungible` | `0x28dcc8d8` | `0xc98ec5eb76ed7701e7884a55fd8dcc6ba54f192d7f68011281537265c16215d4` |
+| AxelarGatewayAdapter | `lattice.storage.AxelarGatewayAdapter` | `0xeb5bee64b500c298be8b1e9f77b8505f5c8c9cdd4c45b490c069ffc446e8fd00` | `IERC7786GatewaySource` | `0x11967553` | `0x3c75b8ea75c097979221eb9302e2f0f6009b4ffe0a7198db5dc29979e09ea0e3` |
+| WormholeGatewayAdapter | `lattice.storage.WormholeGatewayAdapter` | `0x46329d8c82c4b2643a1707018dd8f47f4e747c04259ec1eec95a00ddfb1bd600` | `IERC7786GatewaySource` | `0x11967553` | `0x3c75b8ea75c097979221eb9302e2f0f6009b4ffe0a7198db5dc29979e09ea0e3` |
+| ERC7786OpenBridge | `lattice.storage.ERC7786OpenBridge` | `0xca75154ce55fdf901a786b6fa60962886fadca5cda61c777098bc66b49134a00` | `IERC7786GatewaySource` | `0x11967553` | `0x3c75b8ea75c097979221eb9302e2f0f6009b4ffe0a7198db5dc29979e09ea0e3` |
+| CCIPGatewayAdapter | `lattice.storage.CCIPGatewayAdapter` | `0xfc37dafbf0181d0474cf94e236f0ede0d369aab52659fb134d4be3b15fbb8e00` | `IERC7786GatewaySource` + `IAny2EVMMessageReceiver` + `IAny2EVMMessageReceiverV2` | `0x11967553` / `0x85572ffb` / `0x1bfc84d0` | `0x3c75b8ea75c097979221eb9302e2f0f6009b4ffe0a7198db5dc29979e09ea0e3` / `0x800eb085c0ca5e4523c112cc053bae87b4696eb6a3bf735b4b8b0a9d09be1465` / `0x9baecadb3e37f7ef6c6624a337da384f68e7fa9684795d0ccbd7f9f089dee070` |
+| LayerZeroGatewayAdapter | `lattice.storage.LayerZeroGatewayAdapter` | `0xbca2daa6d08cb277e523bf7dcd928e312ddbb7f9ac88be435916dda92924d100` | `IERC7786GatewaySource` | `0x11967553` | `0x3c75b8ea75c097979221eb9302e2f0f6009b4ffe0a7198db5dc29979e09ea0e3` |
+| L2ToL2CrossDomainMessengerGatewayAdapter | `lattice.storage.L2ToL2CrossDomainMessengerGatewayAdapter` | `0x7d097b8d74c3eca1712de7b01bb2e081ac18f7660e60d35d0a11a670a90beb00` | `IERC7786GatewaySource` | `0x11967553` | `0x3c75b8ea75c097979221eb9302e2f0f6009b4ffe0a7198db5dc29979e09ea0e3` |
+| L1ToL2CrossDomainMessengerGatewayAdapter | `lattice.storage.L1ToL2CrossDomainMessengerGatewayAdapter` | `0xba3de3e77bc32833730368f3190597d7121922af189304a06067265b4d53a500` | `IERC7786GatewaySource` | `0x11967553` | `0x3c75b8ea75c097979221eb9302e2f0f6009b4ffe0a7198db5dc29979e09ea0e3` |
+| ZetaChainGatewayAdapter | `lattice.storage.ZetaChainGatewayAdapter` | `0x7529f1b714a55f00ea95d180ad0c2a53651f18a834ecec0ff1f9af59ddf74000` | `IERC7786GatewaySource` | `0x11967553` | `0x3c75b8ea75c097979221eb9302e2f0f6009b4ffe0a7198db5dc29979e09ea0e3` |
+| CCTPBridgeAdapter | `lattice.storage.CCTPBridgeAdapter` | `0x94bcfd23a6ef7deebf3dfac9da6ba8c390ae8a620c8a163523fd263b20958b00` | `ICCTPBridgeAdapter` | `0x9868b584` | `0xc99af2d75b4d69e472159c90d5028834f8137d465c0aaebc7a1ffe39b3c97dee` |
+| SuperchainETHBridgeAdapter | (stateless — no ERC-7201 storage) | — | `ISuperchainETHBridgeAdapter` | `0x832d7d61` | `0x3e08ed85f4544feff1f3f78c34d4e426159248bf51477cf7b08dde93bbe30744` |
+| AcrossBridgeAdapter | `lattice.storage.AcrossBridgeAdapter` | `0xd1f2b3a38609618605209c75d051e4ac61236c94f39400c851dd252f5fe1d000` | `IAcrossBridgeAdapter` | `0x4615a4f1` | `0xd64961c0a774526940a248ad01e6f5f33fadd297074bcba45861d774858b837c` |
+| StarknetGatewayAdapter | `lattice.storage.StarknetGatewayAdapter` | `0x3f9fd8bc99bc5c4e4ff64e899fbe5f73a1a0f6c02aaa904e7184494718213e00` | `IStarknetGatewayAdapter` | `0x7dfd78ca` | `0xbcf162df5dae478299124881124442c9a950f7c7a4c96c5d289b1c3a20b1dd53` |
+| ChainRegistry | `lattice.storage.ChainRegistry` | `0x3d04730f387c3a41671abdc91e43582ee4d80e460792f9c401b5acc80eab5b00` | `IChainRegistry` | `0x137e339e` | `0x0a0affa1c3cd17b5e25d35fd719de9756671b9a056876933fee65c04fc5735d3` |
+| HyperlaneGatewayAdapter | `lattice.storage.HyperlaneGatewayAdapter` | `0x8a4b1302312d119abfdb0305131f00457b784ef22f6824db37cbaed84bba5600` | `IERC7786GatewaySource` + `IHyperlaneGatewayAdapter` | `0x11967553` / `0xb4f23f37` | `0x3c75b8ea75c097979221eb9302e2f0f6009b4ffe0a7198db5dc29979e09ea0e3` / `0xda64faf279e491b8914ea1bd5a229e6b869c7ceecd7af74ddf271e5df1381612` |
+| StargateBridgeAdapter | `lattice.storage.StargateBridgeAdapter` | `0x2076bfc799b61fb4ea9b1d4a406060be54015b08cd19ef147b102a3e634c0800` | `IStargateBridgeAdapter` | `0x199fc6b0` | `0x326cc60e86592cbb0d41c91042ab150a4f99ae6dd5d49d392cfc87d10b32650d` |
+| HyperbridgeGatewayAdapter | `lattice.storage.HyperbridgeGatewayAdapter` | `0x51a6b52d433abb3ae06100272e5ee46754531b734f9cac910997924c61569700` | `IERC7786GatewaySource` + `IHyperbridgeGatewayAdapter` | `0x11967553` / `0x9c48e32e` | `0x3c75b8ea75c097979221eb9302e2f0f6009b4ffe0a7198db5dc29979e09ea0e3` / `0xb7ece225a1d7ee3cb3d032ac79e8edc4e7bc0b80a422071828120db87beadfcb` |
+
+### Markets
+
+| Module | ERC-7201 namespace | Storage slot (hex) | Interface | interfaceId | ERC-165 map slot (hex) |
+|---|---|---|---|---|---|
+| MarketplaceZone | `lattice.storage.MarketplaceZone` | `0xe77b1be4866c120f9cf1b3ac35bdd606adb1b331ef4d920e5a5993f90d992800` | `ZoneInterface` (Seaport) | `0x3822a094` | `0xeb1ff41651f419b216c82171945cb548e85f1f021f4de7ac580f5665f8fc8360` |
+
+### Accounts
+
+| Module | ERC-7201 namespace | Storage slot (hex) | Interface | interfaceId | ERC-165 map slot (hex) |
+|---|---|---|---|---|---|
+| AccountSigner | `lattice.storage.AccountSigner` | `0x0da6d1e39c7e91c8bb664dbc699f525d1effdcf9e745a754a440ffebe67feb00` | — (internal signer seam) | — | — |
+| ERC4337Validation | `lattice.storage.ERC4337Validation` | `0x63f3a16063eb3400d0c49a9883f78e71c0740febe009dfe0af21003612fc2a00` | `IAccount` (no ERC-165 id) | — | — |
+| ERC1271Signature | — (stateless) | — | `IERC1271` | `0x1626ba7e` | `0x13edcf2102dbcbe8afc6b8b590ac545a2ed12e9a15726b4c8ab7a3fb938ab3b7` |
+| ERC7821Executor | — (stateless) | — | `IERC7821` (Lattice-local id) | `0x39922547` | `0x78c1401e50bfb6276de93dc8c11adfbefc06555e8af1f7964bc4c850cbbd171c` |
+| SessionKey | `lattice.storage.SessionKey` | `0xd72f45b3818762a6cc49804ed52c577908badd7fff8bbd7849829b4fc764ae00` | — (admin/policy) | — | — |
+| ERC7579ModuleConfig | `lattice.storage.ERC7579ModuleConfig` | `0xf5855f8dc57bbb54955d6871575c862d7a11401119f5a873c91e7ac60628d800` | `IERC7579Execution` / `IERC7579AccountConfig` / `IERC7579ModuleConfig` | `0x3f3f9537` / `0xbe1d6cf6` / `0x232dbb4a` | `0x1adc25256844eecf70d1111a7d897d059d6c39bccc33e2fe1bcdd0aa07e45227` / `0xca27659497801bbd07af0889ead6ea5a1a9b8739438e7af51464f7082b08ae43` / `0x1c2e0d7514777ddafe41add8aefc1cb6319fbc463de0c6eb0b00433efbdbdd41` |
+| ERC6551Account | `lattice.storage.ERC6551Account` | `0x5d509296c8693d1a2071f7702ffb166090e7cdcee4fc11a42df61b6a19026100` | `IERC6551Account` / `IERC6551Executable` | `0x6faff5f1` / `0x51945447` | `0xe5e50471a231013bea8f6034ec0b978814d697120ebd88e3624ed42959ed0a66` / `0x7119a8e42d55700f1f34f34e17ffb769e414497fcab2ff2004aa97c610742b4b` |
 
 ### Security
 
@@ -149,11 +318,43 @@ and a row here.
 | Nonces | `lattice.storage.Nonces` | `0x2b93a5a8782d382c0f6890e7e2d77ba67ed77675c16cc334b45b931317d4de00` | `INonces` | `0x7ecebe00` | `0x7a551986b45870996296121343257817091920bfbe333333c5198eab95eb2fa2` |
 | VestingWallet | `lattice.storage.VestingWallet` | `0x6d3272be2f02b6d92080037a80b8780ee2896be455de43b32ab08d8adbdbbe00` | `IVestingWallet` | `0x1c3a25a8` | `0x30594729cb8d6a49998656680a715012a3392034ab2a6e4f69a94bf6b0450af9` |
 
+### Privacy
+
+| Module | ERC-7201 namespace | Storage slot (hex) | Interface | interfaceId | ERC-165 map slot (hex) |
+|---|---|---|---|---|---|
+| ERC5564Announcer | (stateless — no ERC-7201 storage) | — | `IERC5564Announcer` (ERC-5564) | `0x4d1f9583` | `0xa57260aa5166ddbfa7edd847f707bbf0762a8707401140e29b2073d6dfc88e2e` |
+| ERC6538Registry | `lattice.storage.ERC6538Registry` | `0x77e72c5973ed8cfb58126100bfd525d25949aa328155f37334e51548cdc80100` | `IERC6538Registry` (ERC-6538) | `0x7b1f57cb` | `0xba3bf91c60e936a8bb7a4c2729c74c6ef842a655f3dff9707765ac926778cd2e` |
+| CommitReveal | `lattice.storage.CommitReveal` | `0xd3109411a8705fe8e8868eda2607aae4e6b37bb0d383a8a9e1c55c78e6853e00` | `ICommitReveal` | `0xe371e8b7` | `0xdc9ba0d500a620df2dabeedf359873cda3ecd1229c8cb91b5b30ae80ec382462` |
+| Groth16Verifier | (stateless — no ERC-7201 storage) | — | `IGroth16Verifier` | `0x6d832d8e` | `0x65fb5f0c2dd2a1b03fcdcf008584d060b7a7596bbc510b7022310e4dbd7682a9` |
+| PlonkVerifier | (stateless — no ERC-7201 storage) | — | `IPlonkVerifier` | `0x5d484314` | `0xb1e78a1a6e11f30e01de857f602d74246da41ae3318d8e6afc2b73cc1cbe0ede` |
+| Semaphore | `lattice.storage.Semaphore` | `0x9014b6f2f89a94726c6607d3b9e5562f77c44e9f80791dbbfea2ef3de33d0300` | `ISemaphore` | `0xf497879d` | `0xf2439559430b40518d710e6342516a19266235963e7106afd03350497fe51040` |
+| PrivateVoting | `lattice.storage.PrivateVoting` | `0x366a7e9d1ddfe6eaa85ec4e6a71a0be592797e3e9ab0151a827465f6ed6bb900` | `IPrivateVoting` | `0xf750b661` | `0xd7a71e51b42fc01807cbfbb5db7d2ead6dbf4db6187d1c815fc074c4ac95ba7c` |
+| ShieldedPool | `lattice.storage.ShieldedPool` | `0xa961220e87963afb8adc0f7621a90ce1922bf3bb438109c43cc7dacbc8e06600` | `IShieldedPool` | `0x8f5cc2c7` | `0x584247a1f67e966ee8f18e29a93dbcead963401775336064ffc8d6a343c2a4df` |
+
+### ENS
+
+| Module | ERC-7201 namespace | Storage slot (hex) | Interface | interfaceId | ERC-165 map slot (hex) |
+|---|---|---|---|---|---|
+| ENSReverseClaimer | `lattice.storage.ENSReverseClaimer` | `0x4490f19c91eeff7574cc9707696b972040b89f54488ef7fa354afe94a194c100` | `IENSReverseClaimer` | `0x84019dd8` | `0x3c859ae3ba58f26576821324787594a5249343bb61f3f7c4054b439dbc4eff8c` |
+| ENSResolver | `lattice.storage.ENSResolver` | `0x33f26d8db6499021a25127a427a9f060956987880daa3f7db97807f377225300` | `IENSResolver` | `0x566ec67d` | `0x79535b2b28365a4b28deff1d36dfc239871172c80dcc5e494674d846366975cb` |
+| ENSSubnameIssuer | `lattice.storage.ENSSubnameIssuer` | `0xecd97908615d460a8806be2f460463395b75373d406444064e9704ed5d892e00` | `IENSSubnameIssuer` | `0x6ead39e3` | `0x19f98b1c052723a0f45e31ccce192390fdd3867a76366f19df750eb883381f60` |
+
 ---
 
-**Counts:** 37 storage-bearing modules (37 unique ERC-7201 slots) and 39 ERC-165 interface
-map slots (GovernedDiamondCut reuses IDiamondCut's `0x1f931c1c` ERC-165 slot, so it adds an
-ERC-7201 slot but no new ERC-165 map slot; AaveV3Adapter registers two interfaces —
+**Counts:** 86 storage-bearing modules (86 unique ERC-7201 slots) and 87 ERC-165 interface
+map slots (the privacy track adds the stateful `ERC6538Registry` — one ERC-7201 slot and one
+`IERC6538Registry` ERC-165 slot — plus the stateless `ERC5564Announcer` — no ERC-7201 slot, one
+`IERC5564Announcer` ERC-165 slot — and the stateless `Groth16Verifier` — no ERC-7201 slot, one
+`IGroth16Verifier` (`0x6d832d8e`) ERC-165 slot — and the stateless `PlonkVerifier` — no ERC-7201 slot,
+one `IPlonkVerifier` (`0x5d484314`) ERC-165 slot — and the stateful `Semaphore` membership module — one
+ERC-7201 slot and one `ISemaphore` (`0xf497879d`) ERC-165 slot — and the stateful `PrivateVoting` module
+— one ERC-7201 slot and one `IPrivateVoting` (`0xf750b661`) ERC-165 slot — and the stateful `ShieldedPool`
+module — one ERC-7201 slot and one `IShieldedPool` (`0x8f5cc2c7`) ERC-165 slot; GovernedDiamondCut reuses IDiamondCut's `0x1f931c1c` ERC-165 slot, so it adds an
+ERC-7201 slot but no new ERC-165 map slot; SafeDiamondCut likewise reuses IDiamondCut's
+`0x1f931c1c` ERC-165 slot, so it adds an ERC-7201 slot but no new ERC-165 map slot;
+GovernedSafeDiamondCut serves no synchronous cut selector and registers its own
+`IGovernedSafeDiamondCut` (`0xacb1aeb6`) interface, so it adds one ERC-7201 slot AND one new
+ERC-165 map slot; AaveV3Adapter registers two interfaces —
 the generic `IProtocolAdapter` plus its protocol-specific `IAaveV3Adapter` — so it adds two
 ERC-165 map slots; CompoundV3Adapter reuses the shared `IProtocolAdapter` map slot and only
 adds its protocol-specific `ICompoundV3Adapter` slot — so it adds one ERC-7201 slot and one
@@ -164,4 +365,67 @@ only its protocol-specific `ICurveStableSwapAdapter` slot — one ERC-7201 slot 
 map slot; LidoAdapter likewise reuses the shared `IProtocolAdapter` map slot and adds only its
 protocol-specific `ILidoAdapter` slot — one ERC-7201 slot and one new ERC-165 map slot;
 UniswapV3Adapter likewise reuses the shared `IProtocolAdapter` map slot and adds only its
-protocol-specific `IUniswapV3Adapter` slot — one ERC-7201 slot and one new ERC-165 map slot).
+protocol-specific `IUniswapV3Adapter` slot — one ERC-7201 slot and one new ERC-165 map slot;
+AggregatorExecAdapter — the type-C quote-API execution adapter, homed in the DeFi table because the module
+lives under `src/defi/` — registers ONLY its own `IAggregatorExecAdapter` (`0xe95f85f2`), not the shared
+`IProtocolAdapter` id, so it adds one ERC-7201 slot and one new ERC-165 map slot). The
+crosschain track adds eighteen storage-bearing modules — `CrosschainLink`, `BridgeERC20`, `BridgeERC7802`,
+`AxelarGatewayAdapter`, `WormholeGatewayAdapter`, `ERC7786OpenBridge`, `CCIPGatewayAdapter`,
+`LayerZeroGatewayAdapter`, `L2ToL2CrossDomainMessengerGatewayAdapter`,
+`L1ToL2CrossDomainMessengerGatewayAdapter`, `ZetaChainGatewayAdapter`, `CCTPBridgeAdapter`,
+`AcrossBridgeAdapter`, `StarknetGatewayAdapter`, `ChainRegistry`, `HyperlaneGatewayAdapter`,
+`StargateBridgeAdapter`, `HyperbridgeGatewayAdapter` — each with its own ERC-7201 slot, plus the stateless
+`SuperchainETHBridgeAdapter` (a pure payable passthrough to the OP interop predeploy — no ERC-7201 slot,
+one `ISuperchainETHBridgeAdapter` (`0x832d7d61`) ERC-165 slot). The two bridges share the `IBridgeFungible`
+(`0x28dcc8d8`) ERC-165 slot and the ten ERC-7786 gateways — `AxelarGatewayAdapter`,
+`WormholeGatewayAdapter`, `ERC7786OpenBridge`, `CCIPGatewayAdapter`, `LayerZeroGatewayAdapter`, the two OP
+messenger adapters, `ZetaChainGatewayAdapter`, `HyperlaneGatewayAdapter`, `HyperbridgeGatewayAdapter` —
+share the `IERC7786GatewaySource` (`0x11967553`) ERC-165 slot. `CCIPGatewayAdapter` additionally
+registers `IAny2EVMMessageReceiver` (`0x85572ffb`, required for the CCIP router's pre-delivery
+`supportsInterface` check) and `IAny2EVMMessageReceiverV2` (`0x1bfc84d0` — Solidity's `type().interfaceId`
+excludes the inherited `ccipReceive`, so the V2 id is the `getCCVsAndFinalityConfig` selector — for CCV-enabled
+lanes); `HyperlaneGatewayAdapter` and `HyperbridgeGatewayAdapter` each additionally mint their own
+protocol-surface id (`IHyperlaneGatewayAdapter` `0xb4f23f37`, `IHyperbridgeGatewayAdapter` `0x9c48e32e`) on
+top of the shared gateway slot; the token bridges and the non-EVM connector register their own ids only —
+`ICCTPBridgeAdapter` (`0x9868b584`), `IAcrossBridgeAdapter` (`0x4615a4f1`), `IStargateBridgeAdapter`
+(`0x199fc6b0`), `IStarknetGatewayAdapter` (`0x7dfd78ca`; NOT an ERC-7786 gateway — it does not register the
+shared `0x11967553` id) — and `ChainRegistry` mints `IChainRegistry` (`0x137e339e`) — so crosschain adds
+eighteen ERC-7201 slots and thirteen new ERC-165 map slots. The randomness/automation adapters — `PythEntropyAdapter`, `GelatoVRFAdapter`,
+`API3QRNGAdapter`, `GelatoAutomateAdapter`, `ChainlinkAutomationAdapter` (alongside the existing
+`ChainlinkVRF`) — each add one ERC-7201 storage slot and one unique ERC-165 map slot; the five new modules
+add five ERC-7201 slots and five ERC-165 map slots. Randomness/automation adapters currently live under
+`src/oracles/` alongside `ChainlinkVRF` (module-home decision: kept there for consistency rather than split
+into dedicated `src/randomness/` + `src/automation/` namespaces). `ChainlinkCREAdapter` is a Chainlink CRE
+workflow-report receiver (push model): it adds one ERC-7201 storage slot and registers the **canonical**
+`type(IReceiver).interfaceId` (`0x805f2132`) — rather than its Lattice-specific `IChainlinkCREAdapter` id —
+so CRE tooling detects the receiver via ERC-165, matching the ERC-721/ERC-1155 canonical-id precedent. The
+accounts track (#56 v1) adds the smart-account entry surface as four facets: `AccountSigner` (single-owner
+signer — ECDSA / P256 / WebAuthn passkeys, #58 item 3) and `ERC4337Validation` (configurable-EntryPoint
+`validateUserOp`) each add one ERC-7201 slot
+but no ERC-165 map slot — the signer is an internal seam and ERC-4337 defines no ERC-165 id; the stateless
+`ERC1271Signature` and `ERC7821Executor` add no ERC-7201 slot and one ERC-165 map slot each — `IERC1271`
+(`0x1626ba7e`) and a Lattice-local `type(IERC7821).interfaceId` (`0x39922547`; ERC-7821 defines no canonical
+id, discovery is via `supportsExecutionMode`) — so the entry-surface facets add two ERC-7201 slots and two new
+ERC-165 map slots; the `SessionKey` module (scoped, expiring secondary keys for the executor's signed-opData
+path, #58 item 4) adds a third ERC-7201 slot and no ERC-165 id; the `ERC7579ModuleConfig` facet (ERC-7579
+executor modules + introspection, #58 item 2) adds a fourth ERC-7201 slot and registers the three OZ ERC-7579
+interface ids (`IERC7579Execution` `0x3f3f9537`, `IERC7579AccountConfig` `0xbe1d6cf6`, `IERC7579ModuleConfig`
+`0x232dbb4a`) — four ERC-7201 slots and five ERC-165 map slots so far. The single owner (ECDSA, a
+P256 key, or a WebAuthn passkey — #58 item 3) backs both `validateUserOp` and `isValidSignature`, with ERC-7739
+defensive rehashing on the 1271 path (#59) composing audited OZ/Solady rather than hand-rolled crypto. The
+`ERC6551Account` facet (#58 item 8) makes the Diamond a token-bound account controlled by the owner of a bound
+ERC-721 — a fifth ERC-7201 slot and two more ERC-165 ids (`IERC6551Account` `0x6faff5f1`, `IERC6551Executable`
+`0x51945447`), bringing accounts to five ERC-7201 slots and seven ERC-165 map slots.
+
+**EIP-7702 storage-collision review (#58 item 7).** The same facets run as an EIP-7702 delegate, executing
+against the *EOA's own storage*. This is collision-safe by construction: every slot the account touches is high
+in the address space — the Diamond facet map at `DIAMOND_STORAGE_LOCATION` (`0x6d5a…c000`), the initializable
+guard at `0xffff…1132`, and all ERC-7201 module slots / ERC-165 map slots above — never a low/sequential slot.
+So residual storage left in an EOA by a prior 7702 delegate (which would use low slots) cannot corrupt the
+account state, and the namespaced slots cannot alias each other (the per-module uniqueness already asserted by
+`StorageSlotVerificationTest`). Onboarding writes owner = the EOA itself via `AccountInit.init7702`; the
+self-owner signature path uses ECDSA-only recovery (`AccountSignerLib`) to avoid recursing into the EOA's own
+ERC-1271 entry point now that the delegated EOA carries code. Onboarding must be **atomic** — the 7702
+authorization bundled into the first UserOp's transaction (the standard 4337+7702 flow) — since the bare
+`Diamond.initialize` is ungated; integrators that cannot guarantee atomicity delegate to `Account7702Diamond`
+instead, whose `initializeAuthorized` requires the EOA's signature over the exact onboarding.

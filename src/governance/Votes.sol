@@ -2,8 +2,8 @@
 pragma solidity ^0.8.30;
 
 import {VotesLib} from "@lattice/governance/libraries/VotesLib.sol";
-import {IVotes} from "@lattice/interfaces/IVotes.sol";
-import {ERC20Lib} from "@lattice/tokens/libraries/ERC20Lib.sol";
+import {IVotes} from "@lattice/interfaces/governance/IVotes.sol";
+import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
 
 /// @title Votes
 /// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/governance/utils/Votes.sol)
@@ -61,5 +61,21 @@ contract Votes is IVotes {
     // solhint-disable-next-line func-name-mixedcase
     function CLOCK_MODE() public view virtual returns (string memory) {
         return VotesLib.CLOCK_MODE();
+    }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect Votes methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `CLOCK_MODE()` 0x4bf5d7e9
+    ///      `clock()` 0x91ddadf4
+    ///      `delegate(address)` 0x5c19a95c
+    ///      `delegateBySig(address,uint256,uint256,uint8,bytes32,bytes32)` 0xc3cda520
+    ///      `delegates(address)` 0x587cde1e
+    ///      `getPastTotalSupply(uint256)` 0x8e539e8c
+    ///      `getPastVotes(address,uint256)` 0x3a46b1a8
+    ///      `getVotes(address)` 0x9ab24eb0
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors = hex"4bf5d7e991ddadf45c19a95cc3cda520587cde1e8e539e8c3a46b1a89ab24eb0";
     }
 }

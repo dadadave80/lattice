@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {IRateLimiter} from "@lattice/interfaces/IRateLimiter.sol";
+import {IRateLimiter} from "@lattice/interfaces/security/IRateLimiter.sol";
 import {RateLimiterLib} from "@lattice/security/libraries/RateLimiterLib.sol";
 
 /// @title RateLimiter
@@ -30,5 +30,17 @@ contract RateLimiter is IRateLimiter {
     /// @inheritdoc IRateLimiter
     function consume(bytes32 key, uint256 amount) public virtual {
         RateLimiterLib.consume(key, amount);
+    }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect RateLimiter methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `configure(bytes32,uint256,uint256)` 0xbe0b31ab
+    ///      `consume(bytes32,uint256)` 0x98017489
+    ///      `getAvailable(bytes32)` 0xd121f72c
+    ///      `getConfig(bytes32)` 0x6dd5b69d
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors = hex"be0b31ab98017489d121f72c6dd5b69d";
     }
 }

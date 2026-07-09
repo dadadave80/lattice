@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.4;
 
-import {IERC20} from "@lattice/interfaces/IERC20.sol";
+import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
 
 /// @title IWETH9
 /// @author Modified from the canonical WETH9 (https://github.com/gnosis/canonical-weth/blob/master/contracts/WETH9.sol)

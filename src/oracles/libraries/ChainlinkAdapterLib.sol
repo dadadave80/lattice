@@ -3,8 +3,8 @@ pragma solidity ^0.8.30;
 
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
-import {IChainlinkAdapter} from "@lattice/interfaces/IChainlinkAdapter.sol";
 import {IAggregatorV3} from "@lattice/interfaces/external/IAggregatorV3.sol";
+import {IChainlinkAdapter} from "@lattice/interfaces/oracles/IChainlinkAdapter.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
 //                                  STORAGE
@@ -35,7 +35,7 @@ struct ChainlinkAdapterStorage {
 
 /// @title ChainlinkAdapterLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
-/// @author Modified from Chainlink (https://github.com/smartcontractkit/chainlink/blob/develop/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol)
+/// @author Modified from Chainlink (https://github.com/smartcontractkit/chainlink-evm/blob/develop/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol)
 /// @notice Library that wraps Chainlink AggregatorV3 price feeds with
 ///         per-feed staleness configuration and WAD normalisation.
 library ChainlinkAdapterLib {

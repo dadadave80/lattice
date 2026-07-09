@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {IAdapterOperator} from "@lattice/interfaces/IAdapterOperator.sol";
-import {IProtocolAdapter} from "@lattice/interfaces/IProtocolAdapter.sol";
+import {IAdapterOperator} from "@lattice/interfaces/defi/IAdapterOperator.sol";
+import {IProtocolAdapter} from "@lattice/interfaces/defi/IProtocolAdapter.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @notice Compile-level proof that IProtocolAdapter exposes the agreed ABI:

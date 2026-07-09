@@ -4,8 +4,8 @@ pragma solidity ^0.8.30;
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
 import {AdapterBaseLib} from "@lattice/defi/libraries/AdapterBaseLib.sol";
-import {IProtocolAdapter} from "@lattice/interfaces/IProtocolAdapter.sol";
-import {IUniswapV3Adapter} from "@lattice/interfaces/IUniswapV3Adapter.sol";
+import {IProtocolAdapter} from "@lattice/interfaces/defi/IProtocolAdapter.sol";
+import {IUniswapV3Adapter} from "@lattice/interfaces/defi/IUniswapV3Adapter.sol";
 import {INonfungiblePositionManager} from "@lattice/interfaces/external/INonfungiblePositionManager.sol";
 import {IUniswapV3Pool} from "@lattice/interfaces/external/IUniswapV3Pool.sol";
 import {EmergencyStopLib} from "@lattice/security/libraries/EmergencyStopLib.sol";
@@ -73,6 +73,7 @@ struct UniswapV3AdapterStorage {
 
 /// @title UniswapV3AdapterLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from Uniswap V3 (https://github.com/Uniswap/v3-periphery)
 /// @notice Logic for a **custom**, full-range Uniswap V3 LP strategy. A v3 LP is a two-token,
 ///         NFT-wrapped concentrated-liquidity position that does not fit the single-asset `IStrategy`
 ///         surface cleanly, so this adapter makes three deliberate simplifications: (1) the position

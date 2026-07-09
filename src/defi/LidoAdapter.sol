@@ -2,14 +2,15 @@
 pragma solidity ^0.8.30;
 
 import {LidoAdapterLib} from "@lattice/defi/libraries/LidoAdapterLib.sol";
-import {IAdapterOperator} from "@lattice/interfaces/IAdapterOperator.sol";
-import {ILidoAdapter} from "@lattice/interfaces/ILidoAdapter.sol";
-import {IProtocolAdapter} from "@lattice/interfaces/IProtocolAdapter.sol";
+import {IAdapterOperator} from "@lattice/interfaces/defi/IAdapterOperator.sol";
+import {ILidoAdapter} from "@lattice/interfaces/defi/ILidoAdapter.sol";
+import {IProtocolAdapter} from "@lattice/interfaces/defi/IProtocolAdapter.sol";
 import {IStrategy} from "@lattice/interfaces/external/IStrategy.sol";
 import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib.sol";
 
 /// @title LidoAdapter
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from Lido (https://github.com/lidofinance/core)
 /// @notice Diamond facet adapting a Lido staking position into a Lattice vault strategy under the
 ///         **buffer model**. Implements `IStrategy` (funds routing), `IProtocolAdapter` (sidecar),
 ///         and `ILidoAdapter` (Lido config + async-queue keeper). The asset is **WETH**; native ETH

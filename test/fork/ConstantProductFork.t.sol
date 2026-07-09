@@ -7,8 +7,8 @@ import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {ConstantProduct} from "@lattice/amm/ConstantProduct.sol";
 import {ConstantProductLib} from "@lattice/amm/libraries/ConstantProductLib.sol";
-import {IConstantProduct} from "@lattice/interfaces/IConstantProduct.sol";
-import {IERC20} from "@lattice/interfaces/IERC20.sol";
+import {IConstantProduct} from "@lattice/interfaces/amm/IConstantProduct.sol";
+import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
 import {Test} from "forge-std/Test.sol";
 
 // ---------------------------------------------------------------------------
@@ -16,8 +16,12 @@ import {Test} from "forge-std/Test.sol";
 // ---------------------------------------------------------------------------
 
 /// @notice Mock Diamond that combines AccessControl + ConstantProduct, matching
-///         the pattern from ConstantProductTester.t.sol.
+///         the pattern from ConstantProductTest.t.sol.
 contract MockConstantProductFork is ConstantProduct, AccessControl {
+    /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare
+    ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing.
+    function exportSelectors() external pure virtual override(ConstantProduct, AccessControl) returns (bytes memory) {}
+
     function initialize(address token0_, address token1_, address admin_) external {
         bytes32 s = InitializableLib.initializableSlot();
         InitializableLib.preInitializer(s);

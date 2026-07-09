@@ -4,8 +4,8 @@ pragma solidity ^0.8.30;
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
 import {AdapterBaseLib} from "@lattice/defi/libraries/AdapterBaseLib.sol";
-import {ICompoundV3Adapter} from "@lattice/interfaces/ICompoundV3Adapter.sol";
-import {IProtocolAdapter} from "@lattice/interfaces/IProtocolAdapter.sol";
+import {ICompoundV3Adapter} from "@lattice/interfaces/defi/ICompoundV3Adapter.sol";
+import {IProtocolAdapter} from "@lattice/interfaces/defi/IProtocolAdapter.sol";
 import {IComet} from "@lattice/interfaces/external/IComet.sol";
 import {ICometRewards} from "@lattice/interfaces/external/ICometRewards.sol";
 import {EmergencyStopLib} from "@lattice/security/libraries/EmergencyStopLib.sol";
@@ -56,6 +56,7 @@ struct CompoundV3AdapterStorage {
 
 /// @title CompoundV3AdapterLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from Compound V3 (https://github.com/compound-finance/comet)
 /// @notice Logic for the Compound v3 supply adapter. 1:1 base-asset accounting (no oracle).
 ///         Reentrancy-gated, pause/emergency-aware, shortfall-honest. Rewards forwarded raw.
 library CompoundV3AdapterLib {

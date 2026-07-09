@@ -4,14 +4,14 @@ pragma solidity ^0.8.30;
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
 import {AdapterBaseLib} from "@lattice/defi/libraries/AdapterBaseLib.sol";
-import {IAaveV3Adapter} from "@lattice/interfaces/IAaveV3Adapter.sol";
-import {IERC20} from "@lattice/interfaces/IERC20.sol";
-import {IProtocolAdapter} from "@lattice/interfaces/IProtocolAdapter.sol";
+import {IAaveV3Adapter} from "@lattice/interfaces/defi/IAaveV3Adapter.sol";
+import {IProtocolAdapter} from "@lattice/interfaces/defi/IProtocolAdapter.sol";
 import {IAToken} from "@lattice/interfaces/external/IAToken.sol";
 import {IAaveOracle} from "@lattice/interfaces/external/IAaveOracle.sol";
 import {IAaveRewardsController} from "@lattice/interfaces/external/IAaveRewardsController.sol";
 import {IAaveV3Pool} from "@lattice/interfaces/external/IAaveV3Pool.sol";
 import {IPoolAddressesProvider} from "@lattice/interfaces/external/IPoolAddressesProvider.sol";
+import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
 import {EmergencyStopLib} from "@lattice/security/libraries/EmergencyStopLib.sol";
 import {PausableLib} from "@lattice/security/libraries/PausableLib.sol";
 import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib.sol";
@@ -70,6 +70,7 @@ struct AaveV3AdapterStorage {
 
 /// @title AaveV3AdapterLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from Aave V3 (https://github.com/aave-dao/aave-v3-origin)
 /// @notice All logic for the Aave v3 adapter facet. Supply leg values 1:1 via aToken.balanceOf;
 ///         leverage leg values net equity via Aave's OWN price oracle (single self-consistent source
 ///         with `getUserAccountData`, no cross-oracle drift). Reentrancy-gated, pause/emergency-aware,

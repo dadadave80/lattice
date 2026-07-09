@@ -1,0 +1,23 @@
+name: Foundry setup
+description: >-
+  Installs Foundry (the foundry-rs/foundry-toolchain action caches the toolchain
+  install and RPC responses). NOTE: the repository must already be checked out
+  before this runs -- a LOCAL composite action cannot perform its own checkout
+  (the runner reads this action.yml from the workspace, which actions/checkout
+  populates), so each job runs actions/checkout inline before
+  `uses: ./.github/actions/foundry-setup`.
+
+runs:
+  using: composite
+  steps:
+    # Pin the release channel so CI is reproducible instead of tracking whatever nightly happens to be current
+    # (unpinned Foundry defaults to nightly, which drifts `forge fmt`/lint output between runs). `stable` matches
+    # the channel OpenZeppelin pins in its setup action.
+    - name: Install Foundry
+      uses: foundry-rs/foundry-toolchain@v1
+      with:
+        version: stable
+
+    - name: Show Forge version
+      shell: bash
+      run: forge --version

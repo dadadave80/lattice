@@ -14,10 +14,12 @@ import {StrategyManager} from "@lattice/defi/StrategyManager.sol";
 import {VaultCore} from "@lattice/defi/VaultCore.sol";
 import {StrategyManagerLib} from "@lattice/defi/libraries/StrategyManagerLib.sol";
 import {VaultCoreLib} from "@lattice/defi/libraries/VaultCoreLib.sol";
-import {IVaultCore} from "@lattice/interfaces/IVaultCore.sol";
+import {IVaultCore} from "@lattice/interfaces/defi/IVaultCore.sol";
 import {IStrategy} from "@lattice/interfaces/external/IStrategy.sol";
-import {ERC20Lib} from "@lattice/tokens/libraries/ERC20Lib.sol";
-import {ERC4626Lib} from "@lattice/tokens/libraries/ERC4626Lib.sol";
+import {ERC20} from "@lattice/tokens/ERC20/ERC20.sol";
+import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
+import {ERC4626} from "@lattice/tokens/ERC4626/ERC4626.sol";
+import {ERC4626Lib} from "@lattice/tokens/ERC4626/libraries/ERC4626Lib.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @notice Minimal mintable ERC-20 used as the vault's underlying asset.
@@ -53,7 +55,13 @@ contract RAsset {
     }
 }
 
-contract RVault is VaultCore {
+/// @notice Flattens the composable {ERC20} share facet, the {ERC4626} vault facet, and the {VaultCore} strategy
+///         facet into one mock; the strategy-aware / rebalance-guarded {VaultCore} mutators win the clashes.
+contract RVault is ERC20, ERC4626, VaultCore {
+    /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare
+    ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing.
+    function exportSelectors() external pure virtual override(ERC20, ERC4626, VaultCore) returns (bytes memory) {}
+
     function initialize(address asset_, address admin_) external {
         bytes32 s = InitializableLib.initializableSlot();
         InitializableLib.preInitializer(s);
@@ -62,6 +70,41 @@ contract RVault is VaultCore {
         ERC4626Lib.__ERC4626_init(asset_, 0);
         VaultCoreLib.__VaultCore_init();
         InitializableLib.postInitializer(s);
+    }
+
+    /// @dev Resolves the `decimals()` clash between the flattened {ERC20} and {ERC4626} facets.
+    function decimals() public view override(ERC20, ERC4626) returns (uint8) {
+        return ERC4626.decimals();
+    }
+
+    /// @dev Resolves the `totalAssets()` clash — the strategy-aware {VaultCore} variant wins.
+    function totalAssets() public view override(ERC4626, VaultCore) returns (uint256) {
+        return VaultCore.totalAssets();
+    }
+
+    /// @dev The rebalance-guarded {VaultCore} mutators win over the base {ERC4626} variants.
+    function deposit(uint256 assets, address receiver) public override(ERC4626, VaultCore) returns (uint256) {
+        return VaultCore.deposit(assets, receiver);
+    }
+
+    function mint(uint256 shares, address receiver) public override(ERC4626, VaultCore) returns (uint256) {
+        return VaultCore.mint(shares, receiver);
+    }
+
+    function withdraw(uint256 assets, address receiver, address owner)
+        public
+        override(ERC4626, VaultCore)
+        returns (uint256)
+    {
+        return VaultCore.withdraw(assets, receiver, owner);
+    }
+
+    function redeem(uint256 shares, address receiver, address owner)
+        public
+        override(ERC4626, VaultCore)
+        returns (uint256)
+    {
+        return VaultCore.redeem(shares, receiver, owner);
     }
 }
 

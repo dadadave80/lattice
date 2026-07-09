@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {AccessManagedLib} from "@lattice/access/libraries/AccessManagedLib.sol";
-import {IAccessManaged} from "@lattice/interfaces/IAccessManaged.sol";
+import {IAccessManaged} from "@lattice/interfaces/access/IAccessManaged.sol";
 
 /// @title AccessManaged
 /// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/access/manager/AccessManaged.sol)
@@ -24,5 +24,17 @@ contract AccessManaged is IAccessManaged {
 
     function setConsumingScheduledOp(bool consuming) external virtual override {
         AccessManagedLib.setConsumingScheduledOp(consuming);
+    }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect AccessManaged methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `authority()` 0xbf7e214f
+    ///      `isConsumingScheduledOp()` 0x8fb36037
+    ///      `setAuthority(address)` 0x7a9e5e4b
+    ///      `setConsumingScheduledOp(bool)` 0xafe75bce
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors = hex"bf7e214f8fb360377a9e5e4bafe75bce";
     }
 }

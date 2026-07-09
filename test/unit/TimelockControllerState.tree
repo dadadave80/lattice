@@ -1,0 +1,16 @@
+TimelockController::state(id) — branching-tree (BTT) exemplar
+See the Testing section of the Solidity standards (branching-tree technique). Each leaf maps to a
+named test in TimelockControllerTest.t.sol; a "given" is a state-setup modifier, a "when" is a
+parameter branch, an "it should" is the asserted outcome. Source: TimelockControllerLib.state().
+
+state(id)
+├── given the operation timestamp is zero (never scheduled)
+│   └── it should return Unset            → test_OperationStateUnsetBeforeSchedule
+└── given the operation timestamp is non-zero
+    ├── given the timestamp equals the DONE sentinel
+    │   └── it should return Done          → test_ExecuteMarksOperationDone
+    └── given the timestamp is not the DONE sentinel
+        ├── given the timestamp is in the future (delay not elapsed)
+        │   └── it should return Waiting   → test_OperationStateWaitingAfterSchedule
+        └── given the timestamp is not in the future (delay elapsed)
+            └── it should return Ready      → test_OperationStateReadyAfterDelay

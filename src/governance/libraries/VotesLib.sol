@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
-import {IVotes} from "@lattice/interfaces/IVotes.sol";
+import {IVotes} from "@lattice/interfaces/governance/IVotes.sol";
 import {Checkpoints} from "@lattice/utils/libraries/Checkpoints.sol";
 import {ECDSA} from "@lattice/utils/libraries/ECDSA.sol";
 import {EIP712Lib} from "@lattice/utils/libraries/EIP712Lib.sol";

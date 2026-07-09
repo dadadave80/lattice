@@ -3,7 +3,7 @@ pragma solidity ^0.8.30;
 
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlEnumerableLib, AccessControlLib} from "@lattice/access/libraries/AccessControlEnumerableLib.sol";
-import {IAccessControl, IAccessControlEnumerable} from "@lattice/interfaces/IAccessControlEnumerable.sol";
+import {IAccessControl, IAccessControlEnumerable} from "@lattice/interfaces/access/IAccessControlEnumerable.sol";
 import {EnumerableSet} from "@lattice/utils/libraries/EnumerableSet.sol";
 
 /// @title AccessControlEnumerable
@@ -62,5 +62,21 @@ contract AccessControlEnumerable is AccessControl, IAccessControlEnumerable {
         override(AccessControl, IAccessControl)
     {
         AccessControlEnumerableLib.renounceRole(_role, _callerConfirmation);
+    }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect AccessControlEnumerable methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `getRoleAdmin(bytes32)` 0x248a9ca3
+    ///      `getRoleMember(bytes32,uint256)` 0x9010d07c
+    ///      `getRoleMemberCount(bytes32)` 0xca15c873
+    ///      `getRoleMembers(bytes32)` 0xa3246ad3
+    ///      `grantRole(bytes32,address)` 0x2f2ff15d
+    ///      `hasRole(bytes32,address)` 0x91d14854
+    ///      `renounceRole(bytes32,address)` 0x36568abe
+    ///      `revokeRole(bytes32,address)` 0xd547741f
+    function exportSelectors() external pure virtual override returns (bytes memory selectors) {
+        selectors = hex"248a9ca39010d07cca15c873a3246ad32f2ff15d91d1485436568abed547741f";
     }
 }

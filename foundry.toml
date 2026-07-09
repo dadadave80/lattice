@@ -2,6 +2,9 @@
 src = "src"
 out = "out"
 libs = ["lib"]
+# Selector extraction for diamond assembly in tests/scripts uses `forge inspect` over FFI
+# (diamond-lib `GetSelectors`). Required by the AccountFactory full-account assembly test.
+ffi = true
 remappings = [
     '@lattice/=src/',
     '@lattice-script/=script/',
@@ -14,9 +17,133 @@ via_ir = false
 build_info = true
 extra_output = ["storageLayout"]
 
+# Named RPC aliases for `forge script --rpc-url <name>` / `vm.createSelectFork("<name>")`. Foundry does NOT
+# substitute a built-in public RPC for an unset env var (it would treat `<name>` as a file path), so each var's
+# free public default lives in `.env.example` — copy it to `.env` (or override with a provider URL).
 [rpc_endpoints]
-mainnet = "${MAINNET_RPC_URL}"
-optimism = "${OPTIMISM_RPC_URL}"
+# --- mainnets ---
+mainnet = "${MAINNET_RPC_URL}"             # ethereum         1
+optimism = "${OPTIMISM_RPC_URL}"           # optimism         10
+base = "${BASE_RPC_URL}"                   # base             8453
+arbitrum = "${ARBITRUM_RPC_URL}"           # arbitrum one     42161
+arbitrum-nova = "${ARBITRUM_NOVA_RPC_URL}" # arbitrum nova    42170
+polygon = "${POLYGON_RPC_URL}"             # polygon          137
+zksync = "${ZKSYNC_RPC_URL}"               # zksync era       324
+bsc = "${BSC_RPC_URL}"                     # bnb chain        56
+avalanche = "${AVALANCHE_RPC_URL}"         # avalanche c      43114
+gnosis = "${GNOSIS_RPC_URL}"               # gnosis           100
+linea = "${LINEA_RPC_URL}"                 # linea            59144
+scroll = "${SCROLL_RPC_URL}"               # scroll           534352
+blast = "${BLAST_RPC_URL}"                 # blast            81457
+mantle = "${MANTLE_RPC_URL}"               # mantle           5000
+mode = "${MODE_RPC_URL}"                   # mode             34443
+celo = "${CELO_RPC_URL}"                   # celo             42220
+lisk = "${LISK_RPC_URL}"                   # lisk             1135
+metis = "${METIS_RPC_URL}"                 # metis            1088
+zora = "${ZORA_RPC_URL}"                   # zora             7777777
+fraxtal = "${FRAXTAL_RPC_URL}"             # fraxtal          252
+sonic = "${SONIC_RPC_URL}"                 # sonic            146
+unichain = "${UNICHAIN_RPC_URL}"           # unichain         130
+berachain = "${BERACHAIN_RPC_URL}"         # berachain        80094
+monad = "${MONAD_RPC_URL}"                 # monad            143
+hyperevm = "${HYPEREVM_RPC_URL}"           # hyperliquid evm  999
+worldchain = "${WORLDCHAIN_RPC_URL}"       # world chain      480
+sei = "${SEI_RPC_URL}"                     # sei              1329
+ink = "${INK_RPC_URL}"                     # ink              57073
+hedera = "${HEDERA_RPC_URL}"               # hedera (hashio)  295
+plasma = "${PLASMA_RPC_URL}"               # plasma           9745
+aurora = "${AURORA_RPC_URL}"               # aurora           1313161554
+lens = "${LENS_RPC_URL}"                   # lens             232
+somnia = "${SOMNIA_RPC_URL}"               # somnia           5031
+apechain = "${APECHAIN_RPC_URL}"           # apechain         33139
+tempo = "${TEMPO_RPC_URL}"                 # tempo            4217
+megaeth = "${MEGAETH_RPC_URL}"             # megaeth          4326
+cronos = "${CRONOS_RPC_URL}"               # cronos           25
+moonbeam = "${MOONBEAM_RPC_URL}"           # moonbeam         1284
+moonriver = "${MOONRIVER_RPC_URL}"         # moonriver        1285
+fantom = "${FANTOM_RPC_URL}"               # fantom opera     250
+kava = "${KAVA_RPC_URL}"                   # kava evm         2222
+filecoin = "${FILECOIN_RPC_URL}"           # filecoin fevm    314
+manta = "${MANTA_RPC_URL}"                 # manta pacific    169
+opbnb = "${OPBNB_RPC_URL}"                 # opbnb            204
+taiko = "${TAIKO_RPC_URL}"                 # taiko            167000
+immutable = "${IMMUTABLE_RPC_URL}"         # immutable zkevm  13371
+abstract = "${ABSTRACT_RPC_URL}"           # abstract         2741
+soneium = "${SONEIUM_RPC_URL}"             # soneium          1868
+story = "${STORY_RPC_URL}"                 # story            1514
+flow = "${FLOW_RPC_URL}"                   # flow evm         747
+rootstock = "${ROOTSTOCK_RPC_URL}"         # rootstock        30
+flare = "${FLARE_RPC_URL}"                 # flare            14
+songbird = "${SONGBIRD_RPC_URL}"           # songbird         19
+etherlink = "${ETHERLINK_RPC_URL}"         # etherlink        42793
+bob = "${BOB_RPC_URL}"                     # bob (btc l2)     60808
+ronin = "${RONIN_RPC_URL}"                 # ronin            2020
+astar = "${ASTAR_RPC_URL}"                 # astar            592
+sophon = "${SOPHON_RPC_URL}"               # sophon           50104
+gravity = "${GRAVITY_RPC_URL}"             # gravity alpha    1625
+hemi = "${HEMI_RPC_URL}"                   # hemi             43111
+katana = "${KATANA_RPC_URL}"               # katana           747474
+boba = "${BOBA_RPC_URL}"                   # boba             288
+xdc = "${XDC_RPC_URL}"                     # xdc              50
+superseed = "${SUPERSEED_RPC_URL}"         # superseed        5330
+# --- testnets ---
+sepolia = "${SEPOLIA_RPC_URL}"                          # ethereum sepolia   11155111
+holesky = "${HOLESKY_RPC_URL}"                          # ethereum holesky   17000
+optimism-sepolia = "${OPTIMISM_SEPOLIA_RPC_URL}"        # optimism sepolia   11155420
+base-sepolia = "${BASE_SEPOLIA_RPC_URL}"                # base sepolia       84532
+arbitrum-sepolia = "${ARBITRUM_SEPOLIA_RPC_URL}"        # arbitrum sepolia   421614
+polygon-amoy = "${POLYGON_AMOY_RPC_URL}"                # polygon amoy       80002
+zksync-sepolia = "${ZKSYNC_SEPOLIA_RPC_URL}"            # zksync sepolia     300
+bsc-testnet = "${BSC_TESTNET_RPC_URL}"                  # bnb testnet        97
+fuji = "${FUJI_RPC_URL}"                                # avalanche fuji     43113
+chiado = "${CHIADO_RPC_URL}"                            # gnosis chiado      10200
+linea-sepolia = "${LINEA_SEPOLIA_RPC_URL}"              # linea sepolia      59141
+scroll-sepolia = "${SCROLL_SEPOLIA_RPC_URL}"            # scroll sepolia     534351
+blast-sepolia = "${BLAST_SEPOLIA_RPC_URL}"              # blast sepolia      168587773
+mantle-sepolia = "${MANTLE_SEPOLIA_RPC_URL}"            # mantle sepolia     5003
+mode-sepolia = "${MODE_SEPOLIA_RPC_URL}"                # mode sepolia       919
+celo-alfajores = "${CELO_ALFAJORES_RPC_URL}"            # celo alfajores     44787
+lisk-sepolia = "${LISK_SEPOLIA_RPC_URL}"                # lisk sepolia       4202
+zora-sepolia = "${ZORA_SEPOLIA_RPC_URL}"                # zora sepolia       999999999
+unichain-sepolia = "${UNICHAIN_SEPOLIA_RPC_URL}"        # unichain sepolia   1301
+monad-testnet = "${MONAD_TESTNET_RPC_URL}"              # monad testnet      10143
+hyperevm-testnet = "${HYPEREVM_TESTNET_RPC_URL}"        # hyperevm testnet   998
+megaeth-testnet = "${MEGAETH_TESTNET_RPC_URL}"          # megaeth testnet    6343
+worldchain-sepolia = "${WORLDCHAIN_SEPOLIA_RPC_URL}"    # worldchain sepolia 4801
+sei-testnet = "${SEI_TESTNET_RPC_URL}"                  # sei testnet        1328
+ink-sepolia = "${INK_SEPOLIA_RPC_URL}"                  # ink sepolia        763373
+hedera-testnet = "${HEDERA_TESTNET_RPC_URL}"            # hedera testnet     296
+plasma-testnet = "${PLASMA_TESTNET_RPC_URL}"            # plasma testnet     9746
+aurora-testnet = "${AURORA_TESTNET_RPC_URL}"            # aurora testnet     1313161555
+lens-testnet = "${LENS_TESTNET_RPC_URL}"                # lens testnet       37111
+somnia-testnet = "${SOMNIA_TESTNET_RPC_URL}"            # somnia testnet     50312
+apechain-curtis = "${APECHAIN_CURTIS_RPC_URL}"          # apechain curtis    33111
+tempo-testnet = "${TEMPO_TESTNET_RPC_URL}"              # tempo testnet      42431
+hoodi = "${HOODI_RPC_URL}"                              # ethereum hoodi     560048
+cronos-testnet = "${CRONOS_TESTNET_RPC_URL}"            # cronos testnet     338
+moonbase-alpha = "${MOONBASE_ALPHA_RPC_URL}"            # moonbase alpha     1287
+kava-testnet = "${KAVA_TESTNET_RPC_URL}"                # kava testnet       2221
+filecoin-calibration = "${FILECOIN_CALIBRATION_RPC_URL}" # filecoin calib.    314159
+manta-sepolia = "${MANTA_SEPOLIA_RPC_URL}"              # manta sepolia      3441006
+opbnb-testnet = "${OPBNB_TESTNET_RPC_URL}"              # opbnb testnet      5611
+taiko-hekla = "${TAIKO_HEKLA_RPC_URL}"                  # taiko hekla        167009
+immutable-testnet = "${IMMUTABLE_TESTNET_RPC_URL}"      # immutable testnet  13473
+abstract-testnet = "${ABSTRACT_TESTNET_RPC_URL}"        # abstract testnet   11124
+soneium-minato = "${SONEIUM_MINATO_RPC_URL}"            # soneium minato     1946
+story-aeneid = "${STORY_AENEID_RPC_URL}"                # story aeneid       1315
+flow-testnet = "${FLOW_TESTNET_RPC_URL}"                # flow testnet       545
+rootstock-testnet = "${ROOTSTOCK_TESTNET_RPC_URL}"      # rootstock testnet  31
+flare-coston2 = "${FLARE_COSTON2_RPC_URL}"              # flare coston2      114
+songbird-coston = "${SONGBIRD_COSTON_RPC_URL}"          # songbird coston    16
+etherlink-ghostnet = "${ETHERLINK_GHOSTNET_RPC_URL}"    # etherlink ghostnet 128123
+bob-sepolia = "${BOB_SEPOLIA_RPC_URL}"                  # bob sepolia        808813
+ronin-saigon = "${RONIN_SAIGON_RPC_URL}"                # ronin saigon       202601
+astar-shibuya = "${ASTAR_SHIBUYA_RPC_URL}"              # astar shibuya      81
+boba-sepolia = "${BOBA_SEPOLIA_RPC_URL}"                # boba sepolia       28882
+gravity-testnet = "${GRAVITY_TESTNET_RPC_URL}"          # gravity testnet    13505
+superseed-sepolia = "${SUPERSEED_SEPOLIA_RPC_URL}"      # superseed sepolia  53302
+xdc-apothem = "${XDC_APOTHEM_RPC_URL}"                  # xdc apothem        51
+arc-testnet = "${ARC_TESTNET_RPC_URL}"                  # circle arc testnet 5042002
 
 [etherscan]
 mainnet = { key = "${ETHERSCAN_API_KEY}" }
@@ -33,3 +160,9 @@ fail_on_revert = false
 
 [fmt]
 sort_imports = true
+# Vendored-verbatim audited crypto (Solady) — keep byte-exact, do not reformat. Re-sync from upstream.
+ignore = [
+    "src/utils/libraries/P256.sol",
+    "src/utils/libraries/Base64.sol",
+    "src/utils/libraries/WebAuthn.sol",
+]
