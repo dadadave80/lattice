@@ -31,8 +31,8 @@ contract DeployCCTPBridgeAdapter is BaseDeploy {
     {
         cuts = new FacetCut[](3);
         cuts[0] = _cut(address(new ERC165Facet()), "ERC165Facet");
-        cuts[1] = _cut(address(new AccessControl()), "AccessControl");
-        cuts[2] = _cut(address(new CCTPBridgeAdapter()), "CCTPBridgeAdapter");
+        cuts[1] = _cut(address(new AccessControl()));
+        cuts[2] = _cut(address(new CCTPBridgeAdapter()));
         init = address(new CCTPBridgeAdapterInit());
         initCalldata = abi.encodeCall(CCTPBridgeAdapterInit.init, (admin, tokenMessenger, messageTransmitter, usdc));
     }

@@ -39,6 +39,10 @@ import {Test} from "forge-std/Test.sol";
 ///         facet, and the {ERC20Votes} extension into one mock; the checkpoint/balance-aware movers and delegation
 ///         win the base clashes.
 contract GovStackToken is ERC20, Votes, ERC20Votes {
+    /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare
+    ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing.
+    function exportSelectors() external pure virtual override(ERC20, Votes, ERC20Votes) returns (bytes memory) {}
+
     function transfer(address to, uint256 value) public override(ERC20, ERC20Votes) returns (bool) {
         return ERC20Votes.transfer(to, value);
     }

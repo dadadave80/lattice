@@ -149,4 +149,33 @@ contract HyperbridgeGatewayAdapter is IERC7786GatewaySource, IIsmpModule, IHyper
     function configureDestinationTimeout(uint256 chainId, uint64 timeout) external virtual {
         HyperbridgeGatewayAdapterLib.configureDestinationTimeout(chainId, timeout);
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect HyperbridgeGatewayAdapter methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `chainIdOfStateMachine(bytes)` 0xe9771716
+    ///      `configureDestinationTimeout(uint256,uint64)` 0xbb0f2a9c
+    ///      `hyperbridgeDestTimeoutOf(uint256)` 0x496df793
+    ///      `hyperbridgeFeeToken()` 0x08d24c0e
+    ///      `hyperbridgeRemoteModuleOf(uint256)` 0x3a52ea6e
+    ///      `ismpHost()` 0x134b37c9
+    ///      `onAccept(((bytes,bytes,uint64,bytes,bytes,uint64,bytes),address))` 0x0fee32ce
+    ///      `onGetResponse((((bytes,bytes,uint64,address,uint64,bytes[],uint64,bytes),(bytes,bytes)[]),address))` 0x44ab20f8
+    ///      `onGetTimeout((bytes,bytes,uint64,address,uint64,bytes[],uint64,bytes))` 0xd0fff366
+    ///      `onPostRequestTimeout((bytes,bytes,uint64,bytes,bytes,uint64,bytes))` 0xbc0dd447
+    ///      `onPostResponse((((bytes,bytes,uint64,bytes,bytes,uint64,bytes),bytes,uint64),address))` 0xb2a01bf5
+    ///      `onPostResponseTimeout(((bytes,bytes,uint64,bytes,bytes,uint64,bytes),bytes,uint64))` 0x0bc37bab
+    ///      `quoteDispatchFee(bytes,bytes,uint256)` 0xee6ef22a
+    ///      `registerRemoteModule(uint256,bytes)` 0xa1d0dd63
+    ///      `registerStateMachine(uint256)` 0x4763e06e
+    ///      `registerStateMachineRaw(uint256,bytes)` 0x784f0d55
+    ///      `sendMessage(bytes,bytes,bytes[])` 0xcdfe7f5c
+    ///      `sendMessageWithFee(bytes,bytes,uint256)` 0x7c6bed39
+    ///      `stateMachineIdOf(uint256)` 0xaa6f97d5
+    ///      `supportsAttribute(bytes4)` 0xdc680a0f
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors =
+            hex"e9771716bb0f2a9c496df79308d24c0e3a52ea6e134b37c90fee32ce44ab20f8d0fff366bc0dd447b2a01bf50bc37babee6ef22aa1d0dd634763e06e784f0d55cdfe7f5c7c6bed39aa6f97d5dc680a0f";
+    }
 }

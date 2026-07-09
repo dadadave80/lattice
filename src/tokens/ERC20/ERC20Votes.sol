@@ -73,4 +73,18 @@ contract ERC20Votes is IERC20Votes {
     function checkpoints(address account, uint32 pos) public view virtual returns (Checkpoints.Checkpoint208 memory) {
         return ERC20VotesLib.checkpoints(account, pos);
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect ERC20Votes methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `checkpoints(address,uint32)` 0xf1127ed8
+    ///      `delegate(address)` 0x5c19a95c
+    ///      `delegateBySig(address,uint256,uint256,uint8,bytes32,bytes32)` 0xc3cda520
+    ///      `numCheckpoints(address)` 0x6fcfff45
+    ///      `transfer(address,uint256)` 0xa9059cbb
+    ///      `transferFrom(address,address,uint256)` 0x23b872dd
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors = hex"f1127ed85c19a95cc3cda5206fcfff45a9059cbb23b872dd";
+    }
 }

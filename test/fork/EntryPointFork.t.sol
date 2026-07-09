@@ -22,6 +22,16 @@ import {Test} from "forge-std/Test.sol";
 
 /// @notice Single-owner ERC-4337 account: signer + validation + executor facets, self-administering.
 contract MockEntryPointAccount is AccessControl, AccountSigner, ERC4337Validation, ERC7821Executor {
+    /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare
+    ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing.
+    function exportSelectors()
+        external
+        pure
+        virtual
+        override(AccessControl, AccountSigner, ERC4337Validation, ERC7821Executor)
+        returns (bytes memory)
+    {}
+
     function initialize(address owner_, address entryPoint_) external {
         bytes32 s = InitializableLib.initializableSlot();
         InitializableLib.preInitializer(s);

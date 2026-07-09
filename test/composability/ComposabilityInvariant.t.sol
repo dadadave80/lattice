@@ -15,7 +15,7 @@ import {GetSelectors} from "@diamond-test/helpers/GetSelectors.sol";
 ///      below, so a NEW facet written `is ERC20` that nobody lists here fails the build rather than slipping past.
 contract ComposabilityInvariant is GetSelectors {
     function test_Erc20ExtensionsNeverReExportBaseSelectors() public {
-        bytes4[] memory base = _getSelectors("ERC20");
+        bytes4[] memory base = _strip8153(_getSelectors("ERC20"));
         assertGt(base.length, 0, "base ERC20 selectors empty -> forge inspect name mismatch");
 
         uint256 checked;
@@ -48,7 +48,7 @@ contract ComposabilityInvariant is GetSelectors {
         internal
         returns (uint256)
     {
-        bytes4[] memory s = _getSelectors(facet);
+        bytes4[] memory s = _strip8153(_getSelectors(facet));
         assertGt(s.length, 0, string.concat(facet, " inspected to zero selectors -> forge inspect name mismatch"));
         for (uint256 i; i < allowed.length; ++i) {
             assertTrue(_has(base, allowed[i]), string.concat(facet, ": allow-list entry is not a base selector"));
@@ -86,6 +86,21 @@ contract ComposabilityInvariant is GetSelectors {
             if (arr[i] == x) return true;
         }
         return false;
+    }
+
+    /// @dev Drops the ERC-8153 `exportSelectors()` selector (0x0ef22643). EVERY facet exports it, so once the
+    ///      ERC-20 base and its extensions implement ERC-8153 it appears in each `forge inspect` set and would
+    ///      false-positive as a "re-exported base selector". It is allow-listed here (never cut onto a diamond),
+    ///      so both the base set and each extension set are filtered before the re-export comparison.
+    function _strip8153(bytes4[] memory arr) private pure returns (bytes4[] memory kept) {
+        kept = new bytes4[](arr.length);
+        uint256 n;
+        for (uint256 i; i < arr.length; ++i) {
+            if (arr[i] != bytes4(0x0ef22643)) kept[n++] = arr[i];
+        }
+        assembly ("memory-safe") {
+            mstore(kept, n)
+        }
     }
 
     function _sig(string memory s) private pure returns (bytes4) {

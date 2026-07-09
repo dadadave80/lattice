@@ -197,6 +197,10 @@ contract MockLidoWithdrawalQueue {
 
 /// @notice Adapter composed with Pausable + EmergencyStop facets (as a real Diamond would).
 contract MockLidoAdapter is LidoAdapter, Pausable, EmergencyStop {
+    /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare
+    ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing.
+    function exportSelectors() external pure virtual override(Pausable, EmergencyStop) returns (bytes memory) {}
+
     function initialize(
         address admin_,
         address weth_,

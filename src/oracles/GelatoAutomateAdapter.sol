@@ -47,4 +47,17 @@ contract GelatoAutomateAdapter is IGelatoAutomateAdapter {
     function cancelTask(bytes32 taskId) external virtual override {
         GelatoAutomateAdapterLib.cancelTask(taskId);
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect GelatoAutomateAdapter methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `cancelTask(bytes32)` 0xee8ca3b5
+    ///      `createTask(address,bytes,(uint8[],bytes[]),address)` 0x3323b467
+    ///      `getConfig()` 0xc3f909d4
+    ///      `isTask(bytes32)` 0x0d04218f
+    ///      `setConfig(address,address)` 0xb602024b
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors = hex"ee8ca3b53323b467c3f909d40d04218fb602024b";
+    }
 }

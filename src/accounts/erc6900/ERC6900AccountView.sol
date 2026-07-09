@@ -35,4 +35,14 @@ contract ERC6900AccountView is IERC6900AccountView {
     {
         return ERC6900ModuleManagerLib.getValidationData(validationFunction);
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect ERC6900AccountView methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `getExecutionData(bytes4)` 0x757c8a26
+    ///      `getValidationData(bytes24)` 0xd31b575b
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors = hex"757c8a26d31b575b";
+    }
 }

@@ -79,4 +79,21 @@ contract L1ToL2CrossDomainMessengerGatewayAdapter is IERC7786GatewaySource, IL1T
     function setMinGasLimit(uint32 newMinGasLimit) external virtual {
         L1ToL2CrossDomainMessengerGatewayAdapterLib.setMinGasLimit(newMinGasLimit);
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect L1ToL2CrossDomainMessengerGatewayAdapter methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `counterpartAdapter()` 0x423d4bee
+    ///      `counterpartChainId()` 0xb8b5b334
+    ///      `messenger()` 0x3cb747bf
+    ///      `minGasLimit()` 0x5aeb4d77
+    ///      `receiveCrossChainMessage(bytes,bytes,bytes,uint256)` 0x610683bc
+    ///      `sendMessage(bytes,bytes,bytes[])` 0xcdfe7f5c
+    ///      `setCounterpart(uint256,address)` 0xddcba0e7
+    ///      `setMinGasLimit(uint32)` 0xe6ca35d4
+    ///      `supportsAttribute(bytes4)` 0xdc680a0f
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors = hex"423d4beeb8b5b3343cb747bf5aeb4d77610683bccdfe7f5cddcba0e7e6ca35d4dc680a0f";
+    }
 }

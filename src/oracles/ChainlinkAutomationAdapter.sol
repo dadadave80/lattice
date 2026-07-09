@@ -60,4 +60,19 @@ contract ChainlinkAutomationAdapter is IChainlinkAutomationAdapter {
     function performUpkeep(bytes calldata performData) external virtual override {
         ChainlinkAutomationAdapterLib.performUpkeep(performData);
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect ChainlinkAutomationAdapter methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `checkUpkeep(bytes)` 0x6e04ff0d
+    ///      `getCounter()` 0x8ada066e
+    ///      `getForwarder()` 0xa0042526
+    ///      `getInterval()` 0x91ad27b4
+    ///      `getLastTimeStamp()` 0xc1c244e8
+    ///      `performUpkeep(bytes)` 0x4585e33b
+    ///      `setConfig(address,uint256)` 0xc6195d36
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors = hex"6e04ff0d8ada066ea004252691ad27b4c1c244e84585e33bc6195d36";
+    }
 }

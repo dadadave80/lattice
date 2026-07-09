@@ -11,6 +11,10 @@ import {Test} from "forge-std/Test.sol";
 
 /// @notice Minimal mock ERC1155 for gas tests.
 contract GasERC1155 is ERC1155, AccessControl {
+    /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare
+    ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing.
+    function exportSelectors() external pure virtual override(ERC1155, AccessControl) returns (bytes memory) {}
+
     function initialize(string memory uri_, address admin) external {
         bytes32 s = InitializableLib.initializableSlot();
         InitializableLib.preInitializer(s);

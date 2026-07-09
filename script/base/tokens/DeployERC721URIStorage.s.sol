@@ -36,11 +36,11 @@ contract DeployERC721URIStorage is BaseDeploy {
 
         cuts = new FacetCut[](5);
         cuts[0] = _cut(address(new ERC165Facet()), "ERC165Facet");
-        cuts[1] = _cut(address(new ERC721()), "ERC721");
+        cuts[1] = _cut(address(new ERC721()));
         // `setTokenURI` is new — ADD it; `tokenURI` already exists on the base ERC-721 facet — REPLACE it.
         cuts[2] = FacetCut({facetAddress: uriFacet, action: FacetCutAction.Add, functionSelectors: _setTokenURI()});
         cuts[3] = FacetCut({facetAddress: uriFacet, action: FacetCutAction.Replace, functionSelectors: _tokenURI()});
-        cuts[4] = _cut(address(new AccessControl()), "AccessControl");
+        cuts[4] = _cut(address(new AccessControl()));
 
         inits = new address[](2);
         inits[0] = address(new ERC721Init());

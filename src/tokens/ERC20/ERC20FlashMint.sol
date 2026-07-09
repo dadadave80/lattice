@@ -32,4 +32,15 @@ contract ERC20FlashMint is IERC20FlashMint {
     {
         return ERC20FlashMintLib.flashLoan(receiver, token, value, data);
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect ERC20FlashMint methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `flashFee(address,uint256)` 0xd9d98ce4
+    ///      `flashLoan(address,address,uint256,bytes)` 0x5cffe9de
+    ///      `maxFlashLoan(address)` 0x613255ab
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors = hex"d9d98ce45cffe9de613255ab";
+    }
 }

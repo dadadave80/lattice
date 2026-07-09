@@ -35,4 +35,15 @@ contract ERC20Permit is IERC20Permit {
     function DOMAIN_SEPARATOR() public view virtual returns (bytes32) {
         return EIP712Lib.domainSeparatorV4();
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect ERC20Permit methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `DOMAIN_SEPARATOR()` 0x3644e515
+    ///      `nonces(address)` 0x7ecebe00
+    ///      `permit(address,address,uint256,uint256,uint8,bytes32,bytes32)` 0xd505accf
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors = hex"3644e5157ecebe00d505accf";
+    }
 }

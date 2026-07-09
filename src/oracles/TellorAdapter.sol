@@ -60,4 +60,19 @@ contract TellorAdapter is ITellorAdapter {
     function unregisterFeed(bytes32 key) external virtual override {
         TellorAdapterLib.unregisterFeed(key);
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect TellorAdapter methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `getDataBefore(bytes32)` 0xd196aaee
+    ///      `getFeed(bytes32)` 0x280aebcf
+    ///      `latestAnswer(bytes32)` 0x084d4783
+    ///      `registerFeed(bytes32,bytes32,uint48,uint48)` 0x249fb496
+    ///      `setTellor(address)` 0x3b88e4ad
+    ///      `tellor()` 0x1959ad5b
+    ///      `unregisterFeed(bytes32)` 0x2a589908
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors = hex"d196aaee280aebcf084d4783249fb4963b88e4ad1959ad5b2a589908";
+    }
 }

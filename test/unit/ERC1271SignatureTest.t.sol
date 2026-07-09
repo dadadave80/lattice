@@ -15,6 +15,16 @@ import {Test} from "forge-std/Test.sol";
 /// @dev Harness: 1271 facet + signer facet + access facet + EIP-712 domain, with an `initialize` that runs the
 ///      module inits.
 contract MockERC1271 is AccessControl, AccountSigner, ERC1271Signature {
+    /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare
+    ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing.
+    function exportSelectors()
+        external
+        pure
+        virtual
+        override(AccessControl, AccountSigner, ERC1271Signature)
+        returns (bytes memory)
+    {}
+
     function initialize(address admin_, address owner_, string memory name_, string memory version_) external {
         bytes32 s = InitializableLib.initializableSlot();
         InitializableLib.preInitializer(s);

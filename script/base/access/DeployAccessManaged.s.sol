@@ -25,7 +25,7 @@ contract DeployAccessManaged is BaseDeploy {
     {
         cuts = new FacetCut[](2);
         cuts[0] = _cut(address(new ERC165Facet()), "ERC165Facet");
-        cuts[1] = _cut(address(new AccessManaged()), "AccessManaged");
+        cuts[1] = _cut(address(new AccessManaged()));
         init = address(new AccessManagedInit());
         initCalldata = abi.encodeCall(AccessManagedInit.init, (authority));
     }

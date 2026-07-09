@@ -18,6 +18,10 @@ import {MockAToken, MockAaveV3Pool, MockAsset} from "./AaveV3AdapterSupplyTest.t
 
 /// @notice Adapter composed with Pausable + EmergencyStop facets (as a real Diamond would).
 contract MockGuardedAdapter is AaveV3Adapter, Pausable, EmergencyStop {
+    /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare
+    ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing.
+    function exportSelectors() external pure virtual override(Pausable, EmergencyStop) returns (bytes memory) {}
+
     function initialize(
         address admin_,
         address provider_,

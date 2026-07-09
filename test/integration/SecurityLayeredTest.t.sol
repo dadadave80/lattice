@@ -42,6 +42,15 @@ import {Test} from "forge-std/Test.sol";
 
 /// @notice Mock Diamond composing all five security modules + a simple transfer gate.
 contract MockSecurityDiamond is AccessControl, Pausable, CircuitBreaker, EmergencyStop, ReentrancyGuard {
+    /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare
+    ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing.
+    function exportSelectors()
+        external
+        pure
+        virtual
+        override(AccessControl, Pausable, CircuitBreaker, EmergencyStop)
+        returns (bytes memory)
+    {}
     bytes32 public constant BIG_TRANSFER_KEY = keccak256("BIG_TRANSFER");
 
     /// @notice Total amount transferred (for testing).

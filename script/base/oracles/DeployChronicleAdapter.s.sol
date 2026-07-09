@@ -24,8 +24,8 @@ contract DeployChronicleAdapter is BaseDeploy {
     function buildCuts(address admin) public returns (FacetCut[] memory cuts, address init, bytes memory initCalldata) {
         cuts = new FacetCut[](3);
         cuts[0] = _cut(address(new ERC165Facet()), "ERC165Facet");
-        cuts[1] = _cut(address(new AccessControl()), "AccessControl");
-        cuts[2] = _cut(address(new ChronicleAdapter()), "ChronicleAdapter");
+        cuts[1] = _cut(address(new AccessControl()));
+        cuts[2] = _cut(address(new ChronicleAdapter()));
         init = address(new ChronicleAdapterInit());
         initCalldata = abi.encodeCall(ChronicleAdapterInit.init, (admin));
     }

@@ -83,4 +83,25 @@ contract ChainRegistry is IChainRegistry {
     function addEvmChain(AddEvmChainConfig calldata cfg) external virtual {
         ChainRegistryLib.addEvmChain(cfg);
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect ChainRegistry methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `addEvmChain((uint256,(bool,uint64,address,uint256,bool),(bool,uint32,bytes32,uint128,uint128),(bool,uint16,address),(bool,string,bytes,bytes),(bool,address),(bool,address),(bool,uint32,uint256,uint32,bytes32),(bool,uint32,bytes32,uint256),(bool,uint32),(bool,bytes,uint64),(address[],bool[])))` 0xdae1aa2e
+    ///      `chainInfoOf(bytes32)` 0x6a419425
+    ///      `chainKeyEvm(uint256)` 0x585f36e8
+    ///      `chainKeyOf(bytes2,bytes)` 0xa0f8fb2f
+    ///      `coverageOf(bytes32)` 0xeede78f6
+    ///      `directCoverageOf(bytes32)` 0xbcf041b6
+    ///      `gatewaysOf(bytes32)` 0xa61e0052
+    ///      `isRegistered(bytes32)` 0x27258b22
+    ///      `nativeIdsOf(bytes32)` 0x281a6e02
+    ///      `registerChain(bytes2,bytes,uint256)` 0x6f4cb737
+    ///      `setGatewayCoverage(bytes32,address,bool,bool)` 0x6688921d
+    ///      `setNativeIds(bytes32,(uint64,uint32,uint16,uint32,string,uint32))` 0xa9b2394a
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors =
+        hex"dae1aa2e6a419425585f36e8a0f8fb2feede78f6bcf041b6a61e005227258b22281a6e026f4cb7376688921da9b2394a";
+    }
 }

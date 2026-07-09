@@ -40,4 +40,17 @@ contract GelatoVRFAdapter is IGelatoVRFAdapter {
     function fulfillRandomness(uint256 randomness, bytes calldata dataWithRound) external virtual override {
         GelatoVRFAdapterLib.fulfillRandomness(randomness, dataWithRound);
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect GelatoVRFAdapter methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `fulfillRandomness(uint256,bytes)` 0xb3f6b99a
+    ///      `getOperator()` 0xe7f43c68
+    ///      `getUserKey(uint256)` 0xdd1e2651
+    ///      `requestRandomness(bytes32)` 0x5e3b709f
+    ///      `setOperator(address)` 0xb3ab15fb
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors = hex"b3f6b99ae7f43c68dd1e26515e3b709fb3ab15fb";
+    }
 }

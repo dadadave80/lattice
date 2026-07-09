@@ -18,6 +18,10 @@ import {Test} from "forge-std/Test.sol";
 /// @notice Mock Diamond that combines AccessControl + ConstantProduct, matching
 ///         the pattern from ConstantProductTest.t.sol.
 contract MockConstantProductFork is ConstantProduct, AccessControl {
+    /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare
+    ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing.
+    function exportSelectors() external pure virtual override(ConstantProduct, AccessControl) returns (bytes memory) {}
+
     function initialize(address token0_, address token1_, address admin_) external {
         bytes32 s = InitializableLib.initializableSlot();
         InitializableLib.preInitializer(s);

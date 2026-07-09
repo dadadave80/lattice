@@ -143,4 +143,32 @@ contract GovernedSafeDiamondCut is
     function verifyInterfaceRegistered(bytes4 _interfaceId) external view virtual returns (bool) {
         return GovernedSafeDiamondCutLib.verifyInterfaceRegistered(_interfaceId);
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect GovernedSafeDiamondCut methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `cancelCut(bytes32)` 0x55cb2751
+    ///      `cutCount()` 0xaa982c45
+    ///      `emergencyRemoveCut((address,uint8,bytes4[])[])` 0xc83542a6
+    ///      `executeCut((address,uint8,bytes4[])[],address,bytes,bytes32)` 0xcb8f92b3
+    ///      `freezeSelectors(bytes4[])` 0x4487678f
+    ///      `frozenSelectors()` 0x22cabf70
+    ///      `getCutRecord(uint256)` 0x3adda78e
+    ///      `getTimestamp(bytes32)` 0xd45c4435
+    ///      `isOperationDone(bytes32)` 0x2ab0f529
+    ///      `isOperationPending(bytes32)` 0x584b153e
+    ///      `isOperationReady(bytes32)` 0x13bc9f20
+    ///      `isSelectorFrozen(bytes4)` 0xc8d8e114
+    ///      `minDelay()` 0xc63c4e9b
+    ///      `previewCut((address,uint8,bytes4[])[])` 0x35342750
+    ///      `safe()` 0x186f0354
+    ///      `scheduleCut((address,uint8,bytes4[])[],address,bytes,bytes32)` 0x41d26ecd
+    ///      `setMinDelay(uint256)` 0xba29482f
+    ///      `setSafe(address)` 0x5db0cb94
+    ///      `verifyInterfaceRegistered(bytes4)` 0x0746a956
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors =
+            hex"55cb2751aa982c45c83542a6cb8f92b34487678f22cabf703adda78ed45c44352ab0f529584b153e13bc9f20c8d8e114c63c4e9b35342750186f035441d26ecdba29482f5db0cb940746a956";
+    }
 }

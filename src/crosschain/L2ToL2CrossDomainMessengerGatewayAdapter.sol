@@ -62,4 +62,18 @@ contract L2ToL2CrossDomainMessengerGatewayAdapter is IERC7786GatewaySource, IL2T
     function registerRemoteAdapter(uint256 chainId, address remoteAdapter) external virtual {
         L2ToL2CrossDomainMessengerGatewayAdapterLib.registerRemoteAdapter(chainId, remoteAdapter);
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect L2ToL2CrossDomainMessengerGatewayAdapter methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `getRemoteAdapter(uint256)` 0xa87c3775
+    ///      `messenger()` 0x3cb747bf
+    ///      `receiveCrossChainMessage(bytes,bytes,bytes,uint256)` 0x610683bc
+    ///      `registerRemoteAdapter(uint256,address)` 0xa2719d9c
+    ///      `sendMessage(bytes,bytes,bytes[])` 0xcdfe7f5c
+    ///      `supportsAttribute(bytes4)` 0xdc680a0f
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors = hex"a87c37753cb747bf610683bca2719d9ccdfe7f5cdc680a0f";
+    }
 }

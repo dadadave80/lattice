@@ -62,4 +62,19 @@ contract ShieldedPool is IShieldedPool {
     function isKnownRoot(uint256 poolId, uint256 root) external view virtual returns (bool) {
         return ShieldedPoolLib.isKnownRoot(poolId, root);
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect ShieldedPool methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `createPool(address,uint256,address)` 0x9bb62b76
+    ///      `deposit(uint256,uint256)` 0xe2bbb158
+    ///      `getPool(uint256)` 0x068bcd8d
+    ///      `isKnownRoot(uint256,uint256)` 0xc17d30f1
+    ///      `isSpent(uint256,uint256)` 0xe1056c3e
+    ///      `poolCount()` 0xf525cb68
+    ///      `withdraw(uint256,(uint256[2],uint256[2][2],uint256[2]),uint256,uint256,address,address,uint256)` 0x258702c3
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors = hex"9bb62b76e2bbb158068bcd8dc17d30f1e1056c3ef525cb68258702c3";
+    }
 }

@@ -39,4 +39,15 @@ contract BridgeERC20 is IBridgeFungible, IERC7786MessageHandler {
     function token() external view virtual returns (address) {
         return BridgeERC20Lib.token();
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect BridgeERC20 methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `crosschainTransfer(bytes,uint256)` 0x28dcc8d8
+    ///      `processMessage(bytes32,bytes,bytes)` 0x902d5027
+    ///      `token()` 0xfc0c546a
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors = hex"28dcc8d8902d5027fc0c546a";
+    }
 }

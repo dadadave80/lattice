@@ -58,4 +58,20 @@ contract MarketplaceZone is ZoneInterface, IMarketplaceZone {
     function setRoyaltyRequired(address collection, bool required) external virtual {
         MarketplaceZoneLib.setRoyaltyRequired(collection, required);
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect MarketplaceZone methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `authorizeOrder((bytes32,address,address,(uint8,address,uint256,uint256)[],(uint8,address,uint256,uint256,address)[],bytes,bytes32[],uint256,uint256,bytes32))` 0x01e4d72a
+    ///      `blockedRole()` 0x1a5194be
+    ///      `getSeaportMetadata()` 0x2e778efc
+    ///      `isRoyaltyRequired(address)` 0x50dacc83
+    ///      `setPaused(bool)` 0x16c38b3c
+    ///      `setRoyaltyRequired(address,bool)` 0xd98a7d79
+    ///      `validateOrder((bytes32,address,address,(uint8,address,uint256,uint256)[],(uint8,address,uint256,uint256,address)[],bytes,bytes32[],uint256,uint256,bytes32))` 0x17b1f942
+    ///      `zonePaused()` 0x1a405ea4
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors = hex"01e4d72a1a5194be2e778efc50dacc8316c38b3cd98a7d7917b1f9421a405ea4";
+    }
 }

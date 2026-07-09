@@ -75,6 +75,16 @@ contract MockExecModule {
 }
 
 contract MockAccount6900 is ModularAccount6900, AccessControl, ERC6900ModuleManager {
+    /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare
+    ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing.
+    function exportSelectors()
+        external
+        pure
+        virtual
+        override(AccessControl, ERC6900ModuleManager)
+        returns (bytes memory)
+    {}
+
     function initialize(address admin_, FacetCut[] calldata cuts) external {
         bytes32 s = InitializableLib.initializableSlot();
         InitializableLib.preInitializer(s);

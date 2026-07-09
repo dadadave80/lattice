@@ -56,4 +56,21 @@ contract ERC20 is IERC20 {
     function decimals() public view virtual returns (uint8) {
         return ERC20Lib.decimals();
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect ERC20 methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `allowance(address,address)` 0xdd62ed3e
+    ///      `approve(address,uint256)` 0x095ea7b3
+    ///      `balanceOf(address)` 0x70a08231
+    ///      `decimals()` 0x313ce567
+    ///      `name()` 0x06fdde03
+    ///      `symbol()` 0x95d89b41
+    ///      `totalSupply()` 0x18160ddd
+    ///      `transfer(address,uint256)` 0xa9059cbb
+    ///      `transferFrom(address,address,uint256)` 0x23b872dd
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors = hex"dd62ed3e095ea7b370a08231313ce56706fdde0395d89b4118160ddda9059cbb23b872dd";
+    }
 }

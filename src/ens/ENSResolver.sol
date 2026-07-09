@@ -39,4 +39,17 @@ contract ENSResolver is IENSResolver {
     function subnode(bytes32 parentNode, string calldata label) external pure virtual returns (bytes32) {
         return ENSResolverLib.subnode(parentNode, label);
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect ENSResolver methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `ensRegistry()` 0x7d73b231
+    ///      `resolve(bytes32)` 0x5c23bdf5
+    ///      `resolverOf(bytes32)` 0xc677966d
+    ///      `setEnsRegistry(address)` 0xe7c65687
+    ///      `subnode(bytes32,string)` 0x568f0953
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors = hex"7d73b2315c23bdf5c677966de7c65687568f0953";
+    }
 }

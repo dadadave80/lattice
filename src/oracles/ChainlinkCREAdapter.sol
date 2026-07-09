@@ -61,4 +61,18 @@ contract ChainlinkCREAdapter is IChainlinkCREAdapter {
     function onReport(bytes calldata metadata, bytes calldata report) external virtual override {
         ChainlinkCREAdapterLib.onReport(metadata, report);
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect ChainlinkCREAdapter methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `getForwarder()` 0xa0042526
+    ///      `getLatestReport(bytes32)` 0x4def3188
+    ///      `isWorkflowAllowed(bytes32)` 0xe35f6eba
+    ///      `onReport(bytes,bytes)` 0x805f2132
+    ///      `setForwarder(address)` 0xb9998a24
+    ///      `setWorkflow(bytes32,bool)` 0x2a93711e
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors = hex"a00425264def3188e35f6eba805f2132b9998a242a93711e";
+    }
 }

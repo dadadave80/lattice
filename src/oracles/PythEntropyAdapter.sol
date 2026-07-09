@@ -51,4 +51,18 @@ contract PythEntropyAdapter is IPythEntropyAdapter {
     function entropyCallback(uint64 sequence, address provider, bytes32 randomNumber) external virtual override {
         PythEntropyAdapterLib.entropyCallback(sequence, provider, randomNumber);
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect PythEntropyAdapter methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `entropyCallback(uint64,address,bytes32)` 0x24185135
+    ///      `getConfig()` 0xc3f909d4
+    ///      `getFee()` 0xced72f87
+    ///      `getUserKey(uint64)` 0x65b56cd4
+    ///      `requestRandomNumber(bytes32,bytes32)` 0x8738559f
+    ///      `setConfig((address,address))` 0x861fb568
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors = hex"24185135c3f909d4ced72f8765b56cd48738559f861fb568";
+    }
 }
