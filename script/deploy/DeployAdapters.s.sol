@@ -8,9 +8,10 @@ import {Script, console} from "forge-std/Script.sol";
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice Deterministically deploys Lattice DeFi protocol adapters (Aave v3 / Compound v3 /
 ///         ERC4626-wrap) through the SAME {CreateXDeployer} helper used to deploy the Diamond +
-///         facets in the governed-diamond-upgrade plan. Each adapter lands at the same address on
-///         every chain because CreateX CREATE3 derives the address from `(CreateX, guardedSalt)` and
-///         NOT from the adapter's initcode.
+///         facets in the governed-diamond-upgrade plan. Each adapter's address derives from
+///         `(CreateX, deployer, block.chainid, salt)` and NOT from the adapter's initcode, so it is
+///         stable across bytecode/compiler changes but DIFFERS per chain — the `0x01` protection
+///         byte folds `block.chainid` into CreateX's guarded salt (cross-chain redeploy protection).
 /// @dev Reuses `script/lib/CreateXDeployer.sol` and `src/interfaces/external/ICreateX.sol` from the
 ///      upgrade plan (Task 1). If running this DeFi plan standalone, vendor those two files first
 ///      (see the cross-plan dependency note in Task 15). `_guardedSalt` pins the salt to the
@@ -24,7 +25,8 @@ import {Script, console} from "forge-std/Script.sol";
 ///   forge script script/deploy/DeployAdapters.s.sol \
 ///     --sig "deployAdapter(bytes11,bytes)" <ENTROPY> <INITCODE> --broadcast
 contract DeployAdapters is Script {
-    /// @notice Pre-computes the deterministic CREATE3 address an adapter will occupy on every chain.
+    /// @notice Pre-computes the deterministic CREATE3 address an adapter will occupy on THIS chain
+    ///         (the guarded salt folds in `block.chainid`, so each chain gets its own address).
     /// @param entropy 11 bytes distinguishing this adapter from others by the same deployer.
     /// @return adapter The deterministic adapter address (broadcast by `msg.sender`).
     function predictAdapter(bytes11 entropy) external view returns (address adapter) {
