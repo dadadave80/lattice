@@ -89,6 +89,104 @@ contract LatticeRegistry is ILatticeRegistry {
 
     /// @inheritdoc ILatticeRegistry
     function register(bytes32 nameHash, uint64 version, address facet) external onlyOwner {
+        _register(nameHash, version, facet);
+    }
+
+    /// @inheritdoc ILatticeRegistry
+    function setLatest(bytes32 nameHash, uint64 version) external onlyOwner {
+        _setLatest(nameHash, version);
+    }
+
+    /// @inheritdoc ILatticeRegistry
+    function get(bytes32 nameHash, uint64 version) external view returns (Record memory record) {
+        record = _get(nameHash, version);
+    }
+
+    /// @inheritdoc ILatticeRegistry
+    function latest(bytes32 nameHash) external view returns (Record memory record) {
+        record = _latest(nameHash);
+    }
+
+    /// @inheritdoc ILatticeRegistry
+    function getSelectors(bytes32 nameHash, uint64 version) external view returns (bytes4[] memory selectors) {
+        (, selectors) = _verifiedSelectors(nameHash, version);
+    }
+
+    /// @inheritdoc ILatticeRegistry
+    function getCut(bytes32 nameHash, uint64 version) external view returns (FacetCut memory cut) {
+        cut = _buildCut(nameHash, version);
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                   TIER B — STRING-NAME CONVENIENCE
+    //////////////////////////////////////////////////////////////////////////*//
+
+    // Overloads that take a human-readable name for anyone interacting DIRECTLY with the contract (Etherscan,
+    // etc.) — no need to compute `keccak256("lattice.<Name>")` off-chain first. Each hashes the RAW string via
+    // {nameHash} (no prefix applied) and delegates to the `bytes32` path, so a name and its hash are fully
+    // interchangeable. Pass the full canonical name, e.g. "lattice.ERC20".
+
+    /// @inheritdoc ILatticeRegistry
+    function register(string calldata name, uint64 version, address facet) external onlyOwner {
+        _register(_hashName(name), version, facet);
+    }
+
+    /// @inheritdoc ILatticeRegistry
+    function setLatest(string calldata name, uint64 version) external onlyOwner {
+        _setLatest(_hashName(name), version);
+    }
+
+    /// @inheritdoc ILatticeRegistry
+    function get(string calldata name, uint64 version) external view returns (Record memory record) {
+        record = _get(_hashName(name), version);
+    }
+
+    /// @inheritdoc ILatticeRegistry
+    function latest(string calldata name) external view returns (Record memory record) {
+        record = _latest(_hashName(name));
+    }
+
+    /// @inheritdoc ILatticeRegistry
+    function getSelectors(string calldata name, uint64 version) external view returns (bytes4[] memory selectors) {
+        (, selectors) = _verifiedSelectors(_hashName(name), version);
+    }
+
+    /// @inheritdoc ILatticeRegistry
+    function getCut(string calldata name, uint64 version) external view returns (FacetCut memory cut) {
+        cut = _buildCut(_hashName(name), version);
+    }
+
+    /// @inheritdoc ILatticeRegistry
+    function nameHash(string calldata name) external pure returns (bytes32) {
+        return _hashName(name);
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                          OWNERSHIP (Ownable2Step)
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @inheritdoc ILatticeRegistry
+    function transferOwnership(address newOwner) external onlyOwner {
+        pendingOwner = newOwner;
+        emit OwnershipTransferStarted(owner, newOwner);
+    }
+
+    /// @inheritdoc ILatticeRegistry
+    function acceptOwnership() external {
+        if (msg.sender != pendingOwner) revert LatticeRegistry__NotPendingOwner(msg.sender);
+        address previousOwner = owner;
+        owner = msg.sender;
+        delete pendingOwner;
+        emit OwnershipTransferred(previousOwner, msg.sender);
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                             INTERNAL HELPERS
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @dev Shared body of both {register} overloads: append-only write of a curated `(nameHash, version)`
+    ///      record after pulling + validating + pinning the facet's ERC-8153 selectors and codehash.
+    function _register(bytes32 nameHash, uint64 version, address facet) private {
         if (version == 0) revert LatticeRegistry__InvalidVersion();
 
         bytes32 recordKey = _key(nameHash, version);
@@ -114,8 +212,8 @@ contract LatticeRegistry is ILatticeRegistry {
         emit Registered(nameHash, version, facet, codehash, selectorsHash);
     }
 
-    /// @inheritdoc ILatticeRegistry
-    function setLatest(bytes32 nameHash, uint64 version) external onlyOwner {
+    /// @dev Shared body of both {setLatest} overloads: point `latest(nameHash)` at an existing version.
+    function _setLatest(bytes32 nameHash, uint64 version) private {
         if (_records[_key(nameHash, version)].facet == address(0)) {
             revert LatticeRegistry__RecordNotFound(nameHash, version);
         }
@@ -123,53 +221,31 @@ contract LatticeRegistry is ILatticeRegistry {
         emit LatestSet(nameHash, version);
     }
 
-    /// @inheritdoc ILatticeRegistry
-    function get(bytes32 nameHash, uint64 version) external view returns (Record memory record) {
+    /// @dev The registry key for a canonical facet name — the RAW `keccak256(bytes(name))`, no prefix. The
+    ///      `"lattice.<Name>"` convention lives in tooling/docs, not here, so the registry stays name-agnostic.
+    function _hashName(string calldata name) private pure returns (bytes32) {
+        return keccak256(bytes(name));
+    }
+
+    /// @dev Shared body of both {get} overloads.
+    function _get(bytes32 nameHash, uint64 version) private view returns (Record memory record) {
         record = _records[_key(nameHash, version)];
         if (record.facet == address(0)) revert LatticeRegistry__RecordNotFound(nameHash, version);
     }
 
-    /// @inheritdoc ILatticeRegistry
-    function latest(bytes32 nameHash) external view returns (Record memory record) {
+    /// @dev Shared body of both {latest} overloads.
+    function _latest(bytes32 nameHash) private view returns (Record memory record) {
         uint64 version = _latestVersion[nameHash];
         if (version == 0) revert LatticeRegistry__LatestUnset(nameHash);
         // A set pointer always references an existing record (setLatest requires it), so no re-check needed.
         record = _records[_key(nameHash, version)];
     }
 
-    /// @inheritdoc ILatticeRegistry
-    function getSelectors(bytes32 nameHash, uint64 version) external view returns (bytes4[] memory selectors) {
-        (, selectors) = _verifiedSelectors(nameHash, version);
-    }
-
-    /// @inheritdoc ILatticeRegistry
-    function getCut(bytes32 nameHash, uint64 version) external view returns (FacetCut memory cut) {
+    /// @dev Shared body of both {getCut} overloads: live-verify then assemble an `Add` cut.
+    function _buildCut(bytes32 nameHash, uint64 version) private view returns (FacetCut memory cut) {
         (address facet, bytes4[] memory selectors) = _verifiedSelectors(nameHash, version);
         cut = FacetCut({facetAddress: facet, action: FacetCutAction.Add, functionSelectors: selectors});
     }
-
-    //*//////////////////////////////////////////////////////////////////////////
-    //                          OWNERSHIP (Ownable2Step)
-    //////////////////////////////////////////////////////////////////////////*//
-
-    /// @inheritdoc ILatticeRegistry
-    function transferOwnership(address newOwner) external onlyOwner {
-        pendingOwner = newOwner;
-        emit OwnershipTransferStarted(owner, newOwner);
-    }
-
-    /// @inheritdoc ILatticeRegistry
-    function acceptOwnership() external {
-        if (msg.sender != pendingOwner) revert LatticeRegistry__NotPendingOwner(msg.sender);
-        address previousOwner = owner;
-        owner = msg.sender;
-        delete pendingOwner;
-        emit OwnershipTransferred(previousOwner, msg.sender);
-    }
-
-    //*//////////////////////////////////////////////////////////////////////////
-    //                             INTERNAL HELPERS
-    //////////////////////////////////////////////////////////////////////////*//
 
     /// @dev Require `target` to carry real contract code and return its codehash (invariant I4).
     function _requireCode(address target) private view returns (bytes32 codehash) {
