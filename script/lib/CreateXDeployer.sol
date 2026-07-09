@@ -5,14 +5,21 @@ import {ICreateX} from "@lattice/interfaces/external/ICreateX.sol";
 
 /// @title CreateXDeployer
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
-/// @notice Thin Foundry helper around the canonical CreateX singleton for deterministic, cross-chain
-///         deployment of the Diamond and its facets via CREATE3. The deployed address depends only on
-///         `(CreateX, guardedSalt)` and NOT on the contract's initcode, so a Diamond/facet lands at the
-///         SAME address on every chain and survives bytecode/compiler changes (upgrade-stable).
+/// @notice Thin Foundry helper around the canonical CreateX singleton, offering two deterministic paths:
+///         (1) the sender-guarded + cross-chain-protected CREATE3 path ({deploy}/{predict}) — the address
+///         depends on `(CreateX, deployer, block.chainid, salt)` and NOT on the contract's initcode, so it
+///         survives bytecode/compiler changes but lands at a DIFFERENT address on every chain (that is what
+///         cross-chain redeploy protection means: byte 20 = `0x01` folds `block.chainid` into the guarded
+///         salt); (2) the raw-salt CREATE2 release path ({deployRaw}/{predictRaw}) — deployer- AND
+///         chain-independent, so a facet lands at the SAME address on every chain, and the address commits
+///         to `keccak256(initCode)`, so anyone can permissionlessly complete a release yet only with the
+///         canonical bytecode.
 /// @dev Stateless utility library (internal functions run in the caller script's context, so `msg.sender`
-///      inside CreateX is the script's broadcasting address). Salts are sender-guarded + cross-chain
-///      redeploy-protected. `predict` reproduces CreateX's internal `_guard` transform because the public
-///      `computeCreate3Address(salt)` does not re-guard the salt it is given.
+///      inside CreateX is the script's broadcasting address). CREATE3 salts are sender-guarded + cross-chain
+///      redeploy-protected; raw CREATE2 salts must have first 20 bytes that are neither the caller nor zero
+///      (any keccak-derived protocol salt). `predict`/`predictRaw` reproduce CreateX's internal `_guard`
+///      transforms because the public `computeCreate3Address(salt)`/`computeCreate2Address(salt, hash)` do
+///      not re-guard the salt they are given.
 library CreateXDeployer {
     /// @notice The canonical CreateX deployer, identical on every supported chain.
     ICreateX internal constant CREATEX = ICreateX(0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed);
@@ -51,5 +58,27 @@ library CreateXDeployer {
     function predict(bytes32 salt) internal view returns (address predicted) {
         bytes32 guarded = _guardTransform(address(bytes20(salt)), salt);
         predicted = CREATEX.computeCreate3Address(guarded, address(CREATEX));
+    }
+
+    /// @notice Deploys `initCode` via CreateX CREATE2 using a RAW protocol salt (the release path).
+    /// @dev For a raw salt (first 20 bytes neither the caller nor zero) CreateX applies the deployer- and
+    ///      chain-independent guard `keccak256(abi.encode(salt))`, so the address is the SAME on every chain
+    ///      and commits to `keccak256(initCode)` — anyone can complete a release, but a squatter can only
+    ///      ever deploy the canonical bytecode at the canonical address.
+    /// @param salt     A raw protocol salt (e.g. `keccak256("lattice.<Name>.<version>")`).
+    /// @param initCode The full creation bytecode (e.g. `abi.encodePacked(type(C).creationCode, args)`).
+    /// @return deployed The address the contract was deployed to (== {predictRaw} for the same inputs).
+    function deployRaw(bytes32 salt, bytes memory initCode) internal returns (address deployed) {
+        deployed = CREATEX.deployCreate2(salt, initCode);
+    }
+
+    /// @notice Predicts the CREATE2 address {deployRaw} produces for a raw `salt` and `initCodeHash`.
+    /// @dev Reproduces CreateX's raw-salt `_guard` transform (`keccak256(abi.encode(salt))`) because the
+    ///      public `computeCreate2Address(salt, initCodeHash)` does not re-guard the salt it is given.
+    /// @param salt         The raw protocol salt passed to {deployRaw}.
+    /// @param initCodeHash `keccak256` of the full creation bytecode incl. constructor args.
+    /// @return predicted The deterministic address the matching {deployRaw} call will produce.
+    function predictRaw(bytes32 salt, bytes32 initCodeHash) internal view returns (address predicted) {
+        predicted = CREATEX.computeCreate2Address(keccak256(abi.encode(salt)), initCodeHash);
     }
 }
