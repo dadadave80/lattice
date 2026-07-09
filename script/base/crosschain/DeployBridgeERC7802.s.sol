@@ -29,9 +29,9 @@ contract DeployBridgeERC7802 is BaseDeploy {
     {
         cuts = new FacetCut[](4);
         cuts[0] = _cut(address(new ERC165Facet()), "ERC165Facet");
-        cuts[1] = _cut(address(new AccessControl()), "AccessControl");
-        cuts[2] = _cut(address(new CrosschainLink()), "CrosschainLink");
-        cuts[3] = _cut(address(new BridgeERC7802()), "BridgeERC7802");
+        cuts[1] = _cut(address(new AccessControl()));
+        cuts[2] = _cut(address(new CrosschainLink()));
+        cuts[3] = _cut(address(new BridgeERC7802()));
         init = address(new BridgeERC7802Init());
         initCalldata = abi.encodeCall(BridgeERC7802Init.init, (admin, token));
     }

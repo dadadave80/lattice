@@ -21,4 +21,13 @@ contract ERC5564Announcer is IERC5564Announcer {
     {
         ERC5564AnnouncerLib.announce(schemeId, stealthAddress, ephemeralPubKey, metadata);
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect ERC5564Announcer methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `announce(uint256,address,bytes,bytes)` 0x4d1f9583
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors = hex"4d1f9583";
+    }
 }

@@ -119,6 +119,9 @@ contract OracleAssetToken {
 ///      totalAssets() = idleBalance * priceWad / 1e18.
 ///      Shares are minted proportionally to the oracle-valued totalAssets.
 contract MockOracleVault is AccessControl, ChainlinkAdapter {
+    /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare
+    ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing.
+    function exportSelectors() external pure virtual override(AccessControl, ChainlinkAdapter) returns (bytes memory) {}
     bytes32 public immutable PRICE_KEY;
     OracleAssetToken private _assetToken;
 

@@ -143,4 +143,31 @@ contract CCIPGatewayAdapter is IERC7786GatewaySource, IAny2EVMMessageReceiverV2,
     {
         return CCIPGatewayAdapterLib.getCCVConfig(chainId);
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect CCIPGatewayAdapter methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `ccipReceive((bytes32,uint64,bytes,bytes,(address,uint256)[]))` 0x85572ffb
+    ///      `configureCCV(uint256,address[],address[],uint8,bytes4)` 0xbc633c78
+    ///      `configureDestination(uint256,uint256,bool)` 0xf8291572
+    ///      `feeToken()` 0x647846a5
+    ///      `getAllowOutOfOrderExecution(uint256)` 0x578599f7
+    ///      `getCCVConfig(uint256)` 0x0a2525d2
+    ///      `getCCVsAndFinalityConfig(uint64,bytes)` 0x1bfc84d0
+    ///      `getChainId(uint64)` 0x8b6cecf8
+    ///      `getChainSelector(uint256)` 0x92e2106f
+    ///      `getDestinationGasLimit(uint256)` 0xb168cf09
+    ///      `getRemoteGateway(uint256)` 0x752bcf06
+    ///      `quoteFee(bytes,bytes)` 0x58d14c04
+    ///      `registerChainSelector(uint256,uint64)` 0xef251049
+    ///      `registerRemoteGateway(uint256,address)` 0x997ce1f0
+    ///      `router()` 0xf887ea40
+    ///      `sendMessage(bytes,bytes,bytes[])` 0xcdfe7f5c
+    ///      `setFeeToken(address)` 0x15cce224
+    ///      `supportsAttribute(bytes4)` 0xdc680a0f
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors =
+            hex"85572ffbbc633c78f8291572647846a5578599f70a2525d21bfc84d08b6cecf892e2106fb168cf09752bcf0658d14c04ef251049997ce1f0f887ea40cdfe7f5c15cce224dc680a0f";
+    }
 }

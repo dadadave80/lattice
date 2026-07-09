@@ -52,6 +52,10 @@ contract FuzzUnderlying {
 ///         {ERC4626} vault facet into one mock (both delegate to their namespaced-storage libs); `decimals` is
 ///         disambiguated to the ERC-4626 share-offset variant.
 contract FuzzVault is ERC20, ERC4626 {
+    /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare
+    ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing.
+    function exportSelectors() external pure virtual override(ERC20, ERC4626) returns (bytes memory) {}
+
     function initialize(address asset_) external {
         bytes32 s = InitializableLib.initializableSlot();
         InitializableLib.preInitializer(s);

@@ -24,8 +24,8 @@ contract DeployERC6538Registry is BaseDeploy {
     function buildCuts() public returns (FacetCut[] memory cuts, address init, bytes memory initCalldata) {
         cuts = new FacetCut[](3);
         cuts[0] = _cut(address(new ERC165Facet()), "ERC165Facet");
-        cuts[1] = _cut(address(new EIP712()), "EIP712");
-        cuts[2] = _cut(address(new ERC6538Registry()), "ERC6538Registry");
+        cuts[1] = _cut(address(new EIP712()));
+        cuts[2] = _cut(address(new ERC6538Registry()));
         init = address(new ERC6538RegistryInit());
         initCalldata = abi.encodeCall(ERC6538RegistryInit.init, ());
     }

@@ -35,4 +35,17 @@ contract ERC2981 is IERC2981 {
     function resetTokenRoyalty(uint256 tokenId) public virtual {
         ERC2981Lib.resetTokenRoyalty(tokenId);
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect ERC2981 methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `deleteDefaultRoyalty()` 0xaa1b103f
+    ///      `resetTokenRoyalty(uint256)` 0x8a616bc0
+    ///      `royaltyInfo(uint256,uint256)` 0x2a55205a
+    ///      `setDefaultRoyalty(address,uint96)` 0x04634d8d
+    ///      `setTokenRoyalty(uint256,address,uint96)` 0x5944c753
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors = hex"aa1b103f8a616bc02a55205a04634d8d5944c753";
+    }
 }

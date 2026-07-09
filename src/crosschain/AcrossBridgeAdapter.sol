@@ -40,4 +40,15 @@ contract AcrossBridgeAdapter is IAcrossBridgeAdapter, AcrossMessageHandler {
     function spokePool() external view virtual returns (address) {
         return AcrossBridgeAdapterLib.spokePool();
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect AcrossBridgeAdapter methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `deposit((bytes,bytes32,address,uint256,uint256,uint256,bytes32,uint32,uint32,uint32,bytes))` 0xd3948fec
+    ///      `handleV3AcrossMessage(address,uint256,address,bytes)` 0x3a5be8cb
+    ///      `spokePool()` 0xafdac3d6
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors = hex"d3948fec3a5be8cbafdac3d6";
+    }
 }

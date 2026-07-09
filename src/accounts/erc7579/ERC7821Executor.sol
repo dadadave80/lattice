@@ -25,4 +25,14 @@ contract ERC7821Executor is IERC7821 {
     function supportsExecutionMode(bytes32 mode) external view virtual returns (bool result) {
         return ERC7821ExecutorLib.supportsExecutionMode(mode);
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect ERC7821Executor methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `execute(bytes32,bytes)` 0xe9ae5c53
+    ///      `supportsExecutionMode(bytes32)` 0xd03c7914
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors = hex"e9ae5c53d03c7914";
+    }
 }

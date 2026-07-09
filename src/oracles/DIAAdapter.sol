@@ -48,4 +48,17 @@ contract DIAAdapter is IDIAAdapter {
     function unregisterFeed(bytes32 key) external virtual override {
         DIAAdapterLib.unregisterFeed(key);
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect DIAAdapter methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `getFeed(bytes32)` 0x280aebcf
+    ///      `getValue(bytes32)` 0x69843940
+    ///      `latestAnswer(bytes32)` 0x084d4783
+    ///      `registerFeed(bytes32,address,string,uint48)` 0x8faa9164
+    ///      `unregisterFeed(bytes32)` 0x2a589908
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors = hex"280aebcf69843940084d47838faa91642a589908";
+    }
 }

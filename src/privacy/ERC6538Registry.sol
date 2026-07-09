@@ -57,4 +57,19 @@ contract ERC6538Registry is IERC6538Registry {
     function nonceOf(address registrant) external view virtual returns (uint256) {
         return ERC6538RegistryLib.nonceOf(registrant);
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect ERC6538Registry methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `DOMAIN_SEPARATOR()` 0x3644e515
+    ///      `ERC6538REGISTRY_ENTRY_TYPE_HASH()` 0xfe04b106
+    ///      `incrementNonce()` 0x627cdcb9
+    ///      `nonceOf(address)` 0xed2a2d64
+    ///      `registerKeys(uint256,bytes)` 0x042c7aa3
+    ///      `registerKeysOnBehalf(address,uint256,bytes,bytes)` 0x428d3d0b
+    ///      `stealthMetaAddressOf(address,uint256)` 0x7aa8b5ad
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors = hex"3644e515fe04b106627cdcb9ed2a2d64042c7aa3428d3d0b7aa8b5ad";
+    }
 }

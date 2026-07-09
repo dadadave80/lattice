@@ -29,9 +29,9 @@ contract DeployBridgeERC20 is BaseDeploy {
     {
         cuts = new FacetCut[](4);
         cuts[0] = _cut(address(new ERC165Facet()), "ERC165Facet");
-        cuts[1] = _cut(address(new AccessControl()), "AccessControl");
-        cuts[2] = _cut(address(new CrosschainLink()), "CrosschainLink");
-        cuts[3] = _cut(address(new BridgeERC20()), "BridgeERC20");
+        cuts[1] = _cut(address(new AccessControl()));
+        cuts[2] = _cut(address(new CrosschainLink()));
+        cuts[3] = _cut(address(new BridgeERC20()));
         init = address(new BridgeERC20Init());
         initCalldata = abi.encodeCall(BridgeERC20Init.init, (admin, token));
     }

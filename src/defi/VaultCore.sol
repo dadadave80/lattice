@@ -106,4 +106,23 @@ contract VaultCore {
         VaultCoreLib.requireManagerNotRebalancing();
         return ERC4626Lib.redeem(shares, receiver, owner);
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect VaultCore methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `allocateToStrategy(address,uint256)` 0x5915e15d
+    ///      `allocatedAssets()` 0x36cd2b11
+    ///      `deposit(uint256,address)` 0x6e553f65
+    ///      `idleAssets()` 0xe16b03a3
+    ///      `mint(uint256,address)` 0x94bf804d
+    ///      `recallFromStrategy(address,uint256)` 0x43ff28f3
+    ///      `redeem(uint256,address,address)` 0xba087652
+    ///      `setStrategyManager(address)` 0x5c966646
+    ///      `strategyManager()` 0x39b70e38
+    ///      `totalAssets()` 0x01e1d114
+    ///      `withdraw(uint256,address,address)` 0xb460af94
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors = hex"5915e15d36cd2b116e553f65e16b03a394bf804d43ff28f3ba0876525c96664639b70e3801e1d114b460af94";
+    }
 }

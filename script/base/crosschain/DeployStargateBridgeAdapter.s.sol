@@ -26,8 +26,8 @@ contract DeployStargateBridgeAdapter is BaseDeploy {
     function buildCuts(address admin) public returns (FacetCut[] memory cuts, address init, bytes memory initCalldata) {
         cuts = new FacetCut[](3);
         cuts[0] = _cut(address(new ERC165Facet()), "ERC165Facet");
-        cuts[1] = _cut(address(new AccessControl()), "AccessControl");
-        cuts[2] = _cut(address(new StargateBridgeAdapter()), "StargateBridgeAdapter");
+        cuts[1] = _cut(address(new AccessControl()));
+        cuts[2] = _cut(address(new StargateBridgeAdapter()));
         init = address(new StargateBridgeAdapterInit());
         initCalldata = abi.encodeCall(StargateBridgeAdapterInit.init, (admin));
     }

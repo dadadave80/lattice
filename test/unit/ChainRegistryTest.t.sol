@@ -417,13 +417,31 @@ contract ChainRegistryOpenBridgeGateTest is Test, GetSelectors {
 
     bytes4 constant UNAUTHORIZED_ACCOUNT = bytes4(keccak256("AccessControlUnauthorizedAccount(address,bytes32)"));
 
+    /// @dev Drops the ERC-8153 `exportSelectors()` selector (0x0ef22643): `forge inspect` lists it once a facet
+    ///      implements ERC-8153, and the diamond never cuts it — leaving it in makes the second facet's `Add`
+    ///      revert `CannotAddFunctionToDiamondThatAlreadyExists`.
+    function _stripExport(bytes4[] memory sels) private pure returns (bytes4[] memory kept) {
+        kept = new bytes4[](sels.length);
+        uint256 n;
+        for (uint256 i; i < sels.length; ++i) {
+            if (sels[i] != bytes4(0x0ef22643)) kept[n++] = sels[i];
+        }
+        assembly ("memory-safe") {
+            mstore(kept, n)
+        }
+    }
+
     function setUp() public {
         // ONE diamond hosting the OpenBridge AND the chain registry (both admin-seeded via MultiInit).
         FacetCut[] memory cuts = new FacetCut[](4);
-        cuts[0] = FacetCut(address(new ERC165Facet()), FacetCutAction.Add, _getSelectors("ERC165Facet"));
-        cuts[1] = FacetCut(address(new AccessControl()), FacetCutAction.Add, _getSelectors("AccessControl"));
-        cuts[2] = FacetCut(address(new ERC7786OpenBridge()), FacetCutAction.Add, _getSelectors("ERC7786OpenBridge"));
-        cuts[3] = FacetCut(address(new ChainRegistry()), FacetCutAction.Add, _getSelectors("ChainRegistry"));
+        cuts[0] = FacetCut(address(new ERC165Facet()), FacetCutAction.Add, _stripExport(_getSelectors("ERC165Facet")));
+        cuts[1] =
+            FacetCut(address(new AccessControl()), FacetCutAction.Add, _stripExport(_getSelectors("AccessControl")));
+        cuts[2] = FacetCut(
+            address(new ERC7786OpenBridge()), FacetCutAction.Add, _stripExport(_getSelectors("ERC7786OpenBridge"))
+        );
+        cuts[3] =
+            FacetCut(address(new ChainRegistry()), FacetCutAction.Add, _stripExport(_getSelectors("ChainRegistry")));
 
         address[] memory inits = new address[](2);
         bytes[] memory initDatas = new bytes[](2);

@@ -27,7 +27,7 @@ contract DeployAcrossBridgeAdapter is BaseDeploy {
     {
         cuts = new FacetCut[](2);
         cuts[0] = _cut(address(new ERC165Facet()), "ERC165Facet");
-        cuts[1] = _cut(address(new AcrossBridgeAdapter()), "AcrossBridgeAdapter");
+        cuts[1] = _cut(address(new AcrossBridgeAdapter()));
         init = address(new AcrossBridgeAdapterInit());
         initCalldata = abi.encodeCall(AcrossBridgeAdapterInit.init, (spokePool));
     }

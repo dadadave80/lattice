@@ -76,4 +76,21 @@ contract PythAdapter is IPythAdapter {
     function unregisterFeed(bytes32 key) external virtual override {
         PythAdapterLib.unregisterFeed(key);
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect PythAdapter methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `getFeed(bytes32)` 0x280aebcf
+    ///      `getUpdateFee(bytes[])` 0xd47eed45
+    ///      `latestAnswer(bytes32)` 0x084d4783
+    ///      `latestAnswerRaw(bytes32)` 0xad0ddbee
+    ///      `pyth()` 0xf98d06f0
+    ///      `registerFeed(bytes32,bytes32,uint48,uint64)` 0xb364e0d4
+    ///      `setPyth(address)` 0xee22fd6f
+    ///      `unregisterFeed(bytes32)` 0x2a589908
+    ///      `updatePriceFeeds(bytes[])` 0xef9e5e28
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors = hex"280aebcfd47eed45084d4783ad0ddbeef98d06f0b364e0d4ee22fd6f2a589908ef9e5e28";
+    }
 }

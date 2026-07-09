@@ -119,4 +119,23 @@ contract GovernedVault is IGovernedVault {
         }
         return GovernorLib._castVote(proposalId, voter, support, "", "");
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect GovernedVault methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `CLOCK_MODE()` 0x4bf5d7e9
+    ///      `ballotNonce(address)` 0xd5cae628
+    ///      `castVoteBySig(uint256,uint8,address,bytes)` 0x8ff262e3
+    ///      `clock()` 0x91ddadf4
+    ///      `deposit(uint256,address)` 0x6e553f65
+    ///      `mint(uint256,address)` 0x94bf804d
+    ///      `name()` 0x06fdde03
+    ///      `redeem(uint256,address,address)` 0xba087652
+    ///      `transfer(address,uint256)` 0xa9059cbb
+    ///      `transferFrom(address,address,uint256)` 0x23b872dd
+    ///      `withdraw(uint256,address,address)` 0xb460af94
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors = hex"4bf5d7e9d5cae6288ff262e391ddadf46e553f6594bf804d06fdde03ba087652a9059cbb23b872ddb460af94";
+    }
 }

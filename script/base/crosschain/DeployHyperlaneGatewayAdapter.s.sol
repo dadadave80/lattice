@@ -28,8 +28,8 @@ contract DeployHyperlaneGatewayAdapter is BaseDeploy {
     {
         cuts = new FacetCut[](3);
         cuts[0] = _cut(address(new ERC165Facet()), "ERC165Facet");
-        cuts[1] = _cut(address(new AccessControl()), "AccessControl");
-        cuts[2] = _cut(address(new HyperlaneGatewayAdapter()), "HyperlaneGatewayAdapter");
+        cuts[1] = _cut(address(new AccessControl()));
+        cuts[2] = _cut(address(new HyperlaneGatewayAdapter()));
         init = address(new HyperlaneGatewayAdapterInit());
         initCalldata = abi.encodeCall(HyperlaneGatewayAdapterInit.init, (admin, mailbox));
     }

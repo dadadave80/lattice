@@ -118,4 +118,30 @@ contract ERC4626 {
     function redeem(uint256 shares, address receiver, address owner) public virtual returns (uint256) {
         return ERC4626Lib.redeem(shares, receiver, owner);
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect ERC4626 methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `asset()` 0x38d52e0f
+    ///      `convertToAssets(uint256)` 0x07a2d13a
+    ///      `convertToShares(uint256)` 0xc6e6f592
+    ///      `decimals()` 0x313ce567
+    ///      `deposit(uint256,address)` 0x6e553f65
+    ///      `maxDeposit(address)` 0x402d267d
+    ///      `maxMint(address)` 0xc63d75b6
+    ///      `maxRedeem(address)` 0xd905777e
+    ///      `maxWithdraw(address)` 0xce96cb77
+    ///      `mint(uint256,address)` 0x94bf804d
+    ///      `previewDeposit(uint256)` 0xef8b30f7
+    ///      `previewMint(uint256)` 0xb3d7f6b9
+    ///      `previewRedeem(uint256)` 0x4cdad506
+    ///      `previewWithdraw(uint256)` 0x0a28a477
+    ///      `redeem(uint256,address,address)` 0xba087652
+    ///      `totalAssets()` 0x01e1d114
+    ///      `withdraw(uint256,address,address)` 0xb460af94
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors =
+            hex"38d52e0f07a2d13ac6e6f592313ce5676e553f65402d267dc63d75b6d905777ece96cb7794bf804def8b30f7b3d7f6b94cdad5060a28a477ba08765201e1d114b460af94";
+    }
 }

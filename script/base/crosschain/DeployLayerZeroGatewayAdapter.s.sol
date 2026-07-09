@@ -28,8 +28,8 @@ contract DeployLayerZeroGatewayAdapter is BaseDeploy {
     {
         cuts = new FacetCut[](3);
         cuts[0] = _cut(address(new ERC165Facet()), "ERC165Facet");
-        cuts[1] = _cut(address(new AccessControl()), "AccessControl");
-        cuts[2] = _cut(address(new LayerZeroGatewayAdapter()), "LayerZeroGatewayAdapter");
+        cuts[1] = _cut(address(new AccessControl()));
+        cuts[2] = _cut(address(new LayerZeroGatewayAdapter()));
         init = address(new LayerZeroGatewayAdapterInit());
         initCalldata = abi.encodeCall(LayerZeroGatewayAdapterInit.init, (admin, endpoint));
     }

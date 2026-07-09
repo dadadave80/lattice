@@ -31,8 +31,8 @@ contract DeployStarknetGatewayAdapter is BaseDeploy {
     {
         cuts = new FacetCut[](3);
         cuts[0] = _cut(address(new ERC165Facet()), "ERC165Facet");
-        cuts[1] = _cut(address(new AccessControl()), "AccessControl");
-        cuts[2] = _cut(address(new StarknetGatewayAdapter()), "StarknetGatewayAdapter");
+        cuts[1] = _cut(address(new AccessControl()));
+        cuts[2] = _cut(address(new StarknetGatewayAdapter()));
         init = address(new StarknetGatewayAdapterInit());
         initCalldata = abi.encodeCall(StarknetGatewayAdapterInit.init, (admin, starknetCore, expectedChainReference));
     }

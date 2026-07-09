@@ -86,4 +86,25 @@ contract HyperlaneGatewayAdapter is IERC7786GatewaySource, IMessageRecipient, IH
     function configureDestination(uint256 chainId, uint256 gasLimit) external virtual {
         HyperlaneGatewayAdapterLib.configureDestination(chainId, gasLimit);
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect HyperlaneGatewayAdapter methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `chainIdOf(uint32)` 0x97a21652
+    ///      `configureDestination(uint256,uint256)` 0xcb21a740
+    ///      `destGasLimitOf(uint256)` 0x2f85b407
+    ///      `domainOf(uint256)` 0xc6c17ec0
+    ///      `handle(uint32,bytes32,bytes)` 0x56d5d475
+    ///      `mailbox()` 0xd5438eae
+    ///      `quoteFee(bytes,bytes)` 0x58d14c04
+    ///      `registerDomain(uint256,uint32)` 0x5be59524
+    ///      `registerRemote(uint256,bytes32)` 0xe914f0f6
+    ///      `sendMessage(bytes,bytes,bytes[])` 0xcdfe7f5c
+    ///      `supportsAttribute(bytes4)` 0xdc680a0f
+    ///      `trustedRemoteOf(uint256)` 0x3e56e39a
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors =
+        hex"97a21652cb21a7402f85b407c6c17ec056d5d475d5438eae58d14c045be59524e914f0f6cdfe7f5cdc680a0f3e56e39a";
+    }
 }

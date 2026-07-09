@@ -13,6 +13,10 @@ import {Test} from "forge-std/Test.sol";
 
 /// @notice Mock diamond combining AccessControl + PythAdapter.
 contract MockPythAdapterForkContract is AccessControl, PythAdapter {
+    /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare
+    ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing.
+    function exportSelectors() external pure virtual override(AccessControl, PythAdapter) returns (bytes memory) {}
+
     function initialize(address _admin, address _pyth) external {
         bytes32 s = InitializableLib.initializableSlot();
         InitializableLib.preInitializer(s);

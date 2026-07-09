@@ -19,4 +19,13 @@ contract ERC6900Signature {
     function isValidSignature(bytes32 hash, bytes calldata signature) external view virtual returns (bytes4) {
         return ERC6900SignatureLib.isValidSignature(hash, signature);
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect ERC6900Signature methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `isValidSignature(bytes32,bytes)` 0x1626ba7e
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors = hex"1626ba7e";
+    }
 }

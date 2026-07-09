@@ -29,8 +29,8 @@ contract DeploySafeHarborAdopter is BaseDeploy {
     {
         cuts = new FacetCut[](3);
         cuts[0] = _cut(address(new ERC165Facet()), "ERC165Facet");
-        cuts[1] = _cut(address(new AccessControl()), "AccessControl");
-        cuts[2] = _cut(address(new SafeHarborAdopter()), "SafeHarborAdopter");
+        cuts[1] = _cut(address(new AccessControl()));
+        cuts[2] = _cut(address(new SafeHarborAdopter()));
         init = address(new SafeHarborAdopterInit());
         initCalldata = abi.encodeCall(SafeHarborAdopterInit.init, (admin, registry, factory));
     }

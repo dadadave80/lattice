@@ -255,4 +255,49 @@ contract Governor is IGovernor {
     function updateTimelock(address newTimelock) external virtual override {
         GovernorLib.updateTimelock(newTimelock);
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect Governor methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `CLOCK_MODE()` 0x4bf5d7e9
+    ///      `COUNTING_MODE()` 0xdd4e2ba5
+    ///      `cancel(address[],uint256[],bytes[],bytes32)` 0x452115d6
+    ///      `castVote(uint256,uint8)` 0x56781388
+    ///      `castVoteBySig(uint256,uint8,address,bytes)` 0x8ff262e3
+    ///      `castVoteWithReason(uint256,uint8,string)` 0x7b3c71d3
+    ///      `castVoteWithReasonAndParams(uint256,uint8,string,bytes)` 0x5f398a14
+    ///      `clock()` 0x91ddadf4
+    ///      `execute(address[],uint256[],bytes[],bytes32)` 0x2656227d
+    ///      `getVotes(address,uint256)` 0xeb9019d4
+    ///      `hasVoted(uint256,address)` 0x43859632
+    ///      `hashProposal(address[],uint256[],bytes[],bytes32)` 0xc59057e4
+    ///      `name()` 0x06fdde03
+    ///      `proposalDeadline(uint256)` 0xc01f9e37
+    ///      `proposalEta(uint256)` 0xab58fb8e
+    ///      `proposalProposer(uint256)` 0x143489d0
+    ///      `proposalSnapshot(uint256)` 0x2d63f693
+    ///      `proposalThreshold()` 0xb58131b0
+    ///      `proposalVotes(uint256)` 0x544ffc9c
+    ///      `propose(address[],uint256[],bytes[],string)` 0x7d5e81e2
+    ///      `queue(address[],uint256[],bytes[],bytes32)` 0x160cbed7
+    ///      `quorum(uint256)` 0xf8ce560a
+    ///      `quorumDenominator()` 0x97c3d334
+    ///      `quorumNumerator()` 0xa7713a70
+    ///      `quorumNumerator(uint256)` 0x60c4247f
+    ///      `setProposalThreshold(uint256)` 0xece40cc1
+    ///      `setVotingDelay(uint48)` 0x79051887
+    ///      `setVotingPeriod(uint32)` 0xe540d01d
+    ///      `state(uint256)` 0x3e4f49e6
+    ///      `timelock()` 0xd33219b4
+    ///      `token()` 0xfc0c546a
+    ///      `updateQuorumNumerator(uint256)` 0x06f3f9e6
+    ///      `updateTimelock(address)` 0xa890c910
+    ///      `version()` 0x54fd4d50
+    ///      `votingDelay()` 0x3932abb1
+    ///      `votingPeriod()` 0x02a251a3
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors =
+            hex"4bf5d7e9dd4e2ba5452115d6567813888ff262e37b3c71d35f398a1491ddadf42656227deb9019d443859632c59057e406fdde03c01f9e37ab58fb8e143489d02d63f693b58131b0544ffc9c7d5e81e2160cbed7f8ce560a97c3d334a7713a7060c4247fece40cc179051887e540d01d3e4f49e6d33219b4fc0c546a06f3f9e6a890c91054fd4d503932abb102a251a3";
+    }
 }

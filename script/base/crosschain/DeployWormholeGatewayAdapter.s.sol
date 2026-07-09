@@ -30,8 +30,8 @@ contract DeployWormholeGatewayAdapter is BaseDeploy {
     {
         cuts = new FacetCut[](3);
         cuts[0] = _cut(address(new ERC165Facet()), "ERC165Facet");
-        cuts[1] = _cut(address(new AccessControl()), "AccessControl");
-        cuts[2] = _cut(address(new WormholeGatewayAdapter()), "WormholeGatewayAdapter");
+        cuts[1] = _cut(address(new AccessControl()));
+        cuts[2] = _cut(address(new WormholeGatewayAdapter()));
         init = address(new WormholeGatewayAdapterInit());
         initCalldata = abi.encodeCall(WormholeGatewayAdapterInit.init, (admin, relayer, wormholeChainId));
     }

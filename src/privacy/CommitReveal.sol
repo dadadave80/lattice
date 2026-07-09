@@ -42,4 +42,17 @@ contract CommitReveal is ICommitReveal {
     {
         return CommitRevealLib.computeCommitment(committer, data, salt);
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect CommitReveal methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `commit(bytes32)` 0xf14fcbc8
+    ///      `commitmentInfo(bytes32)` 0xfa3f7e8c
+    ///      `computeCommitment(address,bytes,bytes32)` 0xc15f7d29
+    ///      `isRevealed(bytes32)` 0xd321c77a
+    ///      `reveal(bytes,bytes32)` 0xfa7fe7a0
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors = hex"f14fcbc8fa3f7e8cc15f7d29d321c77afa7fe7a0";
+    }
 }

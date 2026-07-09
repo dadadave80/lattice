@@ -30,10 +30,10 @@ contract DeployCrosschainTimelockHandler is BaseDeploy {
     {
         cuts = new FacetCut[](5);
         cuts[0] = _cut(address(new ERC165Facet()), "ERC165Facet");
-        cuts[1] = _cut(address(new AccessControl()), "AccessControl");
-        cuts[2] = _cut(address(new CrosschainLink()), "CrosschainLink");
-        cuts[3] = _cut(address(new TimelockController()), "TimelockController");
-        cuts[4] = _cut(address(new CrosschainTimelockHandler()), "CrosschainTimelockHandler");
+        cuts[1] = _cut(address(new AccessControl()));
+        cuts[2] = _cut(address(new CrosschainLink()));
+        cuts[3] = _cut(address(new TimelockController()));
+        cuts[4] = _cut(address(new CrosschainTimelockHandler()));
         init = address(new CrosschainTimelockHandlerInit());
         initCalldata = abi.encodeCall(CrosschainTimelockHandlerInit.init, (admin, minDelay));
     }

@@ -25,7 +25,7 @@ contract DeployERC1155 is BaseDeploy {
     {
         cuts = new FacetCut[](2);
         cuts[0] = _cut(address(new ERC165Facet()), "ERC165Facet");
-        cuts[1] = _cut(address(new ERC1155()), "ERC1155");
+        cuts[1] = _cut(address(new ERC1155()));
         init = address(new ERC1155Init());
         initCalldata = abi.encodeCall(ERC1155Init.init, (uri_));
     }

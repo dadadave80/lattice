@@ -28,8 +28,8 @@ contract DeployPrivateVoting is BaseDeploy {
     {
         cuts = new FacetCut[](3);
         cuts[0] = _cut(address(new ERC165Facet()), "ERC165Facet");
-        cuts[1] = _cut(address(new Semaphore()), "Semaphore");
-        cuts[2] = _cut(address(new PrivateVoting()), "PrivateVoting");
+        cuts[1] = _cut(address(new Semaphore()));
+        cuts[2] = _cut(address(new PrivateVoting()));
         init = address(new PrivateVotingInit());
         initCalldata = abi.encodeCall(PrivateVotingInit.init, (verifier));
     }

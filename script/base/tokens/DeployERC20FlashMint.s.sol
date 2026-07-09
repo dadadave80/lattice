@@ -29,7 +29,7 @@ contract DeployERC20FlashMint is BaseDeploy {
         for (uint256 i; i < baseCuts.length; ++i) {
             cuts[i] = baseCuts[i];
         }
-        cuts[baseCuts.length] = _cut(address(new ERC20FlashMint()), "ERC20FlashMint");
+        cuts[baseCuts.length] = _cut(address(new ERC20FlashMint()));
 
         inits = new address[](2);
         inits[0] = baseInit;

@@ -65,4 +65,19 @@ contract BandAdapter is IBandAdapter {
     function unregisterFeed(bytes32 key) external virtual override {
         BandAdapterLib.unregisterFeed(key);
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect BandAdapter methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `getFeed(bytes32)` 0x280aebcf
+    ///      `getReferenceData(bytes32)` 0x182400b9
+    ///      `latestAnswer(bytes32)` 0x084d4783
+    ///      `registerFeed(bytes32,string,string,uint48)` 0xcf3f0bd3
+    ///      `setReference(address)` 0x34bdf2c4
+    ///      `stdReference()` 0x02664b2f
+    ///      `unregisterFeed(bytes32)` 0x2a589908
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors = hex"280aebcf182400b9084d4783cf3f0bd334bdf2c402664b2f2a589908";
+    }
 }

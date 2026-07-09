@@ -21,7 +21,7 @@ contract DeployERC5564Announcer is BaseDeploy {
     function buildCuts() public returns (FacetCut[] memory cuts, address init, bytes memory initCalldata) {
         cuts = new FacetCut[](2);
         cuts[0] = _cut(address(new ERC165Facet()), "ERC165Facet");
-        cuts[1] = _cut(address(new ERC5564Announcer()), "ERC5564Announcer");
+        cuts[1] = _cut(address(new ERC5564Announcer()));
         init = address(new ERC5564AnnouncerInit());
         initCalldata = abi.encodeCall(ERC5564AnnouncerInit.init, ());
     }
