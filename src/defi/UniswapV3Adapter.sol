@@ -2,14 +2,15 @@
 pragma solidity ^0.8.30;
 
 import {UniswapV3AdapterLib} from "@lattice/defi/libraries/UniswapV3AdapterLib.sol";
-import {IAdapterOperator} from "@lattice/interfaces/IAdapterOperator.sol";
-import {IProtocolAdapter} from "@lattice/interfaces/IProtocolAdapter.sol";
-import {IUniswapV3Adapter} from "@lattice/interfaces/IUniswapV3Adapter.sol";
+import {IAdapterOperator} from "@lattice/interfaces/defi/IAdapterOperator.sol";
+import {IProtocolAdapter} from "@lattice/interfaces/defi/IProtocolAdapter.sol";
+import {IUniswapV3Adapter} from "@lattice/interfaces/defi/IUniswapV3Adapter.sol";
 import {IStrategy} from "@lattice/interfaces/external/IStrategy.sol";
 import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib.sol";
 
 /// @title UniswapV3Adapter
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from Uniswap V3 (https://github.com/Uniswap/v3-periphery)
 /// @notice Diamond facet adapting a **full-range** Uniswap V3 LP position into a Lattice vault
 ///         strategy. Implements `IStrategy` (funds routing), `IProtocolAdapter` (sidecar), and
 ///         `IUniswapV3Adapter` (Uniswap config). This is a **CUSTOM** adapter: a v3 LP is a

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ITWAPOracle} from "@lattice/interfaces/ITWAPOracle.sol";
+import {ITWAPOracle} from "@lattice/interfaces/oracles/ITWAPOracle.sol";
 import {TWAPOracleLib} from "@lattice/oracles/libraries/TWAPOracleLib.sol";
 
 /// @title TWAPOracle
@@ -47,5 +47,19 @@ contract TWAPOracle is ITWAPOracle {
     /// @inheritdoc ITWAPOracle
     function recordObservation(bytes32 key) external virtual override {
         TWAPOracleLib.recordObservation(key);
+    }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect TWAPOracle methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `consult(bytes32,uint32)` 0x47473b00
+    ///      `getLatestObservation(bytes32)` 0x43542636
+    ///      `getPair(bytes32)` 0xb8e5303d
+    ///      `recordObservation(bytes32)` 0x06bd6d1e
+    ///      `registerPair(bytes32,address)` 0x64b7e622
+    ///      `unregisterPair(bytes32)` 0x0f464dd7
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors = hex"47473b0043542636b8e5303d06bd6d1e64b7e6220f464dd7";
     }
 }

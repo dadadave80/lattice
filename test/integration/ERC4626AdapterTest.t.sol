@@ -6,7 +6,7 @@ import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {ERC4626Adapter} from "@lattice/defi/ERC4626Adapter.sol";
 import {ERC4626AdapterLib} from "@lattice/defi/libraries/ERC4626AdapterLib.sol";
-import {IProtocolAdapter} from "@lattice/interfaces/IProtocolAdapter.sol";
+import {IProtocolAdapter} from "@lattice/interfaces/defi/IProtocolAdapter.sol";
 import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib.sol";
 import {Test} from "forge-std/Test.sol";
 

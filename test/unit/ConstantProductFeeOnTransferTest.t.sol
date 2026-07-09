@@ -1,14 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
-import {AccessControl} from "@lattice/access/AccessControl.sol";
-import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
+import {ConstantProductTestBase} from "@lattice-test/base/ConstantProductTestBase.sol";
 import {ConstantProduct} from "@lattice/amm/ConstantProduct.sol";
-import {ConstantProductLib} from "@lattice/amm/libraries/ConstantProductLib.sol";
-import {IConstantProduct} from "@lattice/interfaces/IConstantProduct.sol";
-import {Test} from "forge-std/Test.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
 //                          FEE-ON-TRANSFER TOKEN
@@ -123,24 +117,6 @@ contract PlainERC20 {
 }
 
 //*//////////////////////////////////////////////////////////////////////////
-//                               MOCK CONTRACT
-//////////////////////////////////////////////////////////////////////////*//
-
-contract MockCPFoT is ConstantProduct, AccessControl {
-    function initialize(address token0_, address token1_, address admin_) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
-        AccessControlLib.__AccessControl_init(admin_);
-        ConstantProductLib.__ConstantProduct_init(token0_, token1_);
-        InitializableLib.postInitializer(s);
-    }
-
-    function supportsInterface(bytes4 interfaceId_) public view returns (bool) {
-        return ERC165Lib.supportsInterface(interfaceId_);
-    }
-}
-
-//*//////////////////////////////////////////////////////////////////////////
 //                                   TESTS
 //////////////////////////////////////////////////////////////////////////*//
 
@@ -148,9 +124,12 @@ contract MockCPFoT is ConstantProduct, AccessControl {
 /// @notice Verifies the AMM credits the ACTUAL received balance delta (not the
 ///         requested amount) when a fee-on-transfer / deflationary token is used,
 ///         keeping `reserve <= balanceOf(pool)` and preserving solvency for the
-///         honest counter-token.
-contract ConstantProductFeeOnTransferTest is Test {
-    MockCPFoT pool;
+///         honest counter-token. The pool runs in a REAL {Diamond} assembled by the
+///         ready-to-deploy {DeployConstantProduct} script (see {ConstantProductTestBase});
+///         the fee-on-transfer and plain tokens below are EXTERNAL weird-token fixtures
+///         the pool transacts with — NOT the facet under test.
+contract ConstantProductFeeOnTransferTest is ConstantProductTestBase {
+    ConstantProduct pool; // typed handle on the pool diamond
     FeeOnTransferToken fot;
     PlainERC20 plain;
 
@@ -175,8 +154,7 @@ contract ConstantProductFeeOnTransferTest is Test {
             fotIsToken0 = false;
         }
 
-        pool = new MockCPFoT();
-        pool.initialize(t0, t1, admin);
+        pool = ConstantProduct(_deployPool(admin, t0, t1));
 
         fot.mint(alice, 1_000_000e18);
         plain.mint(alice, 1_000_000e18);

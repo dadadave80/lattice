@@ -18,7 +18,7 @@ forge test
 Lattice modules follow a strict **three-layer pattern**. Read `CLAUDE.md` and
 `STORAGE_REGISTRY.md` for the full version before opening a PR. In short:
 
-1. **Interface** (`src/interfaces/I<Module>.sol`) — external ABI, errors, events.
+1. **Interface** (`src/interfaces/<area>/I<Module>.sol`) — external ABI, errors, events.
 2. **Library** (`src/<area>/libraries/<Module>Lib.sol`) — all logic, all storage
    access via a single ERC-7201 `*Storage()` slot, and the `__<Module>_init`.
 3. **Facet** (`src/<area>/<Module>.sol`) — thin, stateless forwarding only.

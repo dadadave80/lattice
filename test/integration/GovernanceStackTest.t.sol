@@ -18,13 +18,15 @@ import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {GovernorStandalone} from "@lattice/governance/GovernorStandalone.sol";
 import {TimelockControllerStandalone} from "@lattice/governance/TimelockControllerStandalone.sol";
+import {Votes} from "@lattice/governance/Votes.sol";
 import {TimelockControllerLib} from "@lattice/governance/libraries/TimelockControllerLib.sol";
 import {VotesLib} from "@lattice/governance/libraries/VotesLib.sol";
-import {IGovernor} from "@lattice/interfaces/IGovernor.sol";
-import {ITimelockController} from "@lattice/interfaces/ITimelockController.sol";
-import {ERC20Votes} from "@lattice/tokens/ERC20Votes.sol";
-import {ERC20Lib} from "@lattice/tokens/libraries/ERC20Lib.sol";
-import {ERC20VotesLib} from "@lattice/tokens/libraries/ERC20VotesLib.sol";
+import {IGovernor} from "@lattice/interfaces/governance/IGovernor.sol";
+import {ITimelockController} from "@lattice/interfaces/governance/ITimelockController.sol";
+import {ERC20} from "@lattice/tokens/ERC20/ERC20.sol";
+import {ERC20Votes} from "@lattice/tokens/ERC20/ERC20Votes.sol";
+import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
+import {ERC20VotesLib} from "@lattice/tokens/ERC20/libraries/ERC20VotesLib.sol";
 import {EIP712Lib} from "@lattice/utils/libraries/EIP712Lib.sol";
 import {NoncesLib} from "@lattice/utils/libraries/NoncesLib.sol";
 import {Test} from "forge-std/Test.sol";
@@ -33,8 +35,33 @@ import {Test} from "forge-std/Test.sol";
 //                             MOCK CONTRACTS
 //////////////////////////////////////////////////////////////////////////*//
 
-/// @notice ERC20Votes token for governance.
-contract GovStackToken is ERC20Votes {
+/// @notice ERC20Votes token for governance. Flattens the composable {ERC20} share facet, the {Votes} voting-power
+///         facet, and the {ERC20Votes} extension into one mock; the checkpoint/balance-aware movers and delegation
+///         win the base clashes.
+contract GovStackToken is ERC20, Votes, ERC20Votes {
+    /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare
+    ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing.
+    function exportSelectors() external pure virtual override(ERC20, Votes, ERC20Votes) returns (bytes memory) {}
+
+    function transfer(address to, uint256 value) public override(ERC20, ERC20Votes) returns (bool) {
+        return ERC20Votes.transfer(to, value);
+    }
+
+    function transferFrom(address from, address to, uint256 value) public override(ERC20, ERC20Votes) returns (bool) {
+        return ERC20Votes.transferFrom(from, to, value);
+    }
+
+    function delegate(address delegatee) public override(Votes, ERC20Votes) {
+        ERC20Votes.delegate(delegatee);
+    }
+
+    function delegateBySig(address delegatee, uint256 nonce, uint256 expiry, uint8 v, bytes32 r, bytes32 s)
+        public
+        override(Votes, ERC20Votes)
+    {
+        ERC20Votes.delegateBySig(delegatee, nonce, expiry, v, r, s);
+    }
+
     function initialize(string memory name_, string memory symbol_, address admin_) external {
         bytes32 s = InitializableLib.initializableSlot();
         InitializableLib.preInitializer(s);

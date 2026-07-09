@@ -10,10 +10,12 @@ import {VaultCore} from "@lattice/defi/VaultCore.sol";
 import {CompoundV3AdapterLib} from "@lattice/defi/libraries/CompoundV3AdapterLib.sol";
 import {StrategyManagerLib} from "@lattice/defi/libraries/StrategyManagerLib.sol";
 import {VaultCoreLib} from "@lattice/defi/libraries/VaultCoreLib.sol";
-import {IProtocolAdapter} from "@lattice/interfaces/IProtocolAdapter.sol";
+import {IProtocolAdapter} from "@lattice/interfaces/defi/IProtocolAdapter.sol";
 import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib.sol";
-import {ERC20Lib} from "@lattice/tokens/libraries/ERC20Lib.sol";
-import {ERC4626Lib} from "@lattice/tokens/libraries/ERC4626Lib.sol";
+import {ERC20} from "@lattice/tokens/ERC20/ERC20.sol";
+import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
+import {ERC4626} from "@lattice/tokens/ERC4626/ERC4626.sol";
+import {ERC4626Lib} from "@lattice/tokens/ERC4626/libraries/ERC4626Lib.sol";
 import {Test} from "forge-std/Test.sol";
 
 import {MockAsset} from "./AaveV3AdapterSupplyTest.t.sol";
@@ -179,7 +181,13 @@ contract CompoundV3AdapterTest is Test {
 //                    VAULT-SPINE NAV INVARIANT (the HIGH fix)
 //////////////////////////////////////////////////////////////////////////*//
 
-contract CompoundVaultMock is VaultCore {
+/// @notice Flattens the composable {ERC20}, {ERC4626}, and {VaultCore} facets into one mock; the strategy-aware
+///         {VaultCore} mutators win the clashes.
+contract CompoundVaultMock is ERC20, ERC4626, VaultCore {
+    /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare
+    ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing.
+    function exportSelectors() external pure virtual override(ERC20, ERC4626, VaultCore) returns (bytes memory) {}
+
     function initialize(address asset_, address admin_) external {
         bytes32 s = InitializableLib.initializableSlot();
         InitializableLib.preInitializer(s);
@@ -192,6 +200,39 @@ contract CompoundVaultMock is VaultCore {
 
     function supportsInterface(bytes4 id) external view returns (bool) {
         return ERC165Lib.supportsInterface(id);
+    }
+
+    /// @dev Resolves the flattened-facet clashes; the strategy-aware {VaultCore} variants win.
+    function decimals() public view override(ERC20, ERC4626) returns (uint8) {
+        return ERC4626.decimals();
+    }
+
+    function totalAssets() public view override(ERC4626, VaultCore) returns (uint256) {
+        return VaultCore.totalAssets();
+    }
+
+    function deposit(uint256 assets, address receiver) public override(ERC4626, VaultCore) returns (uint256) {
+        return VaultCore.deposit(assets, receiver);
+    }
+
+    function mint(uint256 shares, address receiver) public override(ERC4626, VaultCore) returns (uint256) {
+        return VaultCore.mint(shares, receiver);
+    }
+
+    function withdraw(uint256 assets, address receiver, address owner)
+        public
+        override(ERC4626, VaultCore)
+        returns (uint256)
+    {
+        return VaultCore.withdraw(assets, receiver, owner);
+    }
+
+    function redeem(uint256 shares, address receiver, address owner)
+        public
+        override(ERC4626, VaultCore)
+        returns (uint256)
+    {
+        return VaultCore.redeem(shares, receiver, owner);
     }
 }
 

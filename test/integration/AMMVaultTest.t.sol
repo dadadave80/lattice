@@ -25,8 +25,8 @@ import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
-import {IChainlinkAdapter} from "@lattice/interfaces/IChainlinkAdapter.sol";
 import {IAggregatorV3} from "@lattice/interfaces/external/IAggregatorV3.sol";
+import {IChainlinkAdapter} from "@lattice/interfaces/oracles/IChainlinkAdapter.sol";
 import {ChainlinkAdapter} from "@lattice/oracles/ChainlinkAdapter.sol";
 import {ChainlinkAdapterLib} from "@lattice/oracles/libraries/ChainlinkAdapterLib.sol";
 import {Test} from "forge-std/Test.sol";
@@ -119,6 +119,9 @@ contract OracleAssetToken {
 ///      totalAssets() = idleBalance * priceWad / 1e18.
 ///      Shares are minted proportionally to the oracle-valued totalAssets.
 contract MockOracleVault is AccessControl, ChainlinkAdapter {
+    /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare
+    ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing.
+    function exportSelectors() external pure virtual override(AccessControl, ChainlinkAdapter) returns (bytes memory) {}
     bytes32 public immutable PRICE_KEY;
     OracleAssetToken private _assetToken;
 

@@ -5,7 +5,7 @@ import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
-import {ITWAPOracle} from "@lattice/interfaces/ITWAPOracle.sol";
+import {ITWAPOracle} from "@lattice/interfaces/oracles/ITWAPOracle.sol";
 import {TWAPOracle} from "@lattice/oracles/TWAPOracle.sol";
 import {TWAPOracleLib} from "@lattice/oracles/libraries/TWAPOracleLib.sol";
 import {Test} from "forge-std/Test.sol";
@@ -15,8 +15,12 @@ import {Test} from "forge-std/Test.sol";
 // ---------------------------------------------------------------------------
 
 /// @notice Mock Diamond that combines AccessControl + TWAPOracle, matching
-///         the pattern from TWAPOracleTester.t.sol.
+///         the pattern from TWAPOracleTest.t.sol.
 contract MockTWAPOracleForkContract is AccessControl, TWAPOracle {
+    /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare
+    ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing.
+    function exportSelectors() external pure virtual override(AccessControl, TWAPOracle) returns (bytes memory) {}
+
     function initialize(address _admin) external {
         bytes32 s = InitializableLib.initializableSlot();
         InitializableLib.preInitializer(s);

@@ -6,3 +6,6 @@
 @diamond/=lib/diamond-lib/src/
 diamond-lib/=lib/diamond-lib/
 forge-std/=lib/forge-std/src/
+poseidon-solidity/=lib/poseidon-solidity/
+@zk-kit/lean-imt.sol/=lib/zk-kit/lean-imt/
+@semaphore/=lib/semaphore/

@@ -4,8 +4,8 @@ pragma solidity ^0.8.30;
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {AccessControlTimedLib} from "@lattice/access/libraries/AccessControlTimedLib.sol";
-import {IAccessControl} from "@lattice/interfaces/IAccessControl.sol";
-import {IAccessControlTimed} from "@lattice/interfaces/IAccessControlTimed.sol";
+import {IAccessControl} from "@lattice/interfaces/access/IAccessControl.sol";
+import {IAccessControlTimed} from "@lattice/interfaces/access/IAccessControlTimed.sol";
 
 /// @title AccessControlTimed
 /// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/access/AccessControl.sol)
@@ -68,5 +68,21 @@ contract AccessControlTimed is AccessControl, IAccessControlTimed {
     {
         super.renounceRole(_role, _callerConfirmation);
         delete AccessControlTimedLib.accessControlTimedStorage()._timings[_role][_callerConfirmation];
+    }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect AccessControlTimed methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `extendRole(bytes32,address,uint48)` 0xa6db71fa
+    ///      `getRoleAdmin(bytes32)` 0x248a9ca3
+    ///      `grantRole(bytes32,address)` 0x2f2ff15d
+    ///      `grantRoleTimed(bytes32,address,uint48,uint48)` 0x701eb66a
+    ///      `hasRole(bytes32,address)` 0x91d14854
+    ///      `renounceRole(bytes32,address)` 0x36568abe
+    ///      `revokeRole(bytes32,address)` 0xd547741f
+    ///      `roleExpiration(bytes32,address)` 0x83a045f1
+    function exportSelectors() external pure virtual override returns (bytes memory selectors) {
+        selectors = hex"a6db71fa248a9ca32f2ff15d701eb66a91d1485436568abed547741f83a045f1";
     }
 }

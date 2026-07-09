@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {IInvariantChecker} from "@lattice/interfaces/IInvariantChecker.sol";
+import {IInvariantChecker} from "@lattice/interfaces/security/IInvariantChecker.sol";
 import {InvariantCheckerLib} from "@lattice/security/libraries/InvariantCheckerLib.sol";
 
 /// @title InvariantChecker
@@ -20,7 +20,7 @@ import {InvariantCheckerLib} from "@lattice/security/libraries/InvariantCheckerL
 ///           the registered view and revert (`InvariantViolatedError`) if it returns `false`, or
 ///           (`InvariantCheckFailed`) if the call itself reverts.
 ///      The check tracks live state — it is not a one-shot latch — so the gate re-opens once the
-///      invariant holds again. See `test/unit/InvariantCheckerUsageTester.t.sol` for the canonical
+///      invariant holds again. See `test/unit/InvariantCheckerUsageTest.t.sol` for the canonical
 ///      worked example (a solvency invariant: registration, happy path, violation path, batch).
 /// @custom:lattice-version 0.1.0
 /// @custom:lattice-source Lattice original
@@ -48,5 +48,18 @@ contract InvariantChecker is IInvariantChecker {
     /// @inheritdoc IInvariantChecker
     function checkInvariants(bytes32[] calldata keys) public view virtual {
         InvariantCheckerLib.checkInvariants(keys);
+    }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect InvariantChecker methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `checkInvariant(bytes32)` 0x165d31f6
+    ///      `checkInvariants(bytes32[])` 0x2e8019f1
+    ///      `getInvariant(bytes32)` 0x0b0ab5fe
+    ///      `registerInvariant(bytes32,address,bytes4)` 0x848a35dd
+    ///      `unregisterInvariant(bytes32)` 0x93bee676
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors = hex"165d31f62e8019f10b0ab5fe848a35dd93bee676";
     }
 }

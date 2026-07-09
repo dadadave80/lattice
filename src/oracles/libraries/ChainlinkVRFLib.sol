@@ -3,8 +3,8 @@ pragma solidity ^0.8.30;
 
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
-import {IChainlinkVRF} from "@lattice/interfaces/IChainlinkVRF.sol";
 import {IVRFCoordinatorV2Plus} from "@lattice/interfaces/external/IVRFCoordinatorV2Plus.sol";
+import {IChainlinkVRF} from "@lattice/interfaces/oracles/IChainlinkVRF.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
 //                                  STORAGE
@@ -30,7 +30,7 @@ struct ChainlinkVRFStorage {
 
 /// @title ChainlinkVRFLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
-/// @author Modified from Chainlink (https://github.com/smartcontractkit/chainlink/blob/develop/contracts/src/v0.8/vrf/dev/VRFConsumerBaseV2Plus.sol)
+/// @author Modified from Chainlink (https://github.com/smartcontractkit/chainlink-evm/blob/develop/contracts/src/v0.8/vrf/VRFConsumerBaseV2Plus.sol)
 /// @notice Library that wraps Chainlink VRF V2.5 (subscription-funded) random
 ///         word requests.  This is the request/track layer only — fulfillment
 ///         bookkeeping is handled here, but consumer facets inheriting

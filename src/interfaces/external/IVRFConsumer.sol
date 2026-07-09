@@ -2,7 +2,7 @@
 pragma solidity >=0.8.4;
 
 /// @title IVRFConsumer
-/// @author Modified from Chainlink (https://github.com/smartcontractkit/chainlink/blob/develop/contracts/src/v0.8/vrf/dev/interfaces/IVRFMigratableConsumerV2Plus.sol)
+/// @author Modified from Chainlink (https://github.com/smartcontractkit/chainlink-evm/blob/develop/contracts/src/v0.8/vrf/interfaces/IVRFMigratableConsumerV2Plus.sol)
 /// @notice Callback interface implemented by VRF consumer contracts.
 /// @dev The Chainlink VRF coordinator calls `rawFulfillRandomWords` on the consumer
 ///      once the requested random words have been generated.

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {AccessManagerStandalone} from "@lattice/access/AccessManagerStandalone.sol";
-import {IAccessManager} from "@lattice/interfaces/IAccessManager.sol";
+import {IAccessManager} from "@lattice/interfaces/access/IAccessManager.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @notice Minimal call target used by schedule/execute tests.

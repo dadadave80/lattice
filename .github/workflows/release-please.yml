@@ -1,0 +1,32 @@
+name: release-please
+
+# Release Please keeps a standing "release PR" that rolls CHANGELOG.md + the version manifest forward from
+# Conventional Commits; merging that PR tags the version and publishes a GitHub Release. It runs ONLY on the
+# release branch (main). Day-to-day work merges into dev; promoting dev -> main via a normal PR is what feeds
+# new commits here, after which this workflow opens/updates the release PR against main.
+permissions: {}
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+# Serialize release runs on main so two quick pushes can't race the release PR. NOT cancel-in-progress: a
+# release run that is tagging/publishing must finish rather than be aborted by the next push.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release-please:
+    name: Release Please
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # create the release commit, tag, and GitHub Release
+      pull-requests: write # open/update the standing release PR
+    steps:
+      # Manifest-driven mode: reads release-please-config.json + .release-please-manifest.json from the repo.
+      - uses: googleapis/release-please-action@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}

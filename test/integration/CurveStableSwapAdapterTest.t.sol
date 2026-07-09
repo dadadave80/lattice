@@ -6,8 +6,8 @@ import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {CurveStableSwapAdapter} from "@lattice/defi/CurveStableSwapAdapter.sol";
 import {CurveStableSwapAdapterLib} from "@lattice/defi/libraries/CurveStableSwapAdapterLib.sol";
-import {ICurveStableSwapAdapter} from "@lattice/interfaces/ICurveStableSwapAdapter.sol";
-import {IProtocolAdapter} from "@lattice/interfaces/IProtocolAdapter.sol";
+import {ICurveStableSwapAdapter} from "@lattice/interfaces/defi/ICurveStableSwapAdapter.sol";
+import {IProtocolAdapter} from "@lattice/interfaces/defi/IProtocolAdapter.sol";
 import {EmergencyStop} from "@lattice/security/EmergencyStop.sol";
 import {Pausable} from "@lattice/security/Pausable.sol";
 import {EmergencyStopLib} from "@lattice/security/libraries/EmergencyStopLib.sol";
@@ -171,6 +171,10 @@ contract MockCurveGauge {
 
 /// @notice Adapter composed with Pausable + EmergencyStop facets (as a real Diamond would).
 contract MockCurveAdapter is CurveStableSwapAdapter, Pausable, EmergencyStop {
+    /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare
+    ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing.
+    function exportSelectors() external pure virtual override(Pausable, EmergencyStop) returns (bytes memory) {}
+
     function initialize(
         address admin_,
         address pool_,

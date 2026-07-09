@@ -22,10 +22,10 @@ import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
-import {IAccessControl} from "@lattice/interfaces/IAccessControl.sol";
-import {ICircuitBreaker} from "@lattice/interfaces/ICircuitBreaker.sol";
-import {IEmergencyStop} from "@lattice/interfaces/IEmergencyStop.sol";
-import {IPausable} from "@lattice/interfaces/IPausable.sol";
+import {IAccessControl} from "@lattice/interfaces/access/IAccessControl.sol";
+import {ICircuitBreaker} from "@lattice/interfaces/security/ICircuitBreaker.sol";
+import {IEmergencyStop} from "@lattice/interfaces/security/IEmergencyStop.sol";
+import {IPausable} from "@lattice/interfaces/security/IPausable.sol";
 import {CircuitBreaker} from "@lattice/security/CircuitBreaker.sol";
 import {EmergencyStop} from "@lattice/security/EmergencyStop.sol";
 import {Pausable} from "@lattice/security/Pausable.sol";
@@ -42,6 +42,15 @@ import {Test} from "forge-std/Test.sol";
 
 /// @notice Mock Diamond composing all five security modules + a simple transfer gate.
 contract MockSecurityDiamond is AccessControl, Pausable, CircuitBreaker, EmergencyStop, ReentrancyGuard {
+    /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare
+    ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing.
+    function exportSelectors()
+        external
+        pure
+        virtual
+        override(AccessControl, Pausable, CircuitBreaker, EmergencyStop)
+        returns (bytes memory)
+    {}
     bytes32 public constant BIG_TRANSFER_KEY = keccak256("BIG_TRANSFER");
 
     /// @notice Total amount transferred (for testing).

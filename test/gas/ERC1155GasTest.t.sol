@@ -5,12 +5,16 @@ import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
-import {ERC1155} from "@lattice/tokens/ERC1155.sol";
-import {ERC1155Lib} from "@lattice/tokens/libraries/ERC1155Lib.sol";
+import {ERC1155} from "@lattice/tokens/ERC1155/ERC1155.sol";
+import {ERC1155Lib} from "@lattice/tokens/ERC1155/libraries/ERC1155Lib.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @notice Minimal mock ERC1155 for gas tests.
 contract GasERC1155 is ERC1155, AccessControl {
+    /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare
+    ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing.
+    function exportSelectors() external pure virtual override(ERC1155, AccessControl) returns (bytes memory) {}
+
     function initialize(string memory uri_, address admin) external {
         bytes32 s = InitializableLib.initializableSlot();
         InitializableLib.preInitializer(s);

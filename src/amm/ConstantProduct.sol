@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {ConstantProductLib} from "@lattice/amm/libraries/ConstantProductLib.sol";
-import {IConstantProduct} from "@lattice/interfaces/IConstantProduct.sol";
+import {IConstantProduct} from "@lattice/interfaces/amm/IConstantProduct.sol";
 
 /// @title ConstantProduct
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
@@ -107,5 +107,26 @@ contract ConstantProduct is IConstantProduct {
     /// @inheritdoc IConstantProduct
     function quote(uint256 amountA, uint256 reserveA, uint256 reserveB) public pure virtual returns (uint256) {
         return ConstantProductLib.quote(amountA, reserveA, reserveB);
+    }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect ConstantProduct methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `addLiquidity(uint256,uint256,uint256,uint256,address)` 0xe0ab0772
+    ///      `feeBps()` 0x24a9d853
+    ///      `getAmountIn(uint256,uint256,uint256)` 0x85f8c259
+    ///      `getAmountOut(uint256,uint256,uint256)` 0x054d50d4
+    ///      `getReserves()` 0x0902f1ac
+    ///      `lpBalanceOf(address)` 0x9c46665c
+    ///      `quote(uint256,uint256,uint256)` 0xad615dec
+    ///      `removeLiquidity(uint256,uint256,uint256,address)` 0xe39b0eb5
+    ///      `swapExactTokensForTokens(uint256,uint256,bool,address)` 0xaa90d54f
+    ///      `token0()` 0x0dfe1681
+    ///      `token1()` 0xd21220a7
+    ///      `totalLpSupply()` 0x6aedea73
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors =
+        hex"e0ab077224a9d85385f8c259054d50d40902f1ac9c46665cad615dece39b0eb5aa90d54f0dfe1681d21220a76aedea73";
     }
 }

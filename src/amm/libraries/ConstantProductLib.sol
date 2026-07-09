@@ -2,8 +2,8 @@
 pragma solidity ^0.8.30;
 
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
-import {IConstantProduct} from "@lattice/interfaces/IConstantProduct.sol";
-import {IERC20} from "@lattice/interfaces/IERC20.sol";
+import {IConstantProduct} from "@lattice/interfaces/amm/IConstantProduct.sol";
+import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
 import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib.sol";
 
 //*//////////////////////////////////////////////////////////////////////////

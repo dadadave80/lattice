@@ -3,10 +3,10 @@ pragma solidity ^0.8.30;
 
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {GovernedDiamondCutLib} from "@lattice/governance/libraries/GovernedDiamondCutLib.sol";
-import {IEmergencyCut} from "@lattice/interfaces/IEmergencyCut.sol";
-import {IFrozenSelectors} from "@lattice/interfaces/IFrozenSelectors.sol";
-import {IGovernedDiamondCut} from "@lattice/interfaces/IGovernedDiamondCut.sol";
-import {IUpgradeRegistry} from "@lattice/interfaces/IUpgradeRegistry.sol";
+import {IEmergencyCut} from "@lattice/interfaces/governance/IEmergencyCut.sol";
+import {IFrozenSelectors} from "@lattice/interfaces/governance/IFrozenSelectors.sol";
+import {IGovernedDiamondCut} from "@lattice/interfaces/governance/IGovernedDiamondCut.sol";
+import {IUpgradeRegistry} from "@lattice/interfaces/governance/IUpgradeRegistry.sol";
 
 /// @title GovernedDiamondCut
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
@@ -69,5 +69,22 @@ contract GovernedDiamondCut is IGovernedDiamondCut, IUpgradeRegistry, IFrozenSel
     /// @inheritdoc IFrozenSelectors
     function verifyInterfaceRegistered(bytes4 _interfaceId) external view virtual returns (bool) {
         return GovernedDiamondCutLib.verifyInterfaceRegistered(_interfaceId);
+    }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect GovernedDiamondCut methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `cutCount()` 0xaa982c45
+    ///      `diamondCut((address,uint8,bytes4[])[],address,bytes)` 0x1f931c1c
+    ///      `emergencyRemoveCut((address,uint8,bytes4[])[])` 0xc83542a6
+    ///      `freezeSelectors(bytes4[])` 0x4487678f
+    ///      `frozenSelectors()` 0x22cabf70
+    ///      `getCutRecord(uint256)` 0x3adda78e
+    ///      `isSelectorFrozen(bytes4)` 0xc8d8e114
+    ///      `previewCut((address,uint8,bytes4[])[])` 0x35342750
+    ///      `verifyInterfaceRegistered(bytes4)` 0x0746a956
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors = hex"aa982c451f931c1cc83542a64487678f22cabf703adda78ec8d8e114353427500746a956";
     }
 }
