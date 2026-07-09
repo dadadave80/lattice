@@ -1,0 +1,32 @@
+name: lint workflows
+
+permissions: {}
+
+# Mirrors OpenZeppelin's actionlint workflow: statically lint the GitHub Actions YAML (syntax, shellcheck of
+# `run:` blocks, expression typos) on any change under .github, so a broken workflow is caught in review.
+on:
+  pull_request:
+    paths:
+      - '.github/**/*.ya?ml'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint workflows
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: Add problem matchers
+        run: |
+          curl -sSL -o actionlint-matcher.json \
+            https://raw.githubusercontent.com/rhysd/actionlint/main/.github/actionlint-matcher.json
+          echo "::add-matcher::actionlint-matcher.json"
+      - uses: docker://rhysd/actionlint:latest
