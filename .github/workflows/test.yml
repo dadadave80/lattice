@@ -29,7 +29,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           submodules: recursive
           persist-credentials: false
@@ -47,13 +47,13 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           submodules: recursive
           persist-credentials: false
       - uses: ./.github/actions/foundry-setup
       - name: Cache forge build (src)
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: |
             out
@@ -76,13 +76,13 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           submodules: recursive
           persist-credentials: false
       - uses: ./.github/actions/foundry-setup
       - name: Cache forge build (via_ir)
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: |
             out
@@ -118,13 +118,13 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           submodules: recursive
           persist-credentials: false
       - uses: ./.github/actions/foundry-setup
       - name: Restore forge build cache
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: |
             out
@@ -142,13 +142,13 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           submodules: recursive
           persist-credentials: false
       - uses: ./.github/actions/foundry-setup
       - name: Restore forge build cache
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: |
             out
@@ -163,7 +163,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
           submodules: recursive
@@ -171,7 +171,7 @@ jobs:
       # Advisory for now (continue-on-error + fail-on: none). Triage findings, then make this
       # a hard gate per the architecture spec's "0 high/medium" target.
       - name: Run Slither
-        uses: crytic/slither-action@v0.4.0
+        uses: crytic/slither-action@v0.4.2
         continue-on-error: true
         with:
           fail-on: none
