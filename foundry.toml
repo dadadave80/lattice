@@ -5,6 +5,8 @@ libs = ["lib"]
 # Selector extraction for diamond assembly in tests/scripts uses `forge inspect` over FFI
 # (diamond-lib `GetSelectors`). Required by the AccountFactory full-account assembly test.
 ffi = true
+# DeployRelease writes (and its unit test cleans up) per-chain release manifests under deployments/.
+fs_permissions = [{ access = "read-write", path = "deployments" }]
 remappings = [
     '@lattice/=src/',
     '@lattice-script/=script/',
