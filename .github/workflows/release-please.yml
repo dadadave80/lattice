@@ -12,6 +12,12 @@ on:
       - main
   workflow_dispatch:
 
+# Serialize release runs on main so two quick pushes can't race the release PR. NOT cancel-in-progress: a
+# release run that is tagging/publishing must finish rather than be aborted by the next push.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   release-please:
     name: Release Please

@@ -2,10 +2,21 @@ name: CI
 
 permissions: {}
 
+# `push` is scoped to the long-lived branches only: feature branches are covered by `pull_request`, so an
+# unscoped `push:` would run the whole suite TWICE on every PR commit (once for the branch push, once for the
+# PR). This keeps post-merge validation on main/dev while halving CI on in-flight work.
 on:
   push:
+    branches:
+      - main
+      - dev
   pull_request:
   workflow_dispatch:
+
+# Cancel superseded runs: a new commit on the same ref/PR aborts the in-flight run instead of queuing behind it.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   FOUNDRY_PROFILE: ci
