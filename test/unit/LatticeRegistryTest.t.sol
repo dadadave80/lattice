@@ -576,4 +576,60 @@ contract LatticeRegistryTest is Test {
         registry.setLatest(NAME_A, vB);
         assertEq(registry.latest(NAME_A).facet, fB);
     }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                        STRING-NAME CONVENIENCE
+    //////////////////////////////////////////////////////////////////////////*//
+
+    string internal constant NAME_A_STR = "lattice.AccessControl"; // keccak256 == NAME_A
+    string internal constant NAME_B_STR = "lattice.ERC20"; // keccak256 == NAME_B
+
+    /// @dev nameHash is the RAW keccak of the string — no `"lattice."` (or any) prefix applied.
+    function test_NameHashEqualsRawKeccak() public view {
+        assertEq(registry.nameHash(NAME_A_STR), NAME_A, "nameHash != keccak256(bytes(name))");
+        assertEq(registry.nameHash(NAME_B_STR), NAME_B, "unexpected prefix applied");
+        assertEq(registry.nameHash(NAME_A_STR), keccak256(bytes(NAME_A_STR)), "not the raw keccak");
+    }
+
+    /// @dev A record registered via the STRING overload is retrievable via the equivalent bytes32 key, and
+    ///      vice-versa — the two paths are fully interchangeable.
+    function test_RegisterByNameIsInterchangeableWithHash() public {
+        address facet = address(new MockValidFacet());
+        uint64 version = _v(1, 0, 0);
+
+        vm.prank(owner);
+        registry.register(NAME_A_STR, version, facet); // registered by STRING
+
+        assertEq(registry.get(NAME_A_STR, version).facet, facet, "get(string) miss");
+        assertEq(registry.get(NAME_A, version).facet, facet, "get(bytes32) miss - string/hash paths diverged");
+    }
+
+    /// @dev Every string view resolves the same record a hash-registered facet exposes to the bytes32 views.
+    function test_StringViewsMatchHashViews() public {
+        uint64 version = _v(1, 0, 0);
+        address facet = _registerValid(NAME_A, version); // registered by HASH
+
+        vm.prank(owner);
+        registry.setLatest(NAME_A_STR, version); // setLatest by STRING finds the hash-registered record
+
+        assertEq(registry.get(NAME_A_STR, version).facet, facet, "get(string)");
+        assertEq(registry.latest(NAME_A_STR).facet, registry.latest(NAME_A).facet, "latest(string)");
+        assertEq(
+            registry.getSelectors(NAME_A_STR, version).length,
+            registry.getSelectors(NAME_A, version).length,
+            "getSelectors(string)"
+        );
+        assertEq(
+            registry.getCut(NAME_A_STR, version).facetAddress,
+            registry.getCut(NAME_A, version).facetAddress,
+            "getCut(string)"
+        );
+    }
+
+    function test_RegisterByNameRevertsForNonOwner() public {
+        address facet = address(new MockValidFacet());
+        vm.expectRevert(abi.encodeWithSelector(ILatticeRegistry.LatticeRegistry__Unauthorized.selector, stranger));
+        vm.prank(stranger);
+        registry.register(NAME_A_STR, _v(1, 0, 0), facet);
+    }
 }

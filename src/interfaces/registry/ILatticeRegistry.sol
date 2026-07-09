@@ -179,6 +179,37 @@ interface ILatticeRegistry {
     function getCut(bytes32 nameHash, uint64 version) external view returns (FacetCut memory cut);
 
     //*//////////////////////////////////////////////////////////////////////////
+    //                   TIER B — STRING-NAME CONVENIENCE
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice Compute the registry key for a canonical facet name: `keccak256(bytes(name))`.
+    /// @dev For callers interacting DIRECTLY with the contract (Etherscan, etc.) so they need not pre-hash a name
+    ///      off-chain. The registry hashes the RAW string and applies NO prefix, so the string overloads below
+    ///      and the `bytes32` overloads are interchangeable when passed the same full canonical name. By
+    ///      CONVENTION Lattice facets are registered under `"lattice.<FacetName>"` (e.g. `"lattice.ERC20"`).
+    /// @param name The full canonical facet name.
+    /// @return The `bytes32` nameHash used by every Tier-B function.
+    function nameHash(string calldata name) external pure returns (bytes32);
+
+    /// @notice {register} by canonical name string instead of its precomputed hash (owner-only).
+    function register(string calldata name, uint64 version, address facet) external;
+
+    /// @notice {setLatest} by canonical name string (owner-only).
+    function setLatest(string calldata name, uint64 version) external;
+
+    /// @notice {get} the exact record for a canonical name string.
+    function get(string calldata name, uint64 version) external view returns (Record memory record);
+
+    /// @notice {latest} record for a canonical name string.
+    function latest(string calldata name) external view returns (Record memory record);
+
+    /// @notice {getSelectors} for a canonical name string.
+    function getSelectors(string calldata name, uint64 version) external view returns (bytes4[] memory selectors);
+
+    /// @notice {getCut} for a canonical name string.
+    function getCut(string calldata name, uint64 version) external view returns (FacetCut memory cut);
+
+    //*//////////////////////////////////////////////////////////////////////////
     //                          OWNERSHIP (Ownable2Step)
     //////////////////////////////////////////////////////////////////////////*//
 
