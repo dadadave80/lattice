@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {GetSelectors} from "@diamond-test/helpers/GetSelectors.sol";
 import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {DeployEmergencyStop} from "@lattice-script/base/security/DeployEmergencyStop.s.sol";
 import {EmergencyStopTestFacet} from "@lattice-test/helpers/EmergencyStopTestFacet.sol";
+import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
 import {EmergencyStop} from "@lattice/security/EmergencyStop.sol";
 import {Test} from "forge-std/Test.sol";
 

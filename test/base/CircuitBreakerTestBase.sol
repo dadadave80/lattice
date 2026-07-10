@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {GetSelectors} from "@diamond-test/helpers/GetSelectors.sol";
 import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {DeployCircuitBreaker} from "@lattice-script/base/security/DeployCircuitBreaker.s.sol";
 import {CircuitBreakerTestFacet} from "@lattice-test/helpers/CircuitBreakerTestFacet.sol";
+import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
 import {CircuitBreaker} from "@lattice/security/CircuitBreaker.sol";
 import {Test} from "forge-std/Test.sol";
 

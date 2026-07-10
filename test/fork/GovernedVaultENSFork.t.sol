@@ -55,7 +55,7 @@ contract RegisterEnsNameProbe is RegisterEnsName {
 /// @title GovernedVaultENSFork
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice Sepolia fork proof of the {DeployGovernedVaultENS} recipe against the REAL ENS deployment: the
-///         11-facet self-governed vault diamond assembles, the vault flows work (metadata, deposit, delegation
+///         14-facet self-governed vault diamond assembles, the vault flows work (metadata, deposit, delegation
 ///         checkpoint on the timestamp clock, threshold-0 propose), and the init-time reverse claim lands in the
 ///         live ENS registry — the diamond's `addr.reverse` node resolves to the chosen name through the real
 ///         {ReverseRegistrar} default resolver.
@@ -263,11 +263,11 @@ contract GovernedVaultENSFork is Test {
     //                              COMPOSABILITY
     //////////////////////////////////////////////////////////////////////////*//
 
-    function test_Fork_ElevenFacetCutsAssembleWithoutSelectorClash() public {
-        // Re-assembling the full 11-cut recipe re-adds every selector; any overlap between the base recipe and
+    function test_Fork_FourteenFacetCutsAssembleWithoutSelectorClash() public {
+        // Re-assembling the full 14-cut recipe re-adds every selector; any overlap between the base recipe and
         // the appended ENSReverseClaimer facet would revert CannotAddFunctionToDiamondThatAlreadyExists.
         address d2 = _deploy();
-        assertTrue(d2 != address(0), "second 11-facet assembly succeeds");
+        assertTrue(d2 != address(0), "second 14-facet assembly succeeds");
     }
 
     //*//////////////////////////////////////////////////////////////////////////

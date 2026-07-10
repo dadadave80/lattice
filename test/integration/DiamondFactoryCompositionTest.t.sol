@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {GetSelectors} from "@diamond-test/helpers/GetSelectors.sol";
+import {Selectors} from "@diamond-test/helpers/Selectors.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
+import {IFacet} from "@diamond/interfaces/IFacet.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
+import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
 import {DiamondFactory} from "@lattice/factory/DiamondFactory.sol";
 import {RecipeEntry} from "@lattice/interfaces/factory/IDiamondFactory.sol";
 import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
@@ -60,12 +62,14 @@ contract DiamondFactoryCompositionTest is GetSelectors {
         RecipeEntry[] memory entries = new RecipeEntry[](1);
         entries[0] = RecipeEntry({nameHash: ERC20_NAME, version: version});
 
-        // ...one classic custom cut for the diamond-lib ERC165Facet (no ERC-8153 surface)...
+        // ...one custom cut for the diamond-lib ERC165Facet, selectors from its OWN ERC-8153 export
+        //    (diamond-lib >=0.2.0; the export excludes exportSelectors() itself, which the factory refuses)...
+        address erc165Facet = address(new ERC165Facet());
         FacetCut[] memory customCuts = new FacetCut[](1);
         customCuts[0] = FacetCut({
-            facetAddress: address(new ERC165Facet()),
+            facetAddress: erc165Facet,
             action: FacetCutAction.Add,
-            functionSelectors: _getSelectors("ERC165Facet")
+            functionSelectors: Selectors.decode(IFacet(erc165Facet).exportSelectors())
         });
 
         // ...and the recipe's init. The factory resolves, deploys, and initializes in ONE call.
