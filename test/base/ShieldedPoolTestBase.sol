@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {GetSelectors} from "@diamond-test/helpers/GetSelectors.sol";
 import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {DeployShieldedPool} from "@lattice-script/base/privacy/DeployShieldedPool.s.sol";
+import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
 import {ShieldedPool} from "@lattice/privacy/ShieldedPool.sol";
 import {Test} from "forge-std/Test.sol";
 

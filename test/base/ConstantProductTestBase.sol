@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {GetSelectors} from "@diamond-test/helpers/GetSelectors.sol";
 import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {DeployConstantProduct} from "@lattice-script/base/amm/DeployConstantProduct.s.sol";
 import {DeployERC20} from "@lattice-script/base/tokens/DeployERC20.s.sol";
+import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
 import {IMintableToken} from "@lattice-test/helpers/IMintableToken.sol";
 import {TokenTestFacet} from "@lattice-test/helpers/TokenTestFacet.sol";
 import {Test} from "forge-std/Test.sol";

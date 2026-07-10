@@ -1,6 +1,6 @@
 {
   "lib/diamond-lib": {
-    "rev": "ac68b017ecf8912be331da2542a1179beefae528"
+    "rev": "fa70a1246cd09953efd31e9d54922cf77a98413b"
   },
   "lib/forge-std": {
     "rev": "8987040ede9553cea20c95ad40d0455930f9c8e0"

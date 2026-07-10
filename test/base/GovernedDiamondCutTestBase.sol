@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {GetSelectors} from "@diamond-test/helpers/GetSelectors.sol";
 import {Diamond} from "@diamond/Diamond.sol";
 import {DiamondLoupeFacet} from "@diamond/facets/DiamondLoupeFacet.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {DeployGovernedDiamondCut} from "@lattice-script/base/governance/DeployGovernedDiamondCut.s.sol";
+import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {GovernedDiamondCut} from "@lattice/governance/GovernedDiamondCut.sol";
 import {EmergencyStop} from "@lattice/security/EmergencyStop.sol";

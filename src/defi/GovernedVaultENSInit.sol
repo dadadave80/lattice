@@ -1,16 +1,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {DiamondLib} from "@diamond/libraries/DiamondLib.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {GovernedVaultParams} from "@lattice/defi/GovernedVaultInit.sol";
 import {GovernedVaultLib} from "@lattice/defi/libraries/GovernedVaultLib.sol";
 import {VaultCoreLib} from "@lattice/defi/libraries/VaultCoreLib.sol";
 import {ENSReverseClaimerLib, ENS_MANAGER_ROLE} from "@lattice/ens/libraries/ENSReverseClaimerLib.sol";
+import {GovernedDiamondCutLib} from "@lattice/governance/libraries/GovernedDiamondCutLib.sol";
 import {GovernorLib} from "@lattice/governance/libraries/GovernorLib.sol";
 import {TimelockControllerLib} from "@lattice/governance/libraries/TimelockControllerLib.sol";
 import {VotesLib} from "@lattice/governance/libraries/VotesLib.sol";
 import {IENSReverseClaimer} from "@lattice/interfaces/ens/IENSReverseClaimer.sol";
 import {IReverseRegistrar} from "@lattice/interfaces/external/IReverseRegistrar.sol";
+import {EmergencyStopLib} from "@lattice/security/libraries/EmergencyStopLib.sol";
 import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
 import {ERC20VotesLib} from "@lattice/tokens/ERC20/libraries/ERC20VotesLib.sol";
 import {ERC4626Lib} from "@lattice/tokens/ERC4626/libraries/ERC4626Lib.sol";
@@ -47,6 +50,14 @@ contract GovernedVaultENSInit {
 
         // 1. Access control — the diamond (as its own timelock) holds DEFAULT_ADMIN_ROLE; no external admin.
         AccessControlLib.__AccessControl_init(self);
+
+        // 1b. Governed upgradeability — replayed EXACTLY from {GovernedVaultInit}: guardian surface armed
+        //     (nobody appointed), cut + loupe ERC-165 flags registered, and UPGRADE_EXECUTOR_ROLE granted to
+        //     the diamond ONLY + self-administered, so a passed, timelock-executed proposal is the ONLY
+        //     upgrade path. No selectors are frozen at init.
+        EmergencyStopLib.__EmergencyStop_init();
+        DiamondLib.registerInterface();
+        GovernedDiamondCutLib.__GovernedDiamondCut_init();
 
         // 2. Share token: ERC-20 metadata, ERC-4626 vault params, EIP-712 domain + nonces + vote checkpoints.
         ERC20Lib.__ERC20_init(p.vault.name, p.vault.symbol);
