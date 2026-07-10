@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {DiamondLoupeFacet} from "@diamond/facets/DiamondLoupeFacet.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {ZetaChainGatewayAdapter} from "@lattice/crosschain/ZetaChainGatewayAdapter.sol";
 import {ZetaChainGatewayAdapterInit} from "@lattice/crosschain/ZetaChainGatewayAdapterInit.sol";
+import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
 
 /// @title DeployZetaChainGatewayAdapter
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
@@ -23,9 +25,9 @@ contract DeployZetaChainGatewayAdapter is BaseDeploy {
     /// @param hubChainId The hub chainId whose ZEVM universal app terminates the route.
     /// @param hubRemoteApp The trusted ZEVM universal app (hub) for `hubChainId`.
     /// @param defaultOnRevertGasLimit The default `onRevertGasLimit` used to build per-message `RevertOptions`.
-    /// @return cuts The facet cuts (ERC165 + AccessControl + ZetaChainGatewayAdapter).
-    /// @return init The {ZetaChainGatewayAdapterInit} initializer address.
-    /// @return initCalldata The `init(...)` calldata.
+    /// @return cuts The facet cuts (ERC165 + AccessControl + ZetaChainGatewayAdapter + DiamondLoupeFacet + AccessControlDiamondCut).
+    /// @return init The {MultiInit} running {ZetaChainGatewayAdapterInit} then {DiamondIntrospectionInit.initUpgradeable}.
+    /// @return initCalldata The matching `multiInit` calldata.
     function buildCuts(
         address admin,
         address gateway,
@@ -33,13 +35,17 @@ contract DeployZetaChainGatewayAdapter is BaseDeploy {
         address hubRemoteApp,
         uint256 defaultOnRevertGasLimit
     ) public returns (FacetCut[] memory cuts, address init, bytes memory initCalldata) {
-        cuts = new FacetCut[](3);
-        cuts[0] = _cut(address(new ERC165Facet()), "ERC165Facet");
+        cuts = new FacetCut[](5);
+        cuts[0] = _cut(address(new ERC165Facet()));
         cuts[1] = _cut(address(new AccessControl()));
         cuts[2] = _cut(address(new ZetaChainGatewayAdapter()));
-        init = address(new ZetaChainGatewayAdapterInit());
-        initCalldata = abi.encodeCall(
-            ZetaChainGatewayAdapterInit.init, (admin, gateway, hubChainId, hubRemoteApp, defaultOnRevertGasLimit)
+        cuts[3] = _cut(address(new DiamondLoupeFacet()));
+        cuts[4] = _cut(address(new AccessControlDiamondCut()));
+        (init, initCalldata) = _withUpgradeableIntrospection(
+            address(new ZetaChainGatewayAdapterInit()),
+            abi.encodeCall(
+                ZetaChainGatewayAdapterInit.init, (admin, gateway, hubChainId, hubRemoteApp, defaultOnRevertGasLimit)
+            )
         );
     }
 

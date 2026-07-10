@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {DiamondLoupeFacet} from "@diamond/facets/DiamondLoupeFacet.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {ChainRegistry} from "@lattice/crosschain/ChainRegistry.sol";
 import {ChainRegistryInit} from "@lattice/crosschain/ChainRegistryInit.sol";
+import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
 
 /// @title DeployChainRegistry
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
@@ -20,16 +22,19 @@ import {ChainRegistryInit} from "@lattice/crosschain/ChainRegistryInit.sol";
 contract DeployChainRegistry is BaseDeploy {
     /// @notice Builds the chain-registry diamond cuts + initializer (no broadcast, no proxy deploy).
     /// @param admin The address granted `DEFAULT_ADMIN_ROLE` (controls every setter and the fan-out).
-    /// @return cuts The facet cuts (ERC165 + AccessControl + ChainRegistry).
-    /// @return init The {ChainRegistryInit} initializer address.
-    /// @return initCalldata The `init(admin)` calldata.
+    /// @return cuts The facet cuts (ERC165 + AccessControl + ChainRegistry + DiamondLoupeFacet + AccessControlDiamondCut).
+    /// @return init The {MultiInit} running {ChainRegistryInit} then {DiamondIntrospectionInit.initUpgradeable}.
+    /// @return initCalldata The matching `multiInit` calldata.
     function buildCuts(address admin) public returns (FacetCut[] memory cuts, address init, bytes memory initCalldata) {
-        cuts = new FacetCut[](3);
-        cuts[0] = _cut(address(new ERC165Facet()), "ERC165Facet");
+        cuts = new FacetCut[](5);
+        cuts[0] = _cut(address(new ERC165Facet()));
         cuts[1] = _cut(address(new AccessControl()));
         cuts[2] = _cut(address(new ChainRegistry()));
-        init = address(new ChainRegistryInit());
-        initCalldata = abi.encodeCall(ChainRegistryInit.init, (admin));
+        cuts[3] = _cut(address(new DiamondLoupeFacet()));
+        cuts[4] = _cut(address(new AccessControlDiamondCut()));
+        (init, initCalldata) = _withUpgradeableIntrospection(
+            address(new ChainRegistryInit()), abi.encodeCall(ChainRegistryInit.init, (admin))
+        );
     }
 
     /// @notice Deploys a chain-registry diamond (broadcasting entrypoint for `forge script ... --broadcast`).
