@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {GetSelectors} from "@diamond-test/helpers/GetSelectors.sol";
+import {Selectors} from "@diamond-test/helpers/Selectors.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
+import {IFacet} from "@diamond/interfaces/IFacet.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {DeployRelease} from "@lattice-script/deploy/DeployRelease.s.sol";
+import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
 import {MockCreateX} from "@lattice-test/helpers/MockCreateX.sol";
 import {DiamondFactory} from "@lattice/factory/DiamondFactory.sol";
 import {RecipeEntry} from "@lattice/interfaces/factory/IDiamondFactory.sol";
@@ -25,7 +27,7 @@ contract ReleaseErc20Init {
 /// @title ReleasePipelineTest
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice THE issue #120 story end-to-end: {DeployRelease.release} stands up the whole canonical release
-///         (registry + factory + all 94 facets, registered and flagged latest) against CreateX, then —
+///         (registry + factory + all 95 facets, registered and flagged latest) against CreateX, then —
 ///         using ONLY the release outputs — the {DiamondFactory} resolves `latest("lattice.ERC20")` off the
 ///         registry and assembles a live ERC-20 diamond in one call. Proves: release → registry-resolved
 ///         latest → one-tx diamond → live token. Inherits {DeployRelease} and drives `this.release(...)` as
@@ -53,12 +55,14 @@ contract ReleasePipelineTest is GetSelectors, DeployRelease {
         RecipeEntry[] memory entries = new RecipeEntry[](1);
         entries[0] = RecipeEntry({nameHash: ERC20_NAME, version: 0});
 
-        // ...one classic custom cut for the diamond-lib ERC165Facet (no ERC-8153 surface)...
+        // ...one custom cut for the diamond-lib ERC165Facet, selectors from its OWN ERC-8153 export
+        //    (diamond-lib >=0.2.0; the export excludes exportSelectors() itself, which the factory refuses)...
+        address erc165Facet = address(new ERC165Facet());
         FacetCut[] memory customCuts = new FacetCut[](1);
         customCuts[0] = FacetCut({
-            facetAddress: address(new ERC165Facet()),
+            facetAddress: erc165Facet,
             action: FacetCutAction.Add,
-            functionSelectors: _getSelectors("ERC165Facet")
+            functionSelectors: Selectors.decode(IFacet(erc165Facet).exportSelectors())
         });
 
         // ...and the recipe's init. The factory resolves, deploys, and initializes in ONE call.

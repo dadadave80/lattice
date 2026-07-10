@@ -11,10 +11,12 @@ import {ENSReverseClaimer} from "@lattice/ens/ENSReverseClaimer.sol";
 import {ENS_MANAGER_ROLE} from "@lattice/ens/libraries/ENSReverseClaimerLib.sol";
 import {Governor} from "@lattice/governance/Governor.sol";
 import {TimelockController} from "@lattice/governance/TimelockController.sol";
+import {UPGRADE_EXECUTOR_ROLE} from "@lattice/governance/libraries/GovernedDiamondCutLib.sol";
 import {IAccessControl} from "@lattice/interfaces/access/IAccessControl.sol";
 import {IENSReverseClaimer} from "@lattice/interfaces/ens/IENSReverseClaimer.sol";
 import {IReverseRegistrar} from "@lattice/interfaces/external/IReverseRegistrar.sol";
 import {IVotes} from "@lattice/interfaces/governance/IVotes.sol";
+import {IEmergencyStop} from "@lattice/interfaces/security/IEmergencyStop.sol";
 import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
 import {IERC4626} from "@lattice/interfaces/tokens/IERC4626.sol";
 import {Test} from "forge-std/Test.sol";
@@ -35,7 +37,7 @@ contract MockReverseRegistrar is IReverseRegistrar {
 /// @title GovernedVaultENSInitTest
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice Non-fork proof of {GovernedVaultENSInit} wiring on a REAL {Diamond} assembled by the
-///         {DeployGovernedVaultENS} recipe (11 cuts): the base {GovernedVaultInit} sequence is unchanged
+///         {DeployGovernedVaultENS} recipe (14 cuts): the base {GovernedVaultInit} sequence is unchanged
 ///         (self-governed wiring, share metadata, timestamp clock), the ENS module is initialized with the
 ///         supplied reverse registrar, `ENS_MANAGER_ROLE` is held by the diamond ONLY (renames pass through
 ///         governance), and the reverse name is claimed inline at init time AS the diamond (the mock registrar
@@ -179,6 +181,20 @@ contract GovernedVaultENSInitTest is Test {
     //                      BASE VAULT INIT UNCHANGED
     //////////////////////////////////////////////////////////////////////////*//
 
+    /// @notice The governed-upgradeability replay (step 1b) is wired on the ENS variant too: the diamond —
+    ///         and only the diamond — holds the self-administered UPGRADE_EXECUTOR_ROLE, and the cut, loupe,
+    ///         and emergency-stop ERC-165 flags are all advertised. Deleting any of the three step-1b init
+    ///         calls from {GovernedVaultENSInit} makes this fail.
+    function test_GovernedUpgradeabilityReplayedInEnsInit() public view {
+        assertTrue(IAccessControl(diamond).hasRole(UPGRADE_EXECUTOR_ROLE, diamond), "diamond holds executor role");
+        assertFalse(IAccessControl(diamond).hasRole(UPGRADE_EXECUTOR_ROLE, address(this)), "deployer must not");
+        assertTrue(ERC165Facet(diamond).supportsInterface(0x1f931c1c), "IDiamondCut flag missing");
+        assertTrue(ERC165Facet(diamond).supportsInterface(0x48e2b093), "IDiamondLoupe flag missing");
+        assertTrue(
+            ERC165Facet(diamond).supportsInterface(type(IEmergencyStop).interfaceId), "IEmergencyStop flag missing"
+        );
+    }
+
     function test_SelfGovernedWiringUnchanged() public view {
         assertEq(gov.token(), diamond, "governor votes come from the diamond's own shares");
         assertEq(gov.timelock(), diamond, "governor queues through the diamond's own timelock");
@@ -249,15 +265,15 @@ contract GovernedVaultENSInitTest is Test {
     //                              COMPOSABILITY
     //////////////////////////////////////////////////////////////////////////*//
 
-    function test_ElevenCutsAssembleWithoutSelectorClash() public {
-        // A second full assembly re-runs all 11 Add cuts; any duplicate selector across the base recipe and
+    function test_FourteenCutsAssembleWithoutSelectorClash() public {
+        // A second full assembly re-runs all 14 Add cuts; any duplicate selector across the base recipe and
         // the appended ENSReverseClaimer facet would revert CannotAddFunctionToDiamondThatAlreadyExists.
         address d2 = _deploy(_params(address(asset), ENS_NAME));
         assertTrue(d2 != address(0), "second assembly succeeds");
     }
 
-    function test_BuildCutsWithENSReturnsElevenCuts() public {
+    function test_BuildCutsWithENSReturnsFourteenCuts() public {
         (FacetCut[] memory cuts,,) = deployer.buildCutsWithENS(_params(address(asset), ENS_NAME));
-        assertEq(cuts.length, 11, "10 base cuts + ENSReverseClaimer");
+        assertEq(cuts.length, 14, "13 base cuts + ENSReverseClaimer");
     }
 }

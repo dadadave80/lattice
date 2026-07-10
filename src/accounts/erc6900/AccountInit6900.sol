@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {DiamondLib} from "@diamond/libraries/DiamondLib.sol";
 import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
+import {OwnableLib} from "@diamond/libraries/OwnableLib.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {ERC6900SignatureLib} from "@lattice/accounts/erc6900/libraries/ERC6900SignatureLib.sol";
 import {ERC4337ValidationLib} from "@lattice/accounts/libraries/ERC4337ValidationLib.sol";
@@ -33,6 +35,13 @@ contract AccountInit6900 {
     /// @notice Runs the account module initializers. MUST be invoked via `diamondCut`'s `_init` delegatecall.
     /// @param owner The account's admin — the authority that installs/uninstalls validations and executions.
     function init(address owner) external {
+        // The account is its OWN Ownable owner: diamond-lib's DiamondCutFacet gates on this slot, so the
+        // only upgrade path is a validated self-call through the account's execution surface (which the
+        // admin `owner` drives) — never a raw external cut. Without this the cut facet was a decoy: the
+        // owner slot stayed zero and `diamondCut` reverted `Unauthorized()` forever.
+        OwnableLib.initializeOwner(address(this));
+        // Advertise the cut + loupe interfaces the blueprint actually routes (IDiamondCut + IDiamondLoupe).
+        DiamondLib.registerInterface();
         AccessControlLib.__AccessControl_init(owner);
         EIP712Lib.__EIP712_init("Lattice Modular Account", "1");
         ERC4337ValidationLib.__ERC4337Validation_init(ENTRY_POINT);
