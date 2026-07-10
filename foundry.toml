@@ -12,6 +12,7 @@ remappings = [
     '@lattice-script/=script/',
     '@lattice-test/=test/',
 ]
+optimizer_runs = 1_000_000
 
 [profile.ci]
 optimizer_runs = 1_000_000
