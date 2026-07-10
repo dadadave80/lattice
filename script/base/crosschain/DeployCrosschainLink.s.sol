@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {DiamondLoupeFacet} from "@diamond/facets/DiamondLoupeFacet.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {CrosschainLink} from "@lattice/crosschain/CrosschainLink.sol";
 import {CrosschainLinkInit} from "@lattice/crosschain/CrosschainLinkInit.sol";
+import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
 
 /// @title DeployCrosschainLink
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
@@ -18,16 +20,19 @@ import {CrosschainLinkInit} from "@lattice/crosschain/CrosschainLinkInit.sol";
 contract DeployCrosschainLink is BaseDeploy {
     /// @notice Builds the crosschain-link diamond cuts + initializer (no broadcast, no proxy deploy).
     /// @param admin The address granted `DEFAULT_ADMIN_ROLE` (controls the link/handler registry).
-    /// @return cuts The facet cuts (ERC165 + AccessControl + CrosschainLink).
-    /// @return init The {CrosschainLinkInit} initializer address.
-    /// @return initCalldata The `init(admin)` calldata.
+    /// @return cuts The facet cuts (ERC165 + AccessControl + CrosschainLink + DiamondLoupeFacet + AccessControlDiamondCut).
+    /// @return init The {MultiInit} running {CrosschainLinkInit} then {DiamondIntrospectionInit.initUpgradeable}.
+    /// @return initCalldata The matching `multiInit` calldata.
     function buildCuts(address admin) public returns (FacetCut[] memory cuts, address init, bytes memory initCalldata) {
-        cuts = new FacetCut[](3);
-        cuts[0] = _cut(address(new ERC165Facet()), "ERC165Facet");
+        cuts = new FacetCut[](5);
+        cuts[0] = _cut(address(new ERC165Facet()));
         cuts[1] = _cut(address(new AccessControl()));
         cuts[2] = _cut(address(new CrosschainLink()));
-        init = address(new CrosschainLinkInit());
-        initCalldata = abi.encodeCall(CrosschainLinkInit.init, (admin));
+        cuts[3] = _cut(address(new DiamondLoupeFacet()));
+        cuts[4] = _cut(address(new AccessControlDiamondCut()));
+        (init, initCalldata) = _withUpgradeableIntrospection(
+            address(new CrosschainLinkInit()), abi.encodeCall(CrosschainLinkInit.init, (admin))
+        );
     }
 
     /// @notice Deploys a crosschain-link diamond (broadcasting entrypoint for `forge script ... --broadcast`).

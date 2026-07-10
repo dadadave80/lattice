@@ -5,9 +5,11 @@ import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
 import {DeployERC20} from "@lattice-script/base/tokens/DeployERC20.s.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
+import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
 import {Votes} from "@lattice/governance/Votes.sol";
 import {ERC20Votes} from "@lattice/tokens/ERC20/ERC20Votes.sol";
 import {ERC20VotesInit} from "@lattice/tokens/ERC20/ERC20VotesInit.sol";
+import {DiamondIntrospectionInit} from "@lattice/utils/DiamondIntrospectionInit.sol";
 
 /// @title DeployERC20Votes
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
@@ -25,9 +27,11 @@ contract DeployERC20Votes is BaseDeploy {
     /// @notice Builds the votes ERC-20 diamond cuts + initializers (no broadcast, no proxy deploy).
     /// @param name_ Token name (also the EIP-712 domain name). @param symbol_ Token symbol.
     /// @param admin The address granted DEFAULT_ADMIN_ROLE.
-    /// @return cuts The facet cuts (ERC165 + ERC20 + Votes + ERC20Votes[Add checkpoints, Replace transfer/
-    ///         transferFrom/delegate/delegateBySig] + AccessControl).
-    /// @return inits The initializers, run in order ({ERC20Init} then {ERC20VotesInit}).
+    /// @return cuts The facet cuts (ERC165 + ERC20 + DiamondLoupeFacet [base] + Votes + ERC20Votes[Add
+    ///         checkpoints, Replace transfer/transferFrom/delegate/delegateBySig] + AccessControl +
+    ///         AccessControlDiamondCut).
+    /// @return inits The initializers, run in order ({ERC20Init} chain, {ERC20VotesInit}, then
+    ///         {DiamondIntrospectionInit.initUpgradeable}).
     /// @return initCalldatas The calldata matching each initializer.
     function buildCuts(string memory name_, string memory symbol_, address admin)
         public
@@ -51,7 +55,7 @@ contract DeployERC20Votes is BaseDeploy {
         addSelectors[0] = ERC20Votes.numCheckpoints.selector;
         addSelectors[1] = ERC20Votes.checkpoints.selector;
 
-        cuts = new FacetCut[](baseCuts.length + 4);
+        cuts = new FacetCut[](baseCuts.length + 5);
         for (uint256 i; i < baseCuts.length; ++i) {
             cuts[i] = baseCuts[i];
         }
@@ -62,14 +66,18 @@ contract DeployERC20Votes is BaseDeploy {
         cuts[baseCuts.length + 2] =
             FacetCut({facetAddress: votesFacet, action: FacetCutAction.Replace, functionSelectors: replaceSelectors});
         cuts[baseCuts.length + 3] = _cut(address(new AccessControl()));
+        cuts[baseCuts.length + 4] = _cut(address(new AccessControlDiamondCut()));
 
-        inits = new address[](2);
+        inits = new address[](3);
         inits[0] = baseInit;
         inits[1] = address(new ERC20VotesInit());
+        inits[2] = address(new DiamondIntrospectionInit());
 
-        initCalldatas = new bytes[](2);
+        initCalldatas = new bytes[](3);
         initCalldatas[0] = baseCalldata;
         initCalldatas[1] = abi.encodeCall(ERC20VotesInit.init, (name_, admin));
+        // The base chain registered the loupe flag; the cut facet is live too — advertise both.
+        initCalldatas[2] = abi.encodeCall(DiamondIntrospectionInit.initUpgradeable, ());
     }
 
     /// @notice Deploys a votes ERC-20 token diamond (broadcasting entrypoint for `forge script ... --broadcast`).

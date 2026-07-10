@@ -5,6 +5,7 @@ import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
 import {DeployERC20} from "@lattice-script/base/tokens/DeployERC20.s.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
+import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
 import {ERC7802} from "@lattice/tokens/ERC7802/ERC7802.sol";
 import {ERC7802Init} from "@lattice/tokens/ERC7802/ERC7802Init.sol";
 
@@ -24,24 +25,26 @@ contract DeployERC7802 is BaseDeploy {
     /// @param bridge The trusted bridge granted `CROSSCHAIN_BRIDGE_ROLE`.
     /// @param name_ Token name.
     /// @param symbol_ Token symbol.
-    /// @return cuts The facet cuts (ERC165 + ERC20 + AccessControl + ERC7802).
-    /// @return init The {ERC7802Init} initializer address.
-    /// @return initCalldata The `init(admin, bridge, name, symbol)` calldata.
+    /// @return cuts The facet cuts (ERC165 + ERC20 + DiamondLoupeFacet [base] + AccessControl + ERC7802 + AccessControlDiamondCut).
+    /// @return init The {MultiInit} running {ERC7802Init} then {DiamondIntrospectionInit.initUpgradeable}.
+    /// @return initCalldata The matching `multiInit` calldata.
     function buildCuts(address admin, address bridge, string memory name_, string memory symbol_)
         public
         returns (FacetCut[] memory cuts, address init, bytes memory initCalldata)
     {
         (FacetCut[] memory base,,) = new DeployERC20().buildCuts(name_, symbol_);
 
-        cuts = new FacetCut[](base.length + 2);
+        cuts = new FacetCut[](base.length + 3);
         for (uint256 i; i < base.length; ++i) {
             cuts[i] = base[i];
         }
         cuts[base.length] = _cut(address(new AccessControl()));
         cuts[base.length + 1] = _cut(address(new ERC7802()));
+        cuts[base.length + 2] = _cut(address(new AccessControlDiamondCut()));
 
-        init = address(new ERC7802Init());
-        initCalldata = abi.encodeCall(ERC7802Init.init, (admin, bridge, name_, symbol_));
+        (init, initCalldata) = _withUpgradeableIntrospection(
+            address(new ERC7802Init()), abi.encodeCall(ERC7802Init.init, (admin, bridge, name_, symbol_))
+        );
     }
 
     /// @notice Deploys an ERC-7802 crosschain-native token diamond (`forge script ... --broadcast`).

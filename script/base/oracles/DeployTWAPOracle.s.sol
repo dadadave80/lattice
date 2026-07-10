@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {DiamondLoupeFacet} from "@diamond/facets/DiamondLoupeFacet.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
+import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
 import {TWAPOracle} from "@lattice/oracles/TWAPOracle.sol";
 import {TWAPOracleInit} from "@lattice/oracles/TWAPOracleInit.sol";
 
@@ -18,16 +20,18 @@ import {TWAPOracleInit} from "@lattice/oracles/TWAPOracleInit.sol";
 contract DeployTWAPOracle is BaseDeploy {
     /// @notice Builds the TWAPOracle diamond cuts + initializer (no broadcast, no proxy deploy).
     /// @param admin The address granted `DEFAULT_ADMIN_ROLE`.
-    /// @return cuts The facet cuts (ERC165 + AccessControl + TWAPOracle).
-    /// @return init The {TWAPOracleInit} initializer address.
-    /// @return initCalldata The `init(admin)` calldata.
+    /// @return cuts The facet cuts (ERC165 + AccessControl + TWAPOracle + DiamondLoupeFacet + AccessControlDiamondCut).
+    /// @return init The {MultiInit} running {TWAPOracleInit} then {DiamondIntrospectionInit.initUpgradeable}.
+    /// @return initCalldata The matching `multiInit` calldata.
     function buildCuts(address admin) public returns (FacetCut[] memory cuts, address init, bytes memory initCalldata) {
-        cuts = new FacetCut[](3);
-        cuts[0] = _cut(address(new ERC165Facet()), "ERC165Facet");
+        cuts = new FacetCut[](5);
+        cuts[0] = _cut(address(new ERC165Facet()));
         cuts[1] = _cut(address(new AccessControl()));
         cuts[2] = _cut(address(new TWAPOracle()));
-        init = address(new TWAPOracleInit());
-        initCalldata = abi.encodeCall(TWAPOracleInit.init, (admin));
+        cuts[3] = _cut(address(new DiamondLoupeFacet()));
+        cuts[4] = _cut(address(new AccessControlDiamondCut()));
+        (init, initCalldata) =
+            _withUpgradeableIntrospection(address(new TWAPOracleInit()), abi.encodeCall(TWAPOracleInit.init, (admin)));
     }
 
     /// @notice Deploys a TWAPOracle diamond (broadcasting entrypoint for `forge script ... --broadcast`).
