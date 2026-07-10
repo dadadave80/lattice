@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {GetSelectors} from "@diamond-test/helpers/GetSelectors.sol";
+import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
 
 /// @title ComposabilityInvariant
 /// @notice Guards the EIP-2535 composability of the ERC-20 facet family: a diamond maps each selector to one

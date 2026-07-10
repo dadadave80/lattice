@@ -23,7 +23,6 @@ import {OwnableLib} from "@diamond/libraries/OwnableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlEnumerable} from "@lattice/access/AccessControlEnumerable.sol";
 import {AccessControlTimed} from "@lattice/access/AccessControlTimed.sol";
-import {Ownable} from "@lattice/access/Ownable.sol";
 import {AccessControlEnumerableLib} from "@lattice/access/libraries/AccessControlEnumerableLib.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {AccessControlTimedLib} from "@lattice/access/libraries/AccessControlTimedLib.sol";
@@ -38,9 +37,12 @@ import {Test} from "forge-std/Test.sol";
 ///      across AccessControl, AccessControlTimed, and AccessControlEnumerable. We delegate
 ///      to the "most derived" semantics: Enumerable hooks grantRole/revokeRole/renounceRole
 ///      (member-set maintenance); Timed governs hasRole (time-windowed membership).
-contract MockAccessSuiteDiamond is AccessControl, AccessControlTimed, AccessControlEnumerable, Ownable {
+contract MockAccessSuiteDiamond is AccessControl, AccessControlTimed, AccessControlEnumerable {
     /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare
-    ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing.
+    ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing. NOTE it no
+    ///      longer inherits diamond-lib's {OwnableFacet} (as of v0.2.0 its `exportSelectors()` is
+    ///      non-virtual, so the flattened composite cannot resolve the clash); the one Ownable read the
+    ///      suite asserts is served locally over {OwnableLib}.
     function exportSelectors()
         external
         pure
@@ -57,6 +59,11 @@ contract MockAccessSuiteDiamond is AccessControl, AccessControlTimed, AccessCont
         AccessControlTimedLib.__AccessControlTimed_init();
         AccessControlEnumerableLib.__AccessControlEnumerable_init();
         InitializableLib.postInitializer(s);
+    }
+
+    /// @dev Local stand-in for {OwnableFacet.owner} (see the inheritance note above).
+    function owner() external view returns (address) {
+        return OwnableLib.owner();
     }
 
     // ---- Explicit overrides to resolve diamond-inheritance ambiguity ----

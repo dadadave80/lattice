@@ -86,7 +86,7 @@ contract TestnetAsset is IERC20 {
 /// @title DeployGovernedVaultENS
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice Ready-to-deploy recipe for the ENS-NAMED self-governed ERC-4626 vault: the {DeployGovernedVault}
-///         10-cut diamond plus the {ENSReverseClaimer} facet, initialized in ONE shot by
+///         13-cut diamond plus the {ENSReverseClaimer} facet, initialized in ONE shot by
 ///         {GovernedVaultENSInit} — the vault claims its primary ENS name at init (the registrar sees the
 ///         diamond as `msg.sender`), and every future rename passes through share-holder governance
 ///         (`ENS_MANAGER_ROLE` is held by the diamond only).
@@ -102,8 +102,8 @@ contract TestnetAsset is IERC20 {
 ///      `reverseRegistrar` on Sepolia is the ENS `ReverseRegistrar`
 ///      `0xA0a1AbcDAe1a2a4A2EF8e9113Ff0e02DD81DC0C6` (ensdomains/ens-contracts deployments/sepolia).
 contract DeployGovernedVaultENS is DeployGovernedVault {
-    /// @notice Builds the 11 cuts + combined initializer for the ENS-named self-governed vault (no broadcast,
-    ///         no proxy deploy): the inherited 10 base cuts plus the {ENSReverseClaimer} facet, initialized by
+    /// @notice Builds the 14 cuts + combined initializer for the ENS-named self-governed vault (no broadcast,
+    ///         no proxy deploy): the inherited 13 base cuts plus the {ENSReverseClaimer} facet, initialized by
     ///         the combined {GovernedVaultENSInit} (which replays the base init sequence exactly).
     function buildCutsWithENS(GovernedVaultENSParams memory p)
         public

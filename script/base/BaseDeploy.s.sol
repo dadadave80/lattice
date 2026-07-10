@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {GetSelectors} from "@diamond-test/helpers/GetSelectors.sol";
 import {Diamond} from "@diamond/Diamond.sol";
 import {MultiInit} from "@diamond/initializers/MultiInit.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
+import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
 import {IERC8153} from "@lattice/interfaces/external/IERC8153.sol";
 import {Script} from "forge-std/Script.sol";
 
@@ -12,12 +12,14 @@ import {Script} from "forge-std/Script.sol";
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice Generic building blocks every ready-to-deploy Lattice diamond script shares: turn a facet contract
 ///         into an `Add`/`Replace` {FacetCut}, and assemble a {Diamond} proxy from cuts + an initializer.
-///         Two selector sources coexist: the STRING helpers (`_cut(addr, "Name")`) resolve selectors from the
-///         facet's real ABI via diamond-lib {GetSelectors}/`forge inspect` — used for the diamond-lib facets
-///         ({ERC165Facet}, {DiamondCutFacet}, {DiamondLoupeFacet}) that cannot implement ERC-8153; the ADDRESS
-///         helpers (`_cut(addr)`) read the facet's own {IERC8153-exportSelectors}, so a facet self-reports the
-///         selectors it owns with no FFI. Both paths strip `exportSelectors()` (0x0ef22643): the diamond never
-///         exposes ERC-8153 introspection. `_assemble*` are broadcast-free so tests reuse the exact production
+///         Two selector sources coexist: the ADDRESS helpers (`_cut(addr)`) read the facet's own
+///         {IERC8153-exportSelectors}, so a facet self-reports the selectors it owns with no FFI — since
+///         diamond-lib v0.2.0 this covers EVERY production facet, the lib's included ({ERC165Facet},
+///         {DiamondCutFacet}, {DiamondLoupeFacet}, `OwnableFacet` all implement `IFacet`, the identical
+///         upstream interface); the STRING helpers (`_cut(addr, "Name")`) resolve selectors from the facet's
+///         real ABI via the vendored {GetSelectors}/`forge inspect` FFI and remain ONLY for legacy call sites
+///         and non-8153 test fixtures (new code should use the address helpers). Both paths strip
+///         `exportSelectors()` (0x0ef22643): the diamond never exposes ERC-8153 facet introspection. `_assemble*` are broadcast-free so tests reuse the exact production
 ///         composition; concrete scripts wrap their `run()` in `vm.startBroadcast()`. Mirrors the intent of
 ///         diamond-lib's {DeployDiamond} but factored so per-family scripts ({DeployAccount}, {DeployERC20}, …)
 ///         stay tiny.
