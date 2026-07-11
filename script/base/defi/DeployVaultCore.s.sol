@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {DiamondLoupeFacet} from "@diamond/facets/DiamondLoupeFacet.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {VaultCore} from "@lattice/defi/VaultCore.sol";
 import {VaultCoreInit} from "@lattice/defi/VaultCoreInit.sol";
+import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
 import {ERC20} from "@lattice/tokens/ERC20/ERC20.sol";
 import {ERC4626} from "@lattice/tokens/ERC4626/ERC4626.sol";
 
@@ -27,9 +29,9 @@ contract DeployVaultCore is BaseDeploy {
     /// @param symbol_ Vault share token symbol.
     /// @param admin_ The account granted `DEFAULT_ADMIN_ROLE`.
     /// @param decimalsOffset_ Virtual-share decimals offset for inflation-attack mitigation (usually 0).
-    /// @return cuts The facet cuts (ERC165 + AccessControl + ERC20 + ERC4626 + VaultCore).
-    /// @return init The {VaultCoreInit} initializer address.
-    /// @return initCalldata The `init(asset, name, symbol, admin, offset)` calldata.
+    /// @return cuts The facet cuts (ERC165 + AccessControl + ERC20 + ERC4626 + VaultCore + DiamondLoupeFacet + AccessControlDiamondCut).
+    /// @return init The {MultiInit} running {VaultCoreInit} then {DiamondIntrospectionInit.initUpgradeable}.
+    /// @return initCalldata The matching `multiInit` calldata.
     function buildCuts(
         address asset_,
         string memory name_,
@@ -40,8 +42,8 @@ contract DeployVaultCore is BaseDeploy {
         address vaultFacet = address(new ERC4626());
         address coreFacet = address(new VaultCore());
 
-        cuts = new FacetCut[](7);
-        cuts[0] = _cut(address(new ERC165Facet()), "ERC165Facet");
+        cuts = new FacetCut[](9);
+        cuts[0] = _cut(address(new ERC165Facet()));
         cuts[1] = _cut(address(new AccessControl()));
         cuts[2] = _cut(address(new ERC20()));
         // ERC-4626 vault surface over the ERC-20 shares: ADD the vault views/mutators, REPLACE `decimals`.
@@ -51,9 +53,13 @@ contract DeployVaultCore is BaseDeploy {
         cuts[5] = FacetCut({facetAddress: coreFacet, action: FacetCutAction.Add, functionSelectors: _strategySurface()});
         cuts[6] =
             FacetCut({facetAddress: coreFacet, action: FacetCutAction.Replace, functionSelectors: _coreOverrides()});
+        cuts[7] = _cut(address(new DiamondLoupeFacet()));
+        cuts[8] = _cut(address(new AccessControlDiamondCut()));
 
-        init = address(new VaultCoreInit());
-        initCalldata = abi.encodeCall(VaultCoreInit.init, (asset_, name_, symbol_, admin_, decimalsOffset_));
+        (init, initCalldata) = _withUpgradeableIntrospection(
+            address(new VaultCoreInit()),
+            abi.encodeCall(VaultCoreInit.init, (asset_, name_, symbol_, admin_, decimalsOffset_))
+        );
     }
 
     /// @notice The ERC-4626 vault selectors that are NEW relative to the base ERC-20 facet (an `Add` cut).

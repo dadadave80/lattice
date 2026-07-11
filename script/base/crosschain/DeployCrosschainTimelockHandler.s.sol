@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {DiamondLoupeFacet} from "@diamond/facets/DiamondLoupeFacet.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
@@ -8,6 +9,7 @@ import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {CrosschainLink} from "@lattice/crosschain/CrosschainLink.sol";
 import {CrosschainTimelockHandler} from "@lattice/crosschain/CrosschainTimelockHandler.sol";
 import {CrosschainTimelockHandlerInit} from "@lattice/crosschain/CrosschainTimelockHandlerInit.sol";
+import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
 import {TimelockController} from "@lattice/governance/TimelockController.sol";
 
 /// @title DeployCrosschainTimelockHandler
@@ -21,21 +23,25 @@ contract DeployCrosschainTimelockHandler is BaseDeploy {
     /// @notice Builds the cross-chain timelock diamond cuts + initializer (no broadcast, no proxy deploy).
     /// @param admin The address granted `DEFAULT_ADMIN_ROLE` (timelock + link/handler registry admin).
     /// @param minDelay The timelock's minimum operation delay.
-    /// @return cuts The facet cuts (ERC165 + AccessControl + CrosschainLink + TimelockController + handler).
-    /// @return init The {CrosschainTimelockHandlerInit} initializer address.
-    /// @return initCalldata The `init(admin, minDelay)` calldata.
+    /// @return cuts The facet cuts (ERC165 + AccessControl + CrosschainLink + TimelockController + handler + DiamondLoupeFacet + AccessControlDiamondCut).
+    /// @return init The {MultiInit} running {CrosschainTimelockHandlerInit} then {DiamondIntrospectionInit.initUpgradeable}.
+    /// @return initCalldata The matching `multiInit` calldata.
     function buildCuts(address admin, uint256 minDelay)
         public
         returns (FacetCut[] memory cuts, address init, bytes memory initCalldata)
     {
-        cuts = new FacetCut[](5);
-        cuts[0] = _cut(address(new ERC165Facet()), "ERC165Facet");
+        cuts = new FacetCut[](7);
+        cuts[0] = _cut(address(new ERC165Facet()));
         cuts[1] = _cut(address(new AccessControl()));
         cuts[2] = _cut(address(new CrosschainLink()));
         cuts[3] = _cut(address(new TimelockController()));
         cuts[4] = _cut(address(new CrosschainTimelockHandler()));
-        init = address(new CrosschainTimelockHandlerInit());
-        initCalldata = abi.encodeCall(CrosschainTimelockHandlerInit.init, (admin, minDelay));
+        cuts[5] = _cut(address(new DiamondLoupeFacet()));
+        cuts[6] = _cut(address(new AccessControlDiamondCut()));
+        (init, initCalldata) = _withUpgradeableIntrospection(
+            address(new CrosschainTimelockHandlerInit()),
+            abi.encodeCall(CrosschainTimelockHandlerInit.init, (admin, minDelay))
+        );
     }
 
     /// @notice Deploys a cross-chain governance diamond (broadcasting entrypoint for `forge script ...`).

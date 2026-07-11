@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {DiamondLoupeFacet} from "@diamond/facets/DiamondLoupeFacet.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {StarknetGatewayAdapter} from "@lattice/crosschain/StarknetGatewayAdapter.sol";
 import {StarknetGatewayAdapterInit} from "@lattice/crosschain/StarknetGatewayAdapterInit.sol";
+import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
 
 /// @title DeployStarknetGatewayAdapter
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
@@ -22,19 +24,23 @@ contract DeployStarknetGatewayAdapter is BaseDeploy {
     /// @param admin                  The address granted `DEFAULT_ADMIN_ROLE` (controls every adapter setter).
     /// @param starknetCore           The Starknet core (`StarknetMessaging`) contract on this chain.
     /// @param expectedChainReference The ERC-7930 chain reference to accept (e.g. `SN_MAIN` UTF-8 bytes).
-    /// @return cuts         The facet cuts (ERC165 + AccessControl + StarknetGatewayAdapter).
-    /// @return init         The {StarknetGatewayAdapterInit} initializer address.
-    /// @return initCalldata The `init(admin, starknetCore, expectedChainReference)` calldata.
+    /// @return cuts         The facet cuts (ERC165 + AccessControl + StarknetGatewayAdapter + DiamondLoupeFacet + AccessControlDiamondCut).
+    /// @return init         The {MultiInit} running {StarknetGatewayAdapterInit} then {DiamondIntrospectionInit.initUpgradeable}.
+    /// @return initCalldata The matching `multiInit` calldata.
     function buildCuts(address admin, address starknetCore, bytes memory expectedChainReference)
         public
         returns (FacetCut[] memory cuts, address init, bytes memory initCalldata)
     {
-        cuts = new FacetCut[](3);
-        cuts[0] = _cut(address(new ERC165Facet()), "ERC165Facet");
+        cuts = new FacetCut[](5);
+        cuts[0] = _cut(address(new ERC165Facet()));
         cuts[1] = _cut(address(new AccessControl()));
         cuts[2] = _cut(address(new StarknetGatewayAdapter()));
-        init = address(new StarknetGatewayAdapterInit());
-        initCalldata = abi.encodeCall(StarknetGatewayAdapterInit.init, (admin, starknetCore, expectedChainReference));
+        cuts[3] = _cut(address(new DiamondLoupeFacet()));
+        cuts[4] = _cut(address(new AccessControlDiamondCut()));
+        (init, initCalldata) = _withUpgradeableIntrospection(
+            address(new StarknetGatewayAdapterInit()),
+            abi.encodeCall(StarknetGatewayAdapterInit.init, (admin, starknetCore, expectedChainReference))
+        );
     }
 
     /// @notice Deploys a Starknet adapter diamond (broadcasting entrypoint for `forge script ... --broadcast`).

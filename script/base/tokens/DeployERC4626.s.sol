@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {DiamondLoupeFacet} from "@diamond/facets/DiamondLoupeFacet.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
+import {AccessControl} from "@lattice/access/AccessControl.sol";
+import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
 import {ERC20} from "@lattice/tokens/ERC20/ERC20.sol";
 import {ERC4626} from "@lattice/tokens/ERC4626/ERC4626.sol";
 import {ERC4626Init} from "@lattice/tokens/ERC4626/ERC4626Init.sol";
@@ -18,6 +21,9 @@ import {ERC4626Init} from "@lattice/tokens/ERC4626/ERC4626Init.sol";
 ///         (the composability principle) over one shared storage layout. The ONE source of truth for what a base
 ///         vault diamond is, shared by production (`run --broadcast`) and the facet tests (which build on
 ///         {buildCuts}, appending test-only helper facets / a mintable underlying asset).
+/// @dev DEFAULT overload: Immutable by design — no cut facet is cut; deploy a new diamond to change
+///      behavior. Use the ADMIN overload (`buildCuts(..., admin)` / `run(..., admin)`) for an upgradeable
+///      deployment gated on `DEFAULT_ADMIN_ROLE`.
 contract DeployERC4626 is BaseDeploy {
     /// @notice Builds the ERC-4626 vault diamond cuts + initializer (no broadcast, no proxy deploy).
     /// @param asset_ The underlying ERC-20 asset the vault holds.
@@ -25,23 +31,49 @@ contract DeployERC4626 is BaseDeploy {
     /// @param symbol_ Vault share token symbol.
     /// @param decimalsOffset_ Virtual-share decimals offset for inflation-attack mitigation (usually 0).
     /// @return cuts The facet cuts (ERC165 + ERC20 + ERC4626[Add vault surface] + ERC4626[Replace decimals]).
-    /// @return init The {ERC4626Init} initializer address.
-    /// @return initCalldata The `init(asset, name, symbol, offset)` calldata.
+    /// @return init The {MultiInit} running {ERC4626Init} then {DiamondIntrospectionInit.initImmutable}.
+    /// @return initCalldata The matching `multiInit` calldata.
     function buildCuts(address asset_, string memory name_, string memory symbol_, uint8 decimalsOffset_)
         public
         returns (FacetCut[] memory cuts, address init, bytes memory initCalldata)
     {
+        cuts = _coreCuts();
+        (init, initCalldata) = _withImmutableIntrospection(
+            address(new ERC4626Init()), abi.encodeCall(ERC4626Init.init, (asset_, name_, symbol_, decimalsOffset_))
+        );
+    }
+
+    /// @notice ADMIN OVERLOAD: the immutable default plus `AccessControl` + `AccessControlDiamondCut`, so
+    ///         `admin` (granted `DEFAULT_ADMIN_ROLE`) can upgrade the diamond via `diamondCut`.
+    function buildCuts(address asset_, string memory name_, string memory symbol_, uint8 decimalsOffset_, address admin)
+        public
+        returns (FacetCut[] memory cuts, address init, bytes memory initCalldata)
+    {
+        FacetCut[] memory base = _coreCuts();
+        cuts = new FacetCut[](base.length + 2);
+        for (uint256 i; i < base.length; ++i) {
+            cuts[i] = base[i];
+        }
+        cuts[base.length] = _cut(address(new AccessControl()));
+        cuts[base.length + 1] = _cut(address(new AccessControlDiamondCut()));
+        (init, initCalldata) = _withAdminUpgradeableIntrospection(
+            address(new ERC4626Init()),
+            abi.encodeCall(ERC4626Init.init, (asset_, name_, symbol_, decimalsOffset_)),
+            admin
+        );
+    }
+
+    /// @dev The shared cut set of both overloads: the vault facets plus {DiamondLoupeFacet} (introspection).
+    function _coreCuts() internal returns (FacetCut[] memory cuts) {
         address vaultFacet = address(new ERC4626());
 
-        cuts = new FacetCut[](4);
-        cuts[0] = _cut(address(new ERC165Facet()), "ERC165Facet");
+        cuts = new FacetCut[](5);
+        cuts[0] = _cut(address(new ERC165Facet()));
         cuts[1] = _cut(address(new ERC20()));
         cuts[2] = FacetCut({facetAddress: vaultFacet, action: FacetCutAction.Add, functionSelectors: _vaultSurface()});
         // `decimals()` already exists on the base ERC-20 facet — replace it with the share-offset variant.
         cuts[3] = FacetCut({facetAddress: vaultFacet, action: FacetCutAction.Replace, functionSelectors: _decimals()});
-
-        init = address(new ERC4626Init());
-        initCalldata = abi.encodeCall(ERC4626Init.init, (asset_, name_, symbol_, decimalsOffset_));
+        cuts[4] = _cut(address(new DiamondLoupeFacet()));
     }
 
     /// @notice The ERC-4626 vault selectors that are NEW relative to the base ERC-20 facet (an `Add` cut).
@@ -80,6 +112,18 @@ contract DeployERC4626 is BaseDeploy {
         vm.startBroadcast();
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) =
             buildCuts(asset_, name_, symbol_, decimalsOffset_);
+        vault = _assemble(cuts, init, initCalldata);
+        vm.stopBroadcast();
+    }
+
+    /// @notice ADMIN OVERLOAD: deploys the UPGRADEABLE variant — `admin` can `diamondCut`.
+    function run(address asset_, string memory name_, string memory symbol_, uint8 decimalsOffset_, address admin)
+        external
+        returns (address vault)
+    {
+        vm.startBroadcast();
+        (FacetCut[] memory cuts, address init, bytes memory initCalldata) =
+            buildCuts(asset_, name_, symbol_, decimalsOffset_, admin);
         vault = _assemble(cuts, init, initCalldata);
         vm.stopBroadcast();
     }
