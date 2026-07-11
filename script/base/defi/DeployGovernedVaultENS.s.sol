@@ -1,11 +1,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {IDiamondLoupe} from "@diamond/interfaces/IDiamondLoupe.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {DeployGovernedVault} from "@lattice-script/base/defi/DeployGovernedVault.s.sol";
 import {GovernedVaultENSInit, GovernedVaultENSParams} from "@lattice/defi/GovernedVaultENSInit.sol";
 import {ENSReverseClaimer} from "@lattice/ens/ENSReverseClaimer.sol";
+import {IENSReverseClaimer} from "@lattice/interfaces/ens/IENSReverseClaimer.sol";
+import {IEmergencyCut} from "@lattice/interfaces/governance/IEmergencyCut.sol";
+import {IFrozenSelectors} from "@lattice/interfaces/governance/IFrozenSelectors.sol";
+import {IGovernedDiamondCut} from "@lattice/interfaces/governance/IGovernedDiamondCut.sol";
+import {IGovernor} from "@lattice/interfaces/governance/IGovernor.sol";
+import {IVotes} from "@lattice/interfaces/governance/IVotes.sol";
 import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
+import {IERC4626} from "@lattice/interfaces/tokens/IERC4626.sol";
 import {console} from "forge-std/Script.sol";
 
 /// @title TestnetAsset
@@ -101,7 +109,25 @@ contract TestnetAsset is IERC20 {
 ///      - `quorumNumerator`   4    (4% of supply)
 ///      `reverseRegistrar` on Sepolia is the ENS `ReverseRegistrar`
 ///      `0xA0a1AbcDAe1a2a4A2EF8e9113Ff0e02DD81DC0C6` (ensdomains/ens-contracts deployments/sepolia).
+///
+///      RUNBOOK — step 1 deploy (`run`), steps 2-4 wire the ENS forward record as the name owner (see
+///      {RegisterEnsName}); step 5 cranks the governance demo — ONE command, re-run until it logs Executed:
+///
+///        forge script script/base/defi/DeployGovernedVaultENS.s.sol --rpc-url sepolia --account <name> \
+///          --broadcast --sig "governanceDemo(address,string)" <vault> "<ens-name>"
+///
+///      Each re-run performs whatever the proposal state allows next (dogfood+propose -> vote -> queue ->
+///      execute) and logs what to wait for (testnet defaults: 60s until the vote opens, 600s until it
+///      closes, 300s of timelock). The proposal freezes the six load-bearing selectors and re-asserts the
+///      vault's ENS name — all through shareholder governance.
 contract DeployGovernedVaultENS is DeployGovernedVault {
+    /// @notice Thrown when the dogfood path's faucet mint did not credit the stake: the vault's underlying
+    ///         is not the open-faucet {TestnetAsset} (e.g. a WETH9-pattern token whose non-reverting
+    ///         fallback swallows the phantom `mint` call). Reverting HERE prevents the follow-up
+    ///         approve+deposit from silently pulling the operator's REAL tokens.
+    /// @param asset The vault underlying that failed the faucet probe.
+    error DeployGovernedVaultENS__AssetNotOpenFaucet(address asset);
+
     /// @notice Builds the 14 cuts + combined initializer for the ENS-named self-governed vault (no broadcast,
     ///         no proxy deploy): the inherited 13 base cuts plus the {ENSReverseClaimer} facet, initialized by
     ///         the combined {GovernedVaultENSInit} (which replays the base init sequence exactly).
@@ -149,5 +175,158 @@ contract DeployGovernedVaultENS is DeployGovernedVault {
         console.log("    (Sepolia PublicResolver: 0xE99638b40E4Fff0129D56f03b55b6bbC4BBE49b5)");
         console.log(" 2. Dogfood: mint TestnetAsset, approve the vault, deposit, delegate, propose.");
         console.log(" 3. Rename later via governance: propose setEnsName(newName) targeting the diamond.");
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                        GOVERNANCE DEMO (SELF-CRANKING)
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice The demo proposal's description — part of the proposal id, so it must never change between
+    ///         cranks of the same lifecycle.
+    string public constant DEMO_DESCRIPTION =
+        "Lattice M1: freeze loupe+cut selectors and reassert ENS name via governance";
+
+    /// @notice The dogfood stake crank 1 mints/deposits (100% of vote supply on a fresh vault).
+    uint256 public constant DEMO_DEPOSIT = 1_000e18;
+
+    /// @notice SELF-CRANKING post-deploy governance runbook (broadcasting entrypoint): re-run the same
+    ///         command as time passes and each invocation performs whatever the proposal state allows next
+    ///         — dogfood+propose, vote, queue, execute — logging what to wait for in between. The proposal
+    ///         is ONE combined payload: freeze the six load-bearing selectors (4 loupe + `diamondCut` +
+    ///         `emergencyRemoveCut`) and re-assert the vault's ENS reverse record via governance.
+    /// @dev The broadcast wrapper passes `msg.sender` (the keystore signer — the account actually sending
+    ///      every sub-call under `--broadcast`) as the actor to the broadcast-free step. The DOGFOOD path
+    ///      is TESTNET-ONLY: it requires the vault underlying to be the open-faucet {TestnetAsset}
+    ///      (balance-delta-probed; anything else reverts {DeployGovernedVaultENS__AssetNotOpenFaucet}
+    ///      before a single real token moves). Real-asset vault operators fund + delegate manually — a
+    ///      share balance > 0 skips dogfooding entirely, so they can still crank every proposal phase.
+    function governanceDemo(address vault, string calldata ensName) external {
+        vm.startBroadcast();
+        governanceDemoStep(vault, ensName, msg.sender);
+        vm.stopBroadcast();
+    }
+
+    /// @notice One broadcast-free crank of the demo lifecycle — tests drive this directly with `vm.warp`
+    ///         between cranks.
+    /// @param vault The self-governed vault diamond.
+    /// @param ensName The ENS name the proposal re-asserts (the vault's primary name).
+    /// @param actor WHO sends the sub-calls in the current environment: the keystore signer under
+    ///        `--broadcast` (the wrapper passes `msg.sender`), the SCRIPT CONTRACT INSTANCE when a test
+    ///        calls this directly (no broadcast, so calls originate from this contract). Balance,
+    ///        delegation, and ballot checks are all made against this address — pass the wrong one and the
+    ///        crank dogfoods or votes on behalf of an address that is not sending the transactions.
+    function governanceDemoStep(address vault, string memory ensName, address actor) public {
+        (address[] memory targets, uint256[] memory values, bytes[] memory calldatas) =
+            demoProposalPayload(vault, ensName);
+        bytes32 descriptionHash = keccak256(bytes(DEMO_DESCRIPTION));
+        uint256 pid = IGovernor(vault).hashProposal(targets, values, calldatas, descriptionHash);
+
+        // state() reverts GovernorNonexistentProposal before the proposal exists — that IS the first state.
+        try IGovernor(vault).state(pid) returns (IGovernor.ProposalState current) {
+            if (current == IGovernor.ProposalState.Pending) {
+                console.log("[demo] Pending: voting opens at snapshot", IGovernor(vault).proposalSnapshot(pid));
+                console.log("[demo]   seconds remaining:", IGovernor(vault).proposalSnapshot(pid) - block.timestamp);
+            } else if (current == IGovernor.ProposalState.Active) {
+                if (!IGovernor(vault).hasVoted(pid, actor)) {
+                    IGovernor(vault).castVote(pid, uint8(IGovernor.VoteType.For));
+                    console.log("[demo] Active: cast the For vote; re-run after the deadline");
+                } else {
+                    console.log("[demo] Active: already voted; vote closes at", IGovernor(vault).proposalDeadline(pid));
+                }
+            } else if (current == IGovernor.ProposalState.Succeeded) {
+                IGovernor(vault).queue(targets, values, calldatas, descriptionHash);
+                console.log("[demo] Succeeded: queued; executable at eta", IGovernor(vault).proposalEta(pid));
+            } else if (current == IGovernor.ProposalState.Queued) {
+                uint256 eta = IGovernor(vault).proposalEta(pid);
+                if (eta <= block.timestamp) {
+                    IGovernor(vault).execute(targets, values, calldatas, descriptionHash);
+                    console.log("[demo] Queued->Executed: freeze + rename applied");
+                    _logFrozen(vault);
+                } else {
+                    console.log("[demo] Queued: timelock delay remaining (seconds):", eta - block.timestamp);
+                }
+            } else if (current == IGovernor.ProposalState.Executed) {
+                console.log("[demo] Executed: nothing left to crank. Verification reads:");
+                _logFrozen(vault);
+                console.log("[demo] The reverse record was re-asserted by the proposal (setEnsName).");
+            } else {
+                // Canceled / Defeated / Expired — terminal, nothing to crank.
+                console.log("[demo] terminal proposal state (Canceled/Defeated/Expired):", uint8(current));
+            }
+        } catch {
+            _dogfood(vault, actor);
+            uint256 proposed = IGovernor(vault).propose(targets, values, calldatas, DEMO_DESCRIPTION);
+            console.log("[demo] proposed id:", proposed);
+            console.log("[demo] wait votingDelay, then re-run to vote");
+        }
+    }
+
+    /// @notice The demo proposal's deterministic payload — the SAME bytes every crank, so the proposal id
+    ///         is stable across invocations (and reconstructable by tests/tooling).
+    function demoProposalPayload(address vault, string memory ensName)
+        public
+        pure
+        returns (address[] memory targets, uint256[] memory values, bytes[] memory calldatas)
+    {
+        targets = new address[](2);
+        targets[0] = vault;
+        targets[1] = vault;
+        values = new uint256[](2);
+
+        bytes4[] memory frozen = new bytes4[](6);
+        frozen[0] = IDiamondLoupe.facets.selector;
+        frozen[1] = IDiamondLoupe.facetFunctionSelectors.selector;
+        frozen[2] = IDiamondLoupe.facetAddresses.selector;
+        frozen[3] = IDiamondLoupe.facetAddress.selector;
+        frozen[4] = IGovernedDiamondCut.diamondCut.selector;
+        frozen[5] = IEmergencyCut.emergencyRemoveCut.selector;
+
+        calldatas = new bytes[](2);
+        calldatas[0] = abi.encodeCall(IFrozenSelectors.freezeSelectors, (frozen));
+        calldatas[1] = abi.encodeCall(IENSReverseClaimer.setEnsName, (ensName));
+    }
+
+    /// @notice The demo proposal's id on `vault` — stable across cranks by construction.
+    function demoProposalId(address vault, string memory ensName) public view returns (uint256 pid) {
+        (address[] memory targets, uint256[] memory values, bytes[] memory calldatas) =
+            demoProposalPayload(vault, ensName);
+        pid = IGovernor(vault).hashProposal(targets, values, calldatas, keccak256(bytes(DEMO_DESCRIPTION)));
+    }
+
+    /// @dev Idempotent dogfood: stake + checkpoint only what `actor` is still missing. TESTNET-ONLY: the
+    ///      faucet mint is balance-delta-probed — a WETH9-pattern underlying (no `mint(address,uint256)`,
+    ///      non-reverting fallback) makes the phantom mint "succeed" while crediting nothing, and without
+    ///      the probe the follow-up approve+deposit would pull the operator's REAL tokens.
+    function _dogfood(address vault, address actor) private {
+        if (IERC20(vault).balanceOf(actor) == 0) {
+            address asset = IERC4626(vault).asset();
+            uint256 balanceBefore = IERC20(asset).balanceOf(actor);
+            TestnetAsset(asset).mint(actor, DEMO_DEPOSIT);
+            if (IERC20(asset).balanceOf(actor) != balanceBefore + DEMO_DEPOSIT) {
+                revert DeployGovernedVaultENS__AssetNotOpenFaucet(asset);
+            }
+            IERC20(asset).approve(vault, DEMO_DEPOSIT);
+            IERC4626(vault).deposit(DEMO_DEPOSIT, actor);
+            console.log("[demo] dogfooded: minted + deposited", DEMO_DEPOSIT);
+        }
+        if (IVotes(vault).delegates(actor) == address(0)) {
+            IVotes(vault).delegate(actor);
+            console.log("[demo] self-delegated voting power");
+        }
+    }
+
+    /// @dev Logs the six load-bearing frozen-selector reads (the proposal's verifiable outcome).
+    function _logFrozen(address vault) private view {
+        bytes4[6] memory six = [
+            IDiamondLoupe.facets.selector,
+            IDiamondLoupe.facetFunctionSelectors.selector,
+            IDiamondLoupe.facetAddresses.selector,
+            IDiamondLoupe.facetAddress.selector,
+            IGovernedDiamondCut.diamondCut.selector,
+            IEmergencyCut.emergencyRemoveCut.selector
+        ];
+        for (uint256 i; i < 6; ++i) {
+            console.log("[demo] isSelectorFrozen:", uint32(six[i]), IFrozenSelectors(vault).isSelectorFrozen(six[i]));
+        }
     }
 }
