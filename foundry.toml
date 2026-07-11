@@ -7,7 +7,10 @@ libs = ["lib"]
 # Required by the AccountFactory full-account assembly test.
 ffi = true
 # DeployRelease writes (and its unit test cleans up) per-chain release manifests under deployments/.
-fs_permissions = [{ access = "read-write", path = "deployments" }]
+# out/ read: vm.getCode/deployCode on the diamond-lib core facets resolves via raw artifact reads
+# (basename identifiers like "DiamondCutFacet.sol:DiamondCutFacet"), which sit outside the implicit
+# src/-path artifact grant.
+fs_permissions = [{ access = "read-write", path = "deployments" }, { access = "read", path = "out" }]
 remappings = [
     '@lattice/=src/',
     '@lattice-script/=script/',

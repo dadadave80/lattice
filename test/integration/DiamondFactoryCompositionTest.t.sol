@@ -2,7 +2,9 @@
 pragma solidity ^0.8.30;
 
 import {Selectors} from "@diamond-test/helpers/Selectors.sol";
+import {DiamondLoupeFacet} from "@diamond/facets/DiamondLoupeFacet.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
+import {IDiamondLoupe} from "@diamond/interfaces/IDiamondLoupe.sol";
 import {IFacet} from "@diamond/interfaces/IFacet.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
@@ -38,6 +40,7 @@ contract DiamondFactoryCompositionTest is GetSelectors {
 
     /// @dev Curated Tier-B name key for the base ERC-20 share facet.
     bytes32 internal constant ERC20_NAME = keccak256("lattice.ERC20");
+    bytes32 internal constant LOUPE_NAME = keccak256("lattice.DiamondLoupeFacet");
 
     /// @dev Pack a semver triple the way {LatticeRegistry} documents: `major<<48 | minor<<24 | patch`.
     function _v(uint16 major, uint24 minor, uint24 patch) internal pure returns (uint64) {
@@ -53,14 +56,21 @@ contract DiamondFactoryCompositionTest is GetSelectors {
         factory = new DiamondFactory(registry);
 
         // 2. Curate the base ERC-20 facet (an ERC-8153 Lattice facet). register pulls + pins its exported
-        //    selectors and mirrors the codehash into the permissionless Tier-A resolver.
+        //    selectors and mirrors the codehash into the permissionless Tier-A resolver. The diamond-lib
+        //    core DiamondLoupeFacet (ERC-8153 since v0.2.0) registers through the SAME path — the lib-facet
+        //    registry round-trip that lets any recipe satisfy the factory's mandatory loupe coverage
+        //    straight from the catalog.
         address erc20Facet = address(new ERC20());
-        vm.prank(owner);
+        address loupeFacet = address(new DiamondLoupeFacet());
+        vm.startPrank(owner);
         registry.register(ERC20_NAME, version, erc20Facet);
+        registry.register(LOUPE_NAME, version, loupeFacet);
+        vm.stopPrank();
 
-        // 3. The deployer's whole job: one recipe entry pinning (name, version)...
-        RecipeEntry[] memory entries = new RecipeEntry[](1);
+        // 3. The deployer's whole job: two recipe entries pinning (name, version)...
+        RecipeEntry[] memory entries = new RecipeEntry[](2);
         entries[0] = RecipeEntry({nameHash: ERC20_NAME, version: version});
+        entries[1] = RecipeEntry({nameHash: LOUPE_NAME, version: version});
 
         // ...one custom cut for the diamond-lib ERC165Facet, selectors from its OWN ERC-8153 export
         //    (diamond-lib >=0.2.0; the export excludes exportSelectors() itself, which the factory refuses)...
@@ -103,5 +113,15 @@ contract DiamondFactoryCompositionTest is GetSelectors {
 
         // 5. The custom ERC165Facet cut dispatches too: init registered IERC20 via ERC-165.
         assertTrue(ERC165Facet(diamond).supportsInterface(type(IERC20).interfaceId), "ERC-165 custom cut live");
+
+        // 6. The registry-resolved loupe answers: the flagship diamond is INTROSPECTABLE (3 facets:
+        //    ERC20 + DiamondLoupeFacet from the registry, ERC165Facet as the custom cut).
+        assertEq(IDiamondLoupe(diamond).facetAddresses().length, 3, "loupe census");
+        assertEq(IDiamondLoupe(diamond).facetAddress(bytes4(0x7a0ed627)), loupeFacet, "loupe self-routed");
+        assertEq(
+            IDiamondLoupe(diamond).facetAddress(bytes4(keccak256("transfer(address,uint256)"))),
+            erc20Facet,
+            "registry facet visible through the loupe"
+        );
     }
 }
