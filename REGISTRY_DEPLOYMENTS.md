@@ -38,7 +38,17 @@ deployer address and no chain id:
 [`FacetInventory`](script/lib/FacetInventory.sol) (also the source of the parity gate — the same
 string, prefixed `lattice.`, is the facet's registry name key). `<version>` is the release semver
 string (`"0.1.0"`), the same value that packs to the registry's `uint64` version key
-(`major<<48 | minor<<24 | patch`).
+(`major<<48 | minor<<24 | patch`). The inventory's 99 entries include the four **diamond-lib core
+facets** (`DiamondCutFacet`, `DiamondLoupeFacet`, `ERC165Facet`, `OwnableFacet` — ERC-8153 since
+diamond-lib v0.2.0); they are release-versioned by the same `lattice.<Name>.<version>` scheme as
+every Lattice facet, so e.g. the loupe's registry key is `keccak256("lattice.DiamondLoupeFacet")`.
+
+**Factory loupe requirement.** `DiamondFactory.deploy` refuses to assemble an un-introspectable
+diamond: every fresh deploy's cuts must cover the four EIP-2535 loupe selectors (`facets()`,
+`facetFunctionSelectors(address)`, `facetAddresses()`, `facetAddress(bytes4)`) in some `Add` cut, or
+it reverts `DiamondFactory__MissingLoupeCoverage(missingSelector)`. Coverage is selector-based —
+any facet may provide it; the registered `lattice.DiamondLoupeFacet` entry is the one-line way. The
+CUT facet remains optional (immutable-by-design diamonds are legal).
 
 ## Address derivation
 

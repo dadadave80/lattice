@@ -3,6 +3,7 @@ pragma solidity ^0.8.30;
 
 import {Selectors} from "@diamond-test/helpers/Selectors.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
+import {IDiamondLoupe} from "@diamond/interfaces/IDiamondLoupe.sol";
 import {IFacet} from "@diamond/interfaces/IFacet.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {DeployRelease} from "@lattice-script/deploy/DeployRelease.s.sol";
@@ -27,7 +28,7 @@ contract ReleaseErc20Init {
 /// @title ReleasePipelineTest
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice THE issue #120 story end-to-end: {DeployRelease.release} stands up the whole canonical release
-///         (registry + factory + all 95 facets, registered and flagged latest) against CreateX, then —
+///         (registry + factory + all 99 facets, registered and flagged latest) against CreateX, then —
 ///         using ONLY the release outputs — the {DiamondFactory} resolves `latest("lattice.ERC20")` off the
 ///         registry and assembles a live ERC-20 diamond in one call. Proves: release → registry-resolved
 ///         latest → one-tx diamond → live token. Inherits {DeployRelease} and drives `this.release(...)` as
@@ -44,16 +45,20 @@ contract ReleasePipelineTest is GetSelectors, DeployRelease {
         vm.etch(CANONICAL, address(impl).code);
     }
 
-    /// @notice release("0.1.0") -> factory.deploy(latest lattice.ERC20 + classic ERC165 cut + init) -> a
-    ///         live ERC-20 diamond, all resolved off the release outputs alone.
+    /// @notice release("0.1.0") -> factory.deploy(latest lattice.ERC20 + latest lattice.DiamondLoupeFacet
+    ///         + classic ERC165 cut + init) -> a live, INTROSPECTABLE ERC-20 diamond, all resolved off the
+    ///         release outputs alone (the release registers the diamond-lib core facets too, so the
+    ///         factory's mandatory loupe coverage is satisfied straight from the catalog).
     function test_ReleaseThenFactoryAssemblesLiveErc20Diamond() public {
         // 1. The whole canonical release in one call.
         DeployRelease.ReleaseOutput memory out = this.release("0.1.0", address(this));
         DiamondFactory factory = DiamondFactory(out.factory);
 
-        // 2. The deployer's whole job: one recipe entry resolving the curator's LATEST pointer (version 0)...
-        RecipeEntry[] memory entries = new RecipeEntry[](1);
+        // 2. The deployer's whole job: two recipe entries resolving the curator's LATEST pointer (version
+        //    0) — the token facet and the release-registered diamond-lib loupe...
+        RecipeEntry[] memory entries = new RecipeEntry[](2);
         entries[0] = RecipeEntry({nameHash: ERC20_NAME, version: 0});
+        entries[1] = RecipeEntry({nameHash: keccak256("lattice.DiamondLoupeFacet"), version: 0});
 
         // ...one custom cut for the diamond-lib ERC165Facet, selectors from its OWN ERC-8153 export
         //    (diamond-lib >=0.2.0; the export excludes exportSelectors() itself, which the factory refuses)...
@@ -95,5 +100,10 @@ contract ReleasePipelineTest is GetSelectors, DeployRelease {
 
         // 4. The custom ERC165Facet cut dispatches too: init registered IERC20 via ERC-165.
         assertTrue(ERC165Facet(diamond).supportsInterface(type(IERC20).interfaceId), "ERC-165 custom cut live");
+
+        // 5. The release-registered loupe answers: 3 facets (ERC20 + DiamondLoupeFacet from the registry,
+        //    ERC165Facet as the custom cut) — the flagship pipeline diamond is INTROSPECTABLE.
+        assertEq(IDiamondLoupe(diamond).facetAddresses().length, 3, "loupe census");
+        assertTrue(IDiamondLoupe(diamond).facetAddress(bytes4(0x7a0ed627)) != address(0), "loupe self-routed");
     }
 }
