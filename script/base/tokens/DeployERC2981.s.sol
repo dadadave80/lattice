@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {DiamondLoupeFacet} from "@diamond/facets/DiamondLoupeFacet.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
+import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
 import {ERC2981} from "@lattice/tokens/ERC2981/ERC2981.sol";
 import {ERC2981Init} from "@lattice/tokens/ERC2981/ERC2981Init.sol";
 
@@ -17,16 +19,18 @@ import {ERC2981Init} from "@lattice/tokens/ERC2981/ERC2981Init.sol";
 contract DeployERC2981 is BaseDeploy {
     /// @notice Builds the ERC-2981 royalty diamond cuts + initializer (no broadcast, no proxy deploy).
     /// @param admin The address granted `DEFAULT_ADMIN_ROLE` (controls the royalty setters).
-    /// @return cuts The facet cuts (ERC165 + AccessControl + ERC2981).
-    /// @return init The {ERC2981Init} initializer address.
-    /// @return initCalldata The `init(admin)` calldata.
+    /// @return cuts The facet cuts (ERC165 + AccessControl + ERC2981 + DiamondLoupeFacet + AccessControlDiamondCut).
+    /// @return init The {MultiInit} running {ERC2981Init} then {DiamondIntrospectionInit.initUpgradeable}.
+    /// @return initCalldata The matching `multiInit` calldata.
     function buildCuts(address admin) public returns (FacetCut[] memory cuts, address init, bytes memory initCalldata) {
-        cuts = new FacetCut[](3);
-        cuts[0] = _cut(address(new ERC165Facet()), "ERC165Facet");
+        cuts = new FacetCut[](5);
+        cuts[0] = _cut(address(new ERC165Facet()));
         cuts[1] = _cut(address(new AccessControl()));
         cuts[2] = _cut(address(new ERC2981()));
-        init = address(new ERC2981Init());
-        initCalldata = abi.encodeCall(ERC2981Init.init, (admin));
+        cuts[3] = _cut(address(new DiamondLoupeFacet()));
+        cuts[4] = _cut(address(new AccessControlDiamondCut()));
+        (init, initCalldata) =
+            _withUpgradeableIntrospection(address(new ERC2981Init()), abi.encodeCall(ERC2981Init.init, (admin)));
     }
 
     /// @notice Deploys an ERC-2981 royalty diamond (broadcasting entrypoint for `forge script ... --broadcast`).

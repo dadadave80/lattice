@@ -5,7 +5,9 @@ import {Diamond} from "@diamond/Diamond.sol";
 import {MultiInit} from "@diamond/initializers/MultiInit.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
+import {AccessControlInit} from "@lattice/access/AccessControlInit.sol";
 import {IERC8153} from "@lattice/interfaces/external/IERC8153.sol";
+import {DiamondIntrospectionInit} from "@lattice/utils/DiamondIntrospectionInit.sol";
 import {Script} from "forge-std/Script.sol";
 
 /// @title BaseDeploy
@@ -158,5 +160,73 @@ abstract contract BaseDeploy is Script, GetSelectors {
     {
         MultiInit multiInit = new MultiInit();
         diamond = _assemble(cuts, address(multiInit), abi.encodeCall(MultiInit.multiInit, (inits, initCalldatas)));
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                      INTROSPECTION INIT CHAINING
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice Chains a recipe's module init with {DiamondIntrospectionInit.initUpgradeable} (IDiamondCut +
+    ///         IDiamondLoupe ERC-165 flags) behind ONE `MultiInit`-wrapped (init, calldata) pair — for
+    ///         recipes that cut `DiamondLoupeFacet` + a `diamondCut`-carrying facet. Keeps `buildCuts`'s
+    ///         single-init return shape so extension recipes and testbases compose unchanged.
+    /// @param moduleInit The recipe's own initializer contract.
+    /// @param moduleCalldata The calldata for `moduleInit`.
+    /// @return init The wrapping {MultiInit} address.
+    /// @return initCalldata The `multiInit([moduleInit, introspection], [moduleCalldata, initUpgradeable()])`.
+    function _withUpgradeableIntrospection(address moduleInit, bytes memory moduleCalldata)
+        internal
+        returns (address init, bytes memory initCalldata)
+    {
+        return _withIntrospection(moduleInit, moduleCalldata, true);
+    }
+
+    /// @notice Same chaining with {DiamondIntrospectionInit.initImmutable} (IDiamondLoupe flag ONLY) — for
+    ///         immutable-by-design recipes that cut `DiamondLoupeFacet` but deliberately no cut facet.
+    function _withImmutableIntrospection(address moduleInit, bytes memory moduleCalldata)
+        internal
+        returns (address init, bytes memory initCalldata)
+    {
+        return _withIntrospection(moduleInit, moduleCalldata, false);
+    }
+
+    /// @notice Chains a recipe's module init with {AccessControlInit} (seeding `admin` as
+    ///         `DEFAULT_ADMIN_ROLE`) and {DiamondIntrospectionInit.initUpgradeable} — the init shape of a
+    ///         Class-Z recipe's ADMIN overload, where the otherwise-immutable diamond additionally cuts
+    ///         `AccessControl` + `AccessControlDiamondCut` so `admin` can upgrade it.
+    /// @param moduleInit The recipe's own initializer contract.
+    /// @param moduleCalldata The calldata for `moduleInit`.
+    /// @param admin The address granted `DEFAULT_ADMIN_ROLE` (the upgrade authority).
+    function _withAdminUpgradeableIntrospection(address moduleInit, bytes memory moduleCalldata, address admin)
+        internal
+        returns (address init, bytes memory initCalldata)
+    {
+        address[] memory inits = new address[](3);
+        inits[0] = moduleInit;
+        inits[1] = address(new AccessControlInit());
+        inits[2] = address(new DiamondIntrospectionInit());
+        bytes[] memory calldatas = new bytes[](3);
+        calldatas[0] = moduleCalldata;
+        calldatas[1] = abi.encodeCall(AccessControlInit.init, (admin));
+        calldatas[2] = abi.encodeCall(DiamondIntrospectionInit.initUpgradeable, ());
+        init = address(new MultiInit());
+        initCalldata = abi.encodeCall(MultiInit.multiInit, (inits, calldatas));
+    }
+
+    /// @dev Shared body: wraps `[moduleInit, DiamondIntrospectionInit]` in a fresh {MultiInit}.
+    function _withIntrospection(address moduleInit, bytes memory moduleCalldata, bool upgradeable)
+        private
+        returns (address init, bytes memory initCalldata)
+    {
+        address[] memory inits = new address[](2);
+        inits[0] = moduleInit;
+        inits[1] = address(new DiamondIntrospectionInit());
+        bytes[] memory calldatas = new bytes[](2);
+        calldatas[0] = moduleCalldata;
+        calldatas[1] = upgradeable
+            ? abi.encodeCall(DiamondIntrospectionInit.initUpgradeable, ())
+            : abi.encodeCall(DiamondIntrospectionInit.initImmutable, ());
+        init = address(new MultiInit());
+        initCalldata = abi.encodeCall(MultiInit.multiInit, (inits, calldatas));
     }
 }

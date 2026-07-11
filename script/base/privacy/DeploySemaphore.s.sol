@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {DiamondLoupeFacet} from "@diamond/facets/DiamondLoupeFacet.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
+import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
 import {Semaphore} from "@lattice/privacy/Semaphore.sol";
 import {SemaphoreInit} from "@lattice/privacy/SemaphoreInit.sol";
 
@@ -19,19 +21,22 @@ contract DeploySemaphore is BaseDeploy {
     /// @notice Builds the Semaphore diamond cuts + initializer (no broadcast, no proxy deploy).
     /// @param admin The address granted `DEFAULT_ADMIN_ROLE` (controls `setVerifier`).
     /// @param verifier The {ISemaphoreVerifier} contract address used to check Semaphore proofs.
-    /// @return cuts The facet cuts (ERC165 + AccessControl + Semaphore).
-    /// @return init The {SemaphoreInit} initializer address.
-    /// @return initCalldata The `init(admin, verifier)` calldata.
+    /// @return cuts The facet cuts (ERC165 + AccessControl + Semaphore + DiamondLoupeFacet + AccessControlDiamondCut).
+    /// @return init The {MultiInit} running {SemaphoreInit} then {DiamondIntrospectionInit.initUpgradeable}.
+    /// @return initCalldata The matching `multiInit` calldata.
     function buildCuts(address admin, address verifier)
         public
         returns (FacetCut[] memory cuts, address init, bytes memory initCalldata)
     {
-        cuts = new FacetCut[](3);
-        cuts[0] = _cut(address(new ERC165Facet()), "ERC165Facet");
+        cuts = new FacetCut[](5);
+        cuts[0] = _cut(address(new ERC165Facet()));
         cuts[1] = _cut(address(new AccessControl()));
         cuts[2] = _cut(address(new Semaphore()));
-        init = address(new SemaphoreInit());
-        initCalldata = abi.encodeCall(SemaphoreInit.init, (admin, verifier));
+        cuts[3] = _cut(address(new DiamondLoupeFacet()));
+        cuts[4] = _cut(address(new AccessControlDiamondCut()));
+        (init, initCalldata) = _withUpgradeableIntrospection(
+            address(new SemaphoreInit()), abi.encodeCall(SemaphoreInit.init, (admin, verifier))
+        );
     }
 
     /// @notice Deploys a Semaphore diamond (broadcasting entrypoint for `forge script ... --broadcast`).

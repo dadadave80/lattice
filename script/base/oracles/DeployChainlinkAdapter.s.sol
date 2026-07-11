@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {DiamondLoupeFacet} from "@diamond/facets/DiamondLoupeFacet.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
+import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
 import {ChainlinkAdapter} from "@lattice/oracles/ChainlinkAdapter.sol";
 import {ChainlinkAdapterInit} from "@lattice/oracles/ChainlinkAdapterInit.sol";
 
@@ -18,16 +20,19 @@ import {ChainlinkAdapterInit} from "@lattice/oracles/ChainlinkAdapterInit.sol";
 contract DeployChainlinkAdapter is BaseDeploy {
     /// @notice Builds the Chainlink adapter diamond cuts + initializer (no broadcast, no proxy deploy).
     /// @param admin The address granted `DEFAULT_ADMIN_ROLE` (controls the feed registry).
-    /// @return cuts The facet cuts (ERC165 + AccessControl + ChainlinkAdapter).
-    /// @return init The {ChainlinkAdapterInit} initializer address.
-    /// @return initCalldata The `init(admin)` calldata.
+    /// @return cuts The facet cuts (ERC165 + AccessControl + ChainlinkAdapter + DiamondLoupeFacet + AccessControlDiamondCut).
+    /// @return init The {MultiInit} running {ChainlinkAdapterInit} then {DiamondIntrospectionInit.initUpgradeable}.
+    /// @return initCalldata The matching `multiInit` calldata.
     function buildCuts(address admin) public returns (FacetCut[] memory cuts, address init, bytes memory initCalldata) {
-        cuts = new FacetCut[](3);
-        cuts[0] = _cut(address(new ERC165Facet()), "ERC165Facet");
+        cuts = new FacetCut[](5);
+        cuts[0] = _cut(address(new ERC165Facet()));
         cuts[1] = _cut(address(new AccessControl()));
         cuts[2] = _cut(address(new ChainlinkAdapter()));
-        init = address(new ChainlinkAdapterInit());
-        initCalldata = abi.encodeCall(ChainlinkAdapterInit.init, (admin));
+        cuts[3] = _cut(address(new DiamondLoupeFacet()));
+        cuts[4] = _cut(address(new AccessControlDiamondCut()));
+        (init, initCalldata) = _withUpgradeableIntrospection(
+            address(new ChainlinkAdapterInit()), abi.encodeCall(ChainlinkAdapterInit.init, (admin))
+        );
     }
 
     /// @notice Deploys a Chainlink adapter diamond (broadcasting entrypoint for `forge script ... --broadcast`).

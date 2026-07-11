@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {DiamondLoupeFacet} from "@diamond/facets/DiamondLoupeFacet.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {ConstantProduct} from "@lattice/amm/ConstantProduct.sol";
 import {ConstantProductInit} from "@lattice/amm/ConstantProductInit.sol";
+import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
 
 /// @title DeployConstantProduct
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
@@ -20,19 +22,22 @@ contract DeployConstantProduct is BaseDeploy {
     /// @param admin The address granted `DEFAULT_ADMIN_ROLE`.
     /// @param tokenA One of the two pool reserve tokens.
     /// @param tokenB The other pool reserve token.
-    /// @return cuts The facet cuts (ERC165 + AccessControl + ConstantProduct).
-    /// @return init The {ConstantProductInit} initializer address.
-    /// @return initCalldata The `init(admin, tokenA, tokenB)` calldata.
+    /// @return cuts The facet cuts (ERC165 + AccessControl + ConstantProduct + DiamondLoupeFacet + AccessControlDiamondCut).
+    /// @return init The {MultiInit} running {ConstantProductInit} then {DiamondIntrospectionInit.initUpgradeable}.
+    /// @return initCalldata The matching `multiInit` calldata.
     function buildCuts(address admin, address tokenA, address tokenB)
         public
         returns (FacetCut[] memory cuts, address init, bytes memory initCalldata)
     {
-        cuts = new FacetCut[](3);
-        cuts[0] = _cut(address(new ERC165Facet()), "ERC165Facet");
+        cuts = new FacetCut[](5);
+        cuts[0] = _cut(address(new ERC165Facet()));
         cuts[1] = _cut(address(new AccessControl()));
         cuts[2] = _cut(address(new ConstantProduct()));
-        init = address(new ConstantProductInit());
-        initCalldata = abi.encodeCall(ConstantProductInit.init, (admin, tokenA, tokenB));
+        cuts[3] = _cut(address(new DiamondLoupeFacet()));
+        cuts[4] = _cut(address(new AccessControlDiamondCut()));
+        (init, initCalldata) = _withUpgradeableIntrospection(
+            address(new ConstantProductInit()), abi.encodeCall(ConstantProductInit.init, (admin, tokenA, tokenB))
+        );
     }
 
     /// @notice Deploys a ConstantProduct pool diamond (broadcasting entrypoint for `forge script ... --broadcast`).

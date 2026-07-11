@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {DiamondLoupeFacet} from "@diamond/facets/DiamondLoupeFacet.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {ENSReverseClaimer} from "@lattice/ens/ENSReverseClaimer.sol";
 import {ENSReverseClaimerInit} from "@lattice/ens/ENSReverseClaimerInit.sol";
+import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
 
 /// @title DeployENSReverseClaimer
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
@@ -19,19 +21,22 @@ contract DeployENSReverseClaimer is BaseDeploy {
     /// @notice Builds the ENS reverse-claimer diamond cuts + initializer (no broadcast, no proxy deploy).
     /// @param admin The address granted `DEFAULT_ADMIN_ROLE` (controls role assignment).
     /// @param registrar The external ENS reverse registrar the facet forwards `setName` to.
-    /// @return cuts The facet cuts (ERC165 + AccessControl + ENSReverseClaimer).
-    /// @return init The {ENSReverseClaimerInit} initializer address.
-    /// @return initCalldata The `init(admin, registrar)` calldata.
+    /// @return cuts The facet cuts (ERC165 + AccessControl + ENSReverseClaimer + DiamondLoupeFacet + AccessControlDiamondCut).
+    /// @return init The {MultiInit} running {ENSReverseClaimerInit} then {DiamondIntrospectionInit.initUpgradeable}.
+    /// @return initCalldata The matching `multiInit` calldata.
     function buildCuts(address admin, address registrar)
         public
         returns (FacetCut[] memory cuts, address init, bytes memory initCalldata)
     {
-        cuts = new FacetCut[](3);
-        cuts[0] = _cut(address(new ERC165Facet()), "ERC165Facet");
+        cuts = new FacetCut[](5);
+        cuts[0] = _cut(address(new ERC165Facet()));
         cuts[1] = _cut(address(new AccessControl()));
         cuts[2] = _cut(address(new ENSReverseClaimer()));
-        init = address(new ENSReverseClaimerInit());
-        initCalldata = abi.encodeCall(ENSReverseClaimerInit.init, (admin, registrar));
+        cuts[3] = _cut(address(new DiamondLoupeFacet()));
+        cuts[4] = _cut(address(new AccessControlDiamondCut()));
+        (init, initCalldata) = _withUpgradeableIntrospection(
+            address(new ENSReverseClaimerInit()), abi.encodeCall(ENSReverseClaimerInit.init, (admin, registrar))
+        );
     }
 
     /// @notice Deploys an ENS reverse-claimer diamond (broadcasting entrypoint for `forge script ... --broadcast`).

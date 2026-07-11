@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {DiamondLoupeFacet} from "@diamond/facets/DiamondLoupeFacet.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
+import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
 import {TellorAdapter} from "@lattice/oracles/TellorAdapter.sol";
 import {TellorAdapterInit} from "@lattice/oracles/TellorAdapterInit.sol";
 
@@ -19,19 +21,22 @@ contract DeployTellorAdapter is BaseDeploy {
     /// @notice Builds the Tellor adapter diamond cuts + initializer (no broadcast, no proxy deploy).
     /// @param admin The address granted `DEFAULT_ADMIN_ROLE` (controls the feed registry and `setTellor`).
     /// @param tellor The Tellor oracle contract the adapter reads reports from (reverts if zero).
-    /// @return cuts The facet cuts (ERC165 + AccessControl + TellorAdapter).
-    /// @return init The {TellorAdapterInit} initializer address.
-    /// @return initCalldata The `init(admin, tellor)` calldata.
+    /// @return cuts The facet cuts (ERC165 + AccessControl + TellorAdapter + DiamondLoupeFacet + AccessControlDiamondCut).
+    /// @return init The {MultiInit} running {TellorAdapterInit} then {DiamondIntrospectionInit.initUpgradeable}.
+    /// @return initCalldata The matching `multiInit` calldata.
     function buildCuts(address admin, address tellor)
         public
         returns (FacetCut[] memory cuts, address init, bytes memory initCalldata)
     {
-        cuts = new FacetCut[](3);
-        cuts[0] = _cut(address(new ERC165Facet()), "ERC165Facet");
+        cuts = new FacetCut[](5);
+        cuts[0] = _cut(address(new ERC165Facet()));
         cuts[1] = _cut(address(new AccessControl()));
         cuts[2] = _cut(address(new TellorAdapter()));
-        init = address(new TellorAdapterInit());
-        initCalldata = abi.encodeCall(TellorAdapterInit.init, (admin, tellor));
+        cuts[3] = _cut(address(new DiamondLoupeFacet()));
+        cuts[4] = _cut(address(new AccessControlDiamondCut()));
+        (init, initCalldata) = _withUpgradeableIntrospection(
+            address(new TellorAdapterInit()), abi.encodeCall(TellorAdapterInit.init, (admin, tellor))
+        );
     }
 
     /// @notice Deploys a Tellor adapter diamond (broadcasting entrypoint for `forge script ... --broadcast`).

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {DiamondLoupeFacet} from "@diamond/facets/DiamondLoupeFacet.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
@@ -8,6 +9,7 @@ import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {BridgeERC7802} from "@lattice/crosschain/BridgeERC7802.sol";
 import {BridgeERC7802Init} from "@lattice/crosschain/BridgeERC7802Init.sol";
 import {CrosschainLink} from "@lattice/crosschain/CrosschainLink.sol";
+import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
 
 /// @title DeployBridgeERC7802
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
@@ -20,20 +22,23 @@ contract DeployBridgeERC7802 is BaseDeploy {
     /// @notice Builds the ERC-7802 mint/burn bridge diamond cuts + initializer (no broadcast, no proxy deploy).
     /// @param admin The address granted `DEFAULT_ADMIN_ROLE` (controls the link/handler registry).
     /// @param token The ERC-7802 token minted/burned by the bridge.
-    /// @return cuts The facet cuts (ERC165 + AccessControl + CrosschainLink + BridgeERC7802).
-    /// @return init The {BridgeERC7802Init} initializer address.
-    /// @return initCalldata The `init(admin, token)` calldata.
+    /// @return cuts The facet cuts (ERC165 + AccessControl + CrosschainLink + BridgeERC7802 + DiamondLoupeFacet + AccessControlDiamondCut).
+    /// @return init The {MultiInit} running {BridgeERC7802Init} then {DiamondIntrospectionInit.initUpgradeable}.
+    /// @return initCalldata The matching `multiInit` calldata.
     function buildCuts(address admin, address token)
         public
         returns (FacetCut[] memory cuts, address init, bytes memory initCalldata)
     {
-        cuts = new FacetCut[](4);
-        cuts[0] = _cut(address(new ERC165Facet()), "ERC165Facet");
+        cuts = new FacetCut[](6);
+        cuts[0] = _cut(address(new ERC165Facet()));
         cuts[1] = _cut(address(new AccessControl()));
         cuts[2] = _cut(address(new CrosschainLink()));
         cuts[3] = _cut(address(new BridgeERC7802()));
-        init = address(new BridgeERC7802Init());
-        initCalldata = abi.encodeCall(BridgeERC7802Init.init, (admin, token));
+        cuts[4] = _cut(address(new DiamondLoupeFacet()));
+        cuts[5] = _cut(address(new AccessControlDiamondCut()));
+        (init, initCalldata) = _withUpgradeableIntrospection(
+            address(new BridgeERC7802Init()), abi.encodeCall(BridgeERC7802Init.init, (admin, token))
+        );
     }
 
     /// @notice Deploys an ERC-7802 mint/burn bridge diamond (broadcasting entrypoint for `forge script ...`).
