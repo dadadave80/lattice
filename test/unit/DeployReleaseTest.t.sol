@@ -62,7 +62,7 @@ contract DeployReleaseTest is Test, DeployRelease {
 
         // Every inventory facet: deployed at its predicted address, registered, and flagged latest.
         (string[] memory names,) = FacetInventory.inventory();
-        assertEq(names.length, 95, "inventory count drifted");
+        assertEq(names.length, 99, "inventory count drifted");
         assertEq(out.facets.length, names.length, "release output facet count mismatch");
         for (uint256 i; i < names.length; ++i) {
             assertGt(out.facets[i].code.length, 0, string.concat(names[i], ": no code at released address"));
@@ -231,21 +231,28 @@ contract DeployReleaseTest is Test, DeployRelease {
     //                              INVENTORY
     //////////////////////////////////////////////////////////////////////////*//
 
-    /// @notice Pins the inventory's internal consistency: exactly 95 entries, every path ends with
-    ///         `/<name>.sol:<name>` (so a swapped or drifted name<->path pairing fails loudly), and no
+    /// @notice Pins the inventory's internal consistency: exactly 99 entries, every path ends with
+    ///         `<name>.sol:<name>` (dir-qualified for src/ facets, bare-basename for the diamond-lib core
+    ///         facets — a swapped or drifted name<->path pairing fails loudly either way), and no
     ///         duplicate names (duplicate names would collide on nameHash + salt).
     function test_Inventory_NamePathPairingUniqueCount() public pure {
         (string[] memory names, string[] memory paths) = FacetInventory.inventory();
-        assertEq(names.length, 95, "inventory count drifted");
+        assertEq(names.length, 99, "inventory count drifted");
         assertEq(paths.length, names.length, "names/paths length mismatch");
 
         for (uint256 i; i < names.length; ++i) {
-            string memory suffix = string.concat("/", names[i], ".sol:", names[i]);
+            // Dir-qualified paths must end "/<name>.sol:<name>"; bare-basename lib entries ARE exactly
+            // "<name>.sol:<name>" (no leading slash to require).
+            string memory expected = string.concat(names[i], ".sol:", names[i]);
             bytes memory p = bytes(paths[i]);
-            bytes memory s = bytes(suffix);
-            assertGe(p.length, s.length, string.concat(names[i], ": path shorter than expected suffix"));
+            bytes memory s = bytes(expected);
+            bool bare = p.length == s.length;
+            assertTrue(bare || p.length > s.length, string.concat(names[i], ": path shorter than expected suffix"));
             for (uint256 j; j < s.length; ++j) {
                 assertEq(p[p.length - s.length + j], s[j], string.concat(names[i], ": path does not match its name"));
+            }
+            if (!bare) {
+                assertEq(p[p.length - s.length - 1], "/", string.concat(names[i], ": qualified path missing separator"));
             }
             for (uint256 k = i + 1; k < names.length; ++k) {
                 assertTrue(
