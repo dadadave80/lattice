@@ -69,6 +69,23 @@ contract MockWeth9Asset {
     receive() external payable {}
 }
 
+/// @notice Exposes {DeployGovernedVaultENS}'s internal status/attempt computation so tests assert the
+///         parsed `(state, waitSeconds, done, attempt)` values directly instead of scraping console output
+///         (the {RegisterEnsNameProbe} idiom). Stateless over `vault`, so one probe serves any vault.
+contract GovernanceDemoProbe is DeployGovernedVaultENS {
+    function status(address vault, string calldata ensName, address actor)
+        external
+        view
+        returns (uint8 state, uint256 waitSeconds, uint256 done, uint256 attempt)
+    {
+        return _demoStatus(vault, ensName, actor);
+    }
+
+    function activeAttempt(address vault, string calldata ensName) external view returns (uint256) {
+        return _activeAttempt(vault, ensName);
+    }
+}
+
 /// @title GovernanceDemoFork
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice Sepolia FORK proof of the {DeployGovernedVaultENS} self-cranking governance runbook against the
@@ -106,6 +123,7 @@ contract GovernanceDemoFork is Test {
     uint256 internal constant DEPOSIT = 1_000 ether;
 
     DeployGovernedVaultENS internal deployer;
+    GovernanceDemoProbe internal probe;
     TestnetAsset internal asset;
     address internal vault;
     address internal actor; // the script instance — the sender of every broadcast-free crank sub-call
@@ -144,6 +162,7 @@ contract GovernanceDemoFork is Test {
 
         asset = new TestnetAsset("Lattice Testnet Asset", "tLAT");
         deployer = new DeployGovernedVaultENS();
+        probe = new GovernanceDemoProbe();
         actor = address(deployer);
         vault = _deploy(address(asset), ENS_NAME);
     }
@@ -319,5 +338,110 @@ contract GovernanceDemoFork is Test {
         // THE PROOF: the LIVE reverse record now resolves to the NEW name, set by governance alone.
         assertEq(_liveReverseName(vault), RENAMED, "governance re-set the live primary name on-chain");
         assertEq(ENSReverseClaimer(vault).ensName(), RENAMED, "facet cache matches the live rename");
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //              RETRY DISAMBIGUATION — the un-brick proof
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice THE proof the deterministic-id brick is fixed: an attempt that DEFEATS (its vote window
+    ///         missed) no longer dead-ends the crank — the next crank self-heals onto a fresh attempt id,
+    ///         which then drives all the way to Executed on the LIVE registrar.
+    function test_Fork_DemoRecoversFromDefeatedAttempt() public {
+        // Attempt 0: dogfood + propose.
+        deployer.governanceDemoStep(vault, ENS_NAME, actor);
+        uint256 pid0 = deployer.demoProposalId(vault, ENS_NAME, 0);
+        assertEq(uint8(IGovernor(vault).state(pid0)), uint8(IGovernor.ProposalState.Pending), "attempt 0 pending");
+
+        // Miss the ENTIRE voting window without voting -> quorum unmet -> Defeated (the live brick trigger).
+        vm.warp(block.timestamp + 61 + 601);
+        assertEq(uint8(IGovernor(vault).state(pid0)), uint8(IGovernor.ProposalState.Defeated), "attempt 0 defeated");
+
+        // Self-heal: the next crank proposes a FRESH id (attempt 1), not a collision on the dead one.
+        deployer.governanceDemoStep(vault, ENS_NAME, actor);
+        uint256 pid1 = deployer.demoProposalId(vault, ENS_NAME, 1);
+        assertTrue(pid1 != pid0, "retry mints a fresh proposal id");
+        assertEq(deployer.demoProposalId(vault, ENS_NAME), pid1, "active attempt advanced to 1");
+        assertEq(probe.activeAttempt(vault, ENS_NAME), 1, "active attempt index is 1");
+        assertEq(uint8(IGovernor(vault).state(pid1)), uint8(IGovernor.ProposalState.Pending), "attempt 1 pending");
+        assertEq(
+            uint8(IGovernor(vault).state(pid0)), uint8(IGovernor.ProposalState.Defeated), "attempt 0 stays defeated"
+        );
+
+        // Drive attempt 1 through vote -> queue -> execute via the crank (the operator votes IN TIME now).
+        vm.warp(block.timestamp + 61);
+        deployer.governanceDemoStep(vault, ENS_NAME, actor); // votes attempt 1
+        assertTrue(IGovernor(vault).hasVoted(pid1, actor), "voted attempt 1");
+        vm.warp(block.timestamp + 601);
+        deployer.governanceDemoStep(vault, ENS_NAME, actor); // queues
+        vm.warp(block.timestamp + 301);
+        deployer.governanceDemoStep(vault, ENS_NAME, actor); // executes
+        assertEq(uint8(IGovernor(vault).state(pid1)), uint8(IGovernor.ProposalState.Executed), "attempt 1 executed");
+
+        // Same outcome as a first-try success: six selectors frozen, ENS reasserted on the LIVE registry.
+        bytes4[] memory six = _frozenSix();
+        for (uint256 i; i < six.length; ++i) {
+            assertTrue(IFrozenSelectors(vault).isSelectorFrozen(six[i]), "selector frozen after recovery");
+        }
+        assertEq(_liveReverseName(vault), ENS_NAME, "ENS reasserted via the recovered attempt");
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                 MACHINE-READABLE STATUS — per-phase values
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice The read-only status computation reports the correct (state, wait, done, attempt) at every
+    ///         phase — the values the external autonomous loop parses to decide crank-vs-sleep.
+    function test_Fork_StatusMatchesEachPhase() public {
+        // Nonexistent -> sentinel 8, actionable now, attempt 0.
+        (uint8 state, uint256 wait, uint256 done, uint256 attempt) = probe.status(vault, ENS_NAME, actor);
+        assertEq(state, 8, "nonexistent sentinel");
+        assertEq(wait, 0, "nonexistent is actionable (propose)");
+        assertEq(done, 0, "not done");
+        assertEq(attempt, 0, "attempt 0");
+
+        // Pending -> waits for the snapshot.
+        deployer.governanceDemoStep(vault, ENS_NAME, actor);
+        (state, wait, done,) = probe.status(vault, ENS_NAME, actor);
+        assertEq(state, uint8(IGovernor.ProposalState.Pending), "pending");
+        assertGt(wait, 0, "pending waits for the snapshot");
+        assertEq(done, 0, "not done");
+
+        // Active, not voted -> actionable now (vote).
+        vm.warp(block.timestamp + 61);
+        (state, wait,,) = probe.status(vault, ENS_NAME, actor);
+        assertEq(state, uint8(IGovernor.ProposalState.Active), "active");
+        assertEq(wait, 0, "active-not-voted is actionable (vote)");
+
+        // Active, voted -> waits for the deadline.
+        deployer.governanceDemoStep(vault, ENS_NAME, actor);
+        (state, wait,,) = probe.status(vault, ENS_NAME, actor);
+        assertEq(state, uint8(IGovernor.ProposalState.Active), "active after voting");
+        assertGt(wait, 0, "active-voted waits for the deadline");
+
+        // Queued, not ready -> waits for the timelock eta.
+        vm.warp(block.timestamp + 601);
+        deployer.governanceDemoStep(vault, ENS_NAME, actor);
+        (state, wait,,) = probe.status(vault, ENS_NAME, actor);
+        assertEq(state, uint8(IGovernor.ProposalState.Queued), "queued");
+        assertGt(wait, 0, "queued waits for the eta");
+
+        // Executed -> done.
+        vm.warp(block.timestamp + 301);
+        deployer.governanceDemoStep(vault, ENS_NAME, actor);
+        (state, wait, done,) = probe.status(vault, ENS_NAME, actor);
+        assertEq(state, uint8(IGovernor.ProposalState.Executed), "executed");
+        assertEq(wait, 0, "executed needs nothing");
+        assertEq(done, 1, "done");
+
+        // After a Defeated attempt on a fresh vault, status points at the fresh attempt as actionable.
+        address v2 = _deploy(address(asset), ENS_NAME);
+        deployer.governanceDemoStep(v2, ENS_NAME, actor); // propose attempt 0
+        vm.warp(block.timestamp + 61 + 601); // miss the window -> Defeated
+        (state, wait, done, attempt) = probe.status(v2, ENS_NAME, actor);
+        assertEq(state, 8, "defeated -> active attempt is the fresh nonexistent one");
+        assertEq(wait, 0, "fresh attempt is actionable (propose)");
+        assertEq(done, 0, "not done");
+        assertEq(attempt, 1, "advanced past the defeated attempt");
     }
 }
