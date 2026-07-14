@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {GetSelectors} from "@diamond-test/helpers/GetSelectors.sol";
 import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {DeployERC1155} from "@lattice-script/base/tokens/DeployERC1155.s.sol";
 import {ERC1155TestFacet} from "@lattice-test/helpers/ERC1155TestFacet.sol";
+import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
 import {ERC1155} from "@lattice/tokens/ERC1155/ERC1155.sol";
 
 /// @title ERC1155TestBase

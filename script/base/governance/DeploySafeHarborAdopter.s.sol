@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {DiamondLoupeFacet} from "@diamond/facets/DiamondLoupeFacet.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
+import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
 import {SafeHarborAdopter} from "@lattice/governance/SafeHarborAdopter.sol";
 import {SafeHarborAdopterInit} from "@lattice/governance/SafeHarborAdopterInit.sol";
 
@@ -20,19 +22,22 @@ contract DeploySafeHarborAdopter is BaseDeploy {
     /// @param admin The address granted `DEFAULT_ADMIN_ROLE` (administers `SAFE_HARBOR_ADMIN_ROLE`).
     /// @param registry The SEAL SafeHarborRegistry for this chain (must be non-zero).
     /// @param factory The SEAL AgreementFactory for this chain (zero allowed; disables `createAndAdopt`).
-    /// @return cuts The facet cuts (ERC165 + AccessControl + SafeHarborAdopter).
-    /// @return init The {SafeHarborAdopterInit} initializer address.
-    /// @return initCalldata The `init(admin, registry, factory)` calldata.
+    /// @return cuts The facet cuts (ERC165 + AccessControl + SafeHarborAdopter + DiamondLoupeFacet + AccessControlDiamondCut).
+    /// @return init The {MultiInit} running {SafeHarborAdopterInit} then {DiamondIntrospectionInit.initUpgradeable}.
+    /// @return initCalldata The matching `multiInit` calldata.
     function buildCuts(address admin, address registry, address factory)
         public
         returns (FacetCut[] memory cuts, address init, bytes memory initCalldata)
     {
-        cuts = new FacetCut[](3);
-        cuts[0] = _cut(address(new ERC165Facet()), "ERC165Facet");
+        cuts = new FacetCut[](5);
+        cuts[0] = _cut(address(new ERC165Facet()));
         cuts[1] = _cut(address(new AccessControl()));
         cuts[2] = _cut(address(new SafeHarborAdopter()));
-        init = address(new SafeHarborAdopterInit());
-        initCalldata = abi.encodeCall(SafeHarborAdopterInit.init, (admin, registry, factory));
+        cuts[3] = _cut(address(new DiamondLoupeFacet()));
+        cuts[4] = _cut(address(new AccessControlDiamondCut()));
+        (init, initCalldata) = _withUpgradeableIntrospection(
+            address(new SafeHarborAdopterInit()), abi.encodeCall(SafeHarborAdopterInit.init, (admin, registry, factory))
+        );
     }
 
     /// @notice Deploys a SafeHarborAdopter diamond (broadcasting entrypoint for `forge script ... --broadcast`).

@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {GetSelectors} from "@diamond-test/helpers/GetSelectors.sol";
 import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {DeployERC6538Registry} from "@lattice-script/base/privacy/DeployERC6538Registry.s.sol";
+import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
 import {ERC6538Registry} from "@lattice/privacy/ERC6538Registry.sol";
 import {Test} from "forge-std/Test.sol";
 

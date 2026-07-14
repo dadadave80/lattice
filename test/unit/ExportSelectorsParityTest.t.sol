@@ -73,7 +73,10 @@ contract ExportSelectorsParityTest is Test {
             string.concat(name, ": export must not include exportSelectors() (0x0ef22643)")
         );
 
-        bytes4[] memory expected = _stripSelf(_ffiMethodSelectors(path));
+        // Inspect by NAME, not path: inventory names are unique artifacts (pinned by the release
+        // consistency test), and the diamond-lib core entries use bare-basename identifiers that
+        // `forge inspect` cannot resolve as source paths.
+        bytes4[] memory expected = _stripSelf(_ffiMethodSelectors(name));
         assertTrue(_setEq(got, expected), string.concat(name, ": exportSelectors() != forge inspect method set"));
     }
 
@@ -220,7 +223,7 @@ contract ExportSelectorsParityTest is Test {
     //                              INVENTORY
     //////////////////////////////////////////////////////////////////////////*//
 
-    /// @dev The 94 Lattice facets under ERC-8153 parity, as (contract name, `"<file>:<Name>"` deploy path)
+    /// @dev The 99 release facets (95 Lattice + 4 diamond-lib core) under ERC-8153 parity, as (contract name, `"<file>:<Name>"` deploy path)
     ///      pairs — sourced from the SHARED {FacetInventory}, the same list {DeployRelease} releases from.
     function _inventory() private pure returns (string[] memory names, string[] memory paths) {
         (names, paths) = FacetInventory.inventory();

@@ -152,6 +152,58 @@ When adding new modules, be deliberate about caller semantics. Some existing mod
 calls, or Diamond self-dispatch. If a module is intended to support forwarded calls, use the
 project's established caller-resolution pattern consistently through the library layer.
 
+## Live testnet deployment (Sepolia)
+
+A reference deployment of the self-governed, ENS-named ERC-4626 vault recipe
+([`DeployGovernedVaultENS`](script/base/defi/DeployGovernedVaultENS.s.sol)) — one diamond hosting the
+share token, vault, vote checkpoints, Governor, TimelockController, EmergencyStop, and a governed
+upgrade path, with **no external admin**: the diamond administers itself, so a passed, timelock-executed
+shareholder proposal is the only way to upgrade or reconfigure it.
+
+| | |
+|---|---|
+| Diamond (vault) | [`0x7a498c34A8Dc3B6502889C21218Da0F8696b7bb6`](https://sepolia.etherscan.io/address/0x7a498c34a8dc3b6502889c21218da0f8696b7bb6#code) |
+| Primary ENS name | [`milestone1vault.lattice.studio.eth`](https://sepolia.app.ens.domains/milestone1vault.lattice.studio.eth) (forward + reverse) |
+| Underlying asset | [`TestnetAsset`](https://sepolia.etherscan.io/address/0x9383f665dff7529f6c28e732ec4136d332fa43c9#code) (open faucet: `mint(address,uint256)`) |
+
+All 14 facets are source-verified on Etherscan:
+[ERC165Facet](https://sepolia.etherscan.io/address/0xddd97e17031bfb32c3428f13a44eb0449bf4ac62#code) ·
+[AccessControl](https://sepolia.etherscan.io/address/0xf45d5e8bc4ad61059434983edab44963ccd0570d#code) ·
+[TimelockController](https://sepolia.etherscan.io/address/0x894507f901ffe88fb9ff7ebe8edaecb2b959da10#code) ·
+[ERC20](https://sepolia.etherscan.io/address/0x58e1f0d2ad3d94011c765adf0508dd588e3a7397#code) ·
+[ERC4626](https://sepolia.etherscan.io/address/0xcc2b1ff44ac9bd105448c3346c571f8cc6ad1c04#code) ·
+[VaultCore](https://sepolia.etherscan.io/address/0xecf68bd66e8457ceeee826bb5ab8040d36d2056f#code) ·
+[Votes](https://sepolia.etherscan.io/address/0x3e698cce280af053bf6bf3f61edfe4f75e2d77fe#code) ·
+[ERC20Votes](https://sepolia.etherscan.io/address/0x6db23df1319b12b2f8f36e78ccc409a6acbab56d#code) ·
+[Governor](https://sepolia.etherscan.io/address/0x50c36f0eaeec1e3fa6d5f4212067aaa9c9e0b938#code) ·
+[GovernedVault](https://sepolia.etherscan.io/address/0x27bcd5beff0594ff3abf4f27eeeb176f5f6d442b#code) ·
+[DiamondLoupeFacet](https://sepolia.etherscan.io/address/0x983c1f18254af7f0c998a6f24699f17c5d1d2ab1#code) ·
+[EmergencyStop](https://sepolia.etherscan.io/address/0xce342fdcade10e9571b8e249faa1f043cd0dd7e5#code) ·
+[GovernedDiamondCut](https://sepolia.etherscan.io/address/0xc4eb702847dac1f636cee9c06dc125f132f49183#code) ·
+[ENSReverseClaimer](https://sepolia.etherscan.io/address/0x91dfa8a2ee39ba605cb1633e46c8598d1649cc38#code) ·
+(init: [GovernedVaultENSInit](https://sepolia.etherscan.io/address/0x58147df75c453c269ade1b18270505c1b5dc91d0#code))
+
+Reproduce against any fresh testnet in one command (asset `0x0` auto-deploys a faucet asset; the diamond
+claims its ENS reverse record at init):
+
+```sh
+forge script script/base/defi/DeployGovernedVaultENS.s.sol --tc DeployGovernedVaultENS \
+  --rpc-url sepolia --account <keystore> --broadcast \
+  --sig "run(((address,string,string,uint8,uint256,uint48,uint32,uint256,uint256),address,string))" \
+  "((0x0000000000000000000000000000000000000000,\"Governed Vault Share\",\"gVLT\",0,300,60,600,0,4),<ReverseRegistrar>,\"<name>\")" \
+  --verify --etherscan-api-key "$ETHERSCAN_API_KEY"
+```
+
+The broadcast run log for this deployment is committed at
+[`broadcast/DeployGovernedVaultENS.s.sol/11155111/run-latest.json`](broadcast/DeployGovernedVaultENS.s.sol/11155111/run-latest.json).
+
+After deployment the diamond **governed itself on-chain**: a shareholder proposal — deposit → propose →
+vote → timelock queue → execute — froze the loupe/cut selector set and reasserted the ENS name through the
+diamond's own Governor + TimelockController, with every step cranked by
+[`script/config/governance-demo-loop.sh`](script/config/governance-demo-loop.sh). Execution proof:
+[`ProposalExecuted` tx](https://sepolia.etherscan.io/tx/0xfba2c57a3063883b43edb905fabcbe508c3ff9d3f0447d2d58fa2739c832df64)
+(run log: [`governanceDemo-latest.json`](broadcast/DeployGovernedVaultENS.s.sol/11155111/governanceDemo-latest.json)).
+
 ## Build & test
 
 ```sh

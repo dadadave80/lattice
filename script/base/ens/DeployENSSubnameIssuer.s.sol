@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {DiamondLoupeFacet} from "@diamond/facets/DiamondLoupeFacet.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {ENSSubnameIssuer} from "@lattice/ens/ENSSubnameIssuer.sol";
 import {ENSSubnameIssuerInit} from "@lattice/ens/ENSSubnameIssuerInit.sol";
+import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
 
 /// @title DeployENSSubnameIssuer
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
@@ -19,19 +21,22 @@ contract DeployENSSubnameIssuer is BaseDeploy {
     /// @notice Builds the ENS subname-issuer diamond cuts + initializer (no broadcast, no proxy deploy).
     /// @param admin The address granted `DEFAULT_ADMIN_ROLE` (controls role assignment).
     /// @param wrapper The external ENS NameWrapper the facet forwards `setSubnodeRecord` to.
-    /// @return cuts The facet cuts (ERC165 + AccessControl + ENSSubnameIssuer).
-    /// @return init The {ENSSubnameIssuerInit} initializer address.
-    /// @return initCalldata The `init(admin, wrapper)` calldata.
+    /// @return cuts The facet cuts (ERC165 + AccessControl + ENSSubnameIssuer + DiamondLoupeFacet + AccessControlDiamondCut).
+    /// @return init The {MultiInit} running {ENSSubnameIssuerInit} then {DiamondIntrospectionInit.initUpgradeable}.
+    /// @return initCalldata The matching `multiInit` calldata.
     function buildCuts(address admin, address wrapper)
         public
         returns (FacetCut[] memory cuts, address init, bytes memory initCalldata)
     {
-        cuts = new FacetCut[](3);
-        cuts[0] = _cut(address(new ERC165Facet()), "ERC165Facet");
+        cuts = new FacetCut[](5);
+        cuts[0] = _cut(address(new ERC165Facet()));
         cuts[1] = _cut(address(new AccessControl()));
         cuts[2] = _cut(address(new ENSSubnameIssuer()));
-        init = address(new ENSSubnameIssuerInit());
-        initCalldata = abi.encodeCall(ENSSubnameIssuerInit.init, (admin, wrapper));
+        cuts[3] = _cut(address(new DiamondLoupeFacet()));
+        cuts[4] = _cut(address(new AccessControlDiamondCut()));
+        (init, initCalldata) = _withUpgradeableIntrospection(
+            address(new ENSSubnameIssuerInit()), abi.encodeCall(ENSSubnameIssuerInit.init, (admin, wrapper))
+        );
     }
 
     /// @notice Deploys an ENS subname-issuer diamond (broadcasting entrypoint for `forge script ... --broadcast`).

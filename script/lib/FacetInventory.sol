@@ -13,11 +13,11 @@ pragma solidity ^0.8.30;
 ///      artifact contract names exactly: the registry key is `keccak256("lattice.<name>")` and the facet
 ///      deploy salt is `keccak256("lattice.<name>.<version>")`, so renaming an entry re-derives BOTH.
 library FacetInventory {
-    /// @notice The 94 Lattice release facets as (contract name, `"<file>:<Name>"` deploy path) pairs.
+    /// @notice The 99 release facets (95 Lattice + 4 diamond-lib core) as (contract name, `"<file>:<Name>"` deploy path) pairs.
     /// @return names The facet contract names (registry name = `"lattice." ++ name`).
     /// @return paths The matching `vm.getCode`/`deployCode` artifact paths, index-aligned with `names`.
     function inventory() internal pure returns (string[] memory names, string[] memory paths) {
-        string[94] memory n = [
+        string[99] memory n = [
             "AcrossBridgeAdapter",
             "AxelarGatewayAdapter",
             "BridgeERC20",
@@ -90,6 +90,7 @@ library FacetInventory {
             "PrivateVoting",
             "Semaphore",
             "ShieldedPool",
+            "AccessControlDiamondCut",
             "GovernedDiamondCut",
             "GovernedSafeDiamondCut",
             "Governor",
@@ -111,9 +112,16 @@ library FacetInventory {
             "ENSReverseClaimer",
             "ENSSubnameIssuer",
             "EIP712",
-            "Multicall"
+            "Multicall",
+            // diamond-lib core facets (>=0.2.0 they implement IFacet/ERC-8153, so they are releasable —
+            // release-versioned like every entry; the loupe entry is what lets factory recipes satisfy
+            // the mandatory loupe coverage straight from the registry)
+            "DiamondCutFacet",
+            "DiamondLoupeFacet",
+            "ERC165Facet",
+            "OwnableFacet"
         ];
-        string[94] memory p = [
+        string[99] memory p = [
             "src/crosschain/AcrossBridgeAdapter.sol:AcrossBridgeAdapter",
             "src/crosschain/AxelarGatewayAdapter.sol:AxelarGatewayAdapter",
             "src/crosschain/BridgeERC20.sol:BridgeERC20",
@@ -186,6 +194,7 @@ library FacetInventory {
             "src/privacy/PrivateVoting.sol:PrivateVoting",
             "src/privacy/Semaphore.sol:Semaphore",
             "src/privacy/ShieldedPool.sol:ShieldedPool",
+            "src/governance/AccessControlDiamondCut.sol:AccessControlDiamondCut",
             "src/governance/GovernedDiamondCut.sol:GovernedDiamondCut",
             "src/governance/GovernedSafeDiamondCut.sol:GovernedSafeDiamondCut",
             "src/governance/Governor.sol:Governor",
@@ -207,11 +216,17 @@ library FacetInventory {
             "src/ens/ENSReverseClaimer.sol:ENSReverseClaimer",
             "src/ens/ENSSubnameIssuer.sol:ENSSubnameIssuer",
             "src/utils/EIP712.sol:EIP712",
-            "src/utils/Multicall.sol:Multicall"
+            "src/utils/Multicall.sol:Multicall",
+            // basename identifiers: lib sources compile to out/<File>.sol/<Name>.json, so the
+            // dir-qualified "lib/..." form does not resolve for vm.getCode/deployCode.
+            "DiamondCutFacet.sol:DiamondCutFacet",
+            "DiamondLoupeFacet.sol:DiamondLoupeFacet",
+            "ERC165Facet.sol:ERC165Facet",
+            "OwnableFacet.sol:OwnableFacet"
         ];
-        names = new string[](94);
-        paths = new string[](94);
-        for (uint256 i; i < 94; ++i) {
+        names = new string[](99);
+        paths = new string[](99);
+        for (uint256 i; i < 99; ++i) {
             names[i] = n[i];
             paths[i] = p[i];
         }

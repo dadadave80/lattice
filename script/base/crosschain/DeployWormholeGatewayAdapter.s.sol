@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {DiamondLoupeFacet} from "@diamond/facets/DiamondLoupeFacet.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {WormholeGatewayAdapter} from "@lattice/crosschain/WormholeGatewayAdapter.sol";
 import {WormholeGatewayAdapterInit} from "@lattice/crosschain/WormholeGatewayAdapterInit.sol";
+import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
 
 /// @title DeployWormholeGatewayAdapter
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
@@ -21,19 +23,23 @@ contract DeployWormholeGatewayAdapter is BaseDeploy {
     /// @param admin The address granted `DEFAULT_ADMIN_ROLE` (controls every adapter setter).
     /// @param relayer The Wormhole relayer the adapter dispatches to and accepts deliveries from.
     /// @param wormholeChainId This chain's Wormhole chain id.
-    /// @return cuts The facet cuts (ERC165 + AccessControl + WormholeGatewayAdapter).
-    /// @return init The {WormholeGatewayAdapterInit} initializer address.
-    /// @return initCalldata The `init(admin, relayer, wormholeChainId)` calldata.
+    /// @return cuts The facet cuts (ERC165 + AccessControl + WormholeGatewayAdapter + DiamondLoupeFacet + AccessControlDiamondCut).
+    /// @return init The {MultiInit} running {WormholeGatewayAdapterInit} then {DiamondIntrospectionInit.initUpgradeable}.
+    /// @return initCalldata The matching `multiInit` calldata.
     function buildCuts(address admin, address relayer, uint16 wormholeChainId)
         public
         returns (FacetCut[] memory cuts, address init, bytes memory initCalldata)
     {
-        cuts = new FacetCut[](3);
-        cuts[0] = _cut(address(new ERC165Facet()), "ERC165Facet");
+        cuts = new FacetCut[](5);
+        cuts[0] = _cut(address(new ERC165Facet()));
         cuts[1] = _cut(address(new AccessControl()));
         cuts[2] = _cut(address(new WormholeGatewayAdapter()));
-        init = address(new WormholeGatewayAdapterInit());
-        initCalldata = abi.encodeCall(WormholeGatewayAdapterInit.init, (admin, relayer, wormholeChainId));
+        cuts[3] = _cut(address(new DiamondLoupeFacet()));
+        cuts[4] = _cut(address(new AccessControlDiamondCut()));
+        (init, initCalldata) = _withUpgradeableIntrospection(
+            address(new WormholeGatewayAdapterInit()),
+            abi.encodeCall(WormholeGatewayAdapterInit.init, (admin, relayer, wormholeChainId))
+        );
     }
 
     /// @notice Deploys a Wormhole adapter diamond (broadcasting entrypoint for `forge script ... --broadcast`).

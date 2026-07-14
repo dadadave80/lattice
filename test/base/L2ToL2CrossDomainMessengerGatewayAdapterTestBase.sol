@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {GetSelectors} from "@diamond-test/helpers/GetSelectors.sol";
 import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {
     DeployL2ToL2CrossDomainMessengerGatewayAdapter
 } from "@lattice-script/base/crosschain/DeployL2ToL2CrossDomainMessengerGatewayAdapter.s.sol";
+import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
 import {
     L2ToL2CrossDomainMessengerGatewayAdapter
 } from "@lattice/crosschain/L2ToL2CrossDomainMessengerGatewayAdapter.sol";

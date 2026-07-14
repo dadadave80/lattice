@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {DiamondLib} from "@diamond/libraries/DiamondLib.sol";
+import {OwnableLib} from "@diamond/libraries/OwnableLib.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {ERC7821ExecutorLib} from "@lattice/accounts/erc7579/libraries/ERC7821ExecutorLib.sol";
 import {AccountSignerLib} from "@lattice/accounts/libraries/AccountSignerLib.sol";
@@ -14,9 +16,12 @@ import {ERC4337ValidationLib} from "@lattice/accounts/libraries/ERC4337Validatio
 ///         the trusted EntryPoint, and registers the account interfaces.
 /// @dev The EntryPoint is fixed per factory deployment (immutable, read from this contract's own code even
 ///      under delegatecall). The account administers itself — `DEFAULT_ADMIN_ROLE` is granted to the account
-///      address, so owner/EntryPoint/module changes flow through the validated execution path, never a raw
-///      external admin. `init` is safe to expose: each `__*_init` asserts the initializing window, so a direct
-///      call (outside a `diamondCut`) reverts.
+///      address, AND the account is its own diamond-lib Ownable owner (the {DiamondCutFacet} gate), so
+///      owner/EntryPoint/module changes AND upgrades flow through the validated execution path (a self-call
+///      via the ERC-7821 executor / EntryPoint), never a raw external admin. Without the `initializeOwner`
+///      step the blueprint's cut facet was a decoy: the owner slot stayed zero and `diamondCut` reverted
+///      `Unauthorized()` for every caller, freezing the account forever. `init` is safe to expose: each
+///      `__*_init` asserts the initializing window, so a direct call (outside a `diamondCut`) reverts.
 contract AccountInit {
     /// @notice The EntryPoint every account from this blueprint trusts to call `validateUserOp`.
     address public immutable ENTRY_POINT;
@@ -46,6 +51,11 @@ contract AccountInit {
     }
 
     function _init(address owner) private {
+        // The account is its OWN Ownable owner: diamond-lib's DiamondCutFacet gates on this slot, so the
+        // only upgrade path is a validated self-call (executor / EntryPoint) — never an external EOA.
+        OwnableLib.initializeOwner(address(this));
+        // Advertise the cut + loupe interfaces the blueprint actually routes (IDiamondCut + IDiamondLoupe).
+        DiamondLib.registerInterface();
         AccessControlLib.__AccessControl_init(address(this));
         AccountSignerLib.__AccountSigner_init(owner);
         ERC4337ValidationLib.__ERC4337Validation_init(ENTRY_POINT);

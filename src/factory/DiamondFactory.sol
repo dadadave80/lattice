@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {Diamond} from "@diamond/Diamond.sol";
-import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
+import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {IERC8153} from "@lattice/interfaces/external/IERC8153.sol";
 import {IDiamondFactory, RecipeEntry} from "@lattice/interfaces/factory/IDiamondFactory.sol";
 import {ILatticeRegistry} from "@lattice/interfaces/registry/ILatticeRegistry.sol";
@@ -88,6 +88,12 @@ contract DiamondFactory is IDiamondFactory {
             cuts[entriesLength + i] = customCuts[i];
         }
 
+        // EIP-2535 introspection is MANDATORY in factory-assembled diamonds: every loupe selector must be
+        // covered by some `Add` cut (coverage-based — any facet may provide them; the CUT facet stays
+        // optional, so immutable-by-design diamonds remain legal). Runs only on fresh deploys: idempotent
+        // re-calls above skip resolution, so full coverage is unknowable there (recipe-ignored semantics).
+        _checkLoupeCoverage(cuts);
+
         Diamond proxy = new Diamond{salt: s}();
         proxy.initialize(cuts, init, initCalldata);
 
@@ -97,6 +103,54 @@ contract DiamondFactory is IDiamondFactory {
     /// @inheritdoc IDiamondFactory
     function predict(address deployer, bytes32 salt) external view returns (address diamond) {
         diamond = _predict(_saltFor(deployer, salt));
+    }
+
+    /// @dev Two passes over the materialized cuts, making the loupe-routing guarantee SOUND for the
+    ///      assembly transaction:
+    ///      1. PRESENCE — reverts {IDiamondFactory.DiamondFactory__MissingLoupeCoverage} with the FIRST
+    ///         loupe selector no `Add` cut routes (fixed order: `facets()`,
+    ///         `facetFunctionSelectors(address)`, `facetAddresses()`, `facetAddress(bytes4)`).
+    ///      2. NO-UNDO — reverts {IDiamondFactory.DiamondFactory__LoupeSelectorNotReplaceable} if any
+    ///         `Replace`/`Remove` cut in the SAME deploy touches a loupe selector: without this, a recipe
+    ///         like `[Add(loupe), Remove(loupe)]` would pass the presence scan yet assemble a loupe-less
+    ///         (or mis-routed) diamond. Fresh-deploy recipes may only ADD loupe routing; re-pointing it is
+    ///         a post-deploy upgrade concern, never an assembly one.
+    ///      What this does NOT guarantee: that the routed code correctly IMPLEMENTS the loupe — custom-cut
+    ///      facets are the recipe author's responsibility (see `IFacet`'s security note on self-reported
+    ///      selectors); registry cuts at least pin codehash + export blob.
+    function _checkLoupeCoverage(FacetCut[] memory cuts) private pure {
+        bytes4[4] memory loupe = [bytes4(0x7a0ed627), bytes4(0xadfca15e), bytes4(0x52ef6b2c), bytes4(0xcdffacc6)];
+        uint256 cutsLength = cuts.length;
+
+        // 1. Presence: every loupe selector is Added by some cut.
+        for (uint256 k; k < 4; ++k) {
+            bytes4 wanted = loupe[k];
+            bool covered;
+            for (uint256 i; i < cutsLength && !covered; ++i) {
+                if (cuts[i].action != FacetCutAction.Add) continue;
+                bytes4[] memory selectors = cuts[i].functionSelectors;
+                for (uint256 j; j < selectors.length; ++j) {
+                    if (selectors[j] == wanted) {
+                        covered = true;
+                        break;
+                    }
+                }
+            }
+            if (!covered) revert DiamondFactory__MissingLoupeCoverage(wanted);
+        }
+
+        // 2. No-undo: no Replace/Remove in this same deploy may touch a loupe selector.
+        for (uint256 i; i < cutsLength; ++i) {
+            if (cuts[i].action == FacetCutAction.Add) continue;
+            bytes4[] memory selectors = cuts[i].functionSelectors;
+            for (uint256 j; j < selectors.length; ++j) {
+                for (uint256 k; k < 4; ++k) {
+                    if (selectors[j] == loupe[k]) {
+                        revert DiamondFactory__LoupeSelectorNotReplaceable(selectors[j]);
+                    }
+                }
+            }
+        }
     }
 
     /// @dev Binds the diamond address to its deployer: `keccak256(deployer, salt)`.
