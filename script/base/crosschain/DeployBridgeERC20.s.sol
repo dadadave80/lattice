@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {DiamondLoupeFacet} from "@diamond/facets/DiamondLoupeFacet.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
@@ -8,6 +9,7 @@ import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {BridgeERC20} from "@lattice/crosschain/BridgeERC20.sol";
 import {BridgeERC20Init} from "@lattice/crosschain/BridgeERC20Init.sol";
 import {CrosschainLink} from "@lattice/crosschain/CrosschainLink.sol";
+import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
 
 /// @title DeployBridgeERC20
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
@@ -20,20 +22,23 @@ contract DeployBridgeERC20 is BaseDeploy {
     /// @notice Builds the ERC-20 custody bridge diamond cuts + initializer (no broadcast, no proxy deploy).
     /// @param admin The address granted `DEFAULT_ADMIN_ROLE` (controls the link/handler registry).
     /// @param token The legacy ERC-20 token custodied by the bridge.
-    /// @return cuts The facet cuts (ERC165 + AccessControl + CrosschainLink + BridgeERC20).
-    /// @return init The {BridgeERC20Init} initializer address.
-    /// @return initCalldata The `init(admin, token)` calldata.
+    /// @return cuts The facet cuts (ERC165 + AccessControl + CrosschainLink + BridgeERC20 + DiamondLoupeFacet + AccessControlDiamondCut).
+    /// @return init The {MultiInit} running {BridgeERC20Init} then {DiamondIntrospectionInit.initUpgradeable}.
+    /// @return initCalldata The matching `multiInit` calldata.
     function buildCuts(address admin, address token)
         public
         returns (FacetCut[] memory cuts, address init, bytes memory initCalldata)
     {
-        cuts = new FacetCut[](4);
-        cuts[0] = _cut(address(new ERC165Facet()), "ERC165Facet");
+        cuts = new FacetCut[](6);
+        cuts[0] = _cut(address(new ERC165Facet()));
         cuts[1] = _cut(address(new AccessControl()));
         cuts[2] = _cut(address(new CrosschainLink()));
         cuts[3] = _cut(address(new BridgeERC20()));
-        init = address(new BridgeERC20Init());
-        initCalldata = abi.encodeCall(BridgeERC20Init.init, (admin, token));
+        cuts[4] = _cut(address(new DiamondLoupeFacet()));
+        cuts[5] = _cut(address(new AccessControlDiamondCut()));
+        (init, initCalldata) = _withUpgradeableIntrospection(
+            address(new BridgeERC20Init()), abi.encodeCall(BridgeERC20Init.init, (admin, token))
+        );
     }
 
     /// @notice Deploys an ERC-20 custody bridge diamond (broadcasting entrypoint for `forge script ...`).

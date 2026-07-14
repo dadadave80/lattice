@@ -1,7 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {CannotAddFunctionToDiamondThatAlreadyExists, FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
+import {DiamondLoupeFacet} from "@diamond/facets/DiamondLoupeFacet.sol";
+import {IDiamondLoupe} from "@diamond/interfaces/IDiamondLoupe.sol";
+import {
+    CannotAddFunctionToDiamondThatAlreadyExists,
+    Facet,
+    FacetCut,
+    FacetCutAction
+} from "@diamond/libraries/DiamondLib.sol";
 import {DiamondFactory} from "@lattice/factory/DiamondFactory.sol";
 import {IDiamondFactory, RecipeEntry} from "@lattice/interfaces/factory/IDiamondFactory.sol";
 import {ILatticeRegistry} from "@lattice/interfaces/registry/ILatticeRegistry.sol";
@@ -79,6 +86,22 @@ contract MockFlippingFacet {
     }
 }
 
+/// @dev A COMBINED facet exposing the four loupe selectors alongside its own — proves coverage is
+///      selector-based, not facet-identity-based (any facet may provide the loupe surface).
+contract MockCombinedLoupeFacet {
+    function facets() external pure returns (Facet[] memory f) {}
+    function facetFunctionSelectors(address) external pure returns (bytes4[] memory f) {}
+    function facetAddresses() external pure returns (address[] memory a) {}
+
+    function facetAddress(bytes4) external pure returns (address) {
+        return address(0);
+    }
+
+    function combinedPing() external pure returns (uint256) {
+        return 77;
+    }
+}
+
 /// @dev Initializer whose `init()` always reverts — the deploy-atomicity fixture.
 contract MockRevertingInit {
     function init() external pure {
@@ -135,6 +158,30 @@ contract DiamondFactoryTest is Test {
         cuts = new FacetCut[](0);
     }
 
+    /// @dev The four EIP-2535 loupe selectors, in the factory's coverage-check order.
+    function _loupeSelectors() internal pure returns (bytes4[] memory selectors) {
+        selectors = new bytes4[](4);
+        selectors[0] = bytes4(0x7a0ed627); // facets()
+        selectors[1] = bytes4(0xadfca15e); // facetFunctionSelectors(address)
+        selectors[2] = bytes4(0x52ef6b2c); // facetAddresses()
+        selectors[3] = bytes4(0xcdffacc6); // facetAddress(bytes4)
+    }
+
+    /// @dev A classic Add cut of the REAL {DiamondLoupeFacet} — the minimum loupe coverage every fresh
+    ///      factory deploy must now carry.
+    function _loupeCut() internal returns (FacetCut[] memory cuts) {
+        cuts = _customCut(address(new DiamondLoupeFacet()), _loupeSelectors());
+    }
+
+    /// @dev `cuts` with the loupe cut appended (fixtures whose recipes carry their own custom cuts).
+    function _withLoupe(FacetCut[] memory cuts) internal returns (FacetCut[] memory merged) {
+        merged = new FacetCut[](cuts.length + 1);
+        for (uint256 i; i < cuts.length; ++i) {
+            merged[i] = cuts[i];
+        }
+        merged[cuts.length] = _loupeCut()[0];
+    }
+
     function _registerV1() internal returns (address facet) {
         facet = address(new MockValueV1Facet());
         vm.prank(owner);
@@ -161,7 +208,7 @@ contract DiamondFactoryTest is Test {
     function test_DeployResolvesPinnedEntryAndDispatches() public {
         _registerV1();
 
-        address diamond = factory.deploy(_entries(_v(1, 0, 0)), _noCuts(), address(0), "", SALT);
+        address diamond = factory.deploy(_entries(_v(1, 0, 0)), _loupeCut(), address(0), "", SALT);
 
         assertEq(diamond, factory.predict(address(this), SALT), "deploy != predict");
         assertTrue(diamond.code.length != 0, "diamond has code");
@@ -176,7 +223,7 @@ contract DiamondFactoryTest is Test {
         vm.prank(owner);
         registry.setLatest(NAME, _v(2, 0, 0));
 
-        address diamond = factory.deploy(_entries(0), _noCuts(), address(0), "", SALT);
+        address diamond = factory.deploy(_entries(0), _loupeCut(), address(0), "", SALT);
 
         // The produced diamond dispatches v2 behavior, and the resolved cut is the v2 facet.
         assertEq(IMockValue(diamond).value(), 2, "version 0 resolves latest (v2)");
@@ -192,7 +239,7 @@ contract DiamondFactoryTest is Test {
         registry.setLatest(NAME, _v(2, 0, 0));
 
         // A nonzero pin resolves that exact version even while `latest` points elsewhere.
-        address diamond = factory.deploy(_entries(_v(1, 0, 0)), _noCuts(), address(0), "", SALT);
+        address diamond = factory.deploy(_entries(_v(1, 0, 0)), _loupeCut(), address(0), "", SALT);
 
         assertEq(IMockValue(diamond).value(), 1, "pinned v1 wins over latest v2");
     }
@@ -211,9 +258,10 @@ contract DiamondFactoryTest is Test {
         pongSelectors[0] = MockPongFacet.pong.selector;
         bytes4[] memory echoSelectors = new bytes4[](1);
         echoSelectors[0] = MockEchoFacet.echo.selector;
-        FacetCut[] memory customCuts = new FacetCut[](2);
+        FacetCut[] memory customCuts = new FacetCut[](3);
         customCuts[0] = FacetCut(address(new MockPongFacet()), FacetCutAction.Add, pongSelectors);
         customCuts[1] = FacetCut(address(new MockEchoFacet()), FacetCutAction.Add, echoSelectors);
+        customCuts[2] = FacetCut(address(new DiamondLoupeFacet()), FacetCutAction.Add, _loupeSelectors());
 
         address diamond = factory.deploy(entries, customCuts, address(0), "", SALT);
 
@@ -233,7 +281,8 @@ contract DiamondFactoryTest is Test {
         bytes4[] memory selectors = new bytes4[](1);
         selectors[0] = MockPongFacet.pong.selector;
 
-        address diamond = factory.deploy(_noEntries(), _customCut(address(pongFacet), selectors), address(0), "", SALT);
+        address diamond =
+            factory.deploy(_noEntries(), _withLoupe(_customCut(address(pongFacet), selectors)), address(0), "", SALT);
 
         assertEq(MockPongFacet(diamond).pong(), 42, "custom cut dispatches");
     }
@@ -244,8 +293,9 @@ contract DiamondFactoryTest is Test {
         bytes4[] memory selectors = new bytes4[](1);
         selectors[0] = MockPongFacet.pong.selector;
 
-        address diamond =
-            factory.deploy(_entries(_v(1, 0, 0)), _customCut(address(pongFacet), selectors), address(0), "", SALT);
+        address diamond = factory.deploy(
+            _entries(_v(1, 0, 0)), _withLoupe(_customCut(address(pongFacet), selectors)), address(0), "", SALT
+        );
 
         assertEq(IMockValue(diamond).value(), 1, "registry entry dispatches");
         assertEq(MockPongFacet(diamond).pong(), 42, "appended custom cut dispatches");
@@ -284,12 +334,13 @@ contract DiamondFactoryTest is Test {
         bytes4[] memory selectors = new bytes4[](1);
         selectors[0] = MockValueV1Facet.value.selector;
 
+        FacetCut[] memory collidingCuts = _withLoupe(_customCut(collidingFacet, selectors)); // hoisted: CREATEs must not consume the expectRevert
         vm.expectRevert(
             abi.encodeWithSelector(
                 CannotAddFunctionToDiamondThatAlreadyExists.selector, MockValueV1Facet.value.selector
             )
         );
-        factory.deploy(_entries(_v(1, 0, 0)), _customCut(collidingFacet, selectors), address(0), "", SALT);
+        factory.deploy(_entries(_v(1, 0, 0)), collidingCuts, address(0), "", SALT);
     }
 
     function test_CustomReplaceCutRePointsRegistrySelector() public {
@@ -299,8 +350,9 @@ contract DiamondFactoryTest is Test {
         // registry cut just added — the deployer customizing their own diamond, by design.
         bytes4[] memory selectors = new bytes4[](1);
         selectors[0] = MockValueV1Facet.value.selector;
-        FacetCut[] memory customCuts = new FacetCut[](1);
+        FacetCut[] memory customCuts = new FacetCut[](2);
         customCuts[0] = FacetCut(address(new MockValueV2Facet()), FacetCutAction.Replace, selectors);
+        customCuts[1] = FacetCut(address(new DiamondLoupeFacet()), FacetCutAction.Add, _loupeSelectors());
 
         address diamond = factory.deploy(_entries(_v(1, 0, 0)), customCuts, address(0), "", SALT);
 
@@ -313,18 +365,18 @@ contract DiamondFactoryTest is Test {
 
     function test_DeployIsIdempotentForSameSenderAndSalt() public {
         _registerV1();
-        address first = factory.deploy(_entries(_v(1, 0, 0)), _noCuts(), address(0), "", SALT);
+        address first = factory.deploy(_entries(_v(1, 0, 0)), _loupeCut(), address(0), "", SALT);
 
         // Second identical deploy returns the SAME address, does not revert, and emits nothing new.
         vm.recordLogs();
-        address second = factory.deploy(_entries(_v(1, 0, 0)), _noCuts(), address(0), "", SALT);
+        address second = factory.deploy(_entries(_v(1, 0, 0)), _loupeCut(), address(0), "", SALT);
         assertEq(second, first, "idempotent return");
         assertEq(vm.getRecordedLogs().length, 0, "re-deploy must not emit");
     }
 
     function test_IdempotentReturnIgnoresNewRecipeAndSkipsResolution() public {
         _registerV1();
-        address first = factory.deploy(_entries(_v(1, 0, 0)), _noCuts(), address(0), "", SALT);
+        address first = factory.deploy(_entries(_v(1, 0, 0)), _loupeCut(), address(0), "", SALT);
 
         // The CREATE2 address commits to (sender, salt) ONLY, never to the recipe: a repeat call with a
         // recipe that could not deploy fresh (unregistered name) still returns the existing diamond —
@@ -340,7 +392,7 @@ contract DiamondFactoryTest is Test {
 
     function test_DeployRefusesExportSelectorEvenWhenAlreadyDeployed() public {
         _registerV1();
-        factory.deploy(_entries(_v(1, 0, 0)), _noCuts(), address(0), "", SALT);
+        factory.deploy(_entries(_v(1, 0, 0)), _loupeCut(), address(0), "", SALT);
 
         // Argument validation precedes the idempotent return: a forbidden custom cut is refused even though
         // the diamond already exists and nothing would be cut — an invalid recipe is never quietly
@@ -354,14 +406,15 @@ contract DiamondFactoryTest is Test {
 
     function test_PredictParityAcrossSendersAndSalts() public {
         _registerV1();
-        address deployed = factory.deploy(_entries(_v(1, 0, 0)), _noCuts(), address(0), "", SALT);
+        address deployed = factory.deploy(_entries(_v(1, 0, 0)), _loupeCut(), address(0), "", SALT);
         assertEq(deployed, factory.predict(address(this), SALT), "predict parity");
 
         // A different sender lands at a different address (sender is folded into the salt).
         address other = makeAddr("otherDeployer");
         assertTrue(factory.predict(other, SALT) != deployed, "sender-distinct address");
+        FacetCut[] memory otherLoupe = _loupeCut(); // hoisted: the CREATE must not consume the prank
         vm.prank(other);
-        address otherDeployed = factory.deploy(_entries(_v(1, 0, 0)), _noCuts(), address(0), "", SALT);
+        address otherDeployed = factory.deploy(_entries(_v(1, 0, 0)), otherLoupe, address(0), "", SALT);
         assertEq(otherDeployed, factory.predict(other, SALT), "predict parity for other sender");
 
         // A different salt lands at a different address for the same sender.
@@ -419,14 +472,13 @@ contract DiamondFactoryTest is Test {
 
         // The init delegatecall reverts inside {Diamond.initialize}; DiamondLib bubbles the raw reason and
         // the whole deploy — CREATE2 included — unwinds.
+        FacetCut[] memory loupeCut = _loupeCut(); // hoisted: the CREATE must not consume the expectRevert
         vm.expectRevert("init failed");
-        factory.deploy(
-            _entries(_v(1, 0, 0)), _noCuts(), revertingInit, abi.encodeCall(MockRevertingInit.init, ()), SALT
-        );
+        factory.deploy(_entries(_v(1, 0, 0)), loupeCut, revertingInit, abi.encodeCall(MockRevertingInit.init, ()), SALT);
         assertEq(predicted.code.length, 0, "CREATE2 address left unoccupied");
 
         // The same (sender, salt) stays retryable with a working recipe, landing at the SAME address.
-        address diamond = factory.deploy(_entries(_v(1, 0, 0)), _noCuts(), address(0), "", SALT);
+        address diamond = factory.deploy(_entries(_v(1, 0, 0)), _loupeCut(), address(0), "", SALT);
         assertEq(diamond, predicted, "retry lands at the predicted address");
         assertEq(IMockValue(diamond).value(), 1, "retried diamond is live");
     }
@@ -438,9 +490,162 @@ contract DiamondFactoryTest is Test {
     function test_DeployEmitsDiamondDeployed() public {
         _registerV1();
         address predicted = factory.predict(address(this), SALT);
+        FacetCut[] memory loupeCut = _loupeCut(); // hoisted: the CREATE must not consume the expectEmit
 
         vm.expectEmit(true, true, false, true);
         emit IDiamondFactory.DiamondDeployed(predicted, address(this), SALT);
+        factory.deploy(_entries(_v(1, 0, 0)), loupeCut, address(0), "", SALT);
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                         LOUPE-COVERAGE VALIDATION
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice A fresh deploy whose cuts cover NO loupe selector is refused, naming the FIRST missing
+    ///         selector in the factory's fixed check order (`facets()` = 0x7a0ed627).
+    function test_DeployRevertsOnMissingLoupeCoverage() public {
+        _registerV1();
+        vm.expectRevert(
+            abi.encodeWithSelector(IDiamondFactory.DiamondFactory__MissingLoupeCoverage.selector, bytes4(0x7a0ed627))
+        );
         factory.deploy(_entries(_v(1, 0, 0)), _noCuts(), address(0), "", SALT);
+    }
+
+    /// @notice PARTIAL coverage is refused too, naming exactly the selector that is missing.
+    function test_DeployRevertsOnPartialLoupeCoverageNamingTheGap() public {
+        _registerV1();
+        // Cover facets()/facetFunctionSelectors()/facetAddresses() but NOT facetAddress(bytes4).
+        bytes4[] memory threeOfFour = new bytes4[](3);
+        threeOfFour[0] = bytes4(0x7a0ed627);
+        threeOfFour[1] = bytes4(0xadfca15e);
+        threeOfFour[2] = bytes4(0x52ef6b2c);
+        FacetCut[] memory cuts = _customCut(address(new DiamondLoupeFacet()), threeOfFour);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(IDiamondFactory.DiamondFactory__MissingLoupeCoverage.selector, bytes4(0xcdffacc6))
+        );
+        factory.deploy(_entries(_v(1, 0, 0)), cuts, address(0), "", SALT);
+    }
+
+    /// @notice Coverage is SELECTOR-based, never facet-identity-based: a combined facet that happens to
+    ///         expose the loupe surface alongside its own satisfies the requirement.
+    function test_LoupeCoverageSatisfiedByAnyFacet() public {
+        _registerV1();
+        address combined = address(new MockCombinedLoupeFacet());
+        bytes4[] memory selectors = new bytes4[](5);
+        selectors[0] = bytes4(0x7a0ed627);
+        selectors[1] = bytes4(0xadfca15e);
+        selectors[2] = bytes4(0x52ef6b2c);
+        selectors[3] = bytes4(0xcdffacc6);
+        selectors[4] = MockCombinedLoupeFacet.combinedPing.selector;
+
+        // Deploy SUCCEEDS — the combined facet's selectors satisfy coverage (behavior is the deployer's
+        // responsibility; the factory validates the selector surface, not the implementation).
+        address diamond = factory.deploy(_entries(_v(1, 0, 0)), _customCut(combined, selectors), address(0), "", SALT);
+        assertEq(MockCombinedLoupeFacet(diamond).combinedPing(), 77, "combined facet dispatches");
+        assertEq(IMockValue(diamond).value(), 1, "registry cut dispatches alongside");
+    }
+
+    /// @notice Only `Add` cuts count toward coverage: a `Replace`-only loupe cut cannot satisfy it (on a
+    ///         fresh diamond a Replace of a never-added selector would revert downstream anyway).
+    function test_ReplaceOnlyLoupeCutDoesNotCountAsCoverage() public {
+        _registerV1();
+        FacetCut[] memory cuts = new FacetCut[](1);
+        cuts[0] = FacetCut({
+            facetAddress: address(new DiamondLoupeFacet()),
+            action: FacetCutAction.Replace,
+            functionSelectors: _loupeSelectors()
+        });
+        vm.expectRevert(
+            abi.encodeWithSelector(IDiamondFactory.DiamondFactory__MissingLoupeCoverage.selector, bytes4(0x7a0ed627))
+        );
+        factory.deploy(_entries(_v(1, 0, 0)), cuts, address(0), "", SALT);
+    }
+
+    /// @notice Idempotent recalls keep their documented recipe-ignored semantics: resolution AND coverage
+    ///         validation are skipped for an occupied `(sender, salt)` — consistent with
+    ///         {test_IdempotentReturnIgnoresNewRecipeAndSkipsResolution}. Calldata-only validation
+    ///         (`ExportSelectorForbidden`) still runs on every call.
+    function test_IdempotentRecallSkipsLoupeCoverage() public {
+        _registerV1();
+        address first = factory.deploy(_entries(_v(1, 0, 0)), _loupeCut(), address(0), "", SALT);
+
+        // A loupe-less recipe that would be refused FRESH still takes the idempotent return.
+        address second = factory.deploy(_entries(_v(1, 0, 0)), _noCuts(), address(0), "", SALT);
+        assertEq(second, first, "existing diamond returned");
+        assertEq(IDiamondLoupe(first).facetAddress(bytes4(0x7a0ed627)) == address(0), false, "original loupe intact");
+    }
+
+    /// @notice The presence scan cannot be bypassed by UNDOING loupe routing in the same deploy: an
+    ///         `[Add(loupe), Remove(loupe selector)]` recipe is refused, naming the touched selector.
+    function test_DeployRevertsOnLoupeRemoveUndo() public {
+        _registerV1();
+        bytes4[] memory removed = new bytes4[](1);
+        removed[0] = bytes4(0x7a0ed627); // facets()
+        FacetCut[] memory cuts = new FacetCut[](2);
+        cuts[0] = _loupeCut()[0];
+        cuts[1] = FacetCut({facetAddress: address(0), action: FacetCutAction.Remove, functionSelectors: removed});
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IDiamondFactory.DiamondFactory__LoupeSelectorNotReplaceable.selector, bytes4(0x7a0ed627)
+            )
+        );
+        factory.deploy(_entries(_v(1, 0, 0)), cuts, address(0), "", SALT);
+    }
+
+    /// @notice Same for a mis-routing `Replace`: `[Add(loupe), Replace(junk facet, loupe selector)]` is
+    ///         refused — fresh-deploy recipes may only ADD loupe routing.
+    function test_DeployRevertsOnLoupeReplaceUndo() public {
+        _registerV1();
+        address junk = address(new MockPongFacet());
+        bytes4[] memory replaced = new bytes4[](1);
+        replaced[0] = bytes4(0xcdffacc6); // facetAddress(bytes4)
+        FacetCut[] memory cuts = new FacetCut[](2);
+        cuts[0] = _loupeCut()[0];
+        cuts[1] = FacetCut({facetAddress: junk, action: FacetCutAction.Replace, functionSelectors: replaced});
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IDiamondFactory.DiamondFactory__LoupeSelectorNotReplaceable.selector, bytes4(0xcdffacc6)
+            )
+        );
+        factory.deploy(_entries(_v(1, 0, 0)), cuts, address(0), "", SALT);
+    }
+
+    /// @dev Shared body for the four per-selector coverage tests: cover every loupe selector EXCEPT
+    ///      `omitted` and expect {DiamondFactory__MissingLoupeCoverage} naming exactly it.
+    function _assertMissingWhenOmitted(bytes4 omitted) internal {
+        _registerV1();
+        bytes4[] memory all = _loupeSelectors();
+        bytes4[] memory threeOfFour = new bytes4[](3);
+        uint256 n;
+        for (uint256 i; i < all.length; ++i) {
+            if (all[i] != omitted) threeOfFour[n++] = all[i];
+        }
+        FacetCut[] memory cuts = _customCut(address(new DiamondLoupeFacet()), threeOfFour);
+
+        vm.expectRevert(abi.encodeWithSelector(IDiamondFactory.DiamondFactory__MissingLoupeCoverage.selector, omitted));
+        factory.deploy(_entries(_v(1, 0, 0)), cuts, address(0), "", SALT);
+    }
+
+    /// @notice Omitting `facets()` alone is caught and named exactly.
+    function test_DeployNamesMissingFacetsSelector() public {
+        _assertMissingWhenOmitted(bytes4(0x7a0ed627));
+    }
+
+    /// @notice Omitting `facetFunctionSelectors(address)` alone is caught and named exactly.
+    function test_DeployNamesMissingFacetFunctionSelectorsSelector() public {
+        _assertMissingWhenOmitted(bytes4(0xadfca15e));
+    }
+
+    /// @notice Omitting `facetAddresses()` alone is caught and named exactly.
+    function test_DeployNamesMissingFacetAddressesSelector() public {
+        _assertMissingWhenOmitted(bytes4(0x52ef6b2c));
+    }
+
+    /// @notice Omitting `facetAddress(bytes4)` alone is caught and named exactly.
+    function test_DeployNamesMissingFacetAddressSelector() public {
+        _assertMissingWhenOmitted(bytes4(0xcdffacc6));
     }
 }

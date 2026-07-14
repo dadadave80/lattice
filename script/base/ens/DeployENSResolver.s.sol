@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {DiamondLoupeFacet} from "@diamond/facets/DiamondLoupeFacet.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {ENSResolver} from "@lattice/ens/ENSResolver.sol";
 import {ENSResolverInit} from "@lattice/ens/ENSResolverInit.sol";
+import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
 
 /// @title DeployENSResolver
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
@@ -19,19 +21,22 @@ contract DeployENSResolver is BaseDeploy {
     /// @notice Builds the ENS resolver diamond cuts + initializer (no broadcast, no proxy deploy).
     /// @param admin The address granted `DEFAULT_ADMIN_ROLE` (controls role assignment).
     /// @param registry The external ENS registry the facet reads resolvers from.
-    /// @return cuts The facet cuts (ERC165 + AccessControl + ENSResolver).
-    /// @return init The {ENSResolverInit} initializer address.
-    /// @return initCalldata The `init(admin, registry)` calldata.
+    /// @return cuts The facet cuts (ERC165 + AccessControl + ENSResolver + DiamondLoupeFacet + AccessControlDiamondCut).
+    /// @return init The {MultiInit} running {ENSResolverInit} then {DiamondIntrospectionInit.initUpgradeable}.
+    /// @return initCalldata The matching `multiInit` calldata.
     function buildCuts(address admin, address registry)
         public
         returns (FacetCut[] memory cuts, address init, bytes memory initCalldata)
     {
-        cuts = new FacetCut[](3);
-        cuts[0] = _cut(address(new ERC165Facet()), "ERC165Facet");
+        cuts = new FacetCut[](5);
+        cuts[0] = _cut(address(new ERC165Facet()));
         cuts[1] = _cut(address(new AccessControl()));
         cuts[2] = _cut(address(new ENSResolver()));
-        init = address(new ENSResolverInit());
-        initCalldata = abi.encodeCall(ENSResolverInit.init, (admin, registry));
+        cuts[3] = _cut(address(new DiamondLoupeFacet()));
+        cuts[4] = _cut(address(new AccessControlDiamondCut()));
+        (init, initCalldata) = _withUpgradeableIntrospection(
+            address(new ENSResolverInit()), abi.encodeCall(ENSResolverInit.init, (admin, registry))
+        );
     }
 
     /// @notice Deploys an ENS resolver diamond (broadcasting entrypoint for `forge script ... --broadcast`).

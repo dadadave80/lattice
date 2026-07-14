@@ -160,7 +160,7 @@ contract DeployRelease is Script {
 
         // The registry address derives from `owner` (it is in the initcode), so a fresh registry alongside
         // ALREADY-deployed facets means a prior run used a DIFFERENT owner — this run just deployed a
-        // PARALLEL registry and would register the release into the fork. All 94 skipped = a complete prior
+        // PARALLEL registry and would register the release into the fork. All 99 skipped = a complete prior
         // release: refuse (re-run with the original owner; LATTICE_ALLOW_PREDEPLOYED=true overrides for
         // genuinely third-party-pre-deployed facets). A partial overlap is legitimate permissionless
         // completion, but gets a loud warning for the same reason.

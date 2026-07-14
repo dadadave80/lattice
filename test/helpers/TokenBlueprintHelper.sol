@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {GetSelectors} from "@diamond-test/helpers/GetSelectors.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {
@@ -9,6 +8,7 @@ import {
     ComposedTokenTestFacet,
     PermitTokenInit
 } from "@lattice-test/composability/ComposedTokenInit.sol";
+import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
 import {ERC20} from "@lattice/tokens/ERC20/ERC20.sol";
 import {ERC20Burnable} from "@lattice/tokens/ERC20/ERC20Burnable.sol";
 import {ERC20Capped} from "@lattice/tokens/ERC20/ERC20Capped.sol";

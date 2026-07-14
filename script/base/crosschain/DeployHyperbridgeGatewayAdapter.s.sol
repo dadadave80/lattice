@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {DiamondLoupeFacet} from "@diamond/facets/DiamondLoupeFacet.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {HyperbridgeGatewayAdapter} from "@lattice/crosschain/HyperbridgeGatewayAdapter.sol";
 import {HyperbridgeGatewayAdapterInit} from "@lattice/crosschain/HyperbridgeGatewayAdapterInit.sol";
+import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
 
 /// @title DeployHyperbridgeGatewayAdapter
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
@@ -21,19 +23,23 @@ contract DeployHyperbridgeGatewayAdapter is BaseDeploy {
     /// @notice Builds the Hyperbridge adapter diamond cuts + initializer (no broadcast, no proxy deploy).
     /// @param admin The address granted `DEFAULT_ADMIN_ROLE` (controls every adapter setter).
     /// @param host  The Hyperbridge IsmpHost the adapter dispatches to and accepts module callbacks from.
-    /// @return cuts The facet cuts (ERC165 + AccessControl + HyperbridgeGatewayAdapter).
-    /// @return init The {HyperbridgeGatewayAdapterInit} initializer address.
-    /// @return initCalldata The `init(admin, host)` calldata.
+    /// @return cuts The facet cuts (ERC165 + AccessControl + HyperbridgeGatewayAdapter + DiamondLoupeFacet + AccessControlDiamondCut).
+    /// @return init The {MultiInit} running {HyperbridgeGatewayAdapterInit} then {DiamondIntrospectionInit.initUpgradeable}.
+    /// @return initCalldata The matching `multiInit` calldata.
     function buildCuts(address admin, address host)
         public
         returns (FacetCut[] memory cuts, address init, bytes memory initCalldata)
     {
-        cuts = new FacetCut[](3);
-        cuts[0] = _cut(address(new ERC165Facet()), "ERC165Facet");
+        cuts = new FacetCut[](5);
+        cuts[0] = _cut(address(new ERC165Facet()));
         cuts[1] = _cut(address(new AccessControl()));
         cuts[2] = _cut(address(new HyperbridgeGatewayAdapter()));
-        init = address(new HyperbridgeGatewayAdapterInit());
-        initCalldata = abi.encodeCall(HyperbridgeGatewayAdapterInit.init, (admin, host));
+        cuts[3] = _cut(address(new DiamondLoupeFacet()));
+        cuts[4] = _cut(address(new AccessControlDiamondCut()));
+        (init, initCalldata) = _withUpgradeableIntrospection(
+            address(new HyperbridgeGatewayAdapterInit()),
+            abi.encodeCall(HyperbridgeGatewayAdapterInit.init, (admin, host))
+        );
     }
 
     /// @notice Deploys a Hyperbridge adapter diamond (broadcasting entrypoint for `forge script ...

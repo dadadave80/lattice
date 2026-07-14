@@ -6,6 +6,7 @@ import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
 import {DeployERC20} from "@lattice-script/base/tokens/DeployERC20.s.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {CrosschainLink} from "@lattice/crosschain/CrosschainLink.sol";
+import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
 import {ERC20Crosschain} from "@lattice/tokens/ERC20/ERC20Crosschain.sol";
 import {ERC20CrosschainInit} from "@lattice/tokens/ERC20/ERC20CrosschainInit.sol";
 
@@ -25,25 +26,27 @@ contract DeployERC20Crosschain is BaseDeploy {
     /// @param admin The address granted `DEFAULT_ADMIN_ROLE`.
     /// @param name_ Token name.
     /// @param symbol_ Token symbol.
-    /// @return cuts The facet cuts (ERC165 + ERC20 + AccessControl + CrosschainLink + ERC20Crosschain).
-    /// @return init The {ERC20CrosschainInit} initializer address.
-    /// @return initCalldata The `init(admin, name, symbol)` calldata.
+    /// @return cuts The facet cuts (ERC165 + ERC20 + DiamondLoupeFacet [base] + AccessControl + CrosschainLink + ERC20Crosschain + AccessControlDiamondCut).
+    /// @return init The {MultiInit} running {ERC20CrosschainInit} then {DiamondIntrospectionInit.initUpgradeable}.
+    /// @return initCalldata The matching `multiInit` calldata.
     function buildCuts(address admin, string memory name_, string memory symbol_)
         public
         returns (FacetCut[] memory cuts, address init, bytes memory initCalldata)
     {
         (FacetCut[] memory base,,) = new DeployERC20().buildCuts(name_, symbol_);
 
-        cuts = new FacetCut[](base.length + 3);
+        cuts = new FacetCut[](base.length + 4);
         for (uint256 i; i < base.length; ++i) {
             cuts[i] = base[i];
         }
         cuts[base.length] = _cut(address(new AccessControl()));
         cuts[base.length + 1] = _cut(address(new CrosschainLink()));
         cuts[base.length + 2] = _cut(address(new ERC20Crosschain()));
+        cuts[base.length + 3] = _cut(address(new AccessControlDiamondCut()));
 
-        init = address(new ERC20CrosschainInit());
-        initCalldata = abi.encodeCall(ERC20CrosschainInit.init, (admin, name_, symbol_));
+        (init, initCalldata) = _withUpgradeableIntrospection(
+            address(new ERC20CrosschainInit()), abi.encodeCall(ERC20CrosschainInit.init, (admin, name_, symbol_))
+        );
     }
 
     /// @notice Deploys a self-bridging ERC-20 token diamond (`forge script ... --broadcast`).

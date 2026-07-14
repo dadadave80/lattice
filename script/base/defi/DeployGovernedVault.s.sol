@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {DiamondLoupeFacet} from "@diamond/facets/DiamondLoupeFacet.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
@@ -8,9 +9,11 @@ import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {GovernedVault} from "@lattice/defi/GovernedVault.sol";
 import {GovernedVaultInit, GovernedVaultParams} from "@lattice/defi/GovernedVaultInit.sol";
 import {VaultCore} from "@lattice/defi/VaultCore.sol";
+import {GovernedDiamondCut} from "@lattice/governance/GovernedDiamondCut.sol";
 import {Governor} from "@lattice/governance/Governor.sol";
 import {TimelockController} from "@lattice/governance/TimelockController.sol";
 import {Votes} from "@lattice/governance/Votes.sol";
+import {EmergencyStop} from "@lattice/security/EmergencyStop.sol";
 import {ERC20} from "@lattice/tokens/ERC20/ERC20.sol";
 import {ERC20Votes} from "@lattice/tokens/ERC20/ERC20Votes.sol";
 import {ERC4626} from "@lattice/tokens/ERC4626/ERC4626.sol";
@@ -22,9 +25,11 @@ import {ERC4626} from "@lattice/tokens/ERC4626/ERC4626.sol";
 ///         diamond hosts the NATURAL facets — each owning ONLY its own selectors (the composability principle):
 ///         {ERC20} (the share token), {ERC4626} (the vault over the shares), {VaultCore} (strategy hooks),
 ///         {Votes} (ERC-5805 delegation + clock), {ERC20Votes} (checkpointed vote weight), {Governor},
-///         {TimelockController} — plus a thin {GovernedVault} reconciliation facet. {GovernedVaultInit} wires the
-///         Governor's `token`/`timelock` and the vault's admin to the diamond, so share-holders propose → vote →
-///         queue → (delay) → execute.
+///         {TimelockController} — plus a thin {GovernedVault} reconciliation facet, and the
+///         anti-frozen-diamond set: {DiamondLoupeFacet} (introspection), {EmergencyStop} (guardian surface)
+///         and {GovernedDiamondCut} (upgrades, executable ONLY by a passed, timelock-executed proposal).
+///         {GovernedVaultInit} wires the Governor's `token`/`timelock` and the vault's admin to the diamond,
+///         so share-holders propose → vote → queue → (delay) → execute — including upgrades.
 /// @dev A single mega-facet inheriting all of these would blow past EIP-170, so each facet is cut for its OWN
 ///      selectors and {GovernedVault} owns the handful that either CLASH across facets or are MODIFIED for the
 ///      single-diamond topology. Those selectors are EXCLUDED from the base facets' cuts (via {_cutExcept}) and
@@ -44,8 +49,21 @@ contract DeployGovernedVault is BaseDeploy {
         public
         returns (FacetCut[] memory cuts, address init, bytes memory initCalldata)
     {
-        cuts = new FacetCut[](10);
-        cuts[0] = _cut(address(new ERC165Facet()), "ERC165Facet");
+        cuts = _buildBaseCuts();
+        init = address(new GovernedVaultInit());
+        initCalldata = abi.encodeCall(GovernedVaultInit.init, (p));
+    }
+
+    /// @dev The 13 base facet cuts alone — shared with recipes that EXTEND this one under a different
+    ///      initializer (they must not pay for a discarded {GovernedVaultInit} deployment). The last three
+    ///      are the anti-frozen-diamond set: {DiamondLoupeFacet} (EIP-2535 introspection),
+    ///      {EmergencyStop} (guardian halt + resume surface for the governed cut), and
+    ///      {GovernedDiamondCut} (the `0x1f931c1c` upgrade path, reachable ONLY through a passed,
+    ///      timelock-executed proposal — see {GovernedVaultInit}). All diamond-lib facets are cut via the
+    ///      ERC-8153 address helpers (diamond-lib ≥0.2.0 facets self-report their selectors) — no FFI.
+    function _buildBaseCuts() internal returns (FacetCut[] memory cuts) {
+        cuts = new FacetCut[](13);
+        cuts[0] = _cut(address(new ERC165Facet()));
         cuts[1] = _cut(address(new AccessControl()));
         cuts[2] = _cut(address(new TimelockController()));
         cuts[3] = _cutExcept(address(new ERC20()), _erc20Exclusions());
@@ -55,9 +73,9 @@ contract DeployGovernedVault is BaseDeploy {
         cuts[7] = _cutExcept(address(new ERC20Votes()), _erc20VotesExclusions());
         cuts[8] = _cutExcept(address(new Governor()), _governorExclusions());
         cuts[9] = _cut(address(new GovernedVault()));
-
-        init = address(new GovernedVaultInit());
-        initCalldata = abi.encodeCall(GovernedVaultInit.init, (p));
+        cuts[10] = _cut(address(new DiamondLoupeFacet()));
+        cuts[11] = _cut(address(new EmergencyStop()));
+        cuts[12] = _cut(address(new GovernedDiamondCut()));
     }
 
     /// @notice Deploys a self-governed vault diamond (broadcasting entrypoint for `forge script ... --broadcast`).

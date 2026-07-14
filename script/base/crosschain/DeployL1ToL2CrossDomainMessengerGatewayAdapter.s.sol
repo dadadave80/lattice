@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {DiamondLoupeFacet} from "@diamond/facets/DiamondLoupeFacet.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
@@ -11,6 +12,7 @@ import {
 import {
     L1ToL2CrossDomainMessengerGatewayAdapterInit
 } from "@lattice/crosschain/L1ToL2CrossDomainMessengerGatewayAdapterInit.sol";
+import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
 
 /// @title DeployL1ToL2CrossDomainMessengerGatewayAdapter
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
@@ -27,21 +29,25 @@ contract DeployL1ToL2CrossDomainMessengerGatewayAdapter is BaseDeploy {
     /// @param counterpartChainId The paired-domain chain id.
     /// @param counterpartAdapter The sibling adapter on the paired domain (must be non-zero).
     /// @param minGasLimit        The `minGasLimit` the messenger relays outbound messages with.
-    /// @return cuts The facet cuts (ERC165 + AccessControl + L1ToL2CrossDomainMessengerGatewayAdapter).
-    /// @return init The {L1ToL2CrossDomainMessengerGatewayAdapterInit} initializer address.
-    /// @return initCalldata The `init(admin, counterpartChainId, counterpartAdapter, minGasLimit)` calldata.
+    /// @return cuts The facet cuts (ERC165 + AccessControl + L1ToL2CrossDomainMessengerGatewayAdapter + DiamondLoupeFacet + AccessControlDiamondCut).
+    /// @return init The {MultiInit} running {L1ToL2CrossDomainMessengerGatewayAdapterInit} then {DiamondIntrospectionInit.initUpgradeable}.
+    /// @return initCalldata The matching `multiInit` calldata.
     function buildCuts(address admin, uint256 counterpartChainId, address counterpartAdapter, uint32 minGasLimit)
         public
         returns (FacetCut[] memory cuts, address init, bytes memory initCalldata)
     {
-        cuts = new FacetCut[](3);
-        cuts[0] = _cut(address(new ERC165Facet()), "ERC165Facet");
+        cuts = new FacetCut[](5);
+        cuts[0] = _cut(address(new ERC165Facet()));
         cuts[1] = _cut(address(new AccessControl()));
         cuts[2] = _cut(address(new L1ToL2CrossDomainMessengerGatewayAdapter()));
-        init = address(new L1ToL2CrossDomainMessengerGatewayAdapterInit());
-        initCalldata = abi.encodeCall(
-            L1ToL2CrossDomainMessengerGatewayAdapterInit.init,
-            (admin, counterpartChainId, counterpartAdapter, minGasLimit)
+        cuts[3] = _cut(address(new DiamondLoupeFacet()));
+        cuts[4] = _cut(address(new AccessControlDiamondCut()));
+        (init, initCalldata) = _withUpgradeableIntrospection(
+            address(new L1ToL2CrossDomainMessengerGatewayAdapterInit()),
+            abi.encodeCall(
+                L1ToL2CrossDomainMessengerGatewayAdapterInit.init,
+                (admin, counterpartChainId, counterpartAdapter, minGasLimit)
+            )
         );
     }
 

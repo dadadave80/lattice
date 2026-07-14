@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {DiamondLoupeFacet} from "@diamond/facets/DiamondLoupeFacet.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {HyperlaneGatewayAdapter} from "@lattice/crosschain/HyperlaneGatewayAdapter.sol";
 import {HyperlaneGatewayAdapterInit} from "@lattice/crosschain/HyperlaneGatewayAdapterInit.sol";
+import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
 
 /// @title DeployHyperlaneGatewayAdapter
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
@@ -19,19 +21,23 @@ contract DeployHyperlaneGatewayAdapter is BaseDeploy {
     /// @notice Builds the Hyperlane adapter diamond cuts + initializer (no broadcast, no proxy deploy).
     /// @param admin The address granted `DEFAULT_ADMIN_ROLE` (controls every adapter setter).
     /// @param mailbox The Hyperlane Mailbox the adapter dispatches to and accepts deliveries from.
-    /// @return cuts The facet cuts (ERC165 + AccessControl + HyperlaneGatewayAdapter).
-    /// @return init The {HyperlaneGatewayAdapterInit} initializer address.
-    /// @return initCalldata The `init(admin, mailbox)` calldata.
+    /// @return cuts The facet cuts (ERC165 + AccessControl + HyperlaneGatewayAdapter + DiamondLoupeFacet + AccessControlDiamondCut).
+    /// @return init The {MultiInit} running {HyperlaneGatewayAdapterInit} then {DiamondIntrospectionInit.initUpgradeable}.
+    /// @return initCalldata The matching `multiInit` calldata.
     function buildCuts(address admin, address mailbox)
         public
         returns (FacetCut[] memory cuts, address init, bytes memory initCalldata)
     {
-        cuts = new FacetCut[](3);
-        cuts[0] = _cut(address(new ERC165Facet()), "ERC165Facet");
+        cuts = new FacetCut[](5);
+        cuts[0] = _cut(address(new ERC165Facet()));
         cuts[1] = _cut(address(new AccessControl()));
         cuts[2] = _cut(address(new HyperlaneGatewayAdapter()));
-        init = address(new HyperlaneGatewayAdapterInit());
-        initCalldata = abi.encodeCall(HyperlaneGatewayAdapterInit.init, (admin, mailbox));
+        cuts[3] = _cut(address(new DiamondLoupeFacet()));
+        cuts[4] = _cut(address(new AccessControlDiamondCut()));
+        (init, initCalldata) = _withUpgradeableIntrospection(
+            address(new HyperlaneGatewayAdapterInit()),
+            abi.encodeCall(HyperlaneGatewayAdapterInit.init, (admin, mailbox))
+        );
     }
 
     /// @notice Deploys a Hyperlane adapter diamond (broadcasting entrypoint for `forge script ... --broadcast`).

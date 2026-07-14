@@ -1,23 +1,27 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {GetSelectors} from "@diamond-test/helpers/GetSelectors.sol";
 import {Diamond} from "@diamond/Diamond.sol";
 import {MultiInit} from "@diamond/initializers/MultiInit.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
+import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
+import {AccessControlInit} from "@lattice/access/AccessControlInit.sol";
 import {IERC8153} from "@lattice/interfaces/external/IERC8153.sol";
+import {DiamondIntrospectionInit} from "@lattice/utils/DiamondIntrospectionInit.sol";
 import {Script} from "forge-std/Script.sol";
 
 /// @title BaseDeploy
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice Generic building blocks every ready-to-deploy Lattice diamond script shares: turn a facet contract
 ///         into an `Add`/`Replace` {FacetCut}, and assemble a {Diamond} proxy from cuts + an initializer.
-///         Two selector sources coexist: the STRING helpers (`_cut(addr, "Name")`) resolve selectors from the
-///         facet's real ABI via diamond-lib {GetSelectors}/`forge inspect` — used for the diamond-lib facets
-///         ({ERC165Facet}, {DiamondCutFacet}, {DiamondLoupeFacet}) that cannot implement ERC-8153; the ADDRESS
-///         helpers (`_cut(addr)`) read the facet's own {IERC8153-exportSelectors}, so a facet self-reports the
-///         selectors it owns with no FFI. Both paths strip `exportSelectors()` (0x0ef22643): the diamond never
-///         exposes ERC-8153 introspection. `_assemble*` are broadcast-free so tests reuse the exact production
+///         Two selector sources coexist: the ADDRESS helpers (`_cut(addr)`) read the facet's own
+///         {IERC8153-exportSelectors}, so a facet self-reports the selectors it owns with no FFI — since
+///         diamond-lib v0.2.0 this covers EVERY production facet, the lib's included ({ERC165Facet},
+///         {DiamondCutFacet}, {DiamondLoupeFacet}, `OwnableFacet` all implement `IFacet`, the identical
+///         upstream interface); the STRING helpers (`_cut(addr, "Name")`) resolve selectors from the facet's
+///         real ABI via the vendored {GetSelectors}/`forge inspect` FFI and remain ONLY for legacy call sites
+///         and non-8153 test fixtures (new code should use the address helpers). Both paths strip
+///         `exportSelectors()` (0x0ef22643): the diamond never exposes ERC-8153 facet introspection. `_assemble*` are broadcast-free so tests reuse the exact production
 ///         composition; concrete scripts wrap their `run()` in `vm.startBroadcast()`. Mirrors the intent of
 ///         diamond-lib's {DeployDiamond} but factored so per-family scripts ({DeployAccount}, {DeployERC20}, …)
 ///         stay tiny.
@@ -156,5 +160,73 @@ abstract contract BaseDeploy is Script, GetSelectors {
     {
         MultiInit multiInit = new MultiInit();
         diamond = _assemble(cuts, address(multiInit), abi.encodeCall(MultiInit.multiInit, (inits, initCalldatas)));
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                      INTROSPECTION INIT CHAINING
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice Chains a recipe's module init with {DiamondIntrospectionInit.initUpgradeable} (IDiamondCut +
+    ///         IDiamondLoupe ERC-165 flags) behind ONE `MultiInit`-wrapped (init, calldata) pair — for
+    ///         recipes that cut `DiamondLoupeFacet` + a `diamondCut`-carrying facet. Keeps `buildCuts`'s
+    ///         single-init return shape so extension recipes and testbases compose unchanged.
+    /// @param moduleInit The recipe's own initializer contract.
+    /// @param moduleCalldata The calldata for `moduleInit`.
+    /// @return init The wrapping {MultiInit} address.
+    /// @return initCalldata The `multiInit([moduleInit, introspection], [moduleCalldata, initUpgradeable()])`.
+    function _withUpgradeableIntrospection(address moduleInit, bytes memory moduleCalldata)
+        internal
+        returns (address init, bytes memory initCalldata)
+    {
+        return _withIntrospection(moduleInit, moduleCalldata, true);
+    }
+
+    /// @notice Same chaining with {DiamondIntrospectionInit.initImmutable} (IDiamondLoupe flag ONLY) — for
+    ///         immutable-by-design recipes that cut `DiamondLoupeFacet` but deliberately no cut facet.
+    function _withImmutableIntrospection(address moduleInit, bytes memory moduleCalldata)
+        internal
+        returns (address init, bytes memory initCalldata)
+    {
+        return _withIntrospection(moduleInit, moduleCalldata, false);
+    }
+
+    /// @notice Chains a recipe's module init with {AccessControlInit} (seeding `admin` as
+    ///         `DEFAULT_ADMIN_ROLE`) and {DiamondIntrospectionInit.initUpgradeable} — the init shape of a
+    ///         Class-Z recipe's ADMIN overload, where the otherwise-immutable diamond additionally cuts
+    ///         `AccessControl` + `AccessControlDiamondCut` so `admin` can upgrade it.
+    /// @param moduleInit The recipe's own initializer contract.
+    /// @param moduleCalldata The calldata for `moduleInit`.
+    /// @param admin The address granted `DEFAULT_ADMIN_ROLE` (the upgrade authority).
+    function _withAdminUpgradeableIntrospection(address moduleInit, bytes memory moduleCalldata, address admin)
+        internal
+        returns (address init, bytes memory initCalldata)
+    {
+        address[] memory inits = new address[](3);
+        inits[0] = moduleInit;
+        inits[1] = address(new AccessControlInit());
+        inits[2] = address(new DiamondIntrospectionInit());
+        bytes[] memory calldatas = new bytes[](3);
+        calldatas[0] = moduleCalldata;
+        calldatas[1] = abi.encodeCall(AccessControlInit.init, (admin));
+        calldatas[2] = abi.encodeCall(DiamondIntrospectionInit.initUpgradeable, ());
+        init = address(new MultiInit());
+        initCalldata = abi.encodeCall(MultiInit.multiInit, (inits, calldatas));
+    }
+
+    /// @dev Shared body: wraps `[moduleInit, DiamondIntrospectionInit]` in a fresh {MultiInit}.
+    function _withIntrospection(address moduleInit, bytes memory moduleCalldata, bool upgradeable)
+        private
+        returns (address init, bytes memory initCalldata)
+    {
+        address[] memory inits = new address[](2);
+        inits[0] = moduleInit;
+        inits[1] = address(new DiamondIntrospectionInit());
+        bytes[] memory calldatas = new bytes[](2);
+        calldatas[0] = moduleCalldata;
+        calldatas[1] = upgradeable
+            ? abi.encodeCall(DiamondIntrospectionInit.initUpgradeable, ())
+            : abi.encodeCall(DiamondIntrospectionInit.initImmutable, ());
+        init = address(new MultiInit());
+        initCalldata = abi.encodeCall(MultiInit.multiInit, (inits, calldatas));
     }
 }
