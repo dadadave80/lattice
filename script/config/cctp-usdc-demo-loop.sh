@@ -43,6 +43,9 @@
 #                .demo.pw is a GITIGNORED file YOU create holding the KEYSTORE
 #                PASSWORD (not a raw private key). This script NEVER creates,
 #                reads, or echoes that file -- it only forwards $FORGE_AUTH.
+#                NOTE: broadcast-free status reads deliberately IGNORE any ambient
+#                ETH_KEYSTORE_ACCOUNT default so they never prompt for a password;
+#                only the broadcast cranks authenticate, via $FORGE_AUTH.
 #   AMOUNT       USDC units to bridge (6 decimals; default 1000000 = 1 USDC).
 #   FAST         0 = free standard transfer (default); 1 = fast (paid) transfer.
 #   IRIS_API     Iris attestation API base (default sandbox).
@@ -215,7 +218,14 @@ read_status() {
     dst="${DST_DIAMOND:-0x0000000000000000000000000000000000000000}"
     burned=0; [[ -n "${BURN_TX}" ]] && burned=1
     while (( attempt < 3 )); do
-        if out="$(forge script "${SCRIPT_TARGET}" \
+        # Status is a broadcast-free dry run that reads ACTOR's balances (never msg.sender), so it needs
+        # NO keystore. But an ambient foundry keystore default (an exported ETH_KEYSTORE_ACCOUNT, or
+        # eth_keystore_account in ~/.foundry/foundry.toml) makes every `forge script` try to unlock it and
+        # prompt for a password -- which hangs/fails this non-interactive poll. Strip those vars for the read
+        # so it always uses forge's default sender; the cranks still authenticate via $FORGE_AUTH's --account.
+        if out="$(env -u ETH_KEYSTORE_ACCOUNT -u FOUNDRY_ETH_KEYSTORE_ACCOUNT -u ETH_FROM \
+                    -u ETH_KEYSTORE -u ETH_PASSWORD -u ETH_PASSWORD_FILE \
+                    forge script "${SCRIPT_TARGET}" \
                     --sig 'cctpDemoStatus(string,address,address,address,uint256,uint256,uint256)' \
                     "${LANE}" "${src}" "${dst}" "${ACTOR}" "${AMOUNT}" "${burned}" "${DST_BASELINE}" 2>&1)"; then
             line="$(echo "${out}" | grep -oE 'DEMO-STATUS [0-9]+ [0-9]+ [0-9]+ [0-9]+ [0-9]+' | tail -1 || true)"
