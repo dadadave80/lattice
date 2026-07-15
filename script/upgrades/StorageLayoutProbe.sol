@@ -344,6 +344,7 @@ contract StorageLayoutProbe {
         mapping(uint256 chainId => bool registered) _chainRegistered;
         mapping(uint32 domain => DomainConfig config) _domainConfig;
         mapping(uint32 domain => uint256 chainId) _domainOwner;
+        address _hookExecutor;
     }
 
     /// @dev Verbatim mirror of `AggregatorExecAdapterLib.AggregatorExecAdapterStorage`

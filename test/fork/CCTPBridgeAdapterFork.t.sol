@@ -3,6 +3,7 @@ pragma solidity ^0.8.30;
 
 import {CCTPBridgeAdapterTestBase} from "@lattice-test/base/CCTPBridgeAdapterTestBase.sol";
 import {CCTPBridgeAdapter} from "@lattice/crosschain/CCTPBridgeAdapter.sol";
+import {HOOK_MAGIC} from "@lattice/crosschain/libraries/CCTPBridgeAdapterLib.sol";
 import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
 import {InteroperableAddress} from "@lattice/utils/libraries/InteroperableAddress.sol";
 
@@ -74,6 +75,53 @@ contract CCTPBridgeAdapterFork is CCTPBridgeAdapterTestBase {
 
         assertEq(IERC20(USDC).balanceOf(user), 0, "user debited exactly amount");
         assertEq(supplyBefore - IERC20(USDC).totalSupply(), AMOUNT, "CCTP v2 burns the full amount on source");
+        assertEq(IERC20(USDC).allowance(diamond, TOKEN_MESSENGER_V2), 0, "messenger allowance reset to 0");
+        assertEq(IERC20(USDC).balanceOf(diamond), 0, "no USDC stuck in the diamond");
+    }
+
+    /// @notice F2 — the live TokenMessengerV2 accepts a Lattice hook envelope via `depositForBurnWithHook`: the
+    ///         FULL `amount` is burned on source (the hook is destination-executed, not here), the allowance is
+    ///         reset, and nothing is stranded on the diamond.
+    function test_Fork_DepositForBurnWithHookTowardBase() public {
+        deal(USDC, user, AMOUNT);
+        vm.prank(user);
+        IERC20(USDC).approve(diamond, AMOUNT);
+
+        // A Lattice envelope: HOOK_MAGIC ‖ target(20) ‖ payload. Target is a stand-in Base recipient.
+        bytes memory hookData = abi.encodePacked(HOOK_MAGIC, bytes20(baseRecipient), bytes("settle"));
+
+        uint256 supplyBefore = IERC20(USDC).totalSupply();
+
+        vm.prank(user);
+        adapter.depositForBurnWithHook(AMOUNT, InteroperableAddress.formatEvmV1(BASE_CHAIN, baseRecipient), hookData);
+
+        assertEq(IERC20(USDC).balanceOf(user), 0, "user debited exactly amount");
+        assertEq(supplyBefore - IERC20(USDC).totalSupply(), AMOUNT, "CCTP v2 burns the full amount on source");
+        assertEq(IERC20(USDC).allowance(diamond, TOKEN_MESSENGER_V2), 0, "messenger allowance reset to 0");
+        assertEq(IERC20(USDC).balanceOf(diamond), 0, "no USDC stuck in the diamond");
+    }
+
+    /// @notice F3 — empirical closure: an UNCONFIGURED domain (registered but never `configureDomain`d, so
+    ///         `maxFee == 0` / `minFinalityThreshold == 0` / `destinationCaller == 0`) maps to CCTP's free
+    ///         permissionless standard transfer and the live TokenMessengerV2 ACCEPTS the burn. This is why the
+    ///         adapter deliberately adds NO unconfigured-domain guard. If this ever reverts on-chain, add
+    ///         `CCTPDomainNotConfigured` + tests and gate the burn on it.
+    function test_Fork_DepositForBurnUnconfiguredDomainSucceeds() public {
+        uint256 avaxChain = 43_114;
+        uint32 avaxDomain = 1; // Avalanche C-Chain CCTP domain
+        vm.prank(admin);
+        adapter.registerChainDomain(avaxChain, avaxDomain); // registered but NOT configured (zero config)
+
+        deal(USDC, user, AMOUNT);
+        vm.prank(user);
+        IERC20(USDC).approve(diamond, AMOUNT);
+
+        uint256 supplyBefore = IERC20(USDC).totalSupply();
+
+        vm.prank(user);
+        adapter.depositForBurn(AMOUNT, InteroperableAddress.formatEvmV1(avaxChain, baseRecipient));
+
+        assertEq(supplyBefore - IERC20(USDC).totalSupply(), AMOUNT, "unconfigured domain burns the full amount");
         assertEq(IERC20(USDC).allowance(diamond, TOKEN_MESSENGER_V2), 0, "messenger allowance reset to 0");
         assertEq(IERC20(USDC).balanceOf(diamond), 0, "no USDC stuck in the diamond");
     }
