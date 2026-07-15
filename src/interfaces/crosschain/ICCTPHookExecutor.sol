@@ -26,7 +26,8 @@ interface ICCTPHookExecutor {
     /// @param sourceDomain  Attested CCTP source domain of the burn.
     /// @param sender        Attested `bytes32` burner on the source domain.
     /// @param mintRecipient Attested `bytes32` mint recipient on this chain.
-    /// @param amount        Attested burned/minted USDC amount.
+    /// @param amount        The USDC amount actually minted to `mintRecipient` (attested burn amount minus
+    ///                      attested feeExecuted).
     /// @param nonce         Attested CCTP nonce (passed through for the relay's `HookExecuted` bookkeeping).
     /// @param target        The hook target decoded from the Lattice `hookData` envelope (attacker-chosen).
     /// @param payload       The attacker-controlled hook payload tail.

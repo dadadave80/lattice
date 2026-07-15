@@ -51,6 +51,7 @@ uint256 constant _MSG_BODY = 148;
 uint256 constant _BODY_MINT_RECIPIENT = 36;
 uint256 constant _BODY_AMOUNT = 68;
 uint256 constant _BODY_SENDER = 100;
+uint256 constant _BODY_FEE_EXECUTED = 164;
 uint256 constant _BODY_HOOK_DATA = 228;
 
 /// @dev A message shorter than header+body-up-to-hookData (`_MSG_BODY + _BODY_HOOK_DATA` = 376) cannot be a
@@ -479,17 +480,23 @@ library CCTPBridgeAdapterLib {
         bytes32 mintRecipient;
         uint256 amount;
         bytes32 sender;
+        uint256 feeExecuted;
         assembly ("memory-safe") {
             sourceDomain := shr(224, calldataload(add(message.offset, _MSG_SOURCE_DOMAIN)))
             nonce := calldataload(add(message.offset, _MSG_NONCE))
             mintRecipient := calldataload(add(message.offset, add(_MSG_BODY, _BODY_MINT_RECIPIENT)))
             amount := calldataload(add(message.offset, add(_MSG_BODY, _BODY_AMOUNT)))
             sender := calldataload(add(message.offset, add(_MSG_BODY, _BODY_SENDER)))
+            feeExecuted := calldataload(add(message.offset, add(_MSG_BODY, _BODY_FEE_EXECUTED)))
         }
         h.sourceDomain = sourceDomain;
         h.sender = sender;
         h.mintRecipient = mintRecipient;
-        h.amount = amount;
+        // The hook receives the amount ACTUALLY MINTED to `mintRecipient` (attested burn `amount` minus the
+        // attested `feeExecuted`), not the gross burn amount — CCTP v2 nets the fee at mint time on fast
+        // transfers. Checked subtraction is safe: this runs only after `receiveMessage` succeeded and CCTP
+        // enforces `feeExecuted <= amount` for any attested burn.
+        h.amount = amount - feeExecuted;
         h.nonce = nonce;
         h.target = address(bytes20(hookData[4:_HOOK_ENVELOPE_MIN]));
     }
