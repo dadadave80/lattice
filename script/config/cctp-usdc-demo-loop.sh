@@ -72,6 +72,11 @@ SCRIPT_TARGET="script/base/crosschain/CCTPUSDCDemo.s.sol:CCTPUSDCDemo"
 # depositForBurn(uint256,bytes) selector — used to pick the burn tx from the broadcast JSON.
 BURN_SELECTOR="0x3d8f1160"
 
+# DELIVERED slack (USDC units) on a lane whose destination USDC is the native gas token (arc): the actor signs
+# the relay, so its relay gas is debited from the very balance the ERC-20 view reports. Mirrors the contract's
+# DST_NATIVE_GAS_ALLOWANCE so the loop's verify bound and the on-fork DELIVERED phase agree.
+DST_NATIVE_GAS_ALLOWANCE=50000
+
 # ---- presentation -------------------------------------------------------------
 if [[ -t 1 && -z "${NO_COLOR:-}" ]]; then
     C_INFO=$'\033[0;36m'; C_OK=$'\033[0;32m'; C_WARN=$'\033[0;33m'; C_ERR=$'\033[0;31m'; C_OFF=$'\033[0m'
@@ -170,6 +175,8 @@ ST=""; WAIT=""; DONE=""; SRCBAL=""; DSTBAL=""
 DID=""; SLEEP_FOR=0
 # Journal-backed off-chain state, refreshed each step().
 SRC_DIAMOND=""; DST_DIAMOND=""; DST_BASELINE=0; BURN_TX=""; MESSAGE=""; ATTESTATION=""; RELAYED=""
+# Fee policy captured AT BURN TIME so a later default-env --once run verifies against the right bounds.
+BURN_AMOUNT=""; BURN_MAXFEE=""; FEE_EXECUTED=""
 # Stuck-crank detector: the "phase:burned:dstBal" signature of the most recent ACTIONABLE crank, and how many
 # consecutive actionable cranks have shared it. A successful crank always moves the machine off its signature.
 LAST_ACTIONABLE_SIG=""; STUCK_COUNT=0
@@ -194,6 +201,10 @@ load_journal() {
     MESSAGE="$(journal_get MESSAGE)"
     ATTESTATION="$(journal_get ATTESTATION)"
     RELAYED="$(journal_get RELAYED)"
+    # Fee policy from the burn (env fallback for adopted/pre-burn journals); FEE_EXECUTED may be empty.
+    BURN_AMOUNT="$(journal_get BURN_AMOUNT)"; BURN_AMOUNT="${BURN_AMOUNT:-${AMOUNT}}"
+    BURN_MAXFEE="$(journal_get BURN_MAXFEE)"; BURN_MAXFEE="${BURN_MAXFEE:-${MAXFEE}}"
+    FEE_EXECUTED="$(journal_get FEE_EXECUTED)"
 }
 
 # READ-ONLY status probe (no --broadcast, no --rpc-url; the script forks both chains itself).
@@ -242,10 +253,19 @@ guard_stuck() {
     return 0
 }
 
+# Fail a crank cleanly (no raw forge wallet errors) when broadcasting auth is absent — relevant to a --once
+# actionable crank (continuous mode already preflights FORGE_AUTH before the loop).
+require_auth() {
+    [[ -n "${FORGE_AUTH}" ]] && return 0
+    err "cannot crank: FORGE_AUTH is empty — broadcasting needs keystore auth (e.g. --account daveKey)."
+    return 1
+}
+
 # Deploy + wire both diamonds (multichain; auto-verify via Sourcify). Journals SRC_DIAMOND/DST_DIAMOND from
 # the DEMO-SETUP console line (a multichain run's diamonds are not addressable from a single broadcast JSON).
 crank_setup() {
     local attempt=0 out rc line src dst
+    require_auth || return 1
     while (( attempt < 3 )); do
         rc=0
         # $FORGE_AUTH is intentionally UNQUOTED so "--account daveKey" splits into words; forwarded verbatim.
@@ -273,32 +293,46 @@ crank_setup() {
 }
 
 # Burn AMOUNT of Sepolia USDC toward the actor on the destination (source fork only). Records the destination
-# baseline first, then extracts the burn tx hash from the single-chain broadcast JSON. Retries twice.
+# baseline + fee policy first, then broadcasts. IDEMPOTENCY: the retry-stopping predicate is "a burn tx was
+# DISPATCHED" (extracted from the broadcast JSON), NOT forge's exit code — so a non-zero exit AFTER the funds-
+# moving burn already landed adopts that tx instead of re-burning. A retry happens ONLY when no burn tx was
+# dispatched (a pre-dispatch failure, which moved nothing and is safe to repeat).
 crank_burn() {
+    require_auth || return 1
     local attempt=0 rc json hash
     journal_set DST_BASELINE "${DSTBAL}"; DST_BASELINE="${DSTBAL}"
+    journal_set BURN_AMOUNT "${AMOUNT}"; BURN_AMOUNT="${AMOUNT}"
+    journal_set BURN_MAXFEE "${MAXFEE}"; BURN_MAXFEE="${MAXFEE}"
     json="broadcast/CCTPUSDCDemo.s.sol/11155111/cctpDemoBurn-latest.json"
+    rm -f "${json}" # drop any stale burn from a prior run so a hash here is unambiguously THIS burn
     while (( attempt < 3 )); do
         rc=0
         # shellcheck disable=SC2086
         forge script "${SCRIPT_TARGET}" \
             --sig 'cctpDemoBurn(string,address,uint256)' "${LANE}" "${SRC_DIAMOND}" "${AMOUNT}" \
             ${FORGE_AUTH} --broadcast || rc=$?
-        if (( rc == 0 )) && [[ -f "${json}" ]]; then
+        # Extract the dispatched burn tx REGARDLESS of rc — a burn that landed must never be re-broadcast.
+        hash=""
+        if [[ -f "${json}" ]]; then
             hash="$(jq -r --arg sel "${BURN_SELECTOR}" \
                 '[.transactions[] | select(.transactionType=="CALL" and (.transaction.input|startswith($sel)))] | last | .hash // empty' \
                 "${json}")"
-            if [[ "${hash}" =~ ^0x[0-9a-fA-F]{64}$ ]]; then
-                journal_set BURN_TX "${hash}"; BURN_TX="${hash}"
-                ok "burn broadcast: tx ${hash}"
-                return 0
-            fi
+        fi
+        if [[ "${hash}" =~ ^0x[0-9a-fA-F]{64}$ ]]; then
+            journal_set BURN_TX "${hash}"; BURN_TX="${hash}"
+            (( rc == 0 )) || warn "burn crank returned ${rc}, but the burn tx landed (${hash}) — adopting it, NOT re-burning."
+            ok "burn broadcast: tx ${hash}"
+            return 0
+        fi
+        if (( rc == 0 )); then
+            err "burn crank reported success but no burn tx is in ${json} — refusing to re-burn (inconsistent)."
+            return 1
         fi
         attempt=$(( attempt + 1 ))
-        warn "burn crank failed / no burn tx hash (attempt ${attempt}/3); retrying in 5s..."
+        warn "burn did not dispatch (attempt ${attempt}/3); retrying in 5s..."
         sleep 5
     done
-    err "burn crank failed after 3 attempts"
+    err "burn crank failed to dispatch after 3 attempts"
     return 1
 }
 
@@ -335,6 +369,7 @@ poll_attestation() {
 
 # Relay the attested message on the destination (destination fork only). Retries twice.
 crank_relay() {
+    require_auth || return 1
     local attempt=0 rc
     while (( attempt < 3 )); do
         rc=0
@@ -355,11 +390,20 @@ crank_relay() {
     return 1
 }
 
-# Assert the credited amount, log the summary + explorer links, delete the journal.
+# Assert the credited amount, log the summary + explorer links, delete the journal. Bounds use the fee policy
+# CAPTURED AT BURN TIME (BURN_AMOUNT/BURN_MAXFEE) so a later default-env --once run does not false-fail a
+# FAST=1 burn; when Iris reported the exact FEE_EXECUTED the check tightens to that exact credit. On a
+# native-gas destination (arc) the actor's relay gas is netted from the balance, so the lower bound is relaxed
+# by DST_NATIVE_GAS_ALLOWANCE (floor 1) and the exact-fee tightening is skipped.
 verify_and_finish() {
     local delta lo hi
     delta=$(( DSTBAL - DST_BASELINE ))
-    lo=$(( AMOUNT - MAXFEE )); hi=${AMOUNT}
+    lo=$(( BURN_AMOUNT - BURN_MAXFEE )); hi=${BURN_AMOUNT}
+    if [[ "${LANE}" == "arc" ]]; then
+        lo=$(( lo - DST_NATIVE_GAS_ALLOWANCE )); (( lo < 1 )) && lo=1
+    elif [[ -n "${FEE_EXECUTED}" ]]; then
+        lo=$(( BURN_AMOUNT - FEE_EXECUTED )); hi=${lo}
+    fi
     if (( delta < lo || delta > hi )); then
         err "DELIVERED but credited ${delta} is outside [${lo}, ${hi}] (baseline ${DST_BASELINE}, dstBal ${DSTBAL})."
         return 1

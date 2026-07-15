@@ -58,6 +58,13 @@ contract CCTPUSDCDemo is DeployCCTPBridgeAdapter {
     ///         6-decimal ERC-20 view at this address (which carries bytecode / is a proxy).
     address internal constant ARC_USDC = 0x3600000000000000000000000000000000000000;
 
+    /// @notice DELIVERED slack (USDC units) subtracted from the credited threshold on a lane whose destination
+    ///         USDC is the NATIVE gas token: the actor signs the relay, so its relay gas is debited from the
+    ///         very balance `balanceOf` views. Without this the mint's `amount` credit is netted against gas
+    ///         and DELIVERED (`dstBal >= baseline + amount`) can never be reached. 50_000 = 0.05 USDC
+    ///         (6-dec; ~200k gas @ 20 gwei on a 1e12-scaled native view ≈ 4,000 units — a comfortable ceiling).
+    uint256 internal constant DST_NATIVE_GAS_ALLOWANCE = 50_000;
+
     //*//////////////////////////////////////////////////////////////////////////
     //                               LANE PRESETS
     //////////////////////////////////////////////////////////////////////////*//
@@ -291,7 +298,10 @@ contract CCTPUSDCDemo is DeployCCTPBridgeAdapter {
     }
 
     /// @dev Creates the SOURCE fork (LIVE tip) and reads its readiness, `actor`'s source balance, and the
-    ///      DELIVERED threshold `dstBaseline + (amount - srcMaxFee)` (fee-adjusted; underflow-guarded).
+    ///      DELIVERED threshold `dstBaseline + net`, where `net = amount - srcMaxFee` (fee-adjusted,
+    ///      underflow-guarded) less {DST_NATIVE_GAS_ALLOWANCE} when the destination USDC is the native gas
+    ///      token (the actor's relay gas is debited from the same balance `balanceOf` views). A floor of 1
+    ///      keeps DELIVERED requiring a real credit above the baseline.
     function _srcSide(Lane memory lane, address srcDiamond, address actor, uint256 amount, uint256 dstBaseline)
         private
         returns (bool srcReady, uint256 srcBal, uint256 deliveredThreshold)
@@ -300,7 +310,9 @@ contract CCTPUSDCDemo is DeployCCTPBridgeAdapter {
         srcReady = _sideReady(srcDiamond, lane.srcUsdc, lane.dstChainId);
         srcBal = IERC20(lane.srcUsdc).balanceOf(actor);
         uint256 srcMaxFee = srcReady ? _domainMaxFee(srcDiamond, lane.dstDomain) : 0;
-        deliveredThreshold = dstBaseline + (amount > srcMaxFee ? amount - srcMaxFee : 0);
+        uint256 net = amount > srcMaxFee ? amount - srcMaxFee : 0;
+        if (lane.dstUsdcIsNative) net = net > DST_NATIVE_GAS_ALLOWANCE ? net - DST_NATIVE_GAS_ALLOWANCE : 1;
+        deliveredThreshold = dstBaseline + net;
     }
 
     /// @dev Creates the DESTINATION fork (LIVE tip) and reads its readiness + `actor`'s destination balance.
