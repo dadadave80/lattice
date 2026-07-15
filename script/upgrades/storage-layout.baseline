@@ -129,6 +129,7 @@
 4	0	_chainRegistered	t_mapping(t_uint256,t_bool)
 5	0	_domainConfig	t_mapping(t_uint32,t_struct(DomainConfig)_storage)
 6	0	_domainOwner	t_mapping(t_uint32,t_uint256)
+7	0	_hookExecutor	t_address
 
 ### AggregatorExecAdapterStorage @ erc7201:lattice.storage.AggregatorExecAdapter (slot 0xa2d04b4e843f01463940d93cd4d536111875b48fb08f2c3a7d094e91e39a5100)
 0	0	_allowedCall	t_mapping(t_address,t_mapping(t_bytes4,t_bool))

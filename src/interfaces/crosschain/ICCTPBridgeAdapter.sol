@@ -37,6 +37,20 @@ interface ICCTPBridgeAdapter {
         uint32 indexed domain, uint256 maxFee, uint32 minFinalityThreshold, bytes32 destinationCaller
     );
 
+    /// @notice Emitted when USDC is burned WITH a CCTP v2 hook payload for the destination recipient to execute.
+    event DepositForBurnWithHook(
+        address indexed sender,
+        uint256 indexed destinationChainId,
+        uint32 destinationDomain,
+        bytes32 mintRecipient,
+        uint256 amount,
+        bytes hookData
+    );
+
+    /// @notice Emitted after an inbound hooked message is relayed: `success` is whether the hook target ran
+    ///         without reverting. The mint stands and the CCTP `nonce` is consumed regardless of `success`.
+    event HookExecuted(bytes32 indexed nonce, address indexed target, bool success);
+
     // -------------------------------------------------------------------------
     //                                  Errors
     // -------------------------------------------------------------------------
@@ -64,6 +78,20 @@ interface ICCTPBridgeAdapter {
 
     /// @notice `configureDomain` targeted a domain no chain has registered.
     error CCTPDomainNotRegistered(uint32 domain);
+
+    /// @notice The domain's configured `maxFee` is `>=` the burn `amount` (CCTP requires `amount > maxFee`; the
+    ///         `>=` form also rejects a zero-amount burn).
+    error CCTPMaxFeeExceedsAmount(uint256 maxFee, uint256 amount);
+
+    /// @notice `depositForBurnWithHook` was called with empty `hookData` (use {depositForBurn} for no hook).
+    error CCTPEmptyHookData();
+
+    /// @notice An inbound hooked message's `hookData` is not a valid Lattice envelope (missing magic or < 24 B).
+    error CCTPInvalidHookData();
+
+    /// @notice An inbound message is not a CCTP v2 `BurnMessageV2` addressed to this adapter's TokenMessenger
+    ///         (wrong length, wrong header/body version, or a mismatched header recipient).
+    error CCTPNotBurnMessage();
 
     // -------------------------------------------------------------------------
     //                                  Reads
@@ -93,6 +121,10 @@ interface ICCTPBridgeAdapter {
         view
         returns (uint256 maxFee, uint32 minFinalityThreshold, bytes32 destinationCaller);
 
+    /// @notice The role-less, fund-less {CCTPHookExecutor} this diamond routes inbound hooks through (deployed
+    ///         once at init, immutable — no setter). Never the zero address on an initialized adapter.
+    function hookExecutor() external view returns (address);
+
     // -------------------------------------------------------------------------
     //                                  Admin
     // -------------------------------------------------------------------------
@@ -112,7 +144,21 @@ interface ICCTPBridgeAdapter {
     ///         destination chain via CCTP. Approves the TokenMessenger for EXACTLY `amount`, then resets to 0.
     function depositForBurn(uint256 amount, bytes calldata recipient) external;
 
+    /// @notice Like {depositForBurn} but attaches CCTP v2 `hookData` to the burn message (via
+    ///         `TokenMessengerV2.depositForBurnWithHook`) for the destination recipient to execute. Reverts
+    ///         {CCTPEmptyHookData} if `hookData` is empty (use {depositForBurn} for a hook-less burn).
+    function depositForBurnWithHook(uint256 amount, bytes calldata recipient, bytes calldata hookData) external;
+
     /// @notice PERMISSIONLESS passthrough: forwards an Iris-attested CCTP message to the transmitter, which
     ///         mints USDC directly to the recipient. Reverts {CCTPRelayFailed} if the transmitter returns false.
     function relayMessage(bytes calldata message, bytes calldata attestation) external;
+
+    /// @notice PERMISSIONLESS relay that ALSO executes a Lattice hook envelope carried in the burn message: it
+    ///         validates the message is a `BurnMessageV2` addressed to this adapter's TokenMessenger carrying a
+    ///         valid Lattice `hookData` envelope, mints via the transmitter, THEN calls the decoded hook target
+    ///         through the {CCTPHookExecutor} with Circle-ATTESTED context. Hook execution is LENIENT — a
+    ///         reverting/return-bombing target does NOT revert the relay (the mint stands, nonce consumed).
+    ///         Reverts {CCTPNotBurnMessage} / {CCTPInvalidHookData} on a non-conforming message BEFORE minting,
+    ///         and {CCTPRelayFailed} if the transmitter returns false.
+    function relayMessageWithHook(bytes calldata message, bytes calldata attestation) external;
 }
