@@ -43,6 +43,9 @@
 #                .demo.pw is a GITIGNORED file YOU create holding the KEYSTORE
 #                PASSWORD (not a raw private key). This script NEVER creates,
 #                reads, or echoes that file -- it only forwards $FORGE_AUTH.
+#                NOTE: broadcast-free status reads pass an explicit --sender so an
+#                ETH_KEYSTORE_ACCOUNT default (shell env or .env) never triggers a
+#                keystore unlock; only the broadcast cranks authenticate, via $FORGE_AUTH.
 #   AMOUNT       USDC units to bridge (6 decimals; default 1000000 = 1 USDC).
 #   FAST         0 = free standard transfer (default); 1 = fast (paid) transfer.
 #   IRIS_API     Iris attestation API base (default sandbox).
@@ -103,8 +106,8 @@ LANE="$1"; ACTOR="$2"
 [[ "${ACTOR}" =~ ^0x[0-9a-fA-F]{40}$ ]] || { err "actor is not a 20-byte address: ${ACTOR}"; exit 2; }
 
 case "${LANE}" in
-    arc)  DST_DOMAIN=26; DST_EXPLORER="https://testnet.arcscan.app";  DST_HUMAN="Arc testnet" ;;
-    base) DST_DOMAIN=6;  DST_EXPLORER="https://sepolia.basescan.org"; DST_HUMAN="Base Sepolia" ;;
+    arc)  DST_DOMAIN=26; DST_EXPLORER="https://testnet.arcscan.app";  DST_HUMAN="Arc testnet";  DST_RPC_VAR="ARC_TESTNET_RPC_URL" ;;
+    base) DST_DOMAIN=6;  DST_EXPLORER="https://sepolia.basescan.org"; DST_HUMAN="Base Sepolia"; DST_RPC_VAR="BASE_SEPOLIA_RPC_URL" ;;
     *) err "lane must be 'arc' or 'base' (got '${LANE}')"; usage 2 ;;
 esac
 
@@ -128,6 +131,22 @@ ENV_DST_DIAMOND="${DST_DIAMOND:-}"
 command -v forge >/dev/null 2>&1 || { err "forge not found on PATH"; exit 2; }
 command -v jq >/dev/null 2>&1    || { err "jq not found on PATH (required for the Iris attestation + broadcast JSON)"; exit 2; }
 command -v curl >/dev/null 2>&1  || { err "curl not found on PATH (required for the Iris attestation API)"; exit 2; }
+
+# The script's forks resolve foundry.toml aliases like ${SEPOLIA_RPC_URL} from the shell env OR the repo
+# .env (forge auto-loads it; this shell does not). A missing var otherwise fails DEEP inside fork setup
+# ("environment variable `X` not found") behind 3 opaque status retries -- so check both sources NOW and
+# name the exact var the lane needs.
+rpc_var_available() {
+    [[ -n "${!1:-}" ]] && return 0
+    [[ -f .env ]] && grep -qE "^${1}=" .env
+}
+for _v in SEPOLIA_RPC_URL "${DST_RPC_VAR}"; do
+    if ! rpc_var_available "${_v}"; then
+        err "RPC env var ${_v} is not set (checked the shell env and ./.env) — the '${LANE}' lane forks need it."
+        err "  add ${_v}=<url> to .env (names must match foundry.toml's [rpc_endpoints]; see .env.example)."
+        exit 2
+    fi
+done
 
 # Continuous mode WILL broadcast, so a missing FORGE_AUTH is a config error to catch NOW.
 if (( ! ONCE )) && [[ -z "${FORGE_AUTH}" ]]; then
@@ -215,8 +234,16 @@ read_status() {
     dst="${DST_DIAMOND:-0x0000000000000000000000000000000000000000}"
     burned=0; [[ -n "${BURN_TX}" ]] && burned=1
     while (( attempt < 3 )); do
+        # Status is a broadcast-free dry run that reads ACTOR's balances (never msg.sender), so it needs
+        # NO keystore. But forge auto-loads the repo .env, and an ETH_KEYSTORE_ACCOUNT entry there (or an
+        # exported one) is the env fallback for --account: forge then EAGERLY unlocks that keystore -- a
+        # password prompt on every poll (reproduced under a pty; env -u cannot help because forge re-reads
+        # .env itself). Forge only unlocks a wallet to DERIVE the sender, so passing --sender explicitly
+        # removes the need and no unlock ever happens. ACTOR is the natural sender for a status dry run;
+        # the broadcast cranks still authenticate via $FORGE_AUTH's --account.
         if out="$(forge script "${SCRIPT_TARGET}" \
                     --sig 'cctpDemoStatus(string,address,address,address,uint256,uint256,uint256)' \
+                    --sender "${ACTOR}" \
                     "${LANE}" "${src}" "${dst}" "${ACTOR}" "${AMOUNT}" "${burned}" "${DST_BASELINE}" 2>&1)"; then
             line="$(echo "${out}" | grep -oE 'DEMO-STATUS [0-9]+ [0-9]+ [0-9]+ [0-9]+ [0-9]+' | tail -1 || true)"
             if [[ -n "${line}" ]]; then
