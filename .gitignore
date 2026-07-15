@@ -16,5 +16,8 @@ docs/
 # Dotenv file
 .env
 
+# CCTP USDC demo loop journals (script/config/cctp-usdc-demo-loop.sh off-chain state)
+.cctp-demo.*.env
+
 # CI-generated contract-size report (forge build --sizes --json)
 sizes.json
