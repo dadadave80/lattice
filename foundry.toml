@@ -10,7 +10,13 @@ ffi = true
 # out/ read: vm.getCode/deployCode on the diamond-lib core facets resolves via raw artifact reads
 # (basename identifiers like "DiamondCutFacet.sol:DiamondCutFacet"), which sit outside the implicit
 # src/-path artifact grant.
-fs_permissions = [{ access = "read-write", path = "deployments" }, { access = "read", path = "out" }]
+# test/fixtures read: fork tests replay captured Iris (message, attestation) pairs from
+# test/fixtures/cctp/*.json (CCTPBridgeAdapterTestnetFork F5/F6).
+fs_permissions = [
+    { access = "read-write", path = "deployments" },
+    { access = "read", path = "out" },
+    { access = "read", path = "test/fixtures" },
+]
 remappings = [
     '@lattice/=src/',
     '@lattice-script/=script/',
