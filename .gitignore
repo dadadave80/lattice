@@ -18,6 +18,10 @@ docs/
 
 # CCTP USDC demo loop journals (script/config/cctp-usdc-demo-loop.sh off-chain state)
 .cctp-demo.*.env
+# Keystore-password files for unattended cranks (--password-file); the runbook names .demo.pw.
+# NEVER commit these — they hold the keystore password.
+*.pw
+.demo.pw
 
 # CI-generated contract-size report (forge build --sizes --json)
 sizes.json
