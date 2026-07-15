@@ -1,7 +1,9 @@
 {
-  "provenance": "REAL Iris sandbox capture (https://iris-api-sandbox.circle.com/v2/messages/0?transactionHash=0x30394eee3a8afc5cf8be201b85a1874e39b85d9350d9991f2697f2fa9ce02828). Sepolia(domain 0) -> Base Sepolia(domain 6) CCTP v2 standard transfer, permissionless (destinationCaller = 0x0), status complete, NO hookData. Captured for CCTPBridgeAdapterTestnetFork F5/F6. Recapture command: curl -s \"https://iris-api-sandbox.circle.com/v2/messages/0?transactionHash=<srcTxHash>\"",
+  "provenance": "REAL Iris sandbox capture (https://iris-api-sandbox.circle.com/v2/messages/0?transactionHash=0x30394eee3a8afc5cf8be201b85a1874e39b85d9350d9991f2697f2fa9ce02828). Sepolia(domain 0) -> Base Sepolia(domain 6) CCTP v2 standard transfer, permissionless (destinationCaller = 0x0), status complete, NO hookData. Captured for CCTPBridgeAdapterTestnetFork F5/F6 and the CCTPBridgeAdapterTest offset-grounding test. Recapture: curl -s \"https://iris-api-sandbox.circle.com/v2/messages/0?transactionHash=<srcTxHash>\"",
   "srcTxHash": "0x30394eee3a8afc5cf8be201b85a1874e39b85d9350d9991f2697f2fa9ce02828",
   "receiveBlock": 44160007,
+  "sourceDomain": 0,
+  "nonce": "0x4c1467d7a29c8707558376c9fc79380298733f2c180f115ef6ef5d4887d4e497",
   "recipient": "0xb2105464215716e1445367bea5668f581ef7d063",
   "amount": 1000000,
   "feeExecuted": 0,

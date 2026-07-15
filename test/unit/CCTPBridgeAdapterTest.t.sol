@@ -353,6 +353,7 @@ contract CCTPBridgeAdapterTest is CCTPBridgeAdapterTestBase {
 
         // Args recorded by the messenger (domain mapping + bytes32 mintRecipient down-convert + per-domain config).
         assertEq(messenger.calls(), 1);
+        assertFalse(messenger.lastWasHook(), "took the plain 7-arg depositForBurn path");
         assertEq(messenger.lastAmount(), amount);
         assertEq(messenger.lastDestinationDomain(), BASE_DOMAIN, "chainId -> CCTP domain");
         assertEq(messenger.lastMintRecipient(), bytes32(uint256(uint160(evmRecipient))), "20-byte down-convert");
@@ -696,6 +697,44 @@ contract CCTPBridgeAdapterTest is CCTPBridgeAdapterTestBase {
         assertEq(transmitter.calls(), 0, "transmitter NOT called on non-burn message");
     }
 
+    function test_RelayMessageWithHookWrongHeaderVersionReverts() public {
+        // headerVersion = 0 (not the CCTP v2 discriminant 1), bodyVersion = 1.
+        bytes memory message = _buildMessage(
+            0,
+            SRC_DOMAIN,
+            NONCE,
+            address(messenger),
+            1,
+            bytes32(0),
+            HOOK_AMOUNT,
+            SENDER,
+            _latticeHookData(address(hookReceiver), hex"01")
+        );
+        vm.prank(relayer);
+        vm.expectRevert(ICCTPBridgeAdapter.CCTPNotBurnMessage.selector);
+        adapter.relayMessageWithHook(message, hex"01");
+        assertEq(transmitter.calls(), 0, "transmitter NOT called on wrong header version");
+    }
+
+    function test_RelayMessageWithHookWrongBodyVersionReverts() public {
+        // headerVersion = 1, bodyVersion = 0 (not the CCTP v2 discriminant 1).
+        bytes memory message = _buildMessage(
+            1,
+            SRC_DOMAIN,
+            NONCE,
+            address(messenger),
+            0,
+            bytes32(0),
+            HOOK_AMOUNT,
+            SENDER,
+            _latticeHookData(address(hookReceiver), hex"01")
+        );
+        vm.prank(relayer);
+        vm.expectRevert(ICCTPBridgeAdapter.CCTPNotBurnMessage.selector);
+        adapter.relayMessageWithHook(message, hex"01");
+        assertEq(transmitter.calls(), 0, "transmitter NOT called on wrong body version");
+    }
+
     function test_RelayMessageWithHookShortMessageReverts() public {
         bytes memory tooShort = new bytes(375); // one byte under the 376 minimum
         vm.prank(relayer);
@@ -726,15 +765,78 @@ contract CCTPBridgeAdapterTest is CCTPBridgeAdapterTestBase {
     }
 
     function test_HookExecutorReturnBombTolerated() public {
-        hookReceiver.setReturnBomb(true); // returns huge returndata
+        hookReceiver.setReturnBomb(true); // returns 256 KiB of returndata
         bytes memory message = _validHookedMessage(address(hookReceiver), hex"01");
 
         vm.expectEmit(true, true, false, true, diamond);
         emit ICCTPBridgeAdapter.HookExecuted(NONCE, address(hookReceiver), true); // return-bomb is a SUCCESSFUL return
         vm.prank(relayer);
-        adapter.relayMessageWithHook(message, hex"01");
+        // Bounded gas so a returndata-COPYING executor (a mutant using `(bool ok, bytes memory ret) = call(...)`)
+        // OOGs on the 256 KiB copy while the real zero-copy executor (~660k) completes within the stipend.
+        adapter.relayMessageWithHook{gas: 750_000}(message, hex"01");
 
         assertEq(transmitter.calls(), 1, "relay succeeded despite the return bomb");
+    }
+
+    /// @notice The hook receives the amount ACTUALLY MINTED — burn `amount` (@216) minus `feeExecuted` (@312) —
+    ///         not the gross burn amount (CCTP v2 nets the fee at mint time on fast transfers).
+    function test_RelayMessageWithHookNetsFeeFromMintedAmount() public {
+        uint256 fee = 1_500;
+        bytes memory message = _validHookedMessageWithFee(address(hookReceiver), hex"1122", fee);
+        vm.prank(relayer);
+        adapter.relayMessageWithHook(message, hex"01");
+        assertEq(hookReceiver.calls(), 1);
+        assertEq(hookReceiver.lastAmount(), HOOK_AMOUNT - fee, "hook sees minted amount = burn amount - feeExecuted");
+    }
+
+    /// @notice GROUNDS the parse offsets against Circle's ACTUAL bytes: loads the REAL captured 376-byte
+    ///         header+body (Sepolia->Base Sepolia), appends a synthetic Lattice envelope, and drives it through
+    ///         `relayMessageWithHook` — asserting the parser reproduces Circle's INDEPENDENTLY-DECODED
+    ///         sourceDomain / nonce / mintRecipient / minted-amount. A shared wrong offset in the builder AND
+    ///         parser would agree with each other but NOT with these real Circle-decoded truth values. Runs with
+    ///         no RPC (foundry.toml grants `test/fixtures` read).
+    function test_RelayMessageWithHookGroundsOffsetsOnRealFixture() public {
+        string memory json = vm.readFile("test/fixtures/cctp/sepolia-to-base-sepolia-v2.json");
+        bytes memory realMsg = vm.parseJsonBytes(json, ".message");
+        if (realMsg.length == 0) {
+            vm.skip(true); // fixture not yet captured — see the file's provenance/TODO
+            return;
+        }
+        assertEq(realMsg.length, 376, "fixture message must be the 376-byte header+body (no hookData)");
+
+        uint32 realSourceDomain = uint32(vm.parseJsonUint(json, ".sourceDomain"));
+        bytes32 realNonce = vm.parseJsonBytes32(json, ".nonce");
+        address realRecipient = vm.parseJsonAddress(json, ".recipient");
+        uint256 realAmount = vm.parseJsonUint(json, ".amount");
+        uint256 realFee = vm.parseJsonUint(json, ".feeExecuted");
+        // The fixture's header recipient (@76) — a real Base Sepolia TokenMessengerV2 address.
+        address realHeaderRecipient = 0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA;
+
+        // A diamond wired to that REAL header recipient so the burn-message check passes; the mock transmitter
+        // (returns true) stands in for MessageTransmitterV2.
+        address destDiamond =
+            _deployCCTPBridgeAdapter(admin, realHeaderRecipient, address(transmitter), address(usdcToken));
+        CCTPBridgeAdapter dest = CCTPBridgeAdapter(destDiamond);
+
+        // Append a synthetic Lattice envelope to Circle's REAL 376-byte header+body.
+        bytes memory payload = bytes("grounding-payload");
+        bytes memory grounded = abi.encodePacked(realMsg, HOOK_MAGIC, bytes20(address(hookReceiver)), payload);
+
+        // The nonce grounding (@12) is asserted via HookExecuted (nonce is not an onCCTPHook arg).
+        vm.expectEmit(true, true, false, true, destDiamond);
+        emit ICCTPBridgeAdapter.HookExecuted(realNonce, address(hookReceiver), true);
+        vm.prank(relayer);
+        dest.relayMessageWithHook(grounded, hex"01");
+
+        assertEq(hookReceiver.calls(), 1, "hook executed against Circle's real bytes");
+        assertEq(hookReceiver.lastSourceDomain(), realSourceDomain, "sourceDomain @4 grounded to Circle's value");
+        assertEq(
+            hookReceiver.lastMintRecipient(),
+            bytes32(uint256(uint160(realRecipient))),
+            "mintRecipient @184 grounded to Circle's value"
+        );
+        assertEq(hookReceiver.lastAmount(), realAmount - realFee, "minted amount (@216 - @312) grounded");
+        assertEq(hookReceiver.lastPayload(), payload, "payload from the appended envelope");
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -761,8 +863,28 @@ contract CCTPBridgeAdapterTest is CCTPBridgeAdapterTestBase {
         );
     }
 
+    /// @dev A valid BurnMessageV2 with a NONZERO `feeExecuted` — the minted amount is `amount - feeExecuted`.
+    function _validHookedMessageWithFee(address target, bytes memory payload, uint256 feeExecuted)
+        internal
+        view
+        returns (bytes memory)
+    {
+        return _buildMessageWithFee(
+            1,
+            SRC_DOMAIN,
+            NONCE,
+            address(messenger),
+            1,
+            bytes32(uint256(uint160(evmRecipient))),
+            HOOK_AMOUNT,
+            SENDER,
+            feeExecuted,
+            _latticeHookData(target, payload)
+        );
+    }
+
     /// @dev Assembles a MessageV2 header + BurnMessageV2 body with `hookData` at the exact 376-byte offset. Every
-    ///      field lands at its Circle byte offset (header 148 B, body-before-hookData 228 B).
+    ///      field lands at its Circle byte offset (header 148 B, body-before-hookData 228 B). `feeExecuted` is 0.
     function _buildMessage(
         uint32 headerVersion,
         uint32 sourceDomain,
@@ -772,6 +894,33 @@ contract CCTPBridgeAdapterTest is CCTPBridgeAdapterTestBase {
         bytes32 mintRecipient,
         uint256 amount,
         bytes32 messageSender,
+        bytes memory hookData
+    ) internal pure returns (bytes memory) {
+        return _buildMessageWithFee(
+            headerVersion,
+            sourceDomain,
+            nonce,
+            headerRecipient,
+            bodyVersion,
+            mintRecipient,
+            amount,
+            messageSender,
+            0,
+            hookData
+        );
+    }
+
+    /// @dev As {_buildMessage} but with an explicit `feeExecuted` at body @164 (abs @312).
+    function _buildMessageWithFee(
+        uint32 headerVersion,
+        uint32 sourceDomain,
+        bytes32 nonce,
+        address headerRecipient,
+        uint32 bodyVersion,
+        bytes32 mintRecipient,
+        uint256 amount,
+        bytes32 messageSender,
+        uint256 feeExecuted,
         bytes memory hookData
     ) internal pure returns (bytes memory) {
         bytes memory header = abi.encodePacked(
@@ -792,7 +941,7 @@ contract CCTPBridgeAdapterTest is CCTPBridgeAdapterTestBase {
             amount, // amount                            uint256 @216 (body 68)
             messageSender, // messageSender              bytes32 @248 (body 100)
             uint256(0), // maxFee                        uint256 @280 (body 132)
-            uint256(0), // feeExecuted                   uint256 @312 (body 164)
+            feeExecuted, // feeExecuted                  uint256 @312 (body 164)
             uint256(0), // expirationBlock               uint256 @344 (body 196)
             hookData //                                          @376 (body 228)
         );

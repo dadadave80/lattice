@@ -19,7 +19,8 @@ interface ICCTPHookReceiver {
     /// @param sourceDomain  The CCTP domain the burn originated on (from the attested message header).
     /// @param sender        The burner on the source domain, as a right-aligned `bytes32` (attested).
     /// @param mintRecipient The `bytes32` recipient the USDC was minted to on this chain (attested).
-    /// @param amount        The burned/minted USDC amount from the attested burn body.
+    /// @param amount        The USDC amount actually minted to `mintRecipient` (attested burn amount minus
+    ///                      attested feeExecuted).
     /// @param payload       ATTACKER-CONTROLLED hook payload bytes (the Lattice envelope's tail). Untrusted.
     function onCCTPHook(
         uint32 sourceDomain,
