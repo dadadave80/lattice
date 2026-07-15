@@ -227,21 +227,37 @@ contract CCTPUSDCDemoFork is Test {
         assertEq(phase, 0, "fresh -> NEEDS-SETUP");
         assertEq(done, 0, "not done");
 
-        // Assemble both sides and fund the source; carry them across the live-tip status forks.
+        // Assemble both sides (NOT funded yet); carry them across the live-tip status forks.
         _forkSepolia();
         address src = probe.setupSide(lane, true, actor, 0, 2000);
         _persist(src);
         vm.makePersistent(lane.srcUsdc);
-        deal(lane.srcUsdc, actor, AMOUNT);
 
         _forkDst(lane);
         address dst = probe.setupSide(lane, false, actor, 0, 2000);
         _persist(dst);
         vm.makePersistent(lane.dstUsdc);
 
-        // Setup + funded, not yet burned -> READY-TO-BURN, srcBal == AMOUNT.
+        // Half-set-up (destination diamond missing) -> still NEEDS-SETUP.
+        (phase,, done,,) = probe.demoStatus(lane, src, address(0), actor, AMOUNT, 0, 0);
+        assertEq(phase, 0, "one side missing -> NEEDS-SETUP");
+        assertEq(done, 0, "not done");
+
+        // Both wired but the source is UNFUNDED -> NEEDS-FUNDS (the funding gate). The probe holds no USDC on
+        // live-tip Sepolia, so srcBal 0 < AMOUNT.
         uint256 waitSeconds;
         uint256 srcBal;
+        (phase, waitSeconds, done, srcBal,) = probe.demoStatus(lane, src, dst, actor, AMOUNT, 0, 0);
+        assertEq(phase, 1, "wired but unfunded -> NEEDS-FUNDS");
+        assertEq(waitSeconds, 0, "funding is a human gate, not a timed wait");
+        assertEq(done, 0, "not done");
+        assertEq(srcBal, 0, "source unfunded");
+
+        // Fund the source (srcUsdc is persistent, so the deal survives the status re-forks).
+        _forkSepolia();
+        deal(lane.srcUsdc, actor, AMOUNT);
+
+        // Funded, not yet burned -> READY-TO-BURN, srcBal == AMOUNT.
         (phase, waitSeconds, done, srcBal,) = probe.demoStatus(lane, src, dst, actor, AMOUNT, 0, 0);
         assertEq(phase, 2, "funded -> READY-TO-BURN");
         assertEq(waitSeconds, 0, "actionable now");
@@ -254,14 +270,25 @@ contract CCTPUSDCDemoFork is Test {
         assertEq(waitSeconds, 30, "poll hint");
         assertEq(done, 0, "not done");
 
-        // Simulate the destination mint (maxFee 0 -> the recipient nets the full AMOUNT) -> DELIVERED.
+        // Simulate the destination mint -> DELIVERED. On a native-gas destination (Arc) the recipient's relay
+        // gas is debited from the same balance the ERC-20 view reports, so the credit lands BELOW AMOUNT;
+        // dealing AMOUNT-4000 (< the 50_000 gas allowance) exercises the fee/gas-adjusted DELIVERED threshold
+        // (without the allowance this would still read AWAITING-DELIVERY). Base has a real ERC-20 balance slot.
+        uint256 gasAllowance = lane.dstUsdcIsNative ? 50_000 : 0;
+        uint256 credited = AMOUNT - (lane.dstUsdcIsNative ? 4_000 : 0);
         _forkDst(lane);
-        deal(lane.dstUsdc, actor, AMOUNT);
+        if (lane.dstUsdcIsNative) {
+            // Arc USDC is a 6-decimal view over the native balance (balanceOf = account.balance / 1e12) with
+            // no ERC-20 storage slot for `deal()` to probe — fund natively instead.
+            vm.deal(actor, credited * 1e12);
+        } else {
+            deal(lane.dstUsdc, actor, credited);
+        }
         uint256 dstBal;
         (phase, waitSeconds, done,, dstBal) = probe.demoStatus(lane, src, dst, actor, AMOUNT, 1, 0);
         assertEq(phase, 4, "delivered -> DELIVERED");
         assertEq(waitSeconds, 0, "delivered needs nothing");
         assertEq(done, 1, "done");
-        assertGe(dstBal, AMOUNT, "destination credited at least AMOUNT");
+        assertGe(dstBal, AMOUNT - gasAllowance, "destination credited above the (gas-adjusted) threshold");
     }
 }
