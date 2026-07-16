@@ -146,6 +146,9 @@ deploy-local: ## Deploy SCRIPT to local Anvil (SCRIPT=… [SIG='run()'] [ARGS='�
 # The CCTP loop is the Arc-hub demo: one invocation drives both destinations (Sepolia + Base
 # Sepolia) from the Arc source hub. It derives the signer address from the keystore, so no actor
 # address is needed; add ARGS='sepolia' (or 'base') to filter to a single destination.
+#   make demo-cctp-hook  FORGE_AUTH='--account <ks>'        # add --password-file <f> for unattended
+# The hook demo (Arc -> Base Sepolia) showcases CCTP v2 HOOKS: one attested message both moves USDC
+# and auto-credits a beneficiary in a CCTPHookVault; ARGS='<actor> <beneficiary>' (both optional).
 
 .PHONY: demo-governance
 demo-governance: ## Governance demo loop — FORGE_AUTH='--account <ks>' ARGS='<vault> <ens> <actor>'
@@ -154,6 +157,10 @@ demo-governance: ## Governance demo loop — FORGE_AUTH='--account <ks>' ARGS='<
 .PHONY: demo-cctp
 demo-cctp: ## CCTP Arc-hub demo loop — FORGE_AUTH='--account <ks>' (signer/dests auto; ARGS='<dest>' filters)
 	script/config/cctp-usdc-demo-loop.sh $(ARGS)
+
+.PHONY: demo-cctp-hook
+demo-cctp-hook: ## CCTP v2 hook demo (Arc->Base auto-credit vault) — FORGE_AUTH='--account <ks>' (ARGS='<actor> <benef>')
+	script/config/cctp-hook-demo.sh $(ARGS)
 
 # ------------------------------------------------------------------------ help
 
