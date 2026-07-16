@@ -9,7 +9,7 @@
 # Common knobs:
 #   make test MATCH=CCTPBridgeAdapter     # filter by contract name
 #   make test-path PATH_GLOB=test/fork/CCTPUSDCDemoFork.t.sol
-#   make demo-cctp ARGS='arc 0xYourActor' FORGE_AUTH='--account daveKey'
+#   make demo-cctp FORGE_AUTH='--account daveKey'     # add --password-file for unattended
 
 .DEFAULT_GOAL := help
 
@@ -140,19 +140,19 @@ deploy-local: ## Deploy SCRIPT to local Anvil (SCRIPT=… [SIG='run()'] [ARGS='�
 		--rpc-url http://localhost:$(ANVIL_PORT) --private-key $(ANVIL_KEY) --broadcast
 
 # ----------------------------------------------------------------------- demos
-# Both loops read their own env (FORGE_AUTH etc.) and document their CLI in their
-# headers (`-h`); ARGS is passed through verbatim so this file never chases their flags.
-#   make demo-governance ARGS='<vault> <ens-name> <actor>'  FORGE_AUTH='--account <ks>'
-#   make demo-cctp       ARGS='<actor> [dest]'              FORGE_AUTH='--account <ks>'
-# The CCTP loop is the Arc-hub demo: one invocation drives both destinations
-# (Sepolia + Base Sepolia) from the Arc source hub; add a dest to filter to one.
+# Pass keystore auth as a command-line variable -- make exports it to the recipe, so the loop sees it:
+#   make demo-governance FORGE_AUTH='--account <ks>' ARGS='<vault> <ens-name> <actor>'
+#   make demo-cctp       FORGE_AUTH='--account <ks>'        # add --password-file <f> for unattended
+# The CCTP loop is the Arc-hub demo: one invocation drives both destinations (Sepolia + Base
+# Sepolia) from the Arc source hub. It derives the signer address from the keystore, so no actor
+# address is needed; add ARGS='sepolia' (or 'base') to filter to a single destination.
 
 .PHONY: demo-governance
-demo-governance: ## Governance demo crank loop (see script/config/governance-demo-loop.sh -h)
+demo-governance: ## Governance demo loop — FORGE_AUTH='--account <ks>' ARGS='<vault> <ens> <actor>'
 	script/config/governance-demo-loop.sh $(ARGS)
 
 .PHONY: demo-cctp
-demo-cctp: ## CCTP USDC demo crank loop (see script/config/cctp-usdc-demo-loop.sh -h)
+demo-cctp: ## CCTP Arc-hub demo loop — FORGE_AUTH='--account <ks>' (signer/dests auto; ARGS='<dest>' filters)
 	script/config/cctp-usdc-demo-loop.sh $(ARGS)
 
 # ------------------------------------------------------------------------ help
