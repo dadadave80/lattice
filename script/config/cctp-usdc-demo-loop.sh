@@ -469,9 +469,10 @@ crank_setup() {
     while (( attempt < 3 )); do
         rc=0
         # $FORGE_AUTH is intentionally UNQUOTED so "--account daveKey" splits into words; forwarded verbatim.
-        # ${SLOW} is "--slow" only when the signer is EIP-7702-delegated on Arc (resolved at startup): such
+        # ${SLOW} is "--slow" only when the signer is EIP-7702-delegated on Arc (resolved once at startup): such
         # accounts are txpool-capped at ONE in-flight tx, so a multi-contract deploy fired back-to-back errors
-        # "in-flight transaction limit reached for delegated accounts". A plain-EOA signer deploys in parallel.
+        # "in-flight transaction limit reached for delegated accounts". Delegation is a per-account property the
+        # operator set (a smart-account / 7702 setup) -- NOT an Arc default; a plain-EOA signer deploys in parallel.
         # --verify best-effort verifies via Sourcify (bare --verify); a chain Sourcify does not cover fails
         # that one contract non-fatally, so success is detected by the DEMO-SETUP + ONCHAIN-EXECUTION greps.
         # shellcheck disable=SC2086
