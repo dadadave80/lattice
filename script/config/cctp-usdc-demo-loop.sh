@@ -81,6 +81,8 @@
 #   CRANK_SETTLE_SECONDS  Post-crank settle sleep (default 8; Arc mines fast).
 #   WAIT_PAD_SECONDS      Padding added to a phase wait before re-reading (default 15).
 #   NO_COLOR     Set to disable ANSI color.
+#   SKIP_RPC_LIVENESS  Set to bypass the startup eth_chainId ping of each needed RPC (use behind a
+#                flaky-but-working network); by default a dead/rate-limited endpoint is named up front.
 #
 # The status read forks both chains itself (no --rpc-url), so the RPC aliases
 # arc-testnet + sepolia/base-sepolia must resolve (foundry auto-loads .env).
@@ -114,7 +116,7 @@ warn() { echo "${C_WARN}[cctp-loop]${C_OFF} $*" >&2; }
 err()  { echo "${C_ERR}[cctp-loop] ERROR:${C_OFF} $*" >&2; }
 
 usage() {
-    sed -n '2,88p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+    sed -n '2,90p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
     exit "${1:-0}"
 }
 
@@ -209,6 +211,28 @@ for _v in "${NEED_RPC[@]}"; do
         exit 2
     fi
 done
+
+# Liveness: a var can be SET but its endpoint dead / rate-limited / unresolvable, which otherwise fails DEEP in
+# the first fork behind 3 opaque "status read failed" retries. Ping each needed RPC (eth_chainId, 3 tries) so a
+# broken endpoint is named NOW. The URL (which may carry an API key) is passed to curl but never echoed.
+rpc_live() {
+    curl -s --max-time 10 -X POST "$1" -H 'content-type: application/json' \
+        -d '{"jsonrpc":"2.0","id":1,"method":"eth_chainId","params":[]}' 2>/dev/null | grep -q '"result"'
+}
+if [[ -z "${SKIP_RPC_LIVENESS:-}" ]]; then
+    for _v in "${NEED_RPC[@]}"; do
+        _url="$(resolve_rpc "${_v}")"
+        _live=0
+        for _try in 1 2 3; do rpc_live "${_url}" && { _live=1; break; }; sleep 2; done
+        if (( ! _live )); then
+            err "${_v} is set but its RPC endpoint did not respond to eth_chainId after 3 tries — dead/expired key,"
+            err "  rate limit, or unreachable host. Test it:  cast chain-id --rpc-url \"\$${_v}\""
+            err "  Fix it in .env (reliable public option: SEPOLIA_RPC_URL=https://ethereum-sepolia-rpc.publicnode.com),"
+            err "  or set SKIP_RPC_LIVENESS=1 to bypass this check (e.g. behind a flaky-but-working network)."
+            exit 2
+        fi
+    done
+fi
 
 # Explicit Arc RPC URL for the cast-send burn (see crank_burn). Resolved once; never echoed.
 ARC_RPC="$(resolve_rpc ARC_TESTNET_RPC_URL)"
