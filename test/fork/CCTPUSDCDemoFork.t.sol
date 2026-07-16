@@ -3,68 +3,72 @@ pragma solidity ^0.8.30;
 
 import {IDiamondLoupe} from "@diamond/interfaces/IDiamondLoupe.sol";
 import {CCTPUSDCDemo} from "@lattice-script/base/crosschain/CCTPUSDCDemo.s.sol";
+import {IBridgeFungible} from "@lattice/interfaces/crosschain/IBridgeFungible.sol";
 import {ICCTPBridgeAdapter} from "@lattice/interfaces/crosschain/ICCTPBridgeAdapter.sol";
 import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @notice Exposes {CCTPUSDCDemo}'s broadcast-free internals so tests assert the parsed values directly
 ///         instead of scraping console output (the probe idiom of the governance-demo fork suites). Stateless
-///         over the lane/diamonds, so one probe serves every lane and phase.
+///         over the destinations/hub, so one probe serves every destination and phase.
 contract CCTPUSDCDemoProbe is CCTPUSDCDemo {
-    function lane(string calldata key) external pure returns (Lane memory) {
-        return _lane(key);
+    function dest(string calldata key) external pure returns (Dest memory) {
+        return _dest(key);
     }
 
-    function setupSide(Lane memory l, bool source, address admin, uint256 maxFee, uint32 minFinality)
-        external
-        returns (address)
-    {
-        return _setupSide(l, source, admin, maxFee, minFinality);
+    function setupHub(address admin, uint256 maxFee, uint32 minFinality) external returns (address) {
+        return _setupHub(admin, maxFee, minFinality);
     }
 
     function demoStatus(
-        Lane memory l,
-        address srcDiamond,
-        address dstDiamond,
+        address diamond,
         address actor,
         uint256 amount,
+        Dest memory d,
         uint256 burned,
         uint256 dstBaseline
     ) external returns (uint8 phase, uint256 waitSeconds, uint256 done, uint256 srcBal, uint256 dstBal) {
-        return _demoStatus(l, srcDiamond, dstDiamond, actor, amount, burned, dstBaseline);
+        return _demoStatus(diamond, actor, amount, d, burned, dstBaseline);
     }
 }
 
 /// @title CCTPUSDCDemoFork
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
-/// @notice MULTI-CHAIN fork proof of the {CCTPUSDCDemo} self-cranking CCTP v2 USDC runbook: assembles the
-///         production {DeployCCTPBridgeAdapter} diamond on BOTH sides of a lane across two live forks, burns
-///         REAL testnet USDC through the LIVE Sepolia `TokenMessengerV2`, and asserts the machine-readable
-///         status tuple across every phase. Two lanes are exercised independently: `base` (Sepolia -> Base
-///         Sepolia) and `arc` (Sepolia -> Arc testnet).
+/// @notice ARC-HUB fork proof of the {CCTPUSDCDemo} self-cranking CCTP v2 USDC runbook: assembles the ONE
+///         production {DeployCCTPBridgeAdapter} diamond on Circle's Arc testnet (the SOURCE), burns REAL Arc
+///         USDC (the native gas token) through the LIVE Arc `TokenMessengerV2` toward BOTH destinations, and
+///         asserts the machine-readable status tuple across every phase. Two destinations are exercised:
+///         `sepolia` (Arc -> Ethereum Sepolia) and `base` (Arc -> Base Sepolia).
+///
+///         NEVER relay/mint INTO an Arc fork: on Arc every account is EIP-7702-delegated, and forge's revm
+///         simulation reverts executing the delegated-account mint path. These tests only BURN on Arc (source
+///         side) and SIMULATE a destination credit with a plain `deal()` on the destination's normal ERC-20 —
+///         they never drive `receiveMessage` on Arc.
 ///
 /// Enabling:
-///   export SEPOLIA_RPC_URL=<...>            # required for EVERY test here (the burn source)
-///   export BASE_SEPOLIA_RPC_URL=<...>       # enables the *_Base lane tests
-///   export ARC_TESTNET_RPC_URL=<...>        # enables the *_Arc  lane tests
+///   export ARC_TESTNET_RPC_URL=<...>        # required for the WHOLE suite (the burn source is Arc now)
+///   export SEPOLIA_RPC_URL=<...>            # enables the *_Sepolia status test (forks the Sepolia dest)
+///   export BASE_SEPOLIA_RPC_URL=<...>       # enables the *_Base    status test (forks the Base   dest)
 ///   forge test --match-path "test/fork/CCTPUSDCDemoFork.t.sol"
 ///
-/// Without SEPOLIA_RPC_URL the whole suite skips; each lane test additionally skips if its destination RPC is
-/// unset. Fork blocks are pinned (overridable via <ALIAS>_FORK_BLOCK) so runs reproduce and the RPC cache hits;
+/// Without ARC_TESTNET_RPC_URL the whole suite skips. The setup + burn tests are Arc-only (they never fork a
+/// destination). The per-destination status test additionally skips unless its destination RPC is set. Fork
+/// blocks are pinned (overridable via <ALIAS>_FORK_BLOCK) so runs reproduce and the RPC cache hits;
 /// {CCTPUSDCDemo._demoStatus} itself forks at the LIVE tip (status is inherently current), and the deployed
-/// diamonds + dealt balances are carried across those forks with `vm.makePersistent`.
+/// hub + dealt balances are carried across those forks with `vm.makePersistent`.
 contract CCTPUSDCDemoFork is Test {
     /// @notice Circle CCTP v2 `TokenMessengerV2` on every testnet (asserted allowance target after a burn).
     address internal constant TOKEN_MESSENGER_V2 = 0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA;
-    /// @notice USDC on Ethereum Sepolia — the burn source of funds.
-    address internal constant SEPOLIA_USDC = 0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238;
+    /// @notice USDC on Arc testnet — the native gas token, a 6-decimal ERC-20 view (`balanceOf = balance/1e12`).
+    address internal constant ARC_USDC = 0x3600000000000000000000000000000000000000;
 
-    /// @notice Pinned fork blocks (overridable via env). Sepolia matches the other Lattice fork suites; the
-    ///         destination defaults are recent testnet heights — bump them (or set <ALIAS>_FORK_BLOCK) if an
-    ///         RPC prunes state before them. `_demoStatus` forks at the live tip regardless.
+    /// @notice Pinned fork blocks (overridable via env). The Arc source default is a recent testnet height
+    ///         (chosen below the live tip so the cache hits); the destination defaults are recent testnet
+    ///         heights whose USDC contract state is available — bump them (or set <ALIAS>_FORK_BLOCK) if an RPC
+    ///         prunes state before them. `_demoStatus` forks at the live tip regardless.
+    uint256 internal constant DEFAULT_ARC_TESTNET_FORK_BLOCK = 52_000_000;
     uint256 internal constant DEFAULT_SEPOLIA_FORK_BLOCK = 11_239_288;
-    uint256 internal constant DEFAULT_BASE_SEPOLIA_FORK_BLOCK = 21_000_000;
-    uint256 internal constant DEFAULT_ARC_TESTNET_FORK_BLOCK = 5_000_000;
+    uint256 internal constant DEFAULT_BASE_SEPOLIA_FORK_BLOCK = 44_000_000;
 
     uint256 internal constant AMOUNT = 1_000_000; // 1 USDC (6 decimals)
 
@@ -72,11 +76,11 @@ contract CCTPUSDCDemoFork is Test {
     address internal actor; // the probe instance — the sender of every broadcast-free sub-call
 
     function setUp() public {
-        if (bytes(vm.envOr("SEPOLIA_RPC_URL", string(""))).length == 0) {
+        if (bytes(vm.envOr("ARC_TESTNET_RPC_URL", string(""))).length == 0) {
             vm.skip(true);
             return;
         }
-        _forkSepolia();
+        _forkArc();
         probe = new CCTPUSDCDemoProbe();
         actor = address(probe);
         // Tests, unlike scripts, do NOT auto-persist helpers across forks — the probe must survive re-forking.
@@ -87,15 +91,15 @@ contract CCTPUSDCDemoFork is Test {
     //                                 HELPERS
     //////////////////////////////////////////////////////////////////////////*//
 
-    function _forkSepolia() internal {
-        vm.createSelectFork("sepolia", vm.envOr("SEPOLIA_FORK_BLOCK", DEFAULT_SEPOLIA_FORK_BLOCK));
+    function _forkArc() internal {
+        vm.createSelectFork("arc-testnet", vm.envOr("ARC_TESTNET_FORK_BLOCK", DEFAULT_ARC_TESTNET_FORK_BLOCK));
     }
 
-    function _forkDst(CCTPUSDCDemo.Lane memory lane) internal {
-        if (keccak256(bytes(lane.dstAlias)) == keccak256("base-sepolia")) {
-            vm.createSelectFork(lane.dstAlias, vm.envOr("BASE_SEPOLIA_FORK_BLOCK", DEFAULT_BASE_SEPOLIA_FORK_BLOCK));
+    function _forkDest(CCTPUSDCDemo.Dest memory d) internal {
+        if (keccak256(bytes(d.key)) == keccak256("base")) {
+            vm.createSelectFork(d.rpcAlias, vm.envOr("BASE_SEPOLIA_FORK_BLOCK", DEFAULT_BASE_SEPOLIA_FORK_BLOCK));
         } else {
-            vm.createSelectFork(lane.dstAlias, vm.envOr("ARC_TESTNET_FORK_BLOCK", DEFAULT_ARC_TESTNET_FORK_BLOCK));
+            vm.createSelectFork(d.rpcAlias, vm.envOr("SEPOLIA_FORK_BLOCK", DEFAULT_SEPOLIA_FORK_BLOCK));
         }
     }
 
@@ -108,6 +112,11 @@ contract CCTPUSDCDemoFork is Test {
         return true;
     }
 
+    /// @dev The destination RPC env var for a destination preset.
+    function _dstRpcVar(CCTPUSDCDemo.Dest memory d) internal pure returns (string memory) {
+        return keccak256(bytes(d.key)) == keccak256("base") ? "BASE_SEPOLIA_RPC_URL" : "SEPOLIA_RPC_URL";
+    }
+
     /// @dev Carries a freshly-deployed diamond (proxy + every loupe-reported facet) across future forks.
     function _persist(address diamond) internal {
         vm.makePersistent(diamond);
@@ -117,178 +126,163 @@ contract CCTPUSDCDemoFork is Test {
         }
     }
 
-    /// @dev Symmetric wiring assertions for one side of a lane (diamond active on the current fork).
-    function _assertSide(address diamond, address expectedUsdc, uint256 counterpartyChainId, uint32 counterpartyDomain)
-        internal
-        view
-    {
-        assertEq(ICCTPBridgeAdapter(diamond).usdc(), expectedUsdc, "usdc() wired to the lane token");
-        assertEq(ICCTPBridgeAdapter(diamond).tokenMessenger(), TOKEN_MESSENGER_V2, "tokenMessenger() wired");
-        assertTrue(ICCTPBridgeAdapter(diamond).isChainRegistered(counterpartyChainId), "counterparty registered");
-        assertEq(ICCTPBridgeAdapter(diamond).getDomain(counterpartyChainId), counterpartyDomain, "domain mapped");
-        (uint256 maxFee, uint32 minFinality, bytes32 destCaller) =
-            ICCTPBridgeAdapter(diamond).getDomainConfig(counterpartyDomain);
+    /// @dev Wiring assertions for one destination domain on the Arc hub (hub active on the current fork).
+    function _assertDestWired(address hub, CCTPUSDCDemo.Dest memory d) internal view {
+        assertTrue(ICCTPBridgeAdapter(hub).isChainRegistered(d.chainId), "destination chain registered");
+        assertEq(ICCTPBridgeAdapter(hub).getDomain(d.chainId), d.domain, "destination domain mapped");
+        (uint256 maxFee, uint32 minFinality, bytes32 destCaller) = ICCTPBridgeAdapter(hub).getDomainConfig(d.domain);
         assertEq(maxFee, 0, "standard free burn: maxFee 0");
         assertEq(minFinality, 2000, "standard finality threshold");
         assertEq(destCaller, bytes32(0), "permissionless mint");
     }
 
     //*//////////////////////////////////////////////////////////////////////////
-    //                     SETUP — both diamonds across two forks
+    //                     SETUP — ONE Arc hub wiring BOTH destinations
     //////////////////////////////////////////////////////////////////////////*//
 
-    function test_Fork_SetupAssemblesBothDiamondsAcrossForks_Base() public {
-        _setupAssemblesBothDiamonds("base");
-    }
+    /// @notice Assembles the ONE hub on the Arc fork and asserts it is wired to the Arc native USDC and has
+    ///         BOTH destination domains (Sepolia 0 and Base Sepolia 6) registered + configured free/standard.
+    ///         Arc-only: reads the hub's own registrations, never forks a destination.
+    function test_Fork_SetupAssemblesHubOnArcWithBothDomains() public {
+        address hub = probe.setupHub(actor, 0, 2000);
 
-    function test_Fork_SetupAssemblesBothDiamondsAcrossForks_Arc() public {
-        _setupAssemblesBothDiamonds("arc");
-    }
+        assertEq(ICCTPBridgeAdapter(hub).usdc(), ARC_USDC, "usdc() wired to Arc native USDC");
+        assertEq(ICCTPBridgeAdapter(hub).tokenMessenger(), TOKEN_MESSENGER_V2, "tokenMessenger() wired");
 
-    function _setupAssemblesBothDiamonds(string memory laneKey) internal {
-        CCTPUSDCDemo.Lane memory lane = probe.lane(laneKey);
-        if (keccak256(bytes(lane.dstAlias)) == keccak256("base-sepolia")) {
-            if (!_dstRpcReady("BASE_SEPOLIA_RPC_URL")) return;
-        } else if (!_dstRpcReady("ARC_TESTNET_RPC_URL")) {
-            return;
-        }
-
-        // Source side (Sepolia fork from setUp): assert its wiring before switching forks.
-        address src = probe.setupSide(lane, true, actor, 0, 2000);
-        _assertSide(src, lane.srcUsdc, lane.dstChainId, lane.dstDomain);
-
-        // Destination side on the other fork: symmetric wiring toward the source counterparty.
-        _forkDst(lane);
-        address dst = probe.setupSide(lane, false, actor, 0, 2000);
-        _assertSide(dst, lane.dstUsdc, lane.srcChainId, lane.srcDomain);
-
-        assertTrue(src != dst, "distinct diamonds per side");
+        _assertDestWired(hub, probe.dest("sepolia"));
+        _assertDestWired(hub, probe.dest("base"));
     }
 
     //*//////////////////////////////////////////////////////////////////////////
-    //                     BURN — real testnet USDC on the Sepolia fork
+    //                     BURN — Arc USDC move under revm (native precompile)
     //////////////////////////////////////////////////////////////////////////*//
+    //
+    // EMPIRICAL BLOCKER (established live this session — see the PR/commit body). On Arc, USDC IS the native gas
+    // token: `balanceOf` reads `account.balance / 1e12`, but EVERY balance-MOVING op (`transfer` / `transferFrom`
+    // and, symmetrically, the destination `mint`) routes through a NODE-LEVEL precompile at
+    // 0x1800000000000000000000000000000000000000 (a 1-byte code stub). revm does not implement that precompile,
+    // so any such call reverts under a fork with `[StackUnderflow]` then `[Revert]` — the burn's `pullExact`
+    // `transferFrom` surfaces it as {IBridgeFungible.BridgeTransferFailed}. This is the SAME root cause the task
+    // flagged for mint-INTO-Arc; it applies equally to burn-FROM-Arc. Consequences these tests pin:
+    //   * A funded Arc burn CANNOT be simulated by revm (asserted below), so `forge script cctpDemoBurn` cannot
+    //     execute the burn body during its collect phase — the Arc burn must be sent out-of-band (e.g. `cast
+    //     send`, which the Arc NODE executes correctly). Only `balanceOf` (setUp/status) and `approve`
+    //     (storage-only) simulate on an Arc fork.
+    //   * The pre-transfer balance guard still fires (it reads `balanceOf`, which works), so a short balance is
+    //     rejected BEFORE the unsimulatable transfer — proven by the guard test.
 
-    /// @notice Burns REAL Sepolia USDC through the LIVE `TokenMessengerV2`: CCTP v2 burns the FULL amount on
-    ///         the source (the fee is taken at mint on the destination), so the observable is the USDC
-    ///         `totalSupply` dropping by exactly `AMOUNT`, with no allowance or balance stranded on the diamond.
-    function test_Fork_BurnMovesRealTestnetUSDCOnSepoliaFork() public {
-        CCTPUSDCDemo.Lane memory lane = probe.lane("base"); // domain 6 is wired on the live Sepolia messenger
-        address src = probe.setupSide(lane, true, actor, 0, 2000);
-
-        deal(SEPOLIA_USDC, actor, AMOUNT);
-        uint256 supplyBefore = IERC20(SEPOLIA_USDC).totalSupply();
-
-        probe.cctpDemoBurnStep(lane, src, actor, AMOUNT);
-
-        assertEq(IERC20(SEPOLIA_USDC).balanceOf(actor), 0, "actor debited exactly AMOUNT");
-        assertEq(supplyBefore - IERC20(SEPOLIA_USDC).totalSupply(), AMOUNT, "CCTP v2 burns the full amount");
-        assertEq(IERC20(SEPOLIA_USDC).allowance(src, TOKEN_MESSENGER_V2), 0, "messenger allowance reset to 0");
-        assertEq(IERC20(SEPOLIA_USDC).balanceOf(src), 0, "no USDC stuck on the diamond");
+    /// @notice A FUNDED Arc burn toward Sepolia reverts under revm at the source-side `transferFrom` (Arc's
+    ///         native-token precompile 0x1800 is absent from revm); the actor's funds are untouched.
+    function test_Fork_ArcUSDCBurnRevertsUnderRevm_Sepolia() public {
+        _arcBurnRevertsUnderRevm("sepolia");
     }
 
-    /// @notice The burn NEVER pulls partially: a short balance reverts BEFORE any approval or transfer.
-    function test_Fork_BurnRevertsOnInsufficientUSDCWithoutPulling() public {
-        CCTPUSDCDemo.Lane memory lane = probe.lane("base");
-        address src = probe.setupSide(lane, true, actor, 0, 2000);
+    /// @notice A FUNDED Arc burn toward Base Sepolia reverts under revm at the source-side `transferFrom` (same
+    ///         0x1800 native-precompile blocker; the target domain does not change the outcome).
+    function test_Fork_ArcUSDCBurnRevertsUnderRevm_Base() public {
+        _arcBurnRevertsUnderRevm("base");
+    }
 
-        deal(SEPOLIA_USDC, actor, AMOUNT - 1);
+    function _arcBurnRevertsUnderRevm(string memory destKey) internal {
+        CCTPUSDCDemo.Dest memory d = probe.dest(destKey);
+        address hub = probe.setupHub(actor, 0, 2000);
+
+        // Arc USDC is a 6-decimal view over the native balance (balanceOf = balance / 1e12); fund natively.
+        vm.deal(actor, AMOUNT * 1e12);
+        assertEq(IERC20(ARC_USDC).balanceOf(actor), AMOUNT, "funded exactly AMOUNT on the ERC-20 view");
+
+        // The balance guard passes; the burn then reverts inside `pullExact` when the native-move precompile
+        // is invoked under revm — bubbled as BridgeTransferFailed(ARC_USDC).
+        vm.expectRevert(abi.encodeWithSelector(IBridgeFungible.BridgeTransferFailed.selector, ARC_USDC));
+        probe.cctpDemoBurnStep(d, hub, actor, AMOUNT);
+
+        // The reverted call rolls back entirely: funds are safe, no allowance stranded.
+        assertEq(IERC20(ARC_USDC).balanceOf(actor), AMOUNT, "revert rolled back: nothing debited");
+        assertEq(IERC20(ARC_USDC).allowance(hub, TOKEN_MESSENGER_V2), 0, "no messenger allowance left behind");
+    }
+
+    /// @notice The burn NEVER pulls partially: a short balance reverts BEFORE any approval or transfer. This
+    ///         guard reads `balanceOf` (which DOES simulate on Arc), so it fires even though a full burn cannot.
+    function test_Fork_BurnRevertsOnInsufficientUSDCWithoutPulling() public {
+        CCTPUSDCDemo.Dest memory d = probe.dest("sepolia");
+        address hub = probe.setupHub(actor, 0, 2000);
+
+        vm.deal(actor, (AMOUNT - 1) * 1e12);
         vm.expectRevert(
             abi.encodeWithSelector(CCTPUSDCDemo.CCTPUSDCDemo__InsufficientUSDC.selector, AMOUNT - 1, AMOUNT)
         );
-        probe.cctpDemoBurnStep(lane, src, actor, AMOUNT);
+        probe.cctpDemoBurnStep(d, hub, actor, AMOUNT);
 
-        assertEq(IERC20(SEPOLIA_USDC).balanceOf(actor), AMOUNT - 1, "not one token pulled");
-        assertEq(IERC20(SEPOLIA_USDC).allowance(src, TOKEN_MESSENGER_V2), 0, "no approval left behind");
+        assertEq(IERC20(ARC_USDC).balanceOf(actor), AMOUNT - 1, "not one token pulled");
+        assertEq(IERC20(ARC_USDC).allowance(hub, TOKEN_MESSENGER_V2), 0, "no approval left behind");
     }
 
     //*//////////////////////////////////////////////////////////////////////////
     //                 STATUS — machine-readable tuple across phases
     //////////////////////////////////////////////////////////////////////////*//
 
+    function test_Fork_StatusTupleAcrossPhases_Sepolia() public {
+        _statusTupleAcrossPhases("sepolia");
+    }
+
     function test_Fork_StatusTupleAcrossPhases_Base() public {
         _statusTupleAcrossPhases("base");
     }
 
-    function test_Fork_StatusTupleAcrossPhases_Arc() public {
-        _statusTupleAcrossPhases("arc");
-    }
+    function _statusTupleAcrossPhases(string memory destKey) internal {
+        CCTPUSDCDemo.Dest memory d = probe.dest(destKey);
+        if (!_dstRpcReady(_dstRpcVar(d))) return;
 
-    function _statusTupleAcrossPhases(string memory laneKey) internal {
-        CCTPUSDCDemo.Lane memory lane = probe.lane(laneKey);
-        if (keccak256(bytes(lane.dstAlias)) == keccak256("base-sepolia")) {
-            if (!_dstRpcReady("BASE_SEPOLIA_RPC_URL")) return;
-        } else if (!_dstRpcReady("ARC_TESTNET_RPC_URL")) {
-            return;
-        }
-
-        // Fresh: no diamonds -> NEEDS-SETUP.
-        (uint8 phase,, uint256 done,,) = probe.demoStatus(lane, address(0), address(0), actor, AMOUNT, 0, 0);
+        // Fresh: no hub -> NEEDS-SETUP.
+        (uint8 phase,, uint256 done,,) = probe.demoStatus(address(0), actor, AMOUNT, d, 0, 0);
         assertEq(phase, 0, "fresh -> NEEDS-SETUP");
         assertEq(done, 0, "not done");
 
-        // Assemble both sides (NOT funded yet); carry them across the live-tip status forks.
-        _forkSepolia();
-        address src = probe.setupSide(lane, true, actor, 0, 2000);
-        _persist(src);
-        vm.makePersistent(lane.srcUsdc);
+        // Assemble the hub on Arc (NOT funded yet); carry it across the live-tip status forks.
+        _forkArc();
+        address hub = probe.setupHub(actor, 0, 2000);
+        _persist(hub);
+        vm.makePersistent(ARC_USDC);
 
-        _forkDst(lane);
-        address dst = probe.setupSide(lane, false, actor, 0, 2000);
-        _persist(dst);
-        vm.makePersistent(lane.dstUsdc);
-
-        // Half-set-up (destination diamond missing) -> still NEEDS-SETUP.
-        (phase,, done,,) = probe.demoStatus(lane, src, address(0), actor, AMOUNT, 0, 0);
-        assertEq(phase, 0, "one side missing -> NEEDS-SETUP");
-        assertEq(done, 0, "not done");
-
-        // Both wired but the source is UNFUNDED -> NEEDS-FUNDS (the funding gate). The probe holds no USDC on
-        // live-tip Sepolia, so srcBal 0 < AMOUNT.
+        // Wired but the actor is UNFUNDED on Arc -> NEEDS-FUNDS (the funding gate). The probe holds no Arc USDC
+        // on the live-tip Arc fork, so srcBal 0 < AMOUNT.
         uint256 waitSeconds;
         uint256 srcBal;
-        (phase, waitSeconds, done, srcBal,) = probe.demoStatus(lane, src, dst, actor, AMOUNT, 0, 0);
+        (phase, waitSeconds, done, srcBal,) = probe.demoStatus(hub, actor, AMOUNT, d, 0, 0);
         assertEq(phase, 1, "wired but unfunded -> NEEDS-FUNDS");
         assertEq(waitSeconds, 0, "funding is a human gate, not a timed wait");
         assertEq(done, 0, "not done");
         assertEq(srcBal, 0, "source unfunded");
 
-        // Fund the source (srcUsdc is persistent, so the deal survives the status re-forks).
-        _forkSepolia();
-        deal(lane.srcUsdc, actor, AMOUNT);
+        // Fund the source natively on Arc (the persistent actor carries the balance across the status re-forks).
+        _forkArc();
+        vm.deal(actor, AMOUNT * 1e12);
 
         // Funded, not yet burned -> READY-TO-BURN, srcBal == AMOUNT.
-        (phase, waitSeconds, done, srcBal,) = probe.demoStatus(lane, src, dst, actor, AMOUNT, 0, 0);
+        (phase, waitSeconds, done, srcBal,) = probe.demoStatus(hub, actor, AMOUNT, d, 0, 0);
         assertEq(phase, 2, "funded -> READY-TO-BURN");
         assertEq(waitSeconds, 0, "actionable now");
         assertEq(done, 0, "not done");
         assertEq(srcBal, AMOUNT, "source balance is the funded amount");
 
         // Burned (loop-carried burned=1), destination not yet credited (baseline 0) -> AWAITING-DELIVERY.
-        (phase, waitSeconds, done,,) = probe.demoStatus(lane, src, dst, actor, AMOUNT, 1, 0);
+        (phase, waitSeconds, done,,) = probe.demoStatus(hub, actor, AMOUNT, d, 1, 0);
         assertEq(phase, 3, "burned, undelivered -> AWAITING-DELIVERY");
         assertEq(waitSeconds, 30, "poll hint");
         assertEq(done, 0, "not done");
 
-        // Simulate the destination mint -> DELIVERED. On a native-gas destination (Arc) the recipient's relay
-        // gas is debited from the same balance the ERC-20 view reports, so the credit lands BELOW AMOUNT;
-        // dealing AMOUNT-4000 (< the 50_000 gas allowance) exercises the fee/gas-adjusted DELIVERED threshold
-        // (without the allowance this would still read AWAITING-DELIVERY). Base has a real ERC-20 balance slot.
-        uint256 gasAllowance = lane.dstUsdcIsNative ? 50_000 : 0;
-        uint256 credited = AMOUNT - (lane.dstUsdcIsNative ? 4_000 : 0);
-        _forkDst(lane);
-        if (lane.dstUsdcIsNative) {
-            // Arc USDC is a 6-decimal view over the native balance (balanceOf = account.balance / 1e12) with
-            // no ERC-20 storage slot for `deal()` to probe — fund natively instead.
-            vm.deal(actor, credited * 1e12);
-        } else {
-            deal(lane.dstUsdc, actor, credited);
-        }
+        // Simulate the destination mint -> DELIVERED. Destination USDC is a normal ERC-20 (stdstore deal works);
+        // relay gas is ETH, never netted from the credit, so DELIVERED is simply dstBal >= baseline + AMOUNT
+        // (free standard burn: srcMaxFee 0). Persist the token so the deal survives the live-tip status re-fork.
+        _forkDest(d);
+        vm.makePersistent(d.usdc);
+        deal(d.usdc, actor, AMOUNT);
+
         uint256 dstBal;
-        (phase, waitSeconds, done,, dstBal) = probe.demoStatus(lane, src, dst, actor, AMOUNT, 1, 0);
+        (phase, waitSeconds, done,, dstBal) = probe.demoStatus(hub, actor, AMOUNT, d, 1, 0);
         assertEq(phase, 4, "delivered -> DELIVERED");
         assertEq(waitSeconds, 0, "delivered needs nothing");
         assertEq(done, 1, "done");
-        assertGe(dstBal, AMOUNT - gasAllowance, "destination credited above the (gas-adjusted) threshold");
+        assertEq(dstBal, AMOUNT, "destination credited the full free-standard amount");
     }
 }

@@ -4,119 +4,147 @@ pragma solidity ^0.8.30;
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {DeployCCTPBridgeAdapter} from "@lattice-script/base/crosschain/DeployCCTPBridgeAdapter.s.sol";
 import {ICCTPBridgeAdapter} from "@lattice/interfaces/crosschain/ICCTPBridgeAdapter.sol";
+import {IReceiverV2} from "@lattice/interfaces/external/IReceiverV2.sol";
 import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
 import {InteroperableAddress} from "@lattice/utils/libraries/InteroperableAddress.sol";
 import {console} from "forge-std/Script.sol";
 
 /// @title CCTPUSDCDemo
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
-/// @notice SELF-CRANKING, MULTI-CHAIN Circle CCTP v2 USDC demo: moves REAL testnet USDC through Lattice
-///         {DeployCCTPBridgeAdapter} diamonds on two lanes out of Ethereum Sepolia — `arc` (Sepolia -> Arc
-///         testnet) and `base` (Sepolia -> Base Sepolia) — extending the parent recipe exactly as
-///         {DeployGovernedVaultENS} extends {DeployGovernedVault}. CCTP is BURN-AND-MINT: USDC is burned on
-///         the source chain, an off-chain Iris attestation is fetched, then the message is relayed on the
-///         destination which mints the USDC. `forge script` is collect-then-dispatch (every broadcast fires
-///         AFTER the body returns), so ONE run cannot burn -> attest -> relay: the attestation only exists
-///         once the burn is mined. The demo is therefore a CRANK STATE MACHINE across runs, and the loop
-///         (script/config/cctp-usdc-demo-loop.sh) owns the off-chain journal (burn tx hash, Iris message,
-///         attestation) between cranks. Each entrypoint drives ONLY the existing adapter surface
-///         (`depositForBurn` + `relayMessage` + `registerChainDomain` / `configureDomain`); no src/ contract
-///         is modified. TESTNET-ONLY.
-/// @dev RUNBOOK — <actor> = your keystore address; FORGE_AUTH='--account <name>'
-///  0. Fund via https://faucet.circle.com : Sepolia USDC -> actor (>= 1 USDC) + Sepolia ETH;
-///     arc lane: Arc testnet USDC (gas) -> actor; base lane: Base Sepolia ETH -> actor.
-///  1. Run a lane end-to-end (setup -> burn -> Iris attest -> relay -> verify, unattended):
-///     FORGE_AUTH='--account <name>' script/config/cctp-usdc-demo-loop.sh arc  <actor>
-///     FORGE_AUTH='--account <name>' script/config/cctp-usdc-demo-loop.sh base <actor>
+/// @notice SELF-CRANKING Circle CCTP v2 USDC demo built as an ARC HUB: ONE Lattice
+///         {DeployCCTPBridgeAdapter} diamond is deployed on Circle's Arc testnet (the SOURCE) with a two-entry
+///         domain table, and it bridges REAL testnet USDC OUT to BOTH Ethereum Sepolia AND Base Sepolia. CCTP
+///         is BURN-AND-MINT: USDC is burned on the source (Arc), an off-chain Iris attestation is fetched, then
+///         the message is relayed on the destination which mints the USDC. `forge script` is
+///         collect-then-dispatch (every broadcast fires AFTER the body returns), so ONE run cannot
+///         burn -> attest -> relay: the attestation only exists once the burn is mined. The demo is therefore a
+///         CRANK STATE MACHINE across runs, and the loop (script/config/cctp-usdc-demo-loop.sh) owns the
+///         off-chain journal (hub address, per-dest burn tx hash, Iris message, attestation) between cranks.
+///
+///         WHY ARC AS THE SOURCE HUB (both facts established on live chains):
+///          - SPEED. Standard (free) CCTP attests only after SOURCE-chain hard finality. Sepolia finality is
+///            ~13-19 min; Arc testnet has sub-second deterministic finality, so an Arc-sourced standard burn
+///            attests in SECONDS. Sourcing from Arc makes the free tier fast.
+///          - RELAYS RUN ON THE DESTINATIONS, NOT ARC. On Arc every account is EIP-7702-delegated by default;
+///            minting to a delegated recipient works ON-CHAIN but forge's fork SIMULATION (revm) reverts
+///            executing Arc's delegated-account mint path, and forge always simulates before broadcasting. So a
+///            relay is NEVER driven into Arc. Here the destinations (plain-EOA Sepolia / Base Sepolia) do the
+///            minting, calling Circle's `MessageTransmitterV2.receiveMessage` DIRECTLY (the destinations carry
+///            no diamond — the Lattice showcase is the SOURCE-side hub). The mint recipient is the actor, a
+///            plain EOA on each destination; no 7702 anywhere in the flow.
+///
+///         Each entrypoint drives only the existing adapter surface (`depositForBurn` + admin
+///         `registerChainDomain` / `configureDomain`) or Circle's `receiveMessage`; no src/ contract is
+///         modified. TESTNET-ONLY.
+/// @dev RUNBOOK — <actor> = your keystore address (a plain EOA); FORGE_AUTH='--account <name>'
+///  0. Fund via https://faucet.circle.com :
+///       - Arc testnet USDC -> actor  (>= 1 USDC; on Arc, USDC is BOTH the bridged asset AND the gas token)
+///       - Ethereum Sepolia ETH -> actor   (relay gas on the Sepolia destination)
+///       - Base Sepolia ETH -> actor       (relay gas on the Base Sepolia destination)
+///  1. Drive BOTH destinations end-to-end (setup -> burn -> Iris attest -> relay -> verify, unattended) with
+///     ONE loop invocation (sepolia to DELIVERED, then base):
+///       FORGE_AUTH='--account <name>' script/config/cctp-usdc-demo-loop.sh <actor>
+///     Filter to a single destination with an optional 2nd arg (`sepolia` | `base`):
+///       FORGE_AUTH='--account <name>' script/config/cctp-usdc-demo-loop.sh <actor> base
+///     Attestation lands in SECONDS (Arc's instant finality) on the DEFAULT free standard tier.
 ///  2. Manual per-step equivalents:
-///     forge script script/base/crosschain/CCTPUSDCDemo.s.sol:CCTPUSDCDemo --account <name> --broadcast --verify \
-///       --sig "cctpDemoSetup(string,uint256,uint32)" arc 0 2000
-///     (status is broadcast-free: --sig "cctpDemoStatus(string,address,address,address,uint256,uint256,uint256)"
-///        arc <src> <dst> <actor> 1000000 0 0)
+///       forge script script/base/crosschain/CCTPUSDCDemo.s.sol:CCTPUSDCDemo --account <name> --broadcast --slow --verify \
+///         --sig "cctpDemoSetup(uint256,uint32)" 0 2000
+///       (status is broadcast-free: --sig "cctpDemoStatus(address,address,uint256,string,uint256,uint256)"
+///          <hub> <actor> 1000000 sepolia 0 0 --sender <actor>)
 ///  3. Deploys auto-verify via Sourcify (Foundry's default verifier) — the setup command already includes
-///     `--verify`; no API key needed. (Multichain `--verify` verifies each chain by chain-id; a chain not on
-///     Sourcify fails that one contract non-fatally.)
-///  Explorers: sepolia.etherscan.io · sepolia.basescan.org · testnet.arcscan.app
+///     bare `--verify`; no API key needed (a chain Sourcify does not cover fails that one contract non-fatally).
+///  Explorers: source (Arc) testnet.arcscan.app · dests sepolia.etherscan.io · sepolia.basescan.org
 contract CCTPUSDCDemo is DeployCCTPBridgeAdapter {
     //*//////////////////////////////////////////////////////////////////////////
     //                        CCTP v2 TESTNET CONTRACTS (SAME ON EVERY TESTNET)
     //////////////////////////////////////////////////////////////////////////*//
 
-    /// @notice Circle CCTP v2 `TokenMessengerV2` — identical address on every testnet (Sepolia, Base, Arc).
+    /// @notice Circle CCTP v2 `TokenMessengerV2` — identical address on every testnet (Arc, Sepolia, Base).
     address internal constant TOKEN_MESSENGER_V2 = 0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA;
 
-    /// @notice Circle CCTP v2 `MessageTransmitterV2` — identical address on every testnet.
+    /// @notice Circle CCTP v2 `MessageTransmitterV2` — identical address on every testnet. The destinations
+    ///         call this DIRECTLY to mint (no diamond on a destination).
     address internal constant MESSAGE_TRANSMITTER_V2 = 0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275;
 
-    /// @notice USDC on Ethereum Sepolia (CCTP domain 0, chain 11155111) — the burn source on every lane.
-    address internal constant SEPOLIA_USDC = 0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238;
-
-    /// @notice USDC on Base Sepolia (CCTP domain 6, chain 84532).
-    address internal constant BASE_SEPOLIA_USDC = 0x036CbD53842c5426634e7929541eC2318f3dCF7e;
-
-    /// @notice USDC on Arc testnet (CCTP domain 26, chain 5042002) — the NATIVE gas token, exposed as a
-    ///         6-decimal ERC-20 view at this address (which carries bytecode / is a proxy).
-    address internal constant ARC_USDC = 0x3600000000000000000000000000000000000000;
-
-    /// @notice DELIVERED slack (USDC units) subtracted from the credited threshold on a lane whose destination
-    ///         USDC is the NATIVE gas token: the actor signs the relay, so its relay gas is debited from the
-    ///         very balance `balanceOf` views. Without this the mint's `amount` credit is netted against gas
-    ///         and DELIVERED (`dstBal >= baseline + amount`) can never be reached. 50_000 = 0.05 USDC
-    ///         (6-dec; ~200k gas @ 20 gwei on a 1e12-scaled native view ≈ 4,000 units — a comfortable ceiling).
-    uint256 internal constant DST_NATIVE_GAS_ALLOWANCE = 50_000;
-
     //*//////////////////////////////////////////////////////////////////////////
-    //                               LANE PRESETS
+    //                          ARC SOURCE (THE HUB) CONSTANTS
     //////////////////////////////////////////////////////////////////////////*//
 
-    /// @notice A hardcoded Sepolia -> destination lane. `srcUsdc` is always Sepolia USDC (domain 0).
-    struct Lane {
-        string srcAlias;
-        string dstAlias;
-        uint256 srcChainId;
-        uint256 dstChainId;
-        uint32 srcDomain;
-        uint32 dstDomain;
-        address srcUsdc;
-        address dstUsdc;
-        bool dstUsdcIsNative;
+    /// @notice Foundry RPC alias for Circle's Arc testnet (foundry.toml interpolates ${ARC_TESTNET_RPC_URL}).
+    string internal constant ARC_ALIAS = "arc-testnet";
+
+    /// @notice Arc testnet chain id (the hub's home chain — the burn source of every lane).
+    uint256 internal constant ARC_CHAIN_ID = 5_042_002;
+
+    /// @notice Arc testnet CCTP domain (the Iris SOURCE domain used to fetch attestations for Arc-sourced burns).
+    uint32 internal constant ARC_DOMAIN = 26;
+
+    /// @notice USDC on Arc testnet — the NATIVE gas token, exposed as a 6-decimal ERC-20 view at this address
+    ///         (which carries bytecode / is a proxy). `balanceOf(a) == a.balance / 1e12`; fund a fork with
+    ///         `vm.deal(actor, amount * 1e12)` (ERC-20 `deal()` slot-hunting does not work on the native view).
+    address internal constant ARC_USDC = 0x3600000000000000000000000000000000000000;
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                          DESTINATION USDC CONSTANTS
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice USDC on Ethereum Sepolia (CCTP domain 0, chain 11155111) — a normal ERC-20; relay gas is ETH.
+    address internal constant SEPOLIA_USDC = 0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238;
+
+    /// @notice USDC on Base Sepolia (CCTP domain 6, chain 84532) — a normal ERC-20; relay gas is ETH.
+    address internal constant BASE_SEPOLIA_USDC = 0x036CbD53842c5426634e7929541eC2318f3dCF7e;
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                              DESTINATION PRESETS
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice A hardcoded Arc-hub destination. The source is ALWAYS Arc (`ARC_*`); a `Dest` describes one of
+    ///         the two spokes the hub bridges to. `usdc` is the destination's normal ERC-20 (relay gas is ETH).
+    struct Dest {
+        string key; // loop / journal key: "sepolia" | "base"
+        string rpcAlias; // foundry.toml RPC alias
+        uint256 chainId; // destination chain id
+        uint32 domain; // destination CCTP domain
+        address usdc; // destination USDC (a normal ERC-20)
+        string human; // human-readable name (logs)
+        string explorer; // destination block explorer base
     }
 
-    /// @notice Thrown when the lane key is neither `"arc"` nor `"base"`.
-    error CCTPUSDCDemo__UnknownLane(string key);
+    /// @notice Thrown when the destination key is neither `"sepolia"` nor `"base"`.
+    error CCTPUSDCDemo__UnknownDest(string key);
 
-    /// @notice Thrown when the actor's source USDC balance is below `amount` — the burn never pulls partially.
+    /// @notice Thrown when the actor's Arc USDC balance is below `amount` — the burn never pulls partially.
     error CCTPUSDCDemo__InsufficientUSDC(uint256 balance, uint256 required);
 
-    /// @notice Resolves the hardcoded lane preset for `key` (`"arc"` or `"base"`); reverts on any other key.
-    function _lane(string memory key) internal pure returns (Lane memory lane) {
+    /// @notice Thrown when Circle's `MessageTransmitterV2.receiveMessage` returns false on a destination relay.
+    error CCTPUSDCDemo__RelayFailed();
+
+    /// @notice Resolves the hardcoded destination preset for `key` (`"sepolia"` or `"base"`); reverts otherwise.
+    function _dest(string memory key) internal pure returns (Dest memory dest) {
         bytes32 k = keccak256(bytes(key));
-        if (k == keccak256("arc")) {
-            lane = Lane({
-                srcAlias: "sepolia",
-                dstAlias: "arc-testnet",
-                srcChainId: 11_155_111,
-                dstChainId: 5_042_002,
-                srcDomain: 0,
-                dstDomain: 26,
-                srcUsdc: SEPOLIA_USDC,
-                dstUsdc: ARC_USDC,
-                dstUsdcIsNative: true
+        if (k == keccak256("sepolia")) {
+            dest = Dest({
+                key: "sepolia",
+                rpcAlias: "sepolia",
+                chainId: 11_155_111,
+                domain: 0,
+                usdc: SEPOLIA_USDC,
+                human: "Ethereum Sepolia",
+                explorer: "https://sepolia.etherscan.io"
             });
         } else if (k == keccak256("base")) {
-            lane = Lane({
-                srcAlias: "sepolia",
-                dstAlias: "base-sepolia",
-                srcChainId: 11_155_111,
-                dstChainId: 84_532,
-                srcDomain: 0,
-                dstDomain: 6,
-                srcUsdc: SEPOLIA_USDC,
-                dstUsdc: BASE_SEPOLIA_USDC,
-                dstUsdcIsNative: false
+            dest = Dest({
+                key: "base",
+                rpcAlias: "base-sepolia",
+                chainId: 84_532,
+                domain: 6,
+                usdc: BASE_SEPOLIA_USDC,
+                human: "Base Sepolia",
+                explorer: "https://sepolia.basescan.org"
             });
         } else {
-            revert CCTPUSDCDemo__UnknownLane(key);
+            revert CCTPUSDCDemo__UnknownDest(key);
         }
     }
 
@@ -124,58 +152,51 @@ contract CCTPUSDCDemo is DeployCCTPBridgeAdapter {
     //                          CRANK ENTRYPOINTS (BROADCAST)
     //////////////////////////////////////////////////////////////////////////*//
 
-    /// @notice MULTICHAIN setup crank: assembles a CCTP adapter diamond on BOTH the source (Sepolia) and the
-    ///         destination fork, wiring each side's counterparty chain -> domain equivalence and per-domain
-    ///         burn config. `msg.sender` (the keystore signer) is the admin of both diamonds. Prints
-    ///         `DEMO-SETUP <srcDiamond> <dstDiamond>` — the loop reads the two addresses from THIS console
-    ///         line (a multichain run's diamonds are not addressable from a single broadcast JSON).
-    /// @param laneKey             The lane preset key (`"arc"` or `"base"`).
-    /// @param maxFee              The per-domain CCTP `maxFee` (0 = free standard transfer).
+    /// @notice SETUP crank (ARC FORK ONLY, single-chain): assembles the ONE CCTP adapter diamond on Arc and
+    ///         registers + configures BOTH destination domains (Sepolia 0 and Base Sepolia 6) with a
+    ///         permissionless (`destinationCaller == bytes32(0)`) mint. `msg.sender` (the keystore signer) is
+    ///         the admin. Prints `DEMO-SETUP <diamond>` — the loop reads the ONE hub address from this console
+    ///         line (an Arc setup run's diamond is also in broadcast/.../5042002, but the console line is the
+    ///         canonical source).
+    /// @param maxFee               The per-domain CCTP `maxFee` (0 = free standard transfer).
     /// @param minFinalityThreshold The finality threshold (2000 standard-finalized, 1000 fast).
-    function cctpDemoSetup(string calldata laneKey, uint256 maxFee, uint32 minFinalityThreshold) external {
-        Lane memory lane = _lane(laneKey);
+    function cctpDemoSetup(uint256 maxFee, uint32 minFinalityThreshold) external {
         address admin = msg.sender;
 
-        vm.createSelectFork(lane.srcAlias);
+        vm.createSelectFork(ARC_ALIAS);
         vm.startBroadcast();
-        address srcDiamond = _setupSide(lane, true, admin, maxFee, minFinalityThreshold);
+        address diamond = _setupHub(admin, maxFee, minFinalityThreshold);
         vm.stopBroadcast();
 
-        vm.createSelectFork(lane.dstAlias);
-        vm.startBroadcast();
-        address dstDiamond = _setupSide(lane, false, admin, maxFee, minFinalityThreshold);
-        vm.stopBroadcast();
-
-        console.log(string.concat("DEMO-SETUP ", vm.toString(srcDiamond), " ", vm.toString(dstDiamond)));
+        console.log(string.concat("DEMO-SETUP ", vm.toString(diamond)));
     }
 
     /// @notice READ-ONLY status crank (broadcast-free — invoked WITHOUT `--broadcast`, a dry-run simulation):
-    ///         creates the source fork and reads the actor's source USDC balance + the source diamond wiring,
-    ///         then creates the destination fork and reads the actor's destination USDC balance. Prints ONE
-    ///         line `DEMO-STATUS <phase> <waitSeconds> <done> <srcBal> <dstBal>` the loop parses to decide
+    ///         forks Arc to read the actor's Arc USDC balance + the hub wiring, then forks THE ONE destination
+    ///         `destKey` names to read the actor's destination USDC balance. Prints ONE line
+    ///         `DEMO-STATUS <phase> <waitSeconds> <done> <srcBal> <dstBal>` the loop parses to decide
     ///         crank-vs-sleep. NON-VIEW because fork cheatcodes are non-view.
     /// @dev Post-burn the source balance drops, so the contract alone cannot tell NEEDS-FUNDS from a completed
-    ///      burn — the loop carries `burned` (0/1) and `dstBaseline` (the destination balance recorded at burn
-    ///      time) so status can classify the delivery phase. This division of labor is deliberate.
-    /// @param laneKey     The lane preset key.
-    /// @param srcDiamond  The source (Sepolia) adapter diamond.
-    /// @param dstDiamond  The destination adapter diamond.
+    ///      burn — the loop carries `burned` (0/1) and `dstBaseline` (the destination balance at burn time) so
+    ///      status can classify the delivery phase. Phase 0 NEEDS-SETUP verifies BOTH destination domains are
+    ///      registered on the hub, so a half-configured hub is caught once whichever destination is driven.
+    /// @param diamond     The Arc hub adapter diamond.
     /// @param actor       The address whose USDC balances are read (the keystore signer).
     /// @param amount      The burn amount (6-decimal USDC units).
+    /// @param destKey     The destination preset key (`"sepolia"` or `"base"`).
     /// @param burned      0 before the burn is mined, 1 after (loop-carried).
     /// @param dstBaseline The destination USDC balance of `actor` recorded at burn time (loop-carried).
     function cctpDemoStatus(
-        string calldata laneKey,
-        address srcDiamond,
-        address dstDiamond,
+        address diamond,
         address actor,
         uint256 amount,
+        string calldata destKey,
         uint256 burned,
         uint256 dstBaseline
     ) external {
-        Lane memory lane = _lane(laneKey);
+        Dest memory dest = _dest(destKey);
         (uint8 phase, uint256 waitSeconds, uint256 done, uint256 srcBal, uint256 dstBal) =
-            _demoStatus(lane, srcDiamond, dstDiamond, actor, amount, burned, dstBaseline);
+            _demoStatus(diamond, actor, amount, dest, burned, dstBaseline);
         console.log(
             string.concat(
                 "DEMO-STATUS ",
@@ -192,144 +213,117 @@ contract CCTPUSDCDemo is DeployCCTPBridgeAdapter {
         );
     }
 
-    /// @notice BURN crank (source fork only): pulls exactly `amount` USDC from `msg.sender` and burns it
-    ///         through the source diamond toward `msg.sender` on the destination chain (recipient == the
-    ///         signer). Reverts {CCTPUSDCDemo__InsufficientUSDC} BEFORE any approval if the signer's balance
-    ///         is short — never a partial pull. Prints `DEMO-BURN <recipient> <amount>`.
-    function cctpDemoBurn(string calldata laneKey, address srcDiamond, uint256 amount) external {
-        Lane memory lane = _lane(laneKey);
+    /// @notice BURN crank (ARC fork only): pulls exactly `amount` Arc USDC from `msg.sender` and burns it
+    ///         through the hub toward `msg.sender` on the destination `destKey` names (recipient == the
+    ///         signer, a plain EOA on the destination). Reverts {CCTPUSDCDemo__InsufficientUSDC} BEFORE any
+    ///         approval if the signer's balance is short — never a partial pull. Prints
+    ///         `DEMO-BURN <recipient> <amount>`.
+    function cctpDemoBurn(address diamond, uint256 amount, string calldata destKey) external {
+        Dest memory dest = _dest(destKey);
         address actor = msg.sender;
 
-        vm.createSelectFork(lane.srcAlias);
+        vm.createSelectFork(ARC_ALIAS);
         vm.startBroadcast();
-        cctpDemoBurnStep(lane, srcDiamond, actor, amount);
+        cctpDemoBurnStep(dest, diamond, actor, amount);
         vm.stopBroadcast();
 
         console.log(string.concat("DEMO-BURN ", vm.toString(actor), " ", vm.toString(amount)));
     }
 
-    /// @notice RELAY crank (destination fork only): forwards the Iris-attested CCTP `message` + `attestation`
-    ///         to the destination diamond's permissionless `relayMessage`, minting the bridged USDC to the
-    ///         recipient. Prints `DEMO-RELAY <recipientBalanceAfter>`.
-    function cctpDemoRelay(
-        string calldata laneKey,
-        address dstDiamond,
-        bytes calldata message,
-        bytes calldata attestation
-    ) external {
-        Lane memory lane = _lane(laneKey);
+    /// @notice RELAY crank (DESTINATION fork only): forwards the Iris-attested CCTP `message` + `attestation`
+    ///         to Circle's `MessageTransmitterV2.receiveMessage` DIRECTLY on the destination, minting the
+    ///         bridged USDC to the encoded recipient (the actor). Reverts {CCTPUSDCDemo__RelayFailed} if the
+    ///         transmitter returns false. Prints `DEMO-RELAY <recipientBalanceAfter>`.
+    function cctpDemoRelay(string calldata destKey, bytes calldata message, bytes calldata attestation) external {
+        Dest memory dest = _dest(destKey);
         address actor = msg.sender;
 
-        vm.createSelectFork(lane.dstAlias);
+        vm.createSelectFork(dest.rpcAlias);
         vm.startBroadcast();
-        ICCTPBridgeAdapter(dstDiamond).relayMessage(message, attestation);
+        bool ok = IReceiverV2(MESSAGE_TRANSMITTER_V2).receiveMessage(message, attestation);
         vm.stopBroadcast();
+        if (!ok) revert CCTPUSDCDemo__RelayFailed();
 
-        console.log(string.concat("DEMO-RELAY ", vm.toString(IERC20(lane.dstUsdc).balanceOf(actor))));
+        console.log(string.concat("DEMO-RELAY ", vm.toString(IERC20(dest.usdc).balanceOf(actor))));
     }
 
     //*//////////////////////////////////////////////////////////////////////////
     //                     BROADCAST-FREE INTERNALS (SHARED WITH TESTS)
     //////////////////////////////////////////////////////////////////////////*//
 
-    /// @notice Assembles ONE side's CCTP adapter diamond and wires its counterparty domain (broadcast-free —
-    ///         the crank entrypoints wrap this in `vm.startBroadcast()`; tests call it on a selected fork).
-    /// @param lane        The resolved lane preset.
-    /// @param source      True to build the Sepolia source side, false to build the destination side.
+    /// @notice Assembles the ONE Arc hub diamond and registers + configures BOTH destination domains
+    ///         (broadcast-free — {cctpDemoSetup} wraps this in `vm.startBroadcast()`; tests call it on a
+    ///         selected Arc fork).
     /// @param admin       The address granted `DEFAULT_ADMIN_ROLE` (must be the caller of the register/config
     ///                     sub-calls — the broadcaster under `--broadcast`, or the probe in a test).
     /// @param maxFee      The per-domain CCTP `maxFee`.
     /// @param minFinality The per-domain CCTP `minFinalityThreshold`.
-    /// @return diamond The assembled adapter diamond, its counterparty already registered + configured.
-    function _setupSide(Lane memory lane, bool source, address admin, uint256 maxFee, uint32 minFinality)
-        internal
-        returns (address diamond)
-    {
-        address localUsdc = source ? lane.srcUsdc : lane.dstUsdc;
-        uint256 counterpartyChainId = source ? lane.dstChainId : lane.srcChainId;
-        uint32 counterpartyDomain = source ? lane.dstDomain : lane.srcDomain;
-
+    /// @return diamond The assembled hub, both destination domains already registered + configured.
+    function _setupHub(address admin, uint256 maxFee, uint32 minFinality) internal returns (address diamond) {
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) =
-            buildCuts(admin, TOKEN_MESSENGER_V2, MESSAGE_TRANSMITTER_V2, localUsdc);
+            buildCuts(admin, TOKEN_MESSENGER_V2, MESSAGE_TRANSMITTER_V2, ARC_USDC);
         diamond = _assemble(cuts, init, initCalldata);
 
-        ICCTPBridgeAdapter(diamond).registerChainDomain(counterpartyChainId, counterpartyDomain);
-        ICCTPBridgeAdapter(diamond).configureDomain(counterpartyDomain, maxFee, minFinality, bytes32(0));
+        Dest memory sepolia = _dest("sepolia");
+        Dest memory base = _dest("base");
+
+        ICCTPBridgeAdapter(diamond).registerChainDomain(sepolia.chainId, sepolia.domain);
+        ICCTPBridgeAdapter(diamond).configureDomain(sepolia.domain, maxFee, minFinality, bytes32(0));
+        ICCTPBridgeAdapter(diamond).registerChainDomain(base.chainId, base.domain);
+        ICCTPBridgeAdapter(diamond).configureDomain(base.domain, maxFee, minFinality, bytes32(0));
     }
 
-    /// @notice One broadcast-free burn: balance-checks `actor`, approves the source diamond for exactly
-    ///         `amount`, and burns toward `actor` on the destination chain (ERC-7930 recipient). Tests drive
-    ///         this directly; the {cctpDemoBurn} wrapper drives it under broadcast with `actor == msg.sender`.
-    function cctpDemoBurnStep(Lane memory lane, address srcDiamond, address actor, uint256 amount) public {
-        uint256 balance = IERC20(lane.srcUsdc).balanceOf(actor);
+    /// @notice One broadcast-free burn: balance-checks `actor` on Arc USDC, approves the hub for exactly
+    ///         `amount`, and burns toward `actor` on `dest`'s chain (ERC-7930 recipient). Tests drive this
+    ///         directly; the {cctpDemoBurn} wrapper drives it under broadcast with `actor == msg.sender`.
+    function cctpDemoBurnStep(Dest memory dest, address diamond, address actor, uint256 amount) public {
+        uint256 balance = IERC20(ARC_USDC).balanceOf(actor);
         if (balance < amount) revert CCTPUSDCDemo__InsufficientUSDC(balance, amount);
 
-        IERC20(lane.srcUsdc).approve(srcDiamond, amount);
-        ICCTPBridgeAdapter(srcDiamond).depositForBurn(amount, InteroperableAddress.formatEvmV1(lane.dstChainId, actor));
+        IERC20(ARC_USDC).approve(diamond, amount);
+        ICCTPBridgeAdapter(diamond).depositForBurn(amount, InteroperableAddress.formatEvmV1(dest.chainId, actor));
     }
 
     /// @notice The cross-fork status computation {cctpDemoStatus} prints, exposed so tests read the values
-    ///         directly instead of parsing console output. Creates the source fork (LIVE tip) to read the
-    ///         source wiring + `actor`'s source balance, then the destination fork to read `actor`'s
-    ///         destination balance, then classifies the phase.
+    ///         directly instead of parsing console output. Creates the Arc fork (LIVE tip) to read the hub
+    ///         wiring + `actor`'s Arc USDC balance and the destination `maxFee`, then the destination fork to
+    ///         read `actor`'s destination balance, then classifies the phase.
     /// @return phase       0 NEEDS-SETUP, 1 NEEDS-FUNDS, 2 READY-TO-BURN, 3 AWAITING-DELIVERY, 4 DELIVERED.
     /// @return waitSeconds A poll hint (30 while awaiting delivery, else 0 — actionable now).
     /// @return done        1 only when DELIVERED.
-    /// @return srcBal      `actor`'s source USDC balance.
+    /// @return srcBal      `actor`'s Arc USDC balance.
     /// @return dstBal      `actor`'s destination USDC balance.
     function _demoStatus(
-        Lane memory lane,
-        address srcDiamond,
-        address dstDiamond,
+        address diamond,
         address actor,
         uint256 amount,
+        Dest memory dest,
         uint256 burned,
         uint256 dstBaseline
     ) internal returns (uint8 phase, uint256 waitSeconds, uint256 done, uint256 srcBal, uint256 dstBal) {
-        bool srcReady;
-        uint256 deliveredThreshold;
-        (srcReady, srcBal, deliveredThreshold) = _srcSide(lane, srcDiamond, actor, amount, dstBaseline);
+        // Arc source side: hub readiness (BOTH dests registered), actor's Arc USDC balance, dest maxFee ceiling.
+        vm.createSelectFork(ARC_ALIAS);
+        bool ready = _hubReady(diamond);
+        srcBal = IERC20(ARC_USDC).balanceOf(actor);
+        uint256 srcMaxFee = ready ? _domainMaxFee(diamond, dest.domain) : 0;
 
-        bool dstReady;
-        (dstReady, dstBal) = _dstSide(lane, dstDiamond, actor);
+        // Destination side (LIVE tip): actor's destination USDC balance.
+        vm.createSelectFork(dest.rpcAlias);
+        dstBal = IERC20(dest.usdc).balanceOf(actor);
 
-        (phase, waitSeconds, done) =
-            _computePhase(srcReady && dstReady, amount, burned, srcBal, dstBal, deliveredThreshold);
-    }
-
-    /// @dev Creates the SOURCE fork (LIVE tip) and reads its readiness, `actor`'s source balance, and the
-    ///      DELIVERED threshold `dstBaseline + net`, where `net = amount - srcMaxFee` (fee-adjusted,
-    ///      underflow-guarded) less {DST_NATIVE_GAS_ALLOWANCE} when the destination USDC is the native gas
-    ///      token (the actor's relay gas is debited from the same balance `balanceOf` views). A floor of 1
-    ///      keeps DELIVERED requiring a real credit above the baseline.
-    function _srcSide(Lane memory lane, address srcDiamond, address actor, uint256 amount, uint256 dstBaseline)
-        private
-        returns (bool srcReady, uint256 srcBal, uint256 deliveredThreshold)
-    {
-        vm.createSelectFork(lane.srcAlias);
-        srcReady = _sideReady(srcDiamond, lane.srcUsdc, lane.dstChainId);
-        srcBal = IERC20(lane.srcUsdc).balanceOf(actor);
-        uint256 srcMaxFee = srcReady ? _domainMaxFee(srcDiamond, lane.dstDomain) : 0;
+        // CCTP burns the full `amount` on the source and takes the fee (<= srcMaxFee) at mint time; the
+        // recipient nets at least `amount - srcMaxFee`. Destination gas is ETH (never netted from dstBal).
         uint256 net = amount > srcMaxFee ? amount - srcMaxFee : 0;
-        if (lane.dstUsdcIsNative) net = net > DST_NATIVE_GAS_ALLOWANCE ? net - DST_NATIVE_GAS_ALLOWANCE : 1;
-        deliveredThreshold = dstBaseline + net;
-    }
+        uint256 deliveredThreshold = dstBaseline + net;
 
-    /// @dev Creates the DESTINATION fork (LIVE tip) and reads its readiness + `actor`'s destination balance.
-    function _dstSide(Lane memory lane, address dstDiamond, address actor)
-        private
-        returns (bool dstReady, uint256 dstBal)
-    {
-        vm.createSelectFork(lane.dstAlias);
-        dstReady = _sideReady(dstDiamond, lane.dstUsdc, lane.srcChainId);
-        dstBal = IERC20(lane.dstUsdc).balanceOf(actor);
+        (phase, waitSeconds, done) = _computePhase(ready, amount, burned, srcBal, dstBal, deliveredThreshold);
     }
 
     //*//////////////////////////////////////////////////////////////////////////
     //                              PHASE COMPUTATION
     //////////////////////////////////////////////////////////////////////////*//
 
-    /// @notice Classifies the demo phase from both sides' readiness, the loop-carried burn flag, and balances.
+    /// @notice Classifies the demo phase from hub readiness, the loop-carried burn flag, and balances.
     /// @dev `deliveredThreshold` is `dstBaseline + (amount - srcMaxFee)`: CCTP burns the full `amount` on the
     ///      source and takes the fee (<= `srcMaxFee`) at mint time, so the recipient nets at least this much.
     function _computePhase(
@@ -351,27 +345,29 @@ contract CCTPUSDCDemo is DeployCCTPBridgeAdapter {
         return (4, 0, 1); // DELIVERED
     }
 
-    /// @notice True when `diamond` is a live CCTP adapter whose `usdc()` matches `expectedUsdc` and which has
-    ///         registered `counterpartyChainId`. Guards against a codeless / mismatched / unregistered side.
-    function _sideReady(address diamond, address expectedUsdc, uint256 counterpartyChainId)
-        internal
-        view
-        returns (bool)
-    {
+    /// @notice True when `diamond` is a live CCTP hub whose `usdc()` is the Arc native USDC AND which has
+    ///         registered BOTH destination chains (Sepolia and Base Sepolia). Guards against a codeless /
+    ///         mismatched / half-configured hub — either destination missing reads as NEEDS-SETUP.
+    function _hubReady(address diamond) internal view returns (bool) {
         if (diamond.code.length == 0) return false;
         try ICCTPBridgeAdapter(diamond).usdc() returns (address u) {
-            if (u != expectedUsdc) return false;
+            if (u != ARC_USDC) return false;
         } catch {
             return false;
         }
-        try ICCTPBridgeAdapter(diamond).isChainRegistered(counterpartyChainId) returns (bool registered) {
+        return _chainRegistered(diamond, _dest("sepolia").chainId) && _chainRegistered(diamond, _dest("base").chainId);
+    }
+
+    /// @dev True when `diamond` reports `chainId` as a registered CCTP chain (false on any read failure).
+    function _chainRegistered(address diamond, uint256 chainId) internal view returns (bool) {
+        try ICCTPBridgeAdapter(diamond).isChainRegistered(chainId) returns (bool registered) {
             return registered;
         } catch {
             return false;
         }
     }
 
-    /// @dev The source diamond's `maxFee` for burns toward `domain` (the ceiling on the destination-side fee).
+    /// @dev The hub's `maxFee` for burns toward `domain` (the ceiling on the destination-side fee).
     function _domainMaxFee(address diamond, uint32 domain) internal view returns (uint256 maxFee) {
         (maxFee,,) = ICCTPBridgeAdapter(diamond).getDomainConfig(domain);
     }
