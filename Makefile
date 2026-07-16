@@ -9,7 +9,7 @@
 # Common knobs:
 #   make test MATCH=CCTPBridgeAdapter     # filter by contract name
 #   make test-path PATH_GLOB=test/fork/CCTPUSDCDemoFork.t.sol
-#   make demo-cctp ARGS='arc 0xYourActor' FORGE_AUTH='--account daveKey'
+#   make demo-cctp deplKey ~/.demo.pw     # keystore name + optional password file
 
 .DEFAULT_GOAL := help
 
