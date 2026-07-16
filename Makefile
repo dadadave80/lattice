@@ -140,20 +140,36 @@ deploy-local: ## Deploy SCRIPT to local Anvil (SCRIPT=â€¦ [SIG='run()'] [ARGS='â
 		--rpc-url http://localhost:$(ANVIL_PORT) --private-key $(ANVIL_KEY) --broadcast
 
 # ----------------------------------------------------------------------- demos
-# Both loops read their own env (FORGE_AUTH etc.) and document their CLI in their
-# headers (`-h`); ARGS is passed through verbatim so this file never chases their flags.
-#   make demo-governance ARGS='<vault> <ens-name> <actor>'  FORGE_AUTH='--account <ks>'
-#   make demo-cctp       ARGS='<actor> [dest]'              FORGE_AUTH='--account <ks>'
-# The CCTP loop is the Arc-hub demo: one invocation drives both destinations
-# (Sepolia + Base Sepolia) from the Arc source hub; add a dest to filter to one.
+# demo-cctp takes POSITIONAL args:  make demo-cctp <keystore-name> [password-file]
+#   e.g.  make demo-cctp deplKey ~/.demo.pw
+# It builds FORGE_AUTH='--account <name> [--password-file <file>]' and runs the Arc-hub loop, which
+# derives the signer address from the keystore and drives BOTH destinations (Sepolia + Base Sepolia).
+# Pass the tilde path UNQUOTED so your shell expands ~ before make sees it (or give an absolute path).
+# Make treats those bare words as goals, so when demo-cctp is the goal we capture them from MAKECMDGOALS
+# and register them as no-op targets -- scoped to this invocation only, so other targets are unaffected.
+#   demo-governance keeps the ARGS/FORGE_AUTH form (its CLI takes vault/ens-name/actor, not just a key).
+ifeq (demo-cctp,$(firstword $(MAKECMDGOALS)))
+  DEMO_KEY := $(word 2,$(MAKECMDGOALS))
+  DEMO_PW  := $(word 3,$(MAKECMDGOALS))
+  DEMO_EXTRA := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
+  ifneq ($(strip $(DEMO_EXTRA)),)
+    $(eval $(DEMO_EXTRA):;@:)
+  endif
+endif
 
 .PHONY: demo-governance
-demo-governance: ## Governance demo crank loop (see script/config/governance-demo-loop.sh -h)
+demo-governance: ## Governance demo crank loop (ARGS='<vault> <ens> <actor>' FORGE_AUTH='--account <ks>')
 	script/config/governance-demo-loop.sh $(ARGS)
 
 .PHONY: demo-cctp
-demo-cctp: ## CCTP USDC demo crank loop (see script/config/cctp-usdc-demo-loop.sh -h)
-	script/config/cctp-usdc-demo-loop.sh $(ARGS)
+demo-cctp: ## CCTP demo: make demo-cctp <keystore-name> [password-file]  (e.g. deplKey ~/.demo.pw)
+	@key='$(DEMO_KEY)'; pw='$(DEMO_PW)'; auth='$(FORGE_AUTH)'; \
+	if [ -n "$$key" ]; then auth="--account $$key"; [ -n "$$pw" ] && auth="$$auth --password-file $$pw"; fi; \
+	if [ -z "$$auth" ]; then \
+	  echo "usage: make demo-cctp <keystore-name> [password-file]   (e.g. make demo-cctp deplKey ~/.demo.pw)"; \
+	  echo "       (or set FORGE_AUTH='--account <name> [--password-file <file>]')"; exit 2; \
+	fi; \
+	FORGE_AUTH="$$auth" script/config/cctp-usdc-demo-loop.sh $(ARGS)
 
 # ------------------------------------------------------------------------ help
 
