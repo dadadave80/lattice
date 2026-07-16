@@ -18,8 +18,8 @@
 #   finality is ~13-19 min; Arc has sub-second finality, so an Arc-sourced free
 #   burn attests in SECONDS. Relays run on the plain-EOA destinations (Sepolia /
 #   Base Sepolia) via Circle's MessageTransmitterV2 directly -- never into Arc,
-#   where every account is EIP-7702-delegated and the native-USDC mint path is
-#   unsimulatable under forge's revm (see the note in crank_burn).
+#   where the native-USDC mint path routes through a node precompile that forge's
+#   revm cannot simulate (see the note in crank_burn).
 #
 # HOW IT WORKS
 #   Each iteration reads a broadcast-free status line
@@ -420,9 +420,11 @@ crank_setup() {
     while (( attempt < 3 )); do
         rc=0
         # $FORGE_AUTH is intentionally UNQUOTED so "--account daveKey" splits into words; forwarded verbatim.
-        # --slow sends each tx only after the previous one confirms. REQUIRED on Arc, which EIP-7702-delegates
-        # every account by default: such accounts are capped at ONE in-flight tx, so firing this multi-contract
-        # deploy back-to-back errors "in-flight transaction limit reached for delegated accounts".
+        # --slow sends each tx only after the previous one confirms. REQUIRED when the SIGNER is an
+        # EIP-7702-delegated account (the txpool caps such accounts at ONE in-flight tx), which fires
+        # "in-flight transaction limit reached for delegated accounts" on this multi-contract deploy otherwise.
+        # A signer becomes delegated via a smart-account / 7702 setup -- it is NOT an Arc chain default; --slow
+        # is harmless (and cheap, given Arc's sub-second finality) for a plain-EOA signer too, so it stays on.
         # --verify best-effort verifies via Sourcify (bare --verify); a chain Sourcify does not cover fails
         # that one contract non-fatally, so success is detected by the DEMO-SETUP + ONCHAIN-EXECUTION greps.
         # shellcheck disable=SC2086
@@ -459,8 +461,8 @@ crank_setup() {
 # are unaffected (they never move Arc USDC under revm).
 #
 # NEVER auto-retry the burn: a re-run must never double-burn. The approve IS retried (re-approving is
-# idempotent) and is SYNCHRONOUS (cast send waits for the receipt), which both satisfies Arc's EIP-7702
-# one-in-flight cap and guarantees the allowance exists before the burn.
+# idempotent) and is SYNCHRONOUS (cast send waits for the receipt), which both satisfies the EIP-7702
+# one-in-flight cap on a delegated signer and guarantees the allowance exists before the burn.
 crank_burn() {
     require_auth || return 1
     local rc out hash a_attempt=0 approve_rc err_file err_text
