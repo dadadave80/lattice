@@ -47,11 +47,20 @@ import {console} from "forge-std/Script.sol";
 ///     Filter to a single destination with an optional 2nd arg (`sepolia` | `base`):
 ///       FORGE_AUTH='--account <name>' script/config/cctp-usdc-demo-loop.sh <actor> base
 ///     Attestation lands in SECONDS (Arc's instant finality) on the DEFAULT free standard tier.
-///  2. Manual per-step equivalents:
-///       forge script script/base/crosschain/CCTPUSDCDemo.s.sol:CCTPUSDCDemo --account <name> --broadcast --slow --verify \
-///         --sig "cctpDemoSetup(uint256,uint32)" 0 2000
-///       (status is broadcast-free: --sig "cctpDemoStatus(address,address,uint256,string,uint256,uint256)"
-///          <hub> <actor> 1000000 sepolia 0 0 --sender <actor>)
+///  2. Manual per-step equivalents (S=script/base/crosschain/CCTPUSDCDemo.s.sol:CCTPUSDCDemo, U=Arc USDC
+///     0x3600…0000):
+///     - setup:  forge script S --account <name> --broadcast --slow --verify --sig "cctpDemoSetup(uint256,uint32)" 0 2000
+///     - status: forge script S --sender <actor> --sig "cctpDemoStatus(address,address,uint256,string,uint256,uint256)" \
+///                 <hub> <actor> 1000000 sepolia 0 0            (broadcast-free)
+///     - burn:   the Arc burn CANNOT pass forge's local simulation (revm lacks Arc's native-USDC precompile
+///               0x1800…), so send it with `cast send` (the Arc node executes the precompile). First encode the
+///               recipient (broadcast-free helper), then approve + depositForBurn:
+///                 R=$(forge script S --sender <actor> --sig "cctpDemoRecipient(string,address)" sepolia <actor> \
+///                       | sed -n 's/.*DEMO-RECIPIENT //p')
+///                 cast send U    "approve(address,uint256)"    <hub> 1000000 --account <name> --rpc-url arc-testnet
+///                 cast send <hub> "depositForBurn(uint256,bytes)" 1000000 "$R" --account <name> --rpc-url arc-testnet
+///     - relay:  forge script S --account <name> --broadcast --slow --sig "cctpDemoRelay(string,bytes,bytes)" \
+///                 sepolia <message> <attestation>              (on the DESTINATION)
 ///  3. Deploys auto-verify via Sourcify (Foundry's default verifier) — the setup command already includes
 ///     bare `--verify`; no API key needed (a chain Sourcify does not cover fails that one contract non-fatally).
 ///  Explorers: source (Arc) testnet.arcscan.app · dests sepolia.etherscan.io · sepolia.basescan.org
@@ -213,11 +222,31 @@ contract CCTPUSDCDemo is DeployCCTPBridgeAdapter {
         );
     }
 
+    /// @notice READ-ONLY encoding helper (broadcast-free AND fork-free): prints the ERC-7930 interoperable
+    ///         address `DEMO-RECIPIENT <hex>` for `actor` on the destination `destKey` names — the exact bytes
+    ///         {cctpDemoBurnStep} passes to `depositForBurn`. The loop reads this instead of reimplementing the
+    ///         ERC-7930 format in shell, then submits the burn via `cast send` (see {cctpDemoBurn}). Invoke it
+    ///         like the status read (with `--sender <actor>` so the repo `.env`'s `ETH_KEYSTORE_ACCOUNT` never
+    ///         triggers an eager keystore unlock on this read-only call).
+    function cctpDemoRecipient(string calldata destKey, address actor) external pure {
+        Dest memory dest = _dest(destKey);
+        console.log(
+            string.concat("DEMO-RECIPIENT ", vm.toString(InteroperableAddress.formatEvmV1(dest.chainId, actor)))
+        );
+    }
+
     /// @notice BURN crank (ARC fork only): pulls exactly `amount` Arc USDC from `msg.sender` and burns it
     ///         through the hub toward `msg.sender` on the destination `destKey` names (recipient == the
     ///         signer, a plain EOA on the destination). Reverts {CCTPUSDCDemo__InsufficientUSDC} BEFORE any
     ///         approval if the signer's balance is short — never a partial pull. Prints
     ///         `DEMO-BURN <recipient> <amount>`.
+    /// @dev On Arc this entrypoint CANNOT pass forge's local simulation: Arc's USDC is the native gas token and
+    ///      every balance-move routes through a node-level precompile (0x1800…) that revm does not implement, so
+    ///      the `transferFrom` inside `depositForBurn` reverts under any fork (and `forge script` executes the
+    ///      broadcast body during collection, so the burn is never dispatched). The loop therefore drives the
+    ///      Arc burn via `cast send` — which performs NO local simulation, letting the Arc NODE execute the
+    ///      precompile natively. This wrapper is retained as the intended path if/when revm gains the precompile;
+    ///      {cctpDemoBurnStep} remains the shared, broadcast-free burn used by the fork tests.
     function cctpDemoBurn(address diamond, uint256 amount, string calldata destKey) external {
         Dest memory dest = _dest(destKey);
         address actor = msg.sender;

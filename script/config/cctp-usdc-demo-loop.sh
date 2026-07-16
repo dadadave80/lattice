@@ -28,7 +28,8 @@
 #           3 AWAITING-DELIVERY, 4 DELIVERED) and dispatches on the phase:
 #     0 -> deploy+wire the ONE Arc hub (cctpDemoSetup, --verify via Sourcify)
 #     1 -> print faucet instructions and exit (funding is never automated)
-#     2 -> record the destination baseline, then burn (cctpDemoBurn)
+#     2 -> record the destination baseline, then burn on Arc via `cast send`
+#          (approve + depositForBurn; NOT forge script — see crank_burn for why)
 #     3 -> fetch the Iris attestation (poll), then relay on the dest (cctpDemoRelay)
 #     done==1 -> assert the credited amount and finish that destination.
 #   With no destination argument the loop drives BOTH destinations sequentially
@@ -85,8 +86,8 @@ cd "${REPO_ROOT}"
 
 SCRIPT_TARGET="script/base/crosschain/CCTPUSDCDemo.s.sol:CCTPUSDCDemo"
 
-# depositForBurn(uint256,bytes) selector — used to pick the burn tx from the broadcast JSON.
-BURN_SELECTOR="0x3d8f1160"
+# Arc native USDC (the gas token) — approved before the cast-send burn. Same address on every Arc deployment.
+ARC_USDC="0x3600000000000000000000000000000000000000"
 
 # Arc is the Iris SOURCE domain now (every burn originates on Arc).
 ARC_SRC_DOMAIN=26
@@ -104,7 +105,7 @@ warn() { echo "${C_WARN}[cctp-loop]${C_OFF} $*" >&2; }
 err()  { echo "${C_ERR}[cctp-loop] ERROR:${C_OFF} $*" >&2; }
 
 usage() {
-    sed -n '2,79p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+    sed -n '2,80p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
     exit "${1:-0}"
 }
 
@@ -171,6 +172,18 @@ rpc_var_available() {
     [[ -n "${!1:-}" ]] && return 0
     [[ -f .env ]] && grep -qE "^${1}=" .env
 }
+# Echo the resolved URL for an RPC var (shell env, else the repo .env), stripping surrounding quotes. Used to
+# give `cast send` an explicit --rpc-url (cast, like forge, does not auto-load .env from this shell's cwd). The
+# returned URL is stored in a variable and NEVER echoed to the log.
+resolve_rpc() {
+    local var="$1" val
+    val="${!var:-}"
+    if [[ -z "${val}" && -f .env ]]; then
+        val="$(grep -E "^${var}=" .env | tail -1 | cut -d= -f2-)"
+        val="${val%\"}"; val="${val#\"}"; val="${val%\'}"; val="${val#\'}"
+    fi
+    printf '%s' "${val}"
+}
 NEED_RPC=(ARC_TESTNET_RPC_URL)
 for _d in "${DESTS[@]}"; do
     dest_meta "${_d}"
@@ -183,6 +196,10 @@ for _v in "${NEED_RPC[@]}"; do
         exit 2
     fi
 done
+
+# Explicit Arc RPC URL for the cast-send burn (see crank_burn). Resolved once; never echoed.
+ARC_RPC="$(resolve_rpc ARC_TESTNET_RPC_URL)"
+[[ -n "${ARC_RPC}" ]] || { err "could not resolve ARC_TESTNET_RPC_URL to a URL (shell env or ./.env)."; exit 2; }
 
 # Continuous mode WILL broadcast, so a missing FORGE_AUTH is a config error to catch NOW.
 if (( ! ONCE )) && [[ -z "${FORGE_AUTH}" ]]; then
@@ -219,6 +236,8 @@ DIAMOND=""; DST_BASELINE=0; BURN_TX=""; MESSAGE=""; ATTESTATION=""; RELAYED=""
 BURN_AMOUNT=""; BURN_MAXFEE=""; FEE_EXECUTED=""
 # Current fee policy (recomputed per destination before an actionable setup/burn crank).
 MAXFEE=0; MINFINALITY=2000
+# ERC-7930 recipient bytes for the current burn (resolved by the broadcast-free encoding helper).
+RECIPIENT=""
 # Current destination being driven (set before every step()).
 DEST=""
 # Stuck-crank detector: "<dest>:<phase>:<burned>:<dstBal>" signature of the most recent ACTIONABLE crank, and
@@ -317,6 +336,32 @@ read_status() {
     return 1
 }
 
+# READ-ONLY encoding helper: resolves the ERC-7930 recipient bytes for the CURRENT destination via the
+# broadcast-free, fork-free cctpDemoRecipient entrypoint (never re-encoded in shell). Passes --sender for the
+# same reason as the status read (an ETH_KEYSTORE_ACCOUNT default must not trigger an eager keystore unlock on
+# a read-only call). Retries twice, then fails. Sets RECIPIENT.
+fetch_recipient() {
+    local out line attempt=0
+    RECIPIENT=""
+    while (( attempt < 3 )); do
+        if out="$(forge script "${SCRIPT_TARGET}" \
+                    --sig 'cctpDemoRecipient(string,address)' \
+                    --sender "${ACTOR}" \
+                    "${DEST}" "${ACTOR}" 2>&1)"; then
+            line="$(echo "${out}" | grep -oE 'DEMO-RECIPIENT 0x[0-9a-fA-F]+' | tail -1 || true)"
+            if [[ -n "${line}" ]]; then
+                RECIPIENT="${line#DEMO-RECIPIENT }"
+                return 0
+            fi
+        fi
+        attempt=$(( attempt + 1 ))
+        warn "recipient encode failed (attempt ${attempt}/3); retrying in 5s..."
+        sleep 5
+    done
+    err "could not read a DEMO-RECIPIENT line after 3 attempts"
+    return 1
+}
+
 # Stuck-crank guard: two identical actionable signatures in a row means the last crank made no progress. The
 # most common cause is ACTOR != the keystore signer. Returns 1 (abort) on the second repeat.
 guard_stuck() {
@@ -381,54 +426,64 @@ crank_setup() {
     return 1
 }
 
-# Burn AMOUNT of Arc USDC toward the actor on the CURRENT destination (Arc fork only). Records the destination
-# baseline + fee policy first, then broadcasts. IDEMPOTENCY: the retry-stopping predicate is "a burn tx was
-# DISPATCHED" (extracted from the broadcast JSON), NOT forge's exit code — so a non-zero exit AFTER the funds-
-# moving burn already landed adopts that tx instead of re-burning. A retry happens ONLY when no burn tx was
-# dispatched (a pre-dispatch failure, which moved nothing and is safe to repeat).
+# Burn AMOUNT of Arc USDC toward the actor on the CURRENT destination, via `cast send` (NOT `forge script`).
+# Records the destination baseline + fee policy first, then: (1) resolves the ERC-7930 recipient bytes,
+# (2) approves the hub for EXACTLY AMOUNT, (3) burns. Returns 0 once a burn tx hash is journaled.
 #
-# NOTE (Arc native-USDC precompile): on Arc, USDC is the native gas token and EVERY balance-move routes through
-# a node-level precompile (0x1800…) that revm does NOT implement. `forge script` executes the burn body during
-# its collect phase, so the burn reverts locally BEFORE any tx is dispatched (no broadcast JSON is written) —
-# the retries below then exhaust and this crank reports failure. The burn therefore has to be sent by a path
-# that lets the Arc NODE execute the transfer (e.g. `cast send`); setup, status, and the destination relays are
-# unaffected (they never move Arc USDC under revm). See the PR/commit body for the full analysis.
+# WHY cast send, not forge script: on Arc, USDC is the native gas token and EVERY balance-move routes through a
+# node-level precompile (0x1800…) that revm does NOT implement. `forge script` executes the burn body during
+# its collect phase, so a scripted burn reverts LOCALLY before any tx is dispatched. `cast send` performs NO
+# local simulation — gas is estimated by, and the tx executed on, the real Arc NODE, which runs the precompile
+# natively (the same mechanism that proved mint-into-Arc works live). Setup, status, and the destination relays
+# are unaffected (they never move Arc USDC under revm).
+#
+# NEVER auto-retry the burn: a re-run must never double-burn. The approve IS retried (re-approving is
+# idempotent) and is SYNCHRONOUS (cast send waits for the receipt), which both satisfies Arc's EIP-7702
+# one-in-flight cap and guarantees the allowance exists before the burn.
 crank_burn() {
     require_auth || return 1
-    local attempt=0 rc json hash
+    local rc out hash a_attempt=0 approve_rc
     journal_set "${DEST_PREFIX}_DST_BASELINE" "${DSTBAL}"; DST_BASELINE="${DSTBAL}"
     journal_set "${DEST_PREFIX}_BURN_AMOUNT" "${AMOUNT}"; BURN_AMOUNT="${AMOUNT}"
     journal_set "${DEST_PREFIX}_BURN_MAXFEE" "${MAXFEE}"; BURN_MAXFEE="${MAXFEE}"
-    json="broadcast/CCTPUSDCDemo.s.sol/5042002/cctpDemoBurn-latest.json"
-    rm -f "${json}" # drop any stale burn from a prior run so a hash here is unambiguously THIS burn
-    while (( attempt < 3 )); do
-        rc=0
+
+    # 1. ERC-7930 recipient bytes (broadcast-free helper; never re-encoded in shell).
+    fetch_recipient || return 1
+
+    # 2. Approve the hub for EXACTLY AMOUNT of Arc USDC. $FORGE_AUTH forwards to cast VERBATIM (unquoted, never
+    #    echoed) — cast accepts --account/--password-file identically to forge. Idempotent, so retry-3x is safe.
+    while (( a_attempt < 3 )); do
+        approve_rc=0
         # shellcheck disable=SC2086
-        forge script "${SCRIPT_TARGET}" \
-            --sig 'cctpDemoBurn(address,uint256,string)' "${DIAMOND}" "${AMOUNT}" "${DEST}" \
-            ${FORGE_AUTH} --broadcast --slow || rc=$?
-        # Extract the dispatched burn tx REGARDLESS of rc — a burn that landed must never be re-broadcast.
-        hash=""
-        if [[ -f "${json}" ]]; then
-            hash="$(jq -r --arg sel "${BURN_SELECTOR}" \
-                '[.transactions[] | select(.transactionType=="CALL" and (.transaction.input|startswith($sel)))] | last | .hash // empty' \
-                "${json}")"
-        fi
-        if [[ "${hash}" =~ ^0x[0-9a-fA-F]{64}$ ]]; then
-            journal_set "${DEST_PREFIX}_BURN_TX" "${hash}"; BURN_TX="${hash}"
-            (( rc == 0 )) || warn "burn crank returned ${rc}, but the burn tx landed (${hash}) — adopting it, NOT re-burning."
-            ok "burn broadcast: tx ${hash}"
-            return 0
-        fi
-        if (( rc == 0 )); then
-            err "burn crank reported success but no burn tx is in ${json} — refusing to re-burn (inconsistent)."
-            return 1
-        fi
-        attempt=$(( attempt + 1 ))
-        warn "burn did not dispatch (attempt ${attempt}/3); retrying in 5s..."
+        cast send "${ARC_USDC}" "approve(address,uint256)" "${DIAMOND}" "${AMOUNT}" \
+            ${FORGE_AUTH} --rpc-url "${ARC_RPC}" --json >/dev/null 2>&1 || approve_rc=$?
+        (( approve_rc == 0 )) && break
+        a_attempt=$(( a_attempt + 1 ))
+        warn "approve did not confirm (attempt ${a_attempt}/3); retrying in 5s..."
         sleep 5
     done
-    err "burn crank failed to dispatch after 3 attempts"
+    (( approve_rc == 0 )) || { err "approve failed after 3 attempts — cannot burn."; return 1; }
+
+    # 3. Burn (NO retry). Capture stdout+stderr so a tx hash is adopted even on a non-zero exit (submitted but
+    #    the receipt wait failed) — that tx must NOT be re-sent.
+    rc=0
+    # shellcheck disable=SC2086
+    out="$(cast send "${DIAMOND}" "depositForBurn(uint256,bytes)" "${AMOUNT}" "${RECIPIENT}" \
+        ${FORGE_AUTH} --rpc-url "${ARC_RPC}" --json 2>&1)" || rc=$?
+    hash="$(echo "${out}" | jq -r '.transactionHash // empty' 2>/dev/null || true)"
+    [[ "${hash}" =~ ^0x[0-9a-fA-F]{64}$ ]] || hash="$(echo "${out}" | grep -oE '0x[0-9a-fA-F]{64}' | head -1 || true)"
+    if [[ "${hash}" =~ ^0x[0-9a-fA-F]{64}$ ]]; then
+        journal_set "${DEST_PREFIX}_BURN_TX" "${hash}"; BURN_TX="${hash}"
+        if (( rc == 0 )); then
+            ok "burn broadcast via cast send: tx ${hash}"
+        else
+            warn "burn submitted despite non-zero exit; adopting ${hash}, NOT re-burning."
+        fi
+        return 0
+    fi
+    err "burn did not submit (cast send rc=${rc}) and no tx hash was found in its output."
+    err "  DO NOT blindly re-run: a depositForBurn that landed must not be repeated (it would double-burn)."
+    err "  check ${ACTOR}'s recent txs on ${ARC_EXPLORER}/address/${ACTOR} before re-running."
     return 1
 }
 
