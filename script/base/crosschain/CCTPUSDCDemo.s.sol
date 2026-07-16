@@ -25,13 +25,14 @@ import {console} from "forge-std/Script.sol";
 ///          - SPEED. Standard (free) CCTP attests only after SOURCE-chain hard finality. Sepolia finality is
 ///            ~13-19 min; Arc testnet has sub-second deterministic finality, so an Arc-sourced standard burn
 ///            attests in SECONDS. Sourcing from Arc makes the free tier fast.
-///          - RELAYS RUN ON THE DESTINATIONS, NOT ARC. On Arc every account is EIP-7702-delegated by default;
-///            minting to a delegated recipient works ON-CHAIN but forge's fork SIMULATION (revm) reverts
-///            executing Arc's delegated-account mint path, and forge always simulates before broadcasting. So a
-///            relay is NEVER driven into Arc. Here the destinations (plain-EOA Sepolia / Base Sepolia) do the
-///            minting, calling Circle's `MessageTransmitterV2.receiveMessage` DIRECTLY (the destinations carry
-///            no diamond — the Lattice showcase is the SOURCE-side hub). The mint recipient is the actor, a
-///            plain EOA on each destination; no 7702 anywhere in the flow.
+///          - RELAYS RUN ON THE DESTINATIONS, NOT ARC. Arc's USDC is the NATIVE gas token: every USDC move
+///            (the relay's mint included) routes through a node-level precompile (0x1800…) that forge's fork
+///            SIMULATION (revm) does not implement — minting into Arc works ON-CHAIN, but forge always
+///            simulates before broadcasting, so a relay is NEVER driven into Arc. Here the destinations
+///            (Sepolia / Base Sepolia) do the minting, calling Circle's `MessageTransmitterV2.receiveMessage`
+///            DIRECTLY (the destinations carry no diamond — the Lattice showcase is the SOURCE-side hub). The
+///            mint recipient is the actor, a plain EOA on each destination — Arc's default EIP-7702 delegation
+///            matters only on the source side, where it forces `--slow`/sequential sends.
 ///
 ///         Each entrypoint drives only the existing adapter surface (`depositForBurn` + admin
 ///         `registerChainDomain` / `configureDomain`) or Circle's `receiveMessage`; no src/ contract is
@@ -43,9 +44,11 @@ import {console} from "forge-std/Script.sol";
 ///       - Base Sepolia ETH -> actor       (relay gas on the Base Sepolia destination)
 ///  1. Drive BOTH destinations end-to-end (setup -> burn -> Iris attest -> relay -> verify, unattended) with
 ///     ONE loop invocation (sepolia to DELIVERED, then base):
-///       FORGE_AUTH='--account <name>' script/config/cctp-usdc-demo-loop.sh <actor>
+///       FORGE_AUTH='--account <name> --password-file <pw-file>' script/config/cctp-usdc-demo-loop.sh <actor>
+///     (<pw-file> is a GITIGNORED file holding the KEYSTORE password — required for the unattended promise;
+///      bare `--account <name>` works but prompts at every broadcast crank; see the loop's ENVIRONMENT header.)
 ///     Filter to a single destination with an optional 2nd arg (`sepolia` | `base`):
-///       FORGE_AUTH='--account <name>' script/config/cctp-usdc-demo-loop.sh <actor> base
+///       FORGE_AUTH='--account <name> --password-file <pw-file>' script/config/cctp-usdc-demo-loop.sh <actor> base
 ///     Attestation lands in SECONDS (Arc's instant finality) on the DEFAULT free standard tier.
 ///  2. Manual per-step equivalents (S=script/base/crosschain/CCTPUSDCDemo.s.sol:CCTPUSDCDemo, U=Arc USDC
 ///     0x3600…0000):
@@ -83,7 +86,7 @@ contract CCTPUSDCDemo is DeployCCTPBridgeAdapter {
     /// @notice Foundry RPC alias for Circle's Arc testnet (foundry.toml interpolates ${ARC_TESTNET_RPC_URL}).
     string internal constant ARC_ALIAS = "arc-testnet";
 
-    /// @notice Arc testnet chain id (the hub's home chain — the burn source of every lane).
+    /// @notice Arc testnet chain id (the hub's home chain — the burn source of every destination).
     uint256 internal constant ARC_CHAIN_ID = 5_042_002;
 
     /// @notice Arc testnet CCTP domain (the Iris SOURCE domain used to fetch attestations for Arc-sourced burns).
