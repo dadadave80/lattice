@@ -296,10 +296,14 @@ crank_setup() {
     while (( attempt < 3 )); do
         rc=0
         # $FORGE_AUTH is intentionally UNQUOTED so "--account daveKey" splits into words; forwarded verbatim.
+        # --slow sends each tx only after the previous one confirms. REQUIRED on chains where the signer is an
+        # EIP-7702-delegated account (Arc delegates every account by default): such accounts are capped at ONE
+        # in-flight tx, so firing this multi-contract deploy back-to-back errors "in-flight transaction limit
+        # reached for delegated accounts". Harmless (just serial) on plain-EOA chains like Sepolia.
         # shellcheck disable=SC2086
         out="$(forge script "${SCRIPT_TARGET}" \
                  --sig 'cctpDemoSetup(string,uint256,uint32)' "${LANE}" "${MAXFEE}" "${MINFINALITY}" \
-                 ${FORGE_AUTH} --broadcast --verify 2>&1)" || rc=$?
+                 ${FORGE_AUTH} --broadcast --slow --verify 2>&1)" || rc=$?
         echo "${out}"
         line="$(echo "${out}" | grep -oE 'DEMO-SETUP 0x[0-9a-fA-F]{40} 0x[0-9a-fA-F]{40}' | tail -1 || true)"
         if [[ -n "${line}" ]] && echo "${out}" | grep -q 'ONCHAIN EXECUTION COMPLETE'; then
@@ -337,7 +341,7 @@ crank_burn() {
         # shellcheck disable=SC2086
         forge script "${SCRIPT_TARGET}" \
             --sig 'cctpDemoBurn(string,address,uint256)' "${LANE}" "${SRC_DIAMOND}" "${AMOUNT}" \
-            ${FORGE_AUTH} --broadcast || rc=$?
+            ${FORGE_AUTH} --broadcast --slow || rc=$?
         # Extract the dispatched burn tx REGARDLESS of rc — a burn that landed must never be re-broadcast.
         hash=""
         if [[ -f "${json}" ]]; then
@@ -403,7 +407,7 @@ crank_relay() {
         # shellcheck disable=SC2086
         forge script "${SCRIPT_TARGET}" \
             --sig 'cctpDemoRelay(string,address,bytes,bytes)' "${LANE}" "${DST_DIAMOND}" "${MESSAGE}" "${ATTESTATION}" \
-            ${FORGE_AUTH} --broadcast || rc=$?
+            ${FORGE_AUTH} --broadcast --slow || rc=$?
         if (( rc == 0 )); then
             journal_set RELAYED 1; RELAYED=1
             ok "relay broadcast on ${DST_HUMAN}"
