@@ -76,7 +76,7 @@
 # The status read forks both chains itself (no --rpc-url), so the RPC aliases
 # arc-testnet + sepolia/base-sepolia must resolve (foundry auto-loads .env).
 #
-# REQUIRES: foundry (`forge`), `jq`, `curl`. Run from anywhere (resolves the repo root).
+# REQUIRES: foundry (`forge`, `cast`), `jq`, `curl`. Run from anywhere (resolves the repo root).
 # ---------------------------------------------------------------------------
 set -euo pipefail
 
@@ -161,7 +161,8 @@ ENV_DIAMOND="${DIAMOND:-}"
 
 # ---- preflight ----------------------------------------------------------------
 command -v forge >/dev/null 2>&1 || { err "forge not found on PATH"; exit 2; }
-command -v jq >/dev/null 2>&1    || { err "jq not found on PATH (required for the Iris attestation + broadcast JSON)"; exit 2; }
+command -v cast >/dev/null 2>&1  || { err "cast not found on PATH (the Arc burn uses cast send for approve + depositForBurn)"; exit 2; }
+command -v jq >/dev/null 2>&1    || { err "jq not found on PATH (required for the Iris attestation + cast-send JSON output)"; exit 2; }
 command -v curl >/dev/null 2>&1  || { err "curl not found on PATH (required for the Iris attestation API)"; exit 2; }
 
 # The script's forks resolve foundry.toml aliases like ${ARC_TESTNET_RPC_URL} from the shell env OR the repo
@@ -173,7 +174,7 @@ rpc_var_available() {
     [[ -f .env ]] && grep -qE "^${1}=" .env
 }
 # Echo the resolved URL for an RPC var (shell env, else the repo .env), stripping surrounding quotes. Used to
-# give `cast send` an explicit --rpc-url (cast, like forge, does not auto-load .env from this shell's cwd). The
+# give `cast send` an explicit --rpc-url (the URL var is expanded by this shell, which does not load .env). The
 # returned URL is stored in a variable and NEVER echoed to the log.
 resolve_rpc() {
     local var="$1" val
@@ -191,7 +192,7 @@ for _d in "${DESTS[@]}"; do
 done
 for _v in "${NEED_RPC[@]}"; do
     if ! rpc_var_available "${_v}"; then
-        err "RPC env var ${_v} is not set (checked the shell env and ./.env) — the driven lane(s) need it."
+        err "RPC env var ${_v} is not set (checked the shell env and ./.env) — the driven destination(s) need it."
         err "  add ${_v}=<url> to .env (names must match foundry.toml's [rpc_endpoints]; see .env.example)."
         exit 2
     fi
@@ -214,6 +215,19 @@ fi
 # Single journal for the shared Arc hub + per-destination namespaced keys (SEPOLIA_* / BASE_*).
 JOURNAL="${REPO_ROOT}/.cctp-demo.arc-hub.env"
 
+# Exclusive whole-invocation lock over the shared journal: two concurrent invocations (the header advertises
+# cron/systemd-composable --once runs) could each observe an empty BURN_TX and double-burn, or race journal_set
+# whole-file rewrites and drop keys. `mkdir` is atomic on POSIX filesystems (flock(1) does not exist on macOS);
+# the EXIT trap releases it on every exit path. Derived from ${JOURNAL} so finalize_all's `rm -f` leaves the
+# lock lifecycle untouched.
+LOCK_DIR="${JOURNAL}.lock"
+if ! mkdir "${LOCK_DIR}" 2>/dev/null; then
+    err "another cctp-usdc-demo-loop invocation holds ${LOCK_DIR}; refusing to run concurrently (a parallel crank could double-burn)."
+    err "  if no other instance is running, remove the stale lock: rmdir ${LOCK_DIR}"
+    exit 1
+fi
+trap 'rmdir "${LOCK_DIR}" 2>/dev/null || true' EXIT
+
 journal_get() {
     local key="$1"
     [[ -f "${JOURNAL}" ]] || return 0
@@ -221,7 +235,9 @@ journal_get() {
 }
 journal_set() {
     local key="$1" val="$2" tmp
-    tmp="$(mktemp)"
+    # mktemp a SIBLING of the journal so `mv` is always an atomic same-filesystem rename(2) (a $TMPDIR temp on a
+    # different filesystem degrades to a non-atomic copy, and every journal_set rewrites the WHOLE file).
+    tmp="$(mktemp "${JOURNAL}.XXXXXX")"
     if [[ -f "${JOURNAL}" ]]; then grep -vE "^${key}=" "${JOURNAL}" > "${tmp}" || true; fi
     printf '%s=%s\n' "${key}" "${val}" >> "${tmp}"
     mv "${tmp}" "${JOURNAL}"
@@ -231,7 +247,7 @@ journal_set() {
 ST=""; WAIT=""; DONE=""; SRCBAL=""; DSTBAL=""
 DID=""; SLEEP_FOR=0
 # Shared hub (env-adopted wins over the journal), plus per-destination off-chain state refreshed each step().
-DIAMOND=""; DST_BASELINE=0; BURN_TX=""; MESSAGE=""; ATTESTATION=""; RELAYED=""
+DIAMOND=""; DST_BASELINE=0; BURN_TX=""; BURN_ATTEMPTED=""; MESSAGE=""; ATTESTATION=""; RELAYED=""
 # Fee policy captured AT BURN TIME so a later default-env --once run verifies against the right bounds.
 BURN_AMOUNT=""; BURN_MAXFEE=""; FEE_EXECUTED=""
 # Current fee policy (recomputed per destination before an actionable setup/burn crank).
@@ -265,6 +281,7 @@ load_dest_journal() {
     local p="$1"
     DST_BASELINE="$(journal_get "${p}_DST_BASELINE")"; DST_BASELINE="${DST_BASELINE:-0}"
     BURN_TX="$(journal_get "${p}_BURN_TX")"
+    BURN_ATTEMPTED="$(journal_get "${p}_BURN_ATTEMPTED")"
     MESSAGE="$(journal_get "${p}_MESSAGE")"
     ATTESTATION="$(journal_get "${p}_ATTESTATION")"
     RELAYED="$(journal_get "${p}_RELAYED")"
@@ -308,9 +325,13 @@ compute_fee_policy() {
 # READ-ONLY status probe (no --broadcast, no --rpc-url; the script forks Arc + the current dest itself).
 # Retries twice, then fails. Sets ST WAIT DONE SRCBAL DSTBAL.
 read_status() {
-    local diamond burned out line attempt=0
+    local diamond burned amount out line attempt=0
     diamond="${DIAMOND:-0x0000000000000000000000000000000000000000}"
-    burned=0; [[ -n "${BURN_TX}" ]] && burned=1
+    # Pre-burn the NEEDS-FUNDS check uses the LIVE amount; once burned, use the journaled BURN_AMOUNT so a later
+    # env-drifted --once run computes the delivery phase against the amount the burn actually used (mirrors
+    # verify_and_finish's burn-time bounds). BURN_AMOUNT is loaded by load_dest_journal (defaults to AMOUNT).
+    amount="${AMOUNT}"
+    burned=0; [[ -n "${BURN_TX}" ]] && { burned=1; amount="${BURN_AMOUNT}"; }
     while (( attempt < 3 )); do
         # Status is a broadcast-free dry run that reads ACTOR's balances (never msg.sender), so it needs NO
         # keystore. But forge auto-loads the repo .env, and an ETH_KEYSTORE_ACCOUNT entry there (or an exported
@@ -321,7 +342,7 @@ read_status() {
         if out="$(forge script "${SCRIPT_TARGET}" \
                     --sig 'cctpDemoStatus(address,address,uint256,string,uint256,uint256)' \
                     --sender "${ACTOR}" \
-                    "${diamond}" "${ACTOR}" "${AMOUNT}" "${DEST}" "${burned}" "${DST_BASELINE}" 2>&1)"; then
+                    "${diamond}" "${ACTOR}" "${amount}" "${DEST}" "${burned}" "${DST_BASELINE}" 2>&1)"; then
             line="$(echo "${out}" | grep -oE 'DEMO-STATUS [0-9]+ [0-9]+ [0-9]+ [0-9]+ [0-9]+' | tail -1 || true)"
             if [[ -n "${line}" ]]; then
                 read -r _ ST WAIT DONE SRCBAL DSTBAL <<<"${line}"
@@ -442,7 +463,7 @@ crank_setup() {
 # one-in-flight cap and guarantees the allowance exists before the burn.
 crank_burn() {
     require_auth || return 1
-    local rc out hash a_attempt=0 approve_rc
+    local rc out hash a_attempt=0 approve_rc err_file err_text
     journal_set "${DEST_PREFIX}_DST_BASELINE" "${DSTBAL}"; DST_BASELINE="${DSTBAL}"
     journal_set "${DEST_PREFIX}_BURN_AMOUNT" "${AMOUNT}"; BURN_AMOUNT="${AMOUNT}"
     journal_set "${DEST_PREFIX}_BURN_MAXFEE" "${MAXFEE}"; BURN_MAXFEE="${MAXFEE}"
@@ -464,14 +485,43 @@ crank_burn() {
     done
     (( approve_rc == 0 )) || { err "approve failed after 3 attempts — cannot burn."; return 1; }
 
-    # 3. Burn (NO retry). Capture stdout+stderr so a tx hash is adopted even on a non-zero exit (submitted but
-    #    the receipt wait failed) — that tx must NOT be re-sent.
+    # 3. Write-ahead intent sentinel — set AFTER the approve succeeds and IMMEDIATELY before the burn cast send.
+    #    It guards the kill window between submitting the burn and journaling BURN_TX: a crash there would leave
+    #    burned=0, and the READY-TO-BURN guard in step() refuses to re-burn while this is set without a BURN_TX
+    #    (the operator must reconcile via arcscan). Placed after approve so a mere approve failure never strands
+    #    a stale sentinel. journal_set is atomic (mktemp+rename), so the sentinel write is crash-safe.
+    journal_set "${DEST_PREFIX}_BURN_ATTEMPTED" 1; BURN_ATTEMPTED=1
+
+    # 4. Burn (NO retry — a re-run must never double-burn). Separate stdout (the --json receipt) from stderr
+    #    (errors) so a stderr warning cannot corrupt the receipt's jq parse, and so revert calldata on a failed
+    #    submit is never mistaken for a tx hash. A hash is adopted even on a non-zero exit (submitted but the
+    #    receipt wait failed) — that tx must NOT be re-sent.
+    err_file="$(mktemp "${JOURNAL}.burnerr.XXXXXX")"
     rc=0
     # shellcheck disable=SC2086
     out="$(cast send "${DIAMOND}" "depositForBurn(uint256,bytes)" "${AMOUNT}" "${RECIPIENT}" \
-        ${FORGE_AUTH} --rpc-url "${ARC_RPC}" --json 2>&1)" || rc=$?
-    hash="$(echo "${out}" | jq -r '.transactionHash // empty' 2>/dev/null || true)"
-    [[ "${hash}" =~ ^0x[0-9a-fA-F]{64}$ ]] || hash="$(echo "${out}" | grep -oE '0x[0-9a-fA-F]{64}' | head -1 || true)"
+        ${FORGE_AUTH} --rpc-url "${ARC_RPC}" --json 2>"${err_file}")" || rc=$?
+    err_text="$(cat "${err_file}" 2>/dev/null || true)"; rm -f "${err_file}"
+
+    # Primary: the transactionHash field of the stdout JSON receipt.
+    hash="$(printf '%s' "${out}" | jq -r '.transactionHash // empty' 2>/dev/null || true)"
+    if [[ ! "${hash}" =~ ^0x[0-9a-fA-F]{64}$ ]]; then
+        hash=""
+        # Fallback ONLY when nothing was reverted / estimation-failed. A pre-broadcast node-side revert sent
+        # NOTHING; its revert calldata (a selector+args blob) must never be adopted as a tx hash.
+        if ! printf '%s\n%s' "${out}" "${err_text}" | grep -qiE 'revert|estimat'; then
+            # Tier 1: the receipt's transactionHash FIELD, matched textually (tolerant of stderr noise that
+            # broke the full-document jq above).
+            hash="$(printf '%s' "${out}" | grep -oE '"transactionHash" *: *"0x[0-9a-fA-F]{64}"' \
+                | grep -oE '0x[0-9a-fA-F]{64}' | head -1 || true)"
+            # Tier 2: a STANDALONE 64-hex token echoed in an error line — never a 64-char slice of a longer
+            # blob. BSD grep on macOS lacks a reliable \b, so grab one OPTIONAL trailing hex char and keep only
+            # exact-length-66 hits: grep's leftmost-longest match over a longer blob captures 65 hex (length 67
+            # -> filtered), while a bare hash captures exactly 64 (length 66 -> kept).
+            [[ "${hash}" =~ ^0x[0-9a-fA-F]{64}$ ]] || hash="$(printf '%s\n%s' "${out}" "${err_text}" \
+                | grep -oE '0x[0-9a-fA-F]{64}[0-9a-fA-F]?' | awk 'length == 66' | head -1 || true)"
+        fi
+    fi
     if [[ "${hash}" =~ ^0x[0-9a-fA-F]{64}$ ]]; then
         journal_set "${DEST_PREFIX}_BURN_TX" "${hash}"; BURN_TX="${hash}"
         if (( rc == 0 )); then
@@ -483,7 +533,8 @@ crank_burn() {
     fi
     err "burn did not submit (cast send rc=${rc}) and no tx hash was found in its output."
     err "  DO NOT blindly re-run: a depositForBurn that landed must not be repeated (it would double-burn)."
-    err "  check ${ACTOR}'s recent txs on ${ARC_EXPLORER}/address/${ACTOR} before re-running."
+    err "  check ${ACTOR}'s recent txs on ${ARC_EXPLORER}/address/${ACTOR} before re-running (the BURN_ATTEMPTED"
+    err "  sentinel now blocks an automatic re-burn until you reconcile — see the READY-TO-BURN guard)."
     return 1
 }
 
@@ -563,17 +614,20 @@ verify_and_finish() {
     return 0
 }
 
-# Print the combined summary + explorer links and delete the journal — ONLY once EVERY driven destination is
-# DELIVERED. A partial run leaves the journal so a later invocation resumes the remaining destination(s).
+# Print the combined summary + explorer links and delete the journal — ONLY once EVERY KNOWN destination is
+# DELIVERED. The journal is SHARED (one hub + both destinations), so a FILTERED run (loop <actor> base) must
+# never erase the other destination's in-flight state or the hub record: gate on `sepolia base`, not the
+# filtered ${DESTS[@]}. load_diamond before printing the hub link (the --once early-exit path may not have).
 finalize_all() {
     local d btx
-    for d in "${DESTS[@]}"; do
+    for d in sepolia base; do
         dest_meta "${d}"
-        dest_delivered "${DEST_PREFIX}" || return 0
+        dest_delivered "${DEST_PREFIX}" || { info "journal kept: ${d} is not yet DELIVERED (run the loop for it to finish)."; return 0; }
     done
-    ok "ALL driven destinations DELIVERED — Arc-hub demo complete."
+    load_diamond
+    ok "ALL destinations DELIVERED — Arc-hub demo complete."
     ok "  hub (Arc source): ${ARC_EXPLORER}/address/${DIAMOND}"
-    for d in "${DESTS[@]}"; do
+    for d in sepolia base; do
         dest_meta "${d}"
         btx="$(journal_get "${DEST_PREFIX}_BURN_TX")"
         [[ -n "${btx}" ]] && ok "  ${DEST_HUMAN} burn (Arc): ${ARC_EXPLORER}/tx/${btx}"
@@ -620,6 +674,13 @@ step() {
             return 1
             ;;
         2) # READY-TO-BURN
+            if [[ -z "${BURN_TX}" && "${BURN_ATTEMPTED}" == "1" ]]; then
+                err "a previous burn attempt for ${DEST} may have been submitted but never journaled (interrupted run)."
+                err "  check ${ACTOR}'s recent txs on ${ARC_EXPLORER}/address/${ACTOR}:"
+                err "  - if a depositForBurn landed, journal it:  echo '${DEST_PREFIX}_BURN_TX=<hash>' >> ${JOURNAL}"
+                err "  - if nothing landed, remove the ${DEST_PREFIX}_BURN_ATTEMPTED line from ${JOURNAL} and re-run."
+                return 1
+            fi
             guard_stuck || return 1
             compute_fee_policy
             info "actionable now -> burn toward ${DEST_HUMAN} (records the destination baseline, then burns ${AMOUNT})."

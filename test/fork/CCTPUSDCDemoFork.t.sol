@@ -2,6 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {IDiamondLoupe} from "@diamond/interfaces/IDiamondLoupe.sol";
+import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {CCTPUSDCDemo} from "@lattice-script/base/crosschain/CCTPUSDCDemo.s.sol";
 import {IBridgeFungible} from "@lattice/interfaces/crosschain/IBridgeFungible.sol";
 import {ICCTPBridgeAdapter} from "@lattice/interfaces/crosschain/ICCTPBridgeAdapter.sol";
@@ -18,6 +19,18 @@ contract CCTPUSDCDemoProbe is CCTPUSDCDemo {
 
     function setupHub(address admin, uint256 maxFee, uint32 minFinality) external returns (address) {
         return _setupHub(admin, maxFee, minFinality);
+    }
+
+    /// @dev A DELIBERATELY half-configured hub: registers ONLY sepolia, never base — so `_hubReady`'s
+    ///      both-destinations gate must read NEEDS-SETUP for EITHER destination. Mirrors {_setupHub} minus the
+    ///      second registration.
+    function halfHub(address admin, uint256 maxFee, uint32 minFinality) external returns (address diamond) {
+        (FacetCut[] memory cuts, address init, bytes memory initCalldata) =
+            buildCuts(admin, TOKEN_MESSENGER_V2, MESSAGE_TRANSMITTER_V2, ARC_USDC);
+        diamond = _assemble(cuts, init, initCalldata);
+        Dest memory sepolia = _dest("sepolia");
+        ICCTPBridgeAdapter(diamond).registerChainDomain(sepolia.chainId, sepolia.domain);
+        ICCTPBridgeAdapter(diamond).configureDomain(sepolia.domain, maxFee, minFinality, bytes32(0));
     }
 
     function demoStatus(
@@ -40,10 +53,10 @@ contract CCTPUSDCDemoProbe is CCTPUSDCDemo {
 ///         asserts the machine-readable status tuple across every phase. Two destinations are exercised:
 ///         `sepolia` (Arc -> Ethereum Sepolia) and `base` (Arc -> Base Sepolia).
 ///
-///         NEVER relay/mint INTO an Arc fork: on Arc every account is EIP-7702-delegated, and forge's revm
-///         simulation reverts executing the delegated-account mint path. These tests only BURN on Arc (source
-///         side) and SIMULATE a destination credit with a plain `deal()` on the destination's normal ERC-20 —
-///         they never drive `receiveMessage` on Arc.
+///         NEVER relay/mint INTO an Arc fork: Arc's native-USDC precompile (0x1800…) is absent from revm, so
+///         any USDC move — the relay's mint included — reverts under an Arc fork. These tests only BURN on Arc
+///         (source side, which reverts the same way) and SIMULATE a destination credit with a plain `deal()` on
+///         the destination's normal ERC-20 — they never drive `receiveMessage` on Arc.
 ///
 /// Enabling:
 ///   export ARC_TESTNET_RPC_URL=<...>        # required for the WHOLE suite (the burn source is Arc now)
@@ -214,7 +227,10 @@ contract CCTPUSDCDemoFork is Test {
         probe.cctpDemoBurnStep(d, hub, actor, AMOUNT);
 
         assertEq(IERC20(ARC_USDC).balanceOf(actor), AMOUNT - 1, "not one token pulled");
-        assertEq(IERC20(ARC_USDC).allowance(hub, TOKEN_MESSENGER_V2), 0, "no approval left behind");
+        // The burn step's own approval is actor->hub (CCTPUSDCDemo.cctpDemoBurnStep); assert THAT pair is
+        // untouched. (Any pair is zero post-revert by rollback; the guard's real proof is the exact-selector
+        // InsufficientUSDC expectRevert above, which pins that the balance guard fired before any approval.)
+        assertEq(IERC20(ARC_USDC).allowance(actor, hub), 0, "no hub approval left behind");
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -284,5 +300,30 @@ contract CCTPUSDCDemoFork is Test {
         assertEq(waitSeconds, 0, "delivered needs nothing");
         assertEq(done, 1, "done");
         assertEq(dstBal, AMOUNT, "destination credited the full free-standard amount");
+    }
+
+    /// @notice A HALF-configured hub (only sepolia registered, base never) must read NEEDS-SETUP for EITHER
+    ///         destination — exercising `_hubReady`'s both-destinations gate (which the address(0) phase-0 case
+    ///         above never reaches). The sepolia-key case is load-bearing: a sepolia-only hub reading
+    ///         NEEDS-SETUP even when DRIVING sepolia kills both the `return true` mutant and the weaker
+    ///         "check only the driven destination" mutant. Arc-only hub ops (no USDC move) + a dest fork.
+    function test_Fork_StatusNeedsSetupOnHalfConfiguredHub_Sepolia() public {
+        _halfHubNeedsSetup("sepolia");
+    }
+
+    function test_Fork_StatusNeedsSetupOnHalfConfiguredHub_Base() public {
+        _halfHubNeedsSetup("base");
+    }
+
+    function _halfHubNeedsSetup(string memory destKey) internal {
+        CCTPUSDCDemo.Dest memory d = probe.dest(destKey);
+        if (!_dstRpcReady(_dstRpcVar(d))) return;
+
+        address hub = probe.halfHub(actor, 0, 2000); // base never registered
+        _persist(hub);
+
+        (uint8 phase,, uint256 done,,) = probe.demoStatus(hub, actor, AMOUNT, d, 0, 0);
+        assertEq(phase, 0, "half-configured hub -> NEEDS-SETUP for every destination");
+        assertEq(done, 0, "not done");
     }
 }
