@@ -40,15 +40,24 @@
 #   across processes and --once runs.
 #
 # USAGE
-#   script/config/cctp-usdc-demo-loop.sh [--once] <actor-address> [dest: sepolia|base]
+#   script/config/cctp-usdc-demo-loop.sh [--once] [<actor-address>] [dest: sepolia|base]
 #     --once   Advance a single phase of the CURRENT destination (or report the
 #              wait) and exit -- composable with cron/systemd timers.
+#     <actor-address>  OPTIONAL. If omitted, the signer address is DERIVED from the
+#              $FORGE_AUTH keystore (`cast wallet address`) -- recommended, see
+#              IMPORTANT. Pass one only for a read-only --once status check with no
+#              $FORGE_AUTH. Args are order-free: a 0x-address is the actor, sepolia|base
+#              the destination filter.
 #
-#   IMPORTANT: <actor-address> MUST equal your $FORGE_AUTH --account keystore
-#   address. The burn pulls Arc USDC from the keystore SIGNER and mints to the
-#   SIGNER on the destination, while status reads balances of <actor-address> --
-#   if they differ the funds move but status never observes them (the
-#   stuck-detector aborts).
+#   IMPORTANT: the actor (derived or passed) MUST be the $FORGE_AUTH SIGNER. The burn
+#   pulls Arc USDC from the keystore signer and mints to it on the destination, while
+#   status reads the actor's balances -- if they differ the funds move but status never
+#   observes them (the stuck-detector aborts). Omitting the address and letting the loop
+#   derive it makes that mismatch impossible.
+#
+#   --slow is applied to the setup deploy automatically, only when the signer is an
+#   EIP-7702-delegated account on Arc (those are capped at one in-flight tx); a plain-EOA
+#   signer deploys without it.
 #
 # ENVIRONMENT
 #   FORGE_AUTH   Forge keystore auth passed VERBATIM to every broadcast crank,
@@ -105,7 +114,7 @@ warn() { echo "${C_WARN}[cctp-loop]${C_OFF} $*" >&2; }
 err()  { echo "${C_ERR}[cctp-loop] ERROR:${C_OFF} $*" >&2; }
 
 usage() {
-    sed -n '2,80p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+    sed -n '2,88p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
     exit "${1:-0}"
 }
 
@@ -128,21 +137,24 @@ dest_meta() {
 ONCE=0
 if [[ "${1:-}" == "--once" ]]; then ONCE=1; shift; fi
 if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then usage 0; fi
-if [[ $# -lt 1 || $# -gt 2 ]]; then err "expected <actor-address> [dest: sepolia|base] (got $#)"; usage 2; fi
+if [[ $# -gt 2 ]]; then err "expected at most [<actor-address>] [dest: sepolia|base] (got $#)"; usage 2; fi
 
-ACTOR="$1"
-[[ "${ACTOR}" =~ ^0x[0-9a-fA-F]{40}$ ]] || { err "actor is not a 20-byte address: ${ACTOR}"; exit 2; }
+# Classify the 0-2 positional args by SHAPE: a 0x-address is the actor, sepolia|base is the dest filter. The
+# actor is OPTIONAL -- if omitted it is DERIVED from the FORGE_AUTH keystore once auth is known (see below).
+ACTOR=""; DEST_FILTER=""
+for _arg in "$@"; do
+    if [[ "${_arg}" =~ ^0x[0-9a-fA-F]{40}$ ]]; then
+        [[ -z "${ACTOR}" ]] || { err "two actor addresses given ('${ACTOR}' and '${_arg}')."; usage 2; }
+        ACTOR="${_arg}"
+    elif [[ "${_arg}" == "sepolia" || "${_arg}" == "base" ]]; then
+        [[ -z "${DEST_FILTER}" ]] || { err "two destinations given ('${DEST_FILTER}' and '${_arg}')."; usage 2; }
+        DEST_FILTER="${_arg}"
+    else
+        err "unrecognized argument '${_arg}' (expected a 0x actor address and/or a dest: sepolia|base)"; usage 2
+    fi
+done
 
-DEST_FILTER="${2:-}"
-if [[ -n "${DEST_FILTER}" ]]; then
-    case "${DEST_FILTER}" in
-        sepolia|base) ;;
-        *) err "dest must be 'sepolia' or 'base' (got '${DEST_FILTER}')"; usage 2 ;;
-    esac
-    DESTS=("${DEST_FILTER}")
-else
-    DESTS=(sepolia base)
-fi
+if [[ -n "${DEST_FILTER}" ]]; then DESTS=("${DEST_FILTER}"); else DESTS=(sepolia base); fi
 
 FORGE_AUTH="${FORGE_AUTH:-}"
 AMOUNT="${AMOUNT:-1000000}"
@@ -209,6 +221,43 @@ if (( ! ONCE )) && [[ -z "${FORGE_AUTH}" ]]; then
     err "  (.pw is a GITIGNORED file YOU create holding the KEYSTORE PASSWORD, not a raw private key.)"
     err "  use --once for a read-only status check without broadcasting."
     exit 2
+fi
+
+# ---- resolve the signer + its Arc delegation state ----------------------------
+# If no actor address was given, DERIVE it from the FORGE_AUTH keystore so the operator never keeps a separate
+# address and --account in sync -- a mismatch silently strands funds (the burn moves the SIGNER's USDC while
+# status reads the ACTOR's balances). `cast wallet address` reads the keystore, so it needs the password: fine
+# unattended (--password-file) and prompts once when attended.
+if [[ -z "${ACTOR}" ]]; then
+    if [[ -z "${FORGE_AUTH}" ]]; then
+        err "no actor address given and FORGE_AUTH is empty -- cannot derive the signer."
+        err "  pass the address, or set FORGE_AUTH='--account <name>' (add --password-file for an unattended derive)."
+        exit 2
+    fi
+    # shellcheck disable=SC2086
+    ACTOR="$(cast wallet address ${FORGE_AUTH})" || {
+        err "could not derive the signer address from the FORGE_AUTH keystore."
+        err "  cast wallet address needs the keystore password -- add --password-file to FORGE_AUTH, or pass the address."
+        exit 2
+    }
+    [[ "${ACTOR}" =~ ^0x[0-9a-fA-F]{40}$ ]] || { err "derived signer is not a 20-byte address: '${ACTOR}'"; exit 2; }
+    info "derived signer ${ACTOR} from the FORGE_AUTH keystore."
+fi
+
+# --slow (send each tx only after the previous confirms) is needed ONLY when the SIGNER is EIP-7702-delegated on
+# Arc: such accounts are txpool-capped at ONE in-flight tx, which the multi-contract setup deploy would exceed
+# ("in-flight transaction limit reached for delegated accounts"). A plain-EOA signer runs the deploy in parallel
+# (no serialization penalty). Detect it rather than assume; default to --slow (safe/serial) if unconfirmable.
+SLOW="--slow"
+_actor_code="$(curl -s --max-time 15 -X POST "${ARC_RPC}" -H 'content-type: application/json' \
+    -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"eth_getCode\",\"params\":[\"${ACTOR}\",\"latest\"]}" \
+    | jq -r '.result // empty' 2>/dev/null || true)"
+if [[ "${_actor_code}" == "0x" ]]; then
+    SLOW=""; info "signer is a plain EOA on Arc -> setup runs without --slow."
+elif [[ "${_actor_code}" == 0xef0100* ]]; then
+    info "signer is EIP-7702-delegated on Arc -> setup uses --slow (one in-flight tx cap)."
+else
+    warn "could not confirm the signer's Arc delegation state; defaulting to --slow (safe, serial)."
 fi
 
 # ---- journal ------------------------------------------------------------------
@@ -420,17 +469,16 @@ crank_setup() {
     while (( attempt < 3 )); do
         rc=0
         # $FORGE_AUTH is intentionally UNQUOTED so "--account daveKey" splits into words; forwarded verbatim.
-        # --slow sends each tx only after the previous one confirms. REQUIRED when the SIGNER is an
-        # EIP-7702-delegated account (the txpool caps such accounts at ONE in-flight tx), which fires
-        # "in-flight transaction limit reached for delegated accounts" on this multi-contract deploy otherwise.
-        # A signer becomes delegated via a smart-account / 7702 setup -- it is NOT an Arc chain default; --slow
-        # is harmless (and cheap, given Arc's sub-second finality) for a plain-EOA signer too, so it stays on.
+        # ${SLOW} is "--slow" only when the signer is EIP-7702-delegated on Arc (resolved once at startup): such
+        # accounts are txpool-capped at ONE in-flight tx, so a multi-contract deploy fired back-to-back errors
+        # "in-flight transaction limit reached for delegated accounts". Delegation is a per-account property the
+        # operator set (a smart-account / 7702 setup) -- NOT an Arc default; a plain-EOA signer deploys in parallel.
         # --verify best-effort verifies via Sourcify (bare --verify); a chain Sourcify does not cover fails
         # that one contract non-fatally, so success is detected by the DEMO-SETUP + ONCHAIN-EXECUTION greps.
         # shellcheck disable=SC2086
         out="$(forge script "${SCRIPT_TARGET}" \
                  --sig 'cctpDemoSetup(uint256,uint32)' "${MAXFEE}" "${MINFINALITY}" \
-                 ${FORGE_AUTH} --broadcast --slow --verify 2>&1)" || rc=$?
+                 ${FORGE_AUTH} --broadcast ${SLOW} --verify 2>&1)" || rc=$?
         echo "${out}"
         line="$(echo "${out}" | grep -oE 'DEMO-SETUP 0x[0-9a-fA-F]{40}' | tail -1 || true)"
         if [[ -n "${line}" ]] && echo "${out}" | grep -q 'ONCHAIN EXECUTION COMPLETE'; then
@@ -574,6 +622,7 @@ poll_attestation() {
 
 # Relay the attested message on the CURRENT destination (destination fork only). Calls Circle's
 # MessageTransmitterV2.receiveMessage DIRECTLY (the destinations carry no diamond). Retries twice.
+# No --slow here: relay is a SINGLE tx on a destination chain, so it can never exceed the one-in-flight cap.
 crank_relay() {
     require_auth || return 1
     local attempt=0 rc
@@ -582,7 +631,7 @@ crank_relay() {
         # shellcheck disable=SC2086
         forge script "${SCRIPT_TARGET}" \
             --sig 'cctpDemoRelay(string,bytes,bytes)' "${DEST}" "${MESSAGE}" "${ATTESTATION}" \
-            ${FORGE_AUTH} --broadcast --slow || rc=$?
+            ${FORGE_AUTH} --broadcast || rc=$?
         if (( rc == 0 )); then
             journal_set "${DEST_PREFIX}_RELAYED" 1; RELAYED=1
             ok "relay broadcast on ${DEST_HUMAN}"
