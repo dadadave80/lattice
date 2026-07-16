@@ -1,0 +1,11 @@
+{
+  "provenance": "PLACEHOLDER. The real Arc(domain 26) -> Base Sepolia(domain 6) CCTP v2 HOOK fixture is captured from the operator's live `script/config/cctp-hook-demo.sh` run — a synthetic message cannot carry a real Iris attestation, so this stays a placeholder until then. While `message` is empty, test_Fork_RelayWithHookCreditsVaultFromRealAttestation skips.",
+  "todo": "After a live run, fill this file: `message` + `attestation` from the Iris response for the Arc burn tx (GET https://iris-api-sandbox.circle.com/v2/messages/26?transactionHash=<arcBurnTx> -> .messages[0].message / .attestation); `baseDiamond` + `vault` from the DEMO-HOOK-SETUP console line; `beneficiary` from the burn's hook envelope (the 20-byte payload); `amount` = the net-minted USDC (1000000 for the free standard tier, fee 0); `receiveBlock` = the Base Sepolia block the relayMessageWithHook tx landed in.",
+  "message": "0x",
+  "attestation": "0x",
+  "baseDiamond": "0x0000000000000000000000000000000000000000",
+  "vault": "0x0000000000000000000000000000000000000000",
+  "beneficiary": "0x0000000000000000000000000000000000000000",
+  "amount": 0,
+  "receiveBlock": 0
+}
