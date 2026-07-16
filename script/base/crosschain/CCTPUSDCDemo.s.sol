@@ -31,8 +31,9 @@ import {console} from "forge-std/Script.sol";
 ///            simulates before broadcasting, so a relay is NEVER driven into Arc. Here the destinations
 ///            (Sepolia / Base Sepolia) do the minting, calling Circle's `MessageTransmitterV2.receiveMessage`
 ///            DIRECTLY (the destinations carry no diamond — the Lattice showcase is the SOURCE-side hub). The
-///            mint recipient is the actor, a plain EOA on each destination — Arc's default EIP-7702 delegation
-///            matters only on the source side, where it forces `--slow`/sequential sends.
+///            mint recipient is the actor, a plain EOA on each destination. Separately, if the SIGNER's account
+///            is EIP-7702-delegated (a smart-account/7702 setup on the actor — not an Arc default), the txpool
+///            caps it at one in-flight tx, forcing `--slow`/sequential sends on the source-side deploy.
 ///
 ///         Each entrypoint drives only the existing adapter surface (`depositForBurn` + admin
 ///         `registerChainDomain` / `configureDomain`) or Circle's `receiveMessage`; no src/ contract is
