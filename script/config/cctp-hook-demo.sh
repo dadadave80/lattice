@@ -124,11 +124,22 @@ _code="$(curl -s --max-time 15 -X POST "${ARC_RPC}" -H 'content-type: applicatio
 # ---- 1. setup (Arc hub + Base diamond + vault) --------------------------------
 ARC_HUB="$(journal_get ARC_HUB)"; BASE_DIAMOND="$(journal_get BASE_DIAMOND)"; VAULT="$(journal_get VAULT)"
 if [[ -z "${ARC_HUB}" || -z "${BASE_DIAMOND}" || -z "${VAULT}" ]]; then
-    info "setup: deploying Arc hub + Base diamond + vault (--verify via Sourcify)..."
+    info "setup: deploying Arc hub + Base diamond + vault (--verifier sourcify)..."
+    # Verification MUST land on Sourcify (Blockscout/arcscan read it), and two forge behaviors fight that:
+    # a set ETHERSCAN_API_KEY makes forge default to the Etherscan verifier EVEN WHEN --verifier sourcify
+    # is passed (empirical, forge 1.7.1: "defaulting to Etherscan verifier" despite the flag), and the repo
+    # .env sets that key -- so blank it inline (an empty-string env var beats forge's .env auto-load; plain
+    # `env -u` does not, forge re-reads .env). Verification is best-effort: success is the DEMO-HOOK-SETUP
+    # line + forge's ONCHAIN-EXECUTION marker (precedent: cctp-usdc-demo-loop), NOT the exit code -- a
+    # verifier hiccup must not strand a successful deploy un-journaled (a re-run would redeploy everything).
+    rc=0
     # shellcheck disable=SC2086
-    out="$(forge script "${SCRIPT_TARGET}" --sig 'hookDemoSetup(uint256,uint32)' 0 2000 ${FORGE_AUTH} --broadcast ${SLOW} --verify 2>&1)" || { scrub "${out}"; err "setup failed."; exit 1; }
+    out="$(ETHERSCAN_API_KEY='' forge script "${SCRIPT_TARGET}" --sig 'hookDemoSetup(uint256,uint32)' 0 2000 ${FORGE_AUTH} --broadcast ${SLOW} --verify --verifier sourcify 2>&1)" || rc=$?
     line="$(echo "${out}" | grep -oE 'DEMO-HOOK-SETUP 0x[0-9a-fA-F]{40} 0x[0-9a-fA-F]{40} 0x[0-9a-fA-F]{40}' | tail -1 || true)"
-    [[ -n "${line}" ]] || { scrub "${out}"; err "setup did not print DEMO-HOOK-SETUP."; exit 1; }
+    if [[ -z "${line}" ]] || ! echo "${out}" | grep -q 'ONCHAIN EXECUTION COMPLETE'; then
+        scrub "${out}"; err "setup failed."; exit 1
+    fi
+    (( rc == 0 )) || warn "setup exited ${rc} after broadcasting (likely a verification hiccup; deploy journaled)."
     read -r _ ARC_HUB BASE_DIAMOND VAULT <<<"${line}"
     journal_set ARC_HUB "${ARC_HUB}"; journal_set BASE_DIAMOND "${BASE_DIAMOND}"; journal_set VAULT "${VAULT}"
     ok "hub=${ARC_HUB}  diamond=${BASE_DIAMOND}  vault=${VAULT}"
@@ -151,9 +162,13 @@ if [[ -z "${BURN_TX}" ]]; then
         exit 1
     fi
 
-    # fund check (Arc USDC is the asset AND the gas token).
-    BAL_HEX="$(cast call "${ARC_USDC}" "balanceOf(address)(uint256)" "${ACTOR}" --rpc-url "${ARC_RPC}" 2>/dev/null | awk '{print $1}' || true)"
-    BAL="${BAL_HEX%% *}"
+    # fund check (Arc USDC is the asset AND the gas token) -- a broadcast-free forge READ with --sender, the
+    # driver's own prompt-free idiom, NOT `cast call`: with the repo .env's ETH_KEYSTORE_ACCOUNT set, cast
+    # eagerly unlocks that keystore even for a read and prompts mid-run on /dev/tty (2>/dev/null cannot hide
+    # it, and `env -u` does not stick -- cast re-reads .env). Forking Arc for a READ is fine in revm: only
+    # balance-MOVES route through the 0x1800 precompile. A failed read leaves BAL empty and skips the check;
+    # an underfunded burn still fails loudly on-chain.
+    BAL="$(forge script "${SCRIPT_TARGET}" --sig 'hookDemoArcBalance(address)' "${ACTOR}" --sender "${ACTOR}" 2>&1 | grep -oE 'DEMO-HOOK-ARCBAL [0-9]+' | awk '{print $2}' || true)"
     if [[ -n "${BAL}" ]] && (( BAL < AMOUNT )); then
         err "actor holds ${BAL} of the ${AMOUNT} Arc USDC units needed."
         info "Fund via https://faucet.circle.com : Arc testnet USDC -> ${ACTOR} (asset + gas)."

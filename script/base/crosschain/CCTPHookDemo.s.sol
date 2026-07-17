@@ -29,7 +29,8 @@ import {console} from "forge-std/Script.sol";
 ///     (setup on Arc+Base -> cast-send burn-with-hook on Arc -> Iris attest (seconds) -> relayMessageWithHook on
 ///      Base -> verify the vault credited the beneficiary). Optional args: <actor> <beneficiary>.
 ///  2. Manual equivalents (S=script/base/crosschain/CCTPHookDemo.s.sol:CCTPHookDemo):
-///     - setup:  forge script S --account <name> --broadcast --verify --sig "hookDemoSetup(uint256,uint32)" 0 2000
+///     - setup:  ETHERSCAN_API_KEY= forge script S --account <name> --broadcast --verify --verifier sourcify --sig "hookDemoSetup(uint256,uint32)" 0 2000
+///               (blank the key inline: a set ETHERSCAN_API_KEY makes forge pick Etherscan over the sourcify flag)
 ///     - burn:   the Arc burn CANNOT pass forge's local simulation (revm lacks Arc's native-USDC precompile
 ///               0x1800…) -> send it with cast. First encode the recipient + hook envelope (broadcast-free):
 ///                 R=$(forge script S --sender <actor> --sig "hookDemoRecipient(address)" <vault> | grep RECIPIENT)
@@ -151,5 +152,16 @@ contract CCTPHookDemo is DeployCCTPBridgeAdapter {
         uint256 credit = CCTPHookVault(vault).creditOf(beneficiary);
         uint256 vaultBal = IERC20(BASE_USDC).balanceOf(vault);
         console.log(string.concat("DEMO-HOOK-CREDIT ", vm.toString(credit), " ", vm.toString(vaultBal)));
+    }
+
+    /// @notice Read `actor`'s Arc USDC balance (broadcast-free; invoke with `--sender`). Prints
+    ///         `DEMO-HOOK-ARCBAL <balance>`. A fork READ of the native-USDC view is fine in revm — only
+    ///         balance-MOVES route through Arc's node precompile (0x1800…); the view's `balanceOf` is plain
+    ///         bytecode over the native balance (`balanceOf(a) == a.balance / 1e12`). Unlike `cast call`, this
+    ///         needs no credentials: an `.env` `ETH_KEYSTORE_ACCOUNT` makes cast eagerly unlock that keystore
+    ///         even for a read, prompting mid-run on /dev/tty.
+    function hookDemoArcBalance(address actor) external {
+        vm.createSelectFork(ARC_ALIAS);
+        console.log(string.concat("DEMO-HOOK-ARCBAL ", vm.toString(IERC20(ARC_USDC).balanceOf(actor))));
     }
 }
