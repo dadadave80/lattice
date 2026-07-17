@@ -29,7 +29,8 @@ import {console} from "forge-std/Script.sol";
 ///     (setup on Arc+Base -> cast-send burn-with-hook on Arc -> Iris attest (seconds) -> relayMessageWithHook on
 ///      Base -> verify the vault credited the beneficiary). Optional args: <actor> <beneficiary>.
 ///  2. Manual equivalents (S=script/base/crosschain/CCTPHookDemo.s.sol:CCTPHookDemo):
-///     - setup:  forge script S --account <name> --broadcast --verify --sig "hookDemoSetup(uint256,uint32)" 0 2000
+///     - setup:  ETHERSCAN_API_KEY= forge script S --account <name> --broadcast --verify --verifier sourcify --sig "hookDemoSetup(uint256,uint32)" 0 2000
+///               (blank the key inline: a set ETHERSCAN_API_KEY makes forge pick Etherscan over the sourcify flag)
 ///     - burn:   the Arc burn CANNOT pass forge's local simulation (revm lacks Arc's native-USDC precompile
 ///               0x1800…) -> send it with cast. First encode the recipient + hook envelope (broadcast-free):
 ///                 R=$(forge script S --sender <actor> --sig "hookDemoRecipient(address)" <vault> | grep RECIPIENT)
