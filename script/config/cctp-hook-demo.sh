@@ -151,14 +151,13 @@ if [[ -z "${BURN_TX}" ]]; then
         exit 1
     fi
 
-    # fund check (Arc USDC is the asset AND the gas token). Carries ${FORGE_AUTH} even though this is a
-    # read: cast eagerly resolves a wallet whenever ETH_KEYSTORE_ACCOUNT is set (the repo .env sets it), and
-    # without credentials it PROMPTS for that unrelated account's password -- on /dev/tty, so neither the
-    # 2>/dev/null here nor an `env -u` (cast re-reads .env) suppresses it. Passing the auth we already hold
-    # keeps the read on the SAME account as the signing steps and silent under --password-file.
-    # shellcheck disable=SC2086
-    BAL_HEX="$(cast call "${ARC_USDC}" "balanceOf(address)(uint256)" "${ACTOR}" ${FORGE_AUTH} --rpc-url "${ARC_RPC}" 2>/dev/null | awk '{print $1}' || true)"
-    BAL="${BAL_HEX%% *}"
+    # fund check (Arc USDC is the asset AND the gas token) -- a broadcast-free forge READ with --sender, the
+    # driver's own prompt-free idiom, NOT `cast call`: with the repo .env's ETH_KEYSTORE_ACCOUNT set, cast
+    # eagerly unlocks that keystore even for a read and prompts mid-run on /dev/tty (2>/dev/null cannot hide
+    # it, and `env -u` does not stick -- cast re-reads .env). Forking Arc for a READ is fine in revm: only
+    # balance-MOVES route through the 0x1800 precompile. A failed read leaves BAL empty and skips the check;
+    # an underfunded burn still fails loudly on-chain.
+    BAL="$(forge script "${SCRIPT_TARGET}" --sig 'hookDemoArcBalance(address)' "${ACTOR}" --sender "${ACTOR}" 2>&1 | grep -oE 'DEMO-HOOK-ARCBAL [0-9]+' | awk '{print $2}' || true)"
     if [[ -n "${BAL}" ]] && (( BAL < AMOUNT )); then
         err "actor holds ${BAL} of the ${AMOUNT} Arc USDC units needed."
         info "Fund via https://faucet.circle.com : Arc testnet USDC -> ${ACTOR} (asset + gas)."
