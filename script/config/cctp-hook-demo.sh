@@ -39,7 +39,8 @@ SCRIPT_TARGET="script/base/crosschain/CCTPHookDemo.s.sol:CCTPHookDemo"
 ARC_USDC="0x3600000000000000000000000000000000000000"
 ARC_SRC_DOMAIN=26
 ARC_EXPLORER="https://testnet.arcscan.app"
-BASE_EXPLORER="https://sepolia.basescan.org"
+# Blockscout, not basescan: the demo verifies via Sourcify, which Blockscout reads (basescan does not).
+BASE_EXPLORER="https://base-sepolia.blockscout.com"
 JOURNAL=".cctp-demo.hook.env"
 
 FORGE_AUTH="${FORGE_AUTH:-}"
@@ -58,6 +59,11 @@ info() { echo "${C_INFO}[hook-demo]${C_OFF} $*"; }
 ok()   { echo "${C_OK}[hook-demo]${C_OFF} $*"; }
 warn() { echo "${C_WARN}[hook-demo]${C_OFF} $*" >&2; }
 err()  { echo "${C_ERR}[hook-demo] ERROR:${C_OFF} $*" >&2; }
+
+# Per-phase wall-clock (narration + the closing timings line). Only phases that ran THIS invocation are
+# timed — a resumed run skips journaled phases, and stale timings would misreport them.
+T_RUN_START=${SECONDS}
+D_SETUP=""; D_BURN=""; D_ATTEST=""; D_RELAY=""
 
 # ---- journal (KEY=VALUE lines; values are addresses / tx hashes / hex) ---------
 journal_get() { [[ -f "${JOURNAL}" ]] && sed -n "s/^$1=//p" "${JOURNAL}" | tail -1 || true; }
@@ -132,6 +138,7 @@ if [[ -z "${ARC_HUB}" || -z "${BASE_DIAMOND}" || -z "${VAULT}" ]]; then
     # `env -u` does not, forge re-reads .env). Verification is best-effort: success is the DEMO-HOOK-SETUP
     # line + forge's ONCHAIN-EXECUTION marker (precedent: cctp-usdc-demo-loop), NOT the exit code -- a
     # verifier hiccup must not strand a successful deploy un-journaled (a re-run would redeploy everything).
+    t0=${SECONDS}
     rc=0
     # shellcheck disable=SC2086
     out="$(ETHERSCAN_API_KEY='' forge script "${SCRIPT_TARGET}" --sig 'hookDemoSetup(uint256,uint32)' 0 2000 ${FORGE_AUTH} --broadcast ${SLOW} --verify --verifier sourcify 2>&1)" || rc=$?
@@ -142,7 +149,11 @@ if [[ -z "${ARC_HUB}" || -z "${BASE_DIAMOND}" || -z "${VAULT}" ]]; then
     (( rc == 0 )) || warn "setup exited ${rc} after broadcasting (likely a verification hiccup; deploy journaled)."
     read -r _ ARC_HUB BASE_DIAMOND VAULT <<<"${line}"
     journal_set ARC_HUB "${ARC_HUB}"; journal_set BASE_DIAMOND "${BASE_DIAMOND}"; journal_set VAULT "${VAULT}"
-    ok "hub=${ARC_HUB}  diamond=${BASE_DIAMOND}  vault=${VAULT}"
+    D_SETUP=$(( SECONDS - t0 ))
+    ok "setup complete in ${D_SETUP}s: two diamonds + the auto-credit vault, wired + Sourcify-verified:"
+    ok "  hub (Arc):      ${ARC_EXPLORER}/address/${ARC_HUB}  <- burn goes in here"
+    ok "  diamond (Base): ${BASE_EXPLORER}/address/${BASE_DIAMOND}  <- relays + fires the hook"
+    ok "  vault (Base):   ${BASE_EXPLORER}/address/${VAULT}  <- receives the mint, credits the beneficiary"
 else
     info "adopting journaled deployment: hub=${ARC_HUB} diamond=${BASE_DIAMOND} vault=${VAULT}"
 fi
@@ -180,6 +191,11 @@ if [[ -z "${BURN_TX}" ]]; then
     # shellcheck disable=SC2086
     E="$(forge script "${SCRIPT_TARGET}" --sig 'hookDemoEnvelope(address,address)' "${VAULT}" "${BENEFICIARY}" --sender "${ACTOR}" 2>&1 | grep -oE 'DEMO-HOOK-ENVELOPE 0x[0-9a-fA-F]+' | awk '{print $2}' || true)"
     [[ "${R}" =~ ^0x && "${E}" =~ ^0x ]] || { err "could not encode recipient/envelope."; exit 1; }
+    # The envelope IS the "programmable USDC" payload — show it annotated. Layout (44 bytes):
+    # 4-byte Lattice HOOK_MAGIC ‖ 20-byte hook target (the vault) ‖ payload (the beneficiary to credit).
+    info "hook envelope ($(( (${#E} - 2) / 2 )) bytes, rides inside the burn message): ${E}"
+    info "  = magic ${E:0:10} ‖ target 0x${E:10:40} (vault) ‖ payload 0x${E:50:40} (beneficiary)"
+    t0=${SECONDS}
     info "approving ${AMOUNT} Arc USDC to the hub..."
     # shellcheck disable=SC2086
     cast send "${ARC_USDC}" "approve(address,uint256)" "${ARC_HUB}" "${AMOUNT}" ${FORGE_AUTH} --rpc-url "${ARC_RPC}" >/dev/null
@@ -207,22 +223,33 @@ if [[ -z "${BURN_TX}" ]]; then
     [[ "${hash}" =~ ^0x[0-9a-fA-F]{64}$ ]] || { scrub "${err_text}"; err "burn produced no tx hash; check ${ARC_EXPLORER}/address/${ACTOR} before re-running (never double-burn)."; exit 1; }
     (( rc == 0 )) || warn "cast exited ${rc} after dispatching the burn; adopting ${hash} (NOT re-burning)."
     journal_set BURN_TX "${hash}"; BURN_TX="${hash}"
-    ok "burned: ${ARC_EXPLORER}/tx/${BURN_TX}"
+    D_BURN=$(( SECONDS - t0 ))
+    ok "burned in ${D_BURN}s (approve + depositForBurnWithHook): ${ARC_EXPLORER}/tx/${BURN_TX}"
 fi
 
 # ---- 4. Iris attestation (source domain 26 = Arc; seconds at Arc finality) -----
 MESSAGE="$(journal_get MESSAGE)"; ATTESTATION="$(journal_get ATTESTATION)"
 if [[ -z "${MESSAGE}" || -z "${ATTESTATION}" ]]; then
-    info "awaiting Iris attestation (poll ${IRIS_POLL_SECONDS}s, cap ${ATTEST_TIMEOUT_SECONDS}s)..."
+    info "awaiting Iris attestation (poll ${IRIS_POLL_SECONDS}s, cap ${ATTEST_TIMEOUT_SECONDS}s); watch it live:"
+    info "  ${IRIS_API}/v2/messages/${ARC_SRC_DOMAIN}?transactionHash=${BURN_TX}"
+    t0=${SECONDS}
     deadline=$(( SECONDS + ATTEST_TIMEOUT_SECONDS ))
+    last_status=""
     while (( SECONDS < deadline )); do
         resp="$(curl -sf --retry 3 --retry-delay 2 "${IRIS_API}/v2/messages/${ARC_SRC_DOMAIN}?transactionHash=${BURN_TX}" 2>/dev/null || true)"
-        if [[ -n "${resp}" && "$(echo "${resp}" | jq -r '.messages[0].status // empty')" == "complete" ]]; then
+        status="$(echo "${resp}" | jq -r '.messages[0].status // "message-not-indexed-yet"' 2>/dev/null || echo "iris-unreachable")"
+        if [[ "${status}" != "${last_status}" ]]; then
+            info "  iris: ${status} (+$(( SECONDS - t0 ))s)"
+            last_status="${status}"
+        fi
+        if [[ -n "${resp}" && "${status}" == "complete" ]]; then
             MESSAGE="$(echo "${resp}" | jq -r '.messages[0].message // empty')"
             ATTESTATION="$(echo "${resp}" | jq -r '.messages[0].attestation // empty')"
             if [[ "${MESSAGE}" =~ ^0x[0-9a-fA-F]+$ && "${ATTESTATION}" =~ ^0x[0-9a-fA-F]+$ ]]; then
                 journal_set MESSAGE "${MESSAGE}"; journal_set ATTESTATION "${ATTESTATION}"
-                ok "attestation complete."
+                D_ATTEST=$(( SECONDS - t0 ))
+                ok "attested in ${D_ATTEST}s — Arc's sub-second finality means seconds, not the ~15min slower chains need."
+                ok "  message: $(( (${#MESSAGE} - 2) / 2 )) bytes (burn + hook envelope) · attestation: $(( (${#ATTESTATION} - 2) / 2 )) bytes (Iris signatures)"
                 break
             fi
         fi
@@ -236,19 +263,49 @@ fi
 # the run). If the relay tx fails THIS run, don't guess from the revert text — fall through: the verify step
 # reads the on-chain credit and is the source of truth (a resume after the relay already landed reads it fine).
 if [[ -z "$(journal_get RELAYED)" ]]; then
-    info "relaying on Base Sepolia (mints to the vault + fires the hook)..."
+    info "relaying on Base Sepolia — ONE tx does both: Circle mints the USDC to the vault, then the"
+    info "  diamond's CCTPHookExecutor calls vault.onCCTPHook(...) which credits the beneficiary..."
+    t0=${SECONDS}
     rc=0
     # shellcheck disable=SC2086
     out="$(forge script "${SCRIPT_TARGET}" --sig 'hookDemoRelay(address,bytes,bytes)' "${BASE_DIAMOND}" "${MESSAGE}" "${ATTESTATION}" ${FORGE_AUTH} --broadcast --rpc-url base-sepolia 2>&1)" || rc=$?
     if (( rc == 0 )); then
         journal_set RELAYED 1
+        D_RELAY=$(( SECONDS - t0 ))
+        # Surface the relay tx — the demo's money shot (mint + hook in one tx) — from the broadcast log.
+        RELAY_TX="$(jq -r '.receipts[0].transactionHash // empty' broadcast/CCTPHookDemo.s.sol/84532/hookDemoRelay-latest.json 2>/dev/null || true)"
+        if [[ "${RELAY_TX}" =~ ^0x[0-9a-fA-F]{64}$ ]]; then
+            journal_set RELAY_TX "${RELAY_TX}"
+            ok "relayed in ${D_RELAY}s: ${BASE_EXPLORER}/tx/${RELAY_TX}"
+        else
+            RELAY_TX=""
+        fi
     else
         warn "relay tx did not succeed this run (it may already be relayed from a prior run); verifying credit..."
         scrub "${out}"
     fi
     sleep 6
 else
+    RELAY_TX="$(journal_get RELAY_TX)"
     info "relay already journaled; skipping to verify."
+fi
+
+# Best-effort on-chain proof: decode the vault's Credited event straight from the relay receipt (curl,
+# credential-free — cast reads would eagerly unlock the .env keystore). Non-fatal: the credit read below
+# is the source of truth.
+# topic0 = keccak256("Credited(address,uint256,uint32,bytes32)"), see CCTPHookVault.Credited.
+CREDITED_TOPIC="0xc8947ddac936d47e6ab5a0004ed0d2d901b584caf27414a3fa3dd0c7d06f5969"
+if [[ "${RELAY_TX:-}" =~ ^0x[0-9a-fA-F]{64}$ ]]; then
+    rcpt="$(curl -sf -m 15 -X POST "${BASE_RPC}" -H 'content-type: application/json' \
+        -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"eth_getTransactionReceipt\",\"params\":[\"${RELAY_TX}\"]}" 2>/dev/null || true)"
+    lg="$(echo "${rcpt}" | jq -c --arg v "$(echo "${VAULT}" | tr '[:upper:]' '[:lower:]')" --arg t "${CREDITED_TOPIC}" \
+        '.result.logs[]? | select((.address == $v) and (.topics[0] == $t))' 2>/dev/null | head -1 || true)"
+    if [[ -n "${lg}" ]]; then
+        ev_benef="0x$(echo "${lg}" | jq -r '.topics[1]' | cut -c27-66)"
+        ev_data="$(echo "${lg}" | jq -r '.data')"
+        ok "hook fired on-chain — the vault emitted:"
+        ok "  Credited(beneficiary=${ev_benef}, amount=$(( 16#${ev_data:2:64} )), sourceDomain=$(( 16#${ev_data:66:64} )) (Arc), sender=0x${ev_data:130:64})"
+    fi
 fi
 
 # ---- 6. verify the vault credited the beneficiary (source of truth) ------------
@@ -259,9 +316,16 @@ if [[ -z "${CREDIT}" ]]; then err "could not read the vault credit; check ${BASE
 echo
 if (( CREDIT >= AMOUNT )); then
     ok "HOOK DELIVERED: ${BENEFICIARY} auto-credited ${CREDIT} USDC units in the vault (balance ${VAULT_BAL})."
-    ok "  burn (Arc):   ${ARC_EXPLORER}/tx/${BURN_TX}"
-    ok "  vault (Base): ${BASE_EXPLORER}/address/${VAULT}"
-    ok "  hub (Arc):    ${ARC_EXPLORER}/address/${ARC_HUB}"
+    ok "  burn (Arc):    ${ARC_EXPLORER}/tx/${BURN_TX}"
+    [[ -n "${RELAY_TX:-}" ]] && ok "  relay (Base):  ${BASE_EXPLORER}/tx/${RELAY_TX}  <- mint + hook, one tx"
+    ok "  vault (Base):  ${BASE_EXPLORER}/address/${VAULT}"
+    ok "  hub (Arc):     ${ARC_EXPLORER}/address/${ARC_HUB}"
+    timings=""
+    [[ -n "${D_SETUP}" ]] && timings+="setup ${D_SETUP}s · "
+    [[ -n "${D_BURN}" ]] && timings+="burn ${D_BURN}s · "
+    [[ -n "${D_ATTEST}" ]] && timings+="attest ${D_ATTEST}s · "
+    [[ -n "${D_RELAY}" ]] && timings+="relay ${D_RELAY}s · "
+    ok "  timings:       ${timings}total $(( SECONDS - T_RUN_START ))s (phases skipped by a resume are untimed)"
     rm -f "${JOURNAL}"
 else
     warn "relay landed but credit=${CREDIT} < ${AMOUNT}; inspect ${BASE_EXPLORER}/address/${VAULT} (journal kept)."
