@@ -473,12 +473,15 @@ crank_setup() {
         # accounts are txpool-capped at ONE in-flight tx, so a multi-contract deploy fired back-to-back errors
         # "in-flight transaction limit reached for delegated accounts". Delegation is a per-account property the
         # operator set (a smart-account / 7702 setup) -- NOT an Arc default; a plain-EOA signer deploys in parallel.
-        # --verify best-effort verifies via Sourcify (bare --verify); a chain Sourcify does not cover fails
-        # that one contract non-fatally, so success is detected by the DEMO-SETUP + ONCHAIN-EXECUTION greps.
+        # Verification MUST land on Sourcify (Blockscout/arcscan read it): a set ETHERSCAN_API_KEY makes
+        # forge default to the Etherscan verifier EVEN WHEN --verifier sourcify is passed (empirical,
+        # forge 1.7.1), and the repo .env sets that key -- blank it inline (empty-string beats forge's
+        # .env auto-load). Best-effort: a verification failure is non-fatal -- success is the
+        # DEMO-SETUP + ONCHAIN-EXECUTION greps.
         # shellcheck disable=SC2086
-        out="$(forge script "${SCRIPT_TARGET}" \
+        out="$(ETHERSCAN_API_KEY='' forge script "${SCRIPT_TARGET}" \
                  --sig 'cctpDemoSetup(uint256,uint32)' "${MAXFEE}" "${MINFINALITY}" \
-                 ${FORGE_AUTH} --broadcast ${SLOW} --verify 2>&1)" || rc=$?
+                 ${FORGE_AUTH} --broadcast ${SLOW} --verify --verifier sourcify 2>&1)" || rc=$?
         echo "${out}"
         line="$(echo "${out}" | grep -oE 'DEMO-SETUP 0x[0-9a-fA-F]{40}' | tail -1 || true)"
         if [[ -n "${line}" ]] && echo "${out}" | grep -q 'ONCHAIN EXECUTION COMPLETE'; then
