@@ -152,4 +152,15 @@ contract CCTPHookDemo is DeployCCTPBridgeAdapter {
         uint256 vaultBal = IERC20(BASE_USDC).balanceOf(vault);
         console.log(string.concat("DEMO-HOOK-CREDIT ", vm.toString(credit), " ", vm.toString(vaultBal)));
     }
+
+    /// @notice Read `actor`'s Arc USDC balance (broadcast-free; invoke with `--sender`). Prints
+    ///         `DEMO-HOOK-ARCBAL <balance>`. A fork READ of the native-USDC view is fine in revm — only
+    ///         balance-MOVES route through Arc's node precompile (0x1800…); the view's `balanceOf` is plain
+    ///         bytecode over the native balance (`balanceOf(a) == a.balance / 1e12`). Unlike `cast call`, this
+    ///         needs no credentials: an `.env` `ETH_KEYSTORE_ACCOUNT` makes cast eagerly unlock that keystore
+    ///         even for a read, prompting mid-run on /dev/tty.
+    function hookDemoArcBalance(address actor) external {
+        vm.createSelectFork(ARC_ALIAS);
+        console.log(string.concat("DEMO-HOOK-ARCBAL ", vm.toString(IERC20(ARC_USDC).balanceOf(actor))));
+    }
 }
