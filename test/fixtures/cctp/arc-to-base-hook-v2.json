@@ -1,11 +1,11 @@
 {
-  "provenance": "PLACEHOLDER. The real Arc(domain 26) -> Base Sepolia(domain 6) CCTP v2 HOOK fixture is captured from the operator's live `script/config/cctp-hook-demo.sh` run — a synthetic message cannot carry a real Iris attestation, so this stays a placeholder until then. While `message` is empty, test_Fork_RelayWithHookCreditsVaultFromRealAttestation skips.",
-  "todo": "After a live run, fill this file: `message` + `attestation` from the Iris response for the Arc burn tx (GET https://iris-api-sandbox.circle.com/v2/messages/26?transactionHash=<arcBurnTx> -> .messages[0].message / .attestation); `baseDiamond` + `vault` from the DEMO-HOOK-SETUP console line; `beneficiary` from the burn's hook envelope (the 20-byte payload); `amount` = the net-minted USDC (1000000 for the free standard tier, fee 0); `receiveBlock` = the Base Sepolia block the relayMessageWithHook tx landed in.",
-  "message": "0x",
-  "attestation": "0x",
-  "baseDiamond": "0x0000000000000000000000000000000000000000",
-  "vault": "0x0000000000000000000000000000000000000000",
-  "beneficiary": "0x0000000000000000000000000000000000000000",
-  "amount": 0,
-  "receiveBlock": 0
+  "provenance": "REAL capture from the live CCTP v2 hook showcase run of 2026-07-17: 1 USDC burned on Arc testnet (domain 26) via the Lattice hub 0x3446dC6de6373a139405A524085fdfB52ABfFe1c with the Lattice hook envelope (target = CCTPHookVault, payload = beneficiary), attested by Iris (sandbox), relayed on Base Sepolia via the destination diamond's relayMessageWithHook in tx 0xc41fbea24e4dcf810c3d4aaf8efda138037a03b07d44f8ee14a58e5aafabadfc (block 44258756) — minting to the vault AND firing Credited(beneficiary, 1000000, 26, hub) in the same tx. Burn tx (Arc): 0x45071a3ebec12e51ad2e41d6a7262995781a7595770c8e76ab6e81583da5ac39. Message is 420 bytes = 376 (CCTP v2 burn message) + 44 (Lattice hook envelope); feeExecuted = 0 (standard tier), so the attested net-minted amount equals the burn amount.",
+  "todo": "Nothing — captured. To re-capture from a newer run: GET https://iris-api-sandbox.circle.com/v2/messages/26?transactionHash=<arcBurnTx> -> .messages[0].message / .attestation; receiveBlock = the Base block of the relayMessageWithHook tx.",
+  "message": "0x000000010000001a00000006bfe1973715cb2f0db8b802f493352c93c5e5c4b80444876bea80ada908e8994c0000000000000000000000008fe6b999dc680ccfdd5bf7eb0974218be2542daa0000000000000000000000008fe6b999dc680ccfdd5bf7eb0974218be2542daa0000000000000000000000003e10c69c1e9b22325d556e1c9e4db681a9e63b73000007d0000007d0000000010000000000000000000000003600000000000000000000000000000000000000000000000000000000000000d23d22c807eb95993f7fef4d0349cb89643daf1a00000000000000000000000000000000000000000000000000000000000f42400000000000000000000000003446dc6de6373a139405a524085fdfb52abffe1c000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000f43059e4d23d22c807eb95993f7fef4d0349cb89643daf1a11cf2f724d0efff4b038003eb55ab96a334bec00",
+  "attestation": "0x618ba84a1117aa1d4b92e5deb415d295a8d76db7c48a656e6f8e6a05a154bae23f9b0a976e639252597d267e3325f9d306e8c52a6a1a48bcae2eb8a559c73e011be5d3ffe2d2fa8e5379d2d0c97ee9f6c507fe6e51cd98f646646ee13823decd7d47c5d68d8a3b72402e2c0e9a213fefcc903e389cd8c025caa7e53ff5683ca85f1b",
+  "baseDiamond": "0x3E10c69c1e9b22325d556E1c9e4Db681a9E63b73",
+  "vault": "0xD23D22c807eB95993f7FEf4d0349CB89643Daf1A",
+  "beneficiary": "0x11Cf2f724D0effF4B038003EB55ab96a334BeC00",
+  "amount": 1000000,
+  "receiveBlock": 44258756
 }
