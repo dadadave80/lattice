@@ -65,6 +65,14 @@ err()  { echo "${C_ERR}[hook-demo] ERROR:${C_OFF} $*" >&2; }
 T_RUN_START=${SECONDS}
 D_SETUP=""; D_BURN=""; D_ATTEST=""; D_RELAY=""
 
+# Scratch files for captured tool output (the streamed setup log; the burn's stderr). Created eagerly in
+# TMPDIR (0600) so ONE trap guarantees cleanup even on Ctrl-C mid-deploy — an interrupted run must never
+# leave raw forge/cast output on disk: its error text can embed the API-keyed RPC URLs. The journal is
+# deliberately NOT trapped — it must survive for resume.
+SETUP_LOG="$(mktemp "${TMPDIR:-/tmp}/cctp-hook-demo.setup.XXXXXX")"
+ERR_FILE="$(mktemp "${TMPDIR:-/tmp}/cctp-hook-demo.err.XXXXXX")"
+trap 'rm -f "${SETUP_LOG}" "${ERR_FILE}"' EXIT INT TERM
+
 # ---- journal (KEY=VALUE lines; values are addresses / tx hashes / hex) ---------
 journal_get() { [[ -f "${JOURNAL}" ]] && sed -n "s/^$1=//p" "${JOURNAL}" | tail -1 || true; }
 journal_set() {
@@ -72,6 +80,15 @@ journal_set() {
     tmp="$(mktemp "${JOURNAL}.XXXXXX")"
     { [[ -f "${JOURNAL}" ]] && grep -vE "^${key}=" "${JOURNAL}" || true; echo "${key}=${val}"; } >"${tmp}"
     mv "${tmp}" "${JOURNAL}"
+}
+
+# Decimal for a hex word, safely: bash arithmetic is SIGNED 64-BIT, so only convert when the significant
+# digits fit (<= 15 hex digits < 2^60); larger values print as 0x-hex instead of silently wrapping negative.
+# Callers must pass pure hex (validated upstream) — a non-hex operand would make `16#` a fatal error.
+hex_word_dec() {
+    local h
+    h="$(printf '%s' "$1" | sed 's/^0*//')"
+    if [[ -z "${h}" ]]; then printf '0'; elif (( ${#h} <= 15 )); then printf '%s' "$(( 16#${h} ))"; else printf '0x%s' "${h}"; fi
 }
 
 # ---- args ---------------------------------------------------------------------
@@ -146,23 +163,29 @@ if [[ -z "${ARC_HUB}" || -z "${BASE_DIAMOND}" || -z "${VAULT}" ]]; then
     # failing the pipeline; with pipefail, `|| rc=$?` still captures forge's own exit code.
     t0=${SECONDS}
     rc=0
-    setup_log="$(mktemp "${JOURNAL}.setup.XXXXXX")"
+    # The indent stage is a read-loop, NOT `sed 's/^/    /'`: BSD sed line-buffers only on a tty, so under
+    # `| tee run.log` / CI the "live" stream would arrive in one end-of-phase burst — the darkness this
+    # pipeline exists to fix. `read` is unbuffered per line everywhere.
     # shellcheck disable=SC2086
     ETHERSCAN_API_KEY='' forge script "${SCRIPT_TARGET}" --sig 'hookDemoSetup(uint256,uint32)' 0 2000 ${FORGE_AUTH} --broadcast ${SLOW} --verify --verifier sourcify 2>&1 \
-        | tee "${setup_log}" \
+        | tee "${SETUP_LOG}" \
         | { grep --line-buffered -E '^##### |Contract Address: 0x|Submitting verification|successfully verified|already.{0,10}verified|ONCHAIN EXECUTION COMPLETE' || true; } \
-        | sed 's/^/    /' \
+        | while IFS= read -r l; do printf '    %s\n' "${l}"; done \
         || rc=$?
-    out="$(cat "${setup_log}")"; rm -f "${setup_log}"
+    out="$(cat "${SETUP_LOG}")"
     line="$(echo "${out}" | grep -oE 'DEMO-HOOK-SETUP 0x[0-9a-fA-F]{40} 0x[0-9a-fA-F]{40} 0x[0-9a-fA-F]{40}' | tail -1 || true)"
     if [[ -z "${line}" ]] || ! echo "${out}" | grep -q 'ONCHAIN EXECUTION COMPLETE'; then
         scrub "${out}"; err "setup failed."; exit 1
     fi
-    (( rc == 0 )) || warn "setup exited ${rc} after broadcasting (likely a verification hiccup; deploy journaled)."
+    verified_note="wired + Sourcify-verified"
+    if (( rc != 0 )); then
+        warn "setup exited ${rc} after broadcasting (likely a verification hiccup; deploy journaled)."
+        verified_note="wired (verification did not complete — see the warning above)"
+    fi
     read -r _ ARC_HUB BASE_DIAMOND VAULT <<<"${line}"
     journal_set ARC_HUB "${ARC_HUB}"; journal_set BASE_DIAMOND "${BASE_DIAMOND}"; journal_set VAULT "${VAULT}"
     D_SETUP=$(( SECONDS - t0 ))
-    ok "setup complete in ${D_SETUP}s: two diamonds + the auto-credit vault, wired + Sourcify-verified:"
+    ok "setup complete in ${D_SETUP}s: two diamonds + the auto-credit vault, ${verified_note}:"
     ok "  hub (Arc):      ${ARC_EXPLORER}/address/${ARC_HUB}  <- burn goes in here"
     ok "  diamond (Base): ${BASE_EXPLORER}/address/${BASE_DIAMOND}  <- relays + fires the hook"
     ok "  vault (Base):   ${BASE_EXPLORER}/address/${VAULT}  <- receives the mint, credits the beneficiary"
@@ -216,10 +239,10 @@ if [[ -z "${BURN_TX}" ]]; then
     rc=0
     # stdout (the --json receipt) and stderr (which may embed the API-keyed RPC URL on a transport error) are
     # kept SEPARATE, so the hash extraction never sees error noise and the error text is scrubbed before echo.
-    err_file="$(mktemp "${JOURNAL}.burnerr.XXXXXX")"
+    : > "${ERR_FILE}"
     # shellcheck disable=SC2086
-    out="$(cast send "${ARC_HUB}" "depositForBurnWithHook(uint256,bytes,bytes)" "${AMOUNT}" "${R}" "${E}" ${FORGE_AUTH} --rpc-url "${ARC_RPC}" --json 2>"${err_file}")" || rc=$?
-    err_text="$(cat "${err_file}")"; rm -f "${err_file}"
+    out="$(cast send "${ARC_HUB}" "depositForBurnWithHook(uint256,bytes,bytes)" "${AMOUNT}" "${R}" "${E}" ${FORGE_AUTH} --rpc-url "${ARC_RPC}" --json 2>"${ERR_FILE}")" || rc=$?
+    err_text="$(cat "${ERR_FILE}")"
     hash="$(printf '%s' "${out}" | jq -r '.transactionHash // empty' 2>/dev/null || true)"
     if [[ ! "${hash}" =~ ^0x[0-9a-fA-F]{64}$ ]]; then
         # A pre-dispatch revert / estimation failure sent NOTHING — never adopt revert calldata as a tx hash.
@@ -242,14 +265,26 @@ fi
 # ---- 4. Iris attestation (source domain 26 = Arc; seconds at Arc finality) -----
 MESSAGE="$(journal_get MESSAGE)"; ATTESTATION="$(journal_get ATTESTATION)"
 if [[ -z "${MESSAGE}" || -z "${ATTESTATION}" ]]; then
+    # Echo the poll URL only for the default public sandbox: IRIS_API is an env knob, and an override may
+    # be a credentialed proxy URL — the exact leak class scrub() exists for (it only masks the RPC URLs).
+    iris_display="${IRIS_API}"
+    [[ "${IRIS_API}" == "https://iris-api-sandbox.circle.com" ]] || iris_display="<custom IRIS_API>"
     info "awaiting Iris attestation (poll ${IRIS_POLL_SECONDS}s, cap ${ATTEST_TIMEOUT_SECONDS}s); watch it live:"
-    info "  ${IRIS_API}/v2/messages/${ARC_SRC_DOMAIN}?transactionHash=${BURN_TX}"
+    info "  ${iris_display}/v2/messages/${ARC_SRC_DOMAIN}?transactionHash=${BURN_TX}"
     t0=${SECONDS}
     deadline=$(( SECONDS + ATTEST_TIMEOUT_SECONDS ))
     last_status=""
     while (( SECONDS < deadline )); do
         resp="$(curl -sf --retry 3 --retry-delay 2 "${IRIS_API}/v2/messages/${ARC_SRC_DOMAIN}?transactionHash=${BURN_TX}" 2>/dev/null || true)"
-        status="$(echo "${resp}" | jq -r '.messages[0].status // "message-not-indexed-yet"' 2>/dev/null || echo "iris-unreachable")"
+        # An empty resp covers BOTH curl failure and Iris's pre-index 404 (-f merges them); label it as
+        # such rather than piping "" into jq, which exits 0 with NO output (so a `// default` or `|| echo`
+        # fallback never fires — both were dead code here).
+        if [[ -z "${resp}" ]]; then
+            status="not-indexed-yet (or iris unreachable)"
+        else
+            status="$(echo "${resp}" | jq -r '.messages[0].status // "message-not-indexed-yet"' 2>/dev/null || true)"
+            [[ -n "${status}" ]] || status="unparseable-iris-response"
+        fi
         if [[ "${status}" != "${last_status}" ]]; then
             info "  iris: ${status} (+$(( SECONDS - t0 ))s)"
             last_status="${status}"
@@ -315,8 +350,13 @@ if [[ "${RELAY_TX:-}" =~ ^0x[0-9a-fA-F]{64}$ ]]; then
     if [[ -n "${lg}" ]]; then
         ev_benef="0x$(echo "${lg}" | jq -r '.topics[1]' | cut -c27-66)"
         ev_data="$(echo "${lg}" | jq -r '.data')"
-        ok "hook fired on-chain — the vault emitted:"
-        ok "  Credited(beneficiary=${ev_benef}, amount=$(( 16#${ev_data:2:64} )), sourceDomain=$(( 16#${ev_data:66:64} )) (Arc), sender=0x${ev_data:130:64})"
+        # Decode ONLY a well-formed 3-word data blob: a malformed word would make `16#...` a FATAL
+        # arithmetic error under set -e, killing the run before the authoritative credit read below —
+        # exactly what this best-effort block must never do.
+        if [[ "${ev_data}" =~ ^0x[0-9a-fA-F]{192}$ && "${ev_benef}" =~ ^0x[0-9a-fA-F]{40}$ ]]; then
+            ok "hook fired on-chain — the vault emitted:"
+            ok "  Credited(beneficiary=${ev_benef}, amount=$(hex_word_dec "${ev_data:2:64}"), sourceDomain=$(hex_word_dec "${ev_data:66:64}") (Arc), sender=0x${ev_data:130:64})"
+        fi
     fi
 fi
 
