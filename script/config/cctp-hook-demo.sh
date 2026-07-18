@@ -91,58 +91,81 @@ hex_word_dec() {
     if [[ -z "${h}" ]]; then printf '0'; elif (( ${#h} <= 15 )); then printf '%s' "$(( 16#${h} ))"; else printf '0x%s' "${h}"; fi
 }
 
-# Stateful renderer for the streamed setup phase: one line per contract. Deploy receipts become
-# "✓ deployed <addr>"; each verification opens a live spinner line (tty only) that is rewritten to a
-# green ✓ / red ✗ when forge reports the result; piped/CI output degrades to plain sequential lines
-# (no \r rewriting to garble logs). Only recognized safe line shapes are printed — forge error text
-# can embed API-keyed RPC URLs; everything unmatched stays in ${SETUP_LOG} for the failure-path
-# scrub. MUST consume input to EOF (an early exit would SIGPIPE forge mid-broadcast) and MUST NOT
-# let any command fail under set -e (all matching happens in if-conditions; body is printf-only).
-# Line shapes pinned empirically against forge 1.7.1 + Sourcify v2.
+# Stateful renderer for the streamed setup phase: styled chain headers, a live spinner across the
+# silent multichain dispatch, and one ✓/✗ line per verification (rewritten in place on a tty;
+# piped/CI output degrades to plain sequential lines — no \r rewriting to garble logs). Only
+# recognized safe line shapes are printed — forge error text can embed API-keyed RPC URLs;
+# everything unmatched stays in ${SETUP_LOG} for the failure-path scrub. MUST consume input to EOF
+# (an early exit would SIGPIPE forge mid-broadcast) and MUST NOT let any command fail under set -e
+# (all matching happens in if-conditions; body is printf-only). Line shapes pinned empirically
+# against forge 1.7.1 (multichain broadcast, via a local two-anvil probe) + Sourcify v2.
 render_setup_stream() {
-    local tty=0 idx=0 pending=0 vname="" vaddr="" line
+    local tty=0 idx=0 spin_open=0 spin_label="" vname="" vaddr="" line
     local frames=('⠋' '⠙' '⠹' '⠸' '⠼' '⠴' '⠦' '⠧' '⠇' '⠏')
     if [[ -t 1 ]]; then tty=1; fi
+    # One spinner at a time: spin_label names what we are waiting on (the silent multichain dispatch,
+    # or one in-flight verification); the timeout branch redraws it, and _clr erases it before any
+    # real line prints. Empirical (local two-anvil probe): multichain forge prints NO per-tx receipts
+    # — only '## Setting up N EVMs.', per-chain 'Chain <id>' estimate blocks, then silence until
+    # 'ONCHAIN EXECUTION COMPLETE' — so dispatch progress is a spinner, and the per-contract deploy
+    # listing is printed by the driver afterwards from the broadcast journal (which has names).
+    _clr() { if (( spin_open == 1 )); then printf '\r\033[2K'; spin_open=0; fi; }
+    # `read -t` can time out MID-LINE, leaving a partial line in the variable with rc>128 (empirical:
+    # ~1-in-3 loss when a write races the 0.15s window) — so partial chunks accumulate in `buf` and
+    # are prepended to the next successful read instead of being discarded.
+    local buf="" chunk=""
     while true; do
-        if IFS= read -r -t 0.15 line; then
+        if IFS= read -r -t 0.15 chunk; then
+            line="${buf}${chunk}"; buf=""
             if [[ "${line}" =~ Submitting\ verification\ for\ \[([^]]+)\]\ \"(0x[0-9a-fA-F]{40})\" ]]; then
-                if (( pending == 1 && tty == 1 )); then printf '\n'; fi
-                vname="${BASH_REMATCH[1]##*:}"; vaddr="${BASH_REMATCH[2]}"; pending=1
-                if (( tty == 1 )); then
-                    printf '    %s verifying %s %s' "${frames[idx]}" "${vname}" "${vaddr}"
-                else
-                    printf '    ... verifying %s %s\n' "${vname}" "${vaddr}"
-                fi
+                _clr
+                vname="${BASH_REMATCH[1]##*:}"; vaddr="${BASH_REMATCH[2]}"
+                spin_label="verifying ${vname} ${vaddr}"
+                if (( tty == 0 )); then printf '    ... verifying %s %s\n' "${vname}" "${vaddr}"; fi
             elif [[ "${line}" == *"Contract source code already fully verified"* ]]; then
-                if (( tty == 1 && pending == 1 )); then printf '\r\033[2K'; fi
+                _clr; spin_label=""
                 printf '    %s✓%s %s %s verified (already)\n' "${C_OK}" "${C_OFF}" "${vname}" "${vaddr}"
-                pending=0
             elif [[ "${line}" == *"Contract successfully verified"* ]]; then
-                if (( tty == 1 && pending == 1 )); then printf '\r\033[2K'; fi
+                _clr; spin_label=""
                 printf '    %s✓%s %s %s verified\n' "${C_OK}" "${C_OFF}" "${vname}" "${vaddr}"
-                pending=0
             elif [[ "${line}" == *"Verification job failed"* ]]; then
-                if (( tty == 1 && pending == 1 )); then printf '\r\033[2K'; fi
+                _clr; spin_label=""
                 printf '    %s✗%s %s %s verification FAILED (non-fatal; the deploy stands)\n' "${C_ERR}" "${C_OFF}" "${vname}" "${vaddr}"
-                pending=0
             elif [[ "${line}" =~ ^(Error\ Code:|Message:) ]]; then
+                _clr
                 printf '        %s\n' "${line}"
-            elif [[ "${line}" =~ Contract\ Address:\ (0x[0-9a-fA-F]{40}) ]]; then
-                printf '    %s✓%s deployed %s\n' "${C_OK}" "${C_OFF}" "${BASH_REMATCH[1]}"
-            elif [[ "${line}" == '##### '* || "${line}" == *"ONCHAIN EXECUTION COMPLETE"* ]]; then
-                if (( pending == 1 && tty == 1 )); then printf '\n'; fi
-                pending=0
-                printf '    %s\n' "${line}"
+            elif [[ "${line}" == '## Setting up '* ]]; then
+                _clr
+                spin_label="broadcasting + confirming on both chains (forge is silent here; hold on)"
+                if (( tty == 0 )); then printf '    ... broadcasting + confirming on both chains\n'; fi
+            elif [[ "${line}" =~ ^Chain\ ([0-9]+) ]]; then
+                _clr
+                case "${BASH_REMATCH[1]}" in
+                    84532) printf '    ── chain 84532 · base-sepolia ──\n' ;;
+                    5042002) printf '    ── chain 5042002 · arc-testnet ──\n' ;;
+                    *) printf '    ── chain %s ──\n' "${BASH_REMATCH[1]}" ;;
+                esac
+            elif [[ "${line}" == *"ONCHAIN EXECUTION COMPLETE"* ]]; then
+                _clr; spin_label=""
+                printf '    %s✓%s all transactions confirmed on both chains\n' "${C_OK}" "${C_OFF}"
             fi
         else
-            if (( $? <= 128 )); then break; fi
-            if (( pending == 1 && tty == 1 )); then
-                idx=$(( (idx + 1) % 10 ))
-                printf '\r\033[2K    %s verifying %s %s' "${frames[idx]}" "${vname}" "${vaddr}"
+            if (( $? > 128 )); then
+                buf+="${chunk}"
+                if [[ -n "${spin_label}" ]] && (( tty == 1 )); then
+                    idx=$(( (idx + 1) % 10 ))
+                    printf '\r\033[2K    %s %s' "${frames[idx]}" "${spin_label}"
+                    spin_open=1
+                fi
+            else
+                # EOF. A line torn by a timeout is completed by a later rc=0 read (its tail includes
+                # the newline), and forge newline-terminates its final line — so buf+chunk is empty
+                # here in practice and there is nothing to flush.
+                break
             fi
         fi
     done
-    if (( pending == 1 && tty == 1 )); then printf '\n'; fi
+    _clr
     return 0
 }
 
@@ -240,6 +263,17 @@ if [[ -z "${ARC_HUB}" || -z "${BASE_DIAMOND}" || -z "${VAULT}" ]]; then
     read -r _ ARC_HUB BASE_DIAMOND VAULT <<<"${line}"
     journal_set ARC_HUB "${ARC_HUB}"; journal_set BASE_DIAMOND "${BASE_DIAMOND}"; journal_set VAULT "${VAULT}"
     D_SETUP=$(( SECONDS - t0 ))
+    # Per-chain deploy listing, grouped and NAMED, from the broadcast journal forge just wrote:
+    # multichain forge prints no per-tx receipts to stdout (empirical), and the journal is richer
+    # anyway (contract names). Best-effort — the diamond/vault addresses also appear in the links.
+    while IFS= read -r dep_line; do
+        info "  ${dep_line/✓/${C_OK}✓${C_OFF}}"
+    done < <(jq -r '
+        .deployments[]
+        | (if .chain == 84532 then "base-sepolia" elif .chain == 5042002 then "arc-testnet" else (.chain|tostring) end) as $c
+        | ("deployed on \($c):"),
+          (.transactions[] | select(.transactionType == "CREATE") | "  ✓ \(.contractName) \(.contractAddress)")
+        ' broadcast/multi/CCTPHookDemo.s.sol-latest/hookDemoSetup.json 2>/dev/null || true)
     ok "setup complete in ${D_SETUP}s: two diamonds + the auto-credit vault, ${verified_note}:"
     ok "  hub (Arc):      ${ARC_EXPLORER}/address/${ARC_HUB}  <- burn goes in here"
     ok "  diamond (Base): ${BASE_EXPLORER}/address/${BASE_DIAMOND}  <- relays + fires the hook"
