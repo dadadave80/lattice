@@ -153,20 +153,21 @@ deploy-local: ## Deploy SCRIPT to local Anvil (SCRIPT=… [SIG='run()'] [ARGS='�
 # The hook demo (Arc -> Base Sepolia) showcases CCTP v2 HOOKS: one attested message both moves USDC
 # and auto-credits a beneficiary in a CCTPHookVault.
 
+# Expands to the Keychain wrapper when KEYSTORE is set, else to nothing — every demo recipe is then a
+# single `$(KEYCHAIN_WRAP) <script> $(ARGS)` line and new demos cannot drift from the pattern.
+KEYCHAIN_WRAP = $(if $(KEYSTORE),script/config/keychain-auth.sh "$(KEYSTORE)")
+
 .PHONY: demo-governance
 demo-governance: ## Governance demo loop — KEYSTORE=<name> (or FORGE_AUTH=…) ARGS='<vault> <ens> <actor>'
-	@if [ -n "$(KEYSTORE)" ]; then script/config/keychain-auth.sh "$(KEYSTORE)" script/config/governance-demo-loop.sh $(ARGS); \
-	else script/config/governance-demo-loop.sh $(ARGS); fi
+	@$(KEYCHAIN_WRAP) script/config/governance-demo-loop.sh $(ARGS)
 
 .PHONY: demo-cctp
 demo-cctp: ## CCTP Arc-hub demo loop — KEYSTORE=<name> (or FORGE_AUTH=…); ARGS='<dest>' filters
-	@if [ -n "$(KEYSTORE)" ]; then script/config/keychain-auth.sh "$(KEYSTORE)" script/config/cctp-usdc-demo-loop.sh $(ARGS); \
-	else script/config/cctp-usdc-demo-loop.sh $(ARGS); fi
+	@$(KEYCHAIN_WRAP) script/config/cctp-usdc-demo-loop.sh $(ARGS)
 
 .PHONY: demo-cctp-hook
 demo-cctp-hook: ## CCTP v2 hook demo (Arc->Base auto-credit vault) — KEYSTORE=<name> (or FORGE_AUTH=…)
-	@if [ -n "$(KEYSTORE)" ]; then script/config/keychain-auth.sh "$(KEYSTORE)" script/config/cctp-hook-demo.sh $(ARGS); \
-	else script/config/cctp-hook-demo.sh $(ARGS); fi
+	@$(KEYCHAIN_WRAP) script/config/cctp-hook-demo.sh $(ARGS)
 
 # ------------------------------------------------------------------------ help
 
