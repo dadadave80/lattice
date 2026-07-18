@@ -9,7 +9,7 @@
 # Common knobs:
 #   make test MATCH=CCTPBridgeAdapter     # filter by contract name
 #   make test-path PATH_GLOB=test/fork/CCTPUSDCDemoFork.t.sol
-#   make demo-cctp FORGE_AUTH='--account daveKey'     # add --password-file for unattended
+#   make demo-cctp-hook KEYSTORE=deplKey              # unattended; password from the macOS Keychain
 
 .DEFAULT_GOAL := help
 
@@ -140,27 +140,33 @@ deploy-local: ## Deploy SCRIPT to local Anvil (SCRIPT=… [SIG='run()'] [ARGS='�
 		--rpc-url http://localhost:$(ANVIL_PORT) --private-key $(ANVIL_KEY) --broadcast
 
 # ----------------------------------------------------------------------- demos
-# Pass keystore auth as a command-line variable -- make exports it to the recipe, so the loop sees it:
-#   make demo-governance FORGE_AUTH='--account <ks>' ARGS='<vault> <ens-name> <actor>'
-#   make demo-cctp       FORGE_AUTH='--account <ks>'        # add --password-file <f> for unattended
-# The CCTP loop is the Arc-hub demo: one invocation drives both destinations (Sepolia + Base
-# Sepolia) from the Arc source hub. It derives the signer address from the keystore, so no actor
-# address is needed; add ARGS='sepolia' (or 'base') to filter to a single destination.
-#   make demo-cctp-hook  FORGE_AUTH='--account <ks>'        # add --password-file <f> for unattended
+# Every demo target takes keystore auth either way:
+#   KEYSTORE=<name>              UNATTENDED (macOS): the password is fetched from the Keychain item
+#                                'foundry-<name>' into a 0600 temp file that is deleted on exit —
+#                                zero prompts, nothing durable on disk. One-time setup per keystore:
+#                                  security add-generic-password -a "$USER" -s foundry-<name> -w
+#   FORGE_AUTH='--account <ks>'  ATTENDED: forwarded verbatim; forge prompts per signing step.
+#                                (Add --password-file <f> yourself for a manual unattended run.)
+#   make demo-governance KEYSTORE=<name> ARGS='<vault> <ens-name> <actor>'
+#   make demo-cctp       KEYSTORE=<name>       # Arc-hub loop: both destinations; ARGS='<dest>' filters
+#   make demo-cctp-hook  KEYSTORE=<name>       # hook showcase; ARGS='<actor> <beneficiary>' optional
 # The hook demo (Arc -> Base Sepolia) showcases CCTP v2 HOOKS: one attested message both moves USDC
-# and auto-credits a beneficiary in a CCTPHookVault; ARGS='<actor> <beneficiary>' (both optional).
+# and auto-credits a beneficiary in a CCTPHookVault.
 
 .PHONY: demo-governance
-demo-governance: ## Governance demo loop — FORGE_AUTH='--account <ks>' ARGS='<vault> <ens> <actor>'
-	script/config/governance-demo-loop.sh $(ARGS)
+demo-governance: ## Governance demo loop — KEYSTORE=<name> (or FORGE_AUTH=…) ARGS='<vault> <ens> <actor>'
+	@if [ -n "$(KEYSTORE)" ]; then script/config/keychain-auth.sh "$(KEYSTORE)" script/config/governance-demo-loop.sh $(ARGS); \
+	else script/config/governance-demo-loop.sh $(ARGS); fi
 
 .PHONY: demo-cctp
-demo-cctp: ## CCTP Arc-hub demo loop — FORGE_AUTH='--account <ks>' (signer/dests auto; ARGS='<dest>' filters)
-	script/config/cctp-usdc-demo-loop.sh $(ARGS)
+demo-cctp: ## CCTP Arc-hub demo loop — KEYSTORE=<name> (or FORGE_AUTH=…); ARGS='<dest>' filters
+	@if [ -n "$(KEYSTORE)" ]; then script/config/keychain-auth.sh "$(KEYSTORE)" script/config/cctp-usdc-demo-loop.sh $(ARGS); \
+	else script/config/cctp-usdc-demo-loop.sh $(ARGS); fi
 
 .PHONY: demo-cctp-hook
-demo-cctp-hook: ## CCTP v2 hook demo (Arc->Base auto-credit vault) — FORGE_AUTH='--account <ks>' (ARGS='<actor> <benef>')
-	script/config/cctp-hook-demo.sh $(ARGS)
+demo-cctp-hook: ## CCTP v2 hook demo (Arc->Base auto-credit vault) — KEYSTORE=<name> (or FORGE_AUTH=…)
+	@if [ -n "$(KEYSTORE)" ]; then script/config/keychain-auth.sh "$(KEYSTORE)" script/config/cctp-hook-demo.sh $(ARGS); \
+	else script/config/cctp-hook-demo.sh $(ARGS); fi
 
 # ------------------------------------------------------------------------ help
 
