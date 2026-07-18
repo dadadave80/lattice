@@ -91,6 +91,61 @@ hex_word_dec() {
     if [[ -z "${h}" ]]; then printf '0'; elif (( ${#h} <= 15 )); then printf '%s' "$(( 16#${h} ))"; else printf '0x%s' "${h}"; fi
 }
 
+# Stateful renderer for the streamed setup phase: one line per contract. Deploy receipts become
+# "✓ deployed <addr>"; each verification opens a live spinner line (tty only) that is rewritten to a
+# green ✓ / red ✗ when forge reports the result; piped/CI output degrades to plain sequential lines
+# (no \r rewriting to garble logs). Only recognized safe line shapes are printed — forge error text
+# can embed API-keyed RPC URLs; everything unmatched stays in ${SETUP_LOG} for the failure-path
+# scrub. MUST consume input to EOF (an early exit would SIGPIPE forge mid-broadcast) and MUST NOT
+# let any command fail under set -e (all matching happens in if-conditions; body is printf-only).
+# Line shapes pinned empirically against forge 1.7.1 + Sourcify v2.
+render_setup_stream() {
+    local tty=0 idx=0 pending=0 vname="" vaddr="" line
+    local frames=('⠋' '⠙' '⠹' '⠸' '⠼' '⠴' '⠦' '⠧' '⠇' '⠏')
+    if [[ -t 1 ]]; then tty=1; fi
+    while true; do
+        if IFS= read -r -t 0.15 line; then
+            if [[ "${line}" =~ Submitting\ verification\ for\ \[([^]]+)\]\ \"(0x[0-9a-fA-F]{40})\" ]]; then
+                if (( pending == 1 && tty == 1 )); then printf '\n'; fi
+                vname="${BASH_REMATCH[1]##*:}"; vaddr="${BASH_REMATCH[2]}"; pending=1
+                if (( tty == 1 )); then
+                    printf '    %s verifying %s %s' "${frames[idx]}" "${vname}" "${vaddr}"
+                else
+                    printf '    ... verifying %s %s\n' "${vname}" "${vaddr}"
+                fi
+            elif [[ "${line}" == *"Contract source code already fully verified"* ]]; then
+                if (( tty == 1 && pending == 1 )); then printf '\r\033[2K'; fi
+                printf '    %s✓%s %s %s verified (already)\n' "${C_OK}" "${C_OFF}" "${vname}" "${vaddr}"
+                pending=0
+            elif [[ "${line}" == *"Contract successfully verified"* ]]; then
+                if (( tty == 1 && pending == 1 )); then printf '\r\033[2K'; fi
+                printf '    %s✓%s %s %s verified\n' "${C_OK}" "${C_OFF}" "${vname}" "${vaddr}"
+                pending=0
+            elif [[ "${line}" == *"Verification job failed"* ]]; then
+                if (( tty == 1 && pending == 1 )); then printf '\r\033[2K'; fi
+                printf '    %s✗%s %s %s verification FAILED (non-fatal; the deploy stands)\n' "${C_ERR}" "${C_OFF}" "${vname}" "${vaddr}"
+                pending=0
+            elif [[ "${line}" =~ ^(Error\ Code:|Message:) ]]; then
+                printf '        %s\n' "${line}"
+            elif [[ "${line}" =~ Contract\ Address:\ (0x[0-9a-fA-F]{40}) ]]; then
+                printf '    %s✓%s deployed %s\n' "${C_OK}" "${C_OFF}" "${BASH_REMATCH[1]}"
+            elif [[ "${line}" == '##### '* || "${line}" == *"ONCHAIN EXECUTION COMPLETE"* ]]; then
+                if (( pending == 1 && tty == 1 )); then printf '\n'; fi
+                pending=0
+                printf '    %s\n' "${line}"
+            fi
+        else
+            if (( $? <= 128 )); then break; fi
+            if (( pending == 1 && tty == 1 )); then
+                idx=$(( (idx + 1) % 10 ))
+                printf '\r\033[2K    %s verifying %s %s' "${frames[idx]}" "${vname}" "${vaddr}"
+            fi
+        fi
+    done
+    if (( pending == 1 && tty == 1 )); then printf '\n'; fi
+    return 0
+}
+
 # ---- args ---------------------------------------------------------------------
 ACTOR=""; BENEFICIARY=""
 for arg in "$@"; do
@@ -163,14 +218,14 @@ if [[ -z "${ARC_HUB}" || -z "${BASE_DIAMOND}" || -z "${VAULT}" ]]; then
     # failing the pipeline; with pipefail, `|| rc=$?` still captures forge's own exit code.
     t0=${SECONDS}
     rc=0
-    # The indent stage is a read-loop, NOT `sed 's/^/    /'`: BSD sed line-buffers only on a tty, so under
-    # `| tee run.log` / CI the "live" stream would arrive in one end-of-phase burst — the darkness this
-    # pipeline exists to fix. `read` is unbuffered per line everywhere.
+    # Full output tees to ${SETUP_LOG} (for the parsing below + failure-path scrub) while
+    # render_setup_stream turns the live stream into per-contract ✓/✗ lines with a verification
+    # spinner. The renderer always exits 0, so with pipefail `|| rc=$?` still captures forge's own
+    # exit code.
     # shellcheck disable=SC2086
     ETHERSCAN_API_KEY='' forge script "${SCRIPT_TARGET}" --sig 'hookDemoSetup(uint256,uint32)' 0 2000 ${FORGE_AUTH} --broadcast ${SLOW} --verify --verifier sourcify 2>&1 \
         | tee "${SETUP_LOG}" \
-        | { grep --line-buffered -E '^##### |Contract Address: 0x|Submitting verification|successfully verified|already.{0,10}verified|ONCHAIN EXECUTION COMPLETE' || true; } \
-        | while IFS= read -r l; do printf '    %s\n' "${l}"; done \
+        | { render_setup_stream || true; } \
         || rc=$?
     out="$(cat "${SETUP_LOG}")"
     line="$(echo "${out}" | grep -oE 'DEMO-HOOK-SETUP 0x[0-9a-fA-F]{40} 0x[0-9a-fA-F]{40} 0x[0-9a-fA-F]{40}' | tail -1 || true)"
