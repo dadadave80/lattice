@@ -39,7 +39,7 @@ import {console} from "forge-std/Script.sol";
 ///                 cast send <arcHub> "depositForBurnWithHook(uint256,bytes,bytes)" 1000000 "$R" "$E" --account <name> --rpc-url arc-testnet
 ///     - relay:  forge script S --account <name> --broadcast --sig "relayMessageWithHook…" via hookDemoRelay (on Base)
 ///     - verify: forge script S --sender <actor> --sig "hookDemoCredit(address,address)" <vault> <beneficiary>
-///  Explorers: source (Arc) testnet.arcscan.app · dest sepolia.basescan.org
+///  Explorers: source (Arc) testnet.arcscan.app · dest base-sepolia.blockscout.com (reads the Sourcify verification)
 contract CCTPHookDemo is DeployCCTPBridgeAdapter {
     /// @notice Circle CCTP v2 TokenMessengerV2 — identical address on every testnet.
     address internal constant TOKEN_MESSENGER_V2 = 0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA;
