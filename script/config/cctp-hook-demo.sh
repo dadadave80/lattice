@@ -130,7 +130,7 @@ _code="$(curl -s --max-time 15 -X POST "${ARC_RPC}" -H 'content-type: applicatio
 # ---- 1. setup (Arc hub + Base diamond + vault) --------------------------------
 ARC_HUB="$(journal_get ARC_HUB)"; BASE_DIAMOND="$(journal_get BASE_DIAMOND)"; VAULT="$(journal_get VAULT)"
 if [[ -z "${ARC_HUB}" || -z "${BASE_DIAMOND}" || -z "${VAULT}" ]]; then
-    info "setup: deploying Arc hub + Base diamond + vault (--verifier sourcify)..."
+    info "setup: deploying Arc hub + Base diamond + vault (~19 contracts across 2 chains; live forge progress):"
     # Verification MUST land on Sourcify (Blockscout/arcscan read it), and two forge behaviors fight that:
     # a set ETHERSCAN_API_KEY makes forge default to the Etherscan verifier EVEN WHEN --verifier sourcify
     # is passed (empirical, forge 1.7.1: "defaulting to Etherscan verifier" despite the flag), and the repo
@@ -138,10 +138,22 @@ if [[ -z "${ARC_HUB}" || -z "${BASE_DIAMOND}" || -z "${VAULT}" ]]; then
     # `env -u` does not, forge re-reads .env). Verification is best-effort: success is the DEMO-HOOK-SETUP
     # line + forge's ONCHAIN-EXECUTION marker (precedent: cctp-usdc-demo-loop), NOT the exit code -- a
     # verifier hiccup must not strand a successful deploy un-journaled (a re-run would redeploy everything).
+    #
+    # The multi-minute deploy+verify STREAMS progress instead of going dark: forge's output is teed to a
+    # file for the parsing below while a selective grep passes the per-contract broadcast receipts and
+    # verification results through live. The passed-through lines never embed RPC URLs (error text, which
+    # can, stays in the file and is scrubbed on the failure path). `|| true` keeps a match-less grep from
+    # failing the pipeline; with pipefail, `|| rc=$?` still captures forge's own exit code.
     t0=${SECONDS}
     rc=0
+    setup_log="$(mktemp "${JOURNAL}.setup.XXXXXX")"
     # shellcheck disable=SC2086
-    out="$(ETHERSCAN_API_KEY='' forge script "${SCRIPT_TARGET}" --sig 'hookDemoSetup(uint256,uint32)' 0 2000 ${FORGE_AUTH} --broadcast ${SLOW} --verify --verifier sourcify 2>&1)" || rc=$?
+    ETHERSCAN_API_KEY='' forge script "${SCRIPT_TARGET}" --sig 'hookDemoSetup(uint256,uint32)' 0 2000 ${FORGE_AUTH} --broadcast ${SLOW} --verify --verifier sourcify 2>&1 \
+        | tee "${setup_log}" \
+        | { grep --line-buffered -E '^##### |Contract Address: 0x|Submitting verification|successfully verified|already.{0,10}verified|ONCHAIN EXECUTION COMPLETE' || true; } \
+        | sed 's/^/    /' \
+        || rc=$?
+    out="$(cat "${setup_log}")"; rm -f "${setup_log}"
     line="$(echo "${out}" | grep -oE 'DEMO-HOOK-SETUP 0x[0-9a-fA-F]{40} 0x[0-9a-fA-F]{40} 0x[0-9a-fA-F]{40}' | tail -1 || true)"
     if [[ -z "${line}" ]] || ! echo "${out}" | grep -q 'ONCHAIN EXECUTION COMPLETE'; then
         scrub "${out}"; err "setup failed."; exit 1
