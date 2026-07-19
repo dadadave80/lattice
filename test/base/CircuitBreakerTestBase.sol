@@ -13,7 +13,7 @@ import {Test} from "forge-std/Test.sol";
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice Base for CircuitBreaker facet tests that exercise a REAL {Diamond} rather than a flattened inheritance
 ///         mock. `setUp` assembles the production {DeployCircuitBreaker} recipe (ERC165 + AccessControl +
-///         CircuitBreaker + {CircuitBreakerInit}) and APPENDS a test-only {CircuitBreakerTestFacet} exposing the
+///         CircuitBreaker + the recipe-local init) and APPENDS a test-only {CircuitBreakerTestFacet} exposing the
 ///         internal `checkNotTripped` consumer guard — so every breaker call and every gated action routes
 ///         through the diamond's `delegatecall` dispatch, catching selector/storage/init bugs a mock hides.
 abstract contract CircuitBreakerTestBase is Test, GetSelectors {

@@ -10,7 +10,7 @@ import {ChainlinkAutomationAdapterLib} from "@lattice/oracles/chainlink/Chainlin
 ///         IChainlinkAutomationAdapter interface (ERC-165) and seeds AccessControl so `setConfig` is admin-gated.
 ///         Delegatecalled by {Diamond.initialize} inside the initializing window (so it must NOT open its own
 ///         pre/postInitializer; each `__*_init` guard passes because the window is already open). Companion to
-///         the {ERC2981Init}/{EmergencyStopInit} patterns — a first-class production deploy artifact. The
+///         the {ERC2981Init} pattern — a first-class production deploy artifact. The
 ///         Automation forwarder + upkeep interval are configured post-deploy via the admin-gated `setConfig`.
 contract ChainlinkAutomationAdapterInit {
     /// @notice Runs the Automation adapter + access-control module initializers. MUST be invoked via the diamond's

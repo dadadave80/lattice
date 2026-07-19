@@ -12,7 +12,7 @@ import {Test} from "forge-std/Test.sol";
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice Base for RateLimiter facet tests that exercise a REAL {Diamond} rather than a flattened inheritance
 ///         mock. `setUp` assembles the production {DeployRateLimiter} recipe (ERC165 + AccessControl + RateLimiter
-///         + {RateLimiterInit}) and exposes a typed `limiter` handle — so every rate-limit call routes through the
+///         + the recipe-local init) and exposes a typed `limiter` handle — so every rate-limit call routes through the
 ///         diamond's `delegatecall` dispatch, catching selector/storage/init bugs a mock hides. No test-only
 ///         helper facet is needed: the tests drive the public facet functions (`configure` is admin-gated in the
 ///         lib, `consume`/`getConfig`/`getAvailable` are permissionless).
