@@ -9,10 +9,10 @@ import {
     FacetCut,
     FacetCutAction
 } from "@diamond/libraries/DiamondLib.sol";
-import {DiamondFactory} from "@lattice/factory/DiamondFactory.sol";
-import {IDiamondFactory, RecipeEntry} from "@lattice/interfaces/factory/IDiamondFactory.sol";
-import {ILatticeRegistry} from "@lattice/interfaces/registry/ILatticeRegistry.sol";
-import {LatticeRegistry} from "@lattice/registry/LatticeRegistry.sol";
+import {LatticeFactory} from "@lattice/LatticeFactory.sol";
+import {LatticeRegistry} from "@lattice/LatticeRegistry.sol";
+import {ILatticeFactory, RecipeEntry} from "@lattice/interfaces/ILatticeFactory.sol";
+import {ILatticeRegistry} from "@lattice/interfaces/ILatticeRegistry.sol";
 import {Test} from "forge-std/Test.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
@@ -109,11 +109,11 @@ contract MockRevertingInit {
     }
 }
 
-/// @notice BTT-style unit suite for the stateless {DiamondFactory} (issue #120 PR 1): registry-resolved
+/// @notice BTT-style unit suite for the stateless {LatticeFactory} (issue #120 PR 1): registry-resolved
 ///         recipe entries, classic custom cuts, CREATE2 determinism, idempotency, and revert propagation.
-contract DiamondFactoryTest is Test {
+contract LatticeFactoryTest is Test {
     LatticeRegistry internal registry;
-    DiamondFactory internal factory;
+    LatticeFactory internal factory;
 
     address internal owner = makeAddr("registryOwner");
 
@@ -126,7 +126,7 @@ contract DiamondFactoryTest is Test {
 
     function setUp() public {
         registry = new LatticeRegistry(owner);
-        factory = new DiamondFactory(registry);
+        factory = new LatticeFactory(registry);
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -197,8 +197,8 @@ contract DiamondFactoryTest is Test {
     }
 
     function test_ConstructorRevertsOnZeroRegistry() public {
-        vm.expectRevert(IDiamondFactory.DiamondFactory__ZeroRegistry.selector);
-        new DiamondFactory(ILatticeRegistry(address(0)));
+        vm.expectRevert(ILatticeFactory.LatticeFactory__ZeroRegistry.selector);
+        new LatticeFactory(ILatticeRegistry(address(0)));
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -306,7 +306,7 @@ contract DiamondFactoryTest is Test {
         bytes4[] memory selectors = new bytes4[](1);
         selectors[0] = EXPORT_SELECTOR;
 
-        vm.expectRevert(IDiamondFactory.DiamondFactory__ExportSelectorForbidden.selector);
+        vm.expectRevert(ILatticeFactory.LatticeFactory__ExportSelectorForbidden.selector);
         factory.deploy(_noEntries(), _customCut(address(pongFacet), selectors), address(0), "", SALT);
     }
 
@@ -316,12 +316,12 @@ contract DiamondFactoryTest is Test {
         selectors[0] = MockPongFacet.pong.selector;
         selectors[1] = EXPORT_SELECTOR; // buried after a legitimate selector — still refused, never stripped
 
-        vm.expectRevert(IDiamondFactory.DiamondFactory__ExportSelectorForbidden.selector);
+        vm.expectRevert(ILatticeFactory.LatticeFactory__ExportSelectorForbidden.selector);
         factory.deploy(_noEntries(), _customCut(address(pongFacet), selectors), address(0), "", SALT);
     }
 
     function test_DeployRevertsOnEmptyRecipe() public {
-        vm.expectRevert(IDiamondFactory.DiamondFactory__EmptyRecipe.selector);
+        vm.expectRevert(ILatticeFactory.LatticeFactory__EmptyRecipe.selector);
         factory.deploy(_noEntries(), _noCuts(), address(0), "", SALT);
     }
 
@@ -400,7 +400,7 @@ contract DiamondFactoryTest is Test {
         address pongFacet = address(new MockPongFacet());
         bytes4[] memory selectors = new bytes4[](1);
         selectors[0] = EXPORT_SELECTOR;
-        vm.expectRevert(IDiamondFactory.DiamondFactory__ExportSelectorForbidden.selector);
+        vm.expectRevert(ILatticeFactory.LatticeFactory__ExportSelectorForbidden.selector);
         factory.deploy(_entries(_v(1, 0, 0)), _customCut(pongFacet, selectors), address(0), "", SALT);
     }
 
@@ -493,7 +493,7 @@ contract DiamondFactoryTest is Test {
         FacetCut[] memory loupeCut = _loupeCut(); // hoisted: the CREATE must not consume the expectEmit
 
         vm.expectEmit(true, true, false, true);
-        emit IDiamondFactory.DiamondDeployed(predicted, address(this), SALT);
+        emit ILatticeFactory.DiamondDeployed(predicted, address(this), SALT);
         factory.deploy(_entries(_v(1, 0, 0)), loupeCut, address(0), "", SALT);
     }
 
@@ -506,7 +506,7 @@ contract DiamondFactoryTest is Test {
     function test_DeployRevertsOnMissingLoupeCoverage() public {
         _registerV1();
         vm.expectRevert(
-            abi.encodeWithSelector(IDiamondFactory.DiamondFactory__MissingLoupeCoverage.selector, bytes4(0x7a0ed627))
+            abi.encodeWithSelector(ILatticeFactory.LatticeFactory__MissingLoupeCoverage.selector, bytes4(0x7a0ed627))
         );
         factory.deploy(_entries(_v(1, 0, 0)), _noCuts(), address(0), "", SALT);
     }
@@ -522,7 +522,7 @@ contract DiamondFactoryTest is Test {
         FacetCut[] memory cuts = _customCut(address(new DiamondLoupeFacet()), threeOfFour);
 
         vm.expectRevert(
-            abi.encodeWithSelector(IDiamondFactory.DiamondFactory__MissingLoupeCoverage.selector, bytes4(0xcdffacc6))
+            abi.encodeWithSelector(ILatticeFactory.LatticeFactory__MissingLoupeCoverage.selector, bytes4(0xcdffacc6))
         );
         factory.deploy(_entries(_v(1, 0, 0)), cuts, address(0), "", SALT);
     }
@@ -557,7 +557,7 @@ contract DiamondFactoryTest is Test {
             functionSelectors: _loupeSelectors()
         });
         vm.expectRevert(
-            abi.encodeWithSelector(IDiamondFactory.DiamondFactory__MissingLoupeCoverage.selector, bytes4(0x7a0ed627))
+            abi.encodeWithSelector(ILatticeFactory.LatticeFactory__MissingLoupeCoverage.selector, bytes4(0x7a0ed627))
         );
         factory.deploy(_entries(_v(1, 0, 0)), cuts, address(0), "", SALT);
     }
@@ -588,7 +588,7 @@ contract DiamondFactoryTest is Test {
 
         vm.expectRevert(
             abi.encodeWithSelector(
-                IDiamondFactory.DiamondFactory__LoupeSelectorNotReplaceable.selector, bytes4(0x7a0ed627)
+                ILatticeFactory.LatticeFactory__LoupeSelectorNotReplaceable.selector, bytes4(0x7a0ed627)
             )
         );
         factory.deploy(_entries(_v(1, 0, 0)), cuts, address(0), "", SALT);
@@ -607,14 +607,14 @@ contract DiamondFactoryTest is Test {
 
         vm.expectRevert(
             abi.encodeWithSelector(
-                IDiamondFactory.DiamondFactory__LoupeSelectorNotReplaceable.selector, bytes4(0xcdffacc6)
+                ILatticeFactory.LatticeFactory__LoupeSelectorNotReplaceable.selector, bytes4(0xcdffacc6)
             )
         );
         factory.deploy(_entries(_v(1, 0, 0)), cuts, address(0), "", SALT);
     }
 
     /// @dev Shared body for the four per-selector coverage tests: cover every loupe selector EXCEPT
-    ///      `omitted` and expect {DiamondFactory__MissingLoupeCoverage} naming exactly it.
+    ///      `omitted` and expect {LatticeFactory__MissingLoupeCoverage} naming exactly it.
     function _assertMissingWhenOmitted(bytes4 omitted) internal {
         _registerV1();
         bytes4[] memory all = _loupeSelectors();
@@ -625,7 +625,7 @@ contract DiamondFactoryTest is Test {
         }
         FacetCut[] memory cuts = _customCut(address(new DiamondLoupeFacet()), threeOfFour);
 
-        vm.expectRevert(abi.encodeWithSelector(IDiamondFactory.DiamondFactory__MissingLoupeCoverage.selector, omitted));
+        vm.expectRevert(abi.encodeWithSelector(ILatticeFactory.LatticeFactory__MissingLoupeCoverage.selector, omitted));
         factory.deploy(_entries(_v(1, 0, 0)), cuts, address(0), "", SALT);
     }
 
