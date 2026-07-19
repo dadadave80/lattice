@@ -223,11 +223,11 @@ the source chain** — Arc's sub-second finality means Iris attests in seconds, 
 | Arc source hub (transfer demo) | [`0xfc937CD3d175b890fF668f95fdED5CB4D9247d68`](https://testnet.arcscan.app/address/0xfc937CD3d175b890fF668f95fdED5CB4D9247d68) |
 | Mint tx — Ethereum Sepolia | [`0xff2326…39aea`](https://sepolia.etherscan.io/tx/0xff2326eb12dfd5b56e553e43f660e0c0cc8bba01dbc215b12109bf05c8039aea) |
 | Mint tx — Base Sepolia | [`0xf72700…736d3`](https://base-sepolia.blockscout.com/tx/0xf7270031cb59c1ff0c85fc0147768a623b69a7d2a3c12faa4b1d4ded9fc736d3) |
-| Hook demo — Arc hub diamond | [`0x3446dC6de6373a139405A524085fdfB52ABfFe1c`](https://testnet.arcscan.app/address/0x3446dC6de6373a139405A524085fdfB52ABfFe1c) |
-| Hook demo — Base destination diamond | [`0x3E10c69c1e9b22325d556E1c9e4Db681a9E63b73`](https://base-sepolia.blockscout.com/address/0x3E10c69c1e9b22325d556E1c9e4Db681a9E63b73) |
-| Auto-credit vault (`CCTPHookVault`) | [`0xD23D22c807eB95993f7FEf4d0349CB89643Daf1A`](https://base-sepolia.blockscout.com/address/0xD23D22c807eB95993f7FEf4d0349CB89643Daf1A) |
-| Burn-with-hook tx (Arc) | [`0x45071a…5ac39`](https://testnet.arcscan.app/tx/0x45071a3ebec12e51ad2e41d6a7262995781a7595770c8e76ab6e81583da5ac39) |
-| Relay tx — mint **+** hook, one tx (Base) | [`0xc41fbe…badfc`](https://base-sepolia.blockscout.com/tx/0xc41fbea24e4dcf810c3d4aaf8efda138037a03b07d44f8ee14a58e5aafabadfc) — emits `Credited(0x11Cf…C00, 1000000, 26, hub)` |
+| Hook demo — Arc hub diamond | [`0x47c96279F2Cd6335A746aaCB4310907c4202B618`](https://testnet.arcscan.app/address/0x47c96279F2Cd6335A746aaCB4310907c4202B618) |
+| Hook demo — Base destination diamond | [`0xD77e02930B0F102642F5Cd37FabDE49fef71A376`](https://base-sepolia.blockscout.com/address/0xD77e02930B0F102642F5Cd37FabDE49fef71A376) |
+| Auto-credit vault (`CCTPHookVault`) | [`0x4327159cac242B1d3411ec84447f2D19975ed52C`](https://base-sepolia.blockscout.com/address/0x4327159cac242B1d3411ec84447f2D19975ed52C) |
+| Burn-with-hook tx (Arc) | [`0xe77f3d…387e5`](https://testnet.arcscan.app/tx/0xe77f3d0ca9890be30bf6009bbb29aabddbeb498eefce6f600af4c384f90387e5) |
+| Relay tx — mint **+** hook, one tx (Base) | [`0xaa9cc2…a7760`](https://base-sepolia.blockscout.com/tx/0xaa9cc2951ab9bd23cb6872cc996302e792e05f05d61c3a1f1e552623c5da7760) — emits `Credited(0xDAdA…C751, 1000000, 26, hub)` |
 | Real-attestation replay test | [`test/fork/CCTPHookDemoFork.t.sol`](test/fork/CCTPHookDemoFork.t.sol) replays the captured [fixture](test/fixtures/cctp/arc-to-base-hook-v2.json) through the live Base diamond on a pinned fork |
 | Broadcast evidence | [`broadcast/multi/`](broadcast/multi) (setups) · [`broadcast/CCTPHookDemo.s.sol/84532/`](broadcast/CCTPHookDemo.s.sol/84532) (hook relay) · [`broadcast/CCTPUSDCDemo.s.sol/`](broadcast/CCTPUSDCDemo.s.sol) (transfer relays) |
 
