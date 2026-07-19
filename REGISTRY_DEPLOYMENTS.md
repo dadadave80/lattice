@@ -1,8 +1,8 @@
 # Registry Deployments
 
 This file is the **canonical reference** for how Lattice releases land on-chain: the deterministic
-address scheme of the [`LatticeRegistry`](src/registry/LatticeRegistry.sol) singleton, the
-[`DiamondFactory`](src/factory/DiamondFactory.sol), and every
+address scheme of the [`LatticeRegistry`](src/LatticeRegistry.sol) singleton, the
+[`LatticeFactory`](src/LatticeFactory.sol), and every
 [`FacetInventory`](script/lib/FacetInventory.sol) facet, all deployed through the canonical
 **CreateX** singleton by [`script/deploy/DeployRelease.s.sol`](script/deploy/DeployRelease.s.sol).
 Every address below is reproducible offline from a salt string and an initcode hash — nothing depends
@@ -31,7 +31,7 @@ deployer address and no chain id:
 | Contract | Salt formula | Value |
 | --- | --- | --- |
 | `LatticeRegistry` | `keccak256("lattice.LatticeRegistry")` (deploy-once singleton, versionless) | `0xc78231000c48b308a55c9ed0de492d4ee766bc920c611d52ef984a4d9baa3a9c` |
-| `DiamondFactory` | `keccak256("lattice.DiamondFactory")` (versionless) | `0x58d9b23b8b2f5e9be7fc268fd45a06070cce256c9f0987f0706ed00d77388b06` |
+| `LatticeFactory` | `keccak256("lattice.LatticeFactory")` (versionless) | `0x23ac1297d420218079953740f312f2c5385edfea1f817c984d2e6effea132efe` |
 | every facet | `keccak256("lattice.<Name>.<version>")`, e.g. `keccak256("lattice.ERC20.0.1.0")` | per facet/version (ERC20 0.1.0: `0x938c2ea7277871ff5f71c989637ac4c6733ed43924e245cd91bc1e7363db2078`) |
 
 `<Name>` is the facet's contract name exactly as listed in
@@ -43,10 +43,10 @@ facets** (`DiamondCutFacet`, `DiamondLoupeFacet`, `ERC165Facet`, `OwnableFacet` 
 diamond-lib v0.2.0); they are release-versioned by the same `lattice.<Name>.<version>` scheme as
 every Lattice facet, so e.g. the loupe's registry key is `keccak256("lattice.DiamondLoupeFacet")`.
 
-**Factory loupe requirement.** `DiamondFactory.deploy` refuses to assemble an un-introspectable
+**Factory loupe requirement.** `LatticeFactory.deploy` refuses to assemble an un-introspectable
 diamond: every fresh deploy's cuts must cover the four EIP-2535 loupe selectors (`facets()`,
 `facetFunctionSelectors(address)`, `facetAddresses()`, `facetAddress(bytes4)`) in some `Add` cut, or
-it reverts `DiamondFactory__MissingLoupeCoverage(missingSelector)`. Coverage is selector-based —
+it reverts `LatticeFactory__MissingLoupeCoverage(missingSelector)`. Coverage is selector-based —
 any facet may provide it; the registered `lattice.DiamondLoupeFacet` entry is the one-line way. The
 CUT facet remains optional (immutable-by-design diamonds are legal).
 
@@ -125,7 +125,7 @@ cast create2 --deployer 0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed --salt $GUARD
 ```
 
 For the registry/factory, step 3 appends the constructor arg:
-`cast keccak $(cast concat-hex $(forge inspect src/registry/LatticeRegistry.sol:LatticeRegistry bytecode) $(cast abi-encode "f(address)" $OWNER))`.
+`cast keccak $(cast concat-hex $(forge inspect src/LatticeRegistry.sol:LatticeRegistry bytecode) $(cast abi-encode "f(address)" $OWNER))`.
 
 ## The release manifest
 

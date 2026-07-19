@@ -3,16 +3,16 @@ pragma solidity ^0.8.30;
 
 import {CreateXDeployer} from "@lattice-script/lib/CreateXDeployer.sol";
 import {FacetInventory} from "@lattice-script/lib/FacetInventory.sol";
-import {DiamondFactory} from "@lattice/factory/DiamondFactory.sol";
+import {LatticeFactory} from "@lattice/LatticeFactory.sol";
+import {LatticeRegistry} from "@lattice/LatticeRegistry.sol";
+import {ILatticeRegistry} from "@lattice/interfaces/ILatticeRegistry.sol";
 import {IERC8153} from "@lattice/interfaces/external/IERC8153.sol";
-import {ILatticeRegistry} from "@lattice/interfaces/registry/ILatticeRegistry.sol";
-import {LatticeRegistry} from "@lattice/registry/LatticeRegistry.sol";
 import {Script, console} from "forge-std/Script.sol";
 
 /// @title DeployRelease
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice THE canonical Lattice release script (issue #120): one run deterministically deploys the
-///         {LatticeRegistry} singleton, the {DiamondFactory}, and every {FacetInventory} facet through
+///         {LatticeRegistry} singleton, the {LatticeFactory}, and every {FacetInventory} facet through
 ///         CreateX CREATE2 at raw protocol salts, then registers each facet under
 ///         `keccak256("lattice.<Name>")` at the semver-packed version and points `latest` at it, and
 ///         finally writes a per-chain JSON manifest.
@@ -25,7 +25,7 @@ import {Script, console} from "forge-std/Script.sol";
 /// @dev Salt scheme — raw protocol salts, so every address is deployer- AND chain-independent and commits
 ///      to the initcode (see {CreateXDeployer.deployRaw}):
 ///        registry: `keccak256("lattice.LatticeRegistry")` (deploy-once singleton, versionless)
-///        factory:  `keccak256("lattice.DiamondFactory")`  (versionless)
+///        factory:  `keccak256("lattice.LatticeFactory")`  (versionless)
 ///        facet:    `keccak256("lattice.<Name>.<version>")` e.g. `keccak256("lattice.ERC20.0.1.0")`
 ///
 ///      IDEMPOTENT + RESUMABLE: every deploy is predict-then-skip-if-code, and registration skips records
@@ -59,7 +59,7 @@ contract DeployRelease is Script {
 
     /// @notice Everything a release run produces (all addresses are the deterministic raw-salt ones).
     /// @param registry The {LatticeRegistry} singleton.
-    /// @param factory The {DiamondFactory} bound to `registry`.
+    /// @param factory The {LatticeFactory} bound to `registry`.
     /// @param facets The released facet addresses, index-aligned with {FacetInventory.inventory} names.
     struct ReleaseOutput {
         address registry;
@@ -92,8 +92,8 @@ contract DeployRelease is Script {
     /// @notice Raw CREATE2 salt of the deploy-once {LatticeRegistry} singleton (versionless).
     bytes32 internal constant REGISTRY_SALT = keccak256("lattice.LatticeRegistry");
 
-    /// @notice Raw CREATE2 salt of the {DiamondFactory} (versionless).
-    bytes32 internal constant FACTORY_SALT = keccak256("lattice.DiamondFactory");
+    /// @notice Raw CREATE2 salt of the {LatticeFactory} (versionless).
+    bytes32 internal constant FACTORY_SALT = keccak256("lattice.LatticeFactory");
 
     //*//////////////////////////////////////////////////////////////////////////
     //                                ENTRY POINT
@@ -142,10 +142,10 @@ contract DeployRelease is Script {
 
         (out.factory, deployedNow) = _deployOrSkip(
             FACTORY_SALT,
-            abi.encodePacked(type(DiamondFactory).creationCode, abi.encode(out.registry)),
-            "DiamondFactory"
+            abi.encodePacked(type(LatticeFactory).creationCode, abi.encode(out.registry)),
+            "LatticeFactory"
         );
-        console.log(deployedNow ? "DiamondFactory deployed:" : "DiamondFactory already deployed:", out.factory);
+        console.log(deployedNow ? "LatticeFactory deployed:" : "LatticeFactory already deployed:", out.factory);
 
         // --- Phase 2: facets ----------------------------------------------------------------------
         (string[] memory names, string[] memory paths) = FacetInventory.inventory();
