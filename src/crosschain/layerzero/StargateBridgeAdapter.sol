@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {StargateBridgeAdapterLib} from "@lattice/crosschain/libraries/StargateBridgeAdapterLib.sol";
+import {StargateBridgeAdapterLib} from "@lattice/crosschain/layerzero/StargateBridgeAdapterLib.sol";
 import {IStargateBridgeAdapter} from "@lattice/interfaces/crosschain/IStargateBridgeAdapter.sol";
 
 /// @title StargateBridgeAdapter

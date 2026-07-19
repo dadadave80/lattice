@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ZetaChainGatewayAdapterLib} from "@lattice/crosschain/libraries/ZetaChainGatewayAdapterLib.sol";
+import {ZetaChainGatewayAdapterLib} from "@lattice/crosschain/zetachain/ZetaChainGatewayAdapterLib.sol";
 import {IZetaChainGatewayAdapter} from "@lattice/interfaces/crosschain/IZetaChainGatewayAdapter.sol";
 import {IERC7786GatewaySource} from "@lattice/interfaces/external/ercs/IERC7786.sol";
 import {Callable, MessageContext} from "@lattice/interfaces/external/zetachain/IGatewayEVM.sol";

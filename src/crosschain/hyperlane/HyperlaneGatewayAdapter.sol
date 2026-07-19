@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {HyperlaneGatewayAdapterLib} from "@lattice/crosschain/libraries/HyperlaneGatewayAdapterLib.sol";
+import {HyperlaneGatewayAdapterLib} from "@lattice/crosschain/hyperlane/HyperlaneGatewayAdapterLib.sol";
 import {IHyperlaneGatewayAdapter} from "@lattice/interfaces/crosschain/IHyperlaneGatewayAdapter.sol";
 import {IERC7786GatewaySource} from "@lattice/interfaces/external/ercs/IERC7786.sol";
 import {IMessageRecipient} from "@lattice/interfaces/external/hyperlane/IMessageRecipient.sol";

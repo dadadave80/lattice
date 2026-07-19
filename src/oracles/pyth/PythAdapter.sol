@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {IPythAdapter} from "@lattice/interfaces/oracles/IPythAdapter.sol";
-import {PythAdapterLib} from "@lattice/oracles/libraries/PythAdapterLib.sol";
+import {PythAdapterLib} from "@lattice/oracles/pyth/PythAdapterLib.sol";
 
 /// @title PythAdapter
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

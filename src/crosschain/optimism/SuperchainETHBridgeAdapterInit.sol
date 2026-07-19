@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {SuperchainETHBridgeAdapterLib} from "@lattice/crosschain/libraries/SuperchainETHBridgeAdapterLib.sol";
+import {SuperchainETHBridgeAdapterLib} from "@lattice/crosschain/optimism/SuperchainETHBridgeAdapterLib.sol";
 
 /// @title SuperchainETHBridgeAdapterInit
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

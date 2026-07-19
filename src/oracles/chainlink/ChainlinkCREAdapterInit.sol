@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
-import {ChainlinkCREAdapterLib} from "@lattice/oracles/libraries/ChainlinkCREAdapterLib.sol";
+import {ChainlinkCREAdapterLib} from "@lattice/oracles/chainlink/ChainlinkCREAdapterLib.sol";
 
 /// @title ChainlinkCREAdapterInit
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

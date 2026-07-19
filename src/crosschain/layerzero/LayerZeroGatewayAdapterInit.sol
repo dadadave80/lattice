@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
-import {LayerZeroGatewayAdapterLib} from "@lattice/crosschain/libraries/LayerZeroGatewayAdapterLib.sol";
+import {LayerZeroGatewayAdapterLib} from "@lattice/crosschain/layerzero/LayerZeroGatewayAdapterLib.sol";
 
 /// @title LayerZeroGatewayAdapterInit
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

@@ -258,11 +258,11 @@ src/
 ├── access/        # AccessControl(+Enumerable,+Timed), AccessManager(+Managed,+Standalone), Ownable
 ├── accounts/      # Diamond smart accounts — erc7579/ & erc6900/ flavor subfolders + shared (ERC-4337/1271/6551, session keys)
 ├── amm/           # ConstantProduct
-├── crosschain/    # per-vendor adapter folders (circle/, layerzero/, wormhole/, …) + generic bridge tokens, ERC-7786, timelock; shared libraries/ stays flat
+├── crosschain/    # per-vendor adapter folders (circle/, layerzero/, …), each self-contained (facet+Init+Lib); generic modules at root, shared libs in libraries/
 ├── defi/          # Aave, Compound, Curve, Lido, Uniswap V3, ERC4626 adapters, vault/strategy modules
 ├── ens/           # ENS resolver, reverse claimer, subname issuer
 ├── governance/    # Governor, timelock, governed/Safe diamond cuts, Safe Harbor adoption
-├── oracles/       # per-vendor adapter folders (chainlink/, pyth/, redstone/, …, uniswap/ TWAP); shared libraries/ stays flat
+├── oracles/       # per-vendor adapter folders (chainlink/, pyth/, redstone/, …, uniswap/ TWAP), each self-contained (facet+Init+Lib)
 ├── privacy/       # Commit-reveal, stealth address standards, Groth16/PLONK, Semaphore, shielded pool
 ├── security/      # Pausable, ReentrancyGuard, RateLimiter, CircuitBreaker, EmergencyStop, InvariantChecker
 ├── tokens/        # per-standard subfolders ERC20/ ERC721/ ERC1155/ ERC2981/ ERC4626/ ERC7802/ (base+extensions); MarketplaceZone at root

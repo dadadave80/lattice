@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {HyperbridgeGatewayAdapterLib} from "@lattice/crosschain/libraries/HyperbridgeGatewayAdapterLib.sol";
+import {HyperbridgeGatewayAdapterLib} from "@lattice/crosschain/hyperbridge/HyperbridgeGatewayAdapterLib.sol";
 import {IHyperbridgeGatewayAdapter} from "@lattice/interfaces/crosschain/IHyperbridgeGatewayAdapter.sol";
 import {IERC7786GatewaySource} from "@lattice/interfaces/external/ercs/IERC7786.sol";
 import {IncomingPostRequest, PostRequest} from "@lattice/interfaces/external/hyperbridge/IIsmpDispatcher.sol";

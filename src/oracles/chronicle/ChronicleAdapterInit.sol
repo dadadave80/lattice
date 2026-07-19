@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
-import {ChronicleAdapterLib} from "@lattice/oracles/libraries/ChronicleAdapterLib.sol";
+import {ChronicleAdapterLib} from "@lattice/oracles/chronicle/ChronicleAdapterLib.sol";
 
 /// @title ChronicleAdapterInit
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

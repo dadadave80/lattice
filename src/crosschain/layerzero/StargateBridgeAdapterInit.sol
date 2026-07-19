@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
-import {StargateBridgeAdapterLib} from "@lattice/crosschain/libraries/StargateBridgeAdapterLib.sol";
+import {StargateBridgeAdapterLib} from "@lattice/crosschain/layerzero/StargateBridgeAdapterLib.sol";
 import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib.sol";
 
 /// @title StargateBridgeAdapterInit

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
-import {WormholeGatewayAdapterLib} from "@lattice/crosschain/libraries/WormholeGatewayAdapterLib.sol";
+import {WormholeGatewayAdapterLib} from "@lattice/crosschain/wormhole/WormholeGatewayAdapterLib.sol";
 
 /// @title WormholeGatewayAdapterInit
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

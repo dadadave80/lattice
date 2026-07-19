@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
-import {RedStoneAdapterLib} from "@lattice/oracles/libraries/RedStoneAdapterLib.sol";
+import {RedStoneAdapterLib} from "@lattice/oracles/redstone/RedStoneAdapterLib.sol";
 
 /// @title RedStoneAdapterInit
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

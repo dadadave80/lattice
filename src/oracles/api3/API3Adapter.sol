@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {IAPI3Adapter} from "@lattice/interfaces/oracles/IAPI3Adapter.sol";
-import {API3AdapterLib} from "@lattice/oracles/libraries/API3AdapterLib.sol";
+import {API3AdapterLib} from "@lattice/oracles/api3/API3AdapterLib.sol";
 
 /// @title API3Adapter
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

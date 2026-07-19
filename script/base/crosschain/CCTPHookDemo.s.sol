@@ -3,7 +3,7 @@ pragma solidity ^0.8.30;
 
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {DeployCCTPBridgeAdapter} from "@lattice-script/base/crosschain/DeployCCTPBridgeAdapter.s.sol";
-import {HOOK_MAGIC} from "@lattice/crosschain/libraries/CCTPBridgeAdapterLib.sol";
+import {HOOK_MAGIC} from "@lattice/crosschain/circle/CCTPBridgeAdapterLib.sol";
 import {CCTPHookVault} from "@lattice/examples/crosschain/CCTPHookVault.sol";
 import {ICCTPBridgeAdapter} from "@lattice/interfaces/crosschain/ICCTPBridgeAdapter.sol";
 import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";

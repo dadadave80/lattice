@@ -6,8 +6,8 @@ import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {IPythEntropyAdapter} from "@lattice/interfaces/oracles/IPythEntropyAdapter.sol";
-import {PythEntropyAdapterLib} from "@lattice/oracles/libraries/PythEntropyAdapterLib.sol";
 import {PythEntropyAdapter} from "@lattice/oracles/pyth/PythEntropyAdapter.sol";
+import {PythEntropyAdapterLib} from "@lattice/oracles/pyth/PythEntropyAdapterLib.sol";
 import {Test} from "forge-std/Test.sol";
 
 // ---------------------------------------------------------------------------

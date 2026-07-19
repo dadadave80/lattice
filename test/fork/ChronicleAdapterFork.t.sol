@@ -8,7 +8,7 @@ import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {IChronicle} from "@lattice/interfaces/external/chronicle/IChronicle.sol";
 import {IChronicleAdapter} from "@lattice/interfaces/oracles/IChronicleAdapter.sol";
 import {ChronicleAdapter} from "@lattice/oracles/chronicle/ChronicleAdapter.sol";
-import {ChronicleAdapterLib} from "@lattice/oracles/libraries/ChronicleAdapterLib.sol";
+import {ChronicleAdapterLib} from "@lattice/oracles/chronicle/ChronicleAdapterLib.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @notice Mock diamond combining AccessControl + ChronicleAdapter.

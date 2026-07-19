@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
-import {StarknetGatewayAdapterLib} from "@lattice/crosschain/libraries/StarknetGatewayAdapterLib.sol";
+import {StarknetGatewayAdapterLib} from "@lattice/crosschain/starknet/StarknetGatewayAdapterLib.sol";
 import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib.sol";
 
 /// @title StarknetGatewayAdapterInit

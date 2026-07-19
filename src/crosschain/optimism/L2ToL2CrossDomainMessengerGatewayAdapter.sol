@@ -3,7 +3,7 @@ pragma solidity ^0.8.30;
 
 import {
     L2ToL2CrossDomainMessengerGatewayAdapterLib
-} from "@lattice/crosschain/libraries/L2ToL2CrossDomainMessengerGatewayAdapterLib.sol";
+} from "@lattice/crosschain/optimism/L2ToL2CrossDomainMessengerGatewayAdapterLib.sol";
 import {
     IL2ToL2CrossDomainMessengerGatewayAdapter
 } from "@lattice/interfaces/crosschain/IL2ToL2CrossDomainMessengerGatewayAdapter.sol";

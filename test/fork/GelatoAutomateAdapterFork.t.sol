@@ -6,7 +6,7 @@ import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {GelatoAutomateAdapter} from "@lattice/oracles/gelato/GelatoAutomateAdapter.sol";
-import {GelatoAutomateAdapterLib} from "@lattice/oracles/libraries/GelatoAutomateAdapterLib.sol";
+import {GelatoAutomateAdapterLib} from "@lattice/oracles/gelato/GelatoAutomateAdapterLib.sol";
 import {Test} from "forge-std/Test.sol";
 
 // ---------------------------------------------------------------------------

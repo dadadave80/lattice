@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {CCTPBridgeAdapterTestBase} from "@lattice-test/base/CCTPBridgeAdapterTestBase.sol";
-import {HOOK_MAGIC} from "@lattice/crosschain/libraries/CCTPBridgeAdapterLib.sol";
+import {HOOK_MAGIC} from "@lattice/crosschain/circle/CCTPBridgeAdapterLib.sol";
 import {CCTPHookVault} from "@lattice/examples/crosschain/CCTPHookVault.sol";
 import {ICCTPBridgeAdapter} from "@lattice/interfaces/crosschain/ICCTPBridgeAdapter.sol";
 import {IReceiverV2} from "@lattice/interfaces/external/circle/IReceiverV2.sol";

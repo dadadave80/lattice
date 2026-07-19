@@ -15,12 +15,12 @@ import {HyperbridgeGatewayAdapter} from "@lattice/crosschain/hyperbridge/Hyperbr
 import {HyperlaneGatewayAdapter} from "@lattice/crosschain/hyperlane/HyperlaneGatewayAdapter.sol";
 import {LayerZeroGatewayAdapter} from "@lattice/crosschain/layerzero/LayerZeroGatewayAdapter.sol";
 import {StargateBridgeAdapter} from "@lattice/crosschain/layerzero/StargateBridgeAdapter.sol";
-import {StargateBridgeAdapterLib} from "@lattice/crosschain/libraries/StargateBridgeAdapterLib.sol";
-import {WormholeGatewayAdapterLib} from "@lattice/crosschain/libraries/WormholeGatewayAdapterLib.sol";
+import {StargateBridgeAdapterLib} from "@lattice/crosschain/layerzero/StargateBridgeAdapterLib.sol";
 import {
     L2ToL2CrossDomainMessengerGatewayAdapter
 } from "@lattice/crosschain/optimism/L2ToL2CrossDomainMessengerGatewayAdapter.sol";
 import {WormholeGatewayAdapter} from "@lattice/crosschain/wormhole/WormholeGatewayAdapter.sol";
+import {WormholeGatewayAdapterLib} from "@lattice/crosschain/wormhole/WormholeGatewayAdapterLib.sol";
 import {ZetaChainGatewayAdapter} from "@lattice/crosschain/zetachain/ZetaChainGatewayAdapter.sol";
 import {ICCTPBridgeAdapter} from "@lattice/interfaces/crosschain/ICCTPBridgeAdapter.sol";
 import {IChainRegistry} from "@lattice/interfaces/crosschain/IChainRegistry.sol";
