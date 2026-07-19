@@ -8,9 +8,9 @@ import {AccountInit} from "@lattice/accounts/erc7579/AccountInit.sol";
 import {AccountSigner} from "@lattice/accounts/erc7579/AccountSigner.sol";
 import {ERC7821Executor} from "@lattice/accounts/erc7579/ERC7821Executor.sol";
 import {DEFAULT_ENTRY_POINT} from "@lattice/accounts/libraries/ERC4337ValidationLib.sol";
-import {PackedUserOperation} from "@lattice/interfaces/external/IAccount.sol";
-import {Call} from "@lattice/interfaces/external/IERC7821.sol";
-import {IEntryPoint} from "@lattice/interfaces/external/IEntryPoint.sol";
+import {PackedUserOperation} from "@lattice/interfaces/external/ercs/IAccount.sol";
+import {Call} from "@lattice/interfaces/external/ercs/IERC7821.sol";
+import {IEntryPoint} from "@lattice/interfaces/external/ercs/IEntryPoint.sol";
 import {ECDSA} from "@lattice/utils/libraries/ECDSA.sol";
 
 contract Target {

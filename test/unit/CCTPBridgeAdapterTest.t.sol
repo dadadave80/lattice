@@ -5,14 +5,14 @@ import {Diamond} from "@diamond/Diamond.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {CCTPBridgeAdapterTestBase} from "@lattice-test/base/CCTPBridgeAdapterTestBase.sol";
-import {CCTPBridgeAdapter} from "@lattice/crosschain/CCTPBridgeAdapter.sol";
-import {HOOK_MAGIC} from "@lattice/crosschain/libraries/CCTPBridgeAdapterLib.sol";
+import {CCTPBridgeAdapter} from "@lattice/crosschain/circle/CCTPBridgeAdapter.sol";
+import {HOOK_MAGIC} from "@lattice/crosschain/circle/CCTPBridgeAdapterLib.sol";
 import {NonEvmAddress} from "@lattice/crosschain/libraries/NonEvmAddress.sol";
 import {ICCTPBridgeAdapter} from "@lattice/interfaces/crosschain/ICCTPBridgeAdapter.sol";
 import {ICCTPHookExecutor} from "@lattice/interfaces/crosschain/ICCTPHookExecutor.sol";
 import {ICCTPHookReceiver} from "@lattice/interfaces/crosschain/ICCTPHookReceiver.sol";
-import {IReceiverV2} from "@lattice/interfaces/external/IReceiverV2.sol";
-import {ITokenMessengerV2} from "@lattice/interfaces/external/ITokenMessengerV2.sol";
+import {IReceiverV2} from "@lattice/interfaces/external/circle/IReceiverV2.sol";
+import {ITokenMessengerV2} from "@lattice/interfaces/external/circle/ITokenMessengerV2.sol";
 import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
 import {InteroperableAddress} from "@lattice/utils/libraries/InteroperableAddress.sol";
 

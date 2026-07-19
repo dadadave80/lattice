@@ -9,7 +9,7 @@ import {ERC6900TypesLib} from "@lattice/accounts/erc6900/libraries/ERC6900TypesL
 import {SingleSignerValidation} from "@lattice/accounts/erc6900/modules/SingleSignerValidation.sol";
 import {SpendingLimit} from "@lattice/accounts/erc6900/modules/SpendingLimit.sol";
 import {IERC6900Executor} from "@lattice/interfaces/accounts/IERC6900Executor.sol";
-import {IAccount, PackedUserOperation} from "@lattice/interfaces/external/IAccount.sol";
+import {IAccount, PackedUserOperation} from "@lattice/interfaces/external/ercs/IAccount.sol";
 import {
     DIRECT_CALL_VALIDATION_ENTITY_ID,
     ExecutionManifest,
@@ -18,7 +18,7 @@ import {
     ManifestExecutionHook,
     ModuleEntity,
     ValidationConfig
-} from "@lattice/interfaces/external/IERC6900.sol";
+} from "@lattice/interfaces/external/ercs/IERC6900.sol";
 import {ECDSA} from "@lattice/utils/libraries/ECDSA.sol";
 
 contract PayableTarget {

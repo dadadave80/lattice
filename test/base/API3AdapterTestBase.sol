@@ -5,7 +5,7 @@ import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {DeployAPI3Adapter} from "@lattice-script/base/oracles/DeployAPI3Adapter.s.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
-import {API3Adapter} from "@lattice/oracles/API3Adapter.sol";
+import {API3Adapter} from "@lattice/oracles/api3/API3Adapter.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @title API3AdapterTestBase

@@ -14,7 +14,7 @@ import {TimelockController} from "@lattice/governance/TimelockController.sol";
 import {UPGRADE_EXECUTOR_ROLE} from "@lattice/governance/libraries/GovernedDiamondCutLib.sol";
 import {IAccessControl} from "@lattice/interfaces/access/IAccessControl.sol";
 import {IENSReverseClaimer} from "@lattice/interfaces/ens/IENSReverseClaimer.sol";
-import {IReverseRegistrar} from "@lattice/interfaces/external/IReverseRegistrar.sol";
+import {IReverseRegistrar} from "@lattice/interfaces/external/ens/IReverseRegistrar.sol";
 import {IVotes} from "@lattice/interfaces/governance/IVotes.sol";
 import {IEmergencyStop} from "@lattice/interfaces/security/IEmergencyStop.sol";
 import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {IChainRegistry} from "@lattice/interfaces/crosschain/IChainRegistry.sol";
-import {HookConfig, ModuleEntity, ValidationFlags} from "@lattice/interfaces/external/IERC6900.sol";
+import {HookConfig, ModuleEntity, ValidationFlags} from "@lattice/interfaces/external/ercs/IERC6900.sol";
 import {IUpgradeRegistry} from "@lattice/interfaces/governance/IUpgradeRegistry.sol";
 import {ICommitReveal} from "@lattice/interfaces/privacy/ICommitReveal.sol";
 import {IncrementalMerkleTreeLib} from "@lattice/privacy/libraries/IncrementalMerkleTreeLib.sol";

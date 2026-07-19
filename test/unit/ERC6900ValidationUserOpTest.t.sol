@@ -10,8 +10,13 @@ import {ERC6900TypesLib} from "@lattice/accounts/erc6900/libraries/ERC6900TypesL
 import {ERC4337ValidationLib} from "@lattice/accounts/libraries/ERC4337ValidationLib.sol";
 import {IERC6900Executor} from "@lattice/interfaces/accounts/IERC6900Executor.sol";
 import {IERC6900Validation} from "@lattice/interfaces/accounts/IERC6900Validation.sol";
-import {PackedUserOperation} from "@lattice/interfaces/external/IAccount.sol";
-import {HookConfig, IERC6900Account, ModuleEntity, ValidationConfig} from "@lattice/interfaces/external/IERC6900.sol";
+import {PackedUserOperation} from "@lattice/interfaces/external/ercs/IAccount.sol";
+import {
+    HookConfig,
+    IERC6900Account,
+    ModuleEntity,
+    ValidationConfig
+} from "@lattice/interfaces/external/ercs/IERC6900.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @dev A minimal ERC-6900 user-op validation module: records the call and returns a configurable validationData.

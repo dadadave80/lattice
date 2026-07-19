@@ -6,7 +6,7 @@ import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {AcrossBridgeAdapterTestBase} from "@lattice-test/base/AcrossBridgeAdapterTestBase.sol";
 import {MockSpokePool} from "@lattice-test/mocks/MockSpokePool.sol";
-import {AcrossBridgeAdapter} from "@lattice/crosschain/AcrossBridgeAdapter.sol";
+import {AcrossBridgeAdapter} from "@lattice/crosschain/across/AcrossBridgeAdapter.sol";
 import {NonEvmAddress} from "@lattice/crosschain/libraries/NonEvmAddress.sol";
 import {IAcrossBridgeAdapter} from "@lattice/interfaces/crosschain/IAcrossBridgeAdapter.sol";
 import {IReentrancyGuard} from "@lattice/interfaces/security/IReentrancyGuard.sol";

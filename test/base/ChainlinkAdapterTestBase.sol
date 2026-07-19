@@ -5,7 +5,7 @@ import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {DeployChainlinkAdapter} from "@lattice-script/base/oracles/DeployChainlinkAdapter.s.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
-import {ChainlinkAdapter} from "@lattice/oracles/ChainlinkAdapter.sol";
+import {ChainlinkAdapter} from "@lattice/oracles/chainlink/ChainlinkAdapter.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @title ChainlinkAdapterTestBase

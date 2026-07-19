@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {IERC165, IERC6900ExecutionHookModule, IERC6900Module} from "@lattice/interfaces/external/IERC6900.sol";
+import {IERC165, IERC6900ExecutionHookModule, IERC6900Module} from "@lattice/interfaces/external/ercs/IERC6900.sol";
 
 /// @title SpendingLimit
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

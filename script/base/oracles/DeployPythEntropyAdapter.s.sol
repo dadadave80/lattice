@@ -7,8 +7,8 @@ import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
-import {PythEntropyAdapter} from "@lattice/oracles/PythEntropyAdapter.sol";
-import {PythEntropyAdapterInit} from "@lattice/oracles/PythEntropyAdapterInit.sol";
+import {PythEntropyAdapter} from "@lattice/oracles/pyth/PythEntropyAdapter.sol";
+import {PythEntropyAdapterInit} from "@lattice/oracles/pyth/PythEntropyAdapterInit.sol";
 
 /// @title DeployPythEntropyAdapter
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

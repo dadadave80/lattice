@@ -7,8 +7,8 @@ import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
-import {API3Adapter} from "@lattice/oracles/API3Adapter.sol";
-import {API3AdapterInit} from "@lattice/oracles/API3AdapterInit.sol";
+import {API3Adapter} from "@lattice/oracles/api3/API3Adapter.sol";
+import {API3AdapterInit} from "@lattice/oracles/api3/API3AdapterInit.sol";
 
 /// @title DeployAPI3Adapter
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

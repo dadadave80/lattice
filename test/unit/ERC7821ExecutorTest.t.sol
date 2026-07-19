@@ -17,8 +17,8 @@ import {ERC4337ValidationLib} from "@lattice/accounts/libraries/ERC4337Validatio
 import {ANY_SELECTOR, ANY_TARGET, SessionKeyLib} from "@lattice/accounts/libraries/SessionKeyLib.sol";
 import {IERC7821Executor} from "@lattice/interfaces/accounts/IERC7821Executor.sol";
 import {ISessionKey} from "@lattice/interfaces/accounts/ISessionKey.sol";
-import {IERC7579Hook, MODULE_TYPE_HOOK} from "@lattice/interfaces/external/IERC7579.sol";
-import {Call} from "@lattice/interfaces/external/IERC7821.sol";
+import {IERC7579Hook, MODULE_TYPE_HOOK} from "@lattice/interfaces/external/ercs/IERC7579.sol";
+import {Call} from "@lattice/interfaces/external/ercs/IERC7821.sol";
 import {INonces} from "@lattice/interfaces/utils/INonces.sol";
 import {EIP712Lib} from "@lattice/utils/libraries/EIP712Lib.sol";
 import {NoncesLib} from "@lattice/utils/libraries/NoncesLib.sol";

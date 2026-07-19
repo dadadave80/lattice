@@ -5,7 +5,7 @@ import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {DeployChainlinkVRF} from "@lattice-script/base/oracles/DeployChainlinkVRF.s.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
-import {ChainlinkVRF} from "@lattice/oracles/ChainlinkVRF.sol";
+import {ChainlinkVRF} from "@lattice/oracles/chainlink/ChainlinkVRF.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @title ChainlinkVRFTestBase

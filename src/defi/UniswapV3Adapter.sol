@@ -5,7 +5,7 @@ import {UniswapV3AdapterLib} from "@lattice/defi/libraries/UniswapV3AdapterLib.s
 import {IAdapterOperator} from "@lattice/interfaces/defi/IAdapterOperator.sol";
 import {IProtocolAdapter} from "@lattice/interfaces/defi/IProtocolAdapter.sol";
 import {IUniswapV3Adapter} from "@lattice/interfaces/defi/IUniswapV3Adapter.sol";
-import {IStrategy} from "@lattice/interfaces/external/IStrategy.sol";
+import {IStrategy} from "@lattice/interfaces/external/yearn/IStrategy.sol";
 import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib.sol";
 
 /// @title UniswapV3Adapter

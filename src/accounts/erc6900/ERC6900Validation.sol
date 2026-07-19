@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {ERC6900ValidationLib} from "@lattice/accounts/erc6900/libraries/ERC6900ValidationLib.sol";
-import {PackedUserOperation} from "@lattice/interfaces/external/IAccount.sol";
+import {PackedUserOperation} from "@lattice/interfaces/external/ercs/IAccount.sol";
 
 /// @title ERC6900Validation
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

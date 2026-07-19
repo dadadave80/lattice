@@ -10,9 +10,9 @@ import {ERC7821Executor} from "@lattice/accounts/erc7579/ERC7821Executor.sol";
 import {ERC7821ExecutorLib} from "@lattice/accounts/erc7579/libraries/ERC7821ExecutorLib.sol";
 import {AccountSignerLib} from "@lattice/accounts/libraries/AccountSignerLib.sol";
 import {DEFAULT_ENTRY_POINT, ERC4337ValidationLib} from "@lattice/accounts/libraries/ERC4337ValidationLib.sol";
-import {IAccount, PackedUserOperation} from "@lattice/interfaces/external/IAccount.sol";
-import {Call} from "@lattice/interfaces/external/IERC7821.sol";
-import {IEntryPoint} from "@lattice/interfaces/external/IEntryPoint.sol";
+import {IAccount, PackedUserOperation} from "@lattice/interfaces/external/ercs/IAccount.sol";
+import {Call} from "@lattice/interfaces/external/ercs/IERC7821.sol";
+import {IEntryPoint} from "@lattice/interfaces/external/ercs/IEntryPoint.sol";
 import {ECDSA} from "@lattice/utils/libraries/ECDSA.sol";
 import {Test} from "forge-std/Test.sol";
 

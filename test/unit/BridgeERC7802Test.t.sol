@@ -9,8 +9,8 @@ import {BridgeERC7802} from "@lattice/crosschain/BridgeERC7802.sol";
 import {CrosschainLink} from "@lattice/crosschain/CrosschainLink.sol";
 import {FUNGIBLE_BRIDGE_TAG} from "@lattice/crosschain/libraries/BridgeFungibleLib.sol";
 import {IBridgeFungible} from "@lattice/interfaces/crosschain/IBridgeFungible.sol";
-import {IERC7786GatewaySource} from "@lattice/interfaces/external/IERC7786.sol";
-import {IERC7802} from "@lattice/interfaces/external/IERC7802.sol";
+import {IERC7786GatewaySource} from "@lattice/interfaces/external/ercs/IERC7786.sol";
+import {IERC7802} from "@lattice/interfaces/external/ercs/IERC7802.sol";
 import {InteroperableAddress} from "@lattice/utils/libraries/InteroperableAddress.sol";
 
 // ---------------------------------------------------------------------------

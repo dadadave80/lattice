@@ -17,8 +17,8 @@ import {
     Contact,
     IAgreementFactory,
     IdentityRequirements
-} from "@lattice/interfaces/external/IAgreementFactory.sol";
-import {ISafeHarborRegistry} from "@lattice/interfaces/external/ISafeHarborRegistry.sol";
+} from "@lattice/interfaces/external/seal/IAgreementFactory.sol";
+import {ISafeHarborRegistry} from "@lattice/interfaces/external/seal/ISafeHarborRegistry.sol";
 import {ISafeHarborAdopter} from "@lattice/interfaces/governance/ISafeHarborAdopter.sol";
 
 /// @title MockSafeHarborRegistry

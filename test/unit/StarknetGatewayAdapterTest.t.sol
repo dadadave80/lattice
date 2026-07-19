@@ -6,9 +6,9 @@ import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {StarknetGatewayAdapterTestBase} from "@lattice-test/base/StarknetGatewayAdapterTestBase.sol";
 import {MockStarknetMessaging} from "@lattice-test/mocks/MockStarknetMessaging.sol";
-import {StarknetGatewayAdapter} from "@lattice/crosschain/StarknetGatewayAdapter.sol";
 import {NonEvmAddress} from "@lattice/crosschain/libraries/NonEvmAddress.sol";
-import {StarknetGatewayAdapterLib} from "@lattice/crosschain/libraries/StarknetGatewayAdapterLib.sol";
+import {StarknetGatewayAdapter} from "@lattice/crosschain/starknet/StarknetGatewayAdapter.sol";
+import {StarknetGatewayAdapterLib} from "@lattice/crosschain/starknet/StarknetGatewayAdapterLib.sol";
 import {IStarknetGatewayAdapter} from "@lattice/interfaces/crosschain/IStarknetGatewayAdapter.sol";
 import {InteroperableAddress} from "@lattice/utils/libraries/InteroperableAddress.sol";
 

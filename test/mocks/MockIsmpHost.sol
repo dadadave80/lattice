@@ -6,8 +6,8 @@ import {
     IIsmpDispatcher,
     IncomingPostRequest,
     PostRequest
-} from "@lattice/interfaces/external/IIsmpDispatcher.sol";
-import {IIsmpModule} from "@lattice/interfaces/external/IIsmpModule.sol";
+} from "@lattice/interfaces/external/hyperbridge/IIsmpDispatcher.sol";
+import {IIsmpModule} from "@lattice/interfaces/external/hyperbridge/IIsmpModule.sol";
 import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
 
 /// @title MockIsmpHost

@@ -5,7 +5,7 @@ import {CompoundV3AdapterLib} from "@lattice/defi/libraries/CompoundV3AdapterLib
 import {IAdapterOperator} from "@lattice/interfaces/defi/IAdapterOperator.sol";
 import {ICompoundV3Adapter} from "@lattice/interfaces/defi/ICompoundV3Adapter.sol";
 import {IProtocolAdapter} from "@lattice/interfaces/defi/IProtocolAdapter.sol";
-import {IStrategy} from "@lattice/interfaces/external/IStrategy.sol";
+import {IStrategy} from "@lattice/interfaces/external/yearn/IStrategy.sol";
 import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib.sol";
 
 /// @title CompoundV3Adapter

@@ -7,15 +7,18 @@ import {
 } from "@lattice-test/base/L2ToL2CrossDomainMessengerGatewayAdapterTestBase.sol";
 import {
     L2ToL2CrossDomainMessengerGatewayAdapter
-} from "@lattice/crosschain/L2ToL2CrossDomainMessengerGatewayAdapter.sol";
+} from "@lattice/crosschain/optimism/L2ToL2CrossDomainMessengerGatewayAdapter.sol";
 import {
     L2_TO_L2_CROSS_DOMAIN_MESSENGER
-} from "@lattice/crosschain/libraries/L2ToL2CrossDomainMessengerGatewayAdapterLib.sol";
+} from "@lattice/crosschain/optimism/L2ToL2CrossDomainMessengerGatewayAdapterLib.sol";
 import {
     IL2ToL2CrossDomainMessengerGatewayAdapter
 } from "@lattice/interfaces/crosschain/IL2ToL2CrossDomainMessengerGatewayAdapter.sol";
-import {IERC7786GatewaySource, IERC7786Recipient} from "@lattice/interfaces/external/IERC7786.sol";
-import {IL2ToL2CrossDomainMessenger, Identifier} from "@lattice/interfaces/external/IL2ToL2CrossDomainMessenger.sol";
+import {IERC7786GatewaySource, IERC7786Recipient} from "@lattice/interfaces/external/ercs/IERC7786.sol";
+import {
+    IL2ToL2CrossDomainMessenger,
+    Identifier
+} from "@lattice/interfaces/external/optimism/IL2ToL2CrossDomainMessenger.sol";
 import {InteroperableAddress} from "@lattice/utils/libraries/InteroperableAddress.sol";
 
 /// @notice Minimal OP Superchain `L2ToL2CrossDomainMessenger` mock. `sendMessage` records `(destination, target,

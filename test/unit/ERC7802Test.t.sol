@@ -3,7 +3,7 @@ pragma solidity ^0.8.30;
 
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {ERC7802TestBase} from "@lattice-test/base/ERC7802TestBase.sol";
-import {IERC7802} from "@lattice/interfaces/external/IERC7802.sol";
+import {IERC7802} from "@lattice/interfaces/external/ercs/IERC7802.sol";
 import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
 import {CROSSCHAIN_BRIDGE_ROLE} from "@lattice/tokens/ERC7802/libraries/ERC7802Lib.sol";
 

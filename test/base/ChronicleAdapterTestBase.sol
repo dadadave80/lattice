@@ -5,7 +5,7 @@ import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {DeployChronicleAdapter} from "@lattice-script/base/oracles/DeployChronicleAdapter.s.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
-import {ChronicleAdapter} from "@lattice/oracles/ChronicleAdapter.sol";
+import {ChronicleAdapter} from "@lattice/oracles/chronicle/ChronicleAdapter.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @title ChronicleAdapterTestBase

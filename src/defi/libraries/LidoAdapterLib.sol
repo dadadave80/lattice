@@ -6,10 +6,10 @@ import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/Ac
 import {AdapterBaseLib} from "@lattice/defi/libraries/AdapterBaseLib.sol";
 import {ILidoAdapter} from "@lattice/interfaces/defi/ILidoAdapter.sol";
 import {IProtocolAdapter} from "@lattice/interfaces/defi/IProtocolAdapter.sol";
-import {ILido} from "@lattice/interfaces/external/ILido.sol";
-import {ILidoWithdrawalQueue} from "@lattice/interfaces/external/ILidoWithdrawalQueue.sol";
-import {IWETH9} from "@lattice/interfaces/external/IWETH9.sol";
-import {IWstETH} from "@lattice/interfaces/external/IWstETH.sol";
+import {ILido} from "@lattice/interfaces/external/lido/ILido.sol";
+import {ILidoWithdrawalQueue} from "@lattice/interfaces/external/lido/ILidoWithdrawalQueue.sol";
+import {IWstETH} from "@lattice/interfaces/external/lido/IWstETH.sol";
+import {IWETH9} from "@lattice/interfaces/external/weth/IWETH9.sol";
 import {EmergencyStopLib} from "@lattice/security/libraries/EmergencyStopLib.sol";
 import {PausableLib} from "@lattice/security/libraries/PausableLib.sol";
 import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib.sol";

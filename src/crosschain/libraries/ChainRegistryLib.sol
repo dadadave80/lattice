@@ -3,18 +3,18 @@ pragma solidity ^0.8.30;
 
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
-import {AxelarGatewayAdapterLib} from "@lattice/crosschain/libraries/AxelarGatewayAdapterLib.sol";
-import {CCIPGatewayAdapterLib} from "@lattice/crosschain/libraries/CCIPGatewayAdapterLib.sol";
-import {CCTPBridgeAdapterLib} from "@lattice/crosschain/libraries/CCTPBridgeAdapterLib.sol";
-import {HyperbridgeGatewayAdapterLib} from "@lattice/crosschain/libraries/HyperbridgeGatewayAdapterLib.sol";
-import {HyperlaneGatewayAdapterLib} from "@lattice/crosschain/libraries/HyperlaneGatewayAdapterLib.sol";
+import {AxelarGatewayAdapterLib} from "@lattice/crosschain/axelar/AxelarGatewayAdapterLib.sol";
+import {CCIPGatewayAdapterLib} from "@lattice/crosschain/chainlink/CCIPGatewayAdapterLib.sol";
+import {CCTPBridgeAdapterLib} from "@lattice/crosschain/circle/CCTPBridgeAdapterLib.sol";
+import {HyperbridgeGatewayAdapterLib} from "@lattice/crosschain/hyperbridge/HyperbridgeGatewayAdapterLib.sol";
+import {HyperlaneGatewayAdapterLib} from "@lattice/crosschain/hyperlane/HyperlaneGatewayAdapterLib.sol";
+import {LayerZeroGatewayAdapterLib} from "@lattice/crosschain/layerzero/LayerZeroGatewayAdapterLib.sol";
+import {StargateBridgeAdapterLib} from "@lattice/crosschain/layerzero/StargateBridgeAdapterLib.sol";
 import {
     L2ToL2CrossDomainMessengerGatewayAdapterLib
-} from "@lattice/crosschain/libraries/L2ToL2CrossDomainMessengerGatewayAdapterLib.sol";
-import {LayerZeroGatewayAdapterLib} from "@lattice/crosschain/libraries/LayerZeroGatewayAdapterLib.sol";
-import {StargateBridgeAdapterLib} from "@lattice/crosschain/libraries/StargateBridgeAdapterLib.sol";
-import {WormholeGatewayAdapterLib} from "@lattice/crosschain/libraries/WormholeGatewayAdapterLib.sol";
-import {ZetaChainGatewayAdapterLib} from "@lattice/crosschain/libraries/ZetaChainGatewayAdapterLib.sol";
+} from "@lattice/crosschain/optimism/L2ToL2CrossDomainMessengerGatewayAdapterLib.sol";
+import {WormholeGatewayAdapterLib} from "@lattice/crosschain/wormhole/WormholeGatewayAdapterLib.sol";
+import {ZetaChainGatewayAdapterLib} from "@lattice/crosschain/zetachain/ZetaChainGatewayAdapterLib.sol";
 import {IChainRegistry} from "@lattice/interfaces/crosschain/IChainRegistry.sol";
 import {EnumerableSet} from "@lattice/utils/libraries/EnumerableSet.sol";
 import {InteroperableAddress} from "@lattice/utils/libraries/InteroperableAddress.sol";

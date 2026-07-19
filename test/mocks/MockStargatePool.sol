@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {MessagingFee, MessagingReceipt} from "@lattice/interfaces/external/ILayerZeroEndpointV2.sol";
-import {IStargate, OFTReceipt, SendParam, Ticket} from "@lattice/interfaces/external/IStargate.sol";
+import {MessagingFee, MessagingReceipt} from "@lattice/interfaces/external/layerzero/ILayerZeroEndpointV2.sol";
+import {IStargate, OFTReceipt, SendParam, Ticket} from "@lattice/interfaces/external/layerzero/IStargate.sol";
 import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
 
 /// @title MockStargatePool

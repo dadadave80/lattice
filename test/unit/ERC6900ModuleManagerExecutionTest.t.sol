@@ -18,7 +18,7 @@ import {
     ManifestExecutionFunction,
     ManifestExecutionHook,
     ModuleEntity
-} from "@lattice/interfaces/external/IERC6900.sol";
+} from "@lattice/interfaces/external/ercs/IERC6900.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @dev A facet cut into the mock so the diamond facet map owns `facetPing()` (for the shadow-guard case).

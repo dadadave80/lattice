@@ -6,8 +6,8 @@ import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/Ac
 import {ERC7579ModuleConfigLib} from "@lattice/accounts/erc7579/libraries/ERC7579ModuleConfigLib.sol";
 import {AccountSignerLib} from "@lattice/accounts/libraries/AccountSignerLib.sol";
 import {IERC4337Validation} from "@lattice/interfaces/accounts/IERC4337Validation.sol";
-import {IAccount, PackedUserOperation} from "@lattice/interfaces/external/IAccount.sol";
-import {IERC7579Validator, MODULE_TYPE_VALIDATOR} from "@lattice/interfaces/external/IERC7579.sol";
+import {IAccount, PackedUserOperation} from "@lattice/interfaces/external/ercs/IAccount.sol";
+import {IERC7579Validator, MODULE_TYPE_VALIDATOR} from "@lattice/interfaces/external/ercs/IERC7579.sol";
 import {ECDSA} from "@lattice/utils/libraries/ECDSA.sol";
 
 //*//////////////////////////////////////////////////////////////////////////

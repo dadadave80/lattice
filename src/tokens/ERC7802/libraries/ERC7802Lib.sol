@@ -3,7 +3,7 @@ pragma solidity ^0.8.30;
 
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
-import {IERC7802} from "@lattice/interfaces/external/IERC7802.sol";
+import {IERC7802} from "@lattice/interfaces/external/ercs/IERC7802.sol";
 import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
 
 //*//////////////////////////////////////////////////////////////////////////

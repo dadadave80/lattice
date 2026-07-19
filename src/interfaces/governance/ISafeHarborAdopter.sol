@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.4;
 
-import {AgreementDetails} from "@lattice/interfaces/external/IAgreementFactory.sol";
+import {AgreementDetails} from "@lattice/interfaces/external/seal/IAgreementFactory.sol";
 
 /// @title ISafeHarborAdopter
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

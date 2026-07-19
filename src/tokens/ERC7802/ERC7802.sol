@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {IERC7802} from "@lattice/interfaces/external/IERC7802.sol";
+import {IERC7802} from "@lattice/interfaces/external/ercs/IERC7802.sol";
 import {ERC7802Lib} from "@lattice/tokens/ERC7802/libraries/ERC7802Lib.sol";
 
 /// @title ERC7802
