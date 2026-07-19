@@ -7,8 +7,8 @@ import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
-import {ChronicleAdapter} from "@lattice/oracles/ChronicleAdapter.sol";
-import {ChronicleAdapterInit} from "@lattice/oracles/ChronicleAdapterInit.sol";
+import {ChronicleAdapter} from "@lattice/oracles/chronicle/ChronicleAdapter.sol";
+import {ChronicleAdapterInit} from "@lattice/oracles/chronicle/ChronicleAdapterInit.sol";
 
 /// @title DeployChronicleAdapter
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

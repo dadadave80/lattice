@@ -3,7 +3,7 @@ pragma solidity ^0.8.30;
 
 import {CrosschainLinkLib} from "@lattice/crosschain/libraries/CrosschainLinkLib.sol";
 import {ICrosschainLink} from "@lattice/interfaces/crosschain/ICrosschainLink.sol";
-import {IERC7786Recipient} from "@lattice/interfaces/external/IERC7786.sol";
+import {IERC7786Recipient} from "@lattice/interfaces/external/ercs/IERC7786.sol";
 
 /// @title CrosschainLink
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

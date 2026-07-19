@@ -6,8 +6,8 @@ import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
-import {AcrossBridgeAdapter} from "@lattice/crosschain/AcrossBridgeAdapter.sol";
-import {AcrossBridgeAdapterInit} from "@lattice/crosschain/AcrossBridgeAdapterInit.sol";
+import {AcrossBridgeAdapter} from "@lattice/crosschain/across/AcrossBridgeAdapter.sol";
+import {AcrossBridgeAdapterInit} from "@lattice/crosschain/across/AcrossBridgeAdapterInit.sol";
 import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
 
 /// @title DeployAcrossBridgeAdapter

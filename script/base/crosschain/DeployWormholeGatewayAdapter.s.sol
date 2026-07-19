@@ -6,8 +6,8 @@ import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
-import {WormholeGatewayAdapter} from "@lattice/crosschain/WormholeGatewayAdapter.sol";
-import {WormholeGatewayAdapterInit} from "@lattice/crosschain/WormholeGatewayAdapterInit.sol";
+import {WormholeGatewayAdapter} from "@lattice/crosschain/wormhole/WormholeGatewayAdapter.sol";
+import {WormholeGatewayAdapterInit} from "@lattice/crosschain/wormhole/WormholeGatewayAdapterInit.sol";
 import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
 
 /// @title DeployWormholeGatewayAdapter

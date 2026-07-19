@@ -7,8 +7,8 @@ import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
-import {GelatoAutomateAdapter} from "@lattice/oracles/GelatoAutomateAdapter.sol";
-import {GelatoAutomateAdapterInit} from "@lattice/oracles/GelatoAutomateAdapterInit.sol";
+import {GelatoAutomateAdapter} from "@lattice/oracles/gelato/GelatoAutomateAdapter.sol";
+import {GelatoAutomateAdapterInit} from "@lattice/oracles/gelato/GelatoAutomateAdapterInit.sol";
 
 /// @title DeployGelatoAutomateAdapter
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

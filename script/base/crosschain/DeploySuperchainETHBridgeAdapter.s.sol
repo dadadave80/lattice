@@ -6,8 +6,8 @@ import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
-import {SuperchainETHBridgeAdapter} from "@lattice/crosschain/SuperchainETHBridgeAdapter.sol";
-import {SuperchainETHBridgeAdapterInit} from "@lattice/crosschain/SuperchainETHBridgeAdapterInit.sol";
+import {SuperchainETHBridgeAdapter} from "@lattice/crosschain/optimism/SuperchainETHBridgeAdapter.sol";
+import {SuperchainETHBridgeAdapterInit} from "@lattice/crosschain/optimism/SuperchainETHBridgeAdapterInit.sol";
 import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
 
 /// @title DeploySuperchainETHBridgeAdapter

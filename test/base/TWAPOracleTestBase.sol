@@ -5,7 +5,7 @@ import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {DeployTWAPOracle} from "@lattice-script/base/oracles/DeployTWAPOracle.s.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
-import {TWAPOracle} from "@lattice/oracles/TWAPOracle.sol";
+import {TWAPOracle} from "@lattice/oracles/uniswap/TWAPOracle.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @title TWAPOracleTestBase

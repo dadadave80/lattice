@@ -7,8 +7,8 @@ import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
-import {RedStoneAdapter} from "@lattice/oracles/RedStoneAdapter.sol";
-import {RedStoneAdapterInit} from "@lattice/oracles/RedStoneAdapterInit.sol";
+import {RedStoneAdapter} from "@lattice/oracles/redstone/RedStoneAdapter.sol";
+import {RedStoneAdapterInit} from "@lattice/oracles/redstone/RedStoneAdapterInit.sol";
 
 /// @title DeployRedStoneAdapter
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

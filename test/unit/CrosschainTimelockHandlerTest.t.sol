@@ -7,7 +7,7 @@ import {CrosschainTimelockHandler} from "@lattice/crosschain/CrosschainTimelockH
 import {CROSSCHAIN_TIMELOCK_TAG} from "@lattice/crosschain/libraries/CrosschainTimelockHandlerLib.sol";
 import {TimelockController} from "@lattice/governance/TimelockController.sol";
 import {ICrosschainTimelockHandler} from "@lattice/interfaces/crosschain/ICrosschainTimelockHandler.sol";
-import {IERC7786GatewaySource} from "@lattice/interfaces/external/IERC7786.sol";
+import {IERC7786GatewaySource} from "@lattice/interfaces/external/ercs/IERC7786.sol";
 import {InteroperableAddress} from "@lattice/utils/libraries/InteroperableAddress.sol";
 
 // ---------------------------------------------------------------------------

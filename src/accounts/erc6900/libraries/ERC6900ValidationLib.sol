@@ -12,14 +12,14 @@ import {SparseCalldataSegmentLib} from "@lattice/accounts/erc6900/libraries/Spar
 import {ERC4337ValidationLib} from "@lattice/accounts/libraries/ERC4337ValidationLib.sol";
 import {IERC6900Executor} from "@lattice/interfaces/accounts/IERC6900Executor.sol";
 import {IERC6900Validation} from "@lattice/interfaces/accounts/IERC6900Validation.sol";
-import {PackedUserOperation} from "@lattice/interfaces/external/IAccount.sol";
+import {PackedUserOperation} from "@lattice/interfaces/external/ercs/IAccount.sol";
 import {
     HookConfig,
     IERC6900ValidationHookModule,
     IERC6900ValidationModule,
     ModuleEntity,
     ValidationFlags
-} from "@lattice/interfaces/external/IERC6900.sol";
+} from "@lattice/interfaces/external/ercs/IERC6900.sol";
 import {EnumerableSet} from "@lattice/utils/libraries/EnumerableSet.sol";
 
 /// @title ERC6900ValidationLib

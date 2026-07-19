@@ -3,8 +3,8 @@ pragma solidity ^0.8.30;
 
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
-import {AgreementDetails, IAgreementFactory} from "@lattice/interfaces/external/IAgreementFactory.sol";
-import {ISafeHarborRegistry} from "@lattice/interfaces/external/ISafeHarborRegistry.sol";
+import {AgreementDetails, IAgreementFactory} from "@lattice/interfaces/external/seal/IAgreementFactory.sol";
+import {ISafeHarborRegistry} from "@lattice/interfaces/external/seal/ISafeHarborRegistry.sol";
 import {ISafeHarborAdopter} from "@lattice/interfaces/governance/ISafeHarborAdopter.sol";
 
 //*//////////////////////////////////////////////////////////////////////////

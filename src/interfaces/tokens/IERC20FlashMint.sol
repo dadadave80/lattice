@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.4;
 
-import {IERC3156FlashLender} from "@lattice/interfaces/external/IERC3156FlashLender.sol";
+import {IERC3156FlashLender} from "@lattice/interfaces/external/ercs/IERC3156FlashLender.sol";
 
 /// @title IERC20FlashMint
 /// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/extensions/ERC20FlashMint.sol)

@@ -5,7 +5,7 @@ import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {DeployHyperbridgeGatewayAdapter} from "@lattice-script/base/crosschain/DeployHyperbridgeGatewayAdapter.s.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
-import {HyperbridgeGatewayAdapter} from "@lattice/crosschain/HyperbridgeGatewayAdapter.sol";
+import {HyperbridgeGatewayAdapter} from "@lattice/crosschain/hyperbridge/HyperbridgeGatewayAdapter.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @title HyperbridgeGatewayAdapterTestBase

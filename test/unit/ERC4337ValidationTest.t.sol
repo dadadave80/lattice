@@ -11,8 +11,8 @@ import {ERC7579ModuleConfigLib} from "@lattice/accounts/erc7579/libraries/ERC757
 import {AccountSignerLib} from "@lattice/accounts/libraries/AccountSignerLib.sol";
 import {DEFAULT_ENTRY_POINT, ERC4337ValidationLib} from "@lattice/accounts/libraries/ERC4337ValidationLib.sol";
 import {IERC4337Validation} from "@lattice/interfaces/accounts/IERC4337Validation.sol";
-import {IAccount, PackedUserOperation} from "@lattice/interfaces/external/IAccount.sol";
-import {IERC7579Validator, MODULE_TYPE_VALIDATOR} from "@lattice/interfaces/external/IERC7579.sol";
+import {IAccount, PackedUserOperation} from "@lattice/interfaces/external/ercs/IAccount.sol";
+import {IERC7579Validator, MODULE_TYPE_VALIDATOR} from "@lattice/interfaces/external/ercs/IERC7579.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @dev Harness: 4337 validation + signer + access + ERC-7579 module config (to install validators).

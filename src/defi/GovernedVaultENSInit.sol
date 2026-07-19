@@ -12,7 +12,7 @@ import {GovernorLib} from "@lattice/governance/libraries/GovernorLib.sol";
 import {TimelockControllerLib} from "@lattice/governance/libraries/TimelockControllerLib.sol";
 import {VotesLib} from "@lattice/governance/libraries/VotesLib.sol";
 import {IENSReverseClaimer} from "@lattice/interfaces/ens/IENSReverseClaimer.sol";
-import {IReverseRegistrar} from "@lattice/interfaces/external/IReverseRegistrar.sol";
+import {IReverseRegistrar} from "@lattice/interfaces/external/ens/IReverseRegistrar.sol";
 import {EmergencyStopLib} from "@lattice/security/libraries/EmergencyStopLib.sol";
 import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
 import {ERC20VotesLib} from "@lattice/tokens/ERC20/libraries/ERC20VotesLib.sol";

@@ -9,7 +9,7 @@ import {
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
 import {
     L1ToL2CrossDomainMessengerGatewayAdapter
-} from "@lattice/crosschain/L1ToL2CrossDomainMessengerGatewayAdapter.sol";
+} from "@lattice/crosschain/optimism/L1ToL2CrossDomainMessengerGatewayAdapter.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @title L1ToL2CrossDomainMessengerGatewayAdapterTestBase

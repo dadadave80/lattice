@@ -5,7 +5,7 @@ import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {DeployAPI3QRNGAdapter} from "@lattice-script/base/oracles/DeployAPI3QRNGAdapter.s.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
-import {API3QRNGAdapter} from "@lattice/oracles/API3QRNGAdapter.sol";
+import {API3QRNGAdapter} from "@lattice/oracles/api3/API3QRNGAdapter.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @title API3QRNGAdapterTestBase

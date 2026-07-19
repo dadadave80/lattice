@@ -43,7 +43,8 @@ or interface: `Base64`, `Bytes`, `Calldata`, `Checkpoints`, `ECDSA`, `Enumerable
 module helpers such as `EIP712Lib`, `MulticallLib`, `NoncesLib`, and `VestingWalletLib`.
 
 `src/interfaces/external/` vendors minimal third-party ABIs used by adapters and standards
-integrations. The canonical storage/interface registry is
+integrations, grouped per vendor (`circle/`, `chainlink/`, `layerzero/`, …; pure ERC/EIP standard
+interfaces under `ercs/`). The canonical storage/interface registry is
 [`STORAGE_REGISTRY.md`](STORAGE_REGISTRY.md), and
 `test/unit/StorageSlotVerificationTest.t.sol` re-derives every registered slot and checks
 global uniqueness.
@@ -257,17 +258,18 @@ src/
 ├── access/        # AccessControl(+Enumerable,+Timed), AccessManager(+Managed,+Standalone), Ownable
 ├── accounts/      # Diamond smart accounts — erc7579/ & erc6900/ flavor subfolders + shared (ERC-4337/1271/6551, session keys)
 ├── amm/           # ConstantProduct
-├── crosschain/    # CCIP, Axelar, Wormhole, ERC-7786, bridge tokens, cross-chain timelock
+├── crosschain/    # per-vendor adapter folders (circle/, layerzero/, …), each self-contained (facet+Init+Lib); generic modules at root, shared libs in libraries/
 ├── defi/          # Aave, Compound, Curve, Lido, Uniswap V3, ERC4626 adapters, vault/strategy modules
 ├── ens/           # ENS resolver, reverse claimer, subname issuer
 ├── governance/    # Governor, timelock, governed/Safe diamond cuts, Safe Harbor adoption
-├── oracles/       # Chainlink, Pyth, RedStone, Chronicle, DIA, API3, Band, Tellor, Gelato, TWAP
+├── oracles/       # per-vendor adapter folders (chainlink/, pyth/, redstone/, …, uniswap/ TWAP), each self-contained (facet+Init+Lib)
 ├── privacy/       # Commit-reveal, stealth address standards, Groth16/PLONK, Semaphore, shielded pool
 ├── security/      # Pausable, ReentrancyGuard, RateLimiter, CircuitBreaker, EmergencyStop, InvariantChecker
 ├── tokens/        # per-standard subfolders ERC20/ ERC721/ ERC1155/ ERC2981/ ERC4626/ ERC7802/ (base+extensions); MarketplaceZone at root
 ├── utils/         # EIP712, Multicall, Nonces, VestingWallet(+Standalone)
 │   └── libraries/ # Crypto, encoding, strings, checkpoints, math, multicall/nonces/vesting helpers
-└── interfaces/    # I<Module>.sol mirrored into per-<area> subfolders; external/ for third-party ABIs
+└── interfaces/    # I<Module>.sol mirrored into per-<area> subfolders
+    └── external/  # vendored third-party ABIs, one folder per vendor (circle/, chainlink/, …, ercs/)
 ```
 
 Each `<area>/` also contains a `libraries/` subfolder holding the `<Module>Lib.sol`

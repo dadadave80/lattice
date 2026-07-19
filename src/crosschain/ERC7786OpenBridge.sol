@@ -3,7 +3,7 @@ pragma solidity ^0.8.30;
 
 import {ERC7786OpenBridgeLib} from "@lattice/crosschain/libraries/ERC7786OpenBridgeLib.sol";
 import {IERC7786OpenBridge} from "@lattice/interfaces/crosschain/IERC7786OpenBridge.sol";
-import {IERC7786GatewaySource, IERC7786Recipient} from "@lattice/interfaces/external/IERC7786.sol";
+import {IERC7786GatewaySource, IERC7786Recipient} from "@lattice/interfaces/external/ercs/IERC7786.sol";
 
 /// @title ERC7786OpenBridge
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

@@ -4,9 +4,9 @@ pragma solidity ^0.8.30;
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {GelatoAutomateAdapterTestBase} from "@lattice-test/base/GelatoAutomateAdapterTestBase.sol";
 import {GelatoAutomateAdapterTestFacet} from "@lattice-test/helpers/GelatoAutomateAdapterTestFacet.sol";
-import {IGelatoAutomate} from "@lattice/interfaces/external/IGelatoAutomate.sol";
+import {IGelatoAutomate} from "@lattice/interfaces/external/gelato/IGelatoAutomate.sol";
 import {IGelatoAutomateAdapter} from "@lattice/interfaces/oracles/IGelatoAutomateAdapter.sol";
-import {GelatoAutomateAdapter} from "@lattice/oracles/GelatoAutomateAdapter.sol";
+import {GelatoAutomateAdapter} from "@lattice/oracles/gelato/GelatoAutomateAdapter.sol";
 
 // ---------------------------------------------------------------------------
 //                              EXTERNAL MOCK FIXTURE

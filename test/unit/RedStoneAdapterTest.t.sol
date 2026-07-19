@@ -3,9 +3,9 @@ pragma solidity ^0.8.30;
 
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {RedStoneAdapterTestBase} from "@lattice-test/base/RedStoneAdapterTestBase.sol";
-import {IRedstonePriceFeedsAdapter} from "@lattice/interfaces/external/IRedstonePriceFeedsAdapter.sol";
+import {IRedstonePriceFeedsAdapter} from "@lattice/interfaces/external/redstone/IRedstonePriceFeedsAdapter.sol";
 import {IRedStoneAdapter} from "@lattice/interfaces/oracles/IRedStoneAdapter.sol";
-import {RedStoneAdapter} from "@lattice/oracles/RedStoneAdapter.sol";
+import {RedStoneAdapter} from "@lattice/oracles/redstone/RedStoneAdapter.sol";
 
 // ---------------------------------------------------------------------------
 //                              MOCKS

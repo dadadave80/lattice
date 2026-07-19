@@ -7,7 +7,7 @@ import {
     IERC6900AccountView,
     ModuleEntity,
     ValidationDataView
-} from "@lattice/interfaces/external/IERC6900.sol";
+} from "@lattice/interfaces/external/ercs/IERC6900.sol";
 
 /// @title ERC6900AccountView
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

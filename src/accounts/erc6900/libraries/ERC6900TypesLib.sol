@@ -1,7 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {HookConfig, ModuleEntity, ValidationConfig, ValidationFlags} from "@lattice/interfaces/external/IERC6900.sol";
+import {
+    HookConfig,
+    ModuleEntity,
+    ValidationConfig,
+    ValidationFlags
+} from "@lattice/interfaces/external/ercs/IERC6900.sol";
 
 /// @title ERC6900TypesLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

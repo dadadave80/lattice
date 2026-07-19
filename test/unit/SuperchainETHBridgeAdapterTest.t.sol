@@ -3,7 +3,7 @@ pragma solidity ^0.8.30;
 
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {SuperchainETHBridgeAdapterTestBase} from "@lattice-test/base/SuperchainETHBridgeAdapterTestBase.sol";
-import {SUPERCHAIN_ETH_BRIDGE} from "@lattice/crosschain/libraries/SuperchainETHBridgeAdapterLib.sol";
+import {SUPERCHAIN_ETH_BRIDGE} from "@lattice/crosschain/optimism/SuperchainETHBridgeAdapterLib.sol";
 import {ISuperchainETHBridgeAdapter} from "@lattice/interfaces/crosschain/ISuperchainETHBridgeAdapter.sol";
 
 /// @notice Stand-in for the OP `SuperchainETHBridge` predeploy: records the last `sendETH` args + accepts the

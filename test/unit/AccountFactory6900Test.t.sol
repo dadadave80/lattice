@@ -19,7 +19,7 @@ import {
     ValidationConfig,
     ValidationDataView,
     ValidationFlags
-} from "@lattice/interfaces/external/IERC6900.sol";
+} from "@lattice/interfaces/external/ercs/IERC6900.sol";
 
 contract AccountFactory6900Test is Account6900BlueprintHelper {
     AccountFactory6900 factory;

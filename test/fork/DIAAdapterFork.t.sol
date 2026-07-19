@@ -5,10 +5,10 @@ import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
-import {IDIAOracleV2} from "@lattice/interfaces/external/IDIAOracleV2.sol";
+import {IDIAOracleV2} from "@lattice/interfaces/external/dia/IDIAOracleV2.sol";
 import {IDIAAdapter} from "@lattice/interfaces/oracles/IDIAAdapter.sol";
-import {DIAAdapter} from "@lattice/oracles/DIAAdapter.sol";
-import {DIAAdapterLib} from "@lattice/oracles/libraries/DIAAdapterLib.sol";
+import {DIAAdapter} from "@lattice/oracles/dia/DIAAdapter.sol";
+import {DIAAdapterLib} from "@lattice/oracles/dia/DIAAdapterLib.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @notice Mock diamond combining AccessControl + DIAAdapter.

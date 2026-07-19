@@ -9,7 +9,7 @@ import {ENSReverseClaimer} from "@lattice/ens/ENSReverseClaimer.sol";
 import {ENS_MANAGER_ROLE} from "@lattice/ens/libraries/ENSReverseClaimerLib.sol";
 import {IAccessControl} from "@lattice/interfaces/access/IAccessControl.sol";
 import {IENSReverseClaimer} from "@lattice/interfaces/ens/IENSReverseClaimer.sol";
-import {IReverseRegistrar} from "@lattice/interfaces/external/IReverseRegistrar.sol";
+import {IReverseRegistrar} from "@lattice/interfaces/external/ens/IReverseRegistrar.sol";
 
 /// @title MockReverseRegistrar
 /// @notice Minimal ENS reverse registrar that records the name each caller sets for itself. Kept as a test fixture

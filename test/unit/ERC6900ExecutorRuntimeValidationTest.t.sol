@@ -9,7 +9,12 @@ import {ERC6900ModuleManager} from "@lattice/accounts/erc6900/ERC6900ModuleManag
 import {ModularAccount6900} from "@lattice/accounts/erc6900/ModularAccount6900.sol";
 import {ERC6900TypesLib} from "@lattice/accounts/erc6900/libraries/ERC6900TypesLib.sol";
 import {IERC6900Executor} from "@lattice/interfaces/accounts/IERC6900Executor.sol";
-import {HookConfig, IERC6900Account, ModuleEntity, ValidationConfig} from "@lattice/interfaces/external/IERC6900.sol";
+import {
+    HookConfig,
+    IERC6900Account,
+    ModuleEntity,
+    ValidationConfig
+} from "@lattice/interfaces/external/ercs/IERC6900.sol";
 import {Test} from "forge-std/Test.sol";
 
 contract Target {

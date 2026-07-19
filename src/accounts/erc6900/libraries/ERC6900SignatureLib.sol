@@ -23,7 +23,7 @@ import {
     IERC6900ValidationModule,
     ModuleEntity,
     ValidationFlags
-} from "@lattice/interfaces/external/IERC6900.sol";
+} from "@lattice/interfaces/external/ercs/IERC6900.sol";
 import {EIP712Lib} from "@lattice/utils/libraries/EIP712Lib.sol";
 
 /// @title ERC6900SignatureLib

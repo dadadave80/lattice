@@ -7,8 +7,8 @@ import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
-import {DIAAdapter} from "@lattice/oracles/DIAAdapter.sol";
-import {DIAAdapterInit} from "@lattice/oracles/DIAAdapterInit.sol";
+import {DIAAdapter} from "@lattice/oracles/dia/DIAAdapter.sol";
+import {DIAAdapterInit} from "@lattice/oracles/dia/DIAAdapterInit.sol";
 
 /// @title DeployDIAAdapter
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

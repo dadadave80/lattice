@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ICreateX} from "@lattice/interfaces/external/ICreateX.sol";
+import {ICreateX} from "@lattice/interfaces/external/createx/ICreateX.sol";
 
 /// @title CreateXDeployer
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

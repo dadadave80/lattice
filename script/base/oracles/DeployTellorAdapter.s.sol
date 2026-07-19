@@ -7,8 +7,8 @@ import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
-import {TellorAdapter} from "@lattice/oracles/TellorAdapter.sol";
-import {TellorAdapterInit} from "@lattice/oracles/TellorAdapterInit.sol";
+import {TellorAdapter} from "@lattice/oracles/tellor/TellorAdapter.sol";
+import {TellorAdapterInit} from "@lattice/oracles/tellor/TellorAdapterInit.sol";
 
 /// @title DeployTellorAdapter
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

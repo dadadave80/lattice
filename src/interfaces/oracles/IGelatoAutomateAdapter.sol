@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.4;
 
-import {IGelatoAutomate} from "@lattice/interfaces/external/IGelatoAutomate.sol";
+import {IGelatoAutomate} from "@lattice/interfaces/external/gelato/IGelatoAutomate.sol";
 
 /// @title IGelatoAutomateAdapter
 /// @author Modified from Gelato (https://github.com/gelatodigital/automate)

@@ -5,7 +5,7 @@ import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {DeployAxelarGatewayAdapter} from "@lattice-script/base/crosschain/DeployAxelarGatewayAdapter.s.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
-import {AxelarGatewayAdapter} from "@lattice/crosschain/AxelarGatewayAdapter.sol";
+import {AxelarGatewayAdapter} from "@lattice/crosschain/axelar/AxelarGatewayAdapter.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @title AxelarGatewayAdapterTestBase

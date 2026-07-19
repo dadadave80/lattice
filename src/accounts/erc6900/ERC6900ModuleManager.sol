@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {ERC6900ModuleManagerLib} from "@lattice/accounts/erc6900/libraries/ERC6900ModuleManagerLib.sol";
-import {ExecutionManifest, ModuleEntity, ValidationConfig} from "@lattice/interfaces/external/IERC6900.sol";
+import {ExecutionManifest, ModuleEntity, ValidationConfig} from "@lattice/interfaces/external/ercs/IERC6900.sol";
 
 /// @title ERC6900ModuleManager
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

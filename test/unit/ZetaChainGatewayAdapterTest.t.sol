@@ -3,10 +3,10 @@ pragma solidity ^0.8.30;
 
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {ZetaChainGatewayAdapterTestBase} from "@lattice-test/base/ZetaChainGatewayAdapterTestBase.sol";
-import {ZetaChainGatewayAdapter} from "@lattice/crosschain/ZetaChainGatewayAdapter.sol";
+import {ZetaChainGatewayAdapter} from "@lattice/crosschain/zetachain/ZetaChainGatewayAdapter.sol";
 import {IZetaChainGatewayAdapter} from "@lattice/interfaces/crosschain/IZetaChainGatewayAdapter.sol";
-import {IERC7786GatewaySource, IERC7786Recipient} from "@lattice/interfaces/external/IERC7786.sol";
-import {IGatewayEVM, MessageContext, RevertOptions} from "@lattice/interfaces/external/IGatewayEVM.sol";
+import {IERC7786GatewaySource, IERC7786Recipient} from "@lattice/interfaces/external/ercs/IERC7786.sol";
+import {IGatewayEVM, MessageContext, RevertOptions} from "@lattice/interfaces/external/zetachain/IGatewayEVM.sol";
 import {InteroperableAddress} from "@lattice/utils/libraries/InteroperableAddress.sol";
 
 /// @notice Minimal ZetaChain `GatewayEVM` mock. `call` records `(receiver, payload)` + the revert address / gas /

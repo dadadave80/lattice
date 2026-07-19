@@ -7,8 +7,8 @@ import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
-import {GelatoVRFAdapter} from "@lattice/oracles/GelatoVRFAdapter.sol";
-import {GelatoVRFAdapterInit} from "@lattice/oracles/GelatoVRFAdapterInit.sol";
+import {GelatoVRFAdapter} from "@lattice/oracles/gelato/GelatoVRFAdapter.sol";
+import {GelatoVRFAdapterInit} from "@lattice/oracles/gelato/GelatoVRFAdapterInit.sol";
 
 /// @title DeployGelatoVRFAdapter
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

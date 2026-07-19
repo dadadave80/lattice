@@ -3,9 +3,9 @@ pragma solidity ^0.8.30;
 
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {PythAdapterTestBase} from "@lattice-test/base/PythAdapterTestBase.sol";
-import {IPyth} from "@lattice/interfaces/external/IPyth.sol";
+import {IPyth} from "@lattice/interfaces/external/pyth/IPyth.sol";
 import {IPythAdapter} from "@lattice/interfaces/oracles/IPythAdapter.sol";
-import {PythAdapter} from "@lattice/oracles/PythAdapter.sol";
+import {PythAdapter} from "@lattice/oracles/pyth/PythAdapter.sol";
 
 /// @notice Minimal mock Pyth with settable price + fee, tracking received ETH.
 contract MockPyth is IPyth {

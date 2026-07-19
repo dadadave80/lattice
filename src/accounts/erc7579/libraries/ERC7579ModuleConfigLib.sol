@@ -14,8 +14,8 @@ import {
     MODULE_TYPE_FALLBACK,
     MODULE_TYPE_HOOK,
     MODULE_TYPE_VALIDATOR
-} from "@lattice/interfaces/external/IERC7579.sol";
-import {Call} from "@lattice/interfaces/external/IERC7821.sol";
+} from "@lattice/interfaces/external/ercs/IERC7579.sol";
+import {Call} from "@lattice/interfaces/external/ercs/IERC7821.sol";
 
 /// @dev Fallback-handler (type 3) call types: forward via CALL (with the original caller appended ERC-2771-style)
 ///      or DELEGATECALL (the handler runs in the account's own context).

@@ -6,7 +6,7 @@ import {MultiInit} from "@diamond/initializers/MultiInit.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
 import {AccessControlInit} from "@lattice/access/AccessControlInit.sol";
-import {IERC8153} from "@lattice/interfaces/external/IERC8153.sol";
+import {IERC8153} from "@lattice/interfaces/external/ercs/IERC8153.sol";
 import {DiamondIntrospectionInit} from "@lattice/utils/DiamondIntrospectionInit.sol";
 import {Script} from "forge-std/Script.sol";
 
