@@ -5,6 +5,7 @@ import {CreateXDeployer} from "@lattice-script/lib/CreateXDeployer.sol";
 import {FacetInventory} from "@lattice-script/lib/FacetInventory.sol";
 import {LatticeFactory} from "@lattice/LatticeFactory.sol";
 import {LatticeRegistry} from "@lattice/LatticeRegistry.sol";
+import {LatticeVersion} from "@lattice/LatticeVersion.sol";
 import {ILatticeRegistry} from "@lattice/interfaces/ILatticeRegistry.sol";
 import {IERC8153} from "@lattice/interfaces/external/IERC8153.sol";
 import {Script, console} from "forge-std/Script.sol";
@@ -111,9 +112,27 @@ contract DeployRelease is Script {
         _writeManifest("deployments", version, out);
     }
 
+    /// @notice {run} pinned to the library's own {LatticeVersion.VERSION} — the Release-Please-bumped
+    ///         single source of truth — so the broadcast version cannot drift from the code being
+    ///         released. Prefer this over the explicit-version form for normal releases.
+    /// @param owner The {LatticeRegistry} initial owner (see {run(string,address)}).
+    function run(address owner) external {
+        vm.startBroadcast();
+        ReleaseOutput memory out = release(owner);
+        vm.stopBroadcast();
+        _writeManifest("deployments", LatticeVersion.VERSION, out);
+    }
+
     //*//////////////////////////////////////////////////////////////////////////
     //                              RELEASE PIPELINE
     //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice {release} pinned to {LatticeVersion.VERSION} (see {run(address)} for why).
+    /// @param owner The registry's initial owner if the registry is deployed by this run.
+    /// @return out The released addresses (see {ReleaseOutput}).
+    function release(address owner) public returns (ReleaseOutput memory out) {
+        out = release(LatticeVersion.VERSION, owner);
+    }
 
     /// @notice The whole on-chain release: deploy-or-skip the registry, the factory, and every inventory
     ///         facet at their deterministic addresses, then (broadcaster == registry owner only) register
@@ -122,7 +141,7 @@ contract DeployRelease is Script {
     /// @param version The release semver string (also part of every facet salt).
     /// @param owner The registry's initial owner if the registry is deployed by this run.
     /// @return out The released addresses (see {ReleaseOutput}).
-    function release(string calldata version, address owner) public returns (ReleaseOutput memory out) {
+    function release(string memory version, address owner) public returns (ReleaseOutput memory out) {
         require(
             address(CreateXDeployer.CREATEX).code.length != 0,
             "DeployRelease: CreateX has no code at 0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed on this chain; for local/test runs etch test/helpers/MockCreateX.sol at that address first"

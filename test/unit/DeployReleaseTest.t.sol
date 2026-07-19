@@ -7,6 +7,7 @@ import {FacetInventory} from "@lattice-script/lib/FacetInventory.sol";
 import {MockCreateX} from "@lattice-test/helpers/MockCreateX.sol";
 import {LatticeFactory} from "@lattice/LatticeFactory.sol";
 import {LatticeRegistry} from "@lattice/LatticeRegistry.sol";
+import {LatticeVersion} from "@lattice/LatticeVersion.sol";
 import {ILatticeRegistry} from "@lattice/interfaces/ILatticeRegistry.sol";
 import {IERC8153} from "@lattice/interfaces/external/IERC8153.sol";
 import {Test} from "forge-std/Test.sol";
@@ -72,6 +73,23 @@ contract DeployReleaseTest is Test, DeployRelease {
             assertEq(record.facet, out.facets[i], string.concat(names[i], ": registered facet != released facet"));
             assertEq(registry.latest(nameHash).version, PACKED, string.concat(names[i], ": latest not set"));
         }
+    }
+
+    /// @notice The version-less release() overload pins the release to the library's own
+    ///         {LatticeVersion.VERSION} — the Release-Please-bumped single source of truth — so an
+    ///         operator-passed string cannot drift from the code actually being released. Assertions
+    ///         derive the packed version FROM the library constant, so this test survives version bumps.
+    function test_Release_NoVersionOverloadUsesLatticeVersion() public {
+        DeployRelease.ReleaseOutput memory out = this.release(address(this));
+
+        ILatticeRegistry registry = ILatticeRegistry(out.registry);
+        uint64 packed = packVersion(LatticeVersion.VERSION);
+        (string[] memory names,) = FacetInventory.inventory();
+        bytes32 nameHash = keccak256(abi.encodePacked("lattice.", names[0]));
+        assertEq(
+            registry.get(nameHash, packed).facet, out.facets[0], "facet not registered under LatticeVersion.VERSION"
+        );
+        assertEq(registry.latest(nameHash).version, packed, "latest not pinned to LatticeVersion.VERSION");
     }
 
     /// @notice A second release() run over an already-complete release succeeds, lands on identical
