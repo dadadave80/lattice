@@ -4,7 +4,7 @@ pragma solidity ^0.8.30;
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {
     L1ToL2CrossDomainMessengerGatewayAdapterLib
-} from "@lattice/crosschain/libraries/L1ToL2CrossDomainMessengerGatewayAdapterLib.sol";
+} from "@lattice/crosschain/optimism/L1ToL2CrossDomainMessengerGatewayAdapterLib.sol";
 
 /// @title L1ToL2CrossDomainMessengerGatewayAdapterInit
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

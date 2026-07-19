@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
-import {ChainlinkVRFLib} from "@lattice/oracles/libraries/ChainlinkVRFLib.sol";
+import {ChainlinkVRFLib} from "@lattice/oracles/chainlink/ChainlinkVRFLib.sol";
 
 /// @title ChainlinkVRFInit
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

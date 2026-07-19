@@ -78,23 +78,36 @@ import {SESSION_KEY_STORAGE_SLOT} from "@lattice/accounts/libraries/SessionKeyLi
 import {
     ACROSS_BRIDGE_ADAPTER_STORAGE_SLOT,
     ERC165_MAP_IACROSSBRIDGEADAPTER_SLOT
-} from "@lattice/crosschain/libraries/AcrossBridgeAdapterLib.sol";
+} from "@lattice/crosschain/across/AcrossBridgeAdapterLib.sol";
 import {
     AXELAR_GATEWAY_ADAPTER_STORAGE_SLOT,
     ERC165_MAP_IERC7786GATEWAYSOURCE_SLOT
-} from "@lattice/crosschain/libraries/AxelarGatewayAdapterLib.sol";
-import {BRIDGE_ERC20_STORAGE_SLOT} from "@lattice/crosschain/libraries/BridgeERC20Lib.sol";
-import {BRIDGE_ERC7802_STORAGE_SLOT} from "@lattice/crosschain/libraries/BridgeERC7802Lib.sol";
-import {ERC165_MAP_IBRIDGEFUNGIBLE_SLOT} from "@lattice/crosschain/libraries/BridgeFungibleLib.sol";
+} from "@lattice/crosschain/axelar/AxelarGatewayAdapterLib.sol";
 import {
     CCIP_GATEWAY_ADAPTER_STORAGE_SLOT,
     ERC165_MAP_IANY2EVMMESSAGERECEIVERV2_SLOT,
     ERC165_MAP_IANY2EVMMESSAGERECEIVER_SLOT
-} from "@lattice/crosschain/libraries/CCIPGatewayAdapterLib.sol";
+} from "@lattice/crosschain/chainlink/CCIPGatewayAdapterLib.sol";
 import {
     CCTP_BRIDGE_ADAPTER_STORAGE_SLOT,
     ERC165_MAP_ICCTPBRIDGEADAPTER_SLOT
-} from "@lattice/crosschain/libraries/CCTPBridgeAdapterLib.sol";
+} from "@lattice/crosschain/circle/CCTPBridgeAdapterLib.sol";
+import {
+    ERC165_MAP_IHYPERBRIDGEGATEWAYADAPTER_SLOT,
+    HYPERBRIDGE_GATEWAY_ADAPTER_STORAGE_SLOT
+} from "@lattice/crosschain/hyperbridge/HyperbridgeGatewayAdapterLib.sol";
+import {
+    ERC165_MAP_IHYPERLANEGATEWAYADAPTER_SLOT,
+    HYPERLANE_GATEWAY_ADAPTER_STORAGE_SLOT
+} from "@lattice/crosschain/hyperlane/HyperlaneGatewayAdapterLib.sol";
+import {LAYERZERO_GATEWAY_ADAPTER_STORAGE_SLOT} from "@lattice/crosschain/layerzero/LayerZeroGatewayAdapterLib.sol";
+import {
+    ERC165_MAP_ISTARGATEBRIDGEADAPTER_SLOT,
+    STARGATE_BRIDGE_ADAPTER_STORAGE_SLOT
+} from "@lattice/crosschain/layerzero/StargateBridgeAdapterLib.sol";
+import {BRIDGE_ERC20_STORAGE_SLOT} from "@lattice/crosschain/libraries/BridgeERC20Lib.sol";
+import {BRIDGE_ERC7802_STORAGE_SLOT} from "@lattice/crosschain/libraries/BridgeERC7802Lib.sol";
+import {ERC165_MAP_IBRIDGEFUNGIBLE_SLOT} from "@lattice/crosschain/libraries/BridgeFungibleLib.sol";
 import {
     CHAIN_REGISTRY_STORAGE_SLOT,
     ERC165_MAP_ICHAINREGISTRY_SLOT
@@ -105,30 +118,17 @@ import {
 } from "@lattice/crosschain/libraries/CrosschainLinkLib.sol";
 import {ERC7786_OPEN_BRIDGE_STORAGE_SLOT} from "@lattice/crosschain/libraries/ERC7786OpenBridgeLib.sol";
 import {
-    ERC165_MAP_IHYPERBRIDGEGATEWAYADAPTER_SLOT,
-    HYPERBRIDGE_GATEWAY_ADAPTER_STORAGE_SLOT
-} from "@lattice/crosschain/libraries/HyperbridgeGatewayAdapterLib.sol";
-import {
-    ERC165_MAP_IHYPERLANEGATEWAYADAPTER_SLOT,
-    HYPERLANE_GATEWAY_ADAPTER_STORAGE_SLOT
-} from "@lattice/crosschain/libraries/HyperlaneGatewayAdapterLib.sol";
-import {
     L1_TO_L2_CROSS_DOMAIN_MESSENGER_GATEWAY_ADAPTER_STORAGE_SLOT
-} from "@lattice/crosschain/libraries/L1ToL2CrossDomainMessengerGatewayAdapterLib.sol";
+} from "@lattice/crosschain/optimism/L1ToL2CrossDomainMessengerGatewayAdapterLib.sol";
 import {
     L2_TO_L2_CROSS_DOMAIN_MESSENGER_GATEWAY_ADAPTER_STORAGE_SLOT
-} from "@lattice/crosschain/libraries/L2ToL2CrossDomainMessengerGatewayAdapterLib.sol";
-import {LAYERZERO_GATEWAY_ADAPTER_STORAGE_SLOT} from "@lattice/crosschain/libraries/LayerZeroGatewayAdapterLib.sol";
-import {
-    ERC165_MAP_ISTARGATEBRIDGEADAPTER_SLOT,
-    STARGATE_BRIDGE_ADAPTER_STORAGE_SLOT
-} from "@lattice/crosschain/libraries/StargateBridgeAdapterLib.sol";
+} from "@lattice/crosschain/optimism/L2ToL2CrossDomainMessengerGatewayAdapterLib.sol";
 import {
     ERC165_MAP_ISTARKNETGATEWAYADAPTER_SLOT,
     STARKNET_GATEWAY_ADAPTER_STORAGE_SLOT
-} from "@lattice/crosschain/libraries/StarknetGatewayAdapterLib.sol";
-import {WORMHOLE_GATEWAY_ADAPTER_STORAGE_SLOT} from "@lattice/crosschain/libraries/WormholeGatewayAdapterLib.sol";
-import {ZETACHAIN_GATEWAY_ADAPTER_STORAGE_SLOT} from "@lattice/crosschain/libraries/ZetaChainGatewayAdapterLib.sol";
+} from "@lattice/crosschain/starknet/StarknetGatewayAdapterLib.sol";
+import {WORMHOLE_GATEWAY_ADAPTER_STORAGE_SLOT} from "@lattice/crosschain/wormhole/WormholeGatewayAdapterLib.sol";
+import {ZETACHAIN_GATEWAY_ADAPTER_STORAGE_SLOT} from "@lattice/crosschain/zetachain/ZetaChainGatewayAdapterLib.sol";
 import {
     AGGREGATOR_EXEC_ADAPTER_STORAGE_SLOT,
     ERC165_MAP_IAGGREGATOREXECADAPTER_SLOT
@@ -204,55 +204,55 @@ import {
 } from "@lattice/amm/libraries/ConstantProductLib.sol";
 
 // oracles
-import {API3_ADAPTER_STORAGE_SLOT, ERC165_MAP_IAPI3ADAPTER_SLOT} from "@lattice/oracles/libraries/API3AdapterLib.sol";
+import {API3_ADAPTER_STORAGE_SLOT, ERC165_MAP_IAPI3ADAPTER_SLOT} from "@lattice/oracles/api3/API3AdapterLib.sol";
 import {
     API3_QRNG_ADAPTER_STORAGE_SLOT,
     ERC165_MAP_IAPI3QRNGADAPTER_SLOT
-} from "@lattice/oracles/libraries/API3QRNGAdapterLib.sol";
-import {BAND_ADAPTER_STORAGE_SLOT, ERC165_MAP_IBANDADAPTER_SLOT} from "@lattice/oracles/libraries/BandAdapterLib.sol";
+} from "@lattice/oracles/api3/API3QRNGAdapterLib.sol";
+import {BAND_ADAPTER_STORAGE_SLOT, ERC165_MAP_IBANDADAPTER_SLOT} from "@lattice/oracles/band/BandAdapterLib.sol";
 import {
     CHAINLINK_ADAPTER_STORAGE_SLOT,
     ERC165_MAP_ICHAINLINKADAPTER_SLOT
-} from "@lattice/oracles/libraries/ChainlinkAdapterLib.sol";
+} from "@lattice/oracles/chainlink/ChainlinkAdapterLib.sol";
 import {
     CHAINLINK_AUTOMATION_ADAPTER_STORAGE_SLOT,
     ERC165_MAP_ICHAINLINKAUTOMATIONADAPTER_SLOT
-} from "@lattice/oracles/libraries/ChainlinkAutomationAdapterLib.sol";
+} from "@lattice/oracles/chainlink/ChainlinkAutomationAdapterLib.sol";
 import {
     CHAINLINK_CRE_ADAPTER_STORAGE_SLOT,
     ERC165_MAP_IRECEIVER_SLOT
-} from "@lattice/oracles/libraries/ChainlinkCREAdapterLib.sol";
+} from "@lattice/oracles/chainlink/ChainlinkCREAdapterLib.sol";
 import {
     CHAINLINK_VRF_STORAGE_SLOT,
     ERC165_MAP_ICHAINLINKVRF_SLOT
-} from "@lattice/oracles/libraries/ChainlinkVRFLib.sol";
+} from "@lattice/oracles/chainlink/ChainlinkVRFLib.sol";
 import {
     CHRONICLE_ADAPTER_STORAGE_SLOT,
     ERC165_MAP_ICHRONICLEADAPTER_SLOT
-} from "@lattice/oracles/libraries/ChronicleAdapterLib.sol";
-import {DIA_ADAPTER_STORAGE_SLOT, ERC165_MAP_IDIAADAPTER_SLOT} from "@lattice/oracles/libraries/DIAAdapterLib.sol";
+} from "@lattice/oracles/chronicle/ChronicleAdapterLib.sol";
+import {DIA_ADAPTER_STORAGE_SLOT, ERC165_MAP_IDIAADAPTER_SLOT} from "@lattice/oracles/dia/DIAAdapterLib.sol";
 import {
     ERC165_MAP_IGELATOAUTOMATEADAPTER_SLOT,
     GELATO_AUTOMATE_ADAPTER_STORAGE_SLOT
-} from "@lattice/oracles/libraries/GelatoAutomateAdapterLib.sol";
+} from "@lattice/oracles/gelato/GelatoAutomateAdapterLib.sol";
 import {
     ERC165_MAP_IGELATOVRFADAPTER_SLOT,
     GELATO_VRF_ADAPTER_STORAGE_SLOT
-} from "@lattice/oracles/libraries/GelatoVRFAdapterLib.sol";
-import {ERC165_MAP_IPYTHADAPTER_SLOT, PYTH_ADAPTER_STORAGE_SLOT} from "@lattice/oracles/libraries/PythAdapterLib.sol";
+} from "@lattice/oracles/gelato/GelatoVRFAdapterLib.sol";
+import {ERC165_MAP_IPYTHADAPTER_SLOT, PYTH_ADAPTER_STORAGE_SLOT} from "@lattice/oracles/pyth/PythAdapterLib.sol";
 import {
     ERC165_MAP_IPYTHENTROPYADAPTER_SLOT,
     PYTH_ENTROPY_ADAPTER_STORAGE_SLOT
-} from "@lattice/oracles/libraries/PythEntropyAdapterLib.sol";
+} from "@lattice/oracles/pyth/PythEntropyAdapterLib.sol";
 import {
     ERC165_MAP_IREDSTONEADAPTER_SLOT,
     REDSTONE_ADAPTER_STORAGE_SLOT
-} from "@lattice/oracles/libraries/RedStoneAdapterLib.sol";
-import {ERC165_MAP_ITWAPORACLE_SLOT, TWAP_ORACLE_STORAGE_SLOT} from "@lattice/oracles/libraries/TWAPOracleLib.sol";
+} from "@lattice/oracles/redstone/RedStoneAdapterLib.sol";
 import {
     ERC165_MAP_ITELLORADAPTER_SLOT,
     TELLOR_ADAPTER_STORAGE_SLOT
-} from "@lattice/oracles/libraries/TellorAdapterLib.sol";
+} from "@lattice/oracles/tellor/TellorAdapterLib.sol";
+import {ERC165_MAP_ITWAPORACLE_SLOT, TWAP_ORACLE_STORAGE_SLOT} from "@lattice/oracles/uniswap/TWAPOracleLib.sol";
 
 // security
 import {

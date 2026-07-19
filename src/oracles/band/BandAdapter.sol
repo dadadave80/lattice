@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {IBandAdapter} from "@lattice/interfaces/oracles/IBandAdapter.sol";
-import {BandAdapterLib} from "@lattice/oracles/libraries/BandAdapterLib.sol";
+import {BandAdapterLib} from "@lattice/oracles/band/BandAdapterLib.sol";
 
 /// @title BandAdapter
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {IDIAAdapter} from "@lattice/interfaces/oracles/IDIAAdapter.sol";
-import {DIAAdapterLib} from "@lattice/oracles/libraries/DIAAdapterLib.sol";
+import {DIAAdapterLib} from "@lattice/oracles/dia/DIAAdapterLib.sol";
 
 /// @title DIAAdapter
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {LayerZeroGatewayAdapterLib} from "@lattice/crosschain/libraries/LayerZeroGatewayAdapterLib.sol";
+import {LayerZeroGatewayAdapterLib} from "@lattice/crosschain/layerzero/LayerZeroGatewayAdapterLib.sol";
 import {ILayerZeroGatewayAdapter} from "@lattice/interfaces/crosschain/ILayerZeroGatewayAdapter.sol";
 import {IERC7786GatewaySource} from "@lattice/interfaces/external/ercs/IERC7786.sol";
 import {Origin} from "@lattice/interfaces/external/layerzero/ILayerZeroEndpointV2.sol";

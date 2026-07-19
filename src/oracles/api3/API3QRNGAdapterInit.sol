@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
-import {API3QRNGAdapterLib} from "@lattice/oracles/libraries/API3QRNGAdapterLib.sol";
+import {API3QRNGAdapterLib} from "@lattice/oracles/api3/API3QRNGAdapterLib.sol";
 
 /// @title API3QRNGAdapterInit
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

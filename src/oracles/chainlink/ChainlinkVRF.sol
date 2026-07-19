@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {IChainlinkVRF} from "@lattice/interfaces/oracles/IChainlinkVRF.sol";
-import {ChainlinkVRFLib} from "@lattice/oracles/libraries/ChainlinkVRFLib.sol";
+import {ChainlinkVRFLib} from "@lattice/oracles/chainlink/ChainlinkVRFLib.sol";
 
 /// @title ChainlinkVRF
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

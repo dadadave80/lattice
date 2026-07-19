@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {StarknetGatewayAdapterLib} from "@lattice/crosschain/libraries/StarknetGatewayAdapterLib.sol";
+import {StarknetGatewayAdapterLib} from "@lattice/crosschain/starknet/StarknetGatewayAdapterLib.sol";
 import {IStarknetGatewayAdapter} from "@lattice/interfaces/crosschain/IStarknetGatewayAdapter.sol";
 
 /// @title StarknetGatewayAdapter

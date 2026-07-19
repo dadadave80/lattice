@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {AcrossBridgeAdapterLib} from "@lattice/crosschain/libraries/AcrossBridgeAdapterLib.sol";
+import {AcrossBridgeAdapterLib} from "@lattice/crosschain/across/AcrossBridgeAdapterLib.sol";
 import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib.sol";
 
 /// @title AcrossBridgeAdapterInit

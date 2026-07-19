@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {IRedStoneAdapter} from "@lattice/interfaces/oracles/IRedStoneAdapter.sol";
-import {RedStoneAdapterLib} from "@lattice/oracles/libraries/RedStoneAdapterLib.sol";
+import {RedStoneAdapterLib} from "@lattice/oracles/redstone/RedStoneAdapterLib.sol";
 
 /// @title RedStoneAdapter
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

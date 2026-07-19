@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
-import {TWAPOracleLib} from "@lattice/oracles/libraries/TWAPOracleLib.sol";
+import {TWAPOracleLib} from "@lattice/oracles/uniswap/TWAPOracleLib.sol";
 
 /// @title TWAPOracleInit
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

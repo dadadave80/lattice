@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {IAPI3QRNGAdapter} from "@lattice/interfaces/oracles/IAPI3QRNGAdapter.sol";
-import {API3QRNGAdapterLib} from "@lattice/oracles/libraries/API3QRNGAdapterLib.sol";
+import {API3QRNGAdapterLib} from "@lattice/oracles/api3/API3QRNGAdapterLib.sol";
 
 /// @title API3QRNGAdapter
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

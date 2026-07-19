@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
-import {GelatoAutomateAdapterLib} from "@lattice/oracles/libraries/GelatoAutomateAdapterLib.sol";
+import {GelatoAutomateAdapterLib} from "@lattice/oracles/gelato/GelatoAutomateAdapterLib.sol";
 
 /// @title GelatoAutomateAdapterInit
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

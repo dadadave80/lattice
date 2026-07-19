@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
-import {GelatoVRFAdapterLib} from "@lattice/oracles/libraries/GelatoVRFAdapterLib.sol";
+import {GelatoVRFAdapterLib} from "@lattice/oracles/gelato/GelatoVRFAdapterLib.sol";
 
 /// @title GelatoVRFAdapterInit
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

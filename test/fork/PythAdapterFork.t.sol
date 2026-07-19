@@ -7,8 +7,8 @@ import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {IPyth} from "@lattice/interfaces/external/pyth/IPyth.sol";
 import {IPythAdapter} from "@lattice/interfaces/oracles/IPythAdapter.sol";
-import {PythAdapterLib} from "@lattice/oracles/libraries/PythAdapterLib.sol";
 import {PythAdapter} from "@lattice/oracles/pyth/PythAdapter.sol";
+import {PythAdapterLib} from "@lattice/oracles/pyth/PythAdapterLib.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @notice Mock diamond combining AccessControl + PythAdapter.

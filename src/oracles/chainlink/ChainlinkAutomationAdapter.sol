@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {IChainlinkAutomationAdapter} from "@lattice/interfaces/oracles/IChainlinkAutomationAdapter.sol";
-import {ChainlinkAutomationAdapterLib} from "@lattice/oracles/libraries/ChainlinkAutomationAdapterLib.sol";
+import {ChainlinkAutomationAdapterLib} from "@lattice/oracles/chainlink/ChainlinkAutomationAdapterLib.sol";
 
 /// @title ChainlinkAutomationAdapter
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

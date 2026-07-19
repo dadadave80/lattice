@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
-import {TellorAdapterLib} from "@lattice/oracles/libraries/TellorAdapterLib.sol";
+import {TellorAdapterLib} from "@lattice/oracles/tellor/TellorAdapterLib.sol";
 
 /// @title TellorAdapterInit
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

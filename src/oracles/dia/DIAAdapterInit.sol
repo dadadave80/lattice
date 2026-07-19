@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
-import {DIAAdapterLib} from "@lattice/oracles/libraries/DIAAdapterLib.sol";
+import {DIAAdapterLib} from "@lattice/oracles/dia/DIAAdapterLib.sol";
 
 /// @title DIAAdapterInit
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

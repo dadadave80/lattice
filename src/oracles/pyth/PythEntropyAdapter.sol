@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {IPythEntropyAdapter} from "@lattice/interfaces/oracles/IPythEntropyAdapter.sol";
-import {PythEntropyAdapterLib} from "@lattice/oracles/libraries/PythEntropyAdapterLib.sol";
+import {PythEntropyAdapterLib} from "@lattice/oracles/pyth/PythEntropyAdapterLib.sol";
 
 /// @title PythEntropyAdapter
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
