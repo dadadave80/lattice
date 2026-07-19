@@ -13,7 +13,7 @@ import {Test} from "forge-std/Test.sol";
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice Base for EmergencyStop facet tests that exercise a REAL {Diamond} rather than a flattened inheritance
 ///         mock. `setUp` assembles the production {DeployEmergencyStop} recipe (ERC165 + AccessControl +
-///         EmergencyStop + {EmergencyStopInit}) and APPENDS a test-only {EmergencyStopTestFacet} exposing the
+///         EmergencyStop + the recipe-local init) and APPENDS a test-only {EmergencyStopTestFacet} exposing the
 ///         internal `checkNotStopped` consumer guard — so every stop/resume call and every gated action routes
 ///         through the diamond's `delegatecall` dispatch, catching selector/storage/init bugs a mock hides.
 abstract contract EmergencyStopTestBase is Test, GetSelectors {

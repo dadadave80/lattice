@@ -14,7 +14,7 @@ import {EmergencyStopLib} from "@lattice/security/libraries/EmergencyStopLib.sol
 ///         Delegatecalled by {Diamond.initialize} inside the initializing window (so it must NOT open its
 ///         own pre/postInitializer; each `__*_init` guard passes because the window is already open).
 ///         Mirrors exactly what the old `MockSafeDiamond.initialize` did, minus the redundant
-///         pre/postInitializer. Companion to the {ERC2981Init}/{EmergencyStopInit} patterns — a first-class
+///         pre/postInitializer. Companion to the {ERC2981Init} pattern — a first-class
 ///         production deploy artifact.
 contract SafeDiamondCutInit {
     /// @notice Runs the access-control + emergency-stop + Safe-cut module initializers. MUST be invoked via
