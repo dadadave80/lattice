@@ -6,7 +6,7 @@ pragma solidity ^0.8.30;
 ///         CircuitBreaker + EmergencyStop + a mock business-logic facet.
 ///
 /// The mock business facet has a `transfer(amount)` function gated by all five layers:
-///   - PausableLib.whenNotPaused()
+///   - PausableLib.checkNotPaused()
 ///   - CircuitBreakerLib.checkNotTripped(BIG_TRANSFER_KEY)
 ///   - EmergencyStopLib.checkNotStopped()
 ///   - ReentrancyGuardLib.nonReentrantBefore/After()
@@ -67,7 +67,7 @@ contract MockSecurityDiamond is AccessControl, Pausable, CircuitBreaker, Emergen
     /// @dev Guards applied in order: Pausable → CircuitBreaker → EmergencyStop → ReentrancyGuard.
     function transfer(uint256 amount) external {
         // Layer 1: Pausable guard.
-        PausableLib.whenNotPaused();
+        PausableLib.checkNotPaused();
         // Layer 2: Circuit breaker guard.
         CircuitBreakerLib.checkNotTripped(BIG_TRANSFER_KEY);
         // Layer 3: Emergency stop guard.

@@ -16,7 +16,7 @@ import {DiamondIntrospectionInit} from "@lattice/utils/DiamondIntrospectionInit.
 /// @notice Ready-to-deploy recipe for a pausable ERC-20 token diamond: the base {DeployERC20} recipe
 ///         (ERC165 + ERC20 + {ERC20Init}), the {Pausable} facet (admin-gated `pause()`/`unpause()`), and the
 ///         {ERC20Pausable} facet which REPLACES the base `transfer`/`transferFrom` with pause-gated variants.
-///         {ERC20PausableInit} seeds the shared Pausable state and grants `admin` the DEFAULT_ADMIN_ROLE. Both
+///         {ERC20PausableInit} registers IPausable (ERC-165) and grants `admin` the DEFAULT_ADMIN_ROLE. Both
 ///         inits run in one initializing window via {BaseDeploy._assembleMulti}.
 contract DeployERC20Pausable is BaseDeploy {
     /// @notice Builds the pausable ERC-20 diamond cuts + initializers (no broadcast, no proxy deploy).

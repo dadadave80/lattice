@@ -13,14 +13,14 @@ import {Test} from "forge-std/Test.sol";
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice Base for Pausable facet tests that exercise a REAL {Diamond} rather than a flattened inheritance mock.
 ///         `setUp` assembles the production {DeployPausable} recipe (ERC165 + AccessControl + Pausable +
-///         {PausableInit}) and APPENDS a test-only {PausableTestFacet} exposing the internal
-///         `whenNotPaused`/`whenPaused` guards — so every pause call and every guarded action routes through the
+///         the recipe-local init) and APPENDS a test-only {PausableTestFacet} exposing the internal
+///         `checkNotPaused()`/`checkPaused()` lib guards — so every pause call and every guarded action routes through the
 ///         diamond's `delegatecall` dispatch, catching selector/storage/init bugs a mock hides.
 abstract contract PausableTestBase is Test, GetSelectors {
     DeployPausable internal deployer;
     address internal diamond; // the assembled pausable diamond
     Pausable internal pausable; // typed handle on the diamond (pause calls dispatch through it)
-    PausableTestFacet internal guard; // typed handle for the test-only whenNotPaused/whenPaused gates
+    PausableTestFacet internal guard; // typed handle for the test-only checkNotPaused/checkPaused gates
 
     /// @notice Assembles the production Pausable diamond + the test guard facet with `admin` as the pause admin.
     /// @param admin The address granted `DEFAULT_ADMIN_ROLE`.
