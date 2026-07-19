@@ -3,7 +3,7 @@ pragma solidity ^0.8.30;
 
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
-import {IApi3Proxy} from "@lattice/interfaces/external/IApi3Proxy.sol";
+import {IApi3Proxy} from "@lattice/interfaces/external/api3/IApi3Proxy.sol";
 import {IAPI3Adapter} from "@lattice/interfaces/oracles/IAPI3Adapter.sol";
 
 //*//////////////////////////////////////////////////////////////////////////

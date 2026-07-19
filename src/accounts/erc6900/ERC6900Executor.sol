@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {ERC6900ExecutorLib} from "@lattice/accounts/erc6900/libraries/ERC6900ExecutorLib.sol";
-import {Call} from "@lattice/interfaces/external/IERC6900.sol";
+import {Call} from "@lattice/interfaces/external/ercs/IERC6900.sol";
 
 /// @title ERC6900Executor
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

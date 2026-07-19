@@ -17,7 +17,7 @@ import {
     ValidationConfig,
     ValidationDataView,
     ValidationFlags
-} from "@lattice/interfaces/external/IERC6900.sol";
+} from "@lattice/interfaces/external/ercs/IERC6900.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @dev Minimal ERC-6900 module that records its uninstall and can revert in onUninstall (for swallow tests).

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 pragma abicoder v1;
 
-import {V3SpokePoolInterface} from "@lattice/interfaces/external/V3SpokePoolInterface.sol";
+import {V3SpokePoolInterface} from "@lattice/interfaces/external/across/V3SpokePoolInterface.sol";
 import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
 
 /// @title MockSpokePool

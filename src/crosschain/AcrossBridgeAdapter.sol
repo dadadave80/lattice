@@ -3,7 +3,7 @@ pragma solidity ^0.8.30;
 
 import {AcrossBridgeAdapterLib} from "@lattice/crosschain/libraries/AcrossBridgeAdapterLib.sol";
 import {IAcrossBridgeAdapter} from "@lattice/interfaces/crosschain/IAcrossBridgeAdapter.sol";
-import {AcrossMessageHandler} from "@lattice/interfaces/external/AcrossMessageHandler.sol";
+import {AcrossMessageHandler} from "@lattice/interfaces/external/across/AcrossMessageHandler.sol";
 
 /// @title AcrossBridgeAdapter
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

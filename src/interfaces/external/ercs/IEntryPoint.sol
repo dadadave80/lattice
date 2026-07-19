@@ -6,7 +6,7 @@ pragma solidity >=0.8.4;
 // dependency. `PackedUserOperation` is reused from the vendored IAccount. Do NOT add an account-abstraction
 // dependency — extend this subset instead.
 
-import {PackedUserOperation} from "@lattice/interfaces/external/IAccount.sol";
+import {PackedUserOperation} from "@lattice/interfaces/external/ercs/IAccount.sol";
 
 /// @title IEntryPoint — minimal ERC-4337 EntryPoint surface (v0.7/v0.8/v0.9 share this ABI)
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

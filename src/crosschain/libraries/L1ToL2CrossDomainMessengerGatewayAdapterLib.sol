@@ -6,8 +6,8 @@ import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/Ac
 import {
     IL1ToL2CrossDomainMessengerGatewayAdapter
 } from "@lattice/interfaces/crosschain/IL1ToL2CrossDomainMessengerGatewayAdapter.sol";
-import {ICrossDomainMessenger} from "@lattice/interfaces/external/ICrossDomainMessenger.sol";
-import {IERC7786GatewaySource, IERC7786Recipient} from "@lattice/interfaces/external/IERC7786.sol";
+import {IERC7786GatewaySource, IERC7786Recipient} from "@lattice/interfaces/external/ercs/IERC7786.sol";
+import {ICrossDomainMessenger} from "@lattice/interfaces/external/optimism/ICrossDomainMessenger.sol";
 import {InteroperableAddress} from "@lattice/utils/libraries/InteroperableAddress.sol";
 
 //*//////////////////////////////////////////////////////////////////////////

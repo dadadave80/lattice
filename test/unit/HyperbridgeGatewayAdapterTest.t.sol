@@ -10,14 +10,14 @@ import {ChainRegistry} from "@lattice/crosschain/ChainRegistry.sol";
 import {HyperbridgeGatewayAdapter} from "@lattice/crosschain/HyperbridgeGatewayAdapter.sol";
 import {IBridgeFungible} from "@lattice/interfaces/crosschain/IBridgeFungible.sol";
 import {IHyperbridgeGatewayAdapter} from "@lattice/interfaces/crosschain/IHyperbridgeGatewayAdapter.sol";
-import {IERC7786GatewaySource, IERC7786Recipient} from "@lattice/interfaces/external/IERC7786.sol";
-import {IncomingPostRequest, PostRequest} from "@lattice/interfaces/external/IIsmpDispatcher.sol";
+import {IERC7786GatewaySource, IERC7786Recipient} from "@lattice/interfaces/external/ercs/IERC7786.sol";
+import {IncomingPostRequest, PostRequest} from "@lattice/interfaces/external/hyperbridge/IIsmpDispatcher.sol";
 import {
     GetRequest,
     IncomingGetResponse,
     IncomingPostResponse,
     PostResponse
-} from "@lattice/interfaces/external/IIsmpModule.sol";
+} from "@lattice/interfaces/external/hyperbridge/IIsmpModule.sol";
 import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
 import {InteroperableAddress} from "@lattice/utils/libraries/InteroperableAddress.sol";
 

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.30;
 
-import {IncomingPostRequest, PostRequest} from "@lattice/interfaces/external/IIsmpDispatcher.sol";
+import {IncomingPostRequest, PostRequest} from "@lattice/interfaces/external/hyperbridge/IIsmpDispatcher.sol";
 
 /// @title IIsmpModule
 /// @author Vendored minimal subset of Hyperbridge's ismp-solidity

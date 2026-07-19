@@ -5,11 +5,11 @@ import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {CCIPGatewayAdapterTestBase} from "@lattice-test/base/CCIPGatewayAdapterTestBase.sol";
 import {CCIPGatewayAdapter} from "@lattice/crosschain/CCIPGatewayAdapter.sol";
 import {ICCIPGatewayAdapter} from "@lattice/interfaces/crosschain/ICCIPGatewayAdapter.sol";
-import {Client} from "@lattice/interfaces/external/CCIPClient.sol";
-import {IAny2EVMMessageReceiver} from "@lattice/interfaces/external/IAny2EVMMessageReceiver.sol";
-import {IAny2EVMMessageReceiverV2} from "@lattice/interfaces/external/IAny2EVMMessageReceiverV2.sol";
-import {IERC7786GatewaySource, IERC7786Recipient} from "@lattice/interfaces/external/IERC7786.sol";
-import {IRouterClient} from "@lattice/interfaces/external/IRouterClient.sol";
+import {Client} from "@lattice/interfaces/external/chainlink/CCIPClient.sol";
+import {IAny2EVMMessageReceiver} from "@lattice/interfaces/external/chainlink/IAny2EVMMessageReceiver.sol";
+import {IAny2EVMMessageReceiverV2} from "@lattice/interfaces/external/chainlink/IAny2EVMMessageReceiverV2.sol";
+import {IRouterClient} from "@lattice/interfaces/external/chainlink/IRouterClient.sol";
+import {IERC7786GatewaySource, IERC7786Recipient} from "@lattice/interfaces/external/ercs/IERC7786.sol";
 import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
 import {InteroperableAddress} from "@lattice/utils/libraries/InteroperableAddress.sol";
 

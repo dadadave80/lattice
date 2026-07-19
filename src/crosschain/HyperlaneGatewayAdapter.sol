@@ -3,8 +3,8 @@ pragma solidity ^0.8.30;
 
 import {HyperlaneGatewayAdapterLib} from "@lattice/crosschain/libraries/HyperlaneGatewayAdapterLib.sol";
 import {IHyperlaneGatewayAdapter} from "@lattice/interfaces/crosschain/IHyperlaneGatewayAdapter.sol";
-import {IERC7786GatewaySource} from "@lattice/interfaces/external/IERC7786.sol";
-import {IMessageRecipient} from "@lattice/interfaces/external/IMessageRecipient.sol";
+import {IERC7786GatewaySource} from "@lattice/interfaces/external/ercs/IERC7786.sol";
+import {IMessageRecipient} from "@lattice/interfaces/external/hyperlane/IMessageRecipient.sol";
 
 /// @title HyperlaneGatewayAdapter
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

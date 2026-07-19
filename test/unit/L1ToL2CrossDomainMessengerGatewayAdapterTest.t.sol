@@ -12,8 +12,8 @@ import {L2_CROSS_DOMAIN_MESSENGER} from "@lattice/crosschain/libraries/L1ToL2Cro
 import {
     IL1ToL2CrossDomainMessengerGatewayAdapter
 } from "@lattice/interfaces/crosschain/IL1ToL2CrossDomainMessengerGatewayAdapter.sol";
-import {ICrossDomainMessenger} from "@lattice/interfaces/external/ICrossDomainMessenger.sol";
-import {IERC7786GatewaySource, IERC7786Recipient} from "@lattice/interfaces/external/IERC7786.sol";
+import {IERC7786GatewaySource, IERC7786Recipient} from "@lattice/interfaces/external/ercs/IERC7786.sol";
+import {ICrossDomainMessenger} from "@lattice/interfaces/external/optimism/ICrossDomainMessenger.sol";
 import {InteroperableAddress} from "@lattice/utils/libraries/InteroperableAddress.sol";
 
 /// @notice Minimal canonical OP Stack L1<->L2 `CrossDomainMessenger` mock. `sendMessage` records `(target, message,

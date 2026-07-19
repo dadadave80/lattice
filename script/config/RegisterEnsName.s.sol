@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {IETHRegistrarController} from "@lattice/interfaces/external/IETHRegistrarController.sol";
+import {IETHRegistrarController} from "@lattice/interfaces/external/ens/IETHRegistrarController.sol";
 import {Script, console} from "forge-std/Script.sol";
 
 /// @title RegisterEnsName

@@ -15,7 +15,7 @@ import {AccountInit} from "@lattice/accounts/erc7579/AccountInit.sol";
 import {AccountSigner} from "@lattice/accounts/erc7579/AccountSigner.sol";
 import {ERC7821Executor} from "@lattice/accounts/erc7579/ERC7821Executor.sol";
 import {IAccountFactory} from "@lattice/interfaces/accounts/IAccountFactory.sol";
-import {IERC7821} from "@lattice/interfaces/external/IERC7821.sol";
+import {IERC7821} from "@lattice/interfaces/external/ercs/IERC7821.sol";
 
 contract AccountFactoryTest is GetSelectors {
     AccountFactory factory;

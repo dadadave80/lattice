@@ -5,8 +5,13 @@ import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
-import {ItemType, ReceivedItem, SpentItem, ZoneParameters} from "@lattice/interfaces/external/SeaportStructs.sol";
-import {ZoneInterface} from "@lattice/interfaces/external/ZoneInterface.sol";
+import {
+    ItemType,
+    ReceivedItem,
+    SpentItem,
+    ZoneParameters
+} from "@lattice/interfaces/external/seaport/SeaportStructs.sol";
+import {ZoneInterface} from "@lattice/interfaces/external/seaport/ZoneInterface.sol";
 import {IMarketplaceZone} from "@lattice/interfaces/tokens/IMarketplaceZone.sol";
 import {MarketplaceZone} from "@lattice/tokens/MarketplaceZone.sol";
 import {MARKETPLACE_BLOCKED_ROLE, MarketplaceZoneLib} from "@lattice/tokens/libraries/MarketplaceZoneLib.sol";

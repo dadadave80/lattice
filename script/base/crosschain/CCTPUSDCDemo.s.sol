@@ -4,7 +4,7 @@ pragma solidity ^0.8.30;
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {DeployCCTPBridgeAdapter} from "@lattice-script/base/crosschain/DeployCCTPBridgeAdapter.s.sol";
 import {ICCTPBridgeAdapter} from "@lattice/interfaces/crosschain/ICCTPBridgeAdapter.sol";
-import {IReceiverV2} from "@lattice/interfaces/external/IReceiverV2.sol";
+import {IReceiverV2} from "@lattice/interfaces/external/circle/IReceiverV2.sol";
 import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
 import {InteroperableAddress} from "@lattice/utils/libraries/InteroperableAddress.sol";
 import {console} from "forge-std/Script.sol";

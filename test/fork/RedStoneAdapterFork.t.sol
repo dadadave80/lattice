@@ -5,7 +5,7 @@ import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
-import {IRedstonePriceFeedsAdapter} from "@lattice/interfaces/external/IRedstonePriceFeedsAdapter.sol";
+import {IRedstonePriceFeedsAdapter} from "@lattice/interfaces/external/redstone/IRedstonePriceFeedsAdapter.sol";
 import {IRedStoneAdapter} from "@lattice/interfaces/oracles/IRedStoneAdapter.sol";
 import {RedStoneAdapter} from "@lattice/oracles/RedStoneAdapter.sol";
 import {RedStoneAdapterLib} from "@lattice/oracles/libraries/RedStoneAdapterLib.sol";

@@ -6,7 +6,7 @@ import {BridgeFungibleLib} from "@lattice/crosschain/libraries/BridgeFungibleLib
 import {NonEvmAddress} from "@lattice/crosschain/libraries/NonEvmAddress.sol";
 import {AdapterBaseLib} from "@lattice/defi/libraries/AdapterBaseLib.sol";
 import {IAcrossBridgeAdapter} from "@lattice/interfaces/crosschain/IAcrossBridgeAdapter.sol";
-import {V3SpokePoolInterface} from "@lattice/interfaces/external/V3SpokePoolInterface.sol";
+import {V3SpokePoolInterface} from "@lattice/interfaces/external/across/V3SpokePoolInterface.sol";
 import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib.sol";
 
 //*//////////////////////////////////////////////////////////////////////////

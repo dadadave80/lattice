@@ -3,7 +3,7 @@ pragma solidity ^0.8.30;
 
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {API3AdapterTestBase} from "@lattice-test/base/API3AdapterTestBase.sol";
-import {IApi3Proxy} from "@lattice/interfaces/external/IApi3Proxy.sol";
+import {IApi3Proxy} from "@lattice/interfaces/external/api3/IApi3Proxy.sol";
 import {IAPI3Adapter} from "@lattice/interfaces/oracles/IAPI3Adapter.sol";
 import {API3Adapter} from "@lattice/oracles/API3Adapter.sol";
 

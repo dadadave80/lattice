@@ -12,7 +12,7 @@ import {Script, console} from "forge-std/Script.sol";
 ///         `(CreateX, deployer, block.chainid, salt)` and NOT from the adapter's initcode, so it is
 ///         stable across bytecode/compiler changes but DIFFERS per chain — the `0x01` protection
 ///         byte folds `block.chainid` into CreateX's guarded salt (cross-chain redeploy protection).
-/// @dev Reuses `script/lib/CreateXDeployer.sol` and `src/interfaces/external/ICreateX.sol` from the
+/// @dev Reuses `script/lib/CreateXDeployer.sol` and `src/interfaces/external/createx/ICreateX.sol` from the
 ///      upgrade plan (Task 1). If running this DeFi plan standalone, vendor those two files first
 ///      (see the cross-plan dependency note in Task 15). `_guardedSalt` pins the salt to the
 ///      broadcasting deployer (first 20 bytes) and enables cross-chain redeploy protection (21st

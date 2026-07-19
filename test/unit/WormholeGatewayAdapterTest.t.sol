@@ -5,9 +5,9 @@ import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {WormholeGatewayAdapterTestBase} from "@lattice-test/base/WormholeGatewayAdapterTestBase.sol";
 import {WormholeGatewayAdapter} from "@lattice/crosschain/WormholeGatewayAdapter.sol";
 import {IWormholeGatewayAdapter} from "@lattice/interfaces/crosschain/IWormholeGatewayAdapter.sol";
-import {IERC7786GatewaySource, IERC7786Recipient} from "@lattice/interfaces/external/IERC7786.sol";
-import {IERC7786Attributes} from "@lattice/interfaces/external/IERC7786Attributes.sol";
-import {IWormholeRelayer} from "@lattice/interfaces/external/IWormholeRelayer.sol";
+import {IERC7786GatewaySource, IERC7786Recipient} from "@lattice/interfaces/external/ercs/IERC7786.sol";
+import {IERC7786Attributes} from "@lattice/interfaces/external/ercs/IERC7786Attributes.sol";
+import {IWormholeRelayer} from "@lattice/interfaces/external/wormhole/IWormholeRelayer.sol";
 import {InteroperableAddress} from "@lattice/utils/libraries/InteroperableAddress.sol";
 
 contract MockWormholeRelayer is IWormholeRelayer {

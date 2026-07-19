@@ -4,7 +4,7 @@ pragma solidity ^0.8.30;
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
 import {ISessionKey} from "@lattice/interfaces/accounts/ISessionKey.sol";
-import {Call} from "@lattice/interfaces/external/IERC7821.sol";
+import {Call} from "@lattice/interfaces/external/ercs/IERC7821.sol";
 import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
 
 //*//////////////////////////////////////////////////////////////////////////

@@ -15,7 +15,7 @@ import {
     ManifestExecutionFunction,
     ManifestExecutionHook,
     ValidationConfig
-} from "@lattice/interfaces/external/IERC6900.sol";
+} from "@lattice/interfaces/external/ercs/IERC6900.sol";
 import {Test} from "forge-std/Test.sol";
 
 interface IFoo {

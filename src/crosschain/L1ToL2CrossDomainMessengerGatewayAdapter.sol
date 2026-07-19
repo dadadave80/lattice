@@ -7,7 +7,7 @@ import {
 import {
     IL1ToL2CrossDomainMessengerGatewayAdapter
 } from "@lattice/interfaces/crosschain/IL1ToL2CrossDomainMessengerGatewayAdapter.sol";
-import {IERC7786GatewaySource} from "@lattice/interfaces/external/IERC7786.sol";
+import {IERC7786GatewaySource} from "@lattice/interfaces/external/ercs/IERC7786.sol";
 
 /// @title L1ToL2CrossDomainMessengerGatewayAdapter
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

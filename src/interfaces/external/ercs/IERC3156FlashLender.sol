@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.4;
 
-import {IERC3156FlashBorrower} from "@lattice/interfaces/external/IERC3156FlashBorrower.sol";
+import {IERC3156FlashBorrower} from "@lattice/interfaces/external/ercs/IERC3156FlashBorrower.sol";
 
 /// @title IERC3156FlashLender
 /// @notice Interface of the ERC-3156 FlashLender, as defined in

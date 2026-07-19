@@ -5,7 +5,7 @@ import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {ILatticeFactory, RecipeEntry} from "@lattice/interfaces/ILatticeFactory.sol";
 import {ILatticeRegistry} from "@lattice/interfaces/ILatticeRegistry.sol";
-import {IERC8153} from "@lattice/interfaces/external/IERC8153.sol";
+import {IERC8153} from "@lattice/interfaces/external/ercs/IERC8153.sol";
 
 /// @title LatticeFactory
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

@@ -6,7 +6,7 @@ import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {DeployBandAdapter} from "@lattice-script/base/oracles/DeployBandAdapter.s.sol";
 import {BandAdapterTestBase} from "@lattice-test/base/BandAdapterTestBase.sol";
-import {IStdReference} from "@lattice/interfaces/external/IStdReference.sol";
+import {IStdReference} from "@lattice/interfaces/external/band/IStdReference.sol";
 import {IBandAdapter} from "@lattice/interfaces/oracles/IBandAdapter.sol";
 import {BandAdapter} from "@lattice/oracles/BandAdapter.sol";
 

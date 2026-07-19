@@ -3,7 +3,7 @@ pragma solidity ^0.8.30;
 
 import {LayerZeroGatewayAdapterTestBase} from "@lattice-test/base/LayerZeroGatewayAdapterTestBase.sol";
 import {LayerZeroGatewayAdapter} from "@lattice/crosschain/LayerZeroGatewayAdapter.sol";
-import {IERC7786GatewaySource} from "@lattice/interfaces/external/IERC7786.sol";
+import {IERC7786GatewaySource} from "@lattice/interfaces/external/ercs/IERC7786.sol";
 import {InteroperableAddress} from "@lattice/utils/libraries/InteroperableAddress.sol";
 import {Vm} from "forge-std/Vm.sol";
 

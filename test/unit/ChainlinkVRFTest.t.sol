@@ -3,7 +3,7 @@ pragma solidity ^0.8.30;
 
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {ChainlinkVRFTestBase} from "@lattice-test/base/ChainlinkVRFTestBase.sol";
-import {IVRFCoordinatorV2Plus} from "@lattice/interfaces/external/IVRFCoordinatorV2Plus.sol";
+import {IVRFCoordinatorV2Plus} from "@lattice/interfaces/external/chainlink/IVRFCoordinatorV2Plus.sol";
 import {IChainlinkVRF} from "@lattice/interfaces/oracles/IChainlinkVRF.sol";
 import {ChainlinkVRF} from "@lattice/oracles/ChainlinkVRF.sol";
 

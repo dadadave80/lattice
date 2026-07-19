@@ -3,8 +3,8 @@ pragma solidity ^0.8.30;
 
 import {ZetaChainGatewayAdapterLib} from "@lattice/crosschain/libraries/ZetaChainGatewayAdapterLib.sol";
 import {IZetaChainGatewayAdapter} from "@lattice/interfaces/crosschain/IZetaChainGatewayAdapter.sol";
-import {IERC7786GatewaySource} from "@lattice/interfaces/external/IERC7786.sol";
-import {Callable, MessageContext} from "@lattice/interfaces/external/IGatewayEVM.sol";
+import {IERC7786GatewaySource} from "@lattice/interfaces/external/ercs/IERC7786.sol";
+import {Callable, MessageContext} from "@lattice/interfaces/external/zetachain/IGatewayEVM.sol";
 
 /// @title ZetaChainGatewayAdapter
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

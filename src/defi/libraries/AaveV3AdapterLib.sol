@@ -6,11 +6,11 @@ import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/Ac
 import {AdapterBaseLib} from "@lattice/defi/libraries/AdapterBaseLib.sol";
 import {IAaveV3Adapter} from "@lattice/interfaces/defi/IAaveV3Adapter.sol";
 import {IProtocolAdapter} from "@lattice/interfaces/defi/IProtocolAdapter.sol";
-import {IAToken} from "@lattice/interfaces/external/IAToken.sol";
-import {IAaveOracle} from "@lattice/interfaces/external/IAaveOracle.sol";
-import {IAaveRewardsController} from "@lattice/interfaces/external/IAaveRewardsController.sol";
-import {IAaveV3Pool} from "@lattice/interfaces/external/IAaveV3Pool.sol";
-import {IPoolAddressesProvider} from "@lattice/interfaces/external/IPoolAddressesProvider.sol";
+import {IAToken} from "@lattice/interfaces/external/aave/IAToken.sol";
+import {IAaveOracle} from "@lattice/interfaces/external/aave/IAaveOracle.sol";
+import {IAaveRewardsController} from "@lattice/interfaces/external/aave/IAaveRewardsController.sol";
+import {IAaveV3Pool} from "@lattice/interfaces/external/aave/IAaveV3Pool.sol";
+import {IPoolAddressesProvider} from "@lattice/interfaces/external/aave/IPoolAddressesProvider.sol";
 import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
 import {EmergencyStopLib} from "@lattice/security/libraries/EmergencyStopLib.sol";
 import {PausableLib} from "@lattice/security/libraries/PausableLib.sol";

@@ -6,8 +6,8 @@ import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/Ac
 import {AdapterBaseLib} from "@lattice/defi/libraries/AdapterBaseLib.sol";
 import {ICurveStableSwapAdapter} from "@lattice/interfaces/defi/ICurveStableSwapAdapter.sol";
 import {IProtocolAdapter} from "@lattice/interfaces/defi/IProtocolAdapter.sol";
-import {ICurveGauge} from "@lattice/interfaces/external/ICurveGauge.sol";
-import {ICurveStableSwapPool} from "@lattice/interfaces/external/ICurveStableSwapPool.sol";
+import {ICurveGauge} from "@lattice/interfaces/external/curve/ICurveGauge.sol";
+import {ICurveStableSwapPool} from "@lattice/interfaces/external/curve/ICurveStableSwapPool.sol";
 import {EmergencyStopLib} from "@lattice/security/libraries/EmergencyStopLib.sol";
 import {PausableLib} from "@lattice/security/libraries/PausableLib.sol";
 import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib.sol";

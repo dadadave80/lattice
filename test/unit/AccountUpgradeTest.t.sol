@@ -9,7 +9,7 @@ import {Base} from "@lattice-test/Base.t.sol";
 import {Account6900BlueprintHelper} from "@lattice-test/helpers/Account6900BlueprintHelper.sol";
 import {AccountInit6900} from "@lattice/accounts/erc6900/AccountInit6900.sol";
 import {ERC7821Executor} from "@lattice/accounts/erc7579/ERC7821Executor.sol";
-import {Call} from "@lattice/interfaces/external/IERC7821.sol";
+import {Call} from "@lattice/interfaces/external/ercs/IERC7821.sol";
 
 /// @title UpgradeProbeFacet
 /// @notice One-selector probe cut onto the account AFTER init — calling through it proves the cut applied.

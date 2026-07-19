@@ -7,7 +7,7 @@ import {OwnableLib} from "@diamond/libraries/OwnableLib.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {ERC6900SignatureLib} from "@lattice/accounts/erc6900/libraries/ERC6900SignatureLib.sol";
 import {ERC4337ValidationLib} from "@lattice/accounts/libraries/ERC4337ValidationLib.sol";
-import {IERC6900Account, IERC6900AccountView} from "@lattice/interfaces/external/IERC6900.sol";
+import {IERC6900Account, IERC6900AccountView} from "@lattice/interfaces/external/ercs/IERC6900.sol";
 import {EIP712Lib} from "@lattice/utils/libraries/EIP712Lib.sol";
 
 /// @title AccountInit6900

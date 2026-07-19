@@ -5,7 +5,7 @@ import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
 import {IStrategyManager} from "@lattice/interfaces/defi/IStrategyManager.sol";
 import {IVaultCore} from "@lattice/interfaces/defi/IVaultCore.sol";
-import {IStrategy} from "@lattice/interfaces/external/IStrategy.sol";
+import {IStrategy} from "@lattice/interfaces/external/yearn/IStrategy.sol";
 import {IERC4626} from "@lattice/interfaces/tokens/IERC4626.sol";
 import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib.sol";
 

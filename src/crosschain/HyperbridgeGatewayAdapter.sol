@@ -3,15 +3,15 @@ pragma solidity ^0.8.30;
 
 import {HyperbridgeGatewayAdapterLib} from "@lattice/crosschain/libraries/HyperbridgeGatewayAdapterLib.sol";
 import {IHyperbridgeGatewayAdapter} from "@lattice/interfaces/crosschain/IHyperbridgeGatewayAdapter.sol";
-import {IERC7786GatewaySource} from "@lattice/interfaces/external/IERC7786.sol";
-import {IncomingPostRequest, PostRequest} from "@lattice/interfaces/external/IIsmpDispatcher.sol";
+import {IERC7786GatewaySource} from "@lattice/interfaces/external/ercs/IERC7786.sol";
+import {IncomingPostRequest, PostRequest} from "@lattice/interfaces/external/hyperbridge/IIsmpDispatcher.sol";
 import {
     GetRequest,
     IIsmpModule,
     IncomingGetResponse,
     IncomingPostResponse,
     PostResponse
-} from "@lattice/interfaces/external/IIsmpModule.sol";
+} from "@lattice/interfaces/external/hyperbridge/IIsmpModule.sol";
 
 /// @title HyperbridgeGatewayAdapter
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

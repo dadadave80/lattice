@@ -6,8 +6,8 @@ import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/Ac
 import {AdapterBaseLib} from "@lattice/defi/libraries/AdapterBaseLib.sol";
 import {IProtocolAdapter} from "@lattice/interfaces/defi/IProtocolAdapter.sol";
 import {IUniswapV3Adapter} from "@lattice/interfaces/defi/IUniswapV3Adapter.sol";
-import {INonfungiblePositionManager} from "@lattice/interfaces/external/INonfungiblePositionManager.sol";
-import {IUniswapV3Pool} from "@lattice/interfaces/external/IUniswapV3Pool.sol";
+import {INonfungiblePositionManager} from "@lattice/interfaces/external/uniswap/INonfungiblePositionManager.sol";
+import {IUniswapV3Pool} from "@lattice/interfaces/external/uniswap/IUniswapV3Pool.sol";
 import {EmergencyStopLib} from "@lattice/security/libraries/EmergencyStopLib.sol";
 import {PausableLib} from "@lattice/security/libraries/PausableLib.sol";
 import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib.sol";

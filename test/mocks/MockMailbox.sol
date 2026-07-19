@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {IMailbox} from "@lattice/interfaces/external/IMailbox.sol";
-import {IMessageRecipient} from "@lattice/interfaces/external/IMessageRecipient.sol";
+import {IMailbox} from "@lattice/interfaces/external/hyperlane/IMailbox.sol";
+import {IMessageRecipient} from "@lattice/interfaces/external/hyperlane/IMessageRecipient.sol";
 
 /// @title MockMailbox
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

@@ -3,9 +3,9 @@ pragma solidity ^0.8.30;
 
 import {LayerZeroGatewayAdapterLib} from "@lattice/crosschain/libraries/LayerZeroGatewayAdapterLib.sol";
 import {ILayerZeroGatewayAdapter} from "@lattice/interfaces/crosschain/ILayerZeroGatewayAdapter.sol";
-import {IERC7786GatewaySource} from "@lattice/interfaces/external/IERC7786.sol";
-import {Origin} from "@lattice/interfaces/external/ILayerZeroEndpointV2.sol";
-import {ILayerZeroReceiver} from "@lattice/interfaces/external/ILayerZeroReceiver.sol";
+import {IERC7786GatewaySource} from "@lattice/interfaces/external/ercs/IERC7786.sol";
+import {Origin} from "@lattice/interfaces/external/layerzero/ILayerZeroEndpointV2.sol";
+import {ILayerZeroReceiver} from "@lattice/interfaces/external/layerzero/ILayerZeroReceiver.sol";
 
 /// @title LayerZeroGatewayAdapter
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

@@ -6,7 +6,7 @@ import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {DeployTellorAdapter} from "@lattice-script/base/oracles/DeployTellorAdapter.s.sol";
 import {TellorAdapterTestBase} from "@lattice-test/base/TellorAdapterTestBase.sol";
-import {ITellor} from "@lattice/interfaces/external/ITellor.sol";
+import {ITellor} from "@lattice/interfaces/external/tellor/ITellor.sol";
 import {ITellorAdapter} from "@lattice/interfaces/oracles/ITellorAdapter.sol";
 import {TellorAdapter} from "@lattice/oracles/TellorAdapter.sol";
 

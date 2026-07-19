@@ -8,7 +8,7 @@ import {AaveV3Adapter} from "@lattice/defi/AaveV3Adapter.sol";
 import {AaveV3AdapterLib} from "@lattice/defi/libraries/AaveV3AdapterLib.sol";
 import {IAaveV3Adapter} from "@lattice/interfaces/defi/IAaveV3Adapter.sol";
 import {IProtocolAdapter} from "@lattice/interfaces/defi/IProtocolAdapter.sol";
-import {IAaveV3Pool} from "@lattice/interfaces/external/IAaveV3Pool.sol";
+import {IAaveV3Pool} from "@lattice/interfaces/external/aave/IAaveV3Pool.sol";
 import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib.sol";
 import {Test} from "forge-std/Test.sol";
 

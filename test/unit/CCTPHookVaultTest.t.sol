@@ -5,7 +5,7 @@ import {CCTPBridgeAdapterTestBase} from "@lattice-test/base/CCTPBridgeAdapterTes
 import {HOOK_MAGIC} from "@lattice/crosschain/libraries/CCTPBridgeAdapterLib.sol";
 import {CCTPHookVault} from "@lattice/examples/crosschain/CCTPHookVault.sol";
 import {ICCTPBridgeAdapter} from "@lattice/interfaces/crosschain/ICCTPBridgeAdapter.sol";
-import {IReceiverV2} from "@lattice/interfaces/external/IReceiverV2.sol";
+import {IReceiverV2} from "@lattice/interfaces/external/circle/IReceiverV2.sol";
 import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
 
 /// @notice Minimal USDC-like ERC-20 (mint/approve/transfer/transferFrom) for the vault tests.

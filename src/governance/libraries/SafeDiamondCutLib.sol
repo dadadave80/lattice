@@ -5,7 +5,7 @@ import {DiamondLib, FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLi
 import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
-import {ISafe} from "@lattice/interfaces/external/ISafe.sol";
+import {ISafe} from "@lattice/interfaces/external/safe/ISafe.sol";
 import {IEmergencyCut} from "@lattice/interfaces/governance/IEmergencyCut.sol";
 import {IFrozenSelectors} from "@lattice/interfaces/governance/IFrozenSelectors.sol";
 import {ISafeAuthority} from "@lattice/interfaces/governance/ISafeAuthority.sol";
