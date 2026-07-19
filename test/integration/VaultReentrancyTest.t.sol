@@ -8,7 +8,6 @@ pragma solidity ^0.8.30;
 ///      `deposit`/`redeem` while idle/allocated balances are mid-update, mispricing shares.
 ///      The vault must reject share-price-sensitive entry points while the manager is mid-rebalance.
 
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {StrategyManager} from "@lattice/defi/StrategyManager.sol";
 import {VaultCore} from "@lattice/defi/VaultCore.sol";
@@ -20,6 +19,7 @@ import {ERC20} from "@lattice/tokens/ERC20/ERC20.sol";
 import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
 import {ERC4626} from "@lattice/tokens/ERC4626/ERC4626.sol";
 import {ERC4626Lib} from "@lattice/tokens/ERC4626/libraries/ERC4626Lib.sol";
+import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @notice Minimal mintable ERC-20 used as the vault's underlying asset.
@@ -64,7 +64,7 @@ contract RVault is ERC20, ERC4626, VaultCore {
 
     function initialize(address asset_, address admin_) external {
         bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+        s = InitializableLib.preInitializer(s);
         AccessControlLib.__AccessControl_init(admin_);
         ERC20Lib.__ERC20_init("Vault Share", "vSHARE");
         ERC4626Lib.__ERC4626_init(asset_, 0);
@@ -111,7 +111,7 @@ contract RVault is ERC20, ERC4626, VaultCore {
 contract RManager is StrategyManager {
     function initialize(address admin_) external {
         bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+        s = InitializableLib.preInitializer(s);
         AccessControlLib.__AccessControl_init(admin_);
         StrategyManagerLib.__StrategyManager_init();
         InitializableLib.postInitializer(s);

@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccountSignerLib} from "@lattice/accounts/libraries/AccountSignerLib.sol";
 import {ERC7739Lib} from "@lattice/accounts/libraries/ERC7739Lib.sol";
 import {EIP712Lib} from "@lattice/utils/libraries/EIP712Lib.sol";
+import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
 //                                  STORAGE

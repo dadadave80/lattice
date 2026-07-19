@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {IAccessControl} from "@lattice/interfaces/access/IAccessControl.sol";
 import {IEmergencyStop} from "@lattice/interfaces/security/IEmergencyStop.sol";
+import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
 //                                  STORAGE

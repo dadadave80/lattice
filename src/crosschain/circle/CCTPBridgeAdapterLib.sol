@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
 import {CCTPHookExecutor} from "@lattice/crosschain/circle/CCTPHookExecutor.sol";
 import {BridgeFungibleLib} from "@lattice/crosschain/libraries/BridgeFungibleLib.sol";
@@ -12,6 +11,7 @@ import {ICCTPHookExecutor} from "@lattice/interfaces/crosschain/ICCTPHookExecuto
 import {IReceiverV2} from "@lattice/interfaces/external/circle/IReceiverV2.sol";
 import {ITokenMessengerV2} from "@lattice/interfaces/external/circle/ITokenMessengerV2.sol";
 import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib.sol";
+import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
 //                                  STORAGE

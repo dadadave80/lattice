@@ -2,7 +2,6 @@
 pragma solidity ^0.8.30;
 
 import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {ERC1271Signature} from "@lattice/accounts/ERC1271Signature.sol";
@@ -10,6 +9,7 @@ import {AccountSigner} from "@lattice/accounts/erc7579/AccountSigner.sol";
 import {AccountSignerLib} from "@lattice/accounts/libraries/AccountSignerLib.sol";
 import {ERC1271SignatureLib} from "@lattice/accounts/libraries/ERC1271SignatureLib.sol";
 import {EIP712Lib} from "@lattice/utils/libraries/EIP712Lib.sol";
+import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @dev Harness: 1271 facet + signer facet + access facet + EIP-712 domain, with an `initialize` that runs the
@@ -27,7 +27,7 @@ contract MockERC1271 is AccessControl, AccountSigner, ERC1271Signature {
 
     function initialize(address admin_, address owner_, string memory name_, string memory version_) external {
         bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+        s = InitializableLib.preInitializer(s);
         AccessControlLib.__AccessControl_init(admin_);
         EIP712Lib.__EIP712_init(name_, version_);
         AccountSignerLib.__AccountSigner_init(owner_);

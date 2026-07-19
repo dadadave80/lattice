@@ -2,7 +2,6 @@
 pragma solidity ^0.8.30;
 
 import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {ERC4337Validation} from "@lattice/accounts/ERC4337Validation.sol";
@@ -21,6 +20,7 @@ import {IERC7579Hook, MODULE_TYPE_HOOK} from "@lattice/interfaces/external/ercs/
 import {Call} from "@lattice/interfaces/external/ercs/IERC7821.sol";
 import {INonces} from "@lattice/interfaces/utils/INonces.sol";
 import {EIP712Lib} from "@lattice/utils/libraries/EIP712Lib.sol";
+import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 import {NoncesLib} from "@lattice/utils/libraries/NoncesLib.sol";
 import {Test} from "forge-std/Test.sol";
 
@@ -45,7 +45,7 @@ contract MockERC7821 is
 
     function initialize(address admin_, address owner_, address entryPoint_) external {
         bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+        s = InitializableLib.preInitializer(s);
         AccessControlLib.__AccessControl_init(admin_);
         EIP712Lib.__EIP712_init("LatticeAccount", "1");
         NoncesLib.__Nonces_init();

@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
 import {AxelarGatewayAdapterLib} from "@lattice/crosschain/axelar/AxelarGatewayAdapterLib.sol";
 import {CCIPGatewayAdapterLib} from "@lattice/crosschain/chainlink/CCIPGatewayAdapterLib.sol";
@@ -17,6 +16,7 @@ import {WormholeGatewayAdapterLib} from "@lattice/crosschain/wormhole/WormholeGa
 import {ZetaChainGatewayAdapterLib} from "@lattice/crosschain/zetachain/ZetaChainGatewayAdapterLib.sol";
 import {IChainRegistry} from "@lattice/interfaces/crosschain/IChainRegistry.sol";
 import {EnumerableSet} from "@lattice/utils/libraries/EnumerableSet.sol";
+import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 import {InteroperableAddress} from "@lattice/utils/libraries/InteroperableAddress.sol";
 
 //*//////////////////////////////////////////////////////////////////////////

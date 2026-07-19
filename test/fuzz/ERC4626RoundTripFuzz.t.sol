@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
 import {IERC4626} from "@lattice/interfaces/tokens/IERC4626.sol";
@@ -9,6 +8,7 @@ import {ERC20} from "@lattice/tokens/ERC20/ERC20.sol";
 import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
 import {ERC4626} from "@lattice/tokens/ERC4626/ERC4626.sol";
 import {ERC4626Lib} from "@lattice/tokens/ERC4626/libraries/ERC4626Lib.sol";
+import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @notice Minimal ERC-20 underlying asset for vault fuzz tests.
@@ -58,7 +58,7 @@ contract FuzzVault is ERC20, ERC4626 {
 
     function initialize(address asset_) external {
         bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+        s = InitializableLib.preInitializer(s);
         ERC20Lib.__ERC20_init("Vault Share", "vSHR");
         ERC4626Lib.__ERC4626_init(asset_, 0);
         AccessControlLib.__AccessControl_init(msg.sender);

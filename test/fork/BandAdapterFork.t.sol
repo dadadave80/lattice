@@ -2,13 +2,13 @@
 pragma solidity ^0.8.30;
 
 import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {IStdReference} from "@lattice/interfaces/external/band/IStdReference.sol";
 import {IBandAdapter} from "@lattice/interfaces/oracles/IBandAdapter.sol";
 import {BandAdapter} from "@lattice/oracles/band/BandAdapter.sol";
 import {BandAdapterLib} from "@lattice/oracles/band/BandAdapterLib.sol";
+import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @notice Mock diamond combining AccessControl + BandAdapter.
@@ -19,7 +19,7 @@ contract MockBandAdapterForkContract is AccessControl, BandAdapter {
 
     function initialize(address _admin, address _reference) external {
         bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+        s = InitializableLib.preInitializer(s);
         AccessControlLib.__AccessControl_init(_admin);
         BandAdapterLib.__BandAdapter_init(_reference);
         InitializableLib.postInitializer(s);

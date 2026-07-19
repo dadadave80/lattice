@@ -2,7 +2,6 @@
 pragma solidity ^0.8.30;
 
 import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {CompoundV3Adapter} from "@lattice/defi/CompoundV3Adapter.sol";
 import {StrategyManager} from "@lattice/defi/StrategyManager.sol";
@@ -16,6 +15,7 @@ import {ERC20} from "@lattice/tokens/ERC20/ERC20.sol";
 import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
 import {ERC4626} from "@lattice/tokens/ERC4626/ERC4626.sol";
 import {ERC4626Lib} from "@lattice/tokens/ERC4626/libraries/ERC4626Lib.sol";
+import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 import {Test} from "forge-std/Test.sol";
 
 import {MockAsset} from "./AaveV3AdapterSupplyTest.t.sol";
@@ -97,7 +97,7 @@ contract MockCometRewards {
 contract MockCompoundAdapter is CompoundV3Adapter {
     function initialize(address admin_, address comet_, address asset_, address vault_, address recipient_) external {
         bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+        s = InitializableLib.preInitializer(s);
         AccessControlLib.__AccessControl_init(admin_);
         ReentrancyGuardLib.__ReentrancyGuard_init();
         CompoundV3AdapterLib.__CompoundV3Adapter_init(comet_, asset_, vault_, recipient_);
@@ -190,7 +190,7 @@ contract CompoundVaultMock is ERC20, ERC4626, VaultCore {
 
     function initialize(address asset_, address admin_) external {
         bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+        s = InitializableLib.preInitializer(s);
         AccessControlLib.__AccessControl_init(admin_);
         ERC20Lib.__ERC20_init("Vault Share", "vSHARE");
         ERC4626Lib.__ERC4626_init(asset_, 0);
@@ -239,7 +239,7 @@ contract CompoundVaultMock is ERC20, ERC4626, VaultCore {
 contract CompoundManagerMock is StrategyManager {
     function initialize(address admin_) external {
         bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+        s = InitializableLib.preInitializer(s);
         AccessControlLib.__AccessControl_init(admin_);
         StrategyManagerLib.__StrategyManager_init();
         InitializableLib.postInitializer(s);

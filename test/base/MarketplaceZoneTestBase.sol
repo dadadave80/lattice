@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {DeployMarketplaceZone} from "@lattice-script/base/tokens/DeployMarketplaceZone.s.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
+import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @title MarketplaceZoneTestBase
@@ -26,7 +26,7 @@ abstract contract MarketplaceZoneTestBase is Test, GetSelectors {
         deployer = new DeployMarketplaceZone();
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) = deployer.buildCuts(admin);
 
-        Diamond d = new Diamond();
+        LatticeDiamond d = new LatticeDiamond();
         d.initialize(cuts, init, initCalldata);
         diamond_ = address(d);
     }

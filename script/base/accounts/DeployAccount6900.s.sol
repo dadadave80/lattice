@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {Diamond} from "@diamond/Diamond.sol";
 import {DiamondCutFacet} from "@diamond/facets/DiamondCutFacet.sol";
 import {DiamondLoupeFacet} from "@diamond/facets/DiamondLoupeFacet.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
+import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccountInit6900} from "@lattice/accounts/erc6900/AccountInit6900.sol";
 import {ERC6900AccountView} from "@lattice/accounts/erc6900/ERC6900AccountView.sol";
@@ -48,7 +48,7 @@ contract DeployAccount6900 is BaseDeploy {
     function run(address entryPoint_, address owner) external returns (address account) {
         vm.startBroadcast();
         (FacetCut[] memory cuts, AccountInit6900 init) = buildCuts(entryPoint_);
-        Diamond diamond = new Diamond();
+        LatticeDiamond diamond = new LatticeDiamond();
         diamond.initialize(cuts, address(init), abi.encodeCall(AccountInit6900.init, (owner)));
         vm.stopBroadcast();
         account = address(diamond);

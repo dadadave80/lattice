@@ -2,7 +2,6 @@
 pragma solidity ^0.8.30;
 
 import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {VotesLib} from "@lattice/governance/libraries/VotesLib.sol";
 import {ERC20} from "@lattice/tokens/ERC20/ERC20.sol";
@@ -12,6 +11,7 @@ import {ERC20VotesLib} from "@lattice/tokens/ERC20/libraries/ERC20VotesLib.sol";
 import {ERC4626} from "@lattice/tokens/ERC4626/ERC4626.sol";
 import {ERC4626Lib} from "@lattice/tokens/ERC4626/libraries/ERC4626Lib.sol";
 import {EIP712Lib} from "@lattice/utils/libraries/EIP712Lib.sol";
+import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 import {NoncesLib} from "@lattice/utils/libraries/NoncesLib.sol";
 import {Test} from "forge-std/Test.sol";
 
@@ -35,7 +35,7 @@ contract InvAsset is ERC20, ERC20Votes {
 
     function initialize(address admin) external {
         bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+        s = InitializableLib.preInitializer(s);
         ERC20Lib.__ERC20_init("Inv Asset", "IASSET");
         EIP712Lib.__EIP712_init("Inv Asset", "1");
         NoncesLib.__Nonces_init();
@@ -63,7 +63,7 @@ contract InvVault is ERC20, ERC4626 {
 
     function initialize(address asset_) external {
         bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+        s = InitializableLib.preInitializer(s);
         ERC20Lib.__ERC20_init("Inv Vault", "IVAULT");
         ERC4626Lib.__ERC4626_init(asset_, 0);
         AccessControlLib.__AccessControl_init(msg.sender);

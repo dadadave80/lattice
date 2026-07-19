@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {Diamond} from "@diamond/Diamond.sol";
 import {MultiInit} from "@diamond/initializers/MultiInit.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {DeployERC20} from "@lattice-script/base/tokens/DeployERC20.s.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
 import {TokenTestFacet} from "@lattice-test/helpers/TokenTestFacet.sol";
+import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
 import {ERC20} from "@lattice/tokens/ERC20/ERC20.sol";
 
 /// @title ERC20TestBase
@@ -55,7 +55,7 @@ abstract contract ERC20TestBase is GetSelectors {
             cuts[prod.length + 1 + j] = extraCuts[j];
         }
 
-        Diamond d = new Diamond();
+        LatticeDiamond d = new LatticeDiamond();
         d.initialize(cuts, init, initCalldata);
         diamond_ = address(d);
     }
@@ -78,7 +78,7 @@ abstract contract ERC20TestBase is GetSelectors {
         cuts[prodCuts.length] = _helperCut();
 
         MultiInit multiInit = new MultiInit();
-        Diamond d = new Diamond();
+        LatticeDiamond d = new LatticeDiamond();
         d.initialize(cuts, address(multiInit), abi.encodeCall(MultiInit.multiInit, (inits, initCalldatas)));
         diamond_ = address(d);
     }

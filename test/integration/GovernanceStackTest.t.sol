@@ -14,7 +14,6 @@ pragma solidity ^0.8.30;
 ///      as the unit test) rather than building a custom Diamond, which mirrors
 ///      real consumer deployments. A MockGovTarget records the call result.
 
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {GovernorStandalone} from "@lattice/governance/GovernorStandalone.sol";
 import {TimelockControllerStandalone} from "@lattice/governance/TimelockControllerStandalone.sol";
@@ -28,6 +27,7 @@ import {ERC20Votes} from "@lattice/tokens/ERC20/ERC20Votes.sol";
 import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
 import {ERC20VotesLib} from "@lattice/tokens/ERC20/libraries/ERC20VotesLib.sol";
 import {EIP712Lib} from "@lattice/utils/libraries/EIP712Lib.sol";
+import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 import {NoncesLib} from "@lattice/utils/libraries/NoncesLib.sol";
 import {Test} from "forge-std/Test.sol";
 
@@ -64,7 +64,7 @@ contract GovStackToken is ERC20, Votes, ERC20Votes {
 
     function initialize(string memory name_, string memory symbol_, address admin_) external {
         bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+        s = InitializableLib.preInitializer(s);
         ERC20Lib.__ERC20_init(name_, symbol_);
         EIP712Lib.__EIP712_init(name_, "1");
         NoncesLib.__Nonces_init();

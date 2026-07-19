@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {IGovernor} from "@lattice/interfaces/governance/IGovernor.sol";
 import {ITimelockController} from "@lattice/interfaces/governance/ITimelockController.sol";
 import {IVotes} from "@lattice/interfaces/governance/IVotes.sol";
 import {EIP712Lib} from "@lattice/utils/libraries/EIP712Lib.sol";
+import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 import {NoncesLib} from "@lattice/utils/libraries/NoncesLib.sol";
 import {SignatureChecker} from "@lattice/utils/libraries/SignatureChecker.sol";
 

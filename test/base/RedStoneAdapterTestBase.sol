@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {DeployRedStoneAdapter} from "@lattice-script/base/oracles/DeployRedStoneAdapter.s.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
+import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
 import {RedStoneAdapter} from "@lattice/oracles/redstone/RedStoneAdapter.sol";
 import {Test} from "forge-std/Test.sol";
 
@@ -28,7 +28,7 @@ abstract contract RedStoneAdapterTestBase is Test, GetSelectors {
         deployer = new DeployRedStoneAdapter();
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) = deployer.buildCuts(admin);
 
-        Diamond d = new Diamond();
+        LatticeDiamond d = new LatticeDiamond();
         d.initialize(cuts, init, initCalldata);
         diamond_ = address(d);
     }

@@ -2,13 +2,13 @@
 pragma solidity ^0.8.30;
 
 import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {ITellor} from "@lattice/interfaces/external/tellor/ITellor.sol";
 import {ITellorAdapter} from "@lattice/interfaces/oracles/ITellorAdapter.sol";
 import {TellorAdapter} from "@lattice/oracles/tellor/TellorAdapter.sol";
 import {TellorAdapterLib} from "@lattice/oracles/tellor/TellorAdapterLib.sol";
+import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @notice Mock diamond combining AccessControl + TellorAdapter.
@@ -19,7 +19,7 @@ contract MockTellorAdapterForkContract is AccessControl, TellorAdapter {
 
     function initialize(address _admin, address _tellor) external {
         bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+        s = InitializableLib.preInitializer(s);
         AccessControlLib.__AccessControl_init(_admin);
         TellorAdapterLib.__TellorAdapter_init(_tellor);
         InitializableLib.postInitializer(s);

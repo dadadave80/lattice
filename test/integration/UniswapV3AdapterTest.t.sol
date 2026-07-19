@@ -2,7 +2,6 @@
 pragma solidity ^0.8.30;
 
 import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {UniswapV3Adapter} from "@lattice/defi/UniswapV3Adapter.sol";
 import {UniswapV3AdapterLib} from "@lattice/defi/libraries/UniswapV3AdapterLib.sol";
@@ -14,6 +13,7 @@ import {Pausable} from "@lattice/security/Pausable.sol";
 import {EmergencyStopLib} from "@lattice/security/libraries/EmergencyStopLib.sol";
 import {PausableLib} from "@lattice/security/libraries/PausableLib.sol";
 import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib.sol";
+import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 import {UniswapV3FullRangeMath} from "@lattice/utils/libraries/UniswapV3FullRangeMath.sol";
 import {Test} from "forge-std/Test.sol";
 
@@ -299,7 +299,7 @@ contract MockUniV3Adapter is UniswapV3Adapter, Pausable, EmergencyStop {
         uint256 slippageBps_
     ) external {
         bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+        s = InitializableLib.preInitializer(s);
         AccessControlLib.__AccessControl_init(admin_);
         ReentrancyGuardLib.__ReentrancyGuard_init();
         PausableLib.__Pausable_init();

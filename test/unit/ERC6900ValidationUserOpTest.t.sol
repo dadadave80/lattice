@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {ERC6900ModuleManager} from "@lattice/accounts/erc6900/ERC6900ModuleManager.sol";
@@ -17,6 +16,7 @@ import {
     ModuleEntity,
     ValidationConfig
 } from "@lattice/interfaces/external/ercs/IERC6900.sol";
+import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @dev A minimal ERC-6900 user-op validation module: records the call and returns a configurable validationData.
@@ -89,7 +89,7 @@ contract MockValAccount is AccessControl, ERC6900ModuleManager, ERC6900Validatio
 
     function initialize(address admin_, address entryPoint_) external {
         bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+        s = InitializableLib.preInitializer(s);
         AccessControlLib.__AccessControl_init(admin_);
         ERC4337ValidationLib.__ERC4337Validation_init(entryPoint_);
         InitializableLib.postInitializer(s);

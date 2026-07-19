@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
 import {TimelockController} from "@lattice/governance/TimelockController.sol";
 import {TimelockControllerLib} from "@lattice/governance/libraries/TimelockControllerLib.sol";
+import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 
 /// @title TimelockControllerStandalone
 /// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/governance/TimelockController.sol)
@@ -35,7 +35,7 @@ contract TimelockControllerStandalone is TimelockController, AccessControl {
     ///              Pass address(0) to leave administration to the timelock itself only.
     constructor(uint256 minDelay, address[] memory proposers, address[] memory executors, address admin) {
         bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+        s = InitializableLib.preInitializer(s);
         // Only grant DEFAULT_ADMIN_ROLE to a non-zero admin; a zero admin means
         // "self-administered only" — address(this) receives the role unconditionally
         // inside __TimelockController_init.

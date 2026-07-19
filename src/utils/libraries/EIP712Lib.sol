@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {IEIP712} from "@lattice/interfaces/utils/IEIP712.sol";
+import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 import {ShortString, ShortStrings} from "@lattice/utils/libraries/ShortStrings.sol";
 
 //*//////////////////////////////////////////////////////////////////////////

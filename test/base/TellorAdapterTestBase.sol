@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {DeployTellorAdapter} from "@lattice-script/base/oracles/DeployTellorAdapter.s.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
+import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
 import {TellorAdapter} from "@lattice/oracles/tellor/TellorAdapter.sol";
 import {Test} from "forge-std/Test.sol";
 
@@ -31,7 +31,7 @@ abstract contract TellorAdapterTestBase is Test, GetSelectors {
         deployer = new DeployTellorAdapter();
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) = deployer.buildCuts(admin, tellor);
 
-        Diamond d = new Diamond();
+        LatticeDiamond d = new LatticeDiamond();
         d.initialize(cuts, init, initCalldata);
         diamond_ = address(d);
     }

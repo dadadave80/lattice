@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {Diamond} from "@diamond/Diamond.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {BridgeERC7802TestBase} from "@lattice-test/base/BridgeERC7802TestBase.sol";
+import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
 import {BridgeERC7802} from "@lattice/crosschain/BridgeERC7802.sol";
 import {CrosschainLink} from "@lattice/crosschain/CrosschainLink.sol";
 import {FUNGIBLE_BRIDGE_TAG} from "@lattice/crosschain/libraries/BridgeFungibleLib.sol";
@@ -136,7 +136,7 @@ contract BridgeERC7802Test is BridgeERC7802TestBase {
 
     function test_InitRevertsZeroToken() public {
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) = deployer.buildCuts(admin, address(0));
-        Diamond d = new Diamond();
+        LatticeDiamond d = new LatticeDiamond();
         vm.expectRevert(IBridgeFungible.BridgeZeroToken.selector);
         d.initialize(cuts, init, initCalldata);
     }

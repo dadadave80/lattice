@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {Governor} from "@lattice/governance/Governor.sol";
 import {GovernorLib} from "@lattice/governance/libraries/GovernorLib.sol";
 import {EIP712Lib} from "@lattice/utils/libraries/EIP712Lib.sol";
+import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 import {NoncesLib} from "@lattice/utils/libraries/NoncesLib.sol";
 
 /// @title GovernorStandalone
@@ -38,7 +38,7 @@ contract GovernorStandalone is Governor {
 
     constructor(Config memory cfg) {
         bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+        s = InitializableLib.preInitializer(s);
         EIP712Lib.__EIP712_init(cfg.name, "1");
         NoncesLib.__Nonces_init();
         GovernorLib.__Governor_init(

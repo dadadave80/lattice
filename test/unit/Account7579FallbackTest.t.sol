@@ -2,7 +2,6 @@
 pragma solidity ^0.8.30;
 
 import {DiamondLib, FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {AccountDiamond} from "@lattice/accounts/erc7579/AccountDiamond.sol";
@@ -14,6 +13,7 @@ import {
 } from "@lattice/accounts/erc7579/libraries/ERC7579ModuleConfigLib.sol";
 import {IModuleConfig} from "@lattice/interfaces/accounts/IModuleConfig.sol";
 import {MODULE_TYPE_FALLBACK} from "@lattice/interfaces/external/ercs/IERC7579.sol";
+import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @dev The selectors a fallback handler / facet exposes through the account.
@@ -70,7 +70,7 @@ contract DelegateHandler {
 contract MockAccountDiamond is AccountDiamond, AccessControl, ERC7579ModuleConfig {
     function initialize(address admin_, FacetCut[] calldata cuts) external {
         bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+        s = InitializableLib.preInitializer(s);
         AccessControlLib.__AccessControl_init(admin_);
         ERC7579ModuleConfigLib.__ERC7579ModuleConfig_init();
         DiamondLib.diamondCut(cuts, address(0), msg.data[0:0]);

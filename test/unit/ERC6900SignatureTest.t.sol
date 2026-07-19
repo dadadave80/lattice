@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {ERC6900ModuleManager} from "@lattice/accounts/erc6900/ERC6900ModuleManager.sol";
@@ -17,6 +16,7 @@ import {ERC7739Lib} from "@lattice/accounts/libraries/ERC7739Lib.sol";
 import {IERC6900Validation} from "@lattice/interfaces/accounts/IERC6900Validation.sol";
 import {HookConfig, ModuleEntity, ValidationConfig} from "@lattice/interfaces/external/ercs/IERC6900.sol";
 import {EIP712Lib} from "@lattice/utils/libraries/EIP712Lib.sol";
+import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @dev A staticcall-safe (view) signature-validation module: returns MAGIC only if it receives a hash equal to
@@ -78,7 +78,7 @@ contract MockSigAccount is AccessControl, ERC6900ModuleManager, ERC6900Signature
 
     function initialize(address admin_) external {
         bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+        s = InitializableLib.preInitializer(s);
         AccessControlLib.__AccessControl_init(admin_);
         EIP712Lib.__EIP712_init("LatticeAccount6900", "1");
         InitializableLib.postInitializer(s);

@@ -2,7 +2,6 @@
 pragma solidity ^0.8.30;
 
 import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {AaveV3Adapter} from "@lattice/defi/AaveV3Adapter.sol";
 import {AaveV3AdapterLib} from "@lattice/defi/libraries/AaveV3AdapterLib.sol";
@@ -11,6 +10,7 @@ import {IProtocolAdapter} from "@lattice/interfaces/defi/IProtocolAdapter.sol";
 import {ChainlinkAdapter} from "@lattice/oracles/chainlink/ChainlinkAdapter.sol";
 import {ChainlinkAdapterLib} from "@lattice/oracles/chainlink/ChainlinkAdapterLib.sol";
 import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib.sol";
+import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 import {Test} from "forge-std/Test.sol";
 
 import {MockAToken, MockAaveV3Pool, MockAsset} from "./AaveV3AdapterSupplyTest.t.sol";
@@ -62,7 +62,7 @@ contract MockLeverAdapter is AaveV3Adapter, ChainlinkAdapter {
         uint256 minHf_
     ) external {
         bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+        s = InitializableLib.preInitializer(s);
         AccessControlLib.__AccessControl_init(admin_);
         ReentrancyGuardLib.__ReentrancyGuard_init();
         ChainlinkAdapterLib.__ChainlinkAdapter_init();

@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {Diamond} from "@diamond/Diamond.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
 import {ReentrancyGuardTestFacet} from "@lattice-test/helpers/ReentrancyGuardTestFacet.sol";
+import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
 import {ReentrancyGuardInit} from "@lattice/security/ReentrancyGuardInit.sol";
 import {Test} from "forge-std/Test.sol";
 
@@ -39,7 +39,7 @@ abstract contract ReentrancyGuardTestBase is Test, GetSelectors {
         address init = address(new ReentrancyGuardInit());
         bytes memory initCalldata = abi.encodeCall(ReentrancyGuardInit.init, ());
 
-        Diamond d = new Diamond();
+        LatticeDiamond d = new LatticeDiamond();
         d.initialize(cuts, init, initCalldata);
         diamond_ = address(d);
     }

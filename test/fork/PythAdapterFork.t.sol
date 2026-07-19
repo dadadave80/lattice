@@ -2,13 +2,13 @@
 pragma solidity ^0.8.30;
 
 import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {IPyth} from "@lattice/interfaces/external/pyth/IPyth.sol";
 import {IPythAdapter} from "@lattice/interfaces/oracles/IPythAdapter.sol";
 import {PythAdapter} from "@lattice/oracles/pyth/PythAdapter.sol";
 import {PythAdapterLib} from "@lattice/oracles/pyth/PythAdapterLib.sol";
+import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @notice Mock diamond combining AccessControl + PythAdapter.
@@ -19,7 +19,7 @@ contract MockPythAdapterForkContract is AccessControl, PythAdapter {
 
     function initialize(address _admin, address _pyth) external {
         bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+        s = InitializableLib.preInitializer(s);
         AccessControlLib.__AccessControl_init(_admin);
         PythAdapterLib.__PythAdapter_init(_pyth);
         InitializableLib.postInitializer(s);

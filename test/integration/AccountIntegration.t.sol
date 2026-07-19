@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {ERC1271Signature} from "@lattice/accounts/ERC1271Signature.sol";
@@ -16,6 +15,7 @@ import {IAccount, PackedUserOperation} from "@lattice/interfaces/external/ercs/I
 import {Call, IERC7821} from "@lattice/interfaces/external/ercs/IERC7821.sol";
 import {Base64} from "@lattice/utils/libraries/Base64.sol";
 import {EIP712Lib} from "@lattice/utils/libraries/EIP712Lib.sol";
+import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 import {WebAuthn} from "@lattice/utils/libraries/WebAuthn.sol";
 import {Test} from "forge-std/Test.sol";
 
@@ -33,7 +33,7 @@ contract LatticeAccount is AccessControl, AccountSigner, ERC1271Signature, ERC43
 
     function initialize(address admin_, address owner_, address entryPoint_) external {
         bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+        s = InitializableLib.preInitializer(s);
         AccessControlLib.__AccessControl_init(admin_);
         EIP712Lib.__EIP712_init("LatticeAccount", "1");
         AccountSignerLib.__AccountSigner_init(owner_);

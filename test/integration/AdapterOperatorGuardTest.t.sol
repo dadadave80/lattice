@@ -14,11 +14,11 @@ pragma solidity ^0.8.30;
 /// stored `_vault`; (2) `deploy`/`withdraw`/`harvest` are gated to a single authorized operator
 /// (the StrategyManager), checked BEFORE the reentrancy guard.
 
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
 import {IAccessControl} from "@lattice/interfaces/access/IAccessControl.sol";
 import {IAdapterOperator} from "@lattice/interfaces/defi/IAdapterOperator.sol";
 import {IProtocolAdapter} from "@lattice/interfaces/defi/IProtocolAdapter.sol";
+import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 import {Test} from "forge-std/Test.sol";
 
 // Reuse the faithful Aave mocks + the MockAaveAdapter facet from the supply test.

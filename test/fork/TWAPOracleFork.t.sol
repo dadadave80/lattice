@@ -2,12 +2,12 @@
 pragma solidity ^0.8.30;
 
 import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {ITWAPOracle} from "@lattice/interfaces/oracles/ITWAPOracle.sol";
 import {TWAPOracle} from "@lattice/oracles/uniswap/TWAPOracle.sol";
 import {TWAPOracleLib} from "@lattice/oracles/uniswap/TWAPOracleLib.sol";
+import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 import {Test} from "forge-std/Test.sol";
 
 // ---------------------------------------------------------------------------
@@ -23,7 +23,7 @@ contract MockTWAPOracleForkContract is AccessControl, TWAPOracle {
 
     function initialize(address _admin) external {
         bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+        s = InitializableLib.preInitializer(s);
         AccessControlLib.__AccessControl_init(_admin);
         TWAPOracleLib.__TWAPOracle_init();
         InitializableLib.postInitializer(s);
