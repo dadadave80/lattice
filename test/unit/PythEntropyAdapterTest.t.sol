@@ -5,7 +5,7 @@ import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {PythEntropyAdapterTestBase} from "@lattice-test/base/PythEntropyAdapterTestBase.sol";
 import {IEntropy} from "@lattice/interfaces/external/pyth/IEntropy.sol";
 import {IPythEntropyAdapter} from "@lattice/interfaces/oracles/IPythEntropyAdapter.sol";
-import {PythEntropyAdapter} from "@lattice/oracles/PythEntropyAdapter.sol";
+import {PythEntropyAdapter} from "@lattice/oracles/pyth/PythEntropyAdapter.sol";
 
 // ---------------------------------------------------------------------------
 //                          EXTERNAL FIXTURE (Pyth Entropy)

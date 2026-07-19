@@ -5,7 +5,7 @@ import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {DeployDIAAdapter} from "@lattice-script/base/oracles/DeployDIAAdapter.s.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
-import {DIAAdapter} from "@lattice/oracles/DIAAdapter.sol";
+import {DIAAdapter} from "@lattice/oracles/dia/DIAAdapter.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @title DIAAdapterTestBase

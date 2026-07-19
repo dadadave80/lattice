@@ -5,7 +5,7 @@ import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {DeployBandAdapter} from "@lattice-script/base/oracles/DeployBandAdapter.s.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
-import {BandAdapter} from "@lattice/oracles/BandAdapter.sol";
+import {BandAdapter} from "@lattice/oracles/band/BandAdapter.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @title BandAdapterTestBase

@@ -5,7 +5,7 @@ import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {DIAAdapterTestBase} from "@lattice-test/base/DIAAdapterTestBase.sol";
 import {IDIAOracleV2} from "@lattice/interfaces/external/dia/IDIAOracleV2.sol";
 import {IDIAAdapter} from "@lattice/interfaces/oracles/IDIAAdapter.sol";
-import {DIAAdapter} from "@lattice/oracles/DIAAdapter.sol";
+import {DIAAdapter} from "@lattice/oracles/dia/DIAAdapter.sol";
 
 // ---------------------------------------------------------------------------
 //                              MOCKS

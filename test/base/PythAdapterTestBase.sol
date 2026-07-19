@@ -5,7 +5,7 @@ import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {DeployPythAdapter} from "@lattice-script/base/oracles/DeployPythAdapter.s.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
-import {PythAdapter} from "@lattice/oracles/PythAdapter.sol";
+import {PythAdapter} from "@lattice/oracles/pyth/PythAdapter.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @title PythAdapterTestBase

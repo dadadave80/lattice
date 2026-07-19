@@ -5,7 +5,7 @@ import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
-import {GelatoVRFAdapter} from "@lattice/oracles/GelatoVRFAdapter.sol";
+import {GelatoVRFAdapter} from "@lattice/oracles/gelato/GelatoVRFAdapter.sol";
 import {GelatoVRFAdapterLib} from "@lattice/oracles/libraries/GelatoVRFAdapterLib.sol";
 import {Test} from "forge-std/Test.sol";
 

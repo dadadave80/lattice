@@ -5,7 +5,7 @@ import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {API3QRNGAdapterTestBase} from "@lattice-test/base/API3QRNGAdapterTestBase.sol";
 import {IAirnodeRrpV0} from "@lattice/interfaces/external/api3/IAirnodeRrpV0.sol";
 import {IAPI3QRNGAdapter} from "@lattice/interfaces/oracles/IAPI3QRNGAdapter.sol";
-import {API3QRNGAdapter} from "@lattice/oracles/API3QRNGAdapter.sol";
+import {API3QRNGAdapter} from "@lattice/oracles/api3/API3QRNGAdapter.sol";
 
 // ---------------------------------------------------------------------------
 //                          EXTERNAL FIXTURE (Airnode RRP)

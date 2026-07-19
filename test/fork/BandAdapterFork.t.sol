@@ -7,7 +7,7 @@ import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {IStdReference} from "@lattice/interfaces/external/band/IStdReference.sol";
 import {IBandAdapter} from "@lattice/interfaces/oracles/IBandAdapter.sol";
-import {BandAdapter} from "@lattice/oracles/BandAdapter.sol";
+import {BandAdapter} from "@lattice/oracles/band/BandAdapter.sol";
 import {BandAdapterLib} from "@lattice/oracles/libraries/BandAdapterLib.sol";
 import {Test} from "forge-std/Test.sol";
 

@@ -7,7 +7,7 @@ import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {IChronicle} from "@lattice/interfaces/external/chronicle/IChronicle.sol";
 import {IChronicleAdapter} from "@lattice/interfaces/oracles/IChronicleAdapter.sol";
-import {ChronicleAdapter} from "@lattice/oracles/ChronicleAdapter.sol";
+import {ChronicleAdapter} from "@lattice/oracles/chronicle/ChronicleAdapter.sol";
 import {ChronicleAdapterLib} from "@lattice/oracles/libraries/ChronicleAdapterLib.sol";
 import {Test} from "forge-std/Test.sol";
 

@@ -6,7 +6,7 @@ import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {DeployGelatoAutomateAdapter} from "@lattice-script/base/oracles/DeployGelatoAutomateAdapter.s.sol";
 import {GelatoAutomateAdapterTestFacet} from "@lattice-test/helpers/GelatoAutomateAdapterTestFacet.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
-import {GelatoAutomateAdapter} from "@lattice/oracles/GelatoAutomateAdapter.sol";
+import {GelatoAutomateAdapter} from "@lattice/oracles/gelato/GelatoAutomateAdapter.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @title GelatoAutomateAdapterTestBase

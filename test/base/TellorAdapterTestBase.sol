@@ -5,7 +5,7 @@ import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {DeployTellorAdapter} from "@lattice-script/base/oracles/DeployTellorAdapter.s.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
-import {TellorAdapter} from "@lattice/oracles/TellorAdapter.sol";
+import {TellorAdapter} from "@lattice/oracles/tellor/TellorAdapter.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @title TellorAdapterTestBase

@@ -7,7 +7,7 @@ import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {IApi3Proxy} from "@lattice/interfaces/external/api3/IApi3Proxy.sol";
 import {IAPI3Adapter} from "@lattice/interfaces/oracles/IAPI3Adapter.sol";
-import {API3Adapter} from "@lattice/oracles/API3Adapter.sol";
+import {API3Adapter} from "@lattice/oracles/api3/API3Adapter.sol";
 import {API3AdapterLib} from "@lattice/oracles/libraries/API3AdapterLib.sol";
 import {Test} from "forge-std/Test.sol";
 

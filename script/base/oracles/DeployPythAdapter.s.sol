@@ -7,8 +7,8 @@ import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
-import {PythAdapter} from "@lattice/oracles/PythAdapter.sol";
-import {PythAdapterInit} from "@lattice/oracles/PythAdapterInit.sol";
+import {PythAdapter} from "@lattice/oracles/pyth/PythAdapter.sol";
+import {PythAdapterInit} from "@lattice/oracles/pyth/PythAdapterInit.sol";
 
 /// @title DeployPythAdapter
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

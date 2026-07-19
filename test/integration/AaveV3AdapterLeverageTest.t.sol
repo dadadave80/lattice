@@ -8,7 +8,7 @@ import {AaveV3Adapter} from "@lattice/defi/AaveV3Adapter.sol";
 import {AaveV3AdapterLib} from "@lattice/defi/libraries/AaveV3AdapterLib.sol";
 import {IAaveV3Adapter} from "@lattice/interfaces/defi/IAaveV3Adapter.sol";
 import {IProtocolAdapter} from "@lattice/interfaces/defi/IProtocolAdapter.sol";
-import {ChainlinkAdapter} from "@lattice/oracles/ChainlinkAdapter.sol";
+import {ChainlinkAdapter} from "@lattice/oracles/chainlink/ChainlinkAdapter.sol";
 import {ChainlinkAdapterLib} from "@lattice/oracles/libraries/ChainlinkAdapterLib.sol";
 import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib.sol";
 import {Test} from "forge-std/Test.sol";

@@ -8,7 +8,7 @@ import {DeployTellorAdapter} from "@lattice-script/base/oracles/DeployTellorAdap
 import {TellorAdapterTestBase} from "@lattice-test/base/TellorAdapterTestBase.sol";
 import {ITellor} from "@lattice/interfaces/external/tellor/ITellor.sol";
 import {ITellorAdapter} from "@lattice/interfaces/oracles/ITellorAdapter.sol";
-import {TellorAdapter} from "@lattice/oracles/TellorAdapter.sol";
+import {TellorAdapter} from "@lattice/oracles/tellor/TellorAdapter.sol";
 
 // ---------------------------------------------------------------------------
 //                              MOCKS
