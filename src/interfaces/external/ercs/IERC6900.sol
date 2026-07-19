@@ -9,7 +9,7 @@ pragma solidity >=0.8.4;
 // fresh in src/accounts (the reference impl is GPL — NOT a dependency, used for semantics only).
 // Names match the finalized spec (IERC6900*), NOT the deprecated plugin/pluginManifest/FunctionReference era.
 
-import {PackedUserOperation} from "@lattice/interfaces/external/IAccount.sol";
+import {PackedUserOperation} from "@lattice/interfaces/external/ercs/IAccount.sol";
 
 // ---------------------------------------------------------------------------------------------------------
 // Packed value types

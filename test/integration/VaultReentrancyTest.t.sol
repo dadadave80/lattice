@@ -15,7 +15,7 @@ import {VaultCore} from "@lattice/defi/VaultCore.sol";
 import {StrategyManagerLib} from "@lattice/defi/libraries/StrategyManagerLib.sol";
 import {VaultCoreLib} from "@lattice/defi/libraries/VaultCoreLib.sol";
 import {IVaultCore} from "@lattice/interfaces/defi/IVaultCore.sol";
-import {IStrategy} from "@lattice/interfaces/external/IStrategy.sol";
+import {IStrategy} from "@lattice/interfaces/external/yearn/IStrategy.sol";
 import {ERC20} from "@lattice/tokens/ERC20/ERC20.sol";
 import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
 import {ERC4626} from "@lattice/tokens/ERC4626/ERC4626.sol";

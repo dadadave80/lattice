@@ -5,7 +5,7 @@ import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
-import {IPyth} from "@lattice/interfaces/external/IPyth.sol";
+import {IPyth} from "@lattice/interfaces/external/pyth/IPyth.sol";
 import {IPythAdapter} from "@lattice/interfaces/oracles/IPythAdapter.sol";
 import {PythAdapter} from "@lattice/oracles/PythAdapter.sol";
 import {PythAdapterLib} from "@lattice/oracles/libraries/PythAdapterLib.sol";

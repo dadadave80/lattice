@@ -9,7 +9,7 @@ import {GovernedVault} from "@lattice/defi/GovernedVault.sol";
 import {GovernedVaultENSParams} from "@lattice/defi/GovernedVaultENSInit.sol";
 import {ENSReverseClaimer} from "@lattice/ens/ENSReverseClaimer.sol";
 import {Governor} from "@lattice/governance/Governor.sol";
-import {IENS} from "@lattice/interfaces/external/IENS.sol";
+import {IENS} from "@lattice/interfaces/external/ens/IENS.sol";
 import {IEmergencyCut} from "@lattice/interfaces/governance/IEmergencyCut.sol";
 import {IFrozenSelectors} from "@lattice/interfaces/governance/IFrozenSelectors.sol";
 import {IGovernedDiamondCut} from "@lattice/interfaces/governance/IGovernedDiamondCut.sol";

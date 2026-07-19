@@ -12,8 +12,8 @@ import {Account7702Diamond} from "@lattice/accounts/erc7579/Account7702Diamond.s
 import {AccountInit} from "@lattice/accounts/erc7579/AccountInit.sol";
 import {AccountSigner} from "@lattice/accounts/erc7579/AccountSigner.sol";
 import {ERC7821Executor} from "@lattice/accounts/erc7579/ERC7821Executor.sol";
-import {PackedUserOperation} from "@lattice/interfaces/external/IAccount.sol";
-import {Call} from "@lattice/interfaces/external/IERC7821.sol";
+import {PackedUserOperation} from "@lattice/interfaces/external/ercs/IAccount.sol";
+import {Call} from "@lattice/interfaces/external/ercs/IERC7821.sol";
 import {ECDSA} from "@lattice/utils/libraries/ECDSA.sol";
 
 contract Target {

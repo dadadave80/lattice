@@ -9,7 +9,7 @@ import {LatticeFactory} from "@lattice/LatticeFactory.sol";
 import {LatticeRegistry} from "@lattice/LatticeRegistry.sol";
 import {LatticeVersion} from "@lattice/LatticeVersion.sol";
 import {ILatticeRegistry} from "@lattice/interfaces/ILatticeRegistry.sol";
-import {IERC8153} from "@lattice/interfaces/external/IERC8153.sol";
+import {IERC8153} from "@lattice/interfaces/external/ercs/IERC8153.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @title DeployReleaseTest

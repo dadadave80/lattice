@@ -4,8 +4,8 @@ pragma solidity ^0.8.30;
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
 import {IZetaChainGatewayAdapter} from "@lattice/interfaces/crosschain/IZetaChainGatewayAdapter.sol";
-import {IERC7786GatewaySource, IERC7786Recipient} from "@lattice/interfaces/external/IERC7786.sol";
-import {IGatewayEVM, MessageContext, RevertOptions} from "@lattice/interfaces/external/IGatewayEVM.sol";
+import {IERC7786GatewaySource, IERC7786Recipient} from "@lattice/interfaces/external/ercs/IERC7786.sol";
+import {IGatewayEVM, MessageContext, RevertOptions} from "@lattice/interfaces/external/zetachain/IGatewayEVM.sol";
 import {InteroperableAddress} from "@lattice/utils/libraries/InteroperableAddress.sol";
 
 //*//////////////////////////////////////////////////////////////////////////

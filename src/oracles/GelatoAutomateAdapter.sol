@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {IGelatoAutomate} from "@lattice/interfaces/external/IGelatoAutomate.sol";
+import {IGelatoAutomate} from "@lattice/interfaces/external/gelato/IGelatoAutomate.sol";
 import {IGelatoAutomateAdapter} from "@lattice/interfaces/oracles/IGelatoAutomateAdapter.sol";
 import {GelatoAutomateAdapterLib} from "@lattice/oracles/libraries/GelatoAutomateAdapterLib.sol";
 

@@ -6,7 +6,7 @@ import {HyperlaneGatewayAdapterTestBase} from "@lattice-test/base/HyperlaneGatew
 import {MockMailbox} from "@lattice-test/mocks/MockMailbox.sol";
 import {HyperlaneGatewayAdapter} from "@lattice/crosschain/HyperlaneGatewayAdapter.sol";
 import {IHyperlaneGatewayAdapter} from "@lattice/interfaces/crosschain/IHyperlaneGatewayAdapter.sol";
-import {IERC7786GatewaySource, IERC7786Recipient} from "@lattice/interfaces/external/IERC7786.sol";
+import {IERC7786GatewaySource, IERC7786Recipient} from "@lattice/interfaces/external/ercs/IERC7786.sol";
 import {InteroperableAddress} from "@lattice/utils/libraries/InteroperableAddress.sol";
 
 contract MockRecipient is IERC7786Recipient {

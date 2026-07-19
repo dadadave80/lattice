@@ -5,7 +5,7 @@ import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
-import {ITellor} from "@lattice/interfaces/external/ITellor.sol";
+import {ITellor} from "@lattice/interfaces/external/tellor/ITellor.sol";
 import {ITellorAdapter} from "@lattice/interfaces/oracles/ITellorAdapter.sol";
 import {TellorAdapter} from "@lattice/oracles/TellorAdapter.sol";
 import {TellorAdapterLib} from "@lattice/oracles/libraries/TellorAdapterLib.sol";

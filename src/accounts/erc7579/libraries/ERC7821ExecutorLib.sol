@@ -8,7 +8,7 @@ import {AccountSignerLib} from "@lattice/accounts/libraries/AccountSignerLib.sol
 import {ERC4337ValidationLib} from "@lattice/accounts/libraries/ERC4337ValidationLib.sol";
 import {SessionKeyLib} from "@lattice/accounts/libraries/SessionKeyLib.sol";
 import {IERC7821Executor} from "@lattice/interfaces/accounts/IERC7821Executor.sol";
-import {Call} from "@lattice/interfaces/external/IERC7821.sol";
+import {Call} from "@lattice/interfaces/external/ercs/IERC7821.sol";
 import {ECDSA} from "@lattice/utils/libraries/ECDSA.sol";
 import {EIP712Lib} from "@lattice/utils/libraries/EIP712Lib.sol";
 import {NoncesLib} from "@lattice/utils/libraries/NoncesLib.sol";

@@ -8,7 +8,7 @@ import {UniswapV3Adapter} from "@lattice/defi/UniswapV3Adapter.sol";
 import {UniswapV3AdapterLib} from "@lattice/defi/libraries/UniswapV3AdapterLib.sol";
 import {IProtocolAdapter} from "@lattice/interfaces/defi/IProtocolAdapter.sol";
 import {IUniswapV3Adapter} from "@lattice/interfaces/defi/IUniswapV3Adapter.sol";
-import {INonfungiblePositionManager} from "@lattice/interfaces/external/INonfungiblePositionManager.sol";
+import {INonfungiblePositionManager} from "@lattice/interfaces/external/uniswap/INonfungiblePositionManager.sol";
 import {EmergencyStop} from "@lattice/security/EmergencyStop.sol";
 import {Pausable} from "@lattice/security/Pausable.sol";
 import {EmergencyStopLib} from "@lattice/security/libraries/EmergencyStopLib.sol";

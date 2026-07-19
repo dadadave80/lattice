@@ -3,7 +3,7 @@ pragma solidity ^0.8.30;
 
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {ILatticeRegistry} from "@lattice/interfaces/ILatticeRegistry.sol";
-import {IERC8153} from "@lattice/interfaces/external/IERC8153.sol";
+import {IERC8153} from "@lattice/interfaces/external/ercs/IERC8153.sol";
 
 /// @title LatticeRegistry
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

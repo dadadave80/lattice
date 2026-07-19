@@ -9,8 +9,8 @@ import {
     Schema,
     SpentItem,
     ZoneParameters
-} from "@lattice/interfaces/external/SeaportStructs.sol";
-import {ZoneInterface} from "@lattice/interfaces/external/ZoneInterface.sol";
+} from "@lattice/interfaces/external/seaport/SeaportStructs.sol";
+import {ZoneInterface} from "@lattice/interfaces/external/seaport/ZoneInterface.sol";
 import {IERC2981} from "@lattice/interfaces/tokens/IERC2981.sol";
 import {IMarketplaceZone} from "@lattice/interfaces/tokens/IMarketplaceZone.sol";
 

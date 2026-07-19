@@ -3,7 +3,7 @@ pragma solidity ^0.8.30;
 
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {ChainlinkAdapterTestBase} from "@lattice-test/base/ChainlinkAdapterTestBase.sol";
-import {IAggregatorV3} from "@lattice/interfaces/external/IAggregatorV3.sol";
+import {IAggregatorV3} from "@lattice/interfaces/external/chainlink/IAggregatorV3.sol";
 import {IChainlinkAdapter} from "@lattice/interfaces/oracles/IChainlinkAdapter.sol";
 import {ChainlinkAdapter} from "@lattice/oracles/ChainlinkAdapter.sol";
 

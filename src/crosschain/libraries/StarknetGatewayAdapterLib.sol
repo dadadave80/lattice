@@ -5,7 +5,7 @@ import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
 import {NonEvmAddress} from "@lattice/crosschain/libraries/NonEvmAddress.sol";
 import {IStarknetGatewayAdapter} from "@lattice/interfaces/crosschain/IStarknetGatewayAdapter.sol";
-import {IStarknetMessaging} from "@lattice/interfaces/external/IStarknetMessaging.sol";
+import {IStarknetMessaging} from "@lattice/interfaces/external/starknet/IStarknetMessaging.sol";
 import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib.sol";
 
 //*//////////////////////////////////////////////////////////////////////////

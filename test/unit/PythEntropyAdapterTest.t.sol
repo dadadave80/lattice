@@ -3,7 +3,7 @@ pragma solidity ^0.8.30;
 
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {PythEntropyAdapterTestBase} from "@lattice-test/base/PythEntropyAdapterTestBase.sol";
-import {IEntropy} from "@lattice/interfaces/external/IEntropy.sol";
+import {IEntropy} from "@lattice/interfaces/external/pyth/IEntropy.sol";
 import {IPythEntropyAdapter} from "@lattice/interfaces/oracles/IPythEntropyAdapter.sol";
 import {PythEntropyAdapter} from "@lattice/oracles/PythEntropyAdapter.sol";
 

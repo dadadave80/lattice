@@ -9,8 +9,8 @@ import {NonEvmAddress} from "@lattice/crosschain/libraries/NonEvmAddress.sol";
 import {AdapterBaseLib} from "@lattice/defi/libraries/AdapterBaseLib.sol";
 import {ICCTPBridgeAdapter} from "@lattice/interfaces/crosschain/ICCTPBridgeAdapter.sol";
 import {ICCTPHookExecutor} from "@lattice/interfaces/crosschain/ICCTPHookExecutor.sol";
-import {IReceiverV2} from "@lattice/interfaces/external/IReceiverV2.sol";
-import {ITokenMessengerV2} from "@lattice/interfaces/external/ITokenMessengerV2.sol";
+import {IReceiverV2} from "@lattice/interfaces/external/circle/IReceiverV2.sol";
+import {ITokenMessengerV2} from "@lattice/interfaces/external/circle/ITokenMessengerV2.sol";
 import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib.sol";
 
 //*//////////////////////////////////////////////////////////////////////////

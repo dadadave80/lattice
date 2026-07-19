@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {Origin} from "@lattice/interfaces/external/ILayerZeroEndpointV2.sol";
+import {Origin} from "@lattice/interfaces/external/layerzero/ILayerZeroEndpointV2.sol";
 
 /// @title ILayerZeroReceiver (LayerZero v2) — vendored subset
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

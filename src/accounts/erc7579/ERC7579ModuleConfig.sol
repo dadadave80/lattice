@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {ERC7579ModuleConfigLib} from "@lattice/accounts/erc7579/libraries/ERC7579ModuleConfigLib.sol";
-import {IERC7579ModuleConfig} from "@lattice/interfaces/external/IERC7579.sol";
+import {IERC7579ModuleConfig} from "@lattice/interfaces/external/ercs/IERC7579.sol";
 
 /// @title ERC7579ModuleConfig
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

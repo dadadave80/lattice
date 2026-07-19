@@ -3,7 +3,7 @@ pragma solidity ^0.8.30;
 
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
-import {IRedstonePriceFeedsAdapter} from "@lattice/interfaces/external/IRedstonePriceFeedsAdapter.sol";
+import {IRedstonePriceFeedsAdapter} from "@lattice/interfaces/external/redstone/IRedstonePriceFeedsAdapter.sol";
 import {IRedStoneAdapter} from "@lattice/interfaces/oracles/IRedStoneAdapter.sol";
 
 //*//////////////////////////////////////////////////////////////////////////

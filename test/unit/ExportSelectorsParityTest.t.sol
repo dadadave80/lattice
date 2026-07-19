@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {FacetInventory} from "@lattice-script/lib/FacetInventory.sol";
-import {IERC8153} from "@lattice/interfaces/external/IERC8153.sol";
+import {IERC8153} from "@lattice/interfaces/external/ercs/IERC8153.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @title ExportSelectorsParityTest

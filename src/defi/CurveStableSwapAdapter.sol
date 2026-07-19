@@ -5,7 +5,7 @@ import {CurveStableSwapAdapterLib} from "@lattice/defi/libraries/CurveStableSwap
 import {IAdapterOperator} from "@lattice/interfaces/defi/IAdapterOperator.sol";
 import {ICurveStableSwapAdapter} from "@lattice/interfaces/defi/ICurveStableSwapAdapter.sol";
 import {IProtocolAdapter} from "@lattice/interfaces/defi/IProtocolAdapter.sol";
-import {IStrategy} from "@lattice/interfaces/external/IStrategy.sol";
+import {IStrategy} from "@lattice/interfaces/external/yearn/IStrategy.sol";
 import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib.sol";
 
 /// @title CurveStableSwapAdapter

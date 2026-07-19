@@ -3,7 +3,7 @@ pragma solidity ^0.8.30;
 
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
-import {IAirnodeRrpV0} from "@lattice/interfaces/external/IAirnodeRrpV0.sol";
+import {IAirnodeRrpV0} from "@lattice/interfaces/external/api3/IAirnodeRrpV0.sol";
 import {IAPI3QRNGAdapter} from "@lattice/interfaces/oracles/IAPI3QRNGAdapter.sol";
 
 //*//////////////////////////////////////////////////////////////////////////

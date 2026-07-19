@@ -16,7 +16,7 @@ import {AccountInit6900} from "@lattice/accounts/erc6900/AccountInit6900.sol";
 import {AccountInit} from "@lattice/accounts/erc7579/AccountInit.sol";
 import {GovernedVaultENSParams} from "@lattice/defi/GovernedVaultENSInit.sol";
 import {GovernedVaultParams} from "@lattice/defi/GovernedVaultInit.sol";
-import {IReverseRegistrar} from "@lattice/interfaces/external/IReverseRegistrar.sol";
+import {IReverseRegistrar} from "@lattice/interfaces/external/ens/IReverseRegistrar.sol";
 
 /// @title GuardReverseRegistrar
 /// @notice Minimal reverse registrar accepting any setName (ENS-vault guard fixture).

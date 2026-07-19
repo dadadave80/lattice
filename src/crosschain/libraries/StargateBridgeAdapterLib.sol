@@ -7,8 +7,8 @@ import {BridgeFungibleLib} from "@lattice/crosschain/libraries/BridgeFungibleLib
 import {NonEvmAddress} from "@lattice/crosschain/libraries/NonEvmAddress.sol";
 import {AdapterBaseLib} from "@lattice/defi/libraries/AdapterBaseLib.sol";
 import {IStargateBridgeAdapter} from "@lattice/interfaces/crosschain/IStargateBridgeAdapter.sol";
-import {MessagingFee, MessagingReceipt} from "@lattice/interfaces/external/ILayerZeroEndpointV2.sol";
-import {IStargate, OFTReceipt, SendParam} from "@lattice/interfaces/external/IStargate.sol";
+import {MessagingFee, MessagingReceipt} from "@lattice/interfaces/external/layerzero/ILayerZeroEndpointV2.sol";
+import {IStargate, OFTReceipt, SendParam} from "@lattice/interfaces/external/layerzero/IStargate.sol";
 import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib.sol";
 
 //*//////////////////////////////////////////////////////////////////////////

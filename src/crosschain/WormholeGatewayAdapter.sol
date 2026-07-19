@@ -3,8 +3,8 @@ pragma solidity ^0.8.30;
 
 import {WormholeGatewayAdapterLib} from "@lattice/crosschain/libraries/WormholeGatewayAdapterLib.sol";
 import {IWormholeGatewayAdapter} from "@lattice/interfaces/crosschain/IWormholeGatewayAdapter.sol";
-import {IERC7786GatewaySource} from "@lattice/interfaces/external/IERC7786.sol";
-import {IWormholeReceiver} from "@lattice/interfaces/external/IWormholeRelayer.sol";
+import {IERC7786GatewaySource} from "@lattice/interfaces/external/ercs/IERC7786.sol";
+import {IWormholeReceiver} from "@lattice/interfaces/external/wormhole/IWormholeRelayer.sol";
 
 /// @title WormholeGatewayAdapter
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

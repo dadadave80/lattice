@@ -9,7 +9,7 @@ import {ENSSubnameIssuer} from "@lattice/ens/ENSSubnameIssuer.sol";
 import {ENS_SUBNAME_ISSUER_ROLE} from "@lattice/ens/libraries/ENSSubnameIssuerLib.sol";
 import {IAccessControl} from "@lattice/interfaces/access/IAccessControl.sol";
 import {IENSSubnameIssuer} from "@lattice/interfaces/ens/IENSSubnameIssuer.sol";
-import {INameWrapper} from "@lattice/interfaces/external/INameWrapper.sol";
+import {INameWrapper} from "@lattice/interfaces/external/ens/INameWrapper.sol";
 
 /// @title MockNameWrapper
 /// @notice Minimal ENS NameWrapper that records the last setSubnodeRecord call and returns the node. Kept as a test

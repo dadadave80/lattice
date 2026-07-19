@@ -15,7 +15,7 @@ import {
 } from "@lattice/accounts/libraries/ERC1271SignatureLib.sol";
 import {ERC7739Lib} from "@lattice/accounts/libraries/ERC7739Lib.sol";
 import {IERC6900Validation} from "@lattice/interfaces/accounts/IERC6900Validation.sol";
-import {HookConfig, ModuleEntity, ValidationConfig} from "@lattice/interfaces/external/IERC6900.sol";
+import {HookConfig, ModuleEntity, ValidationConfig} from "@lattice/interfaces/external/ercs/IERC6900.sol";
 import {EIP712Lib} from "@lattice/utils/libraries/EIP712Lib.sol";
 import {Test} from "forge-std/Test.sol";
 

@@ -2,7 +2,12 @@
 pragma solidity ^0.8.30;
 
 import {ERC6900TypesLib} from "@lattice/accounts/erc6900/libraries/ERC6900TypesLib.sol";
-import {HookConfig, ModuleEntity, ValidationConfig, ValidationFlags} from "@lattice/interfaces/external/IERC6900.sol";
+import {
+    HookConfig,
+    ModuleEntity,
+    ValidationConfig,
+    ValidationFlags
+} from "@lattice/interfaces/external/ercs/IERC6900.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @dev Locks the ERC-6900 packed-type encodings bit-for-bit against the spec. The golden vectors use a module

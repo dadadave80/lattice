@@ -154,15 +154,15 @@ import {
 } from "@lattice/governance/libraries/TimelockControllerLib.sol";
 import {ERC165_MAP_IVOTES_SLOT, VOTES_STORAGE_SLOT} from "@lattice/governance/libraries/VotesLib.sol";
 import {IGovernedVault} from "@lattice/interfaces/defi/IGovernedVault.sol";
-import {IERC1271} from "@lattice/interfaces/external/IERC1271.sol";
-import {IERC6551Account, IERC6551Executable} from "@lattice/interfaces/external/IERC6551.sol";
+import {IERC1271} from "@lattice/interfaces/external/ercs/IERC1271.sol";
+import {IERC6551Account, IERC6551Executable} from "@lattice/interfaces/external/ercs/IERC6551.sol";
 import {
     IERC7579AccountConfig,
     IERC7579Execution,
     IERC7579ModuleConfig
-} from "@lattice/interfaces/external/IERC7579.sol";
-import {IERC7821} from "@lattice/interfaces/external/IERC7821.sol";
-import {ZoneInterface} from "@lattice/interfaces/external/ZoneInterface.sol";
+} from "@lattice/interfaces/external/ercs/IERC7579.sol";
+import {IERC7821} from "@lattice/interfaces/external/ercs/IERC7821.sol";
+import {ZoneInterface} from "@lattice/interfaces/external/seaport/ZoneInterface.sol";
 import {
     ERC165_MAP_ZONEINTERFACE_SLOT,
     MARKETPLACE_ZONE_STORAGE_SLOT
@@ -347,11 +347,11 @@ import {IVaultCore} from "@lattice/interfaces/defi/IVaultCore.sol";
 import {IENSResolver} from "@lattice/interfaces/ens/IENSResolver.sol";
 import {IENSReverseClaimer} from "@lattice/interfaces/ens/IENSReverseClaimer.sol";
 import {IENSSubnameIssuer} from "@lattice/interfaces/ens/IENSSubnameIssuer.sol";
-import {IAny2EVMMessageReceiver} from "@lattice/interfaces/external/IAny2EVMMessageReceiver.sol";
-import {IAny2EVMMessageReceiverV2} from "@lattice/interfaces/external/IAny2EVMMessageReceiverV2.sol";
-import {IERC3156FlashLender} from "@lattice/interfaces/external/IERC3156FlashLender.sol";
-import {IERC7786GatewaySource} from "@lattice/interfaces/external/IERC7786.sol";
-import {IReceiver} from "@lattice/interfaces/external/IReceiver.sol";
+import {IAny2EVMMessageReceiver} from "@lattice/interfaces/external/chainlink/IAny2EVMMessageReceiver.sol";
+import {IAny2EVMMessageReceiverV2} from "@lattice/interfaces/external/chainlink/IAny2EVMMessageReceiverV2.sol";
+import {IReceiver} from "@lattice/interfaces/external/chainlink/IReceiver.sol";
+import {IERC3156FlashLender} from "@lattice/interfaces/external/ercs/IERC3156FlashLender.sol";
+import {IERC7786GatewaySource} from "@lattice/interfaces/external/ercs/IERC7786.sol";
 import {IGovernedSafeDiamondCut} from "@lattice/interfaces/governance/IGovernedSafeDiamondCut.sol";
 import {IGovernor} from "@lattice/interfaces/governance/IGovernor.sol";
 import {ISafeHarborAdopter} from "@lattice/interfaces/governance/ISafeHarborAdopter.sol";

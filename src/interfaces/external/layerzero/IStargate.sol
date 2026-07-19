@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {MessagingFee, MessagingReceipt} from "@lattice/interfaces/external/ILayerZeroEndpointV2.sol";
+import {MessagingFee, MessagingReceipt} from "@lattice/interfaces/external/layerzero/ILayerZeroEndpointV2.sol";
 
 /// @title IStargate (Stargate v2 pool / OFT send surface) — minimal ABI-equivalent interface
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

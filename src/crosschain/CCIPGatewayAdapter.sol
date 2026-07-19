@@ -3,10 +3,10 @@ pragma solidity ^0.8.30;
 
 import {CCIPGatewayAdapterLib} from "@lattice/crosschain/libraries/CCIPGatewayAdapterLib.sol";
 import {ICCIPGatewayAdapter} from "@lattice/interfaces/crosschain/ICCIPGatewayAdapter.sol";
-import {Client} from "@lattice/interfaces/external/CCIPClient.sol";
-import {IAny2EVMMessageReceiver} from "@lattice/interfaces/external/IAny2EVMMessageReceiver.sol";
-import {IAny2EVMMessageReceiverV2} from "@lattice/interfaces/external/IAny2EVMMessageReceiverV2.sol";
-import {IERC7786GatewaySource} from "@lattice/interfaces/external/IERC7786.sol";
+import {Client} from "@lattice/interfaces/external/chainlink/CCIPClient.sol";
+import {IAny2EVMMessageReceiver} from "@lattice/interfaces/external/chainlink/IAny2EVMMessageReceiver.sol";
+import {IAny2EVMMessageReceiverV2} from "@lattice/interfaces/external/chainlink/IAny2EVMMessageReceiverV2.sol";
+import {IERC7786GatewaySource} from "@lattice/interfaces/external/ercs/IERC7786.sol";
 
 /// @title CCIPGatewayAdapter
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

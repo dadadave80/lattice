@@ -7,7 +7,7 @@ pragma solidity >=0.8.4;
 // VALIDATOR (type 1) modules. Interface ids (Solidity excludes inherited fns): IERC7579Execution = 0x3f3f9537,
 // IERC7579AccountConfig = 0xbe1d6cf6, IERC7579ModuleConfig = 0x232dbb4a.
 
-import {PackedUserOperation} from "@lattice/interfaces/external/IAccount.sol";
+import {PackedUserOperation} from "@lattice/interfaces/external/ercs/IAccount.sol";
 
 uint256 constant MODULE_TYPE_VALIDATOR = 1;
 uint256 constant MODULE_TYPE_EXECUTOR = 2;

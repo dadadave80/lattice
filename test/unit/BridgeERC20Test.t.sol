@@ -10,7 +10,7 @@ import {CrosschainLink} from "@lattice/crosschain/CrosschainLink.sol";
 import {FUNGIBLE_BRIDGE_TAG} from "@lattice/crosschain/libraries/BridgeFungibleLib.sol";
 import {IBridgeFungible} from "@lattice/interfaces/crosschain/IBridgeFungible.sol";
 import {ICrosschainLink} from "@lattice/interfaces/crosschain/ICrosschainLink.sol";
-import {IERC7786GatewaySource} from "@lattice/interfaces/external/IERC7786.sol";
+import {IERC7786GatewaySource} from "@lattice/interfaces/external/ercs/IERC7786.sol";
 import {InteroperableAddress} from "@lattice/utils/libraries/InteroperableAddress.sol";
 
 // ---------------------------------------------------------------------------

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {IAny2EVMMessageReceiver} from "@lattice/interfaces/external/IAny2EVMMessageReceiver.sol";
+import {IAny2EVMMessageReceiver} from "@lattice/interfaces/external/chainlink/IAny2EVMMessageReceiver.sol";
 
 /// @title IAny2EVMMessageReceiverV2 (Chainlink CCIP) — vendored subset
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

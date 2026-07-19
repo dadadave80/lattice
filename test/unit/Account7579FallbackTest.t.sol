@@ -13,7 +13,7 @@ import {
     FALLBACK_CALLTYPE_DELEGATECALL
 } from "@lattice/accounts/erc7579/libraries/ERC7579ModuleConfigLib.sol";
 import {IModuleConfig} from "@lattice/interfaces/accounts/IModuleConfig.sol";
-import {MODULE_TYPE_FALLBACK} from "@lattice/interfaces/external/IERC7579.sol";
+import {MODULE_TYPE_FALLBACK} from "@lattice/interfaces/external/ercs/IERC7579.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @dev The selectors a fallback handler / facet exposes through the account.

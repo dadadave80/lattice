@@ -6,13 +6,13 @@ import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/Ac
 import {BridgeFungibleLib} from "@lattice/crosschain/libraries/BridgeFungibleLib.sol";
 import {AdapterBaseLib} from "@lattice/defi/libraries/AdapterBaseLib.sol";
 import {IHyperbridgeGatewayAdapter} from "@lattice/interfaces/crosschain/IHyperbridgeGatewayAdapter.sol";
-import {IERC7786GatewaySource, IERC7786Recipient} from "@lattice/interfaces/external/IERC7786.sol";
+import {IERC7786GatewaySource, IERC7786Recipient} from "@lattice/interfaces/external/ercs/IERC7786.sol";
 import {
     DispatchPost,
     IIsmpDispatcher,
     IncomingPostRequest,
     PostRequest
-} from "@lattice/interfaces/external/IIsmpDispatcher.sol";
+} from "@lattice/interfaces/external/hyperbridge/IIsmpDispatcher.sol";
 import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib.sol";
 import {InteroperableAddress} from "@lattice/utils/libraries/InteroperableAddress.sol";
 import {Strings} from "@lattice/utils/libraries/Strings.sol";

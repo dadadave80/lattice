@@ -12,8 +12,8 @@ import {ERC7821ExecutorLib} from "@lattice/accounts/erc7579/libraries/ERC7821Exe
 import {AccountSignerLib} from "@lattice/accounts/libraries/AccountSignerLib.sol";
 import {ERC1271SignatureLib} from "@lattice/accounts/libraries/ERC1271SignatureLib.sol";
 import {ERC4337ValidationLib} from "@lattice/accounts/libraries/ERC4337ValidationLib.sol";
-import {IAccount, PackedUserOperation} from "@lattice/interfaces/external/IAccount.sol";
-import {Call, IERC7821} from "@lattice/interfaces/external/IERC7821.sol";
+import {IAccount, PackedUserOperation} from "@lattice/interfaces/external/ercs/IAccount.sol";
+import {Call, IERC7821} from "@lattice/interfaces/external/ercs/IERC7821.sol";
 import {Base64} from "@lattice/utils/libraries/Base64.sol";
 import {EIP712Lib} from "@lattice/utils/libraries/EIP712Lib.sol";
 import {WebAuthn} from "@lattice/utils/libraries/WebAuthn.sol";

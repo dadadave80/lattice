@@ -43,7 +43,8 @@ or interface: `Base64`, `Bytes`, `Calldata`, `Checkpoints`, `ECDSA`, `Enumerable
 module helpers such as `EIP712Lib`, `MulticallLib`, `NoncesLib`, and `VestingWalletLib`.
 
 `src/interfaces/external/` vendors minimal third-party ABIs used by adapters and standards
-integrations. The canonical storage/interface registry is
+integrations, grouped per vendor (`circle/`, `chainlink/`, `layerzero/`, …; pure ERC/EIP standard
+interfaces under `ercs/`). The canonical storage/interface registry is
 [`STORAGE_REGISTRY.md`](STORAGE_REGISTRY.md), and
 `test/unit/StorageSlotVerificationTest.t.sol` re-derives every registered slot and checks
 global uniqueness.
@@ -267,7 +268,8 @@ src/
 ├── tokens/        # per-standard subfolders ERC20/ ERC721/ ERC1155/ ERC2981/ ERC4626/ ERC7802/ (base+extensions); MarketplaceZone at root
 ├── utils/         # EIP712, Multicall, Nonces, VestingWallet(+Standalone)
 │   └── libraries/ # Crypto, encoding, strings, checkpoints, math, multicall/nonces/vesting helpers
-└── interfaces/    # I<Module>.sol mirrored into per-<area> subfolders; external/ for third-party ABIs
+└── interfaces/    # I<Module>.sol mirrored into per-<area> subfolders
+    └── external/  # vendored third-party ABIs, one folder per vendor (circle/, chainlink/, …, ercs/)
 ```
 
 Each `<area>/` also contains a `libraries/` subfolder holding the `<Module>Lib.sol`

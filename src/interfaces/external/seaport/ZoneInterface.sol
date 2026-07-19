@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {Schema, ZoneParameters} from "@lattice/interfaces/external/SeaportStructs.sol";
+import {Schema, ZoneParameters} from "@lattice/interfaces/external/seaport/SeaportStructs.sol";
 
 /// @title ZoneInterface (Seaport 1.6) — vendored subset
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
