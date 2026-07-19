@@ -2,13 +2,13 @@
 pragma solidity ^0.8.30;
 
 import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {IApi3Proxy} from "@lattice/interfaces/external/api3/IApi3Proxy.sol";
 import {IAPI3Adapter} from "@lattice/interfaces/oracles/IAPI3Adapter.sol";
 import {API3Adapter} from "@lattice/oracles/api3/API3Adapter.sol";
 import {API3AdapterLib} from "@lattice/oracles/api3/API3AdapterLib.sol";
+import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @notice Mock diamond combining AccessControl + API3Adapter.
@@ -19,7 +19,7 @@ contract MockAPI3AdapterForkContract is AccessControl, API3Adapter {
 
     function initialize(address _admin) external {
         bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+        s = InitializableLib.preInitializer(s);
         AccessControlLib.__AccessControl_init(_admin);
         API3AdapterLib.__API3Adapter_init();
         InitializableLib.postInitializer(s);

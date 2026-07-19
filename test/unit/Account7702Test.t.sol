@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {Diamond} from "@diamond/Diamond.sol";
 import {DiamondLoupeFacet} from "@diamond/facets/DiamondLoupeFacet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {AccountBlueprintHelper} from "@lattice-test/helpers/AccountBlueprintHelper.sol";
+import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {ERC1271Signature} from "@lattice/accounts/ERC1271Signature.sol";
 import {ERC4337Validation} from "@lattice/accounts/ERC4337Validation.sol";
@@ -31,7 +31,7 @@ contract Target {
 ///         Also pins the 7702-specific hardening (self-owner signature path must not recurse) and the
 ///         storage-collision safety (residual EOA storage cannot corrupt the namespaced account slots).
 contract Account7702Test is AccountBlueprintHelper {
-    Diamond diamondImpl; // shared delegate code; each EOA uses its own storage
+    LatticeDiamond diamondImpl; // shared delegate code; each EOA uses its own storage
     Account7702Diamond diamond7702; // optional hardened delegate (signed onboarding)
     AccountInit accountInit;
     FacetCut[] blueprint;
@@ -50,7 +50,7 @@ contract Account7702Test is AccountBlueprintHelper {
             blueprint.push(cuts[i]);
         }
         accountInit = init;
-        diamondImpl = new Diamond();
+        diamondImpl = new LatticeDiamond();
         diamond7702 = new Account7702Diamond();
         (eoa, eoaPk) = makeAddrAndKey("eoa");
         target = new Target();
@@ -60,7 +60,7 @@ contract Account7702Test is AccountBlueprintHelper {
     function _onboard() internal {
         vm.signAndAttachDelegation(address(diamondImpl), eoaPk);
         FacetCut[] memory cuts = blueprint;
-        Diamond(payable(eoa)).initialize(cuts, address(accountInit), abi.encodeCall(AccountInit.init7702, ()));
+        LatticeDiamond(payable(eoa)).initialize(cuts, address(accountInit), abi.encodeCall(AccountInit.init7702, ()));
     }
 
     function _userOp(uint256 pk, bytes32 hash) internal pure returns (PackedUserOperation memory op) {
@@ -128,7 +128,7 @@ contract Account7702Test is AccountBlueprintHelper {
         _onboard();
         FacetCut[] memory cuts = blueprint;
         vm.expectRevert();
-        Diamond(payable(eoa)).initialize(cuts, address(accountInit), abi.encodeCall(AccountInit.init7702, ()));
+        LatticeDiamond(payable(eoa)).initialize(cuts, address(accountInit), abi.encodeCall(AccountInit.init7702, ()));
     }
 
     // --- Option B: hardened delegate (Account7702Diamond) with EOA-signed onboarding ---

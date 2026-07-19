@@ -2,9 +2,9 @@
 pragma solidity ^0.8.30;
 
 import {DiamondLib, FacetCut} from "@diamond/libraries/DiamondLib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccountDiamond} from "@lattice/accounts/erc7579/AccountDiamond.sol";
 import {ECDSA} from "@lattice/utils/libraries/ECDSA.sol";
+import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 
 /// @title Account7702Diamond
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
@@ -46,7 +46,7 @@ contract Account7702Diamond is AccountDiamond {
         if (err != ECDSA.RecoverError.NoError || signer != address(this)) revert UnauthorizedOnboarding();
 
         bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+        s = InitializableLib.preInitializer(s);
         DiamondLib.diamondCut(_facetCuts, _init, _calldata);
         InitializableLib.postInitializer(s);
     }

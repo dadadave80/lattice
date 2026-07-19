@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {SessionKey} from "@lattice/accounts/SessionKey.sol";
 import {ANY_SELECTOR, ANY_TARGET, NATIVE_TOKEN, SessionKeyLib} from "@lattice/accounts/libraries/SessionKeyLib.sol";
 import {ISessionKey} from "@lattice/interfaces/accounts/ISessionKey.sol";
 import {Call} from "@lattice/interfaces/external/ercs/IERC7821.sol";
+import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 import {Test} from "forge-std/Test.sol";
 
 contract MockSessionKey is AccessControl, SessionKey {
     function initialize(address admin_) external {
         bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+        s = InitializableLib.preInitializer(s);
         AccessControlLib.__AccessControl_init(admin_);
         SessionKeyLib.__SessionKey_init();
         InitializableLib.postInitializer(s);

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessManager} from "@lattice/access/AccessManager.sol";
 import {AccessManagerLib} from "@lattice/access/libraries/AccessManagerLib.sol";
+import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 
 /// @title AccessManagerStandalone
 /// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/access/manager/AccessManager.sol)
@@ -14,7 +14,7 @@ import {AccessManagerLib} from "@lattice/access/libraries/AccessManagerLib.sol";
 contract AccessManagerStandalone is AccessManager {
     constructor(address initialAdmin) {
         bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+        s = InitializableLib.preInitializer(s);
         AccessManagerLib.__AccessManager_init(initialAdmin);
         InitializableLib.postInitializer(s);
     }

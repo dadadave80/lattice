@@ -2,7 +2,6 @@
 pragma solidity ^0.8.30;
 
 import {DiamondLib, FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {ERC6900AccountView} from "@lattice/accounts/erc6900/ERC6900AccountView.sol";
@@ -20,6 +19,7 @@ import {
     ValidationDataView,
     ValidationFlags
 } from "@lattice/interfaces/external/ercs/IERC6900.sol";
+import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 import {Test} from "forge-std/Test.sol";
 
 contract DummyFacet {
@@ -54,7 +54,7 @@ contract MockViewAccount is AccessControl, ERC6900ModuleManager, ERC6900AccountV
 
     function initialize(address admin_, FacetCut[] calldata cuts) external {
         bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+        s = InitializableLib.preInitializer(s);
         AccessControlLib.__AccessControl_init(admin_);
         DiamondLib.diamondCut(cuts, address(0), msg.data[0:0]);
         InitializableLib.postInitializer(s);

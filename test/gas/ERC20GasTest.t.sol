@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {ERC20} from "@lattice/tokens/ERC20/ERC20.sol";
 import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
+import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @notice Minimal mock ERC20 for gas tests.
 contract GasERC20 is ERC20 {
     function initialize(string memory name_, string memory symbol_, address mintTo, uint256 mintAmount) external {
         bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+        s = InitializableLib.preInitializer(s);
         ERC20Lib.__ERC20_init(name_, symbol_);
         if (mintTo != address(0) && mintAmount > 0) {
             ERC20Lib._mint(mintTo, mintAmount);

@@ -16,7 +16,6 @@ pragma solidity ^0.8.30;
 ///  8. User withdraws half → verified via share redemption.
 
 import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
 import {StrategyManager} from "@lattice/defi/StrategyManager.sol";
 import {VaultCore} from "@lattice/defi/VaultCore.sol";
@@ -29,6 +28,7 @@ import {ERC20} from "@lattice/tokens/ERC20/ERC20.sol";
 import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
 import {ERC4626} from "@lattice/tokens/ERC4626/ERC4626.sol";
 import {ERC4626Lib} from "@lattice/tokens/ERC4626/libraries/ERC4626Lib.sol";
+import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 import {Test} from "forge-std/Test.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
@@ -84,7 +84,7 @@ contract MockERC4626Vault is ERC20, ERC4626, VaultCore {
 
     function initialize(address asset_, address admin_) external {
         bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+        s = InitializableLib.preInitializer(s);
         AccessControlLib.__AccessControl_init(admin_);
         ERC20Lib.__ERC20_init("Vault Share", "vSHARE");
         ERC4626Lib.__ERC4626_init(asset_, 0);
@@ -138,7 +138,7 @@ contract MockERC4626Vault is ERC20, ERC4626, VaultCore {
 contract MockIntegrationStrategyManager is StrategyManager {
     function initialize(address admin_) external {
         bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+        s = InitializableLib.preInitializer(s);
         AccessControlLib.__AccessControl_init(admin_);
         StrategyManagerLib.__StrategyManager_init();
         InitializableLib.postInitializer(s);

@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {DeployEmergencyStop} from "@lattice-script/base/security/DeployEmergencyStop.s.sol";
 import {EmergencyStopTestFacet} from "@lattice-test/helpers/EmergencyStopTestFacet.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
+import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
 import {EmergencyStop} from "@lattice/security/EmergencyStop.sol";
 import {Test} from "forge-std/Test.sol";
 
@@ -39,7 +39,7 @@ abstract contract EmergencyStopTestBase is Test, GetSelectors {
             functionSelectors: _getSelectors("EmergencyStopTestFacet")
         });
 
-        Diamond d = new Diamond();
+        LatticeDiamond d = new LatticeDiamond();
         d.initialize(cuts, init, initCalldata);
         diamond_ = address(d);
     }

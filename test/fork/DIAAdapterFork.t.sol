@@ -2,13 +2,13 @@
 pragma solidity ^0.8.30;
 
 import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {IDIAOracleV2} from "@lattice/interfaces/external/dia/IDIAOracleV2.sol";
 import {IDIAAdapter} from "@lattice/interfaces/oracles/IDIAAdapter.sol";
 import {DIAAdapter} from "@lattice/oracles/dia/DIAAdapter.sol";
 import {DIAAdapterLib} from "@lattice/oracles/dia/DIAAdapterLib.sol";
+import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @notice Mock diamond combining AccessControl + DIAAdapter.
@@ -19,7 +19,7 @@ contract MockDIAAdapterForkContract is AccessControl, DIAAdapter {
 
     function initialize(address _admin) external {
         bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+        s = InitializableLib.preInitializer(s);
         AccessControlLib.__AccessControl_init(_admin);
         DIAAdapterLib.__DIAAdapter_init();
         InitializableLib.postInitializer(s);

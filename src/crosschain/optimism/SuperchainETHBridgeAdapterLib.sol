@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {ISuperchainETHBridgeAdapter} from "@lattice/interfaces/crosschain/ISuperchainETHBridgeAdapter.sol";
 import {ISuperchainETHBridge} from "@lattice/interfaces/external/optimism/ISuperchainETHBridge.sol";
+import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 
 /// @dev The canonical OP Stack `SuperchainETHBridge` predeploy (same address on every Superchain interop chain).
 address constant SUPERCHAIN_ETH_BRIDGE = 0x4200000000000000000000000000000000000024;

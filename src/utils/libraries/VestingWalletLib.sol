@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {OwnableLib} from "@diamond/libraries/OwnableLib.sol";
 import {IVestingWallet} from "@lattice/interfaces/utils/IVestingWallet.sol";
+import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 import {IERC20} from "forge-std/interfaces/IERC20.sol";
 
 //*//////////////////////////////////////////////////////////////////////////

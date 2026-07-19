@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {
     ERC6900ModuleManagerLib,
     ERC6900ModuleManagerStorage
@@ -25,6 +24,7 @@ import {
     ValidationFlags
 } from "@lattice/interfaces/external/ercs/IERC6900.sol";
 import {EIP712Lib} from "@lattice/utils/libraries/EIP712Lib.sol";
+import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 
 /// @title ERC6900SignatureLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {DeployInvariantChecker} from "@lattice-script/base/security/DeployInvariantChecker.s.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
 import {InvariantCheckerTestFacet} from "@lattice-test/helpers/InvariantCheckerTestFacet.sol";
+import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
 import {InvariantChecker} from "@lattice/security/InvariantChecker.sol";
 import {Test} from "forge-std/Test.sol";
 
@@ -47,7 +47,7 @@ abstract contract InvariantCheckerTestBase is Test, GetSelectors {
         }
         cuts[prod.length] = _usageCut();
 
-        Diamond d = new Diamond();
+        LatticeDiamond d = new LatticeDiamond();
         d.initialize(cuts, init, initCalldata);
         diamond_ = address(d);
     }

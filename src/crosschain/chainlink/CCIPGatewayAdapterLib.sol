@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
 import {BridgeFungibleLib} from "@lattice/crosschain/libraries/BridgeFungibleLib.sol";
 import {AdapterBaseLib} from "@lattice/defi/libraries/AdapterBaseLib.sol";
@@ -9,6 +8,7 @@ import {ICCIPGatewayAdapter} from "@lattice/interfaces/crosschain/ICCIPGatewayAd
 import {Client} from "@lattice/interfaces/external/chainlink/CCIPClient.sol";
 import {IRouterClient} from "@lattice/interfaces/external/chainlink/IRouterClient.sol";
 import {IERC7786GatewaySource, IERC7786Recipient} from "@lattice/interfaces/external/ercs/IERC7786.sol";
+import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 import {InteroperableAddress} from "@lattice/utils/libraries/InteroperableAddress.sol";
 
 //*//////////////////////////////////////////////////////////////////////////

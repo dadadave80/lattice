@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {Diamond} from "@diamond/Diamond.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {CCTPBridgeAdapterTestBase} from "@lattice-test/base/CCTPBridgeAdapterTestBase.sol";
+import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
 import {CCTPBridgeAdapter} from "@lattice/crosschain/circle/CCTPBridgeAdapter.sol";
 import {HOOK_MAGIC} from "@lattice/crosschain/circle/CCTPBridgeAdapterLib.sol";
 import {NonEvmAddress} from "@lattice/crosschain/libraries/NonEvmAddress.sol";
@@ -277,7 +277,7 @@ contract CCTPBridgeAdapterTest is CCTPBridgeAdapterTestBase {
     ///      {Diamond.initialize}); `deployer` was created in `setUp`.
     function _expectZeroAddressInitRevert(address tm, address mt, address u) internal {
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) = deployer.buildCuts(admin, tm, mt, u);
-        Diamond d = new Diamond();
+        LatticeDiamond d = new LatticeDiamond();
         vm.expectRevert(ICCTPBridgeAdapter.CCTPZeroAddress.selector);
         d.initialize(cuts, init, initCalldata);
     }

@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {Diamond} from "@diamond/Diamond.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {StarknetGatewayAdapterTestBase} from "@lattice-test/base/StarknetGatewayAdapterTestBase.sol";
 import {MockStarknetMessaging} from "@lattice-test/mocks/MockStarknetMessaging.sol";
+import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
 import {NonEvmAddress} from "@lattice/crosschain/libraries/NonEvmAddress.sol";
 import {StarknetGatewayAdapter} from "@lattice/crosschain/starknet/StarknetGatewayAdapter.sol";
 import {StarknetGatewayAdapterLib} from "@lattice/crosschain/starknet/StarknetGatewayAdapterLib.sol";
@@ -100,7 +100,7 @@ contract StarknetGatewayAdapterTest is StarknetGatewayAdapterTestBase {
     ///      {Diamond.initialize}); `deployer` was created in `setUp`.
     function _expectInitRevert(address core_, bytes memory chainRef, bytes4 err) internal {
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) = deployer.buildCuts(admin, core_, chainRef);
-        Diamond d = new Diamond();
+        LatticeDiamond d = new LatticeDiamond();
         vm.expectRevert(err);
         d.initialize(cuts, init, initCalldata);
     }

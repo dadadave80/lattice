@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {PermitTokenInit} from "@lattice-test/composability/ComposedTokenInit.sol";
 import {TokenBlueprintHelper} from "@lattice-test/helpers/TokenBlueprintHelper.sol";
+import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
 import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
 import {IERC20Permit} from "@lattice/interfaces/tokens/IERC20Permit.sol";
 
@@ -34,7 +34,7 @@ contract ERC20PermitComposition is TokenBlueprintHelper {
     function setUp() public {
         owner = vm.addr(ownerKey);
         (FacetCut[] memory cuts, PermitTokenInit init) = _permitTokenBlueprint();
-        Diamond diamond = new Diamond();
+        LatticeDiamond diamond = new LatticeDiamond();
         // Cut succeeds only because ERC20Permit + EIP712 own disjoint selectors (no shared eip712Domain).
         diamond.initialize(cuts, address(init), abi.encodeCall(PermitTokenInit.init, ()));
         token = address(diamond);

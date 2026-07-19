@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {AccountSigner} from "@lattice/accounts/erc7579/AccountSigner.sol";
 import {AccountSignerLib} from "@lattice/accounts/libraries/AccountSignerLib.sol";
 import {IAccountSigner} from "@lattice/interfaces/accounts/IAccountSigner.sol";
 import {Base64} from "@lattice/utils/libraries/Base64.sol";
+import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 import {WebAuthn} from "@lattice/utils/libraries/WebAuthn.sol";
 import {Test} from "forge-std/Test.sol";
 
@@ -19,7 +19,7 @@ contract MockAccountSigner is AccessControl, AccountSigner {
 
     function initialize(address admin_, address owner_) external {
         bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+        s = InitializableLib.preInitializer(s);
         AccessControlLib.__AccessControl_init(admin_);
         AccountSignerLib.__AccountSigner_init(owner_);
         InitializableLib.postInitializer(s);

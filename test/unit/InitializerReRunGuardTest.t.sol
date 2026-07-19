@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {InitializableLib, InvalidInitialization} from "@diamond/libraries/InitializableLib.sol";
 import {DiamondValidationLib} from "@lattice/governance/libraries/DiamondValidationLib.sol";
+import {InitializableLib, InvalidInitialization} from "@lattice/utils/libraries/InitializableLib.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @title MockInitializable
@@ -19,7 +19,7 @@ contract MockInitializable {
     /// @notice v1 initializer — guarded like OZ `initializer()`. Reverts on a second call.
     function initialize(address _admin) external {
         bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+        s = InitializableLib.preInitializer(s);
         admin = _admin;
         InitializableLib.postInitializer(s);
     }

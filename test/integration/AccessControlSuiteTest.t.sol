@@ -18,7 +18,6 @@ pragma solidity ^0.8.30;
 ///      `AccessControl` (DEFAULT_ADMIN_ROLE) compose directly in one Diamond, so the
 ///      opinionated admin-rules layer is unnecessary. See test_Suite_OwnableAndAccessControlCoexist.
 
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {OwnableLib} from "@diamond/libraries/OwnableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlEnumerable} from "@lattice/access/AccessControlEnumerable.sol";
@@ -26,6 +25,7 @@ import {AccessControlTimed} from "@lattice/access/AccessControlTimed.sol";
 import {AccessControlEnumerableLib} from "@lattice/access/libraries/AccessControlEnumerableLib.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {AccessControlTimedLib} from "@lattice/access/libraries/AccessControlTimedLib.sol";
+import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 import {Test} from "forge-std/Test.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
@@ -53,7 +53,7 @@ contract MockAccessSuiteDiamond is AccessControl, AccessControlTimed, AccessCont
 
     function initialize(address _admin) external {
         bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+        s = InitializableLib.preInitializer(s);
         OwnableLib.initializeOwner(_admin);
         AccessControlLib.__AccessControl_init(_admin);
         AccessControlTimedLib.__AccessControlTimed_init();

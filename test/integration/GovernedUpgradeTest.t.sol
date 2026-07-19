@@ -14,7 +14,7 @@ pragma solidity ^0.8.30;
 
 import {DiamondLib, FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
+import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
@@ -73,7 +73,7 @@ contract GovToken is ERC20, Votes, ERC20Votes {
 
     function initialize(string memory name_, string memory symbol_, address admin_) external {
         bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+        s = InitializableLib.preInitializer(s);
         ERC20Lib.__ERC20_init(name_, symbol_);
         EIP712Lib.__EIP712_init(name_, "1");
         NoncesLib.__Nonces_init();
@@ -122,7 +122,7 @@ contract SelfGovDiamond is Governor, TimelockController, GovernedDiamondCut, Acc
 
     function initialize(Cfg memory cfg, address admin) external {
         bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+        s = InitializableLib.preInitializer(s);
 
         // AccessControl first (roles live here).
         AccessControlLib.__AccessControl_init(admin);

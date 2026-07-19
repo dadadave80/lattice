@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {ERC4337Validation} from "@lattice/accounts/ERC4337Validation.sol";
@@ -13,6 +12,7 @@ import {DEFAULT_ENTRY_POINT, ERC4337ValidationLib} from "@lattice/accounts/libra
 import {IERC4337Validation} from "@lattice/interfaces/accounts/IERC4337Validation.sol";
 import {IAccount, PackedUserOperation} from "@lattice/interfaces/external/ercs/IAccount.sol";
 import {IERC7579Validator, MODULE_TYPE_VALIDATOR} from "@lattice/interfaces/external/ercs/IERC7579.sol";
+import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @dev Harness: 4337 validation + signer + access + ERC-7579 module config (to install validators).
@@ -29,7 +29,7 @@ contract MockERC4337 is AccessControl, AccountSigner, ERC4337Validation, ERC7579
 
     function initialize(address admin_, address owner_, address entryPoint_) external {
         bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+        s = InitializableLib.preInitializer(s);
         AccessControlLib.__AccessControl_init(admin_);
         AccountSignerLib.__AccountSigner_init(owner_);
         ERC4337ValidationLib.__ERC4337Validation_init(entryPoint_);

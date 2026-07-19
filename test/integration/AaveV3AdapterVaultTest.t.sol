@@ -20,7 +20,6 @@ pragma solidity ^0.8.30;
 ///     call `IStrategy.withdraw`, pulling funds from the mock pool back to the vault.
 
 import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {AaveV3Adapter} from "@lattice/defi/AaveV3Adapter.sol";
 import {StrategyManager} from "@lattice/defi/StrategyManager.sol";
@@ -33,6 +32,7 @@ import {ERC20} from "@lattice/tokens/ERC20/ERC20.sol";
 import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
 import {ERC4626} from "@lattice/tokens/ERC4626/ERC4626.sol";
 import {ERC4626Lib} from "@lattice/tokens/ERC4626/libraries/ERC4626Lib.sol";
+import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 import {Test} from "forge-std/Test.sol";
 
 // Reuse the mocks from the supply test by importing them.
@@ -51,7 +51,7 @@ contract MockVault is ERC20, ERC4626, VaultCore {
 
     function initialize(address asset_, address admin_) external {
         bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+        s = InitializableLib.preInitializer(s);
         AccessControlLib.__AccessControl_init(admin_);
         ERC20Lib.__ERC20_init("Vault Share", "vSHARE");
         ERC4626Lib.__ERC4626_init(asset_, 0);
@@ -104,7 +104,7 @@ contract MockVault is ERC20, ERC4626, VaultCore {
 contract MockManager is StrategyManager {
     function initialize(address admin_) external {
         bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+        s = InitializableLib.preInitializer(s);
         AccessControlLib.__AccessControl_init(admin_);
         StrategyManagerLib.__StrategyManager_init();
         InitializableLib.postInitializer(s);

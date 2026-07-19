@@ -2,7 +2,6 @@
 pragma solidity ^0.8.30;
 
 import {DiamondLib, FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {ERC6900ModuleManager} from "@lattice/accounts/erc6900/ERC6900ModuleManager.sol";
@@ -16,6 +15,7 @@ import {
     ManifestExecutionHook,
     ValidationConfig
 } from "@lattice/interfaces/external/ercs/IERC6900.sol";
+import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 import {Test} from "forge-std/Test.sol";
 
 interface IFoo {
@@ -87,7 +87,7 @@ contract MockAccount6900 is ModularAccount6900, AccessControl, ERC6900ModuleMana
 
     function initialize(address admin_, FacetCut[] calldata cuts) external {
         bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+        s = InitializableLib.preInitializer(s);
         AccessControlLib.__AccessControl_init(admin_);
         DiamondLib.diamondCut(cuts, address(0), msg.data[0:0]);
         InitializableLib.postInitializer(s);

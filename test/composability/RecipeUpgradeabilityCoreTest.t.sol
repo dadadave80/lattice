@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {DeployAccount} from "@lattice-script/base/accounts/DeployAccount.s.sol";
 import {DeployAccount6900} from "@lattice-script/base/accounts/DeployAccount6900.s.sol";
@@ -12,6 +11,7 @@ import {DeployGovernedSafeDiamondCut} from "@lattice-script/base/governance/Depl
 import {DeploySafeDiamondCut} from "@lattice-script/base/governance/DeploySafeDiamondCut.s.sol";
 import {MockSafe} from "@lattice-test/base/SafeDiamondCutTestBase.sol";
 import {RecipeGuards} from "@lattice-test/composability/RecipeGuards.sol";
+import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
 import {AccountInit6900} from "@lattice/accounts/erc6900/AccountInit6900.sol";
 import {AccountInit} from "@lattice/accounts/erc7579/AccountInit.sol";
 import {GovernedVaultENSParams} from "@lattice/defi/GovernedVaultENSInit.sol";
@@ -40,14 +40,14 @@ contract RecipeUpgradeabilityCoreTest is RecipeGuards {
 
     function test_Introspectable_Account() public {
         (FacetCut[] memory cuts, AccountInit init) = new DeployAccount().buildCuts(entryPoint);
-        Diamond d = new Diamond();
+        LatticeDiamond d = new LatticeDiamond();
         d.initialize(cuts, address(init), abi.encodeCall(AccountInit.init, (address(this))));
         _assertIntrospectable(address(d), 8);
     }
 
     function test_Introspectable_Account6900() public {
         (FacetCut[] memory cuts, AccountInit6900 init) = new DeployAccount6900().buildCuts(entryPoint);
-        Diamond d = new Diamond();
+        LatticeDiamond d = new LatticeDiamond();
         d.initialize(cuts, address(init), abi.encodeCall(AccountInit6900.init, (address(this))));
         _assertIntrospectable(address(d), 9);
     }

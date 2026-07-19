@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {OwnableLib} from "@diamond/libraries/OwnableLib.sol";
 import {VestingWallet} from "@lattice/utils/VestingWallet.sol";
+import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 import {VestingWalletLib} from "@lattice/utils/libraries/VestingWalletLib.sol";
 
 /// @title VestingWalletStandalone
@@ -19,7 +19,7 @@ contract VestingWalletStandalone is VestingWallet {
     /// @param durationSeconds The total duration of the vesting period in seconds.
     constructor(address beneficiary, uint64 startTimestamp, uint64 durationSeconds) {
         bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+        s = InitializableLib.preInitializer(s);
         OwnableLib.initializeOwner(beneficiary);
         VestingWalletLib.__VestingWallet_init(startTimestamp, durationSeconds);
         InitializableLib.postInitializer(s);

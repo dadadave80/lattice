@@ -133,18 +133,19 @@ Add the remappings (mirror of this repo's `remappings.txt` / `foundry.toml`):
 forge-std/=lib/forge-std/src/
 ```
 
-Because facets have no constructors, proxy state is set up through `diamond-lib`'s
-`InitializableLib` with a three-call dance the consumer performs once per module:
+Because facets have no constructors, proxy state is set up through Lattice's vendored
+`InitializableLib` (moved into Lattice at diamond-lib v0.3.0) with a three-call dance the consumer
+performs once per module — `preInitializer` returns the slot `postInitializer` must receive:
 
 ```solidity
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
-import {InitializableLib} from "@diamond/.../InitializableLib.sol";
+import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 
 function initialize(address _admin) external {
     bytes32 s = InitializableLib.initializableSlot();
-    InitializableLib.preInitializer(s);              // set initializing flag, check version
+    s = InitializableLib.preInitializer(s);          // set initializing flag, check version, return slot
     AccessControlLib.__AccessControl_init(_admin);   // module init (gated by checkInitializing)
-    InitializableLib.postInitializer(s);             // clear flag, emit Initialized
+    InitializableLib.postInitializer(s);             // must receive the returned slot
 }
 ```
 

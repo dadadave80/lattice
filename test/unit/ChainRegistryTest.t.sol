@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {Diamond} from "@diamond/Diamond.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {MultiInit} from "@diamond/initializers/MultiInit.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
-import {NotInitializing} from "@diamond/libraries/InitializableLib.sol";
 import {ChainRegistryTestBase} from "@lattice-test/base/ChainRegistryTestBase.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
+import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {ChainRegistry} from "@lattice/crosschain/ChainRegistry.sol";
 import {ChainRegistryInit} from "@lattice/crosschain/ChainRegistryInit.sol";
@@ -16,6 +15,7 @@ import {ERC7786OpenBridgeInit} from "@lattice/crosschain/ERC7786OpenBridgeInit.s
 import {IChainRegistry} from "@lattice/interfaces/crosschain/IChainRegistry.sol";
 import {IERC7786OpenBridge} from "@lattice/interfaces/crosschain/IERC7786OpenBridge.sol";
 import {IERC7786GatewaySource} from "@lattice/interfaces/external/ercs/IERC7786.sol";
+import {NotInitializing} from "@lattice/utils/libraries/InitializableLib.sol";
 import {InteroperableAddress} from "@lattice/utils/libraries/InteroperableAddress.sol";
 import {Test} from "forge-std/Test.sol";
 
@@ -450,7 +450,7 @@ contract ChainRegistryOpenBridgeGateTest is Test, GetSelectors {
         inits[1] = address(new ChainRegistryInit());
         initDatas[1] = abi.encodeCall(ChainRegistryInit.init, (admin));
 
-        Diamond d = new Diamond();
+        LatticeDiamond d = new LatticeDiamond();
         d.initialize(cuts, address(new MultiInit()), abi.encodeCall(MultiInit.multiInit, (inits, initDatas)));
         diamond = address(d);
         bridge = ERC7786OpenBridge(diamond);

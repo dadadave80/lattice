@@ -2,11 +2,11 @@
 pragma solidity ^0.8.30;
 
 import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
 import {ERC1155} from "@lattice/tokens/ERC1155/ERC1155.sol";
 import {ERC1155Lib} from "@lattice/tokens/ERC1155/libraries/ERC1155Lib.sol";
+import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @notice Minimal mock ERC1155 for gas tests.
@@ -17,7 +17,7 @@ contract GasERC1155 is ERC1155, AccessControl {
 
     function initialize(string memory uri_, address admin) external {
         bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+        s = InitializableLib.preInitializer(s);
         ERC1155Lib.__ERC1155_init(uri_);
         AccessControlLib.__AccessControl_init(admin);
         InitializableLib.postInitializer(s);
