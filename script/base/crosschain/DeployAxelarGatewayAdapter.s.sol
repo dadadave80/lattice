@@ -6,8 +6,8 @@ import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
-import {AxelarGatewayAdapter} from "@lattice/crosschain/AxelarGatewayAdapter.sol";
-import {AxelarGatewayAdapterInit} from "@lattice/crosschain/AxelarGatewayAdapterInit.sol";
+import {AxelarGatewayAdapter} from "@lattice/crosschain/axelar/AxelarGatewayAdapter.sol";
+import {AxelarGatewayAdapterInit} from "@lattice/crosschain/axelar/AxelarGatewayAdapterInit.sol";
 import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
 
 /// @title DeployAxelarGatewayAdapter

@@ -3,7 +3,7 @@ pragma solidity ^0.8.30;
 
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {WormholeGatewayAdapterTestBase} from "@lattice-test/base/WormholeGatewayAdapterTestBase.sol";
-import {WormholeGatewayAdapter} from "@lattice/crosschain/WormholeGatewayAdapter.sol";
+import {WormholeGatewayAdapter} from "@lattice/crosschain/wormhole/WormholeGatewayAdapter.sol";
 import {IWormholeGatewayAdapter} from "@lattice/interfaces/crosschain/IWormholeGatewayAdapter.sol";
 import {IERC7786GatewaySource, IERC7786Recipient} from "@lattice/interfaces/external/ercs/IERC7786.sol";
 import {IERC7786Attributes} from "@lattice/interfaces/external/ercs/IERC7786Attributes.sol";

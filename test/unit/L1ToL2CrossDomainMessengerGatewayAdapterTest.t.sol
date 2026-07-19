@@ -5,10 +5,10 @@ import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {
     L1ToL2CrossDomainMessengerGatewayAdapterTestBase
 } from "@lattice-test/base/L1ToL2CrossDomainMessengerGatewayAdapterTestBase.sol";
+import {L2_CROSS_DOMAIN_MESSENGER} from "@lattice/crosschain/libraries/L1ToL2CrossDomainMessengerGatewayAdapterLib.sol";
 import {
     L1ToL2CrossDomainMessengerGatewayAdapter
-} from "@lattice/crosschain/L1ToL2CrossDomainMessengerGatewayAdapter.sol";
-import {L2_CROSS_DOMAIN_MESSENGER} from "@lattice/crosschain/libraries/L1ToL2CrossDomainMessengerGatewayAdapterLib.sol";
+} from "@lattice/crosschain/optimism/L1ToL2CrossDomainMessengerGatewayAdapter.sol";
 import {
     IL1ToL2CrossDomainMessengerGatewayAdapter
 } from "@lattice/interfaces/crosschain/IL1ToL2CrossDomainMessengerGatewayAdapter.sol";

@@ -2,8 +2,8 @@
 pragma solidity ^0.8.30;
 
 import {StarknetGatewayAdapterTestBase} from "@lattice-test/base/StarknetGatewayAdapterTestBase.sol";
-import {StarknetGatewayAdapter} from "@lattice/crosschain/StarknetGatewayAdapter.sol";
 import {NonEvmAddress} from "@lattice/crosschain/libraries/NonEvmAddress.sol";
+import {StarknetGatewayAdapter} from "@lattice/crosschain/starknet/StarknetGatewayAdapter.sol";
 
 /// @dev Live-core pending-message getter the fork test needs that is NOT part of the deliberately minimal
 ///      vendored {IStarknetMessaging} subset (upstream: https://github.com/starkware-libs/cairo-lang). The
