@@ -5,7 +5,7 @@ import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {DeployRedStoneAdapter} from "@lattice-script/base/oracles/DeployRedStoneAdapter.s.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
-import {RedStoneAdapter} from "@lattice/oracles/RedStoneAdapter.sol";
+import {RedStoneAdapter} from "@lattice/oracles/redstone/RedStoneAdapter.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @title RedStoneAdapterTestBase

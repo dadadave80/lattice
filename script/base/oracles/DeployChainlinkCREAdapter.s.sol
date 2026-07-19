@@ -7,8 +7,8 @@ import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
-import {ChainlinkCREAdapter} from "@lattice/oracles/ChainlinkCREAdapter.sol";
-import {ChainlinkCREAdapterInit} from "@lattice/oracles/ChainlinkCREAdapterInit.sol";
+import {ChainlinkCREAdapter} from "@lattice/oracles/chainlink/ChainlinkCREAdapter.sol";
+import {ChainlinkCREAdapterInit} from "@lattice/oracles/chainlink/ChainlinkCREAdapterInit.sol";
 
 /// @title DeployChainlinkCREAdapter
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

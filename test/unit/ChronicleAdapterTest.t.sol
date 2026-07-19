@@ -5,7 +5,7 @@ import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {ChronicleAdapterTestBase} from "@lattice-test/base/ChronicleAdapterTestBase.sol";
 import {IChronicle} from "@lattice/interfaces/external/chronicle/IChronicle.sol";
 import {IChronicleAdapter} from "@lattice/interfaces/oracles/IChronicleAdapter.sol";
-import {ChronicleAdapter} from "@lattice/oracles/ChronicleAdapter.sol";
+import {ChronicleAdapter} from "@lattice/oracles/chronicle/ChronicleAdapter.sol";
 
 // ---------------------------------------------------------------------------
 //                              MOCKS

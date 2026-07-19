@@ -5,7 +5,7 @@ import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {DeployPythEntropyAdapter} from "@lattice-script/base/oracles/DeployPythEntropyAdapter.s.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
-import {PythEntropyAdapter} from "@lattice/oracles/PythEntropyAdapter.sol";
+import {PythEntropyAdapter} from "@lattice/oracles/pyth/PythEntropyAdapter.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @title PythEntropyAdapterTestBase

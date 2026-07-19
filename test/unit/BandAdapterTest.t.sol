@@ -8,7 +8,7 @@ import {DeployBandAdapter} from "@lattice-script/base/oracles/DeployBandAdapter.
 import {BandAdapterTestBase} from "@lattice-test/base/BandAdapterTestBase.sol";
 import {IStdReference} from "@lattice/interfaces/external/band/IStdReference.sol";
 import {IBandAdapter} from "@lattice/interfaces/oracles/IBandAdapter.sol";
-import {BandAdapter} from "@lattice/oracles/BandAdapter.sol";
+import {BandAdapter} from "@lattice/oracles/band/BandAdapter.sol";
 
 // ---------------------------------------------------------------------------
 //                              MOCKS

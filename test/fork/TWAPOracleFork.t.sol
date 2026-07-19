@@ -6,8 +6,8 @@ import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {ITWAPOracle} from "@lattice/interfaces/oracles/ITWAPOracle.sol";
-import {TWAPOracle} from "@lattice/oracles/TWAPOracle.sol";
 import {TWAPOracleLib} from "@lattice/oracles/libraries/TWAPOracleLib.sol";
+import {TWAPOracle} from "@lattice/oracles/uniswap/TWAPOracle.sol";
 import {Test} from "forge-std/Test.sol";
 
 // ---------------------------------------------------------------------------

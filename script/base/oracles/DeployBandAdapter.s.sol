@@ -7,8 +7,8 @@ import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
-import {BandAdapter} from "@lattice/oracles/BandAdapter.sol";
-import {BandAdapterInit} from "@lattice/oracles/BandAdapterInit.sol";
+import {BandAdapter} from "@lattice/oracles/band/BandAdapter.sol";
+import {BandAdapterInit} from "@lattice/oracles/band/BandAdapterInit.sol";
 
 /// @title DeployBandAdapter
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

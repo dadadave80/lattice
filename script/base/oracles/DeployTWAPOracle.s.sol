@@ -7,8 +7,8 @@ import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
-import {TWAPOracle} from "@lattice/oracles/TWAPOracle.sol";
-import {TWAPOracleInit} from "@lattice/oracles/TWAPOracleInit.sol";
+import {TWAPOracle} from "@lattice/oracles/uniswap/TWAPOracle.sol";
+import {TWAPOracleInit} from "@lattice/oracles/uniswap/TWAPOracleInit.sol";
 
 /// @title DeployTWAPOracle
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

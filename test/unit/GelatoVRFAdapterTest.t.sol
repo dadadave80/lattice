@@ -5,7 +5,7 @@ import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {GelatoVRFAdapterTestBase} from "@lattice-test/base/GelatoVRFAdapterTestBase.sol";
 import {IGelatoVRFConsumer} from "@lattice/interfaces/external/gelato/IGelatoVRFConsumer.sol";
 import {IGelatoVRFAdapter} from "@lattice/interfaces/oracles/IGelatoVRFAdapter.sol";
-import {GelatoVRFAdapter} from "@lattice/oracles/GelatoVRFAdapter.sol";
+import {GelatoVRFAdapter} from "@lattice/oracles/gelato/GelatoVRFAdapter.sol";
 
 // ---------------------------------------------------------------------------
 //                              TESTS

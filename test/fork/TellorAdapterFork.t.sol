@@ -7,8 +7,8 @@ import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {ITellor} from "@lattice/interfaces/external/tellor/ITellor.sol";
 import {ITellorAdapter} from "@lattice/interfaces/oracles/ITellorAdapter.sol";
-import {TellorAdapter} from "@lattice/oracles/TellorAdapter.sol";
 import {TellorAdapterLib} from "@lattice/oracles/libraries/TellorAdapterLib.sol";
+import {TellorAdapter} from "@lattice/oracles/tellor/TellorAdapter.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @notice Mock diamond combining AccessControl + TellorAdapter.

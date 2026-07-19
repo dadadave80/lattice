@@ -7,8 +7,8 @@ import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
-import {ChainlinkVRF} from "@lattice/oracles/ChainlinkVRF.sol";
-import {ChainlinkVRFInit} from "@lattice/oracles/ChainlinkVRFInit.sol";
+import {ChainlinkVRF} from "@lattice/oracles/chainlink/ChainlinkVRF.sol";
+import {ChainlinkVRFInit} from "@lattice/oracles/chainlink/ChainlinkVRFInit.sol";
 
 /// @title DeployChainlinkVRF
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
