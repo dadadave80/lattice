@@ -3,7 +3,6 @@ pragma solidity ^0.8.30;
 
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {HyperbridgeGatewayAdapterLib} from "@lattice/crosschain/hyperbridge/HyperbridgeGatewayAdapterLib.sol";
-import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib.sol";
 
 /// @title HyperbridgeGatewayAdapterInit
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
@@ -24,7 +23,6 @@ contract HyperbridgeGatewayAdapterInit {
     /// @param host  The Hyperbridge IsmpHost the adapter dispatches to and accepts module callbacks from.
     function init(address admin, address host) external {
         AccessControlLib.__AccessControl_init(admin);
-        ReentrancyGuardLib.__ReentrancyGuard_init();
         HyperbridgeGatewayAdapterLib.__HyperbridgeGatewayAdapter_init(host);
     }
 }

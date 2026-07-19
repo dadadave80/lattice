@@ -11,7 +11,6 @@ import {EmergencyStop} from "@lattice/security/EmergencyStop.sol";
 import {Pausable} from "@lattice/security/Pausable.sol";
 import {EmergencyStopLib} from "@lattice/security/libraries/EmergencyStopLib.sol";
 import {PausableLib} from "@lattice/security/libraries/PausableLib.sol";
-import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib.sol";
 import {Initializable} from "@lattice/utils/Initializable.sol";
 import {Test} from "forge-std/Test.sol";
 
@@ -187,7 +186,6 @@ contract MockCurveAdapter is CurveStableSwapAdapter, Pausable, EmergencyStop, In
         uint256 slippageBps_
     ) external initializer {
         AccessControlLib.__AccessControl_init(admin_);
-        ReentrancyGuardLib.__ReentrancyGuard_init();
         PausableLib.__Pausable_init();
         EmergencyStopLib.__EmergencyStop_init();
         CurveStableSwapAdapterLib.__CurveStableSwapAdapter_init(

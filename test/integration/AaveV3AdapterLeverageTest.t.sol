@@ -9,7 +9,6 @@ import {IAaveV3Adapter} from "@lattice/interfaces/defi/IAaveV3Adapter.sol";
 import {IProtocolAdapter} from "@lattice/interfaces/defi/IProtocolAdapter.sol";
 import {ChainlinkAdapter} from "@lattice/oracles/chainlink/ChainlinkAdapter.sol";
 import {ChainlinkAdapterLib} from "@lattice/oracles/chainlink/ChainlinkAdapterLib.sol";
-import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib.sol";
 import {Initializable} from "@lattice/utils/Initializable.sol";
 import {Test} from "forge-std/Test.sol";
 
@@ -62,7 +61,6 @@ contract MockLeverAdapter is AaveV3Adapter, ChainlinkAdapter, Initializable {
         uint256 minHf_
     ) external initializer {
         AccessControlLib.__AccessControl_init(admin_);
-        ReentrancyGuardLib.__ReentrancyGuard_init();
         ChainlinkAdapterLib.__ChainlinkAdapter_init();
         AaveV3AdapterLib.__AaveV3Adapter_init(provider_, asset_, vault_, rewardRecipient_, feedKey_, minHf_);
     }

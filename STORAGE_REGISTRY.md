@@ -38,8 +38,6 @@ and a row here.
   - **ERC721 (metadata)** `0x5b5e139f`, **ERC1155 (metadata URI)** `0x0e89341c`, and the
     **ERC721URIStorage** entry's **ERC-4906** `0x49064906` are standard EIP ids with no
     standalone Lattice interface type.
-  - **ReentrancyGuard** `IReentrancyGuard` has no functions (only an error), so its
-    `interfaceId` is `0x00000000`.
   - **ERC4626** / **VaultCore** ids are the XOR of their vault-specific selectors only
     (inherited `IERC20` excluded), as declared in the Lattice interfaces.
 - **GovernedDiamondCut** exposes only `diamondCut`, so `type(IGovernedDiamondCut).interfaceId == 0x1f931c1c`,
@@ -304,7 +302,7 @@ and a row here.
 | Module | ERC-7201 namespace | Storage slot (hex) | Interface | interfaceId | ERC-165 map slot (hex) |
 |---|---|---|---|---|---|
 | Pausable | `lattice.storage.Pausable` | `0x1484a55ae2f6de193138ed7f3a9f9b3307c3701783002d2a375beb8271f96200` | `IPausable` | `0xe78a39d8` | `0xad8c21edea54b0e7ec01d18544e806e752f64eb497d475cd8353c0c8726b4d3d` |
-| ReentrancyGuard | `lattice.storage.ReentrancyGuard` | `0xd4429f8db30ab6cbe40e0e5546854bc12f64b5d4a4cfb0ec3f5b16a895cd0c00` | `IReentrancyGuard` | `0x00000000` | `0xfb939cb1ca033f66389071014066e3ba51464fd8ec15c96518ea9663d9c0f494` |
+| ReentrancyGuard | — (transient variant: raw Solady guard slot `0x8000000000ab143c06`, no ERC-7201 struct) | n/a | `IReentrancyGuard` (error only) | n/a — no ERC-165 registration, no init | n/a |
 | RateLimiter | `lattice.storage.RateLimiter` | `0xb9ee9c1434713ac0213faa3d41a1dd3c78042ad8ee2d7f6e110f73cd6f19bd00` | `IRateLimiter` | `0x9afe0493` | `0x58fa1bc4807b27651ddeaa1871a010e28c99455295cf3f3424edd8a3f6c6db45` |
 | CircuitBreaker | `lattice.storage.CircuitBreaker` | `0xd8788de4a058793385dd8cf230dd9182ee7825c114e097c68b1e086af1ccbe00` | `ICircuitBreaker` | `0x7462bdca` | `0x9f65a04bbf27ebfd1338d2e0d1c8a9eeb3234866269ee27f320faed8bab02aec` |
 | EmergencyStop | `lattice.storage.EmergencyStop` | `0x06261d2148a76026572818ff69ded6332eb2830e669ce15f15f286b1d91c5800` | `IEmergencyStop` | `0x9e464da9` | `0x59d8ae278aff771bb9e56436652ef8f684d37f52855acb66dfe58a5a44c4d9de` |
