@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {DeployVaultCore} from "@lattice-script/base/defi/DeployVaultCore.s.sol";
 import {DeployERC20} from "@lattice-script/base/tokens/DeployERC20.s.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
 import {IMintableToken} from "@lattice-test/helpers/IMintableToken.sol";
 import {TokenTestFacet} from "@lattice-test/helpers/TokenTestFacet.sol";
+import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
 import {IVaultCore} from "@lattice/interfaces/defi/IVaultCore.sol";
 
 /// @title VaultCoreTestBase
@@ -47,7 +47,7 @@ abstract contract VaultCoreTestBase is GetSelectors {
             functionSelectors: _getSelectors("TokenTestFacet")
         });
 
-        Diamond d = new Diamond();
+        LatticeDiamond d = new LatticeDiamond();
         d.initialize(cuts, init, initCalldata);
         token_ = address(d);
     }
@@ -62,7 +62,7 @@ abstract contract VaultCoreTestBase is GetSelectors {
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) =
             vaultDeployer.buildCuts(asset_, name_, symbol_, admin_, 0);
 
-        Diamond d = new Diamond();
+        LatticeDiamond d = new LatticeDiamond();
         d.initialize(cuts, init, initCalldata);
         vault_ = address(d);
     }

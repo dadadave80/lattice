@@ -3,7 +3,6 @@ pragma solidity ^0.8.30;
 
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {StarknetGatewayAdapterLib} from "@lattice/crosschain/starknet/StarknetGatewayAdapterLib.sol";
-import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib.sol";
 
 /// @title StarknetGatewayAdapterInit
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
@@ -23,7 +22,6 @@ contract StarknetGatewayAdapterInit {
     ///                               e.g. `SN_MAIN` = `0x534e5f4d41494e`).
     function init(address admin, address starknetCore, bytes calldata expectedChainReference) external {
         AccessControlLib.__AccessControl_init(admin);
-        ReentrancyGuardLib.__ReentrancyGuard_init();
         StarknetGatewayAdapterLib.__StarknetGatewayAdapter_init(starknetCore, expectedChainReference);
     }
 }

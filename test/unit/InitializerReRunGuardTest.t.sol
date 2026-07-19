@@ -1,27 +1,25 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {InitializableLib, InvalidInitialization} from "@diamond/libraries/InitializableLib.sol";
 import {DiamondValidationLib} from "@lattice/governance/libraries/DiamondValidationLib.sol";
+import {Initializable} from "@lattice/utils/Initializable.sol";
+import {InitializableLib, InvalidInitialization} from "@lattice/utils/libraries/InitializableLib.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @title MockInitializable
 /// @notice Minimal consumer of diamond-lib `InitializableLib` that demonstrates OZ-style re-run
 ///         protection: a plain `initializer()`-guarded `initialize` runs once, and a
 ///         `reinitializer(version)`-guarded `upgradeTo` requires a strictly increasing version.
-/// @dev Uses the real `preInitializer`/`postInitializer`/`preReinitializer`/`postReinitializer`
-///      manual dance (the modifiers compile to these calls) so the proof exercises the on-chain
-///      runtime guard, not a test-only re-implementation.
-contract MockInitializable {
+/// @dev `initialize` goes through the {Initializable} mixin's `initializer` modifier; `upgradeTo` drives
+///      the raw `preReinitializer`/`postReinitializer` lib calls directly, so the proof exercises the
+///      on-chain runtime guard, not a test-only re-implementation.
+contract MockInitializable is Initializable {
     /// @notice Set during init to prove the body actually ran (mirrors a critical config write).
     address public admin;
 
     /// @notice v1 initializer — guarded like OZ `initializer()`. Reverts on a second call.
-    function initialize(address _admin) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+    function initialize(address _admin) external initializer {
         admin = _admin;
-        InitializableLib.postInitializer(s);
     }
 
     /// @notice Upgrade hook — guarded like OZ `reinitializer(_version)`. Requires `_version` to be

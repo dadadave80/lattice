@@ -2,21 +2,18 @@
 pragma solidity ^0.8.30;
 
 import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {INonces} from "@lattice/interfaces/utils/INonces.sol";
+import {Initializable} from "@lattice/utils/Initializable.sol";
 import {Nonces} from "@lattice/utils/Nonces.sol";
 import {NoncesLib} from "@lattice/utils/libraries/NoncesLib.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @title MockNoncesContract
 /// @notice Mock contract that inherits the Nonces facet and exposes init + internal helpers.
-contract MockNoncesContract is Nonces {
+contract MockNoncesContract is Nonces, Initializable {
     /// @notice Initializes the Nonces module.
-    function initialize() external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+    function initialize() external initializer {
         NoncesLib.__Nonces_init();
-        InitializableLib.postInitializer(s);
     }
 
     /// @notice Test helper that exposes NoncesLib.useNonce.

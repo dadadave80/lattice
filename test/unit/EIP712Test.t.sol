@@ -2,21 +2,18 @@
 pragma solidity ^0.8.30;
 
 import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {IEIP712} from "@lattice/interfaces/utils/IEIP712.sol";
 import {EIP712} from "@lattice/utils/EIP712.sol";
+import {Initializable} from "@lattice/utils/Initializable.sol";
 import {EIP712Lib} from "@lattice/utils/libraries/EIP712Lib.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @title MockEIP712Contract
 /// @notice Mock contract with EIP712 facet and initialization for testing.
-contract MockEIP712Contract is EIP712 {
+contract MockEIP712Contract is EIP712, Initializable {
     /// @notice Initialize EIP-712 with the given name and version.
-    function initialize(string memory name, string memory version) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+    function initialize(string memory name, string memory version) external initializer {
         EIP712Lib.__EIP712_init(name, version);
-        InitializableLib.postInitializer(s);
     }
 
     /// @notice Exposes domainSeparatorV4 for testing.

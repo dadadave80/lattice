@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {IPausable} from "@lattice/interfaces/security/IPausable.sol";
+import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
 //                                  STORAGE
@@ -11,9 +11,6 @@ import {IPausable} from "@lattice/interfaces/security/IPausable.sol";
 
 /// @dev `keccak256(abi.encode(uint256(keccak256("lattice.storage.Pausable")) - 1)) & ~bytes32(uint256(0xff))`.
 bytes32 constant PAUSABLE_STORAGE_SLOT = 0x1484a55ae2f6de193138ed7f3a9f9b3307c3701783002d2a375beb8271f96200;
-
-/// @dev `keccak256(abi.encode(uint256(keccak256("diamond.lib.storage.ERC165")) - 1)) & ~bytes32(uint256(0xff))`.
-bytes32 constant PAUSABLE_ERC165_STORAGE_LOCATION = 0x9ca7f3e2e2bfb15fdf072b85dde92837cddacee6cf2f6b38cd06c9457c1c4200;
 
 /// @dev 0xe78a39d8 is `type(IPausable).interfaceId`.
 /// `keccak256(abi.encode(bytes4(0xe78a39d8), 0x9ca7f3e2e2bfb15fdf072b85dde92837cddacee6cf2f6b38cd06c9457c1c4200))`.
@@ -54,16 +51,14 @@ library PausableLib {
         }
     }
 
-    /// @notice Initializes the Pausable module.
-    /// @dev Must be called between `InitializableLib.preInitializer` and `postInitializer`.
-    /// Registers the IPausable interface ID for ERC-165 discovery.
-    /// Explicitly sets `_paused = false` for defensive clarity and parity with OZ v5.1.0,
-    /// which writes `_paused = false` in its constructor even though EVM zero-initialises
-    /// the slot. This guards against hypothetical slot-collision scenarios.
+    /// @notice Initializes the Pausable module — ERC-165 registration only.
+    /// @dev Must be called inside an `initializer`-guarded function (see {Initializable}); compose it
+    /// from any diamond init that cuts {Pausable} — there is no dedicated init contract. `_paused`
+    /// needs no seeding (false is the zero default). Deliberate divergence from OZ (which registers
+    /// nothing): diamonds rely on ERC-165 discovery, so the IPausable interfaceId is registered here.
     function __Pausable_init() internal {
         bytes32 s = InitializableLib.initializableSlot();
         InitializableLib.checkInitializing(s);
-        pausableStorage()._paused = false;
         registerInterface();
     }
 
@@ -78,14 +73,16 @@ library PausableLib {
     }
 
     /// @notice Reverts if the contract is paused.
-    /// @dev Use this as a guard at the start of functions that must not execute while paused.
-    function whenNotPaused() internal view {
+    /// @dev Use at the start of functions that must not execute while paused — or inherit the
+    /// {Pausable} facade and use its `whenNotPaused` modifier.
+    function checkNotPaused() internal view {
         if (paused()) revert IPausable.EnforcedPause();
     }
 
     /// @notice Reverts if the contract is NOT paused.
-    /// @dev Use this as a guard in functions that require the contract to be paused.
-    function whenPaused() internal view {
+    /// @dev Use in functions that require the contract to be paused — or inherit the {Pausable}
+    /// facade and use its `whenPaused` modifier.
+    function checkPaused() internal view {
         if (!paused()) revert IPausable.ExpectedPause();
     }
 
@@ -94,7 +91,7 @@ library PausableLib {
     /// Emits {Paused} event.
     function pause() internal {
         AccessControlLib.checkRole(0x00);
-        whenNotPaused();
+        checkNotPaused();
         _pause();
     }
 
@@ -103,7 +100,7 @@ library PausableLib {
     /// Emits {Unpaused} event.
     function unpause() internal {
         AccessControlLib.checkRole(0x00);
-        whenPaused();
+        checkPaused();
         _unpause();
     }
 

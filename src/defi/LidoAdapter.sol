@@ -20,8 +20,9 @@ import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib
 ///         Lido-queue exit runs out-of-band via `requestWithdrawal` / `claimWithdrawal`. All logic
 ///         lives in LidoAdapterLib.
 /// @dev Provenance: Lido stETH / wstETH / WithdrawalQueue (https://github.com/lidofinance/lido-dao) +
-///      canonical WETH9 (https://github.com/gnosis/canonical-weth). The facet exposes a payable
-///      `receive()` so it can take native ETH from `WETH.withdraw` and from the Lido queue's claim.
+///      canonical WETH9 (https://github.com/gnosis/canonical-weth). The facet's own payable
+///      `receive()` serves STANDALONE hosting only — behind a diamond, empty-calldata ETH routes to the
+///      cut {Receive} facet, and the WETH unwrap goes through the stipend-safe {WETHUnwrapper}.
 /// @custom:lattice-version 0.1.0
 /// @custom:lattice-source Lattice original
 contract LidoAdapter is IStrategy, IProtocolAdapter, IAdapterOperator, ILidoAdapter {
@@ -181,7 +182,8 @@ contract LidoAdapter is IStrategy, IProtocolAdapter, IAdapterOperator, ILidoAdap
         LidoAdapterLib.harvestToken(token);
     }
 
-    /// @notice Accepts native ETH from `WETH.withdraw` (deploy) and from the Lido withdrawal queue's
-    ///         `claimWithdrawal` payout. No logic: the calling library re-wraps the ETH into WETH.
+    /// @notice Accepts native ETH when hosted STANDALONE (unwrapper return, Lido queue payout). Behind a
+    ///         diamond this is never dispatched — the diamond's zero-selector route runs the {Receive}
+    ///         facet instead. No logic: the calling library re-wraps the ETH into WETH.
     receive() external payable {}
 }

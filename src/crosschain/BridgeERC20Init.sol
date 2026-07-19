@@ -4,7 +4,6 @@ pragma solidity ^0.8.30;
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {BridgeERC20Lib} from "@lattice/crosschain/libraries/BridgeERC20Lib.sol";
 import {CrosschainLinkLib} from "@lattice/crosschain/libraries/CrosschainLinkLib.sol";
-import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib.sol";
 
 /// @title BridgeERC20Init
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
@@ -20,7 +19,6 @@ contract BridgeERC20Init {
     /// @param token The legacy ERC-20 token custodied by the bridge.
     function init(address admin, address token) external {
         AccessControlLib.__AccessControl_init(admin);
-        ReentrancyGuardLib.__ReentrancyGuard_init();
         CrosschainLinkLib.__CrosschainLink_init();
         BridgeERC20Lib.__BridgeERC20_init(token);
     }

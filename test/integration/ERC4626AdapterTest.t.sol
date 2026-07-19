@@ -2,12 +2,11 @@
 pragma solidity ^0.8.30;
 
 import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {ERC4626Adapter} from "@lattice/defi/ERC4626Adapter.sol";
 import {ERC4626AdapterLib} from "@lattice/defi/libraries/ERC4626AdapterLib.sol";
 import {IProtocolAdapter} from "@lattice/interfaces/defi/IProtocolAdapter.sol";
-import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib.sol";
+import {Initializable} from "@lattice/utils/Initializable.sol";
 import {Test} from "forge-std/Test.sol";
 
 import {MockAsset} from "./AaveV3AdapterSupplyTest.t.sol";
@@ -92,14 +91,13 @@ contract MockSideReward {
     }
 }
 
-contract MockERC4626Adapter is ERC4626Adapter {
-    function initialize(address admin_, address target_, address asset_, address vault_, address recipient_) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+contract MockERC4626Adapter is ERC4626Adapter, Initializable {
+    function initialize(address admin_, address target_, address asset_, address vault_, address recipient_)
+        external
+        initializer
+    {
         AccessControlLib.__AccessControl_init(admin_);
-        ReentrancyGuardLib.__ReentrancyGuard_init();
         ERC4626AdapterLib.__ERC4626Adapter_init(target_, asset_, vault_, recipient_);
-        InitializableLib.postInitializer(s);
     }
 
     function supportsInterface(bytes4 id) external view returns (bool) {

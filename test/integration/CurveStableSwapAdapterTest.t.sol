@@ -2,7 +2,6 @@
 pragma solidity ^0.8.30;
 
 import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {CurveStableSwapAdapter} from "@lattice/defi/CurveStableSwapAdapter.sol";
 import {CurveStableSwapAdapterLib} from "@lattice/defi/libraries/CurveStableSwapAdapterLib.sol";
@@ -12,7 +11,7 @@ import {EmergencyStop} from "@lattice/security/EmergencyStop.sol";
 import {Pausable} from "@lattice/security/Pausable.sol";
 import {EmergencyStopLib} from "@lattice/security/libraries/EmergencyStopLib.sol";
 import {PausableLib} from "@lattice/security/libraries/PausableLib.sol";
-import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib.sol";
+import {Initializable} from "@lattice/utils/Initializable.sol";
 import {Test} from "forge-std/Test.sol";
 
 import {MockAsset} from "./AaveV3AdapterSupplyTest.t.sol";
@@ -170,7 +169,7 @@ contract MockCurveGauge {
 }
 
 /// @notice Adapter composed with Pausable + EmergencyStop facets (as a real Diamond would).
-contract MockCurveAdapter is CurveStableSwapAdapter, Pausable, EmergencyStop {
+contract MockCurveAdapter is CurveStableSwapAdapter, Pausable, EmergencyStop, Initializable {
     /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare
     ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing.
     function exportSelectors() external pure virtual override(Pausable, EmergencyStop) returns (bytes memory) {}
@@ -185,17 +184,13 @@ contract MockCurveAdapter is CurveStableSwapAdapter, Pausable, EmergencyStop {
         address vault_,
         address recipient_,
         uint256 slippageBps_
-    ) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+    ) external initializer {
         AccessControlLib.__AccessControl_init(admin_);
-        ReentrancyGuardLib.__ReentrancyGuard_init();
         PausableLib.__Pausable_init();
         EmergencyStopLib.__EmergencyStop_init();
         CurveStableSwapAdapterLib.__CurveStableSwapAdapter_init(
             pool_, lpToken_, gauge_, asset_, coinIndex_, vault_, recipient_, slippageBps_
         );
-        InitializableLib.postInitializer(s);
     }
 
     function supportsInterface(bytes4 id) external view returns (bool) {

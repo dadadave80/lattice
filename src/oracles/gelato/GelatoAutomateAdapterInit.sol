@@ -10,7 +10,7 @@ import {GelatoAutomateAdapterLib} from "@lattice/oracles/gelato/GelatoAutomateAd
 ///         interface (ERC-165) and seeds AccessControl so `setConfig`/`createTask`/`cancelTask` are admin-gated.
 ///         Delegatecalled by {Diamond.initialize} inside the initializing window (so it must NOT open its own
 ///         pre/postInitializer; each `__*_init` guard passes because the window is already open). Companion to
-///         the {ERC2981Init}/{EmergencyStopInit} patterns — a first-class production deploy artifact. The Gelato
+///         the {ERC2981Init} pattern — a first-class production deploy artifact. The Gelato
 ///         Automate contract + dedicated msg.sender are configured post-deploy via the admin-gated `setConfig`.
 contract GelatoAutomateAdapterInit {
     /// @notice Runs the Gelato Automate adapter + access-control module initializers. MUST be invoked via the

@@ -22,13 +22,13 @@ pragma solidity ^0.8.30;
 ///   7. Stale feed reverts latestAnswer.
 
 import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {IAggregatorV3} from "@lattice/interfaces/external/chainlink/IAggregatorV3.sol";
 import {IChainlinkAdapter} from "@lattice/interfaces/oracles/IChainlinkAdapter.sol";
 import {ChainlinkAdapter} from "@lattice/oracles/chainlink/ChainlinkAdapter.sol";
 import {ChainlinkAdapterLib} from "@lattice/oracles/chainlink/ChainlinkAdapterLib.sol";
+import {Initializable} from "@lattice/utils/Initializable.sol";
 import {Test} from "forge-std/Test.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
@@ -118,7 +118,7 @@ contract OracleAssetToken {
 ///
 ///      totalAssets() = idleBalance * priceWad / 1e18.
 ///      Shares are minted proportionally to the oracle-valued totalAssets.
-contract MockOracleVault is AccessControl, ChainlinkAdapter {
+contract MockOracleVault is AccessControl, ChainlinkAdapter, Initializable {
     /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare
     ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing.
     function exportSelectors() external pure virtual override(AccessControl, ChainlinkAdapter) returns (bytes memory) {}
@@ -136,13 +136,10 @@ contract MockOracleVault is AccessControl, ChainlinkAdapter {
         PRICE_KEY = priceKey;
     }
 
-    function initialize(address asset_, address admin_) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+    function initialize(address asset_, address admin_) external initializer {
         AccessControlLib.__AccessControl_init(admin_);
         ChainlinkAdapterLib.__ChainlinkAdapter_init();
         _assetToken = OracleAssetToken(asset_);
-        InitializableLib.postInitializer(s);
     }
 
     // --- View functions ---

@@ -73,6 +73,14 @@ contract ExportSelectorsParityTest is Test {
             string.concat(name, ": export must not include exportSelectors() (0x0ef22643)")
         );
 
+        // Receive is the ONE facet whose export deliberately diverges from `forge inspect`: its
+        // cuttable "selector" is the empty-calldata msg.sig 0x00000000, which the diamond fallback
+        // routes to its receive() — a function `forge inspect` cannot list (no method identifier).
+        if (keccak256(bytes(name)) == keccak256("Receive")) {
+            assertTrue(got.length == 1 && got[0] == bytes4(0), "Receive: export must be exactly 0x00000000");
+            return;
+        }
+
         // Inspect by NAME, not path: inventory names are unique artifacts (pinned by the release
         // consistency test), and the diamond-lib core entries use bare-basename identifiers that
         // `forge inspect` cannot resolve as source paths.
@@ -223,7 +231,7 @@ contract ExportSelectorsParityTest is Test {
     //                              INVENTORY
     //////////////////////////////////////////////////////////////////////////*//
 
-    /// @dev The 99 release facets (95 Lattice + 4 diamond-lib core) under ERC-8153 parity, as (contract name, `"<file>:<Name>"` deploy path)
+    /// @dev The 100 release facets (96 Lattice + 4 diamond-lib core) under ERC-8153 parity, as (contract name, `"<file>:<Name>"` deploy path)
     ///      pairs — sourced from the SHARED {FacetInventory}, the same list {DeployRelease} releases from.
     function _inventory() private pure returns (string[] memory names, string[] memory paths) {
         (names, paths) = FacetInventory.inventory();

@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {Diamond} from "@diamond/Diamond.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
+import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {ChainRegistry} from "@lattice/crosschain/ChainRegistry.sol";
 import {ChainRegistryInit} from "@lattice/crosschain/ChainRegistryInit.sol";
@@ -119,7 +119,7 @@ contract ChainFanOutTest is Test, GetSelectors {
         cuts[12] = _cutUnique(address(new HyperbridgeGatewayAdapter()), "HyperbridgeGatewayAdapter");
         cuts[13] = _cutUnique(address(new WormholeRemoteReadProbe()), "WormholeRemoteReadProbe");
 
-        Diamond d = new Diamond();
+        LatticeDiamond d = new LatticeDiamond();
         d.initialize(cuts, address(new ChainRegistryInit()), abi.encodeCall(ChainRegistryInit.init, (admin)));
         diamond = address(d);
         registry = ChainRegistry(diamond);

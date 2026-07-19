@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {BridgeFungibleLib} from "@lattice/crosschain/libraries/BridgeFungibleLib.sol";
 import {CrosschainLinkLib} from "@lattice/crosschain/libraries/CrosschainLinkLib.sol";
 import {IBridgeFungible} from "@lattice/interfaces/crosschain/IBridgeFungible.sol";
 import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib.sol";
 import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
+import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 
 /// @title ERC20CrosschainLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

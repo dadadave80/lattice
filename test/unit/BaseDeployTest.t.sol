@@ -12,7 +12,7 @@ import {AccountSigner} from "@lattice/accounts/erc7579/AccountSigner.sol";
 contract BaseDeployTest is Base {
     function test_BaseAssemblesAccountThroughSharedDeployScript() public view {
         assertGt(account.code.length, 0, "account diamond not deployed via shared DeployAccount");
-        assertEq(DiamondLoupeFacet(account).facetAddresses().length, 8, "canonical 8-facet blueprint not wired");
+        assertEq(DiamondLoupeFacet(account).facetAddresses().length, 9, "canonical 9-facet blueprint not wired");
         assertEq(AccountSigner(account).owner(), owner, "initializer did not run through the deploy path");
     }
 }

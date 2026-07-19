@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {DeployAccessManaged} from "@lattice-script/base/access/DeployAccessManaged.s.sol";
 import {DeployAccessManager} from "@lattice-script/base/access/DeployAccessManager.s.sol";
 import {AccessManagedTestFacet} from "@lattice-test/helpers/AccessManagedTestFacet.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
+import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
 import {AccessManaged} from "@lattice/access/AccessManaged.sol";
 import {AccessManager} from "@lattice/access/AccessManager.sol";
 import {Test} from "forge-std/Test.sol";
@@ -35,13 +35,13 @@ abstract contract AccessManagedTestBase is Test, GetSelectors {
         managerDeployer = new DeployAccessManager();
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) = managerDeployer.buildCuts(admin);
 
-        Diamond d = new Diamond();
+        LatticeDiamond d = new LatticeDiamond();
         d.initialize(cuts, init, initCalldata);
         authority_ = address(d);
     }
 
     /// @notice Builds the managed diamond cuts + initializer (production recipe + the test-only helper facet),
-    ///         WITHOUT assembling — so a test can drive `new Diamond().initialize(...)` under `vm.expectRevert`
+    ///         WITHOUT assembling — so a test can drive `new LatticeDiamond().initialize(...)` under `vm.expectRevert`
     ///         for the invalid-authority init paths.
     /// @param authority_ The AccessManager authority the managed contract will point at.
     function _managedCuts(address authority_)
@@ -70,7 +70,7 @@ abstract contract AccessManagedTestBase is Test, GetSelectors {
     function _deployManaged(address authority_) internal returns (address diamond_) {
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) = _managedCuts(authority_);
 
-        Diamond d = new Diamond();
+        LatticeDiamond d = new LatticeDiamond();
         d.initialize(cuts, init, initCalldata);
         diamond_ = address(d);
     }

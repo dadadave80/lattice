@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {IAccessManaged} from "@lattice/interfaces/access/IAccessManaged.sol";
 import {IAccessManager} from "@lattice/interfaces/access/IAccessManager.sol";
 import {EnumerableSet} from "@lattice/utils/libraries/EnumerableSet.sol";
+import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 import {TimelockLib} from "@lattice/utils/libraries/TimelockLib.sol";
 
 //*//////////////////////////////////////////////////////////////////////////

@@ -2,27 +2,24 @@
 pragma solidity ^0.8.30;
 
 import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {IDIAOracleV2} from "@lattice/interfaces/external/dia/IDIAOracleV2.sol";
 import {IDIAAdapter} from "@lattice/interfaces/oracles/IDIAAdapter.sol";
 import {DIAAdapter} from "@lattice/oracles/dia/DIAAdapter.sol";
 import {DIAAdapterLib} from "@lattice/oracles/dia/DIAAdapterLib.sol";
+import {Initializable} from "@lattice/utils/Initializable.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @notice Mock diamond combining AccessControl + DIAAdapter.
-contract MockDIAAdapterForkContract is AccessControl, DIAAdapter {
+contract MockDIAAdapterForkContract is AccessControl, DIAAdapter, Initializable {
     /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare
     ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing.
     function exportSelectors() external pure virtual override(AccessControl, DIAAdapter) returns (bytes memory) {}
 
-    function initialize(address _admin) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+    function initialize(address _admin) external initializer {
         AccessControlLib.__AccessControl_init(_admin);
         DIAAdapterLib.__DIAAdapter_init();
-        InitializableLib.postInitializer(s);
     }
 
     function supportsInterface(bytes4 _interfaceId) public view returns (bool) {

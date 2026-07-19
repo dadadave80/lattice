@@ -2,7 +2,6 @@
 pragma solidity ^0.8.30;
 
 import {DiamondLib, FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {AccountDiamond} from "@lattice/accounts/erc7579/AccountDiamond.sol";
@@ -68,13 +67,10 @@ contract DelegateHandler {
 
 /// @dev An AccountDiamond-based account with one cut facet (DummyFacet) plus the access + module-config facets.
 contract MockAccountDiamond is AccountDiamond, AccessControl, ERC7579ModuleConfig {
-    function initialize(address admin_, FacetCut[] calldata cuts) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+    function initialize(address admin_, FacetCut[] calldata cuts) external initializer {
         AccessControlLib.__AccessControl_init(admin_);
         ERC7579ModuleConfigLib.__ERC7579ModuleConfig_init();
         DiamondLib.diamondCut(cuts, address(0), msg.data[0:0]);
-        InitializableLib.postInitializer(s);
     }
 }
 

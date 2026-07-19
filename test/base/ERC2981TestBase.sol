@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {DeployERC2981} from "@lattice-script/base/tokens/DeployERC2981.s.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
+import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
 import {ERC2981} from "@lattice/tokens/ERC2981/ERC2981.sol";
 import {Test} from "forge-std/Test.sol";
 
@@ -27,7 +27,7 @@ abstract contract ERC2981TestBase is Test, GetSelectors {
         deployer = new DeployERC2981();
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) = deployer.buildCuts(admin);
 
-        Diamond d = new Diamond();
+        LatticeDiamond d = new LatticeDiamond();
         d.initialize(cuts, init, initCalldata);
         diamond_ = address(d);
     }

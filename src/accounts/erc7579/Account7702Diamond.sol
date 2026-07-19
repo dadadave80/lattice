@@ -2,7 +2,6 @@
 pragma solidity ^0.8.30;
 
 import {DiamondLib, FacetCut} from "@diamond/libraries/DiamondLib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccountDiamond} from "@lattice/accounts/erc7579/AccountDiamond.sol";
 import {ECDSA} from "@lattice/utils/libraries/ECDSA.sol";
 
@@ -31,6 +30,8 @@ contract Account7702Diamond is AccountDiamond {
     }
 
     /// @notice Initializes the delegated EOA's storage, gated by the EOA's signature over the onboarding.
+    /// @dev The `initializer` guard runs before signature verification — an already-initialized account
+    ///      reverts `InvalidInitialization` regardless of signature validity.
     /// @param _facetCuts The facet cuts to apply.
     /// @param _init The initializer delegatecalled by `diamondCut` (e.g. `AccountInit`).
     /// @param _calldata The initializer calldata (e.g. `AccountInit.init7702()`).
@@ -40,15 +41,12 @@ contract Account7702Diamond is AccountDiamond {
         address _init,
         bytes calldata _calldata,
         bytes calldata _signature
-    ) external payable virtual {
+    ) external payable virtual initializer {
         bytes32 digest = onboardingDigest(_facetCuts, _init, _calldata);
         (address signer, ECDSA.RecoverError err,) = ECDSA.tryRecover(digest, _signature);
         if (err != ECDSA.RecoverError.NoError || signer != address(this)) revert UnauthorizedOnboarding();
 
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
         DiamondLib.diamondCut(_facetCuts, _init, _calldata);
-        InitializableLib.postInitializer(s);
     }
 
     /// @notice The digest the delegating EOA signs to authorize an onboarding. Bound to this account

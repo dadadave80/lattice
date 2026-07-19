@@ -4,7 +4,6 @@ pragma solidity ^0.8.30;
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {AggregatorExecAdapterLib} from "@lattice/defi/libraries/AggregatorExecAdapterLib.sol";
 import {IAggregatorExecAdapter} from "@lattice/interfaces/defi/IAggregatorExecAdapter.sol";
-import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib.sol";
 
 /// @title AggregatorExecAdapterInit
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
@@ -21,7 +20,6 @@ contract AggregatorExecAdapterInit {
     function init(address admin) external {
         if (admin == address(0)) revert IAggregatorExecAdapter.AggregatorExecZeroAdmin();
         AccessControlLib.__AccessControl_init(admin);
-        ReentrancyGuardLib.__ReentrancyGuard_init();
         AggregatorExecAdapterLib.__AggregatorExecAdapter_init();
     }
 }

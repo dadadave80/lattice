@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {AccessManagedTestBase} from "@lattice-test/base/AccessManagedTestBase.sol";
 import {AccessManagedTestFacet} from "@lattice-test/helpers/AccessManagedTestFacet.sol";
+import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
 import {AccessManaged} from "@lattice/access/AccessManaged.sol";
 import {AccessManager} from "@lattice/access/AccessManager.sol";
 import {IAccessManaged} from "@lattice/interfaces/access/IAccessManaged.sol";
@@ -36,7 +36,7 @@ contract AccessManagedTest is AccessManagedTestBase {
 
     function test_InitWithZeroAuthorityReverts() public {
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) = _managedCuts(address(0));
-        Diamond d = new Diamond();
+        LatticeDiamond d = new LatticeDiamond();
         vm.expectRevert(abi.encodeWithSelector(IAccessManaged.AccessManagedInvalidAuthority.selector, address(0)));
         d.initialize(cuts, init, initCalldata);
     }
@@ -64,7 +64,7 @@ contract AccessManagedTest is AccessManagedTestBase {
     function test_InitWithEOAAuthorityReverts() public {
         address eoa = address(0xBEEF);
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) = _managedCuts(eoa);
-        Diamond d = new Diamond();
+        LatticeDiamond d = new LatticeDiamond();
         vm.expectRevert(abi.encodeWithSelector(IAccessManaged.AccessManagedInvalidAuthority.selector, eoa));
         d.initialize(cuts, init, initCalldata);
     }

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {IERC721URIStorage} from "@lattice/interfaces/tokens/IERC721URIStorage.sol";
 import {ERC721Lib} from "@lattice/tokens/ERC721/libraries/ERC721Lib.sol";
+import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
 //                                  STORAGE

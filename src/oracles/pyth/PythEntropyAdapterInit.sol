@@ -10,7 +10,7 @@ import {PythEntropyAdapterLib} from "@lattice/oracles/pyth/PythEntropyAdapterLib
 ///         config + request setters are admin-gated, and registers the IPythEntropyAdapter interface (ERC-165).
 ///         Delegatecalled by {Diamond.initialize} inside the initializing window (so it must NOT open its own
 ///         pre/postInitializer; each `__*_init` guard passes because the window is already open). Companion to
-///         the {ERC2981Init}/{EmergencyStopInit} patterns — a first-class production deploy artifact.
+///         the {ERC2981Init} pattern — a first-class production deploy artifact.
 contract PythEntropyAdapterInit {
     /// @notice Runs the entropy + access-control module initializers. MUST be invoked via the diamond's
     ///         `initialize` `_init` delegatecall.

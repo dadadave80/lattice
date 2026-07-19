@@ -52,6 +52,12 @@ interface ILidoAdapter {
     /// @notice The supplied request id is not tracked as a pending withdrawal of this adapter.
     error LidoAdapterUnknownRequest(uint256 requestId);
 
+    /// @dev Thrown when the WETH handoff to the {WETHUnwrapper} returns false.
+    error LidoAdapterWethTransferFailed();
+
+    /// @dev Thrown when the CREATE2 deploy of the per-diamond {WETHUnwrapper} fails.
+    error LidoAdapterUnwrapperDeployFailed();
+
     /// @notice Returns the WETH token (the adapter's asset and idle buffer).
     function weth() external view returns (address);
 

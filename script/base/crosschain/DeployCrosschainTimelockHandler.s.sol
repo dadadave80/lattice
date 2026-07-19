@@ -5,6 +5,7 @@ import {DiamondLoupeFacet} from "@diamond/facets/DiamondLoupeFacet.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
+import {Receive} from "@lattice/Receive.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {CrosschainLink} from "@lattice/crosschain/CrosschainLink.sol";
 import {CrosschainTimelockHandler} from "@lattice/crosschain/CrosschainTimelockHandler.sol";
@@ -30,7 +31,7 @@ contract DeployCrosschainTimelockHandler is BaseDeploy {
         public
         returns (FacetCut[] memory cuts, address init, bytes memory initCalldata)
     {
-        cuts = new FacetCut[](7);
+        cuts = new FacetCut[](8);
         cuts[0] = _cut(address(new ERC165Facet()));
         cuts[1] = _cut(address(new AccessControl()));
         cuts[2] = _cut(address(new CrosschainLink()));
@@ -38,6 +39,7 @@ contract DeployCrosschainTimelockHandler is BaseDeploy {
         cuts[4] = _cut(address(new CrosschainTimelockHandler()));
         cuts[5] = _cut(address(new DiamondLoupeFacet()));
         cuts[6] = _cut(address(new AccessControlDiamondCut()));
+        cuts[7] = _cut(address(new Receive()));
         (init, initCalldata) = _withUpgradeableIntrospection(
             address(new CrosschainTimelockHandlerInit()),
             abi.encodeCall(CrosschainTimelockHandlerInit.init, (admin, minDelay))

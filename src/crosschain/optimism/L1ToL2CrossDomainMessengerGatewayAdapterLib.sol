@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
 import {
     IL1ToL2CrossDomainMessengerGatewayAdapter
 } from "@lattice/interfaces/crosschain/IL1ToL2CrossDomainMessengerGatewayAdapter.sol";
 import {IERC7786GatewaySource, IERC7786Recipient} from "@lattice/interfaces/external/ercs/IERC7786.sol";
 import {ICrossDomainMessenger} from "@lattice/interfaces/external/optimism/ICrossDomainMessenger.sol";
+import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 import {InteroperableAddress} from "@lattice/utils/libraries/InteroperableAddress.sol";
 
 //*//////////////////////////////////////////////////////////////////////////

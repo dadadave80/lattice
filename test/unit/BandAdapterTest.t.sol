@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {Diamond} from "@diamond/Diamond.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {DeployBandAdapter} from "@lattice-script/base/oracles/DeployBandAdapter.s.sol";
 import {BandAdapterTestBase} from "@lattice-test/base/BandAdapterTestBase.sol";
+import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
 import {IStdReference} from "@lattice/interfaces/external/band/IStdReference.sol";
 import {IBandAdapter} from "@lattice/interfaces/oracles/IBandAdapter.sol";
 import {BandAdapter} from "@lattice/oracles/band/BandAdapter.sol";
@@ -78,7 +78,7 @@ contract BandAdapterTest is BandAdapterTestBase {
         // Assembling the production recipe with a zero StdReference must revert inside the init delegatecall.
         DeployBandAdapter d = new DeployBandAdapter();
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) = d.buildCuts(admin, address(0));
-        Diamond diamond_ = new Diamond();
+        LatticeDiamond diamond_ = new LatticeDiamond();
         vm.expectRevert(IBandAdapter.BandReferenceIsZero.selector);
         diamond_.initialize(cuts, init, initCalldata);
     }

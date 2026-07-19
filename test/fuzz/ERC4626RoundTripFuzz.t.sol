@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
 import {IERC4626} from "@lattice/interfaces/tokens/IERC4626.sol";
@@ -9,6 +8,7 @@ import {ERC20} from "@lattice/tokens/ERC20/ERC20.sol";
 import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
 import {ERC4626} from "@lattice/tokens/ERC4626/ERC4626.sol";
 import {ERC4626Lib} from "@lattice/tokens/ERC4626/libraries/ERC4626Lib.sol";
+import {Initializable} from "@lattice/utils/Initializable.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @notice Minimal ERC-20 underlying asset for vault fuzz tests.
@@ -51,18 +51,15 @@ contract FuzzUnderlying {
 /// @notice Minimal ERC-4626 vault with zero decimals offset. Flattens the composable {ERC20} share facet and the
 ///         {ERC4626} vault facet into one mock (both delegate to their namespaced-storage libs); `decimals` is
 ///         disambiguated to the ERC-4626 share-offset variant.
-contract FuzzVault is ERC20, ERC4626 {
+contract FuzzVault is ERC20, ERC4626, Initializable {
     /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare
     ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing.
     function exportSelectors() external pure virtual override(ERC20, ERC4626) returns (bytes memory) {}
 
-    function initialize(address asset_) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+    function initialize(address asset_) external initializer {
         ERC20Lib.__ERC20_init("Vault Share", "vSHR");
         ERC4626Lib.__ERC4626_init(asset_, 0);
         AccessControlLib.__AccessControl_init(msg.sender);
-        InitializableLib.postInitializer(s);
     }
 
     /// @dev Resolves the `decimals()` clash between the flattened {ERC20} and {ERC4626} facets.

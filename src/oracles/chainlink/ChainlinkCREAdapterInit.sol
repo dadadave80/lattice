@@ -10,7 +10,7 @@ import {ChainlinkCREAdapterLib} from "@lattice/oracles/chainlink/ChainlinkCREAda
 ///         (ERC-165) so CRE tooling detects the receiver, and seeds AccessControl so `setForwarder`/`setWorkflow`
 ///         are admin-gated. Delegatecalled by {Diamond.initialize} inside the initializing window (so it must NOT
 ///         open its own pre/postInitializer; each `__*_init` guard passes because the window is already open).
-///         Companion to the {ERC2981Init}/{EmergencyStopInit} patterns — a first-class production deploy artifact.
+///         Companion to the {ERC2981Init} pattern — a first-class production deploy artifact.
 ///         The KeystoneForwarder + workflow allowlist are configured post-deploy via the admin-gated setters.
 contract ChainlinkCREAdapterInit {
     /// @notice Runs the CRE adapter + access-control module initializers. MUST be invoked via the diamond's

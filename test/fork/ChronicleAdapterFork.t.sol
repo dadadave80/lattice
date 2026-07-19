@@ -2,27 +2,24 @@
 pragma solidity ^0.8.30;
 
 import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {IChronicle} from "@lattice/interfaces/external/chronicle/IChronicle.sol";
 import {IChronicleAdapter} from "@lattice/interfaces/oracles/IChronicleAdapter.sol";
 import {ChronicleAdapter} from "@lattice/oracles/chronicle/ChronicleAdapter.sol";
 import {ChronicleAdapterLib} from "@lattice/oracles/chronicle/ChronicleAdapterLib.sol";
+import {Initializable} from "@lattice/utils/Initializable.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @notice Mock diamond combining AccessControl + ChronicleAdapter.
-contract MockChronicleAdapterForkContract is AccessControl, ChronicleAdapter {
+contract MockChronicleAdapterForkContract is AccessControl, ChronicleAdapter, Initializable {
     /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare
     ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing.
     function exportSelectors() external pure virtual override(AccessControl, ChronicleAdapter) returns (bytes memory) {}
 
-    function initialize(address _admin) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+    function initialize(address _admin) external initializer {
         AccessControlLib.__AccessControl_init(_admin);
         ChronicleAdapterLib.__ChronicleAdapter_init();
-        InitializableLib.postInitializer(s);
     }
 
     function supportsInterface(bytes4 _interfaceId) public view returns (bool) {

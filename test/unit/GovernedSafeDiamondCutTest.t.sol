@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {GovernedSafeDiamondCutTestBase, MockSafe} from "@lattice-test/base/GovernedSafeDiamondCutTestBase.sol";
+import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
 import {GovernedSafeDiamondCut} from "@lattice/governance/GovernedSafeDiamondCut.sol";
 import {GOVERNED_SAFE_DIAMOND_CUT_STORAGE_SLOT} from "@lattice/governance/libraries/GovernedSafeDiamondCutLib.sol";
 import {IAccessControl} from "@lattice/interfaces/access/IAccessControl.sol";
@@ -104,14 +104,14 @@ contract GovernedSafeDiamondCutTest is GovernedSafeDiamondCutTestBase {
     function test_InitRejectsZeroSafe() public {
         (FacetCut[] memory cuts, address init, bytes memory cd) =
             deployer.buildCuts(admin, address(0), MIN_THRESHOLD, MIN_DELAY);
-        Diamond d = new Diamond();
+        LatticeDiamond d = new LatticeDiamond();
         vm.expectRevert(abi.encodeWithSelector(ISafeAuthority.SafeDiamondCutZeroSafe.selector));
         d.initialize(cuts, init, cd);
     }
 
     function test_InitRejectsThresholdTooLow() public {
         (FacetCut[] memory cuts, address init, bytes memory cd) = deployer.buildCuts(admin, address(safe), 3, MIN_DELAY);
-        Diamond d = new Diamond();
+        LatticeDiamond d = new LatticeDiamond();
         vm.expectRevert(
             abi.encodeWithSelector(ISafeAuthority.SafeDiamondCutThresholdTooLow.selector, uint256(2), uint256(3))
         );
@@ -122,7 +122,7 @@ contract GovernedSafeDiamondCutTest is GovernedSafeDiamondCutTestBase {
     function test_InitAllowsZeroDelay() public {
         (FacetCut[] memory cuts, address init, bytes memory cd) =
             deployer.buildCuts(admin, address(safe), MIN_THRESHOLD, 0);
-        Diamond d = new Diamond();
+        LatticeDiamond d = new LatticeDiamond();
         d.initialize(cuts, init, cd);
         assertEq(GovernedSafeDiamondCut(address(d)).minDelay(), 0, "zero delay must be permitted");
     }

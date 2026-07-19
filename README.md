@@ -133,20 +133,28 @@ Add the remappings (mirror of this repo's `remappings.txt` / `foundry.toml`):
 forge-std/=lib/forge-std/src/
 ```
 
-Because facets have no constructors, proxy state is set up through `diamond-lib`'s
-`InitializableLib` with a three-call dance the consumer performs once per module:
+Because facets have no constructors, proxy state is set up through Lattice's vendored
+`Initializable` mixin over `InitializableLib` (both moved into Lattice at diamond-lib v0.3.0).
+Inherit the mixin and guard the init entrypoint with the `initializer` modifier — it wraps the body
+in `preInitializer()`/`postInitializer(slot)`, so nested constructor-initializers finalize exactly
+once. `reinitializer(version)` and `onlyInitializing` are available for upgrades and init-only
+helpers:
 
 ```solidity
+import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
-import {InitializableLib} from "@diamond/.../InitializableLib.sol";
+import {Initializable} from "@lattice/utils/Initializable.sol";
 
-function initialize(address _admin) external {
-    bytes32 s = InitializableLib.initializableSlot();
-    InitializableLib.preInitializer(s);              // set initializing flag, check version
-    AccessControlLib.__AccessControl_init(_admin);   // module init (gated by checkInitializing)
-    InitializableLib.postInitializer(s);             // clear flag, emit Initialized
+contract MyAccessControlled is AccessControl, Initializable {
+    function initialize(address _admin) external initializer {
+        AccessControlLib.__AccessControl_init(_admin); // module init (gated by checkInitializing)
+    }
 }
 ```
+
+Note: init contracts delegatecalled during `diamondCut` (the `*Init.sol` pattern) carry NO guard of
+their own — they already run inside `LatticeDiamond.initialize`'s `initializer` scope, and a nested
+guard reverts outside a constructor context.
 
 When adding new modules, be deliberate about caller semantics. Some existing modules use
 `msg.sender` directly because they authenticate protocol callbacks, Safe calls, EntryPoint
