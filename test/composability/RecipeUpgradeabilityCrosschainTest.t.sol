@@ -48,7 +48,7 @@ contract RecipeUpgradeabilityCrosschainTest is RecipeGuards {
         (FacetCut[] memory cuts, address init, bytes memory cd) =
             new DeployAcrossBridgeAdapter().buildCuts(address(this));
         address d = _assemble(cuts, init, cd);
-        _assertIntrospectable(d, 3);
+        _assertIntrospectable(d, 4);
         _assertImmutableByDesign(d);
     }
 
@@ -56,7 +56,7 @@ contract RecipeUpgradeabilityCrosschainTest is RecipeGuards {
         (FacetCut[] memory cuts, address init, bytes memory cd) =
             new DeployAcrossBridgeAdapter().buildCuts(address(this), ADMIN);
         address d = _assemble(cuts, init, cd);
-        _assertIntrospectable(d, 5);
+        _assertIntrospectable(d, 6);
         assertEq(AcrossBridgeAdapter(d).spokePool(), address(this), "module init: spoke pool");
         _assertAdminCanCut(d, ADMIN);
     }
@@ -65,7 +65,7 @@ contract RecipeUpgradeabilityCrosschainTest is RecipeGuards {
         (FacetCut[] memory cuts, address init, bytes memory cd) =
             new DeployAxelarGatewayAdapter().buildCuts(ADMIN, address(this));
         address d = _assemble(cuts, init, cd);
-        _assertIntrospectable(d, 5);
+        _assertIntrospectable(d, 6);
         _assertAdminCanCut(d, ADMIN);
     }
 
@@ -73,7 +73,7 @@ contract RecipeUpgradeabilityCrosschainTest is RecipeGuards {
         (FacetCut[] memory cuts, address init, bytes memory cd) =
             new DeployBridgeERC20().buildCuts(ADMIN, address(asset));
         address d = _assemble(cuts, init, cd);
-        _assertIntrospectable(d, 6);
+        _assertIntrospectable(d, 7);
         _assertAdminCanCut(d, ADMIN);
     }
 
@@ -81,7 +81,7 @@ contract RecipeUpgradeabilityCrosschainTest is RecipeGuards {
         (FacetCut[] memory cuts, address init, bytes memory cd) =
             new DeployBridgeERC7802().buildCuts(ADMIN, address(asset));
         address d = _assemble(cuts, init, cd);
-        _assertIntrospectable(d, 6);
+        _assertIntrospectable(d, 7);
         _assertAdminCanCut(d, ADMIN);
     }
 
@@ -89,7 +89,7 @@ contract RecipeUpgradeabilityCrosschainTest is RecipeGuards {
         (FacetCut[] memory cuts, address init, bytes memory cd) =
             new DeployCCIPGatewayAdapter().buildCuts(ADMIN, address(this), address(this));
         address d = _assemble(cuts, init, cd);
-        _assertIntrospectable(d, 5);
+        _assertIntrospectable(d, 6);
         _assertAdminCanCut(d, ADMIN);
     }
 
@@ -97,21 +97,21 @@ contract RecipeUpgradeabilityCrosschainTest is RecipeGuards {
         (FacetCut[] memory cuts, address init, bytes memory cd) =
             new DeployCCTPBridgeAdapter().buildCuts(ADMIN, address(this), address(this), address(asset));
         address d = _assemble(cuts, init, cd);
-        _assertIntrospectable(d, 5);
+        _assertIntrospectable(d, 6);
         _assertAdminCanCut(d, ADMIN);
     }
 
     function test_Upgradeable_ChainRegistry() public {
         (FacetCut[] memory cuts, address init, bytes memory cd) = new DeployChainRegistry().buildCuts(ADMIN);
         address d = _assemble(cuts, init, cd);
-        _assertIntrospectable(d, 5);
+        _assertIntrospectable(d, 6);
         _assertAdminCanCut(d, ADMIN);
     }
 
     function test_Upgradeable_CrosschainLink() public {
         (FacetCut[] memory cuts, address init, bytes memory cd) = new DeployCrosschainLink().buildCuts(ADMIN);
         address d = _assemble(cuts, init, cd);
-        _assertIntrospectable(d, 5);
+        _assertIntrospectable(d, 6);
         _assertAdminCanCut(d, ADMIN);
     }
 
@@ -119,14 +119,14 @@ contract RecipeUpgradeabilityCrosschainTest is RecipeGuards {
         (FacetCut[] memory cuts, address init, bytes memory cd) =
             new DeployCrosschainTimelockHandler().buildCuts(ADMIN, 300);
         address d = _assemble(cuts, init, cd);
-        _assertIntrospectable(d, 7);
+        _assertIntrospectable(d, 8);
         _assertAdminCanCut(d, ADMIN);
     }
 
     function test_Upgradeable_ERC7786OpenBridge() public {
         (FacetCut[] memory cuts, address init, bytes memory cd) = new DeployERC7786OpenBridge().buildCuts(ADMIN);
         address d = _assemble(cuts, init, cd);
-        _assertIntrospectable(d, 5);
+        _assertIntrospectable(d, 6);
         _assertAdminCanCut(d, ADMIN);
     }
 
@@ -134,7 +134,7 @@ contract RecipeUpgradeabilityCrosschainTest is RecipeGuards {
         (FacetCut[] memory cuts, address init, bytes memory cd) =
             new DeployHyperbridgeGatewayAdapter().buildCuts(ADMIN, address(this));
         address d = _assemble(cuts, init, cd);
-        _assertIntrospectable(d, 5);
+        _assertIntrospectable(d, 6);
         _assertAdminCanCut(d, ADMIN);
     }
 
@@ -142,7 +142,7 @@ contract RecipeUpgradeabilityCrosschainTest is RecipeGuards {
         (FacetCut[] memory cuts, address init, bytes memory cd) =
             new DeployHyperlaneGatewayAdapter().buildCuts(ADMIN, address(this));
         address d = _assemble(cuts, init, cd);
-        _assertIntrospectable(d, 5);
+        _assertIntrospectable(d, 6);
         _assertAdminCanCut(d, ADMIN);
     }
 
@@ -150,7 +150,7 @@ contract RecipeUpgradeabilityCrosschainTest is RecipeGuards {
         (FacetCut[] memory cuts, address init, bytes memory cd) =
             new DeployL1ToL2CrossDomainMessengerGatewayAdapter().buildCuts(ADMIN, 10, address(this), 100000);
         address d = _assemble(cuts, init, cd);
-        _assertIntrospectable(d, 5);
+        _assertIntrospectable(d, 6);
         _assertAdminCanCut(d, ADMIN);
     }
 
@@ -158,7 +158,7 @@ contract RecipeUpgradeabilityCrosschainTest is RecipeGuards {
         (FacetCut[] memory cuts, address init, bytes memory cd) =
             new DeployL2ToL2CrossDomainMessengerGatewayAdapter().buildCuts(ADMIN);
         address d = _assemble(cuts, init, cd);
-        _assertIntrospectable(d, 5);
+        _assertIntrospectable(d, 6);
         _assertAdminCanCut(d, ADMIN);
     }
 
@@ -166,14 +166,14 @@ contract RecipeUpgradeabilityCrosschainTest is RecipeGuards {
         (FacetCut[] memory cuts, address init, bytes memory cd) =
             new DeployLayerZeroGatewayAdapter().buildCuts(ADMIN, address(this));
         address d = _assemble(cuts, init, cd);
-        _assertIntrospectable(d, 5);
+        _assertIntrospectable(d, 6);
         _assertAdminCanCut(d, ADMIN);
     }
 
     function test_Upgradeable_StargateBridgeAdapter() public {
         (FacetCut[] memory cuts, address init, bytes memory cd) = new DeployStargateBridgeAdapter().buildCuts(ADMIN);
         address d = _assemble(cuts, init, cd);
-        _assertIntrospectable(d, 5);
+        _assertIntrospectable(d, 6);
         _assertAdminCanCut(d, ADMIN);
     }
 
@@ -181,14 +181,14 @@ contract RecipeUpgradeabilityCrosschainTest is RecipeGuards {
         (FacetCut[] memory cuts, address init, bytes memory cd) =
             new DeployStarknetGatewayAdapter().buildCuts(ADMIN, address(this), bytes("SN_SEPOLIA"));
         address d = _assemble(cuts, init, cd);
-        _assertIntrospectable(d, 5);
+        _assertIntrospectable(d, 6);
         _assertAdminCanCut(d, ADMIN);
     }
 
     function test_Immutable_SuperchainETHBridgeAdapter() public {
         (FacetCut[] memory cuts, address init, bytes memory cd) = new DeploySuperchainETHBridgeAdapter().buildCuts();
         address d = _assemble(cuts, init, cd);
-        _assertIntrospectable(d, 3);
+        _assertIntrospectable(d, 4);
         _assertImmutableByDesign(d);
     }
 
@@ -196,7 +196,7 @@ contract RecipeUpgradeabilityCrosschainTest is RecipeGuards {
         (FacetCut[] memory cuts, address init, bytes memory cd) =
             new DeploySuperchainETHBridgeAdapter().buildCuts(ADMIN);
         address d = _assemble(cuts, init, cd);
-        _assertIntrospectable(d, 5);
+        _assertIntrospectable(d, 6);
         assertTrue(ERC165Facet(d).supportsInterface(type(ISuperchainETHBridgeAdapter).interfaceId), "module init flag");
         _assertAdminCanCut(d, ADMIN);
     }
@@ -205,7 +205,7 @@ contract RecipeUpgradeabilityCrosschainTest is RecipeGuards {
         (FacetCut[] memory cuts, address init, bytes memory cd) =
             new DeployWormholeGatewayAdapter().buildCuts(ADMIN, address(this), 2);
         address d = _assemble(cuts, init, cd);
-        _assertIntrospectable(d, 5);
+        _assertIntrospectable(d, 6);
         _assertAdminCanCut(d, ADMIN);
     }
 
@@ -213,7 +213,7 @@ contract RecipeUpgradeabilityCrosschainTest is RecipeGuards {
         (FacetCut[] memory cuts, address init, bytes memory cd) =
             new DeployZetaChainGatewayAdapter().buildCuts(ADMIN, address(this), 7000, address(this), 200000);
         address d = _assemble(cuts, init, cd);
-        _assertIntrospectable(d, 5);
+        _assertIntrospectable(d, 6);
         _assertAdminCanCut(d, ADMIN);
     }
 }

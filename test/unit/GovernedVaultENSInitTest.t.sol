@@ -272,8 +272,8 @@ contract GovernedVaultENSInitTest is Test {
         assertTrue(d2 != address(0), "second assembly succeeds");
     }
 
-    function test_BuildCutsWithENSReturnsFourteenCuts() public {
+    function test_BuildCutsWithENSReturnsFifteenCuts() public {
         (FacetCut[] memory cuts,,) = deployer.buildCutsWithENS(_params(address(asset), ENS_NAME));
-        assertEq(cuts.length, 14, "13 base cuts + ENSReverseClaimer");
+        assertEq(cuts.length, 15, "14 base cuts + ENSReverseClaimer");
     }
 }

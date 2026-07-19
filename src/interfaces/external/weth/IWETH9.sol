@@ -9,8 +9,8 @@ import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
 ///         WETH (so the position fits the ERC-20 `IStrategy` ABI) and unwraps to native ETH only to
 ///         stake into Lido, re-wrapping the ETH it claims back from the withdrawal queue.
 /// @dev Extends `IERC20` for `transfer`/`balanceOf`/`approve` plus the two wrap/unwrap selectors.
-///      `withdraw(uint256)` sends native ETH to the caller (the adapter therefore needs a payable
-///      `receive()`); `deposit()` wraps the attached ETH 1:1.
+///      `withdraw(uint256)` sends native ETH to the caller via `transfer` (2,300-gas stipend — a
+///      diamond-hosted caller must relay through {WETHUnwrapper}); `deposit()` wraps the attached ETH 1:1.
 interface IWETH9 is IERC20 {
     /// @notice Wraps the attached native ETH 1:1, crediting the caller `msg.value` WETH.
     function deposit() external payable;

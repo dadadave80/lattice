@@ -38,7 +38,9 @@ import {Initializable} from "@lattice/utils/Initializable.sol";
 /// @author Modified from diamond-lib (https://github.com/dadadave80/diamond-lib)
 /// @notice Lattice's concrete diamond: the initializer-guarded preset over diamond-lib's abstract
 ///         fallback-only {Diamond} base (upstream v0.3.0 made the base abstract and dropped
-///         `initialize`/`receive`; this contract restores the v0.2.0 concrete behavior, Lattice-owned).
+///         `initialize`/`receive`; this contract restores the guarded `initialize`, Lattice-owned).
+///         Bare-ETH acceptance is deliberately NOT restored here — cut the {Receive} facet under the
+///         zero selector instead (every Lattice recipe does); a diamond without it rejects plain sends.
 ///         Deployed bare (directly or via {LatticeFactory} CREATE2), then cut ONCE through {initialize};
 ///         all later upgrades go through whichever cut facet the initial cut installed.
 /// @dev `initialize` is guarded by the `initializer` modifier from the {Initializable} mixin over the
@@ -58,7 +60,4 @@ contract LatticeDiamond is Diamond, Initializable {
     {
         DiamondLib.diamondCut(_facetCuts, _init, _calldata);
     }
-
-    /// @notice Accept bare ETH (vault deposits, account funding) — the abstract base no longer does.
-    receive() external payable virtual {}
 }

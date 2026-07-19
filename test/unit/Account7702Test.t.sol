@@ -71,7 +71,7 @@ contract Account7702Test is AccountBlueprintHelper {
     function test_SelfOwnedAfterOnboard() public {
         _onboard();
         assertEq(AccountSigner(eoa).owner(), eoa, "owner is not the EOA");
-        assertEq(DiamondLoupeFacet(eoa).facetAddresses().length, 8, "blueprint not wired into EOA storage");
+        assertEq(DiamondLoupeFacet(eoa).facetAddresses().length, 9, "blueprint not wired into EOA storage");
         assertTrue(AccessControl(eoa).hasRole(0x00, eoa), "EOA is not its own admin");
     }
 
@@ -142,7 +142,7 @@ contract Account7702Test is AccountBlueprintHelper {
         Account7702Diamond(payable(eoa))
             .initializeAuthorized(cuts, address(accountInit), data, abi.encodePacked(r, s, v));
         assertEq(AccountSigner(eoa).owner(), eoa, "authorized onboarding did not self-own");
-        assertEq(DiamondLoupeFacet(eoa).facetAddresses().length, 8, "blueprint not wired");
+        assertEq(DiamondLoupeFacet(eoa).facetAddresses().length, 9, "blueprint not wired");
     }
 
     /// @dev A front-runner cannot forge the EOA's signature.
