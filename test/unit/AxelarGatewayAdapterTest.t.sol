@@ -3,7 +3,7 @@ pragma solidity ^0.8.30;
 
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {AxelarGatewayAdapterTestBase} from "@lattice-test/base/AxelarGatewayAdapterTestBase.sol";
-import {AxelarGatewayAdapter} from "@lattice/crosschain/AxelarGatewayAdapter.sol";
+import {AxelarGatewayAdapter} from "@lattice/crosschain/axelar/AxelarGatewayAdapter.sol";
 import {IAxelarGatewayAdapter} from "@lattice/interfaces/crosschain/IAxelarGatewayAdapter.sol";
 import {IAxelarGateway} from "@lattice/interfaces/external/axelar/IAxelarGateway.sol";
 import {IERC7786GatewaySource, IERC7786Recipient} from "@lattice/interfaces/external/ercs/IERC7786.sol";

@@ -6,8 +6,8 @@ import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
-import {CCTPBridgeAdapter} from "@lattice/crosschain/CCTPBridgeAdapter.sol";
-import {CCTPBridgeAdapterInit} from "@lattice/crosschain/CCTPBridgeAdapterInit.sol";
+import {CCTPBridgeAdapter} from "@lattice/crosschain/circle/CCTPBridgeAdapter.sol";
+import {CCTPBridgeAdapterInit} from "@lattice/crosschain/circle/CCTPBridgeAdapterInit.sol";
 import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
 
 /// @title DeployCCTPBridgeAdapter

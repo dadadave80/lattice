@@ -6,8 +6,8 @@ import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
-import {HyperlaneGatewayAdapter} from "@lattice/crosschain/HyperlaneGatewayAdapter.sol";
-import {HyperlaneGatewayAdapterInit} from "@lattice/crosschain/HyperlaneGatewayAdapterInit.sol";
+import {HyperlaneGatewayAdapter} from "@lattice/crosschain/hyperlane/HyperlaneGatewayAdapter.sol";
+import {HyperlaneGatewayAdapterInit} from "@lattice/crosschain/hyperlane/HyperlaneGatewayAdapterInit.sol";
 import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
 
 /// @title DeployHyperlaneGatewayAdapter

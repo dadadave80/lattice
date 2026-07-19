@@ -3,7 +3,7 @@ pragma solidity ^0.8.30;
 
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {CCIPGatewayAdapterTestBase} from "@lattice-test/base/CCIPGatewayAdapterTestBase.sol";
-import {CCIPGatewayAdapter} from "@lattice/crosschain/CCIPGatewayAdapter.sol";
+import {CCIPGatewayAdapter} from "@lattice/crosschain/chainlink/CCIPGatewayAdapter.sol";
 import {ICCIPGatewayAdapter} from "@lattice/interfaces/crosschain/ICCIPGatewayAdapter.sol";
 import {Client} from "@lattice/interfaces/external/chainlink/CCIPClient.sol";
 import {IAny2EVMMessageReceiver} from "@lattice/interfaces/external/chainlink/IAny2EVMMessageReceiver.sol";

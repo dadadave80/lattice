@@ -6,8 +6,8 @@ import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
-import {StarknetGatewayAdapter} from "@lattice/crosschain/StarknetGatewayAdapter.sol";
-import {StarknetGatewayAdapterInit} from "@lattice/crosschain/StarknetGatewayAdapterInit.sol";
+import {StarknetGatewayAdapter} from "@lattice/crosschain/starknet/StarknetGatewayAdapter.sol";
+import {StarknetGatewayAdapterInit} from "@lattice/crosschain/starknet/StarknetGatewayAdapterInit.sol";
 import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
 
 /// @title DeployStarknetGatewayAdapter

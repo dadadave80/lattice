@@ -8,10 +8,10 @@ import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {
     L1ToL2CrossDomainMessengerGatewayAdapter
-} from "@lattice/crosschain/L1ToL2CrossDomainMessengerGatewayAdapter.sol";
+} from "@lattice/crosschain/optimism/L1ToL2CrossDomainMessengerGatewayAdapter.sol";
 import {
     L1ToL2CrossDomainMessengerGatewayAdapterInit
-} from "@lattice/crosschain/L1ToL2CrossDomainMessengerGatewayAdapterInit.sol";
+} from "@lattice/crosschain/optimism/L1ToL2CrossDomainMessengerGatewayAdapterInit.sol";
 import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
 
 /// @title DeployL1ToL2CrossDomainMessengerGatewayAdapter

@@ -3,7 +3,7 @@ pragma solidity ^0.8.30;
 
 import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
-import {CCTPHookExecutor} from "@lattice/crosschain/CCTPHookExecutor.sol";
+import {CCTPHookExecutor} from "@lattice/crosschain/circle/CCTPHookExecutor.sol";
 import {BridgeFungibleLib} from "@lattice/crosschain/libraries/BridgeFungibleLib.sol";
 import {NonEvmAddress} from "@lattice/crosschain/libraries/NonEvmAddress.sol";
 import {AdapterBaseLib} from "@lattice/defi/libraries/AdapterBaseLib.sol";

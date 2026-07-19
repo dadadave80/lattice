@@ -7,7 +7,7 @@ import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {HyperbridgeGatewayAdapterTestBase} from "@lattice-test/base/HyperbridgeGatewayAdapterTestBase.sol";
 import {MockIsmpHost} from "@lattice-test/mocks/MockIsmpHost.sol";
 import {ChainRegistry} from "@lattice/crosschain/ChainRegistry.sol";
-import {HyperbridgeGatewayAdapter} from "@lattice/crosschain/HyperbridgeGatewayAdapter.sol";
+import {HyperbridgeGatewayAdapter} from "@lattice/crosschain/hyperbridge/HyperbridgeGatewayAdapter.sol";
 import {IBridgeFungible} from "@lattice/interfaces/crosschain/IBridgeFungible.sol";
 import {IHyperbridgeGatewayAdapter} from "@lattice/interfaces/crosschain/IHyperbridgeGatewayAdapter.sol";
 import {IERC7786GatewaySource, IERC7786Recipient} from "@lattice/interfaces/external/ercs/IERC7786.sol";

@@ -5,7 +5,7 @@ import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {DeployLayerZeroGatewayAdapter} from "@lattice-script/base/crosschain/DeployLayerZeroGatewayAdapter.s.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
-import {LayerZeroGatewayAdapter} from "@lattice/crosschain/LayerZeroGatewayAdapter.sol";
+import {LayerZeroGatewayAdapter} from "@lattice/crosschain/layerzero/LayerZeroGatewayAdapter.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @title LayerZeroGatewayAdapterTestBase

@@ -3,7 +3,7 @@ pragma solidity ^0.8.30;
 
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {LayerZeroGatewayAdapterTestBase} from "@lattice-test/base/LayerZeroGatewayAdapterTestBase.sol";
-import {LayerZeroGatewayAdapter} from "@lattice/crosschain/LayerZeroGatewayAdapter.sol";
+import {LayerZeroGatewayAdapter} from "@lattice/crosschain/layerzero/LayerZeroGatewayAdapter.sol";
 import {ILayerZeroGatewayAdapter} from "@lattice/interfaces/crosschain/ILayerZeroGatewayAdapter.sol";
 import {IERC7786GatewaySource, IERC7786Recipient} from "@lattice/interfaces/external/ercs/IERC7786.sol";
 import {

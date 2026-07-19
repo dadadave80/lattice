@@ -258,7 +258,7 @@ src/
 ├── access/        # AccessControl(+Enumerable,+Timed), AccessManager(+Managed,+Standalone), Ownable
 ├── accounts/      # Diamond smart accounts — erc7579/ & erc6900/ flavor subfolders + shared (ERC-4337/1271/6551, session keys)
 ├── amm/           # ConstantProduct
-├── crosschain/    # CCIP, Axelar, Wormhole, ERC-7786, bridge tokens, cross-chain timelock
+├── crosschain/    # per-vendor adapter folders (circle/, layerzero/, wormhole/, …) + generic bridge tokens, ERC-7786, timelock; shared libraries/ stays flat
 ├── defi/          # Aave, Compound, Curve, Lido, Uniswap V3, ERC4626 adapters, vault/strategy modules
 ├── ens/           # ENS resolver, reverse claimer, subname issuer
 ├── governance/    # Governor, timelock, governed/Safe diamond cuts, Safe Harbor adoption

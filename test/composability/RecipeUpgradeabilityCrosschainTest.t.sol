@@ -30,7 +30,7 @@ import {DeployWormholeGatewayAdapter} from "@lattice-script/base/crosschain/Depl
 import {DeployZetaChainGatewayAdapter} from "@lattice-script/base/crosschain/DeployZetaChainGatewayAdapter.s.sol";
 import {TestnetAsset} from "@lattice-script/base/defi/DeployGovernedVaultENS.s.sol";
 import {RecipeGuards} from "@lattice-test/composability/RecipeGuards.sol";
-import {AcrossBridgeAdapter} from "@lattice/crosschain/AcrossBridgeAdapter.sol";
+import {AcrossBridgeAdapter} from "@lattice/crosschain/across/AcrossBridgeAdapter.sol";
 import {ISuperchainETHBridgeAdapter} from "@lattice/interfaces/crosschain/ISuperchainETHBridgeAdapter.sol";
 
 /// @title RecipeUpgradeabilityCrosschainTest

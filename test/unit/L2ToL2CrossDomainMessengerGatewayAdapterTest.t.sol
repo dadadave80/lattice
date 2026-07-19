@@ -6,11 +6,11 @@ import {
     L2ToL2CrossDomainMessengerGatewayAdapterTestBase
 } from "@lattice-test/base/L2ToL2CrossDomainMessengerGatewayAdapterTestBase.sol";
 import {
-    L2ToL2CrossDomainMessengerGatewayAdapter
-} from "@lattice/crosschain/L2ToL2CrossDomainMessengerGatewayAdapter.sol";
-import {
     L2_TO_L2_CROSS_DOMAIN_MESSENGER
 } from "@lattice/crosschain/libraries/L2ToL2CrossDomainMessengerGatewayAdapterLib.sol";
+import {
+    L2ToL2CrossDomainMessengerGatewayAdapter
+} from "@lattice/crosschain/optimism/L2ToL2CrossDomainMessengerGatewayAdapter.sol";
 import {
     IL2ToL2CrossDomainMessengerGatewayAdapter
 } from "@lattice/interfaces/crosschain/IL2ToL2CrossDomainMessengerGatewayAdapter.sol";
