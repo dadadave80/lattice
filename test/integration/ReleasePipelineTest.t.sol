@@ -9,8 +9,8 @@ import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {DeployRelease} from "@lattice-script/deploy/DeployRelease.s.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
 import {MockCreateX} from "@lattice-test/helpers/MockCreateX.sol";
-import {DiamondFactory} from "@lattice/factory/DiamondFactory.sol";
-import {RecipeEntry} from "@lattice/interfaces/factory/IDiamondFactory.sol";
+import {LatticeFactory} from "@lattice/LatticeFactory.sol";
+import {RecipeEntry} from "@lattice/interfaces/ILatticeFactory.sol";
 import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
 import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
 
@@ -29,7 +29,7 @@ contract ReleaseErc20Init {
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice THE issue #120 story end-to-end: {DeployRelease.release} stands up the whole canonical release
 ///         (registry + factory + all 99 facets, registered and flagged latest) against CreateX, then —
-///         using ONLY the release outputs — the {DiamondFactory} resolves `latest("lattice.ERC20")` off the
+///         using ONLY the release outputs — the {LatticeFactory} resolves `latest("lattice.ERC20")` off the
 ///         registry and assembles a live ERC-20 diamond in one call. Proves: release → registry-resolved
 ///         latest → one-tx diamond → live token. Inherits {DeployRelease} and drives `this.release(...)` as
 ///         an external self-call so the broadcaster the registry sees is this contract (see
@@ -52,7 +52,7 @@ contract ReleasePipelineTest is GetSelectors, DeployRelease {
     function test_ReleaseThenFactoryAssemblesLiveErc20Diamond() public {
         // 1. The whole canonical release in one call.
         DeployRelease.ReleaseOutput memory out = this.release("0.1.0", address(this));
-        DiamondFactory factory = DiamondFactory(out.factory);
+        LatticeFactory factory = LatticeFactory(out.factory);
 
         // 2. The deployer's whole job: two recipe entries resolving the curator's LATEST pointer (version
         //    0) — the token facet and the release-registered diamond-lib loupe...

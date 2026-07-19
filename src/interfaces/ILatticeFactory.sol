@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
-import {ILatticeRegistry} from "@lattice/interfaces/registry/ILatticeRegistry.sol";
+import {ILatticeRegistry} from "@lattice/interfaces/ILatticeRegistry.sol";
 
 /// @notice One line of a diamond recipe: a curated {ILatticeRegistry} Tier-B facet to resolve and cut.
 /// @param nameHash The curated name key (by convention `keccak256("lattice.<FacetName>")`).
@@ -13,7 +13,7 @@ struct RecipeEntry {
     uint64 version;
 }
 
-/// @title IDiamondFactory
+/// @title ILatticeFactory
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice Stateless factory that assembles a complete EIP-2535 {Diamond} in ONE transaction: recipe entries
 ///         are resolved into live-verified `Add` cuts by the deploy-once {ILatticeRegistry} (no facet
@@ -26,26 +26,26 @@ struct RecipeEntry {
 ///      ignores its entries/cuts/init entirely, so a distinct recipe needs a distinct salt. All registry
 ///      drift/lookup failures ({ILatticeRegistry} reverts) bubble unchanged — the factory adds no drift
 ///      handling of its own.
-interface IDiamondFactory {
+interface ILatticeFactory {
     //*//////////////////////////////////////////////////////////////////////////
     //                                  ERRORS
     //////////////////////////////////////////////////////////////////////////*//
 
     /// @notice Thrown when `deploy` is called with no recipe entries AND no custom cuts (would yield a
     ///         diamond with no callable functions).
-    error DiamondFactory__EmptyRecipe();
+    error LatticeFactory__EmptyRecipe();
 
     /// @notice Thrown when a custom cut includes the ERC-8153 `exportSelectors()` selector (`0x0ef22643`) —
     ///         it must never be cut into a diamond. Refused outright, never silently stripped;
     ///         registry-resolved cuts can never contain it because registration rejects it.
-    error DiamondFactory__ExportSelectorForbidden();
+    error LatticeFactory__ExportSelectorForbidden();
 
     /// @notice Thrown when a FRESH deploy's materialized cuts leave an EIP-2535 loupe selector uncovered —
     ///         `facets()` 0x7a0ed627, `facetFunctionSelectors(address)` 0xadfca15e, `facetAddresses()`
     ///         0x52ef6b2c, `facetAddress(bytes4)` 0xcdffacc6 must EACH appear in some `Add` cut.
     /// @dev An un-introspectable diamond is unusable by EIP-2535 tooling (explorers, upgrade dashboards,
     ///      the loupe-driven test harnesses), so the factory requires a routing ENTRY for each loupe
-    ///      selector at assembly time — paired with {DiamondFactory__LoupeSelectorNotReplaceable}, which
+    ///      selector at assembly time — paired with {LatticeFactory__LoupeSelectorNotReplaceable}, which
     ///      forbids undoing that routing within the same deploy. The check is COVERAGE-based, never
     ///      facet-identity-based: any facet may provide the selectors (the stock `DiamondLoupeFacet`, a
     ///      registry-resolved release of it, or a combined facet of the deployer's own). It validates the
@@ -57,7 +57,7 @@ interface IDiamondFactory {
     ///      on idempotent re-calls to an occupied `(sender, salt)` (the address never commits to the
     ///      recipe; see {deploy}).
     /// @param missingSelector The first uncovered loupe selector.
-    error DiamondFactory__MissingLoupeCoverage(bytes4 missingSelector);
+    error LatticeFactory__MissingLoupeCoverage(bytes4 missingSelector);
 
     /// @notice Thrown when a FRESH deploy's cuts contain a `Replace` or `Remove` that touches an EIP-2535
     ///         loupe selector — e.g. `[Add(loupe), Remove(loupe)]`, which would pass a presence-only scan
@@ -65,11 +65,11 @@ interface IDiamondFactory {
     /// @dev Fresh-deploy recipes may only ADD loupe routing; re-pointing or removing it is a post-deploy
     ///      upgrade decision made through the diamond's own cut facet, never smuggled into assembly.
     /// @param loupeSelector The loupe selector the offending non-`Add` cut touches.
-    error DiamondFactory__LoupeSelectorNotReplaceable(bytes4 loupeSelector);
+    error LatticeFactory__LoupeSelectorNotReplaceable(bytes4 loupeSelector);
 
     /// @notice Thrown when constructing a factory with a zero registry (a permanent, silent
     ///         misconfiguration since the factory is immutable).
-    error DiamondFactory__ZeroRegistry();
+    error LatticeFactory__ZeroRegistry();
 
     //*//////////////////////////////////////////////////////////////////////////
     //                                  EVENTS
@@ -91,9 +91,9 @@ interface IDiamondFactory {
     ///      selector pins and returns an `Add` cut; a `version` of `0` first resolves the curator's
     ///      `latest(nameHash)` pointer. Custom cuts are appended AFTER the registry cuts, order preserved —
     ///      a deliberate custom `Replace` may therefore re-point a selector a registry cut just added.
-    ///      Argument validation ({DiamondFactory__EmptyRecipe}, {DiamondFactory__ExportSelectorForbidden})
+    ///      Argument validation ({LatticeFactory__EmptyRecipe}, {LatticeFactory__ExportSelectorForbidden})
     ///      runs on every call, including idempotent re-calls; registry resolution, LOUPE-COVERAGE
-    ///      validation ({DiamondFactory__MissingLoupeCoverage} — every fresh deploy must route the four
+    ///      validation ({LatticeFactory__MissingLoupeCoverage} — every fresh deploy must route the four
     ///      EIP-2535 loupe selectors; the registered `lattice.DiamondLoupeFacet` entry is the one-line way)
     ///      and initialization run only when the diamond is actually deployed.
     /// @param entries The registry recipe lines to resolve into cuts (may be empty).
