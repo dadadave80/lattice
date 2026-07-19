@@ -15,7 +15,6 @@ import {
     ManifestExecutionHook,
     ValidationConfig
 } from "@lattice/interfaces/external/ercs/IERC6900.sol";
-import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 import {Test} from "forge-std/Test.sol";
 
 interface IFoo {
@@ -85,12 +84,9 @@ contract MockAccount6900 is ModularAccount6900, AccessControl, ERC6900ModuleMana
         returns (bytes memory)
     {}
 
-    function initialize(address admin_, FacetCut[] calldata cuts) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        s = InitializableLib.preInitializer(s);
+    function initialize(address admin_, FacetCut[] calldata cuts) external initializer {
         AccessControlLib.__AccessControl_init(admin_);
         DiamondLib.diamondCut(cuts, address(0), msg.data[0:0]);
-        InitializableLib.postInitializer(s);
     }
 }
 

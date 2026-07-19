@@ -13,7 +13,6 @@ import {
 } from "@lattice/accounts/erc7579/libraries/ERC7579ModuleConfigLib.sol";
 import {IModuleConfig} from "@lattice/interfaces/accounts/IModuleConfig.sol";
 import {MODULE_TYPE_FALLBACK} from "@lattice/interfaces/external/ercs/IERC7579.sol";
-import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @dev The selectors a fallback handler / facet exposes through the account.
@@ -68,13 +67,10 @@ contract DelegateHandler {
 
 /// @dev An AccountDiamond-based account with one cut facet (DummyFacet) plus the access + module-config facets.
 contract MockAccountDiamond is AccountDiamond, AccessControl, ERC7579ModuleConfig {
-    function initialize(address admin_, FacetCut[] calldata cuts) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        s = InitializableLib.preInitializer(s);
+    function initialize(address admin_, FacetCut[] calldata cuts) external initializer {
         AccessControlLib.__AccessControl_init(admin_);
         ERC7579ModuleConfigLib.__ERC7579ModuleConfig_init();
         DiamondLib.diamondCut(cuts, address(0), msg.data[0:0]);
-        InitializableLib.postInitializer(s);
     }
 }
 

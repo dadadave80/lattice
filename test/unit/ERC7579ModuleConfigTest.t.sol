@@ -16,16 +16,13 @@ import {
     MODULE_TYPE_VALIDATOR
 } from "@lattice/interfaces/external/ercs/IERC7579.sol";
 import {Call} from "@lattice/interfaces/external/ercs/IERC7821.sol";
-import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
+import {Initializable} from "@lattice/utils/Initializable.sol";
 import {Test} from "forge-std/Test.sol";
 
-contract MockAccount is AccessControl, ERC7579ModuleConfig {
-    function initialize(address admin_) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        s = InitializableLib.preInitializer(s);
+contract MockAccount is AccessControl, ERC7579ModuleConfig, Initializable {
+    function initialize(address admin_) external initializer {
         AccessControlLib.__AccessControl_init(admin_);
         ERC7579ModuleConfigLib.__ERC7579ModuleConfig_init();
-        InitializableLib.postInitializer(s);
     }
 
     function supportsInterface(bytes4 id) public view returns (bool) {

@@ -5,7 +5,7 @@ import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {ConstantProduct} from "@lattice/amm/ConstantProduct.sol";
 import {ConstantProductLib} from "@lattice/amm/libraries/ConstantProductLib.sol";
-import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
+import {Initializable} from "@lattice/utils/Initializable.sol";
 import {Test} from "forge-std/Test.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
@@ -62,17 +62,14 @@ contract AmmToken {
 //////////////////////////////////////////////////////////////////////////*//
 
 /// @notice Mock combining ConstantProduct + AccessControl.
-contract MockAmmPool is ConstantProduct, AccessControl {
+contract MockAmmPool is ConstantProduct, AccessControl, Initializable {
     /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare
     ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing.
     function exportSelectors() external pure virtual override(ConstantProduct, AccessControl) returns (bytes memory) {}
 
-    function initialize(address tokenA_, address tokenB_, address admin_) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        s = InitializableLib.preInitializer(s);
+    function initialize(address tokenA_, address tokenB_, address admin_) external initializer {
         AccessControlLib.__AccessControl_init(admin_);
         ConstantProductLib.__ConstantProduct_init(tokenA_, tokenB_);
-        InitializableLib.postInitializer(s);
     }
 }
 

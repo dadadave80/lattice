@@ -7,16 +7,13 @@ import {SessionKey} from "@lattice/accounts/SessionKey.sol";
 import {ANY_SELECTOR, ANY_TARGET, NATIVE_TOKEN, SessionKeyLib} from "@lattice/accounts/libraries/SessionKeyLib.sol";
 import {ISessionKey} from "@lattice/interfaces/accounts/ISessionKey.sol";
 import {Call} from "@lattice/interfaces/external/ercs/IERC7821.sol";
-import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
+import {Initializable} from "@lattice/utils/Initializable.sol";
 import {Test} from "forge-std/Test.sol";
 
-contract MockSessionKey is AccessControl, SessionKey {
-    function initialize(address admin_) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        s = InitializableLib.preInitializer(s);
+contract MockSessionKey is AccessControl, SessionKey, Initializable {
+    function initialize(address admin_) external initializer {
         AccessControlLib.__AccessControl_init(admin_);
         SessionKeyLib.__SessionKey_init();
-        InitializableLib.postInitializer(s);
     }
 
     /// @dev Exposes the executor-side authorization hook (policy + spend accrual) for direct unit coverage.

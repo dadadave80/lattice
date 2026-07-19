@@ -14,7 +14,7 @@ pragma solidity ^0.8.30;
 
 import {DiamondLib, FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
+import {Initializable} from "@lattice/utils/Initializable.sol";
 
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
@@ -47,7 +47,7 @@ import {Test} from "forge-std/Test.sol";
 
 /// @notice ERC20Votes governance token (copied from GovernanceStackTest). Flattens the composable {ERC20},
 ///         {Votes}, and {ERC20Votes} facets into one mock; the checkpoint/balance-aware overrides win the clashes.
-contract GovToken is ERC20, Votes, ERC20Votes {
+contract GovToken is ERC20, Votes, ERC20Votes, Initializable {
     /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare
     ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing.
     function exportSelectors() external pure virtual override(ERC20, Votes, ERC20Votes) returns (bytes memory) {}
@@ -71,16 +71,13 @@ contract GovToken is ERC20, Votes, ERC20Votes {
         ERC20Votes.delegateBySig(delegatee, nonce, expiry, v, r, s);
     }
 
-    function initialize(string memory name_, string memory symbol_, address admin_) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        s = InitializableLib.preInitializer(s);
+    function initialize(string memory name_, string memory symbol_, address admin_) external initializer {
         ERC20Lib.__ERC20_init(name_, symbol_);
         EIP712Lib.__EIP712_init(name_, "1");
         NoncesLib.__Nonces_init();
         VotesLib.__Votes_init();
         ERC20VotesLib.__ERC20Votes_init();
         AccessControlLib.__AccessControl_init(admin_);
-        InitializableLib.postInitializer(s);
     }
 
     function mint(address to, uint256 amount) external {
@@ -99,7 +96,14 @@ contract DummyFacet {
 ///         EmergencyStop in one contract. Its OWN governance authorizes cuts to itself.
 /// @dev Multi-inheritance mirrors MockAccessSuiteDiamond. The timelock's executor identity and the
 ///      cut target are the same address (this contract), so UPGRADE_EXECUTOR_ROLE -> address(this).
-contract SelfGovDiamond is Governor, TimelockController, GovernedDiamondCut, AccessControl, EmergencyStop {
+contract SelfGovDiamond is
+    Governor,
+    TimelockController,
+    GovernedDiamondCut,
+    AccessControl,
+    EmergencyStop,
+    Initializable
+{
     /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare
     ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing.
     function exportSelectors()
@@ -120,10 +124,7 @@ contract SelfGovDiamond is Governor, TimelockController, GovernedDiamondCut, Acc
         uint256 timelockMinDelay;
     }
 
-    function initialize(Cfg memory cfg, address admin) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        s = InitializableLib.preInitializer(s);
-
+    function initialize(Cfg memory cfg, address admin) external initializer {
         // AccessControl first (roles live here).
         AccessControlLib.__AccessControl_init(admin);
         EIP712Lib.__EIP712_init(cfg.name, "1");
@@ -150,8 +151,6 @@ contract SelfGovDiamond is Governor, TimelockController, GovernedDiamondCut, Acc
         EmergencyStopLib.__EmergencyStop_init();
         DiamondLib.registerInterface();
         GovernedDiamondCutLib.__GovernedDiamondCut_init(); // grants UPGRADE_EXECUTOR_ROLE to address(this)
-
-        InitializableLib.postInitializer(s);
     }
 
     // NOTE: In this repo the role functions (hasRole/getRoleAdmin/grant/revoke/renounceRole) are

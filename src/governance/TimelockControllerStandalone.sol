@@ -6,17 +6,17 @@ import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
 import {TimelockController} from "@lattice/governance/TimelockController.sol";
 import {TimelockControllerLib} from "@lattice/governance/libraries/TimelockControllerLib.sol";
-import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
+import {Initializable} from "@lattice/utils/Initializable.sol";
 
 /// @title TimelockControllerStandalone
 /// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/governance/TimelockController.sol)
 /// @notice Non-Diamond deployable variant. Inherits all logic from {TimelockController} and
-///         {AccessControl}; runs the pre/init/post initializer dance in the constructor.
+///         {AccessControl}; the constructor is guarded by the {Initializable} `initializer` modifier.
 /// @dev Consumers who need a Diamond-proxy deployment should use {TimelockController} as a
 ///      facet and call initializers separately.
 /// @custom:lattice-version 0.1.0
 /// @custom:lattice-source OpenZeppelin v5.1.0
-contract TimelockControllerStandalone is TimelockController, AccessControl {
+contract TimelockControllerStandalone is TimelockController, AccessControl, Initializable {
     /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare
     ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing.
     function exportSelectors()
@@ -33,9 +33,7 @@ contract TimelockControllerStandalone is TimelockController, AccessControl {
     ///                  Pass address(0) in the array to allow open execution.
     /// @param admin The address to grant DEFAULT_ADMIN_ROLE to.
     ///              Pass address(0) to leave administration to the timelock itself only.
-    constructor(uint256 minDelay, address[] memory proposers, address[] memory executors, address admin) {
-        bytes32 s = InitializableLib.initializableSlot();
-        s = InitializableLib.preInitializer(s);
+    constructor(uint256 minDelay, address[] memory proposers, address[] memory executors, address admin) initializer {
         // Only grant DEFAULT_ADMIN_ROLE to a non-zero admin; a zero admin means
         // "self-administered only" — address(this) receives the role unconditionally
         // inside __TimelockController_init.
@@ -47,7 +45,6 @@ contract TimelockControllerStandalone is TimelockController, AccessControl {
             AccessControlLib.registerInterface();
         }
         TimelockControllerLib.__TimelockController_init(minDelay, proposers, executors, admin);
-        InitializableLib.postInitializer(s);
     }
 
     /// @notice Accept ETH so the timelock can hold and forward value during executions.

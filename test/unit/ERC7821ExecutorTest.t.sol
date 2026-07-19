@@ -19,8 +19,8 @@ import {ISessionKey} from "@lattice/interfaces/accounts/ISessionKey.sol";
 import {IERC7579Hook, MODULE_TYPE_HOOK} from "@lattice/interfaces/external/ercs/IERC7579.sol";
 import {Call} from "@lattice/interfaces/external/ercs/IERC7821.sol";
 import {INonces} from "@lattice/interfaces/utils/INonces.sol";
+import {Initializable} from "@lattice/utils/Initializable.sol";
 import {EIP712Lib} from "@lattice/utils/libraries/EIP712Lib.sol";
-import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 import {NoncesLib} from "@lattice/utils/libraries/NoncesLib.sol";
 import {Test} from "forge-std/Test.sol";
 
@@ -31,7 +31,8 @@ contract MockERC7821 is
     ERC4337Validation,
     ERC7821Executor,
     SessionKey,
-    ERC7579ModuleConfig
+    ERC7579ModuleConfig,
+    Initializable
 {
     /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare
     ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing.
@@ -43,9 +44,7 @@ contract MockERC7821 is
         returns (bytes memory)
     {}
 
-    function initialize(address admin_, address owner_, address entryPoint_) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        s = InitializableLib.preInitializer(s);
+    function initialize(address admin_, address owner_, address entryPoint_) external initializer {
         AccessControlLib.__AccessControl_init(admin_);
         EIP712Lib.__EIP712_init("LatticeAccount", "1");
         NoncesLib.__Nonces_init();
@@ -54,7 +53,6 @@ contract MockERC7821 is
         ERC7821ExecutorLib.__ERC7821Executor_init();
         SessionKeyLib.__SessionKey_init();
         ERC7579ModuleConfigLib.__ERC7579ModuleConfig_init();
-        InitializableLib.postInitializer(s);
     }
 
     function supportsInterface(bytes4 id) public view returns (bool) {

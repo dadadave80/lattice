@@ -66,7 +66,7 @@ library RateLimiterLib {
     }
 
     /// @notice Initializes the RateLimiter module.
-    /// @dev Must be called between `InitializableLib.preInitializer` and `postInitializer`.
+    /// @dev Must be called inside an `initializer`-guarded function (see {Initializable}).
     ///      Registers the IRateLimiter interface ID for ERC-165 discovery.
     function __RateLimiter_init() internal {
         bytes32 s = InitializableLib.initializableSlot();

@@ -12,7 +12,7 @@ import {Pausable} from "@lattice/security/Pausable.sol";
 import {EmergencyStopLib} from "@lattice/security/libraries/EmergencyStopLib.sol";
 import {PausableLib} from "@lattice/security/libraries/PausableLib.sol";
 import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib.sol";
-import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
+import {Initializable} from "@lattice/utils/Initializable.sol";
 import {Test} from "forge-std/Test.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
@@ -196,7 +196,7 @@ contract MockLidoWithdrawalQueue {
 //////////////////////////////////////////////////////////////////////////*//
 
 /// @notice Adapter composed with Pausable + EmergencyStop facets (as a real Diamond would).
-contract MockLidoAdapter is LidoAdapter, Pausable, EmergencyStop {
+contract MockLidoAdapter is LidoAdapter, Pausable, EmergencyStop, Initializable {
     /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare
     ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing.
     function exportSelectors() external pure virtual override(Pausable, EmergencyStop) returns (bytes memory) {}
@@ -209,15 +209,12 @@ contract MockLidoAdapter is LidoAdapter, Pausable, EmergencyStop {
         address withdrawalQueue_,
         address vault_,
         address recipient_
-    ) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        s = InitializableLib.preInitializer(s);
+    ) external initializer {
         AccessControlLib.__AccessControl_init(admin_);
         ReentrancyGuardLib.__ReentrancyGuard_init();
         PausableLib.__Pausable_init();
         EmergencyStopLib.__EmergencyStop_init();
         LidoAdapterLib.__LidoAdapter_init(weth_, lido_, wstETH_, withdrawalQueue_, vault_, recipient_);
-        InitializableLib.postInitializer(s);
     }
 
     function supportsInterface(bytes4 id) external view returns (bool) {

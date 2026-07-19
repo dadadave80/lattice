@@ -8,21 +8,18 @@ import {ITellor} from "@lattice/interfaces/external/tellor/ITellor.sol";
 import {ITellorAdapter} from "@lattice/interfaces/oracles/ITellorAdapter.sol";
 import {TellorAdapter} from "@lattice/oracles/tellor/TellorAdapter.sol";
 import {TellorAdapterLib} from "@lattice/oracles/tellor/TellorAdapterLib.sol";
-import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
+import {Initializable} from "@lattice/utils/Initializable.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @notice Mock diamond combining AccessControl + TellorAdapter.
-contract MockTellorAdapterForkContract is AccessControl, TellorAdapter {
+contract MockTellorAdapterForkContract is AccessControl, TellorAdapter, Initializable {
     /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare
     ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing.
     function exportSelectors() external pure virtual override(AccessControl, TellorAdapter) returns (bytes memory) {}
 
-    function initialize(address _admin, address _tellor) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        s = InitializableLib.preInitializer(s);
+    function initialize(address _admin, address _tellor) external initializer {
         AccessControlLib.__AccessControl_init(_admin);
         TellorAdapterLib.__TellorAdapter_init(_tellor);
-        InitializableLib.postInitializer(s);
     }
 
     function supportsInterface(bytes4 _interfaceId) public view returns (bool) {
