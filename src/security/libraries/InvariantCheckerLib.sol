@@ -63,7 +63,7 @@ library InvariantCheckerLib {
     }
 
     /// @notice Initializes the InvariantChecker module.
-    /// @dev Must be called between `InitializableLib.preInitializer` and `postInitializer`.
+    /// @dev Must be called inside an `initializer`-guarded function (see {Initializable}).
     ///      Registers the IInvariantChecker interface ID for ERC-165 discovery.
     function __InvariantChecker_init() internal {
         bytes32 s = InitializableLib.initializableSlot();

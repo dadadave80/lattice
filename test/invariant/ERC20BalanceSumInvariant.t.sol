@@ -3,7 +3,7 @@ pragma solidity ^0.8.30;
 
 import {ERC20} from "@lattice/tokens/ERC20/ERC20.sol";
 import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
-import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
+import {Initializable} from "@lattice/utils/Initializable.sol";
 import {Test} from "forge-std/Test.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
@@ -11,12 +11,9 @@ import {Test} from "forge-std/Test.sol";
 //////////////////////////////////////////////////////////////////////////*//
 
 /// @notice Minimal mintable/burnable ERC-20 for invariant testing.
-contract InvMockERC20 is ERC20 {
-    function initialize(string memory name_, string memory symbol_) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        s = InitializableLib.preInitializer(s);
+contract InvMockERC20 is ERC20, Initializable {
+    function initialize(string memory name_, string memory symbol_) external initializer {
         ERC20Lib.__ERC20_init(name_, symbol_);
-        InitializableLib.postInitializer(s);
     }
 
     function mint(address to, uint256 amount) external {

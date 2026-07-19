@@ -134,20 +134,27 @@ forge-std/=lib/forge-std/src/
 ```
 
 Because facets have no constructors, proxy state is set up through Lattice's vendored
-`InitializableLib` (moved into Lattice at diamond-lib v0.3.0) with a three-call dance the consumer
-performs once per module — `preInitializer` returns the slot `postInitializer` must receive:
+`Initializable` mixin over `InitializableLib` (both moved into Lattice at diamond-lib v0.3.0).
+Inherit the mixin and guard the init entrypoint with the `initializer` modifier — it wraps the body
+in `preInitializer()`/`postInitializer(slot)`, so nested constructor-initializers finalize exactly
+once. `reinitializer(version)` and `onlyInitializing` are available for upgrades and init-only
+helpers:
 
 ```solidity
+import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
-import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
+import {Initializable} from "@lattice/utils/Initializable.sol";
 
-function initialize(address _admin) external {
-    bytes32 s = InitializableLib.initializableSlot();
-    s = InitializableLib.preInitializer(s);          // set initializing flag, check version, return slot
-    AccessControlLib.__AccessControl_init(_admin);   // module init (gated by checkInitializing)
-    InitializableLib.postInitializer(s);             // must receive the returned slot
+contract MyAccessControlled is AccessControl, Initializable {
+    function initialize(address _admin) external initializer {
+        AccessControlLib.__AccessControl_init(_admin); // module init (gated by checkInitializing)
+    }
 }
 ```
+
+Note: init contracts delegatecalled during `diamondCut` (the `*Init.sol` pattern) carry NO guard of
+their own — they already run inside `LatticeDiamond.initialize`'s `initializer` scope, and a nested
+guard reverts outside a constructor context.
 
 When adding new modules, be deliberate about caller semantics. Some existing modules use
 `msg.sender` directly because they authenticate protocol callbacks, Safe calls, EntryPoint

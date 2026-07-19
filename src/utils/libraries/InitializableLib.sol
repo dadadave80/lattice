@@ -34,11 +34,12 @@ bytes32 constant _INITIALIZED_EVENT_SIGNATURE = 0xc7f505b2f371ae2175ee4913f4499e
 bytes32 constant _INITIALIZABLE_SLOT = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffbf601132;
 
 /// @title InitializableLib
-/// @author Vendored from diamond-lib v0.3.0
-///         (https://github.com/dadadave80/diamond-lib/blob/v0.3.0/test/utils/InitializableLib.sol). Moved out of
-///         upstream src/ in v0.3.0 ("initializables move to lattice"); the returns-slot preInitializer fixes
-///         nested-constructor-initializer double-finalize — postInitializer MUST receive the RETURNED slot.
+/// @author Modified from diamond-lib v0.3.0 (https://github.com/dadadave80/diamond-lib/blob/v0.3.0/test/utils/InitializableLib.sol)
 /// @notice Initialization guard logic for Lattice diamonds, facet inits, and standalones.
+/// @dev Moved out of upstream src/ in v0.3.0 ("initializables move to lattice"); the returns-slot
+///      preInitializer fixes nested-constructor-initializer double-finalize — postInitializer MUST receive
+///      the RETURNED slot. Diverges from upstream: `preInitializer()` is parameterless and pinned to the
+///      default slot (upstream takes the slot as a parameter).
 /// @author Solady (https://github.com/vectorized/solady/blob/main/src/utils/Initializable.sol)
 /// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/tree/master/contracts/proxy/utils/Initializable.sol)
 library InitializableLib {
@@ -58,8 +59,8 @@ library InitializableLib {
     /// `postInitializer` to skip finalization — the outermost initializer
     /// clears the flag and emits the event exactly once. Always pass the
     /// RETURNED value to `postInitializer`, not the original slot.
-    function preInitializer(bytes32 _initializableSlot) internal returns (bytes32 slot_) {
-        slot_ = _initializableSlot;
+    function preInitializer() internal returns (bytes32 slot_) {
+        slot_ = initializableSlot();
         assembly ("memory-safe") {
             // Storage Layout:
             // Bit 0:      initializing flag (1 = currently initializing, prevents reentrancy)

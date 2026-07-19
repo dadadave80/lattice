@@ -3,7 +3,35 @@ pragma solidity ^0.8.30;
 
 import {Diamond} from "@diamond/Diamond.sol";
 import {DiamondLib, FacetCut} from "@diamond/libraries/DiamondLib.sol";
-import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
+import {Initializable} from "@lattice/utils/Initializable.sol";
+
+/*
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⡀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣴⣿⣿⣦⡀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣴⣿⣿⣿⣿⣿⣿⣦⡀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣴⣿⣿⠟⢹⣿⣿⡏⠻⣿⣿⣦⡀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣴⣿⣿⠟⠁⠀⢸⣿⣿⡇⠀⠈⠻⣿⣿⣦⡀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣴⣿⣿⠟⠁⠀⠀⠀⢸⣿⣿⡇⠀⠀⠀⠈⠻⣿⣿⣦⡀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣴⣿⣿⠟⠁⠀⠀⠀⠀⠀⣸⣿⣿⣇⠀⠀⠀⠀⠀⠈⠻⣿⣿⣦⡀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣴⣿⣿⠟⠁⠀⠀⠀⠀⠀⣠⣾⣿⡿⢿⣿⣷⣄⠀⠀⠀⠀⠀⠈⠻⣿⣿⣦⡀
+⠀⠀⠀⠀⠀⠀⠀⠀⢀⣴⣿⣿⠟⠁⠀⠀⠀⠀⠀⣠⣾⣿⡿⠋⠀⠀⠙⢿⣿⣷⣄⠀⠀⠀⠀⠀⠈⠻⣿⣿⣦⡀
+⠀⠀⠀⠀⠀⠀⢀⣴⣿⣿⠟⠁⠀⠀⠀⠀⠀⣠⣾⣿⡿⠋⠀⠀⠀⠀⠀⠀⠙⢿⣿⣷⣄⠀⠀⠀⠀⠀⠈⠻⣿⣿⣦⡀
+⠀⠀⠀⠀⢀⣴⣿⣿⠟⠁⠀⠀⠀⠀⠀⣠⣾⣿⡿⠋⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠙⢿⣿⣷⣄⠀⠀⠀⠀⠀⠈⠻⣿⣿⣦⡀
+⠀⠀⢀⣴⣿⣿⣟⣁⣀⣀⣀⣀⣀⣠⣾⣿⡿⠋⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠙⢿⣿⣷⣄⣀⣀⣀⣀⣀⣈⣻⣿⣿⣦⡀
+⠀⠰⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣏⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣹⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠆
+⠀⠀⠈⠻⣿⣿⣯⡉⠉⠉⠉⠉⠉⠙⢿⣿⣷⣄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⣾⣿⡿⠋⠉⠉⠉⠉⠉⢉⣽⣿⣿⠟⠁
+⠀⠀⠀⠀⠈⠻⣿⣿⣦⡀⠀⠀⠀⠀⠀⠙⢿⣿⣷⣄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⣾⣿⡿⠋⠀⠀⠀⠀⠀⢀⣴⣿⣿⠟⠁
+⠀⠀⠀⠀⠀⠀⠈⠻⣿⣿⣦⡀⠀⠀⠀⠀⠀⠙⢿⣿⣷⣄⠀⠀⠀⠀⠀⠀⣠⣾⣿⡿⠋⠀⠀⠀⠀⠀⢀⣴⣿⣿⠟⠁
+⠀⠀⠀⠀⠀⠀⠀⠀⠈⠻⣿⣿⣦⡀⠀⠀⠀⠀⠀⠙⢿⣿⣷⣄⠀⠀⣠⣾⣿⡿⠋⠀⠀⠀⠀⠀⢀⣴⣿⣿⠟⠁
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠻⣿⣿⣦⡀⠀⠀⠀⠀⠀⠙⢿⣿⣷⣾⣿⡿⠋⠀⠀⠀⠀⠀⢀⣴⣿⣿⠟⠁
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠻⣿⣿⣦⡀⠀⠀⠀⠀⠀⢹⣿⣿⡏⠀⠀⠀⠀⠀⢀⣴⣿⣿⠟⠁
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠻⣿⣿⣦⡀⠀⠀⠀⢸⣿⣿⡇⠀⠀⠀⢀⣴⣿⣿⠟⠁
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠻⣿⣿⣦⡀⠀⢸⣿⣿⡇⠀⢀⣴⣿⣿⠟⠁
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠻⣿⣿⣦⣸⣿⣿⣇⣴⣿⣿⠟⠁
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠻⣿⣿⣿⣿⣿⣿⠟⠁
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠙⢿⣿⡿⠋
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠉
+*/
 
 /// @title LatticeDiamond
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
@@ -13,11 +41,11 @@ import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 ///         `initialize`/`receive`; this contract restores the v0.2.0 concrete behavior, Lattice-owned).
 ///         Deployed bare (directly or via {LatticeFactory} CREATE2), then cut ONCE through {initialize};
 ///         all later upgrades go through whichever cut facet the initial cut installed.
-/// @dev `initialize` is guarded by the vendored returns-slot {InitializableLib}: `preInitializer` returns
-///      the (possibly zeroed) slot that `postInitializer` MUST receive, so a nested initializer invoked
-///      inside a constructor finalizes exactly once. Kept `virtual` — account presets override it (e.g.
-///      {Account7702Diamond} disables it in favor of constructor-time cuts).
-contract LatticeDiamond is Diamond {
+/// @dev `initialize` is guarded by the `initializer` modifier from the {Initializable} mixin over the
+///      vendored {InitializableLib} — a nested initializer invoked inside a constructor finalizes exactly
+///      once. Kept `virtual` — account presets override it (e.g. {Account7702Diamond} disables it in favor
+///      of signature-gated onboarding).
+contract LatticeDiamond is Diamond, Initializable {
     /// @notice Apply the initial facet cut and run the init delegatecall — callable ONCE.
     /// @param _facetCuts The initial facet cuts to install.
     /// @param _init The initializer contract delegatecalled after the cut (or address(0)).
@@ -26,13 +54,9 @@ contract LatticeDiamond is Diamond {
         public
         payable
         virtual
+        initializer
     {
-        bytes32 s = InitializableLib.initializableSlot();
-        s = InitializableLib.preInitializer(s);
-
         DiamondLib.diamondCut(_facetCuts, _init, _calldata);
-
-        InitializableLib.postInitializer(s);
     }
 
     /// @notice Accept bare ETH (vault deposits, account funding) — the abstract base no longer does.

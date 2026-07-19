@@ -33,7 +33,7 @@ import {CircuitBreakerLib} from "@lattice/security/libraries/CircuitBreakerLib.s
 import {EMERGENCY_GUARDIAN_ROLE, EmergencyStopLib} from "@lattice/security/libraries/EmergencyStopLib.sol";
 import {PausableLib} from "@lattice/security/libraries/PausableLib.sol";
 import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib.sol";
-import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
+import {Initializable} from "@lattice/utils/Initializable.sol";
 import {Test} from "forge-std/Test.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
@@ -41,7 +41,7 @@ import {Test} from "forge-std/Test.sol";
 //////////////////////////////////////////////////////////////////////////*//
 
 /// @notice Mock Diamond composing all five security modules + a simple transfer gate.
-contract MockSecurityDiamond is AccessControl, Pausable, CircuitBreaker, EmergencyStop, ReentrancyGuard {
+contract MockSecurityDiamond is AccessControl, Pausable, CircuitBreaker, EmergencyStop, ReentrancyGuard, Initializable {
     /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare
     ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing.
     function exportSelectors()
@@ -56,15 +56,12 @@ contract MockSecurityDiamond is AccessControl, Pausable, CircuitBreaker, Emergen
     /// @notice Total amount transferred (for testing).
     uint256 public totalTransferred;
 
-    function initialize(address _admin) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        s = InitializableLib.preInitializer(s);
+    function initialize(address _admin) external initializer {
         AccessControlLib.__AccessControl_init(_admin);
         PausableLib.__Pausable_init();
         CircuitBreakerLib.__CircuitBreaker_init();
         EmergencyStopLib.__EmergencyStop_init();
         ReentrancyGuardLib.__ReentrancyGuard_init();
-        InitializableLib.postInitializer(s);
     }
 
     /// @notice Business-logic function gated by all security layers.

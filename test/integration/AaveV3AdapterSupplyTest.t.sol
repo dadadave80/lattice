@@ -9,7 +9,7 @@ import {IAaveV3Adapter} from "@lattice/interfaces/defi/IAaveV3Adapter.sol";
 import {IProtocolAdapter} from "@lattice/interfaces/defi/IProtocolAdapter.sol";
 import {IAaveV3Pool} from "@lattice/interfaces/external/aave/IAaveV3Pool.sol";
 import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib.sol";
-import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
+import {Initializable} from "@lattice/utils/Initializable.sol";
 import {Test} from "forge-std/Test.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
@@ -192,7 +192,7 @@ contract MockAaveV3Pool {
 //                          MOCK ADAPTER FACET
 //////////////////////////////////////////////////////////////////////////*//
 
-contract MockAaveAdapter is AaveV3Adapter {
+contract MockAaveAdapter is AaveV3Adapter, Initializable {
     function initialize(
         address admin_,
         address provider_,
@@ -201,13 +201,10 @@ contract MockAaveAdapter is AaveV3Adapter {
         address rewardRecipient_,
         bytes32 feedKey_,
         uint256 minHf_
-    ) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        s = InitializableLib.preInitializer(s);
+    ) external initializer {
         AccessControlLib.__AccessControl_init(admin_);
         ReentrancyGuardLib.__ReentrancyGuard_init();
         AaveV3AdapterLib.__AaveV3Adapter_init(provider_, asset_, vault_, rewardRecipient_, feedKey_, minHf_);
-        InitializableLib.postInitializer(s);
     }
 
     function supportsInterface(bytes4 id) external view returns (bool) {

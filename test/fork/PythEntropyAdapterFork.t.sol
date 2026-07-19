@@ -7,7 +7,7 @@ import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {IPythEntropyAdapter} from "@lattice/interfaces/oracles/IPythEntropyAdapter.sol";
 import {PythEntropyAdapter} from "@lattice/oracles/pyth/PythEntropyAdapter.sol";
 import {PythEntropyAdapterLib} from "@lattice/oracles/pyth/PythEntropyAdapterLib.sol";
-import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
+import {Initializable} from "@lattice/utils/Initializable.sol";
 import {Test} from "forge-std/Test.sol";
 
 // ---------------------------------------------------------------------------
@@ -15,7 +15,7 @@ import {Test} from "forge-std/Test.sol";
 // ---------------------------------------------------------------------------
 
 /// @notice Mock Diamond that combines AccessControl + PythEntropyAdapter for fork testing.
-contract MockPythEntropyAdapterForkContract is AccessControl, PythEntropyAdapter {
+contract MockPythEntropyAdapterForkContract is AccessControl, PythEntropyAdapter, Initializable {
     /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare
     ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing.
     function exportSelectors()
@@ -26,12 +26,9 @@ contract MockPythEntropyAdapterForkContract is AccessControl, PythEntropyAdapter
         returns (bytes memory)
     {}
 
-    function initialize(address _admin) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        s = InitializableLib.preInitializer(s);
+    function initialize(address _admin) external initializer {
         AccessControlLib.__AccessControl_init(_admin);
         PythEntropyAdapterLib.__PythEntropyAdapter_init();
-        InitializableLib.postInitializer(s);
     }
 
     function supportsInterface(bytes4 _interfaceId) public view returns (bool) {

@@ -55,7 +55,7 @@ library PausableLib {
     }
 
     /// @notice Initializes the Pausable module.
-    /// @dev Must be called between `InitializableLib.preInitializer` and `postInitializer`.
+    /// @dev Must be called inside an `initializer`-guarded function (see {Initializable}).
     /// Registers the IPausable interface ID for ERC-165 discovery.
     /// Explicitly sets `_paused = false` for defensive clarity and parity with OZ v5.1.0,
     /// which writes `_paused = false` in its constructor even though EVM zero-initialises

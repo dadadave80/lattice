@@ -7,7 +7,7 @@ import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {IAPI3QRNGAdapter} from "@lattice/interfaces/oracles/IAPI3QRNGAdapter.sol";
 import {API3QRNGAdapter} from "@lattice/oracles/api3/API3QRNGAdapter.sol";
 import {API3QRNGAdapterLib} from "@lattice/oracles/api3/API3QRNGAdapterLib.sol";
-import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
+import {Initializable} from "@lattice/utils/Initializable.sol";
 import {Test} from "forge-std/Test.sol";
 
 // ---------------------------------------------------------------------------
@@ -16,17 +16,14 @@ import {Test} from "forge-std/Test.sol";
 
 /// @notice Mock Diamond that combines AccessControl + API3QRNGAdapter, matching
 ///         the pattern from API3QRNGAdapterTest.t.sol.
-contract MockAPI3QRNGAdapterForkContract is AccessControl, API3QRNGAdapter {
+contract MockAPI3QRNGAdapterForkContract is AccessControl, API3QRNGAdapter, Initializable {
     /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare
     ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing.
     function exportSelectors() external pure virtual override(AccessControl, API3QRNGAdapter) returns (bytes memory) {}
 
-    function initialize(address _admin) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        s = InitializableLib.preInitializer(s);
+    function initialize(address _admin) external initializer {
         AccessControlLib.__AccessControl_init(_admin);
         API3QRNGAdapterLib.__API3QRNGAdapter_init();
-        InitializableLib.postInitializer(s);
     }
 
     function supportsInterface(bytes4 _interfaceId) public view returns (bool) {

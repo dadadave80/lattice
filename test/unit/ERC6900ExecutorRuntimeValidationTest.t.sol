@@ -14,7 +14,6 @@ import {
     ModuleEntity,
     ValidationConfig
 } from "@lattice/interfaces/external/ercs/IERC6900.sol";
-import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 import {Test} from "forge-std/Test.sol";
 
 contract Target {
@@ -78,11 +77,8 @@ contract MockRtAccount is ModularAccount6900, AccessControl, ERC6900ModuleManage
         returns (bytes memory)
     {}
 
-    function initialize(address admin_) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        s = InitializableLib.preInitializer(s);
+    function initialize(address admin_) external initializer {
         AccessControlLib.__AccessControl_init(admin_);
-        InitializableLib.postInitializer(s);
     }
 }
 

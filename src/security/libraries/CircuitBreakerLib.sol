@@ -67,7 +67,7 @@ library CircuitBreakerLib {
     }
 
     /// @notice Initializes the CircuitBreaker module.
-    /// @dev Must be called between `InitializableLib.preInitializer` and `postInitializer`.
+    /// @dev Must be called inside an `initializer`-guarded function (see {Initializable}).
     ///      Registers the ICircuitBreaker interface ID for ERC-165 discovery.
     function __CircuitBreaker_init() internal {
         bytes32 s = InitializableLib.initializableSlot();

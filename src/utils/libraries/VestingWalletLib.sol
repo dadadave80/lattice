@@ -64,7 +64,7 @@ library VestingWalletLib {
     /// @notice Initializes the VestingWallet module.
     /// @param startTimestamp The Unix timestamp at which vesting begins.
     /// @param durationSeconds The total duration of the vesting period in seconds.
-    /// @dev Must be called between InitializableLib.preInitializer and postInitializer.
+    /// @dev Must be called inside an `initializer`-guarded function (see {Initializable}).
     function __VestingWallet_init(uint64 startTimestamp, uint64 durationSeconds) internal {
         bytes32 s = InitializableLib.initializableSlot();
         InitializableLib.checkInitializing(s);
