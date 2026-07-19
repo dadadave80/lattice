@@ -109,9 +109,9 @@ contract GovernedVaultUpgradeTest is GovernedVaultTestBase {
     //                             INTROSPECTION
     //////////////////////////////////////////////////////////////////////////*//
 
-    /// @notice The loupe answers on the assembled vault: 13 base facets, the cut path routed, flags true.
+    /// @notice The loupe answers on the assembled vault: 14 base facets, the cut path routed, flags true.
     function test_LoupeAnswersOnVault() public view {
-        assertEq(IDiamondLoupe(vault).facetAddresses().length, 13, "13 base facet cuts");
+        assertEq(IDiamondLoupe(vault).facetAddresses().length, 14, "14 base facet cuts");
         assertTrue(IDiamondLoupe(vault).facetAddress(0x1f931c1c) != address(0), "diamondCut not routed");
         assertTrue(ERC165Facet(vault).supportsInterface(0x1f931c1c), "IDiamondCut flag missing");
         assertTrue(ERC165Facet(vault).supportsInterface(0x48e2b093), "IDiamondLoupe flag missing");
@@ -145,7 +145,7 @@ contract GovernedVaultUpgradeTest is GovernedVaultTestBase {
         assertEq(IUpgradeRegistry(vault).cutCount(), 1, "cut recorded in the upgrade registry");
         // The timelock relays the queued call as an external self-call, so the recorded executor is the vault.
         assertEq(IUpgradeRegistry(vault).getCutRecord(1).executor, vault, "executor is the diamond (timelock)");
-        assertEq(IDiamondLoupe(vault).facetAddresses().length, 14, "probe facet joined the loupe");
+        assertEq(IDiamondLoupe(vault).facetAddresses().length, 15, "probe facet joined the loupe");
     }
 
     /// @notice No caller outside the timelock path can cut — not even the deployer.

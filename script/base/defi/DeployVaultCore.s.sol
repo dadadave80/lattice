@@ -5,6 +5,7 @@ import {DiamondLoupeFacet} from "@diamond/facets/DiamondLoupeFacet.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
+import {Receive} from "@lattice/Receive.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {VaultCore} from "@lattice/defi/VaultCore.sol";
 import {VaultCoreInit} from "@lattice/defi/VaultCoreInit.sol";
@@ -42,7 +43,7 @@ contract DeployVaultCore is BaseDeploy {
         address vaultFacet = address(new ERC4626());
         address coreFacet = address(new VaultCore());
 
-        cuts = new FacetCut[](9);
+        cuts = new FacetCut[](10);
         cuts[0] = _cut(address(new ERC165Facet()));
         cuts[1] = _cut(address(new AccessControl()));
         cuts[2] = _cut(address(new ERC20()));
@@ -55,6 +56,7 @@ contract DeployVaultCore is BaseDeploy {
             FacetCut({facetAddress: coreFacet, action: FacetCutAction.Replace, functionSelectors: _coreOverrides()});
         cuts[7] = _cut(address(new DiamondLoupeFacet()));
         cuts[8] = _cut(address(new AccessControlDiamondCut()));
+        cuts[9] = _cut(address(new Receive()));
 
         (init, initCalldata) = _withUpgradeableIntrospection(
             address(new VaultCoreInit()),

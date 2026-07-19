@@ -28,7 +28,7 @@ contract ReleaseErc20Init {
 /// @title ReleasePipelineTest
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice THE issue #120 story end-to-end: {DeployRelease.release} stands up the whole canonical release
-///         (registry + factory + all 99 facets, registered and flagged latest) against CreateX, then —
+///         (registry + factory + all 100 facets, registered and flagged latest) against CreateX, then —
 ///         using ONLY the release outputs — the {LatticeFactory} resolves `latest("lattice.ERC20")` off the
 ///         registry and assembles a live ERC-20 diamond in one call. Proves: release → registry-resolved
 ///         latest → one-tx diamond → live token. Inherits {DeployRelease} and drives `this.release(...)` as

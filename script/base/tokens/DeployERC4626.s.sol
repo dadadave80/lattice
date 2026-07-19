@@ -5,6 +5,7 @@ import {DiamondLoupeFacet} from "@diamond/facets/DiamondLoupeFacet.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
+import {Receive} from "@lattice/Receive.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
 import {ERC20} from "@lattice/tokens/ERC20/ERC20.sol";
@@ -67,13 +68,14 @@ contract DeployERC4626 is BaseDeploy {
     function _coreCuts() internal returns (FacetCut[] memory cuts) {
         address vaultFacet = address(new ERC4626());
 
-        cuts = new FacetCut[](5);
+        cuts = new FacetCut[](6);
         cuts[0] = _cut(address(new ERC165Facet()));
         cuts[1] = _cut(address(new ERC20()));
         cuts[2] = FacetCut({facetAddress: vaultFacet, action: FacetCutAction.Add, functionSelectors: _vaultSurface()});
         // `decimals()` already exists on the base ERC-20 facet — replace it with the share-offset variant.
         cuts[3] = FacetCut({facetAddress: vaultFacet, action: FacetCutAction.Replace, functionSelectors: _decimals()});
         cuts[4] = _cut(address(new DiamondLoupeFacet()));
+        cuts[5] = _cut(address(new Receive()));
     }
 
     /// @notice The ERC-4626 vault selectors that are NEW relative to the base ERC-20 facet (an `Add` cut).

@@ -73,7 +73,7 @@ contract AccountFactory6900Test is Account6900BlueprintHelper {
             ERC165Facet(account).supportsInterface(type(IERC6900AccountView).interfaceId),
             "IERC6900AccountView not registered"
         );
-        assertEq(DiamondLoupeFacet(account).facetAddresses().length, 9, "blueprint not fully wired");
+        assertEq(DiamondLoupeFacet(account).facetAddresses().length, 10, "blueprint not fully wired");
     }
 
     function test_AdminCanInstallValidationThroughProxy() public {
