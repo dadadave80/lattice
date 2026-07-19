@@ -10,7 +10,6 @@ import {CompoundV3AdapterLib} from "@lattice/defi/libraries/CompoundV3AdapterLib
 import {StrategyManagerLib} from "@lattice/defi/libraries/StrategyManagerLib.sol";
 import {VaultCoreLib} from "@lattice/defi/libraries/VaultCoreLib.sol";
 import {IProtocolAdapter} from "@lattice/interfaces/defi/IProtocolAdapter.sol";
-import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib.sol";
 import {ERC20} from "@lattice/tokens/ERC20/ERC20.sol";
 import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
 import {ERC4626} from "@lattice/tokens/ERC4626/ERC4626.sol";
@@ -100,7 +99,6 @@ contract MockCompoundAdapter is CompoundV3Adapter, Initializable {
         initializer
     {
         AccessControlLib.__AccessControl_init(admin_);
-        ReentrancyGuardLib.__ReentrancyGuard_init();
         CompoundV3AdapterLib.__CompoundV3Adapter_init(comet_, asset_, vault_, recipient_);
     }
 

@@ -61,7 +61,6 @@ contract MockSecurityDiamond is AccessControl, Pausable, CircuitBreaker, Emergen
         PausableLib.__Pausable_init();
         CircuitBreakerLib.__CircuitBreaker_init();
         EmergencyStopLib.__EmergencyStop_init();
-        ReentrancyGuardLib.__ReentrancyGuard_init();
     }
 
     /// @notice Business-logic function gated by all security layers.
@@ -297,11 +296,9 @@ contract SecurityLayeredTest is Test {
     //                       5. REENTRANCY GUARD
     //////////////////////////////////////////////////////////////////////////*//
 
-    /// @notice Verifies the reentrancy guard is initialized (status = NOT_ENTERED).
+    /// @notice Verifies the reentrancy guard needs no seeding (transient variant: unlocked by default).
     function test_Security_ReentrancyGuardInitialized() public view {
-        // Indirectly verify: calling transfer succeeds, meaning the guard is set up.
-        // (A non-initialized guard would have status=0, causing a revert on the first call.)
-        // We verify by checking a successful call with no prior access.
+        // Indirectly verify: reads succeed with no prior access — the guard has no init-time storage.
         assertFalse(diamond.paused());
         assertFalse(diamond.isStopped());
         // transferring 0 is a valid no-op for the guard path.

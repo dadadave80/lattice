@@ -89,7 +89,6 @@ library ConstantProductLib {
         $._token1 = token1_;
         $._initialized = true;
 
-        ReentrancyGuardLib.__ReentrancyGuard_init();
         registerInterface();
     }
 

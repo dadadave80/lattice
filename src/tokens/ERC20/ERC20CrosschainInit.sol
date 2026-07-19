@@ -3,7 +3,6 @@ pragma solidity ^0.8.30;
 
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {CrosschainLinkLib} from "@lattice/crosschain/libraries/CrosschainLinkLib.sol";
-import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib.sol";
 import {ERC20CrosschainLib} from "@lattice/tokens/ERC20/libraries/ERC20CrosschainLib.sol";
 import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
 
@@ -24,7 +23,6 @@ contract ERC20CrosschainInit {
     /// @param symbol_ Token symbol.
     function init(address admin, string memory name_, string memory symbol_) external {
         AccessControlLib.__AccessControl_init(admin);
-        ReentrancyGuardLib.__ReentrancyGuard_init();
         ERC20Lib.__ERC20_init(name_, symbol_);
         CrosschainLinkLib.__CrosschainLink_init();
         ERC20CrosschainLib.__ERC20Crosschain_init();

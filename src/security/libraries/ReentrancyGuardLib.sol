@@ -1,112 +1,123 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {IReentrancyGuard} from "@lattice/interfaces/security/IReentrancyGuard.sol";
-import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
-
 //*//////////////////////////////////////////////////////////////////////////
 //                                  STORAGE
 //////////////////////////////////////////////////////////////////////////*//
 
-/// @dev `keccak256(abi.encode(uint256(keccak256("lattice.storage.ReentrancyGuard")) - 1)) & ~bytes32(uint256(0xff))`.
-bytes32 constant REENTRANCY_GUARD_STORAGE_SLOT = 0xd4429f8db30ab6cbe40e0e5546854bc12f64b5d4a4cfb0ec3f5b16a895cd0c00;
-
-/// @dev `keccak256(abi.encode(uint256(keccak256("diamond.lib.storage.ERC165")) - 1)) & ~bytes32(uint256(0xff))`.
-bytes32 constant REENTRANCY_GUARD_ERC165_STORAGE_LOCATION =
-    0x9ca7f3e2e2bfb15fdf072b85dde92837cddacee6cf2f6b38cd06c9457c1c4200;
-
-/// @dev 0x00000000 is `type(IReentrancyGuard).interfaceId` (interface has no functions, only an error).
-/// `keccak256(abi.encode(bytes4(0x00000000), 0x9ca7f3e2e2bfb15fdf072b85dde92837cddacee6cf2f6b38cd06c9457c1c4200))`.
-bytes32 constant ERC165_MAP_IREENTRANCYGUARD_SLOT = 0xfb939cb1ca033f66389071014066e3ba51464fd8ec15c96518ea9663d9c0f494;
-
-/// @dev Sentinel value indicating no active call. Using 1 instead of 0 saves gas on the
-/// first call by avoiding a zero-to-nonzero SSTORE.
-uint256 constant _NOT_ENTERED = 1;
-
-/// @dev Sentinel value indicating an active (in-progress) call.
-uint256 constant _ENTERED = 2;
-
-/// @notice Storage struct for the ReentrancyGuard module.
-/// @custom:storage-location erc7201:lattice.storage.ReentrancyGuard
-struct ReentrancyGuardStorage {
-    uint256 _status;
-}
+/// @dev Solady's transient guard slot: `uint32(bytes4(keccak256("Reentrancy()"))) | 1 << 71`.
+/// 9 bytes is large enough to avoid collisions in practice, but not too large to result in
+/// excessive bytecode bloat. Lattice keeps its OZ-style `ReentrancyGuardReentrantCall` error, so
+/// the revert paths mstore that selector explicitly instead of reusing the slot's low bytes.
+uint256 constant _REENTRANCY_GUARD_SLOT = 0x8000000000ab143c06;
 
 /// @title ReentrancyGuard Library
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
-/// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/utils/ReentrancyGuard.sol)
-/// @notice Library providing reentrant call protection for Diamond facets.
-/// @dev Use `nonReentrantBefore()` at the start and `nonReentrantAfter()` at the end of
-/// guarded functions. The pair must always be called together.
+/// @author Modified from Solady (https://github.com/vectorized/solady/blob/main/src/utils/ReentrancyGuardTransient.sol)
+/// @notice Reentrancy protection for Diamond facets — transient-storage variant.
+/// @dev On Ethereum mainnet the lock lives in transient storage (`TSTORE`/`TLOAD`, auto-cleared per
+/// transaction); on every other chain it uses a regular `SSTORE` guard for widespread L2/EVM
+/// compatibility (only mainnet is expensive anyway — Solady's default behavior). Diverges from
+/// upstream: the virtual `_useTransientReentrancyGuardOnlyOnMainnet()` hook is dropped (library
+/// functions cannot see contract-level overrides — the default is baked in), and the revert error is
+/// Lattice's existing `ReentrancyGuardReentrantCall()`.
+///
+/// Call `entry()` at the start and `exit()` at the end of a guarded function — or inherit the
+/// {ReentrancyGuard} mixin and use its `nonReentrant`/`nonReadReentrant` modifiers.
 library ReentrancyGuardLib {
-    //*//////////////////////////////////////////////////////////////////////////
-    //                         REENTRANCY GUARD STORAGE
-    //////////////////////////////////////////////////////////////////////////*//
-
-    /// @notice Returns the storage struct for ReentrancyGuard at its ERC-7201 slot.
-    function reentrancyGuardStorage() internal pure returns (ReentrancyGuardStorage storage $) {
-        assembly {
-            $.slot := REENTRANCY_GUARD_STORAGE_SLOT
-        }
-    }
-
-    //*//////////////////////////////////////////////////////////////////////////
-    //                              INITIALIZATION
-    //////////////////////////////////////////////////////////////////////////*//
-
-    /// @notice Registers support for the IReentrancyGuard interface via ERC-165.
-    /// @dev Writes `true` to the precomputed ERC-165 map slot.
-    function registerInterface() internal {
-        assembly ("memory-safe") {
-            sstore(ERC165_MAP_IREENTRANCYGUARD_SLOT, true)
-        }
-    }
-
-    /// @notice Initializes the ReentrancyGuard module.
-    /// @dev Must be called inside an `initializer`-guarded function (see {Initializable}).
-    /// Sets the reentrancy status to `_NOT_ENTERED` and registers the interface for ERC-165.
-    function __ReentrancyGuard_init() internal {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.checkInitializing(s);
-        reentrancyGuardStorage()._status = _NOT_ENTERED;
-        registerInterface();
-    }
-
     //*//////////////////////////////////////////////////////////////////////////
     //                          REENTRANCY GUARD OPERATIONS
     //////////////////////////////////////////////////////////////////////////*//
 
-    /// @notice Asserts that no reentrant call is in progress, then locks.
-    /// @dev Call at the start of a guarded function. Must be paired with `nonReentrantAfter`.
-    /// Reverts with `ReentrancyGuardReentrantCall` if reentrancy is detected.
-    function nonReentrantBefore() internal {
-        ReentrancyGuardStorage storage $ = reentrancyGuardStorage();
-        if ($._status == _ENTERED) {
-            revert IReentrancyGuard.ReentrancyGuardReentrantCall();
+    /// @notice Asserts that no reentrant call is in progress, then takes the lock.
+    /// @dev Call at the start of a guarded function; must be paired with `exit()`.
+    /// Reverts with `ReentrancyGuardReentrantCall` if the lock is already held.
+    function entry() internal {
+        uint256 s = _REENTRANCY_GUARD_SLOT;
+        if (block.chainid == 1) {
+            assembly ("memory-safe") {
+                if tload(s) {
+                    mstore(0x00, 0x3ee5aeb5) // `ReentrancyGuardReentrantCall()`.
+                    revert(0x1c, 0x04)
+                }
+                tstore(s, address())
+            }
+        } else {
+            assembly ("memory-safe") {
+                if eq(sload(s), address()) {
+                    mstore(0x00, 0x3ee5aeb5) // `ReentrancyGuardReentrantCall()`.
+                    revert(0x1c, 0x04)
+                }
+                sstore(s, address())
+            }
         }
-        $._status = _ENTERED;
+    }
+
+    /// @notice Releases the lock taken by `entry()`.
+    /// @dev Call at the end of a guarded function; must be paired with `entry()`.
+    /// On non-mainnet chains the slot is reset to a non-zero sentinel (the slot value itself)
+    /// rather than zero, avoiding a fresh zero-to-nonzero `SSTORE` on the next entry.
+    function exit() internal {
+        uint256 s = _REENTRANCY_GUARD_SLOT;
+        if (block.chainid == 1) {
+            assembly ("memory-safe") {
+                tstore(s, 0)
+            }
+        } else {
+            assembly ("memory-safe") {
+                sstore(s, s)
+            }
+        }
+    }
+
+    /// @notice Asserts that no reentrant call is in progress WITHOUT taking the lock.
+    /// @dev Guards view functions against read-only reentrancy (a guarded write path calling back
+    /// into a view mid-lock). Reverts with `ReentrancyGuardReentrantCall` if the lock is held.
+    function check() internal view {
+        uint256 s = _REENTRANCY_GUARD_SLOT;
+        if (block.chainid == 1) {
+            assembly ("memory-safe") {
+                if tload(s) {
+                    mstore(0x00, 0x3ee5aeb5) // `ReentrancyGuardReentrantCall()`.
+                    revert(0x1c, 0x04)
+                }
+            }
+        } else {
+            assembly ("memory-safe") {
+                if eq(sload(s), address()) {
+                    mstore(0x00, 0x3ee5aeb5) // `ReentrancyGuardReentrantCall()`.
+                    revert(0x1c, 0x04)
+                }
+            }
+        }
+    }
+
+    /// @notice Asserts that no reentrant call is in progress, then locks.
+    /// @dev Alias for `entry()`, kept for existing callers. Prefer the {ReentrancyGuard}
+    /// `nonReentrant` modifier or `entry()`/`exit()` in new code.
+    function nonReentrantBefore() internal {
+        entry();
     }
 
     /// @notice Resets the reentrancy lock.
-    /// @dev Call at the end of a guarded function. Must be paired with `nonReentrantBefore`.
+    /// @dev Alias for `exit()`, kept for existing callers.
     function nonReentrantAfter() internal {
-        reentrancyGuardStorage()._status = _NOT_ENTERED;
+        exit();
     }
 
-    /// @notice Combined guard: asserts non-reentrancy, executes inline, then resets.
-    /// @dev Convenience wrapper. Prefer using `nonReentrantBefore`/`nonReentrantAfter` directly
-    /// in functions that need explicit control over the lock lifetime.
-    /// @param fn A no-argument function to execute between the lock and unlock.
-    function nonReentrant(function() internal fn) internal {
-        nonReentrantBefore();
-        fn();
-        nonReentrantAfter();
-    }
-
-    /// @notice Returns `true` when a nonReentrant call is currently executing.
+    /// @notice Returns `true` when a guarded call is currently executing.
     /// @dev Equivalent to OZ v5.1.0 `_reentrancyGuardEntered()`. Useful for `view` helpers
     /// that must behave differently when called mid-execution inside a guarded function.
-    function reentrancyGuardEntered() internal view returns (bool) {
-        return reentrancyGuardStorage()._status == _ENTERED;
+    function reentrancyGuardEntered() internal view returns (bool entered_) {
+        uint256 s = _REENTRANCY_GUARD_SLOT;
+        if (block.chainid == 1) {
+            assembly ("memory-safe") {
+                entered_ := iszero(iszero(tload(s)))
+            }
+        } else {
+            assembly ("memory-safe") {
+                entered_ := eq(sload(s), address())
+            }
+        }
     }
 }

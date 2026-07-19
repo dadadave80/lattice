@@ -8,7 +8,6 @@ import {AaveV3AdapterLib} from "@lattice/defi/libraries/AaveV3AdapterLib.sol";
 import {IAaveV3Adapter} from "@lattice/interfaces/defi/IAaveV3Adapter.sol";
 import {IProtocolAdapter} from "@lattice/interfaces/defi/IProtocolAdapter.sol";
 import {IAaveV3Pool} from "@lattice/interfaces/external/aave/IAaveV3Pool.sol";
-import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib.sol";
 import {Initializable} from "@lattice/utils/Initializable.sol";
 import {Test} from "forge-std/Test.sol";
 
@@ -203,7 +202,6 @@ contract MockAaveAdapter is AaveV3Adapter, Initializable {
         uint256 minHf_
     ) external initializer {
         AccessControlLib.__AccessControl_init(admin_);
-        ReentrancyGuardLib.__ReentrancyGuard_init();
         AaveV3AdapterLib.__AaveV3Adapter_init(provider_, asset_, vault_, rewardRecipient_, feedKey_, minHf_);
     }
 

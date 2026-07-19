@@ -269,10 +269,6 @@ import {
 } from "@lattice/security/libraries/InvariantCheckerLib.sol";
 import {ERC165_MAP_IPAUSABLE_SLOT, PAUSABLE_STORAGE_SLOT} from "@lattice/security/libraries/PausableLib.sol";
 import {ERC165_MAP_IRATELIMITER_SLOT, RATE_LIMITER_STORAGE_SLOT} from "@lattice/security/libraries/RateLimiterLib.sol";
-import {
-    ERC165_MAP_IREENTRANCYGUARD_SLOT,
-    REENTRANCY_GUARD_STORAGE_SLOT
-} from "@lattice/security/libraries/ReentrancyGuardLib.sol";
 
 // utils
 import {EIP712_STORAGE_SLOT, ERC165_MAP_IEIP712_SLOT} from "@lattice/utils/libraries/EIP712Lib.sol";
@@ -385,7 +381,6 @@ import {IEmergencyStop} from "@lattice/interfaces/security/IEmergencyStop.sol";
 import {IInvariantChecker} from "@lattice/interfaces/security/IInvariantChecker.sol";
 import {IPausable} from "@lattice/interfaces/security/IPausable.sol";
 import {IRateLimiter} from "@lattice/interfaces/security/IRateLimiter.sol";
-import {IReentrancyGuard} from "@lattice/interfaces/security/IReentrancyGuard.sol";
 import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
 import {IERC20Capped} from "@lattice/interfaces/tokens/IERC20Capped.sol";
 import {IERC20Wrapper} from "@lattice/interfaces/tokens/IERC20Wrapper.sol";
@@ -962,14 +957,6 @@ contract StorageSlotVerificationTest is Test {
 
     function test_PausableStorageSlot() public pure {
         assertEq(PAUSABLE_STORAGE_SLOT, _erc7201Slot("lattice.storage.Pausable"), "Pausable storage slot mismatch");
-    }
-
-    function test_ReentrancyGuardStorageSlot() public pure {
-        assertEq(
-            REENTRANCY_GUARD_STORAGE_SLOT,
-            _erc7201Slot("lattice.storage.ReentrancyGuard"),
-            "ReentrancyGuard storage slot mismatch"
-        );
     }
 
     function test_RateLimiterStorageSlot() public pure {
@@ -1759,17 +1746,6 @@ contract StorageSlotVerificationTest is Test {
         );
     }
 
-    function test_Erc165MapIReentrancyGuardSlot() public pure {
-        // IReentrancyGuard has no functions (only an error), so its interfaceId is 0x00000000.
-        bytes4 interfaceId = type(IReentrancyGuard).interfaceId;
-        assertEq(interfaceId, bytes4(0x00000000), "IReentrancyGuard interfaceId comment is stale");
-        assertEq(
-            ERC165_MAP_IREENTRANCYGUARD_SLOT,
-            _erc165MapSlot(interfaceId, ERC165_STORAGE_LOCATION),
-            "ERC165 IReentrancyGuard map slot mismatch"
-        );
-    }
-
     function test_Erc165MapIRateLimiterSlot() public pure {
         assertEq(
             ERC165_MAP_IRATELIMITER_SLOT,
@@ -1967,7 +1943,7 @@ contract StorageSlotVerificationTest is Test {
     // ======================== Slot inventories ========================
 
     function _allStorageSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](88);
+        slots = new bytes32[](87);
         uint256 i;
         // access
         slots[i++] = ACCESS_CONTROL_STORAGE_SLOT;
@@ -2051,7 +2027,6 @@ contract StorageSlotVerificationTest is Test {
         slots[i++] = ERC6551_ACCOUNT_STORAGE_SLOT;
         // security
         slots[i++] = PAUSABLE_STORAGE_SLOT;
-        slots[i++] = REENTRANCY_GUARD_STORAGE_SLOT;
         slots[i++] = RATE_LIMITER_STORAGE_SLOT;
         slots[i++] = CIRCUIT_BREAKER_STORAGE_SLOT;
         slots[i++] = EMERGENCY_STOP_STORAGE_SLOT;
@@ -2073,7 +2048,7 @@ contract StorageSlotVerificationTest is Test {
     }
 
     function _allErc165MapSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](89);
+        slots = new bytes32[](88);
         uint256 i;
         // access
         slots[i++] = ERC165_MAP_IACCESSCONTROL_SLOT;
@@ -2174,7 +2149,6 @@ contract StorageSlotVerificationTest is Test {
         slots[i++] = ERC165_MAP_IERC6551EXECUTABLE_SLOT;
         // security
         slots[i++] = ERC165_MAP_IPAUSABLE_SLOT;
-        slots[i++] = ERC165_MAP_IREENTRANCYGUARD_SLOT;
         slots[i++] = ERC165_MAP_IRATELIMITER_SLOT;
         slots[i++] = ERC165_MAP_ICIRCUITBREAKER_SLOT;
         slots[i++] = ERC165_MAP_IEMERGENCYSTOP_SLOT;

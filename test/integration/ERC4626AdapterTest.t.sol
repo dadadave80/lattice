@@ -6,7 +6,6 @@ import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {ERC4626Adapter} from "@lattice/defi/ERC4626Adapter.sol";
 import {ERC4626AdapterLib} from "@lattice/defi/libraries/ERC4626AdapterLib.sol";
 import {IProtocolAdapter} from "@lattice/interfaces/defi/IProtocolAdapter.sol";
-import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib.sol";
 import {Initializable} from "@lattice/utils/Initializable.sol";
 import {Test} from "forge-std/Test.sol";
 
@@ -98,7 +97,6 @@ contract MockERC4626Adapter is ERC4626Adapter, Initializable {
         initializer
     {
         AccessControlLib.__AccessControl_init(admin_);
-        ReentrancyGuardLib.__ReentrancyGuard_init();
         ERC4626AdapterLib.__ERC4626Adapter_init(target_, asset_, vault_, recipient_);
     }
 

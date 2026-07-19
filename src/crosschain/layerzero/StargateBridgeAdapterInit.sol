@@ -3,7 +3,6 @@ pragma solidity ^0.8.30;
 
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {StargateBridgeAdapterLib} from "@lattice/crosschain/layerzero/StargateBridgeAdapterLib.sol";
-import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib.sol";
 
 /// @title StargateBridgeAdapterInit
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
@@ -21,7 +20,6 @@ contract StargateBridgeAdapterInit {
     /// @param admin The address granted `DEFAULT_ADMIN_ROLE` (controls every adapter setter).
     function init(address admin) external {
         AccessControlLib.__AccessControl_init(admin);
-        ReentrancyGuardLib.__ReentrancyGuard_init();
         StargateBridgeAdapterLib.__StargateBridgeAdapter_init();
     }
 }

@@ -10,7 +10,6 @@ import {EmergencyStop} from "@lattice/security/EmergencyStop.sol";
 import {Pausable} from "@lattice/security/Pausable.sol";
 import {EMERGENCY_GUARDIAN_ROLE, EmergencyStopLib} from "@lattice/security/libraries/EmergencyStopLib.sol";
 import {PausableLib} from "@lattice/security/libraries/PausableLib.sol";
-import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib.sol";
 import {Initializable} from "@lattice/utils/Initializable.sol";
 import {Test} from "forge-std/Test.sol";
 
@@ -32,7 +31,6 @@ contract MockGuardedAdapter is AaveV3Adapter, Pausable, EmergencyStop, Initializ
         uint256 minHf_
     ) external initializer {
         AccessControlLib.__AccessControl_init(admin_);
-        ReentrancyGuardLib.__ReentrancyGuard_init();
         PausableLib.__Pausable_init();
         EmergencyStopLib.__EmergencyStop_init();
         AaveV3AdapterLib.__AaveV3Adapter_init(provider_, asset_, vault_, rewardRecipient_, feedKey_, minHf_);

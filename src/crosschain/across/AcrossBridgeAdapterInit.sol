@@ -2,7 +2,6 @@
 pragma solidity ^0.8.30;
 
 import {AcrossBridgeAdapterLib} from "@lattice/crosschain/across/AcrossBridgeAdapterLib.sol";
-import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib.sol";
 
 /// @title AcrossBridgeAdapterInit
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
@@ -18,7 +17,6 @@ contract AcrossBridgeAdapterInit {
     ///         `initialize` `_init` delegatecall.
     /// @param spokePool The LOCAL chain's canonical Across v3 SpokePool.
     function init(address spokePool) external {
-        ReentrancyGuardLib.__ReentrancyGuard_init();
         AcrossBridgeAdapterLib.__AcrossBridgeAdapter_init(spokePool);
     }
 }
