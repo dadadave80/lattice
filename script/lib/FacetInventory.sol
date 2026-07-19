@@ -13,11 +13,11 @@ pragma solidity ^0.8.30;
 ///      artifact contract names exactly: the registry key is `keccak256("lattice.<name>")` and the facet
 ///      deploy salt is `keccak256("lattice.<name>.<version>")`, so renaming an entry re-derives BOTH.
 library FacetInventory {
-    /// @notice The 99 release facets (95 Lattice + 4 diamond-lib core) as (contract name, `"<file>:<Name>"` deploy path) pairs.
+    /// @notice The 100 release facets (96 Lattice + 4 diamond-lib core) as (contract name, `"<file>:<Name>"` deploy path) pairs.
     /// @return names The facet contract names (registry name = `"lattice." ++ name`).
     /// @return paths The matching `vm.getCode`/`deployCode` artifact paths, index-aligned with `names`.
     function inventory() internal pure returns (string[] memory names, string[] memory paths) {
-        string[99] memory n = [
+        string[100] memory n = [
             "AcrossBridgeAdapter",
             "AxelarGatewayAdapter",
             "BridgeERC20",
@@ -113,6 +113,7 @@ library FacetInventory {
             "ENSSubnameIssuer",
             "EIP712",
             "Multicall",
+            "Receive",
             // diamond-lib core facets (>=0.2.0 they implement IFacet/ERC-8153, so they are releasable —
             // release-versioned like every entry; the loupe entry is what lets factory recipes satisfy
             // the mandatory loupe coverage straight from the registry)
@@ -121,7 +122,7 @@ library FacetInventory {
             "ERC165Facet",
             "OwnableFacet"
         ];
-        string[99] memory p = [
+        string[100] memory p = [
             "src/crosschain/across/AcrossBridgeAdapter.sol:AcrossBridgeAdapter",
             "src/crosschain/axelar/AxelarGatewayAdapter.sol:AxelarGatewayAdapter",
             "src/crosschain/BridgeERC20.sol:BridgeERC20",
@@ -217,6 +218,7 @@ library FacetInventory {
             "src/ens/ENSSubnameIssuer.sol:ENSSubnameIssuer",
             "src/utils/EIP712.sol:EIP712",
             "src/utils/Multicall.sol:Multicall",
+            "src/Receive.sol:Receive",
             // basename identifiers: lib sources compile to out/<File>.sol/<Name>.json, so the
             // dir-qualified "lib/..." form does not resolve for vm.getCode/deployCode.
             "DiamondCutFacet.sol:DiamondCutFacet",
@@ -224,9 +226,9 @@ library FacetInventory {
             "ERC165Facet.sol:ERC165Facet",
             "OwnableFacet.sol:OwnableFacet"
         ];
-        names = new string[](99);
-        paths = new string[](99);
-        for (uint256 i; i < 99; ++i) {
+        names = new string[](100);
+        paths = new string[](100);
+        for (uint256 i; i < 100; ++i) {
             names[i] = n[i];
             paths[i] = p[i];
         }

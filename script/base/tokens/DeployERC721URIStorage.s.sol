@@ -5,6 +5,7 @@ import {DiamondLoupeFacet} from "@diamond/facets/DiamondLoupeFacet.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
+import {Receive} from "@lattice/Receive.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
 import {ERC721} from "@lattice/tokens/ERC721/ERC721.sol";
@@ -38,7 +39,7 @@ contract DeployERC721URIStorage is BaseDeploy {
     {
         address uriFacet = address(new ERC721URIStorage());
 
-        cuts = new FacetCut[](7);
+        cuts = new FacetCut[](8);
         cuts[0] = _cut(address(new ERC165Facet()));
         cuts[1] = _cut(address(new ERC721()));
         // `setTokenURI` is new — ADD it; `tokenURI` already exists on the base ERC-721 facet — REPLACE it.
@@ -47,6 +48,7 @@ contract DeployERC721URIStorage is BaseDeploy {
         cuts[4] = _cut(address(new AccessControl()));
         cuts[5] = _cut(address(new DiamondLoupeFacet()));
         cuts[6] = _cut(address(new AccessControlDiamondCut()));
+        cuts[7] = _cut(address(new Receive()));
 
         inits = new address[](3);
         inits[0] = address(new ERC721Init());

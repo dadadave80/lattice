@@ -2,7 +2,6 @@
 pragma solidity ^0.8.30;
 
 import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {CompoundV3Adapter} from "@lattice/defi/CompoundV3Adapter.sol";
 import {StrategyManager} from "@lattice/defi/StrategyManager.sol";
@@ -11,11 +10,11 @@ import {CompoundV3AdapterLib} from "@lattice/defi/libraries/CompoundV3AdapterLib
 import {StrategyManagerLib} from "@lattice/defi/libraries/StrategyManagerLib.sol";
 import {VaultCoreLib} from "@lattice/defi/libraries/VaultCoreLib.sol";
 import {IProtocolAdapter} from "@lattice/interfaces/defi/IProtocolAdapter.sol";
-import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib.sol";
 import {ERC20} from "@lattice/tokens/ERC20/ERC20.sol";
 import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
 import {ERC4626} from "@lattice/tokens/ERC4626/ERC4626.sol";
 import {ERC4626Lib} from "@lattice/tokens/ERC4626/libraries/ERC4626Lib.sol";
+import {Initializable} from "@lattice/utils/Initializable.sol";
 import {Test} from "forge-std/Test.sol";
 
 import {MockAsset} from "./AaveV3AdapterSupplyTest.t.sol";
@@ -94,14 +93,13 @@ contract MockCometRewards {
     }
 }
 
-contract MockCompoundAdapter is CompoundV3Adapter {
-    function initialize(address admin_, address comet_, address asset_, address vault_, address recipient_) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+contract MockCompoundAdapter is CompoundV3Adapter, Initializable {
+    function initialize(address admin_, address comet_, address asset_, address vault_, address recipient_)
+        external
+        initializer
+    {
         AccessControlLib.__AccessControl_init(admin_);
-        ReentrancyGuardLib.__ReentrancyGuard_init();
         CompoundV3AdapterLib.__CompoundV3Adapter_init(comet_, asset_, vault_, recipient_);
-        InitializableLib.postInitializer(s);
     }
 
     function supportsInterface(bytes4 id) external view returns (bool) {
@@ -183,19 +181,16 @@ contract CompoundV3AdapterTest is Test {
 
 /// @notice Flattens the composable {ERC20}, {ERC4626}, and {VaultCore} facets into one mock; the strategy-aware
 ///         {VaultCore} mutators win the clashes.
-contract CompoundVaultMock is ERC20, ERC4626, VaultCore {
+contract CompoundVaultMock is ERC20, ERC4626, VaultCore, Initializable {
     /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare
     ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing.
     function exportSelectors() external pure virtual override(ERC20, ERC4626, VaultCore) returns (bytes memory) {}
 
-    function initialize(address asset_, address admin_) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+    function initialize(address asset_, address admin_) external initializer {
         AccessControlLib.__AccessControl_init(admin_);
         ERC20Lib.__ERC20_init("Vault Share", "vSHARE");
         ERC4626Lib.__ERC4626_init(asset_, 0);
         VaultCoreLib.__VaultCore_init();
-        InitializableLib.postInitializer(s);
     }
 
     function supportsInterface(bytes4 id) external view returns (bool) {
@@ -236,13 +231,10 @@ contract CompoundVaultMock is ERC20, ERC4626, VaultCore {
     }
 }
 
-contract CompoundManagerMock is StrategyManager {
-    function initialize(address admin_) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+contract CompoundManagerMock is StrategyManager, Initializable {
+    function initialize(address admin_) external initializer {
         AccessControlLib.__AccessControl_init(admin_);
         StrategyManagerLib.__StrategyManager_init();
-        InitializableLib.postInitializer(s);
     }
 }
 

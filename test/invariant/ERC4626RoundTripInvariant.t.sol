@@ -2,7 +2,6 @@
 pragma solidity ^0.8.30;
 
 import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {VotesLib} from "@lattice/governance/libraries/VotesLib.sol";
 import {ERC20} from "@lattice/tokens/ERC20/ERC20.sol";
@@ -11,6 +10,7 @@ import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
 import {ERC20VotesLib} from "@lattice/tokens/ERC20/libraries/ERC20VotesLib.sol";
 import {ERC4626} from "@lattice/tokens/ERC4626/ERC4626.sol";
 import {ERC4626Lib} from "@lattice/tokens/ERC4626/libraries/ERC4626Lib.sol";
+import {Initializable} from "@lattice/utils/Initializable.sol";
 import {EIP712Lib} from "@lattice/utils/libraries/EIP712Lib.sol";
 import {NoncesLib} from "@lattice/utils/libraries/NoncesLib.sol";
 import {Test} from "forge-std/Test.sol";
@@ -20,7 +20,7 @@ import {Test} from "forge-std/Test.sol";
 //////////////////////////////////////////////////////////////////////////*//
 
 /// @notice Simple mintable ERC20Votes used as the vault's underlying asset.
-contract InvAsset is ERC20, ERC20Votes {
+contract InvAsset is ERC20, ERC20Votes, Initializable {
     /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare
     ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing.
     function exportSelectors() external pure virtual override(ERC20, ERC20Votes) returns (bytes memory) {}
@@ -33,16 +33,13 @@ contract InvAsset is ERC20, ERC20Votes {
         return ERC20Votes.transferFrom(from, to, value);
     }
 
-    function initialize(address admin) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+    function initialize(address admin) external initializer {
         ERC20Lib.__ERC20_init("Inv Asset", "IASSET");
         EIP712Lib.__EIP712_init("Inv Asset", "1");
         NoncesLib.__Nonces_init();
         VotesLib.__Votes_init();
         ERC20VotesLib.__ERC20Votes_init();
         AccessControlLib.__AccessControl_init(admin);
-        InitializableLib.postInitializer(s);
     }
 
     function mint(address to, uint256 amount) external {
@@ -56,18 +53,15 @@ contract InvAsset is ERC20, ERC20Votes {
 
 /// @notice ERC4626 vault for invariant testing. Flattens the composable {ERC20} share facet and the {ERC4626}
 ///         vault facet into one mock; `decimals` is disambiguated to the ERC-4626 share-offset variant.
-contract InvVault is ERC20, ERC4626 {
+contract InvVault is ERC20, ERC4626, Initializable {
     /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare
     ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing.
     function exportSelectors() external pure virtual override(ERC20, ERC4626) returns (bytes memory) {}
 
-    function initialize(address asset_) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+    function initialize(address asset_) external initializer {
         ERC20Lib.__ERC20_init("Inv Vault", "IVAULT");
         ERC4626Lib.__ERC4626_init(asset_, 0);
         AccessControlLib.__AccessControl_init(msg.sender);
-        InitializableLib.postInitializer(s);
     }
 
     /// @dev Resolves the `decimals()` clash between the flattened {ERC20} and {ERC4626} facets.

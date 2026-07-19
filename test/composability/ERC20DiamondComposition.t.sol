@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {ComposedTokenInit} from "@lattice-test/composability/ComposedTokenInit.sol";
 import {TokenBlueprintHelper} from "@lattice-test/helpers/TokenBlueprintHelper.sol";
+import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
 import {IERC3156FlashBorrower} from "@lattice/interfaces/external/ercs/IERC3156FlashBorrower.sol";
 import {IERC3156FlashLender} from "@lattice/interfaces/external/ercs/IERC3156FlashLender.sol";
 import {IPausable} from "@lattice/interfaces/security/IPausable.sol";
@@ -43,7 +43,7 @@ contract ERC20DiamondComposition is TokenBlueprintHelper {
 
     function setUp() public {
         (FacetCut[] memory cuts, ComposedTokenInit init) = _composedErc20Blueprint();
-        Diamond diamond = new Diamond();
+        LatticeDiamond diamond = new LatticeDiamond();
         // If any extension re-exported a base selector, this cut reverts CannotAddFunctionToDiamondThatAlreadyExists.
         diamond.initialize(cuts, address(init), abi.encodeCall(ComposedTokenInit.init, (CAP)));
         token = address(diamond);

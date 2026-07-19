@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {ERC4337Validation} from "@lattice/accounts/ERC4337Validation.sol";
@@ -13,6 +12,7 @@ import {DEFAULT_ENTRY_POINT, ERC4337ValidationLib} from "@lattice/accounts/libra
 import {IAccount, PackedUserOperation} from "@lattice/interfaces/external/ercs/IAccount.sol";
 import {Call} from "@lattice/interfaces/external/ercs/IERC7821.sol";
 import {IEntryPoint} from "@lattice/interfaces/external/ercs/IEntryPoint.sol";
+import {Initializable} from "@lattice/utils/Initializable.sol";
 import {ECDSA} from "@lattice/utils/libraries/ECDSA.sol";
 import {Test} from "forge-std/Test.sol";
 
@@ -21,7 +21,7 @@ import {Test} from "forge-std/Test.sol";
 // ---------------------------------------------------------------------------
 
 /// @notice Single-owner ERC-4337 account: signer + validation + executor facets, self-administering.
-contract MockEntryPointAccount is AccessControl, AccountSigner, ERC4337Validation, ERC7821Executor {
+contract MockEntryPointAccount is AccessControl, AccountSigner, ERC4337Validation, ERC7821Executor, Initializable {
     /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare
     ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing.
     function exportSelectors()
@@ -32,14 +32,11 @@ contract MockEntryPointAccount is AccessControl, AccountSigner, ERC4337Validatio
         returns (bytes memory)
     {}
 
-    function initialize(address owner_, address entryPoint_) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+    function initialize(address owner_, address entryPoint_) external initializer {
         AccessControlLib.__AccessControl_init(address(this));
         AccountSignerLib.__AccountSigner_init(owner_);
         ERC4337ValidationLib.__ERC4337Validation_init(entryPoint_);
         ERC7821ExecutorLib.__ERC7821Executor_init();
-        InitializableLib.postInitializer(s);
     }
 
     receive() external payable {}

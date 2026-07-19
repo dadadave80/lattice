@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {OwnableLib} from "@diamond/libraries/OwnableLib.sol";
+import {Initializable} from "@lattice/utils/Initializable.sol";
 import {VestingWallet} from "@lattice/utils/VestingWallet.sol";
 import {VestingWalletLib} from "@lattice/utils/libraries/VestingWalletLib.sol";
 
@@ -13,16 +13,13 @@ import {VestingWalletLib} from "@lattice/utils/libraries/VestingWalletLib.sol";
 /// The beneficiary is the Ownable owner; to change the beneficiary transfer ownership.
 /// @custom:lattice-version 0.1.0
 /// @custom:lattice-source OpenZeppelin v5.1.0
-contract VestingWalletStandalone is VestingWallet {
+contract VestingWalletStandalone is VestingWallet, Initializable {
     /// @param beneficiary The initial beneficiary (owner) who will receive vested tokens.
     /// @param startTimestamp The Unix timestamp at which vesting begins.
     /// @param durationSeconds The total duration of the vesting period in seconds.
-    constructor(address beneficiary, uint64 startTimestamp, uint64 durationSeconds) {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+    constructor(address beneficiary, uint64 startTimestamp, uint64 durationSeconds) initializer {
         OwnableLib.initializeOwner(beneficiary);
         VestingWalletLib.__VestingWallet_init(startTimestamp, durationSeconds);
-        InitializableLib.postInitializer(s);
     }
 
     /// @dev Accepts ETH deposits.

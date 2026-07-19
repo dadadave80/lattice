@@ -2,7 +2,6 @@
 pragma solidity ^0.8.30;
 
 import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {UniswapV3Adapter} from "@lattice/defi/UniswapV3Adapter.sol";
 import {UniswapV3AdapterLib} from "@lattice/defi/libraries/UniswapV3AdapterLib.sol";
@@ -13,7 +12,7 @@ import {EmergencyStop} from "@lattice/security/EmergencyStop.sol";
 import {Pausable} from "@lattice/security/Pausable.sol";
 import {EmergencyStopLib} from "@lattice/security/libraries/EmergencyStopLib.sol";
 import {PausableLib} from "@lattice/security/libraries/PausableLib.sol";
-import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib.sol";
+import {Initializable} from "@lattice/utils/Initializable.sol";
 import {UniswapV3FullRangeMath} from "@lattice/utils/libraries/UniswapV3FullRangeMath.sol";
 import {Test} from "forge-std/Test.sol";
 
@@ -284,7 +283,7 @@ contract MockPositionManager {
 //////////////////////////////////////////////////////////////////////////*//
 
 /// @notice Adapter composed with Pausable + EmergencyStop facets (as a real Diamond would).
-contract MockUniV3Adapter is UniswapV3Adapter, Pausable, EmergencyStop {
+contract MockUniV3Adapter is UniswapV3Adapter, Pausable, EmergencyStop, Initializable {
     /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare
     ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing.
     function exportSelectors() external pure virtual override(Pausable, EmergencyStop) returns (bytes memory) {}
@@ -297,17 +296,13 @@ contract MockUniV3Adapter is UniswapV3Adapter, Pausable, EmergencyStop {
         address recipient_,
         uint32 twapWindow_,
         uint256 slippageBps_
-    ) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+    ) external initializer {
         AccessControlLib.__AccessControl_init(admin_);
-        ReentrancyGuardLib.__ReentrancyGuard_init();
         PausableLib.__Pausable_init();
         EmergencyStopLib.__EmergencyStop_init();
         UniswapV3AdapterLib.__UniswapV3Adapter_init(
             positionManager_, pool_, vault_, recipient_, twapWindow_, slippageBps_
         );
-        InitializableLib.postInitializer(s);
     }
 
     function supportsInterface(bytes4 id) external view returns (bool) {

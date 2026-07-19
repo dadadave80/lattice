@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
+import {WETHUnwrapper} from "@lattice/defi/WETHUnwrapper.sol";
 import {AdapterBaseLib} from "@lattice/defi/libraries/AdapterBaseLib.sol";
 import {ILidoAdapter} from "@lattice/interfaces/defi/ILidoAdapter.sol";
 import {IProtocolAdapter} from "@lattice/interfaces/defi/IProtocolAdapter.sol";
@@ -14,6 +14,7 @@ import {EmergencyStopLib} from "@lattice/security/libraries/EmergencyStopLib.sol
 import {PausableLib} from "@lattice/security/libraries/PausableLib.sol";
 import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib.sol";
 import {EnumerableSet} from "@lattice/utils/libraries/EnumerableSet.sol";
+import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
 //                                  STORAGE
@@ -36,6 +37,9 @@ bytes32 constant ERC165_MAP_IPROTOCOLADAPTER_SLOT = 0x789387b95720f4aa713e912bc3
 /// @dev 0x83d0afd2 is `type(ILidoAdapter).interfaceId`.
 /// `keccak256(abi.encode(bytes4(0x83d0afd2), 0x9ca7f3e2e2bfb15fdf072b85dde92837cddacee6cf2f6b38cd06c9457c1c4200))`.
 bytes32 constant ERC165_MAP_ILIDOADAPTER_SLOT = 0x6167b6f3924e213fbc2c85ec2d6ca3e7f5267a73935588adb9fb05f57a52b315;
+
+/// @dev `keccak256("lattice.LidoAdapter.WETHUnwrapper")` — CREATE2 salt for the per-diamond {WETHUnwrapper}.
+bytes32 constant _WETH_UNWRAPPER_SALT = 0x564152588ece721544930d70d150570f94d5fc5c0638cf70676b240372aabb9c;
 
 /// @notice ERC-7201 namespaced storage for the Lido staking (buffer-model) adapter.
 /// @custom:storage-location erc7201:lattice.storage.LidoAdapter
@@ -173,6 +177,26 @@ library LidoAdapterLib {
     /// @dev Reverts `ProtocolAdapterUnauthorized` unless the caller is the wired operator. Placed at
     ///      the very top of `deploy`/`withdraw`/`harvest` — BEFORE the reentrancy guard — so an
     ///      unauthorized call never leaves the guard latched. Zero operator ⇒ always reverts.
+    /// @dev Returns the per-diamond {WETHUnwrapper}, CREATE2-deploying it on first use. The address
+    ///      is derived from `address(this)` (the diamond, under delegatecall) + the fixed salt, so
+    ///      every diamond lazily gets exactly one unwrapper and re-derivation is a pure computation.
+    function _wethUnwrapper() private returns (address unwrapper_) {
+        bytes memory code = type(WETHUnwrapper).creationCode;
+        unwrapper_ = address(
+            uint160(
+                uint256(keccak256(abi.encodePacked(bytes1(0xff), address(this), _WETH_UNWRAPPER_SALT, keccak256(code))))
+            )
+        );
+        if (unwrapper_.code.length == 0) {
+            bytes32 salt = _WETH_UNWRAPPER_SALT;
+            address deployed_;
+            assembly ("memory-safe") {
+                deployed_ := create2(0, add(code, 0x20), mload(code), salt)
+            }
+            if (deployed_ != unwrapper_) revert ILidoAdapter.LidoAdapterUnwrapperDeployFailed();
+        }
+    }
+
     function _checkOperator() private view {
         if (msg.sender != lidoAdapterStorage()._operator) {
             revert IProtocolAdapter.ProtocolAdapterUnauthorized(msg.sender);
@@ -262,9 +286,12 @@ library LidoAdapterLib {
     //////////////////////////////////////////////////////////////////////////*//
 
     /// @notice Sweeps the idle WETH buffer into Lido: WETH → ETH → stETH (`submit`) → wstETH (`wrap`).
-    /// @dev Reverts paused/stopped and on a zero idle balance. Reentrancy-gated. The `weth.withdraw`
-    ///      hits the facet's `receive()` (a self-call that only accepts ETH — no guarded state), so
-    ///      it is safe inside the `nonReentrant` window.
+    /// @dev Reverts paused/stopped and on a zero idle balance. Reentrancy-gated. Canonical WETH9 pays
+    ///      `withdraw` via `msg.sender.transfer` (2,300-gas stipend) — too little for the diamond's
+    ///      zero-selector routing to the {Receive} facet — so the unwrap goes through a per-diamond
+    ///      CREATE2 {WETHUnwrapper}, which absorbs the stipend send and returns the ETH with full gas
+    ///      (the {Receive} facet accepts it; no guarded state runs, so it is safe inside the
+    ///      `nonReentrant` window).
     function deploy() internal returns (uint256 deployed) {
         _checkOperator();
         ReentrancyGuardLib.nonReentrantBefore();
@@ -280,8 +307,10 @@ library LidoAdapterLib {
             revert IProtocolAdapter.ProtocolAdapterNothingToDeploy();
         }
 
-        // WETH -> native ETH.
-        IWETH9(weth_).withdraw(idle);
+        // WETH -> native ETH, relayed through the stipend-safe unwrapper (see @dev above).
+        address unwrapper_ = _wethUnwrapper();
+        if (!IWETH9(weth_).transfer(unwrapper_, idle)) revert ILidoAdapter.LidoAdapterWethTransferFailed();
+        WETHUnwrapper(payable(unwrapper_)).unwrap(IWETH9(weth_));
         // ETH -> stETH (1:1 at submit). Measure the real stETH minted (rebasing-safe).
         address lido_ = $._lido;
         uint256 stBefore = AdapterBaseLib.balanceOfSelf(lido_);
@@ -345,7 +374,8 @@ library LidoAdapterLib {
     }
 
     /// @notice Claims a finalized withdrawal request (permissionless/keeper): pulls the owed ETH from
-    ///         the queue (hits the facet `receive()`), wraps it 1:1 into the WETH buffer, and clears
+    ///         the queue (a full-gas payout that lands via the diamond's {Receive} facet), wraps it
+    ///         1:1 into the WETH buffer, and clears
     ///         the request from pending.
     function claimWithdrawal(uint256 requestId) internal returns (uint256 ethReceived) {
         ReentrancyGuardLib.nonReentrantBefore();

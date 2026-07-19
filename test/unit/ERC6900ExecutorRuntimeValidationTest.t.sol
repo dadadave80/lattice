@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {ERC6900Executor} from "@lattice/accounts/erc6900/ERC6900Executor.sol";
@@ -78,11 +77,8 @@ contract MockRtAccount is ModularAccount6900, AccessControl, ERC6900ModuleManage
         returns (bytes memory)
     {}
 
-    function initialize(address admin_) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+    function initialize(address admin_) external initializer {
         AccessControlLib.__AccessControl_init(admin_);
-        InitializableLib.postInitializer(s);
     }
 }
 

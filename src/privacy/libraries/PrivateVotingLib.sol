@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {IPrivateVoting} from "@lattice/interfaces/privacy/IPrivateVoting.sol";
 import {ISemaphore} from "@lattice/interfaces/privacy/ISemaphore.sol";
 import {NullifierRegistryLib} from "@lattice/privacy/libraries/NullifierRegistryLib.sol";
 import {SemaphoreLib} from "@lattice/privacy/libraries/SemaphoreLib.sol";
+import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
 //                                  STORAGE

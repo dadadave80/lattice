@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {DeployInvariantChecker} from "@lattice-script/base/security/DeployInvariantChecker.s.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
 import {InvariantCheckerTestFacet} from "@lattice-test/helpers/InvariantCheckerTestFacet.sol";
+import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
 import {InvariantChecker} from "@lattice/security/InvariantChecker.sol";
 import {Test} from "forge-std/Test.sol";
 
@@ -14,7 +14,7 @@ import {Test} from "forge-std/Test.sol";
 /// @notice Shared base for the InvariantChecker facet tests ({InvariantCheckerTest} and
 ///         {InvariantCheckerUsageTest}) that exercise a REAL {Diamond} rather than a flattened inheritance mock.
 ///         `setUp` assembles the production {DeployInvariantChecker} recipe (ERC165 + AccessControl +
-///         InvariantChecker + {InvariantCheckerInit}) and appends the test-only {InvariantCheckerTestFacet} that
+///         InvariantChecker + the recipe-local init) and appends the test-only {InvariantCheckerTestFacet} that
 ///         re-expresses the usage example's `distributeYield` gate — so both the raw registry API and the opt-in
 ///         consumer pattern route through the diamond's `delegatecall` dispatch. Exposes a `checker` handle (the
 ///         registry facet) and a `usage` handle (the gated-action helper facet).
@@ -47,7 +47,7 @@ abstract contract InvariantCheckerTestBase is Test, GetSelectors {
         }
         cuts[prod.length] = _usageCut();
 
-        Diamond d = new Diamond();
+        LatticeDiamond d = new LatticeDiamond();
         d.initialize(cuts, init, initCalldata);
         diamond_ = address(d);
     }

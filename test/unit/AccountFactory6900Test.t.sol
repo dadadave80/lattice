@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {Diamond} from "@diamond/Diamond.sol";
 import {DiamondLoupeFacet} from "@diamond/facets/DiamondLoupeFacet.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {Account6900BlueprintHelper} from "@lattice-test/helpers/Account6900BlueprintHelper.sol";
+import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccountFactory6900} from "@lattice/accounts/erc6900/AccountFactory6900.sol";
 import {AccountInit6900} from "@lattice/accounts/erc6900/AccountInit6900.sol";
@@ -73,7 +73,7 @@ contract AccountFactory6900Test is Account6900BlueprintHelper {
             ERC165Facet(account).supportsInterface(type(IERC6900AccountView).interfaceId),
             "IERC6900AccountView not registered"
         );
-        assertEq(DiamondLoupeFacet(account).facetAddresses().length, 9, "blueprint not fully wired");
+        assertEq(DiamondLoupeFacet(account).facetAddresses().length, 10, "blueprint not fully wired");
     }
 
     function test_AdminCanInstallValidationThroughProxy() public {
@@ -106,6 +106,6 @@ contract AccountFactory6900Test is Account6900BlueprintHelper {
         address account = factory.createAccount(owner, salt);
         FacetCut[] memory empty = new FacetCut[](0);
         vm.expectRevert();
-        Diamond(payable(account)).initialize(empty, address(0), "");
+        LatticeDiamond(payable(account)).initialize(empty, address(0), "");
     }
 }

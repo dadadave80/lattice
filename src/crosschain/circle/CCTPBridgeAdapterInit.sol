@@ -3,7 +3,6 @@ pragma solidity ^0.8.30;
 
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {CCTPBridgeAdapterLib} from "@lattice/crosschain/circle/CCTPBridgeAdapterLib.sol";
-import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib.sol";
 
 /// @title CCTPBridgeAdapterInit
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
@@ -23,7 +22,6 @@ contract CCTPBridgeAdapterInit {
     /// @param usdc               The deployed USDC token bridged by CCTP.
     function init(address admin, address tokenMessenger, address messageTransmitter, address usdc) external {
         AccessControlLib.__AccessControl_init(admin);
-        ReentrancyGuardLib.__ReentrancyGuard_init();
         CCTPBridgeAdapterLib.__CCTPBridgeAdapter_init(tokenMessenger, messageTransmitter, usdc);
     }
 }

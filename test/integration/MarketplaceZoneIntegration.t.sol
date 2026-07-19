@@ -2,7 +2,6 @@
 pragma solidity ^0.8.30;
 
 import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {
@@ -15,6 +14,7 @@ import {ZoneInterface} from "@lattice/interfaces/external/seaport/ZoneInterface.
 import {IMarketplaceZone} from "@lattice/interfaces/tokens/IMarketplaceZone.sol";
 import {MarketplaceZone} from "@lattice/tokens/MarketplaceZone.sol";
 import {MARKETPLACE_BLOCKED_ROLE, MarketplaceZoneLib} from "@lattice/tokens/libraries/MarketplaceZoneLib.sol";
+import {Initializable} from "@lattice/utils/Initializable.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @notice Minimal ERC-2981 NFT.
@@ -47,17 +47,14 @@ contract MockSeaport {
     }
 }
 
-contract Zone is AccessControl, MarketplaceZone {
+contract Zone is AccessControl, MarketplaceZone, Initializable {
     /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare
     ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing.
     function exportSelectors() external pure virtual override(AccessControl, MarketplaceZone) returns (bytes memory) {}
 
-    function initialize(address admin_) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+    function initialize(address admin_) external initializer {
         AccessControlLib.__AccessControl_init(admin_);
         MarketplaceZoneLib.__MarketplaceZone_init();
-        InitializableLib.postInitializer(s);
     }
 
     function supportsInterface(bytes4 id) public view returns (bool) {

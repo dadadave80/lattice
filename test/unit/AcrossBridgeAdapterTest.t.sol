@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {Diamond} from "@diamond/Diamond.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {AcrossBridgeAdapterTestBase} from "@lattice-test/base/AcrossBridgeAdapterTestBase.sol";
 import {MockSpokePool} from "@lattice-test/mocks/MockSpokePool.sol";
+import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
 import {AcrossBridgeAdapter} from "@lattice/crosschain/across/AcrossBridgeAdapter.sol";
 import {NonEvmAddress} from "@lattice/crosschain/libraries/NonEvmAddress.sol";
 import {IAcrossBridgeAdapter} from "@lattice/interfaces/crosschain/IAcrossBridgeAdapter.sol";
@@ -166,7 +166,7 @@ contract AcrossBridgeAdapterTest is AcrossBridgeAdapterTestBase {
     ///      this zero-SpokePool init revert is the guarantee.
     function test_InitRejectsZeroSpokePool() public {
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) = deployer.buildCuts(address(0));
-        Diamond d = new Diamond();
+        LatticeDiamond d = new LatticeDiamond();
         vm.expectRevert(IAcrossBridgeAdapter.AcrossZeroAddress.selector);
         d.initialize(cuts, init, initCalldata);
     }

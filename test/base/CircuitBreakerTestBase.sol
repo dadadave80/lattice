@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {DeployCircuitBreaker} from "@lattice-script/base/security/DeployCircuitBreaker.s.sol";
 import {CircuitBreakerTestFacet} from "@lattice-test/helpers/CircuitBreakerTestFacet.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
+import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
 import {CircuitBreaker} from "@lattice/security/CircuitBreaker.sol";
 import {Test} from "forge-std/Test.sol";
 
@@ -13,7 +13,7 @@ import {Test} from "forge-std/Test.sol";
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice Base for CircuitBreaker facet tests that exercise a REAL {Diamond} rather than a flattened inheritance
 ///         mock. `setUp` assembles the production {DeployCircuitBreaker} recipe (ERC165 + AccessControl +
-///         CircuitBreaker + {CircuitBreakerInit}) and APPENDS a test-only {CircuitBreakerTestFacet} exposing the
+///         CircuitBreaker + the recipe-local init) and APPENDS a test-only {CircuitBreakerTestFacet} exposing the
 ///         internal `checkNotTripped` consumer guard — so every breaker call and every gated action routes
 ///         through the diamond's `delegatecall` dispatch, catching selector/storage/init bugs a mock hides.
 abstract contract CircuitBreakerTestBase is Test, GetSelectors {
@@ -39,7 +39,7 @@ abstract contract CircuitBreakerTestBase is Test, GetSelectors {
             functionSelectors: _getSelectors("CircuitBreakerTestFacet")
         });
 
-        Diamond d = new Diamond();
+        LatticeDiamond d = new LatticeDiamond();
         d.initialize(cuts, init, initCalldata);
         diamond_ = address(d);
     }

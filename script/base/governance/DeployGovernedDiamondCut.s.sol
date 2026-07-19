@@ -5,6 +5,7 @@ import {DiamondLoupeFacet} from "@diamond/facets/DiamondLoupeFacet.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
+import {Receive} from "@lattice/Receive.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {GovernedDiamondCut} from "@lattice/governance/GovernedDiamondCut.sol";
 import {GovernedDiamondCutInit} from "@lattice/governance/GovernedDiamondCutInit.sol";
@@ -26,12 +27,13 @@ contract DeployGovernedDiamondCut is BaseDeploy {
     /// @return init The {GovernedDiamondCutInit} initializer address.
     /// @return initCalldata The `init(admin)` calldata.
     function buildCuts(address admin) public returns (FacetCut[] memory cuts, address init, bytes memory initCalldata) {
-        cuts = new FacetCut[](5);
+        cuts = new FacetCut[](6);
         cuts[0] = _cut(address(new ERC165Facet()), "ERC165Facet");
         cuts[1] = _cut(address(new DiamondLoupeFacet()), "DiamondLoupeFacet");
         cuts[2] = _cut(address(new AccessControl()));
         cuts[3] = _cut(address(new EmergencyStop()));
         cuts[4] = _cut(address(new GovernedDiamondCut()));
+        cuts[5] = _cut(address(new Receive()));
         init = address(new GovernedDiamondCutInit());
         initCalldata = abi.encodeCall(GovernedDiamondCutInit.init, (admin));
     }

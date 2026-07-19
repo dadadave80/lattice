@@ -1,14 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {ReentrancyGuardTestBase} from "@lattice-test/base/ReentrancyGuardTestBase.sol";
 import {ReentrancyGuardTestFacet} from "@lattice-test/helpers/ReentrancyGuardTestFacet.sol";
 import {IReentrancyGuard} from "@lattice/interfaces/security/IReentrancyGuard.sol";
 
 /// @title ReentrancyGuardTest
 /// @notice Exercises the ReentrancyGuard through a REAL {Diamond} (see {ReentrancyGuardTestBase}) — the guard's
-///         `_status` lock lives in the diamond's storage and every `this.*` call re-enters the diamond's
+///         lock lives in the diamond's context (transient on mainnet, a raw guard slot elsewhere) and every `this.*` call re-enters the diamond's
 ///         `delegatecall` fallback, so a genuine reentrant call must revert. This is the whole point of testing
 ///         the guard on a real diamond rather than a flattened inheritance mock. ReentrancyGuard has no standalone
 ///         production facet (it is a guard consumed by other facets); the {ReentrancyGuardTestFacet} stands in.
@@ -16,14 +15,6 @@ contract ReentrancyGuardTest is ReentrancyGuardTestBase {
     function setUp() public {
         diamond = _deployReentrancyGuard();
         guarded = ReentrancyGuardTestFacet(diamond);
-    }
-
-    // -------------------------------------------------------------------------
-    // Initial state
-    // -------------------------------------------------------------------------
-
-    function test_ERC165RegisteredIReentrancyGuard() public view {
-        assertTrue(ERC165Facet(diamond).supportsInterface(type(IReentrancyGuard).interfaceId));
     }
 
     // -------------------------------------------------------------------------
@@ -65,8 +56,8 @@ contract ReentrancyGuardTest is ReentrancyGuardTestBase {
         vm.expectRevert(abi.encodeWithSelector(IReentrancyGuard.ReentrancyGuardReentrantCall.selector));
         guarded.reentrantAttack();
 
-        // The revert in the inner call propagates outward and reverts the whole outer call frame, so `_status`
-        // rolls back to _NOT_ENTERED. A new top-level call should therefore succeed.
+        // The revert in the inner call propagates outward and reverts the whole outer call frame, so the
+        // guard slot rolls back to its unlocked state. A new top-level call should therefore succeed.
         guarded.singleCall();
         assertEq(guarded.callCount(), 1);
     }

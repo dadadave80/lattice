@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {Diamond} from "@diamond/Diamond.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {DeployGovernedVaultENS, TestnetAsset} from "@lattice-script/base/defi/DeployGovernedVaultENS.s.sol";
+import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
 import {GovernedVault} from "@lattice/defi/GovernedVault.sol";
 import {GovernedVaultENSParams} from "@lattice/defi/GovernedVaultENSInit.sol";
 import {ENSReverseClaimer} from "@lattice/ens/ENSReverseClaimer.sol";
@@ -74,7 +74,7 @@ contract GovernedVaultENSInitTest is Test {
 
     function _deploy(GovernedVaultENSParams memory p) internal returns (address diamond_) {
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) = deployer.buildCutsWithENS(p);
-        Diamond d = new Diamond();
+        LatticeDiamond d = new LatticeDiamond();
         d.initialize(cuts, init, initCalldata);
         diamond_ = address(d);
     }
@@ -272,8 +272,8 @@ contract GovernedVaultENSInitTest is Test {
         assertTrue(d2 != address(0), "second assembly succeeds");
     }
 
-    function test_BuildCutsWithENSReturnsFourteenCuts() public {
+    function test_BuildCutsWithENSReturnsFifteenCuts() public {
         (FacetCut[] memory cuts,,) = deployer.buildCutsWithENS(_params(address(asset), ENS_NAME));
-        assertEq(cuts.length, 14, "13 base cuts + ENSReverseClaimer");
+        assertEq(cuts.length, 15, "14 base cuts + ENSReverseClaimer");
     }
 }

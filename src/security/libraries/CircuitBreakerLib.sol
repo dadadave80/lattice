@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {ICircuitBreaker} from "@lattice/interfaces/security/ICircuitBreaker.sol";
+import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
 //                                  STORAGE
@@ -67,7 +67,7 @@ library CircuitBreakerLib {
     }
 
     /// @notice Initializes the CircuitBreaker module.
-    /// @dev Must be called between `InitializableLib.preInitializer` and `postInitializer`.
+    /// @dev Must be called inside an `initializer`-guarded function (see {Initializable}).
     ///      Registers the ICircuitBreaker interface ID for ERC-165 discovery.
     function __CircuitBreaker_init() internal {
         bytes32 s = InitializableLib.initializableSlot();

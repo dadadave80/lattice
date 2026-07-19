@@ -5,6 +5,7 @@ import {DiamondLoupeFacet} from "@diamond/facets/DiamondLoupeFacet.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
+import {Receive} from "@lattice/Receive.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {GovernedVault} from "@lattice/defi/GovernedVault.sol";
 import {GovernedVaultInit, GovernedVaultParams} from "@lattice/defi/GovernedVaultInit.sol";
@@ -54,7 +55,7 @@ contract DeployGovernedVault is BaseDeploy {
         initCalldata = abi.encodeCall(GovernedVaultInit.init, (p));
     }
 
-    /// @dev The 13 base facet cuts alone — shared with recipes that EXTEND this one under a different
+    /// @dev The 14 base facet cuts alone — shared with recipes that EXTEND this one under a different
     ///      initializer (they must not pay for a discarded {GovernedVaultInit} deployment). The last three
     ///      are the anti-frozen-diamond set: {DiamondLoupeFacet} (EIP-2535 introspection),
     ///      {EmergencyStop} (guardian halt + resume surface for the governed cut), and
@@ -62,7 +63,7 @@ contract DeployGovernedVault is BaseDeploy {
     ///      timelock-executed proposal — see {GovernedVaultInit}). All diamond-lib facets are cut via the
     ///      ERC-8153 address helpers (diamond-lib ≥0.2.0 facets self-report their selectors) — no FFI.
     function _buildBaseCuts() internal returns (FacetCut[] memory cuts) {
-        cuts = new FacetCut[](13);
+        cuts = new FacetCut[](14);
         cuts[0] = _cut(address(new ERC165Facet()));
         cuts[1] = _cut(address(new AccessControl()));
         cuts[2] = _cut(address(new TimelockController()));
@@ -76,6 +77,7 @@ contract DeployGovernedVault is BaseDeploy {
         cuts[10] = _cut(address(new DiamondLoupeFacet()));
         cuts[11] = _cut(address(new EmergencyStop()));
         cuts[12] = _cut(address(new GovernedDiamondCut()));
+        cuts[13] = _cut(address(new Receive()));
     }
 
     /// @notice Deploys a self-governed vault diamond (broadcasting entrypoint for `forge script ... --broadcast`).

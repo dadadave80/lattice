@@ -5,15 +5,28 @@ import {DiamondLoupeFacet} from "@diamond/facets/DiamondLoupeFacet.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
+import {Receive} from "@lattice/Receive.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
+import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
 import {EmergencyStop} from "@lattice/security/EmergencyStop.sol";
-import {EmergencyStopInit} from "@lattice/security/EmergencyStopInit.sol";
+import {EmergencyStopLib} from "@lattice/security/libraries/EmergencyStopLib.sol";
+
+/// @notice Recipe-local init: seeds AccessControl and registers IEmergencyStop. Composed inline —
+///         `EmergencyStopLib.__EmergencyStop_init()` is callable from any init, so no standalone production
+///         init artifact exists. MUST be invoked via the diamond's `initialize` `_init` delegatecall.
+contract EmergencyStopRecipeInit {
+    /// @param admin The address granted `DEFAULT_ADMIN_ROLE` (manages guardians and resumes operation).
+    function init(address admin) external {
+        AccessControlLib.__AccessControl_init(admin);
+        EmergencyStopLib.__EmergencyStop_init();
+    }
+}
 
 /// @title DeployEmergencyStop
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice Ready-to-deploy recipe for an EmergencyStop diamond: `ERC165Facet` + `AccessControl` +
-///         `EmergencyStop` + {EmergencyStopInit}. The ONE source of truth for what an emergency-stop diamond is,
+///         `EmergencyStop` + a recipe-local init. The ONE source of truth for what an emergency-stop diamond is,
 ///         shared by production (`run --broadcast`) and the facet tests (which build on {buildCuts}).
 ///         `AccessControl` is part of the base recipe because guardian management + `emergencyResume` are
 ///         `DEFAULT_ADMIN_ROLE`-gated (guardians hold the separate `EMERGENCY_GUARDIAN_ROLE`).
@@ -21,17 +34,18 @@ contract DeployEmergencyStop is BaseDeploy {
     /// @notice Builds the EmergencyStop diamond cuts + initializer (no broadcast, no proxy deploy).
     /// @param admin The address granted `DEFAULT_ADMIN_ROLE` (manages guardians and resumes operation).
     /// @return cuts The facet cuts (ERC165 + AccessControl + EmergencyStop + DiamondLoupeFacet + AccessControlDiamondCut).
-    /// @return init The {MultiInit} running {EmergencyStopInit} then {DiamondIntrospectionInit.initUpgradeable}.
+    /// @return init The {MultiInit} running {EmergencyStopRecipeInit} then {DiamondIntrospectionInit.initUpgradeable}.
     /// @return initCalldata The matching `multiInit` calldata.
     function buildCuts(address admin) public returns (FacetCut[] memory cuts, address init, bytes memory initCalldata) {
-        cuts = new FacetCut[](5);
+        cuts = new FacetCut[](6);
         cuts[0] = _cut(address(new ERC165Facet()));
         cuts[1] = _cut(address(new AccessControl()));
         cuts[2] = _cut(address(new EmergencyStop()));
         cuts[3] = _cut(address(new DiamondLoupeFacet()));
         cuts[4] = _cut(address(new AccessControlDiamondCut()));
+        cuts[5] = _cut(address(new Receive()));
         (init, initCalldata) = _withUpgradeableIntrospection(
-            address(new EmergencyStopInit()), abi.encodeCall(EmergencyStopInit.init, (admin))
+            address(new EmergencyStopRecipeInit()), abi.encodeCall(EmergencyStopRecipeInit.init, (admin))
         );
     }
 
