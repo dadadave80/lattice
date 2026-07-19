@@ -3,11 +3,11 @@ pragma solidity ^0.8.30;
 
 import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
+import {ILatticeFactory, RecipeEntry} from "@lattice/interfaces/ILatticeFactory.sol";
+import {ILatticeRegistry} from "@lattice/interfaces/ILatticeRegistry.sol";
 import {IERC8153} from "@lattice/interfaces/external/IERC8153.sol";
-import {IDiamondFactory, RecipeEntry} from "@lattice/interfaces/factory/IDiamondFactory.sol";
-import {ILatticeRegistry} from "@lattice/interfaces/registry/ILatticeRegistry.sol";
 
-/// @title DiamondFactory
+/// @title LatticeFactory
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice Stateless factory that assembles a complete EIP-2535 {Diamond} in ONE transaction from cuts
 ///         resolved out of the deploy-once {ILatticeRegistry} (issue #120). Recipe entries become
@@ -25,8 +25,8 @@ import {ILatticeRegistry} from "@lattice/interfaces/registry/ILatticeRegistry.so
 ///      bubble unchanged — the factory adds no drift handling of its own. Not a Diamond facet — a standalone,
 ///      stateless singleton.
 /// @custom:lattice-version 0.1.0
-contract DiamondFactory is IDiamondFactory {
-    /// @inheritdoc IDiamondFactory
+contract LatticeFactory is ILatticeFactory {
+    /// @inheritdoc ILatticeFactory
     ILatticeRegistry public immutable registry;
 
     /// @dev `keccak256(type(Diamond).creationCode)` — the CREATE2 initcode hash, fixed at construction.
@@ -38,12 +38,12 @@ contract DiamondFactory is IDiamondFactory {
 
     /// @param _registry The deploy-once {ILatticeRegistry} recipe entries are resolved against; non-zero.
     constructor(ILatticeRegistry _registry) {
-        if (address(_registry) == address(0)) revert DiamondFactory__ZeroRegistry();
+        if (address(_registry) == address(0)) revert LatticeFactory__ZeroRegistry();
         registry = _registry;
         _diamondInitCodeHash = keccak256(type(Diamond).creationCode);
     }
 
-    /// @inheritdoc IDiamondFactory
+    /// @inheritdoc ILatticeFactory
     function deploy(
         RecipeEntry[] calldata entries,
         FacetCut[] calldata customCuts,
@@ -54,7 +54,7 @@ contract DiamondFactory is IDiamondFactory {
         uint256 entriesLength = entries.length;
         uint256 customCutsLength = customCuts.length;
         uint256 totalCuts = entriesLength + customCutsLength;
-        if (totalCuts == 0) revert DiamondFactory__EmptyRecipe();
+        if (totalCuts == 0) revert LatticeFactory__EmptyRecipe();
 
         // Argument validation runs on EVERY call — including ones that take the idempotent return below — so
         // a recipe that would be refused fresh is never quietly "accepted" against an occupied address.
@@ -63,7 +63,7 @@ contract DiamondFactory is IDiamondFactory {
         for (uint256 i; i < customCutsLength; ++i) {
             bytes4[] calldata selectors = customCuts[i].functionSelectors;
             for (uint256 j; j < selectors.length; ++j) {
-                if (selectors[j] == EXPORT_SELECTOR) revert DiamondFactory__ExportSelectorForbidden();
+                if (selectors[j] == EXPORT_SELECTOR) revert LatticeFactory__ExportSelectorForbidden();
             }
         }
 
@@ -100,17 +100,17 @@ contract DiamondFactory is IDiamondFactory {
         emit DiamondDeployed(diamond, msg.sender, salt);
     }
 
-    /// @inheritdoc IDiamondFactory
+    /// @inheritdoc ILatticeFactory
     function predict(address deployer, bytes32 salt) external view returns (address diamond) {
         diamond = _predict(_saltFor(deployer, salt));
     }
 
     /// @dev Two passes over the materialized cuts, making the loupe-routing guarantee SOUND for the
     ///      assembly transaction:
-    ///      1. PRESENCE — reverts {IDiamondFactory.DiamondFactory__MissingLoupeCoverage} with the FIRST
+    ///      1. PRESENCE — reverts {ILatticeFactory.LatticeFactory__MissingLoupeCoverage} with the FIRST
     ///         loupe selector no `Add` cut routes (fixed order: `facets()`,
     ///         `facetFunctionSelectors(address)`, `facetAddresses()`, `facetAddress(bytes4)`).
-    ///      2. NO-UNDO — reverts {IDiamondFactory.DiamondFactory__LoupeSelectorNotReplaceable} if any
+    ///      2. NO-UNDO — reverts {ILatticeFactory.LatticeFactory__LoupeSelectorNotReplaceable} if any
     ///         `Replace`/`Remove` cut in the SAME deploy touches a loupe selector: without this, a recipe
     ///         like `[Add(loupe), Remove(loupe)]` would pass the presence scan yet assemble a loupe-less
     ///         (or mis-routed) diamond. Fresh-deploy recipes may only ADD loupe routing; re-pointing it is
@@ -136,7 +136,7 @@ contract DiamondFactory is IDiamondFactory {
                     }
                 }
             }
-            if (!covered) revert DiamondFactory__MissingLoupeCoverage(wanted);
+            if (!covered) revert LatticeFactory__MissingLoupeCoverage(wanted);
         }
 
         // 2. No-undo: no Replace/Remove in this same deploy may touch a loupe selector.
@@ -146,7 +146,7 @@ contract DiamondFactory is IDiamondFactory {
             for (uint256 j; j < selectors.length; ++j) {
                 for (uint256 k; k < 4; ++k) {
                     if (selectors[j] == loupe[k]) {
-                        revert DiamondFactory__LoupeSelectorNotReplaceable(selectors[j]);
+                        revert LatticeFactory__LoupeSelectorNotReplaceable(selectors[j]);
                     }
                 }
             }

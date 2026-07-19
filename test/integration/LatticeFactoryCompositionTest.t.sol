@@ -8,10 +8,10 @@ import {IDiamondLoupe} from "@diamond/interfaces/IDiamondLoupe.sol";
 import {IFacet} from "@diamond/interfaces/IFacet.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
-import {DiamondFactory} from "@lattice/factory/DiamondFactory.sol";
-import {RecipeEntry} from "@lattice/interfaces/factory/IDiamondFactory.sol";
+import {LatticeFactory} from "@lattice/LatticeFactory.sol";
+import {LatticeRegistry} from "@lattice/LatticeRegistry.sol";
+import {RecipeEntry} from "@lattice/interfaces/ILatticeFactory.sol";
 import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
-import {LatticeRegistry} from "@lattice/registry/LatticeRegistry.sol";
 import {ERC20} from "@lattice/tokens/ERC20/ERC20.sol";
 import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
 
@@ -25,16 +25,16 @@ contract FactoryErc20Init {
     }
 }
 
-/// @title DiamondFactoryCompositionTest
+/// @title LatticeFactoryCompositionTest
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice The end-to-end issue #120 story, one transaction deeper than the issue #118 composition test: a
 ///         curator registers a recipe's ERC-8153 facet in a {LatticeRegistry}, and a deployer hands the
-///         {DiamondFactory} a recipe entry + a classic {ERC165Facet} custom cut + the recipe's init — the
+///         {LatticeFactory} a recipe entry + a classic {ERC165Facet} custom cut + the recipe's init — the
 ///         factory resolves the cut off the registry, CREATE2-deploys a {Diamond}, and initializes it, all in
 ///         ONE call. Proves the full pipeline: register -> deploy(entries, customCuts, init) -> live ERC-20.
-contract DiamondFactoryCompositionTest is GetSelectors {
+contract LatticeFactoryCompositionTest is GetSelectors {
     LatticeRegistry internal registry;
-    DiamondFactory internal factory;
+    LatticeFactory internal factory;
 
     address internal owner = makeAddr("registryOwner");
 
@@ -53,7 +53,7 @@ contract DiamondFactoryCompositionTest is GetSelectors {
 
         // 1. Deploy the standalone registry singleton and the stateless factory bound to it.
         registry = new LatticeRegistry(owner);
-        factory = new DiamondFactory(registry);
+        factory = new LatticeFactory(registry);
 
         // 2. Curate the base ERC-20 facet (an ERC-8153 Lattice facet). register pulls + pins its exported
         //    selectors and mirrors the codehash into the permissionless Tier-A resolver. The diamond-lib
