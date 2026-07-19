@@ -13,8 +13,8 @@ import {Pausable} from "@lattice/security/Pausable.sol";
 /// @notice Exercises the Pausable facet through a REAL {Diamond} assembled by the ready-to-deploy
 ///         {DeployPausable} script (see {PausableTestBase}) — every call below routes through the diamond's
 ///         `delegatecall` dispatch, not a flattened inheritance mock. Admin gating is enforced by the cut-in
-///         `AccessControl` facet; `supportsInterface` by the cut-in `ERC165Facet`; the `whenNotPaused`/
-///         `whenPaused` guards by the appended test-only {PausableTestFacet}.
+///         `AccessControl` facet; `supportsInterface` by the cut-in `ERC165Facet`; the `checkNotPaused()`/
+///         `checkPaused()` lib guards by the appended test-only {PausableTestFacet}.
 contract PausableTest is PausableTestBase {
     address internal admin = address(0xA1);
     address internal nonAdmin = address(0xB2);
@@ -128,7 +128,7 @@ contract PausableTest is PausableTestBase {
     }
 
     // -------------------------------------------------------------------------
-    // whenNotPaused / whenPaused gates
+    // checkNotPaused / checkPaused gates
     // -------------------------------------------------------------------------
 
     function test_GatedActionSucceedsWhenNotPaused() public view {
@@ -173,12 +173,13 @@ contract PausableTest is PausableTestBase {
     }
 
     // -------------------------------------------------------------------------
-    // OZ-reconciliation: P-1 — explicit _paused = false in init
+    // Initial state (P-1 superseded: no seeding — zero default is the design)
     // -------------------------------------------------------------------------
 
-    /// @notice Verifies that the initializer leaves the paused state explicitly false,
-    /// matching OZ v5.1.0's defensive `_paused = false` write in the constructor.
-    function test_PauseInitialStateIsExplicitlyFalse() public view {
+    /// @notice Verifies a freshly initialized diamond is unpaused. `__Pausable_init` deliberately
+    /// writes no `_paused` value (zero default is false); OZ v5.1.0's defensive constructor write
+    /// was dropped as init-time dead state — audit finding P-1's recommendation is superseded.
+    function test_PauseInitialStateIsFalseByZeroDefault() public view {
         // After setUp() the diamond is freshly initialised. The state must be false.
         assertFalse(pausable.paused());
     }
