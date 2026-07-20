@@ -19,7 +19,7 @@ pragma solidity ^0.8.30;
 ///      registry keys, this library, and the git tag stay in lockstep with zero manual edits.
 library LatticeVersion {
     /// @notice The full semantic version string of the Lattice library (e.g. "0.1.0").
-    string internal constant VERSION = "0.1.0"; // x-release-please-version
+    string internal constant VERSION = "0.2.0"; // x-release-please-version
 
     /// @notice The major component of {VERSION}. Pre-1.0 / unaudited while this is 0.
     /// @dev The component constants use the digit-free `uint` alias ON PURPOSE: release-please's
@@ -32,7 +32,7 @@ library LatticeVersion {
 
     /// @notice The minor component of {VERSION}.
     // forgefmt: disable-next-item
-    uint internal constant MINOR = 1; // x-release-please-minor
+    uint internal constant MINOR = 2; // x-release-please-minor
 
     /// @notice The patch component of {VERSION}.
     // forgefmt: disable-next-item
