@@ -1,5 +1,89 @@
 # Changelog
 
+## [0.2.0](https://github.com/dadadave80/lattice/compare/v0.1.0...v0.2.0) (2026-07-20)
+
+
+### ⚠ BREAKING CHANGES
+
+* Receive facet — bare-ETH acceptance moves from the proxy to a cut
+* drop the four remaining security Init contracts — recipe-local inits
+* Pausable modifiers + composable init — drop PausableInit
+* transient ReentrancyGuard — Solady logic, mixin modifiers, no init
+* Initializable mixin + parameterless preInitializer()
+* migrate to diamond-lib v0.3.0 — LatticeDiamond + vendored InitializableLib
+
+### Features
+
+* **build:** KEYSTORE= mode — demo auth from the macOS Keychain ([bd30e57](https://github.com/dadadave80/lattice/commit/bd30e57fb522e35e970fc86ad8bed17db5ee7bbf))
+* **crosschain:** Arc-hub CCTP demo — one Arc diamond bridging to Sepolia + Base Sepolia ([736bf42](https://github.com/dadadave80/lattice/commit/736bf42e3c1b8b7ac468f4c889683ec7b66ca872))
+* **crosschain:** CCTP v2 hooks + maxFee guard on the bridge adapter ([74e8479](https://github.com/dadadave80/lattice/commit/74e84792fc617443feb811fc9ed5eba8c424872f))
+* **crosschain:** CCTP v2 hooks + maxFee guard on the bridge adapter ([423a715](https://github.com/dadadave80/lattice/commit/423a71566ae4a12d2e957e53b276ec6fafca1a92))
+* **crosschain:** derive the CCTP demo actor from the keystore + auto-detect --slow ([d0d33fd](https://github.com/dadadave80/lattice/commit/d0d33fdb80e3c2a44d86642a73cec5524fbdfbba))
+* **crosschain:** derive the demo actor from the keystore + auto-detect --slow ([9544da1](https://github.com/dadadave80/lattice/commit/9544da104ae7c061768a76bb2dac8310816f79b3))
+* **crosschain:** live CCTP v2 hook showcase — auto-credit vault ([07a8333](https://github.com/dadadave80/lattice/commit/07a8333ffa6986436703b355348f7a86ad114d28))
+* **crosschain:** live CCTP v2 hook showcase — auto-credit vault on Base ([1ad4862](https://github.com/dadadave80/lattice/commit/1ad48626be647b73ebdf97bcb1dd5533679f12d9))
+* **crosschain:** live CCTP v2 USDC demo — Sepolia→Arc & Sepolia→Base Sepolia ([f904c67](https://github.com/dadadave80/lattice/commit/f904c675fcdb3ba7b4c309e794f1e68dc0207c22))
+* **crosschain:** live CCTP v2 USDC demo script + autonomous crank loop ([5fffa8c](https://github.com/dadadave80/lattice/commit/5fffa8c9bae7b2a545936eaeb3bbea18870b3ae4))
+* **crosschain:** narrate the hook demo — make the invisible steps visible ([0648ac7](https://github.com/dadadave80/lattice/commit/0648ac7d684dfe70d3225b710b52e97ea3bf8e90))
+* **crosschain:** narrate the hook demo — make the invisible steps visible ([f7fcdae](https://github.com/dadadave80/lattice/commit/f7fcdae53bbf330beb6109a6afd30c9ad5dd1898))
+* **crosschain:** render setup progress as per-contract ✓/✗ with a verification spinner ([a500ef1](https://github.com/dadadave80/lattice/commit/a500ef1aa7cfc79d6f6ae426a0ffa66ca047bbed))
+* **crosschain:** rework CCTP demo as an Arc-hub — one diamond bridging to Sepolia + Base Sepolia ([ed2f7b4](https://github.com/dadadave80/lattice/commit/ed2f7b4032c017f49640ef5f12668838bc617628))
+* **crosschain:** stream per-contract setup progress in the hook demo ([01167dd](https://github.com/dadadave80/lattice/commit/01167dd78dc04394734f76baf8385d405a97241a))
+* Initializable mixin + parameterless preInitializer() ([06d66d9](https://github.com/dadadave80/lattice/commit/06d66d90c95ac70f83700e95832fb693297007bd))
+* migrate to diamond-lib v0.3.0 — LatticeDiamond + vendored InitializableLib ([e489cae](https://github.com/dadadave80/lattice/commit/e489caefb4b52541ec2b699d3b1135afff043bfc))
+* Pausable modifiers + composable init — drop PausableInit ([61c0fdc](https://github.com/dadadave80/lattice/commit/61c0fdcae55b405ba22c41bad896727f8ddc4b47))
+* Receive facet — bare-ETH acceptance moves from the proxy to a cut ([e032e82](https://github.com/dadadave80/lattice/commit/e032e82b47c31c6f5cbdcf1a6d137ff803bf0fc3))
+* **release:** wire LatticeVersion as the single source of release truth ([2630141](https://github.com/dadadave80/lattice/commit/263014129af9852a7bf537dac66211680b9edb68))
+* transient ReentrancyGuard — Solady logic, mixin modifiers, no init ([3de08a8](https://github.com/dadadave80/lattice/commit/3de08a857813b0f116833a67c7dd825a07d6300b))
+
+
+### Bug Fixes
+
+* **crosschain:** address review — Arc native-gas delivery threshold, idempotent burn, auth guard, journal fee policy ([b554997](https://github.com/dadadave80/lattice/commit/b55499703a65ddbf158882c500074b0a114fb303))
+* **crosschain:** apply the 9 verified review findings to the demo UX PR ([8fc6cb5](https://github.com/dadadave80/lattice/commit/8fc6cb55d1ec406c861718c7d8d6fe3d443eb4ca))
+* **crosschain:** CCTP demo loop — keystore-free status reads (--sender) + lane RPC preflight + gitignore .pw ([47adc21](https://github.com/dadadave80/lattice/commit/47adc21205e0d65bc2267cf534a0c4235a44fb9a))
+* **crosschain:** drive the Arc burn via cast send — revm cannot execute Arc's native-USDC precompile ([2c82c78](https://github.com/dadadave80/lattice/commit/2c82c788c40cd627669df0fe5c509c8cc91ed9e5))
+* **crosschain:** hook demo — prompt-free fund check + Sourcify-pinned verification ([0e6739c](https://github.com/dadadave80/lattice/commit/0e6739c81807dd18e70b18a6a9e58ef7e669ddd7))
+* **crosschain:** keep CCTP demo status reads keystore-free ([e688a3f](https://github.com/dadadave80/lattice/commit/e688a3fbe2733688dc4513d0b1dc1c5521e17a08))
+* **crosschain:** pass FORGE_AUTH to the hook demo's Arc balance read ([0d2e0e9](https://github.com/dadadave80/lattice/commit/0d2e0e9c63b62685d49cf19553f1fc69d8296e2a))
+* **crosschain:** pin demo deploy verification to Sourcify ([3282c4a](https://github.com/dadadave80/lattice/commit/3282c4a2424a16c4df772cd005db50b85a78fce6))
+* **crosschain:** render the REAL multichain output — chain headers, dispatch spinner, journal-sourced deploy listing ([914ad06](https://github.com/dadadave80/lattice/commit/914ad061e7ded45df17d0274c32498647a0715b5))
+* **crosschain:** review — journal lifecycle, burn-adoption hardening, locking, doc truth ([1e8815c](https://github.com/dadadave80/lattice/commit/1e8815c26f217cb0156c9a7ca35e0a53febe84eb))
+* **crosschain:** review — net-of-fee hook amount + mutation-hardened tests ([0d964b0](https://github.com/dadadave80/lattice/commit/0d964b0628d1e5cd8eba1df957b19af57508c23b))
+* **crosschain:** status read uses --sender; preflight the lane RPC vars ([e47b856](https://github.com/dadadave80/lattice/commit/e47b8565e15dfafd3bbe172288fb2d9997d3e13c))
+* **make:** deploy-local — explicit --tc and .env-free execution ([87c7fdd](https://github.com/dadadave80/lattice/commit/87c7fdd1d9fd2146a16abb3b7efc9e6fabe91b41))
+* **make:** deploy-local — explicit --tc and .env-free execution ([941db39](https://github.com/dadadave80/lattice/commit/941db397e4fdea69a85f62279230ac811c622f4c))
+* **make:** drop the /tmp workaround — .env keystore setting removed instead ([12c052d](https://github.com/dadadave80/lattice/commit/12c052dd481c88c06fde4624d7a13d5de38e396f))
+* **release:** digit-free types on x-release-please annotated lines ([c640c0d](https://github.com/dadadave80/lattice/commit/c640c0d8478f902b0c21393856ee15227bd5115e))
+* **release:** digit-free types on x-release-please annotated lines ([504c12f](https://github.com/dadadave80/lattice/commit/504c12feea88bfdccdb62b38d3e27e364c1aa76c))
+* **release:** forgefmt disable-next-item on the digit-free annotated lines ([2b7965b](https://github.com/dadadave80/lattice/commit/2b7965b32ed8a3d714fd4c1dc4ca77e0aa373064))
+
+
+### Refactors
+
+* colocate module libs inside their vendor folders ([f7aa2a8](https://github.com/dadadave80/lattice/commit/f7aa2a8ac4d74d36f541c4002e37a1976184c406))
+* **crosschain:** fund-check Arc balance via a broadcast-free forge read ([c47ab93](https://github.com/dadadave80/lattice/commit/c47ab93413fcea83398d5a371d039b7ffc59b96f))
+* **crosschain:** group protocol adapters per vendor ([c731f9b](https://github.com/dadadave80/lattice/commit/c731f9b2f0cfcf5c5713d1ab3021a23b881ff532))
+* drop the four remaining security Init contracts — recipe-local inits ([0c6c23e](https://github.com/dadadave80/lattice/commit/0c6c23ef90909417f342caad3fa7c0d3333bf6e9))
+* **interfaces:** group vendored external interfaces per vendor ([49697ee](https://github.com/dadadave80/lattice/commit/49697ee98bf4e7c38b7214adac7676461575b7cc))
+* **interfaces:** group vendored external interfaces per vendor ([2625033](https://github.com/dadadave80/lattice/commit/262503384df78e86e575673e8950c26edd189441))
+* **oracles:** group oracle adapters per vendor ([aad2119](https://github.com/dadadave80/lattice/commit/aad2119e0da40f1b00b14e344d927eac6079fa33))
+* rename DiamondFactory to LatticeFactory; promote factory + registry to src/ root ([706d815](https://github.com/dadadave80/lattice/commit/706d81541ff3a76beefe54c925f7c47218e3e778))
+* rename DiamondFactory to LatticeFactory; promote factory + registry to src/ root ([ca785ab](https://github.com/dadadave80/lattice/commit/ca785abe8c6e56a29403eb678d908c31147a1692))
+
+
+### Documentation
+
+* **crosschain:** correct --slow rationale — the signer is 7702-delegated, not Arc ([ed20133](https://github.com/dadadave80/lattice/commit/ed201335fa1d91671abf04564a81c4ac60659a2c))
+* **crosschain:** correct --slow rationale — the SIGNER is 7702-delegated, not Arc ([15c71d1](https://github.com/dadadave80/lattice/commit/15c71d1ff3cb13a4d65004a628b9b209132030bc))
+* **crosschain:** fold in the delegation-accuracy fixes (supersedes [#143](https://github.com/dadadave80/lattice/issues/143)) ([0f80f55](https://github.com/dadadave80/lattice/commit/0f80f55e2a1238a78d79e8d0999728a52818fca2))
+* **demo:** update stale .env keystore comment ([c15faba](https://github.com/dadadave80/lattice/commit/c15fabac8ad918b40272db54998bc803e5f76174))
+* **grants:** Circle Arc application evidence — live CCTP demos, real-attestation fixture ([d981ad8](https://github.com/dadadave80/lattice/commit/d981ad8344e2aaba9e73c1a7c0620cb504868fbb))
+* **grants:** Circle Arc application evidence — live demos, fixture, broadcast logs ([b98b22e](https://github.com/dadadave80/lattice/commit/b98b22eeb6914b07e09044b734bc1d304d4686f0))
+* **grants:** re-point hook-demo evidence at the 2026-07-19 rerun ([f03eba2](https://github.com/dadadave80/lattice/commit/f03eba2e1b9071c6ed01e193548362173b0c2c44))
+* **grants:** re-point hook-demo evidence at the 2026-07-19 rerun ([a606571](https://github.com/dadadave80/lattice/commit/a60657178fab9a35e62bb8c7389308c3499eeeff))
+* **grants:** track only -latest broadcast evidence ([3d07ede](https://github.com/dadadave80/lattice/commit/3d07edec7ce25dec592725054153f46b51d69ae3))
+
 ## 0.1.0 (2026-07-14)
 
 
