@@ -3,7 +3,7 @@ pragma solidity ^0.8.30;
 
 import {CreateXDeployer} from "@lattice-script/lib/CreateXDeployer.sol";
 import {MockCreateX} from "@lattice-test/helpers/MockCreateX.sol";
-import {ICreateX} from "@lattice/interfaces/external/ICreateX.sol";
+import {ICreateX} from "@lattice/interfaces/external/createx/ICreateX.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @notice A trivial contract deployed through CreateX to prove the helper end-to-end.

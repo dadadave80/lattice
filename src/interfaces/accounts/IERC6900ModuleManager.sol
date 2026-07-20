@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.4;
 
-import {HookConfig, ModuleEntity} from "@lattice/interfaces/external/IERC6900.sol";
+import {HookConfig, ModuleEntity} from "@lattice/interfaces/external/ercs/IERC6900.sol";
 
 /// @title IERC6900ModuleManager
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

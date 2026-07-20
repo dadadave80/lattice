@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {OwnableLib} from "@diamond/libraries/OwnableLib.sol";
 import {IVestingWallet} from "@lattice/interfaces/utils/IVestingWallet.sol";
+import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 import {IERC20} from "forge-std/interfaces/IERC20.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
@@ -64,7 +64,7 @@ library VestingWalletLib {
     /// @notice Initializes the VestingWallet module.
     /// @param startTimestamp The Unix timestamp at which vesting begins.
     /// @param durationSeconds The total duration of the vesting period in seconds.
-    /// @dev Must be called between InitializableLib.preInitializer and postInitializer.
+    /// @dev Must be called inside an `initializer`-guarded function (see {Initializable}).
     function __VestingWallet_init(uint64 startTimestamp, uint64 durationSeconds) internal {
         bytes32 s = InitializableLib.initializableSlot();
         InitializableLib.checkInitializing(s);

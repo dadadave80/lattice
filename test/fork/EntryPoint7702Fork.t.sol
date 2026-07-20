@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {AccountBlueprintHelper} from "@lattice-test/helpers/AccountBlueprintHelper.sol";
+import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
 import {AccountInit} from "@lattice/accounts/erc7579/AccountInit.sol";
 import {AccountSigner} from "@lattice/accounts/erc7579/AccountSigner.sol";
 import {ERC7821Executor} from "@lattice/accounts/erc7579/ERC7821Executor.sol";
 import {DEFAULT_ENTRY_POINT} from "@lattice/accounts/libraries/ERC4337ValidationLib.sol";
-import {PackedUserOperation} from "@lattice/interfaces/external/IAccount.sol";
-import {Call} from "@lattice/interfaces/external/IERC7821.sol";
-import {IEntryPoint} from "@lattice/interfaces/external/IEntryPoint.sol";
+import {PackedUserOperation} from "@lattice/interfaces/external/ercs/IAccount.sol";
+import {Call} from "@lattice/interfaces/external/ercs/IERC7821.sol";
+import {IEntryPoint} from "@lattice/interfaces/external/ercs/IEntryPoint.sol";
 import {ECDSA} from "@lattice/utils/libraries/ECDSA.sol";
 
 contract Target {
@@ -44,7 +44,7 @@ contract EntryPoint7702Fork is AccountBlueprintHelper {
 
     IEntryPoint constant ENTRY_POINT = IEntryPoint(DEFAULT_ENTRY_POINT);
 
-    Diamond diamondImpl; // the shared 7702 delegate code
+    LatticeDiamond diamondImpl; // the shared 7702 delegate code
     AccountInit accountInit;
     FacetCut[] blueprint;
     Target target;
@@ -69,7 +69,7 @@ contract EntryPoint7702Fork is AccountBlueprintHelper {
             blueprint.push(cuts[i]);
         }
         accountInit = init;
-        diamondImpl = new Diamond();
+        diamondImpl = new LatticeDiamond();
         (eoa, eoaPk) = makeAddrAndKey("eoa");
         bundler = makeAddr("bundler");
         target = new Target();
@@ -83,7 +83,7 @@ contract EntryPoint7702Fork is AccountBlueprintHelper {
 
         // initCode = 20-byte marker ‖ raw calldata the EntryPoint CALLs on the EOA (init7702 → owner = the EOA).
         bytes memory initData = abi.encodeCall(
-            Diamond.initialize, (blueprint, address(accountInit), abi.encodeCall(AccountInit.init7702, ()))
+            LatticeDiamond.initialize, (blueprint, address(accountInit), abi.encodeCall(AccountInit.init7702, ()))
         );
         bytes memory initCode = abi.encodePacked(MARKER_7702, initData);
 

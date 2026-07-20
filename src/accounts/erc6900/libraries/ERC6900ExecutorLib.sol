@@ -20,7 +20,7 @@ import {
     IERC6900ValidationModule,
     ModuleEntity,
     ValidationFlags
-} from "@lattice/interfaces/external/IERC6900.sol";
+} from "@lattice/interfaces/external/ercs/IERC6900.sol";
 import {EnumerableSet} from "@lattice/utils/libraries/EnumerableSet.sol";
 
 /// @dev A captured post-execution hook + the context returned by its matching pre-execution hook. `postExecHook`

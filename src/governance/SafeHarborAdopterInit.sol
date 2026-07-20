@@ -11,7 +11,7 @@ import {SafeHarborAdopterLib} from "@lattice/governance/libraries/SafeHarborAdop
 ///         `DEFAULT_ADMIN_ROLE`, granted to `admin`) and wires the SEAL registry + factory while registering
 ///         the ISafeHarborAdopter interface (ERC-165). Delegatecalled by {Diamond.initialize} inside the
 ///         initializing window (so it must NOT open its own pre/postInitializer; each `__*_init` guard passes
-///         because the window is already open). Companion to the {ERC2981Init}/{EmergencyStopInit} patterns —
+///         because the window is already open). Companion to the {ERC2981Init} pattern —
 ///         a first-class production deploy artifact.
 contract SafeHarborAdopterInit {
     /// @notice Runs the access-control + safe-harbor module initializers. MUST be invoked via the diamond's

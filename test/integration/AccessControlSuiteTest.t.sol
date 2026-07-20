@@ -18,7 +18,6 @@ pragma solidity ^0.8.30;
 ///      `AccessControl` (DEFAULT_ADMIN_ROLE) compose directly in one Diamond, so the
 ///      opinionated admin-rules layer is unnecessary. See test_Suite_OwnableAndAccessControlCoexist.
 
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {OwnableLib} from "@diamond/libraries/OwnableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlEnumerable} from "@lattice/access/AccessControlEnumerable.sol";
@@ -26,6 +25,7 @@ import {AccessControlTimed} from "@lattice/access/AccessControlTimed.sol";
 import {AccessControlEnumerableLib} from "@lattice/access/libraries/AccessControlEnumerableLib.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {AccessControlTimedLib} from "@lattice/access/libraries/AccessControlTimedLib.sol";
+import {Initializable} from "@lattice/utils/Initializable.sol";
 import {Test} from "forge-std/Test.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
@@ -37,7 +37,7 @@ import {Test} from "forge-std/Test.sol";
 ///      across AccessControl, AccessControlTimed, and AccessControlEnumerable. We delegate
 ///      to the "most derived" semantics: Enumerable hooks grantRole/revokeRole/renounceRole
 ///      (member-set maintenance); Timed governs hasRole (time-windowed membership).
-contract MockAccessSuiteDiamond is AccessControl, AccessControlTimed, AccessControlEnumerable {
+contract MockAccessSuiteDiamond is AccessControl, AccessControlTimed, AccessControlEnumerable, Initializable {
     /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare
     ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing. NOTE it no
     ///      longer inherits diamond-lib's {OwnableFacet} (as of v0.2.0 its `exportSelectors()` is
@@ -51,14 +51,11 @@ contract MockAccessSuiteDiamond is AccessControl, AccessControlTimed, AccessCont
         returns (bytes memory)
     {}
 
-    function initialize(address _admin) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+    function initialize(address _admin) external initializer {
         OwnableLib.initializeOwner(_admin);
         AccessControlLib.__AccessControl_init(_admin);
         AccessControlTimedLib.__AccessControlTimed_init();
         AccessControlEnumerableLib.__AccessControlEnumerable_init();
-        InitializableLib.postInitializer(s);
     }
 
     /// @dev Local stand-in for {OwnableFacet.owner} (see the inheritance note above).

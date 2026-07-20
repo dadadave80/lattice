@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {ERC6551AccountLib} from "@lattice/accounts/libraries/ERC6551AccountLib.sol";
-import {IERC6551Account, IERC6551Executable} from "@lattice/interfaces/external/IERC6551.sol";
+import {IERC6551Account, IERC6551Executable} from "@lattice/interfaces/external/ercs/IERC6551.sol";
 
 /// @title ERC6551Account
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

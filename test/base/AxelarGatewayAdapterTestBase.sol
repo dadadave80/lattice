@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {DeployAxelarGatewayAdapter} from "@lattice-script/base/crosschain/DeployAxelarGatewayAdapter.s.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
-import {AxelarGatewayAdapter} from "@lattice/crosschain/AxelarGatewayAdapter.sol";
+import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
+import {AxelarGatewayAdapter} from "@lattice/crosschain/axelar/AxelarGatewayAdapter.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @title AxelarGatewayAdapterTestBase
@@ -30,7 +30,7 @@ abstract contract AxelarGatewayAdapterTestBase is Test, GetSelectors {
         deployer = new DeployAxelarGatewayAdapter();
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) = deployer.buildCuts(admin, gateway);
 
-        Diamond d = new Diamond();
+        LatticeDiamond d = new LatticeDiamond();
         d.initialize(cuts, init, initCalldata);
         diamond_ = address(d);
     }

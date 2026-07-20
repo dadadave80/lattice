@@ -5,10 +5,11 @@ import {DiamondLoupeFacet} from "@diamond/facets/DiamondLoupeFacet.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
+import {Receive} from "@lattice/Receive.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
-import {PythAdapter} from "@lattice/oracles/PythAdapter.sol";
-import {PythAdapterInit} from "@lattice/oracles/PythAdapterInit.sol";
+import {PythAdapter} from "@lattice/oracles/pyth/PythAdapter.sol";
+import {PythAdapterInit} from "@lattice/oracles/pyth/PythAdapterInit.sol";
 
 /// @title DeployPythAdapter
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
@@ -28,12 +29,13 @@ contract DeployPythAdapter is BaseDeploy {
         public
         returns (FacetCut[] memory cuts, address init, bytes memory initCalldata)
     {
-        cuts = new FacetCut[](5);
+        cuts = new FacetCut[](6);
         cuts[0] = _cut(address(new ERC165Facet()));
         cuts[1] = _cut(address(new AccessControl()));
         cuts[2] = _cut(address(new PythAdapter()));
         cuts[3] = _cut(address(new DiamondLoupeFacet()));
         cuts[4] = _cut(address(new AccessControlDiamondCut()));
+        cuts[5] = _cut(address(new Receive()));
         (init, initCalldata) = _withUpgradeableIntrospection(
             address(new PythAdapterInit()), abi.encodeCall(PythAdapterInit.init, (admin, pyth))
         );

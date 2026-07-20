@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {IInvariantChecker} from "@lattice/interfaces/security/IInvariantChecker.sol";
+import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
 //                                  STORAGE
@@ -63,7 +63,7 @@ library InvariantCheckerLib {
     }
 
     /// @notice Initializes the InvariantChecker module.
-    /// @dev Must be called between `InitializableLib.preInitializer` and `postInitializer`.
+    /// @dev Must be called inside an `initializer`-guarded function (see {Initializable}).
     ///      Registers the IInvariantChecker interface ID for ERC-165 discovery.
     function __InvariantChecker_init() internal {
         bytes32 s = InitializableLib.initializableSlot();

@@ -6,7 +6,7 @@ import {CrosschainLinkTestBase} from "@lattice-test/base/CrosschainLinkTestBase.
 import {CrosschainLink} from "@lattice/crosschain/CrosschainLink.sol";
 import {ICrosschainLink} from "@lattice/interfaces/crosschain/ICrosschainLink.sol";
 import {IERC7786MessageHandler} from "@lattice/interfaces/crosschain/IERC7786MessageHandler.sol";
-import {IERC7786GatewaySource, IERC7786Recipient} from "@lattice/interfaces/external/IERC7786.sol";
+import {IERC7786GatewaySource, IERC7786Recipient} from "@lattice/interfaces/external/ercs/IERC7786.sol";
 import {InteroperableAddress} from "@lattice/utils/libraries/InteroperableAddress.sol";
 
 // ---------------------------------------------------------------------------

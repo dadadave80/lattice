@@ -2,11 +2,11 @@
 pragma solidity ^0.8.30;
 
 import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
-import {ChainlinkAutomationAdapter} from "@lattice/oracles/ChainlinkAutomationAdapter.sol";
-import {ChainlinkAutomationAdapterLib} from "@lattice/oracles/libraries/ChainlinkAutomationAdapterLib.sol";
+import {ChainlinkAutomationAdapter} from "@lattice/oracles/chainlink/ChainlinkAutomationAdapter.sol";
+import {ChainlinkAutomationAdapterLib} from "@lattice/oracles/chainlink/ChainlinkAutomationAdapterLib.sol";
+import {Initializable} from "@lattice/utils/Initializable.sol";
 import {Test} from "forge-std/Test.sol";
 
 // ---------------------------------------------------------------------------
@@ -14,7 +14,7 @@ import {Test} from "forge-std/Test.sol";
 // ---------------------------------------------------------------------------
 
 /// @notice Mock Diamond that combines AccessControl + ChainlinkAutomationAdapter.
-contract MockChainlinkAutomationAdapterForkContract is AccessControl, ChainlinkAutomationAdapter {
+contract MockChainlinkAutomationAdapterForkContract is AccessControl, ChainlinkAutomationAdapter, Initializable {
     /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare
     ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing.
     function exportSelectors()
@@ -25,12 +25,9 @@ contract MockChainlinkAutomationAdapterForkContract is AccessControl, ChainlinkA
         returns (bytes memory)
     {}
 
-    function initialize(address _admin) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+    function initialize(address _admin) external initializer {
         AccessControlLib.__AccessControl_init(_admin);
         ChainlinkAutomationAdapterLib.__ChainlinkAutomationAdapter_init();
-        InitializableLib.postInitializer(s);
     }
 
     function supportsInterface(bytes4 _interfaceId) public view returns (bool) {

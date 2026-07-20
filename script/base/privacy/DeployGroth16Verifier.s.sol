@@ -5,6 +5,7 @@ import {DiamondLoupeFacet} from "@diamond/facets/DiamondLoupeFacet.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
+import {Receive} from "@lattice/Receive.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
 import {Groth16Verifier} from "@lattice/privacy/Groth16Verifier.sol";
@@ -48,10 +49,11 @@ contract DeployGroth16Verifier is BaseDeploy {
 
     /// @dev The shared cut set of both overloads: the module facets plus {DiamondLoupeFacet} (introspection).
     function _coreCuts() internal returns (FacetCut[] memory cuts) {
-        cuts = new FacetCut[](3);
+        cuts = new FacetCut[](4);
         cuts[0] = _cut(address(new ERC165Facet()));
         cuts[1] = _cut(address(new Groth16Verifier()));
         cuts[2] = _cut(address(new DiamondLoupeFacet()));
+        cuts[3] = _cut(address(new Receive()));
     }
 
     /// @notice Deploys a Groth16 verifier diamond (broadcasting entrypoint for `forge script ... --broadcast`).

@@ -129,7 +129,7 @@ contract DeployGovernedVaultENS is DeployGovernedVault {
     error DeployGovernedVaultENS__AssetNotOpenFaucet(address asset);
 
     /// @notice Builds the 14 cuts + combined initializer for the ENS-named self-governed vault (no broadcast,
-    ///         no proxy deploy): the inherited 13 base cuts plus the {ENSReverseClaimer} facet, initialized by
+    ///         no proxy deploy): the inherited 14 base cuts plus the {ENSReverseClaimer} facet, initialized by
     ///         the combined {GovernedVaultENSInit} (which replays the base init sequence exactly).
     function buildCutsWithENS(GovernedVaultENSParams memory p)
         public

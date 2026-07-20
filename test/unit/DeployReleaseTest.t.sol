@@ -5,10 +5,11 @@ import {DeployRelease} from "@lattice-script/deploy/DeployRelease.s.sol";
 import {CreateXDeployer} from "@lattice-script/lib/CreateXDeployer.sol";
 import {FacetInventory} from "@lattice-script/lib/FacetInventory.sol";
 import {MockCreateX} from "@lattice-test/helpers/MockCreateX.sol";
-import {DiamondFactory} from "@lattice/factory/DiamondFactory.sol";
-import {IERC8153} from "@lattice/interfaces/external/IERC8153.sol";
-import {ILatticeRegistry} from "@lattice/interfaces/registry/ILatticeRegistry.sol";
-import {LatticeRegistry} from "@lattice/registry/LatticeRegistry.sol";
+import {LatticeFactory} from "@lattice/LatticeFactory.sol";
+import {LatticeRegistry} from "@lattice/LatticeRegistry.sol";
+import {LatticeVersion} from "@lattice/LatticeVersion.sol";
+import {ILatticeRegistry} from "@lattice/interfaces/ILatticeRegistry.sol";
+import {IERC8153} from "@lattice/interfaces/external/ercs/IERC8153.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @title DeployReleaseTest
@@ -52,17 +53,17 @@ contract DeployReleaseTest is Test, DeployRelease {
         assertEq(registry.owner(), address(this), "registry owner not wired");
 
         // Factory: deployed and bound to the registry.
-        bytes memory factoryInitCode = abi.encodePacked(type(DiamondFactory).creationCode, abi.encode(out.registry));
+        bytes memory factoryInitCode = abi.encodePacked(type(LatticeFactory).creationCode, abi.encode(out.registry));
         assertEq(
             out.factory,
             CreateXDeployer.predictRaw(FACTORY_SALT, keccak256(factoryInitCode)),
             "factory not at its predicted raw-salt address"
         );
-        assertEq(address(DiamondFactory(out.factory).registry()), out.registry, "factory registry not wired");
+        assertEq(address(LatticeFactory(out.factory).registry()), out.registry, "factory registry not wired");
 
         // Every inventory facet: deployed at its predicted address, registered, and flagged latest.
         (string[] memory names,) = FacetInventory.inventory();
-        assertEq(names.length, 99, "inventory count drifted");
+        assertEq(names.length, 100, "inventory count drifted");
         assertEq(out.facets.length, names.length, "release output facet count mismatch");
         for (uint256 i; i < names.length; ++i) {
             assertGt(out.facets[i].code.length, 0, string.concat(names[i], ": no code at released address"));
@@ -72,6 +73,23 @@ contract DeployReleaseTest is Test, DeployRelease {
             assertEq(record.facet, out.facets[i], string.concat(names[i], ": registered facet != released facet"));
             assertEq(registry.latest(nameHash).version, PACKED, string.concat(names[i], ": latest not set"));
         }
+    }
+
+    /// @notice The version-less release() overload pins the release to the library's own
+    ///         {LatticeVersion.VERSION} — the Release-Please-bumped single source of truth — so an
+    ///         operator-passed string cannot drift from the code actually being released. Assertions
+    ///         derive the packed version FROM the library constant, so this test survives version bumps.
+    function test_Release_NoVersionOverloadUsesLatticeVersion() public {
+        DeployRelease.ReleaseOutput memory out = this.release(address(this));
+
+        ILatticeRegistry registry = ILatticeRegistry(out.registry);
+        uint64 packed = packVersion(LatticeVersion.VERSION);
+        (string[] memory names,) = FacetInventory.inventory();
+        bytes32 nameHash = keccak256(abi.encodePacked("lattice.", names[0]));
+        assertEq(
+            registry.get(nameHash, packed).facet, out.facets[0], "facet not registered under LatticeVersion.VERSION"
+        );
+        assertEq(registry.latest(nameHash).version, packed, "latest not pinned to LatticeVersion.VERSION");
     }
 
     /// @notice A second release() run over an already-complete release succeeds, lands on identical
@@ -231,13 +249,13 @@ contract DeployReleaseTest is Test, DeployRelease {
     //                              INVENTORY
     //////////////////////////////////////////////////////////////////////////*//
 
-    /// @notice Pins the inventory's internal consistency: exactly 99 entries, every path ends with
+    /// @notice Pins the inventory's internal consistency: exactly 100 entries, every path ends with
     ///         `<name>.sol:<name>` (dir-qualified for src/ facets, bare-basename for the diamond-lib core
     ///         facets — a swapped or drifted name<->path pairing fails loudly either way), and no
     ///         duplicate names (duplicate names would collide on nameHash + salt).
     function test_Inventory_NamePathPairingUniqueCount() public pure {
         (string[] memory names, string[] memory paths) = FacetInventory.inventory();
-        assertEq(names.length, 99, "inventory count drifted");
+        assertEq(names.length, 100, "inventory count drifted");
         assertEq(paths.length, names.length, "names/paths length mismatch");
 
         for (uint256 i; i < names.length; ++i) {
@@ -272,7 +290,7 @@ contract DeployReleaseTest is Test, DeployRelease {
     ///         and deployRaw must land there.
     function test_SaltDerivationGoldens() public {
         assertEq(REGISTRY_SALT, keccak256("lattice.LatticeRegistry"), "registry salt formula drifted");
-        assertEq(FACTORY_SALT, keccak256("lattice.DiamondFactory"), "factory salt formula drifted");
+        assertEq(FACTORY_SALT, keccak256("lattice.LatticeFactory"), "factory salt formula drifted");
 
         bytes32 salt = facetSalt("ERC20", "0.1.0");
         assertEq(salt, keccak256(abi.encodePacked("lattice.ERC20.0.1.0")), "facet salt formula drifted");

@@ -2,25 +2,22 @@
 pragma solidity ^0.8.30;
 
 import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
 import {ERC721} from "@lattice/tokens/ERC721/ERC721.sol";
 import {ERC721Lib} from "@lattice/tokens/ERC721/libraries/ERC721Lib.sol";
+import {Initializable} from "@lattice/utils/Initializable.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @notice Minimal mock ERC721 for gas tests.
-contract GasERC721 is ERC721, AccessControl {
+contract GasERC721 is ERC721, AccessControl, Initializable {
     /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare
     ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing.
     function exportSelectors() external pure virtual override(ERC721, AccessControl) returns (bytes memory) {}
 
-    function initialize(string memory name_, string memory symbol_, address admin) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+    function initialize(string memory name_, string memory symbol_, address admin) external initializer {
         ERC721Lib.__ERC721_init(name_, symbol_);
         AccessControlLib.__AccessControl_init(admin);
-        InitializableLib.postInitializer(s);
     }
 
     function mintHelper(address to, uint256 tokenId) external {

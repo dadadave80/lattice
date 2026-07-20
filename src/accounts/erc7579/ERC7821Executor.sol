@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {ERC7821ExecutorLib} from "@lattice/accounts/erc7579/libraries/ERC7821ExecutorLib.sol";
-import {IERC7821} from "@lattice/interfaces/external/IERC7821.sol";
+import {IERC7821} from "@lattice/interfaces/external/ercs/IERC7821.sol";
 
 /// @title ERC7821Executor
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

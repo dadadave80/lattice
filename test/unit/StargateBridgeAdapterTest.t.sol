@@ -2,16 +2,16 @@
 pragma solidity ^0.8.30;
 
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
-import {NotInitializing} from "@diamond/libraries/InitializableLib.sol";
 import {StargateBridgeAdapterTestBase} from "@lattice-test/base/StargateBridgeAdapterTestBase.sol";
 import {MockStargatePool} from "@lattice-test/mocks/MockStargatePool.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
-import {StargateBridgeAdapter} from "@lattice/crosschain/StargateBridgeAdapter.sol";
-import {StargateBridgeAdapterInit} from "@lattice/crosschain/StargateBridgeAdapterInit.sol";
+import {StargateBridgeAdapter} from "@lattice/crosschain/layerzero/StargateBridgeAdapter.sol";
+import {StargateBridgeAdapterInit} from "@lattice/crosschain/layerzero/StargateBridgeAdapterInit.sol";
 import {NonEvmAddress} from "@lattice/crosschain/libraries/NonEvmAddress.sol";
 import {IStargateBridgeAdapter} from "@lattice/interfaces/crosschain/IStargateBridgeAdapter.sol";
 import {IReentrancyGuard} from "@lattice/interfaces/security/IReentrancyGuard.sol";
 import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
+import {NotInitializing} from "@lattice/utils/libraries/InitializableLib.sol";
 import {InteroperableAddress} from "@lattice/utils/libraries/InteroperableAddress.sol";
 
 /// @notice Minimal ERC-20 (mint/approve/transfer/transferFrom) used as the pooled Stargate token.

@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {Diamond} from "@diamond/Diamond.sol";
 import {DiamondCutFacet} from "@diamond/facets/DiamondCutFacet.sol";
 import {DiamondLoupeFacet} from "@diamond/facets/DiamondLoupeFacet.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
+import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {ERC1271Signature} from "@lattice/accounts/ERC1271Signature.sol";
 import {ERC4337Validation} from "@lattice/accounts/ERC4337Validation.sol";
@@ -15,7 +15,7 @@ import {AccountInit} from "@lattice/accounts/erc7579/AccountInit.sol";
 import {AccountSigner} from "@lattice/accounts/erc7579/AccountSigner.sol";
 import {ERC7821Executor} from "@lattice/accounts/erc7579/ERC7821Executor.sol";
 import {IAccountFactory} from "@lattice/interfaces/accounts/IAccountFactory.sol";
-import {IERC7821} from "@lattice/interfaces/external/IERC7821.sol";
+import {IERC7821} from "@lattice/interfaces/external/ercs/IERC7821.sol";
 
 contract AccountFactoryTest is GetSelectors {
     AccountFactory factory;
@@ -124,6 +124,6 @@ contract AccountFactoryTest is GetSelectors {
         address account = factory.createAccount(owner, salt);
         FacetCut[] memory empty = new FacetCut[](0);
         vm.expectRevert();
-        Diamond(payable(account)).initialize(empty, address(0), "");
+        LatticeDiamond(payable(account)).initialize(empty, address(0), "");
     }
 }

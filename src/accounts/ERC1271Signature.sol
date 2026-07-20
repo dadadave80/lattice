@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {ERC1271SignatureLib} from "@lattice/accounts/libraries/ERC1271SignatureLib.sol";
-import {IERC1271} from "@lattice/interfaces/external/IERC1271.sol";
+import {IERC1271} from "@lattice/interfaces/external/ercs/IERC1271.sol";
 
 /// @title ERC1271Signature
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

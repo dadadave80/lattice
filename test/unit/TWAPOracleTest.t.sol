@@ -3,9 +3,9 @@ pragma solidity ^0.8.30;
 
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {TWAPOracleTestBase} from "@lattice-test/base/TWAPOracleTestBase.sol";
-import {IUniswapV2Pair} from "@lattice/interfaces/external/IUniswapV2Pair.sol";
+import {IUniswapV2Pair} from "@lattice/interfaces/external/uniswap/IUniswapV2Pair.sol";
 import {ITWAPOracle} from "@lattice/interfaces/oracles/ITWAPOracle.sol";
-import {TWAPOracle} from "@lattice/oracles/TWAPOracle.sol";
+import {TWAPOracle} from "@lattice/oracles/uniswap/TWAPOracle.sol";
 
 // ---------------------------------------------------------------------------
 //                              MOCKS

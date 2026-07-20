@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {ERC1271Signature} from "@lattice/accounts/ERC1271Signature.sol";
@@ -12,15 +11,23 @@ import {ERC7821ExecutorLib} from "@lattice/accounts/erc7579/libraries/ERC7821Exe
 import {AccountSignerLib} from "@lattice/accounts/libraries/AccountSignerLib.sol";
 import {ERC1271SignatureLib} from "@lattice/accounts/libraries/ERC1271SignatureLib.sol";
 import {ERC4337ValidationLib} from "@lattice/accounts/libraries/ERC4337ValidationLib.sol";
-import {IAccount, PackedUserOperation} from "@lattice/interfaces/external/IAccount.sol";
-import {Call, IERC7821} from "@lattice/interfaces/external/IERC7821.sol";
+import {IAccount, PackedUserOperation} from "@lattice/interfaces/external/ercs/IAccount.sol";
+import {Call, IERC7821} from "@lattice/interfaces/external/ercs/IERC7821.sol";
+import {Initializable} from "@lattice/utils/Initializable.sol";
 import {Base64} from "@lattice/utils/libraries/Base64.sol";
 import {EIP712Lib} from "@lattice/utils/libraries/EIP712Lib.sol";
 import {WebAuthn} from "@lattice/utils/libraries/WebAuthn.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @dev A Lattice account assembled from all four v1 facets — the shape a deployed Diamond would have.
-contract LatticeAccount is AccessControl, AccountSigner, ERC1271Signature, ERC4337Validation, ERC7821Executor {
+contract LatticeAccount is
+    AccessControl,
+    AccountSigner,
+    ERC1271Signature,
+    ERC4337Validation,
+    ERC7821Executor,
+    Initializable
+{
     /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare
     ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing.
     function exportSelectors()
@@ -31,16 +38,13 @@ contract LatticeAccount is AccessControl, AccountSigner, ERC1271Signature, ERC43
         returns (bytes memory)
     {}
 
-    function initialize(address admin_, address owner_, address entryPoint_) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+    function initialize(address admin_, address owner_, address entryPoint_) external initializer {
         AccessControlLib.__AccessControl_init(admin_);
         EIP712Lib.__EIP712_init("LatticeAccount", "1");
         AccountSignerLib.__AccountSigner_init(owner_);
         ERC1271SignatureLib.__ERC1271Signature_init();
         ERC4337ValidationLib.__ERC4337Validation_init(entryPoint_);
         ERC7821ExecutorLib.__ERC7821Executor_init();
-        InitializableLib.postInitializer(s);
     }
 }
 

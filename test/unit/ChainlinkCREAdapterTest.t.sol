@@ -3,9 +3,9 @@ pragma solidity ^0.8.30;
 
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {ChainlinkCREAdapterTestBase} from "@lattice-test/base/ChainlinkCREAdapterTestBase.sol";
-import {IReceiver} from "@lattice/interfaces/external/IReceiver.sol";
+import {IReceiver} from "@lattice/interfaces/external/chainlink/IReceiver.sol";
 import {IChainlinkCREAdapter} from "@lattice/interfaces/oracles/IChainlinkCREAdapter.sol";
-import {ChainlinkCREAdapter} from "@lattice/oracles/ChainlinkCREAdapter.sol";
+import {ChainlinkCREAdapter} from "@lattice/oracles/chainlink/ChainlinkCREAdapter.sol";
 
 /// @title ChainlinkCREAdapterTest
 /// @notice Exercises the ChainlinkCREAdapter facet through a REAL {Diamond} assembled by the ready-to-deploy

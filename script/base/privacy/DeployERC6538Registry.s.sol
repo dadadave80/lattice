@@ -5,6 +5,7 @@ import {DiamondLoupeFacet} from "@diamond/facets/DiamondLoupeFacet.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
+import {Receive} from "@lattice/Receive.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
 import {ERC6538Registry} from "@lattice/privacy/ERC6538Registry.sol";
@@ -51,11 +52,12 @@ contract DeployERC6538Registry is BaseDeploy {
 
     /// @dev The shared cut set of both overloads: the module facets plus {DiamondLoupeFacet} (introspection).
     function _coreCuts() internal returns (FacetCut[] memory cuts) {
-        cuts = new FacetCut[](4);
+        cuts = new FacetCut[](5);
         cuts[0] = _cut(address(new ERC165Facet()));
         cuts[1] = _cut(address(new EIP712()));
         cuts[2] = _cut(address(new ERC6538Registry()));
         cuts[3] = _cut(address(new DiamondLoupeFacet()));
+        cuts[4] = _cut(address(new Receive()));
     }
 
     /// @notice Deploys an ERC-6538 registry diamond (broadcasting entrypoint for `forge script ... --broadcast`).

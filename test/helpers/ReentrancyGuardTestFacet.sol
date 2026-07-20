@@ -12,7 +12,7 @@ import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib
 ///         revert. There is no production ReentrancyGuard facet (it is a guard consumed by other facets), so this
 ///         facet stands in to exercise the guard on a bare diamond `[ERC165Facet, ReentrancyGuardTestFacet]`.
 /// @dev The plain `callCount`/`enteredSnapshot` slots (0/1) are collision-free: the {Diamond} keeps its own
-///      bookkeeping and the guard's `_status` in namespaced ERC-7201 slots.
+///      bookkeeping in namespaced ERC-7201 slots (the guard slot itself is Solady's raw transient-variant slot).
 contract ReentrancyGuardTestFacet is ReentrancyGuard {
     /// @notice Tracks successful guarded-call count for assertion purposes.
     uint256 public callCount;

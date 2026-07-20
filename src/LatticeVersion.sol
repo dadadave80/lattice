@@ -12,16 +12,21 @@ pragma solidity ^0.8.30;
 ///      version itself MUST never be re-exposed as an external/public function on any facet.
 ///
 ///      Lattice is unaudited and pre-1.0; the semantic version starts at 0.1.0.
+///
+///      DO NOT bump these values by hand: Release Please rewrites the annotated lines on every
+///      release PR (this file is an `extra-files` generic-updater target in
+///      release-please-config.json), and {DeployRelease} defaults to {VERSION} — so the released
+///      registry keys, this library, and the git tag stay in lockstep with zero manual edits.
 library LatticeVersion {
     /// @notice The full semantic version string of the Lattice library (e.g. "0.1.0").
-    string internal constant VERSION = "0.1.0";
+    string internal constant VERSION = "0.1.0"; // x-release-please-version
 
     /// @notice The major component of {VERSION}. Pre-1.0 / unaudited while this is 0.
-    uint256 internal constant MAJOR = 0;
+    uint256 internal constant MAJOR = 0; // x-release-please-major
 
     /// @notice The minor component of {VERSION}.
-    uint256 internal constant MINOR = 1;
+    uint256 internal constant MINOR = 1; // x-release-please-minor
 
     /// @notice The patch component of {VERSION}.
-    uint256 internal constant PATCH = 0;
+    uint256 internal constant PATCH = 0; // x-release-please-patch
 }

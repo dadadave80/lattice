@@ -13,11 +13,11 @@ pragma solidity ^0.8.30;
 ///      artifact contract names exactly: the registry key is `keccak256("lattice.<name>")` and the facet
 ///      deploy salt is `keccak256("lattice.<name>.<version>")`, so renaming an entry re-derives BOTH.
 library FacetInventory {
-    /// @notice The 99 release facets (95 Lattice + 4 diamond-lib core) as (contract name, `"<file>:<Name>"` deploy path) pairs.
+    /// @notice The 100 release facets (96 Lattice + 4 diamond-lib core) as (contract name, `"<file>:<Name>"` deploy path) pairs.
     /// @return names The facet contract names (registry name = `"lattice." ++ name`).
     /// @return paths The matching `vm.getCode`/`deployCode` artifact paths, index-aligned with `names`.
     function inventory() internal pure returns (string[] memory names, string[] memory paths) {
-        string[99] memory n = [
+        string[100] memory n = [
             "AcrossBridgeAdapter",
             "AxelarGatewayAdapter",
             "BridgeERC20",
@@ -113,6 +113,7 @@ library FacetInventory {
             "ENSSubnameIssuer",
             "EIP712",
             "Multicall",
+            "Receive",
             // diamond-lib core facets (>=0.2.0 they implement IFacet/ERC-8153, so they are releasable —
             // release-versioned like every entry; the loupe entry is what lets factory recipes satisfy
             // the mandatory loupe coverage straight from the registry)
@@ -121,43 +122,43 @@ library FacetInventory {
             "ERC165Facet",
             "OwnableFacet"
         ];
-        string[99] memory p = [
-            "src/crosschain/AcrossBridgeAdapter.sol:AcrossBridgeAdapter",
-            "src/crosschain/AxelarGatewayAdapter.sol:AxelarGatewayAdapter",
+        string[100] memory p = [
+            "src/crosschain/across/AcrossBridgeAdapter.sol:AcrossBridgeAdapter",
+            "src/crosschain/axelar/AxelarGatewayAdapter.sol:AxelarGatewayAdapter",
             "src/crosschain/BridgeERC20.sol:BridgeERC20",
             "src/crosschain/BridgeERC7802.sol:BridgeERC7802",
-            "src/crosschain/CCIPGatewayAdapter.sol:CCIPGatewayAdapter",
-            "src/crosschain/CCTPBridgeAdapter.sol:CCTPBridgeAdapter",
+            "src/crosschain/chainlink/CCIPGatewayAdapter.sol:CCIPGatewayAdapter",
+            "src/crosschain/circle/CCTPBridgeAdapter.sol:CCTPBridgeAdapter",
             "src/crosschain/ChainRegistry.sol:ChainRegistry",
             "src/crosschain/CrosschainLink.sol:CrosschainLink",
             "src/crosschain/CrosschainTimelockHandler.sol:CrosschainTimelockHandler",
             "src/crosschain/ERC7786OpenBridge.sol:ERC7786OpenBridge",
-            "src/crosschain/HyperbridgeGatewayAdapter.sol:HyperbridgeGatewayAdapter",
-            "src/crosschain/HyperlaneGatewayAdapter.sol:HyperlaneGatewayAdapter",
-            "src/crosschain/L1ToL2CrossDomainMessengerGatewayAdapter.sol:L1ToL2CrossDomainMessengerGatewayAdapter",
-            "src/crosschain/L2ToL2CrossDomainMessengerGatewayAdapter.sol:L2ToL2CrossDomainMessengerGatewayAdapter",
-            "src/crosschain/LayerZeroGatewayAdapter.sol:LayerZeroGatewayAdapter",
-            "src/crosschain/StargateBridgeAdapter.sol:StargateBridgeAdapter",
-            "src/crosschain/StarknetGatewayAdapter.sol:StarknetGatewayAdapter",
-            "src/crosschain/SuperchainETHBridgeAdapter.sol:SuperchainETHBridgeAdapter",
-            "src/crosschain/WormholeGatewayAdapter.sol:WormholeGatewayAdapter",
-            "src/crosschain/ZetaChainGatewayAdapter.sol:ZetaChainGatewayAdapter",
-            "src/oracles/API3Adapter.sol:API3Adapter",
-            "src/oracles/API3QRNGAdapter.sol:API3QRNGAdapter",
-            "src/oracles/BandAdapter.sol:BandAdapter",
-            "src/oracles/ChainlinkAdapter.sol:ChainlinkAdapter",
-            "src/oracles/ChainlinkAutomationAdapter.sol:ChainlinkAutomationAdapter",
-            "src/oracles/ChainlinkCREAdapter.sol:ChainlinkCREAdapter",
-            "src/oracles/ChainlinkVRF.sol:ChainlinkVRF",
-            "src/oracles/ChronicleAdapter.sol:ChronicleAdapter",
-            "src/oracles/DIAAdapter.sol:DIAAdapter",
-            "src/oracles/GelatoAutomateAdapter.sol:GelatoAutomateAdapter",
-            "src/oracles/GelatoVRFAdapter.sol:GelatoVRFAdapter",
-            "src/oracles/PythAdapter.sol:PythAdapter",
-            "src/oracles/PythEntropyAdapter.sol:PythEntropyAdapter",
-            "src/oracles/RedStoneAdapter.sol:RedStoneAdapter",
-            "src/oracles/TellorAdapter.sol:TellorAdapter",
-            "src/oracles/TWAPOracle.sol:TWAPOracle",
+            "src/crosschain/hyperbridge/HyperbridgeGatewayAdapter.sol:HyperbridgeGatewayAdapter",
+            "src/crosschain/hyperlane/HyperlaneGatewayAdapter.sol:HyperlaneGatewayAdapter",
+            "src/crosschain/optimism/L1ToL2CrossDomainMessengerGatewayAdapter.sol:L1ToL2CrossDomainMessengerGatewayAdapter",
+            "src/crosschain/optimism/L2ToL2CrossDomainMessengerGatewayAdapter.sol:L2ToL2CrossDomainMessengerGatewayAdapter",
+            "src/crosschain/layerzero/LayerZeroGatewayAdapter.sol:LayerZeroGatewayAdapter",
+            "src/crosschain/layerzero/StargateBridgeAdapter.sol:StargateBridgeAdapter",
+            "src/crosschain/starknet/StarknetGatewayAdapter.sol:StarknetGatewayAdapter",
+            "src/crosschain/optimism/SuperchainETHBridgeAdapter.sol:SuperchainETHBridgeAdapter",
+            "src/crosschain/wormhole/WormholeGatewayAdapter.sol:WormholeGatewayAdapter",
+            "src/crosschain/zetachain/ZetaChainGatewayAdapter.sol:ZetaChainGatewayAdapter",
+            "src/oracles/api3/API3Adapter.sol:API3Adapter",
+            "src/oracles/api3/API3QRNGAdapter.sol:API3QRNGAdapter",
+            "src/oracles/band/BandAdapter.sol:BandAdapter",
+            "src/oracles/chainlink/ChainlinkAdapter.sol:ChainlinkAdapter",
+            "src/oracles/chainlink/ChainlinkAutomationAdapter.sol:ChainlinkAutomationAdapter",
+            "src/oracles/chainlink/ChainlinkCREAdapter.sol:ChainlinkCREAdapter",
+            "src/oracles/chainlink/ChainlinkVRF.sol:ChainlinkVRF",
+            "src/oracles/chronicle/ChronicleAdapter.sol:ChronicleAdapter",
+            "src/oracles/dia/DIAAdapter.sol:DIAAdapter",
+            "src/oracles/gelato/GelatoAutomateAdapter.sol:GelatoAutomateAdapter",
+            "src/oracles/gelato/GelatoVRFAdapter.sol:GelatoVRFAdapter",
+            "src/oracles/pyth/PythAdapter.sol:PythAdapter",
+            "src/oracles/pyth/PythEntropyAdapter.sol:PythEntropyAdapter",
+            "src/oracles/redstone/RedStoneAdapter.sol:RedStoneAdapter",
+            "src/oracles/tellor/TellorAdapter.sol:TellorAdapter",
+            "src/oracles/uniswap/TWAPOracle.sol:TWAPOracle",
             "src/tokens/ERC1155/ERC1155.sol:ERC1155",
             "src/tokens/ERC20/ERC20.sol:ERC20",
             "src/tokens/ERC20/ERC20Burnable.sol:ERC20Burnable",
@@ -217,6 +218,7 @@ library FacetInventory {
             "src/ens/ENSSubnameIssuer.sol:ENSSubnameIssuer",
             "src/utils/EIP712.sol:EIP712",
             "src/utils/Multicall.sol:Multicall",
+            "src/Receive.sol:Receive",
             // basename identifiers: lib sources compile to out/<File>.sol/<Name>.json, so the
             // dir-qualified "lib/..." form does not resolve for vm.getCode/deployCode.
             "DiamondCutFacet.sol:DiamondCutFacet",
@@ -224,9 +226,9 @@ library FacetInventory {
             "ERC165Facet.sol:ERC165Facet",
             "OwnableFacet.sol:OwnableFacet"
         ];
-        names = new string[](99);
-        paths = new string[](99);
-        for (uint256 i; i < 99; ++i) {
+        names = new string[](100);
+        paths = new string[](100);
+        for (uint256 i; i < 100; ++i) {
             names[i] = n[i];
             paths[i] = p[i];
         }

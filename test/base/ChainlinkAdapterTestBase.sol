@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {DeployChainlinkAdapter} from "@lattice-script/base/oracles/DeployChainlinkAdapter.s.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
-import {ChainlinkAdapter} from "@lattice/oracles/ChainlinkAdapter.sol";
+import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
+import {ChainlinkAdapter} from "@lattice/oracles/chainlink/ChainlinkAdapter.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @title ChainlinkAdapterTestBase
@@ -28,7 +28,7 @@ abstract contract ChainlinkAdapterTestBase is Test, GetSelectors {
         deployer = new DeployChainlinkAdapter();
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) = deployer.buildCuts(admin);
 
-        Diamond d = new Diamond();
+        LatticeDiamond d = new LatticeDiamond();
         d.initialize(cuts, init, initCalldata);
         diamond_ = address(d);
     }

@@ -2,15 +2,14 @@
 pragma solidity ^0.8.30;
 
 import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {AaveV3Adapter} from "@lattice/defi/AaveV3Adapter.sol";
 import {AaveV3AdapterLib} from "@lattice/defi/libraries/AaveV3AdapterLib.sol";
 import {IAaveV3Adapter} from "@lattice/interfaces/defi/IAaveV3Adapter.sol";
 import {IProtocolAdapter} from "@lattice/interfaces/defi/IProtocolAdapter.sol";
-import {ChainlinkAdapter} from "@lattice/oracles/ChainlinkAdapter.sol";
-import {ChainlinkAdapterLib} from "@lattice/oracles/libraries/ChainlinkAdapterLib.sol";
-import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib.sol";
+import {ChainlinkAdapter} from "@lattice/oracles/chainlink/ChainlinkAdapter.sol";
+import {ChainlinkAdapterLib} from "@lattice/oracles/chainlink/ChainlinkAdapterLib.sol";
+import {Initializable} from "@lattice/utils/Initializable.sol";
 import {Test} from "forge-std/Test.sol";
 
 import {MockAToken, MockAaveV3Pool, MockAsset} from "./AaveV3AdapterSupplyTest.t.sol";
@@ -51,7 +50,7 @@ contract MockAggregator {
 /// @notice The adapter facet AND the ChainlinkAdapter facet share one storage space, exactly as
 ///         they would in a real Diamond, so `ChainlinkAdapterLib.latestAnswer(feedKey)` reads the
 ///         feed registered here.
-contract MockLeverAdapter is AaveV3Adapter, ChainlinkAdapter {
+contract MockLeverAdapter is AaveV3Adapter, ChainlinkAdapter, Initializable {
     function initialize(
         address admin_,
         address provider_,
@@ -60,14 +59,10 @@ contract MockLeverAdapter is AaveV3Adapter, ChainlinkAdapter {
         address rewardRecipient_,
         bytes32 feedKey_,
         uint256 minHf_
-    ) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+    ) external initializer {
         AccessControlLib.__AccessControl_init(admin_);
-        ReentrancyGuardLib.__ReentrancyGuard_init();
         ChainlinkAdapterLib.__ChainlinkAdapter_init();
         AaveV3AdapterLib.__AaveV3Adapter_init(provider_, asset_, vault_, rewardRecipient_, feedKey_, minHf_);
-        InitializableLib.postInitializer(s);
     }
 
     function supportsInterface(bytes4 id) external view returns (bool) {

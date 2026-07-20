@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {DeployTWAPOracle} from "@lattice-script/base/oracles/DeployTWAPOracle.s.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
-import {TWAPOracle} from "@lattice/oracles/TWAPOracle.sol";
+import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
+import {TWAPOracle} from "@lattice/oracles/uniswap/TWAPOracle.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @title TWAPOracleTestBase
@@ -29,7 +29,7 @@ abstract contract TWAPOracleTestBase is Test, GetSelectors {
         deployer = new DeployTWAPOracle();
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) = deployer.buildCuts(admin);
 
-        Diamond d = new Diamond();
+        LatticeDiamond d = new LatticeDiamond();
         d.initialize(cuts, init, initCalldata);
         diamond_ = address(d);
     }

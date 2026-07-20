@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {IERC3156FlashBorrower} from "@lattice/interfaces/external/IERC3156FlashBorrower.sol";
-import {IERC3156FlashLender} from "@lattice/interfaces/external/IERC3156FlashLender.sol";
+import {IERC3156FlashBorrower} from "@lattice/interfaces/external/ercs/IERC3156FlashBorrower.sol";
+import {IERC3156FlashLender} from "@lattice/interfaces/external/ercs/IERC3156FlashLender.sol";
 import {IERC20FlashMint} from "@lattice/interfaces/tokens/IERC20FlashMint.sol";
 import {ERC20FlashMintLib} from "@lattice/tokens/ERC20/libraries/ERC20FlashMintLib.sol";
 

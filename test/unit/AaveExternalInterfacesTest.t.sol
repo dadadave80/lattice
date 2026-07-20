@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {IAToken} from "@lattice/interfaces/external/IAToken.sol";
-import {IAaveV3Pool} from "@lattice/interfaces/external/IAaveV3Pool.sol";
-import {IPoolAddressesProvider} from "@lattice/interfaces/external/IPoolAddressesProvider.sol";
+import {IAToken} from "@lattice/interfaces/external/aave/IAToken.sol";
+import {IAaveV3Pool} from "@lattice/interfaces/external/aave/IAaveV3Pool.sol";
+import {IPoolAddressesProvider} from "@lattice/interfaces/external/aave/IPoolAddressesProvider.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @notice Compile-level proof the vendored Aave surface exposes exactly the selectors the

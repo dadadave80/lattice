@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {DeployERC20} from "@lattice-script/base/tokens/DeployERC20.s.sol";
 import {DeployERC4626} from "@lattice-script/base/tokens/DeployERC4626.s.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
 import {IMintableToken} from "@lattice-test/helpers/IMintableToken.sol";
 import {TokenTestFacet} from "@lattice-test/helpers/TokenTestFacet.sol";
+import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
 import {IERC4626} from "@lattice/interfaces/tokens/IERC4626.sol";
 
 /// @title ERC4626TestBase
@@ -45,7 +45,7 @@ abstract contract ERC4626TestBase is GetSelectors {
             functionSelectors: _getSelectors("TokenTestFacet")
         });
 
-        Diamond d = new Diamond();
+        LatticeDiamond d = new LatticeDiamond();
         d.initialize(cuts, init, initCalldata);
         token_ = address(d);
     }
@@ -60,7 +60,7 @@ abstract contract ERC4626TestBase is GetSelectors {
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) =
             vaultDeployer.buildCuts(asset_, name_, symbol_, decimalsOffset_);
 
-        Diamond d = new Diamond();
+        LatticeDiamond d = new LatticeDiamond();
         d.initialize(cuts, init, initCalldata);
         vault_ = address(d);
     }

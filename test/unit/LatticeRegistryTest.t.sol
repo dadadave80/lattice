@@ -2,8 +2,8 @@
 pragma solidity ^0.8.30;
 
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
-import {ILatticeRegistry} from "@lattice/interfaces/registry/ILatticeRegistry.sol";
-import {LatticeRegistry} from "@lattice/registry/LatticeRegistry.sol";
+import {LatticeRegistry} from "@lattice/LatticeRegistry.sol";
+import {ILatticeRegistry} from "@lattice/interfaces/ILatticeRegistry.sol";
 import {Test} from "forge-std/Test.sol";
 
 //*//////////////////////////////////////////////////////////////////////////

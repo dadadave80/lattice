@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {IAccessControl} from "@lattice/interfaces/access/IAccessControl.sol";
 import {IEmergencyStop} from "@lattice/interfaces/security/IEmergencyStop.sol";
+import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
 //                                  STORAGE
@@ -65,7 +65,7 @@ library EmergencyStopLib {
     }
 
     /// @notice Initializes the EmergencyStop module.
-    /// @dev Must be called between `InitializableLib.preInitializer` and `postInitializer`.
+    /// @dev Must be called inside an `initializer`-guarded function (see {Initializable}).
     ///      Registers the IEmergencyStop interface ID for ERC-165 discovery.
     function __EmergencyStop_init() internal {
         bytes32 s = InitializableLib.initializableSlot();

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {IERC6538Registry} from "@lattice/interfaces/privacy/IERC6538Registry.sol";
 import {EIP712Lib} from "@lattice/utils/libraries/EIP712Lib.sol";
+import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 import {SignatureChecker} from "@lattice/utils/libraries/SignatureChecker.sol";
 
 //*//////////////////////////////////////////////////////////////////////////

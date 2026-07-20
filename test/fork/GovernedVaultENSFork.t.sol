@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {DeployGovernedVaultENS, TestnetAsset} from "@lattice-script/base/defi/DeployGovernedVaultENS.s.sol";
 import {RegisterEnsName} from "@lattice-script/config/RegisterEnsName.s.sol";
+import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
 import {GovernedVault} from "@lattice/defi/GovernedVault.sol";
 import {GovernedVaultENSParams} from "@lattice/defi/GovernedVaultENSInit.sol";
 import {ENSReverseClaimer} from "@lattice/ens/ENSReverseClaimer.sol";
 import {ENS_MANAGER_ROLE} from "@lattice/ens/libraries/ENSReverseClaimerLib.sol";
 import {Governor} from "@lattice/governance/Governor.sol";
 import {IAccessControl} from "@lattice/interfaces/access/IAccessControl.sol";
-import {IENS} from "@lattice/interfaces/external/IENS.sol";
-import {IETHRegistrarController} from "@lattice/interfaces/external/IETHRegistrarController.sol";
+import {IENS} from "@lattice/interfaces/external/ens/IENS.sol";
+import {IETHRegistrarController} from "@lattice/interfaces/external/ens/IETHRegistrarController.sol";
 import {IGovernor} from "@lattice/interfaces/governance/IGovernor.sol";
 import {IVotes} from "@lattice/interfaces/governance/IVotes.sol";
 import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
@@ -120,7 +120,7 @@ contract GovernedVaultENSFork is Test {
 
     function _deploy() internal returns (address diamond_) {
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) = deployer.buildCutsWithENS(_params());
-        Diamond d = new Diamond();
+        LatticeDiamond d = new LatticeDiamond();
         d.initialize(cuts, init, initCalldata);
         diamond_ = address(d);
     }

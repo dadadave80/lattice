@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {Diamond} from "@diamond/Diamond.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
-import {ILatticeRegistry} from "@lattice/interfaces/registry/ILatticeRegistry.sol";
+import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
+import {LatticeRegistry} from "@lattice/LatticeRegistry.sol";
+import {ILatticeRegistry} from "@lattice/interfaces/ILatticeRegistry.sol";
 import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
-import {LatticeRegistry} from "@lattice/registry/LatticeRegistry.sol";
 import {ERC20} from "@lattice/tokens/ERC20/ERC20.sol";
 import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
 
@@ -80,7 +80,7 @@ contract LatticeRegistryCompositionTest is GetSelectors {
         address bob = makeAddr("bob");
 
         RegistryErc20Init init = new RegistryErc20Init();
-        Diamond diamond = new Diamond();
+        LatticeDiamond diamond = new LatticeDiamond();
         diamond.initialize(
             cuts, address(init), abi.encodeCall(RegistryErc20Init.init, ("Lattice Token", "LAT", alice, 1_000e18))
         );

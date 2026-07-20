@@ -3,16 +3,17 @@ pragma solidity ^0.8.30;
 
 import {CreateXDeployer} from "@lattice-script/lib/CreateXDeployer.sol";
 import {FacetInventory} from "@lattice-script/lib/FacetInventory.sol";
-import {DiamondFactory} from "@lattice/factory/DiamondFactory.sol";
-import {IERC8153} from "@lattice/interfaces/external/IERC8153.sol";
-import {ILatticeRegistry} from "@lattice/interfaces/registry/ILatticeRegistry.sol";
-import {LatticeRegistry} from "@lattice/registry/LatticeRegistry.sol";
+import {LatticeFactory} from "@lattice/LatticeFactory.sol";
+import {LatticeRegistry} from "@lattice/LatticeRegistry.sol";
+import {LatticeVersion} from "@lattice/LatticeVersion.sol";
+import {ILatticeRegistry} from "@lattice/interfaces/ILatticeRegistry.sol";
+import {IERC8153} from "@lattice/interfaces/external/ercs/IERC8153.sol";
 import {Script, console} from "forge-std/Script.sol";
 
 /// @title DeployRelease
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice THE canonical Lattice release script (issue #120): one run deterministically deploys the
-///         {LatticeRegistry} singleton, the {DiamondFactory}, and every {FacetInventory} facet through
+///         {LatticeRegistry} singleton, the {LatticeFactory}, and every {FacetInventory} facet through
 ///         CreateX CREATE2 at raw protocol salts, then registers each facet under
 ///         `keccak256("lattice.<Name>")` at the semver-packed version and points `latest` at it, and
 ///         finally writes a per-chain JSON manifest.
@@ -25,7 +26,7 @@ import {Script, console} from "forge-std/Script.sol";
 /// @dev Salt scheme — raw protocol salts, so every address is deployer- AND chain-independent and commits
 ///      to the initcode (see {CreateXDeployer.deployRaw}):
 ///        registry: `keccak256("lattice.LatticeRegistry")` (deploy-once singleton, versionless)
-///        factory:  `keccak256("lattice.DiamondFactory")`  (versionless)
+///        factory:  `keccak256("lattice.LatticeFactory")`  (versionless)
 ///        facet:    `keccak256("lattice.<Name>.<version>")` e.g. `keccak256("lattice.ERC20.0.1.0")`
 ///
 ///      IDEMPOTENT + RESUMABLE: every deploy is predict-then-skip-if-code, and registration skips records
@@ -59,7 +60,7 @@ contract DeployRelease is Script {
 
     /// @notice Everything a release run produces (all addresses are the deterministic raw-salt ones).
     /// @param registry The {LatticeRegistry} singleton.
-    /// @param factory The {DiamondFactory} bound to `registry`.
+    /// @param factory The {LatticeFactory} bound to `registry`.
     /// @param facets The released facet addresses, index-aligned with {FacetInventory.inventory} names.
     struct ReleaseOutput {
         address registry;
@@ -92,8 +93,8 @@ contract DeployRelease is Script {
     /// @notice Raw CREATE2 salt of the deploy-once {LatticeRegistry} singleton (versionless).
     bytes32 internal constant REGISTRY_SALT = keccak256("lattice.LatticeRegistry");
 
-    /// @notice Raw CREATE2 salt of the {DiamondFactory} (versionless).
-    bytes32 internal constant FACTORY_SALT = keccak256("lattice.DiamondFactory");
+    /// @notice Raw CREATE2 salt of the {LatticeFactory} (versionless).
+    bytes32 internal constant FACTORY_SALT = keccak256("lattice.LatticeFactory");
 
     //*//////////////////////////////////////////////////////////////////////////
     //                                ENTRY POINT
@@ -111,9 +112,27 @@ contract DeployRelease is Script {
         _writeManifest("deployments", version, out);
     }
 
+    /// @notice {run} pinned to the library's own {LatticeVersion.VERSION} — the Release-Please-bumped
+    ///         single source of truth — so the broadcast version cannot drift from the code being
+    ///         released. Prefer this over the explicit-version form for normal releases.
+    /// @param owner The {LatticeRegistry} initial owner (see {run(string,address)}).
+    function run(address owner) external {
+        vm.startBroadcast();
+        ReleaseOutput memory out = release(owner);
+        vm.stopBroadcast();
+        _writeManifest("deployments", LatticeVersion.VERSION, out);
+    }
+
     //*//////////////////////////////////////////////////////////////////////////
     //                              RELEASE PIPELINE
     //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice {release} pinned to {LatticeVersion.VERSION} (see {run(address)} for why).
+    /// @param owner The registry's initial owner if the registry is deployed by this run.
+    /// @return out The released addresses (see {ReleaseOutput}).
+    function release(address owner) public returns (ReleaseOutput memory out) {
+        out = release(LatticeVersion.VERSION, owner);
+    }
 
     /// @notice The whole on-chain release: deploy-or-skip the registry, the factory, and every inventory
     ///         facet at their deterministic addresses, then (broadcaster == registry owner only) register
@@ -122,7 +141,7 @@ contract DeployRelease is Script {
     /// @param version The release semver string (also part of every facet salt).
     /// @param owner The registry's initial owner if the registry is deployed by this run.
     /// @return out The released addresses (see {ReleaseOutput}).
-    function release(string calldata version, address owner) public returns (ReleaseOutput memory out) {
+    function release(string memory version, address owner) public returns (ReleaseOutput memory out) {
         require(
             address(CreateXDeployer.CREATEX).code.length != 0,
             "DeployRelease: CreateX has no code at 0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed on this chain; for local/test runs etch test/helpers/MockCreateX.sol at that address first"
@@ -142,10 +161,10 @@ contract DeployRelease is Script {
 
         (out.factory, deployedNow) = _deployOrSkip(
             FACTORY_SALT,
-            abi.encodePacked(type(DiamondFactory).creationCode, abi.encode(out.registry)),
-            "DiamondFactory"
+            abi.encodePacked(type(LatticeFactory).creationCode, abi.encode(out.registry)),
+            "LatticeFactory"
         );
-        console.log(deployedNow ? "DiamondFactory deployed:" : "DiamondFactory already deployed:", out.factory);
+        console.log(deployedNow ? "LatticeFactory deployed:" : "LatticeFactory already deployed:", out.factory);
 
         // --- Phase 2: facets ----------------------------------------------------------------------
         (string[] memory names, string[] memory paths) = FacetInventory.inventory();
@@ -160,7 +179,7 @@ contract DeployRelease is Script {
 
         // The registry address derives from `owner` (it is in the initcode), so a fresh registry alongside
         // ALREADY-deployed facets means a prior run used a DIFFERENT owner — this run just deployed a
-        // PARALLEL registry and would register the release into the fork. All 99 skipped = a complete prior
+        // PARALLEL registry and would register the release into the fork. All 100 skipped = a complete prior
         // release: refuse (re-run with the original owner; LATTICE_ALLOW_PREDEPLOYED=true overrides for
         // genuinely third-party-pre-deployed facets). A partial overlap is legitimate permissionless
         // completion, but gets a loud warning for the same reason.

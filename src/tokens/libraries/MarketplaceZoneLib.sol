@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
 import {
     ItemType,
@@ -9,10 +8,11 @@ import {
     Schema,
     SpentItem,
     ZoneParameters
-} from "@lattice/interfaces/external/SeaportStructs.sol";
-import {ZoneInterface} from "@lattice/interfaces/external/ZoneInterface.sol";
+} from "@lattice/interfaces/external/seaport/SeaportStructs.sol";
+import {ZoneInterface} from "@lattice/interfaces/external/seaport/ZoneInterface.sol";
 import {IERC2981} from "@lattice/interfaces/tokens/IERC2981.sol";
 import {IMarketplaceZone} from "@lattice/interfaces/tokens/IMarketplaceZone.sol";
+import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
 //                                  STORAGE
