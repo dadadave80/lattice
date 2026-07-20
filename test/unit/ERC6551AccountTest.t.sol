@@ -2,18 +2,15 @@
 pragma solidity ^0.8.30;
 
 import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {ERC6551Account} from "@lattice/accounts/ERC6551Account.sol";
 import {ERC6551AccountLib} from "@lattice/accounts/libraries/ERC6551AccountLib.sol";
 import {ITokenBound} from "@lattice/interfaces/accounts/ITokenBound.sol";
+import {Initializable} from "@lattice/utils/Initializable.sol";
 import {Test} from "forge-std/Test.sol";
 
-contract MockTBA is ERC6551Account {
-    function initialize(uint256 chainId, address tokenContract, uint256 tokenId) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+contract MockTBA is ERC6551Account, Initializable {
+    function initialize(uint256 chainId, address tokenContract, uint256 tokenId) external initializer {
         ERC6551AccountLib.__ERC6551Account_init(chainId, tokenContract, tokenId);
-        InitializableLib.postInitializer(s);
     }
 
     function supportsInterface(bytes4 id) public view returns (bool) {

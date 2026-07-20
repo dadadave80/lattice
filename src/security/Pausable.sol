@@ -7,11 +7,25 @@ import {PausableLib} from "@lattice/security/libraries/PausableLib.sol";
 /// @title Pausable
 /// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/utils/Pausable.sol)
 /// @notice Thin Diamond facet that exposes pause/unpause lifecycle control.
-/// @dev All logic lives in {PausableLib}. This contract is stateless and forwards
-/// every call to the library. Inherit this in your Diamond facet to add pausability.
+/// @dev All logic lives in {PausableLib}. This contract is stateless and forwards every call to the
+/// library. Inherit this in a Diamond facet to add pausability, and guard functions with the
+/// `whenNotPaused`/`whenPaused` modifiers (facets that must not re-expose this facade's selectors
+/// call `PausableLib.checkNotPaused()`/`checkPaused()` directly instead).
 /// @custom:lattice-version 0.1.0
 /// @custom:lattice-source OpenZeppelin v5.1.0
 contract Pausable is IPausable {
+    /// @dev Guards a function so it can only run while NOT paused.
+    modifier whenNotPaused() virtual {
+        PausableLib.checkNotPaused();
+        _;
+    }
+
+    /// @dev Guards a function so it can only run while paused.
+    modifier whenPaused() virtual {
+        PausableLib.checkPaused();
+        _;
+    }
+
     /// @inheritdoc IPausable
     function paused() public view virtual returns (bool) {
         return PausableLib.paused();

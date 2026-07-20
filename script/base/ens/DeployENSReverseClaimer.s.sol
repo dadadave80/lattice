@@ -5,6 +5,7 @@ import {DiamondLoupeFacet} from "@diamond/facets/DiamondLoupeFacet.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
+import {Receive} from "@lattice/Receive.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {ENSReverseClaimer} from "@lattice/ens/ENSReverseClaimer.sol";
 import {ENSReverseClaimerInit} from "@lattice/ens/ENSReverseClaimerInit.sol";
@@ -28,12 +29,13 @@ contract DeployENSReverseClaimer is BaseDeploy {
         public
         returns (FacetCut[] memory cuts, address init, bytes memory initCalldata)
     {
-        cuts = new FacetCut[](5);
+        cuts = new FacetCut[](6);
         cuts[0] = _cut(address(new ERC165Facet()));
         cuts[1] = _cut(address(new AccessControl()));
         cuts[2] = _cut(address(new ENSReverseClaimer()));
         cuts[3] = _cut(address(new DiamondLoupeFacet()));
         cuts[4] = _cut(address(new AccessControlDiamondCut()));
+        cuts[5] = _cut(address(new Receive()));
         (init, initCalldata) = _withUpgradeableIntrospection(
             address(new ENSReverseClaimerInit()), abi.encodeCall(ENSReverseClaimerInit.init, (admin, registrar))
         );

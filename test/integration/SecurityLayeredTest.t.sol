@@ -6,7 +6,7 @@ pragma solidity ^0.8.30;
 ///         CircuitBreaker + EmergencyStop + a mock business-logic facet.
 ///
 /// The mock business facet has a `transfer(amount)` function gated by all five layers:
-///   - PausableLib.whenNotPaused()
+///   - PausableLib.checkNotPaused()
 ///   - CircuitBreakerLib.checkNotTripped(BIG_TRANSFER_KEY)
 ///   - EmergencyStopLib.checkNotStopped()
 ///   - ReentrancyGuardLib.nonReentrantBefore/After()
@@ -19,7 +19,6 @@ pragma solidity ^0.8.30;
 ///  5. Admin resumes → call works again.
 
 import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {IAccessControl} from "@lattice/interfaces/access/IAccessControl.sol";
@@ -34,6 +33,7 @@ import {CircuitBreakerLib} from "@lattice/security/libraries/CircuitBreakerLib.s
 import {EMERGENCY_GUARDIAN_ROLE, EmergencyStopLib} from "@lattice/security/libraries/EmergencyStopLib.sol";
 import {PausableLib} from "@lattice/security/libraries/PausableLib.sol";
 import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib.sol";
+import {Initializable} from "@lattice/utils/Initializable.sol";
 import {Test} from "forge-std/Test.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
@@ -41,7 +41,7 @@ import {Test} from "forge-std/Test.sol";
 //////////////////////////////////////////////////////////////////////////*//
 
 /// @notice Mock Diamond composing all five security modules + a simple transfer gate.
-contract MockSecurityDiamond is AccessControl, Pausable, CircuitBreaker, EmergencyStop, ReentrancyGuard {
+contract MockSecurityDiamond is AccessControl, Pausable, CircuitBreaker, EmergencyStop, ReentrancyGuard, Initializable {
     /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare
     ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing.
     function exportSelectors()
@@ -56,22 +56,18 @@ contract MockSecurityDiamond is AccessControl, Pausable, CircuitBreaker, Emergen
     /// @notice Total amount transferred (for testing).
     uint256 public totalTransferred;
 
-    function initialize(address _admin) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+    function initialize(address _admin) external initializer {
         AccessControlLib.__AccessControl_init(_admin);
         PausableLib.__Pausable_init();
         CircuitBreakerLib.__CircuitBreaker_init();
         EmergencyStopLib.__EmergencyStop_init();
-        ReentrancyGuardLib.__ReentrancyGuard_init();
-        InitializableLib.postInitializer(s);
     }
 
     /// @notice Business-logic function gated by all security layers.
     /// @dev Guards applied in order: Pausable → CircuitBreaker → EmergencyStop → ReentrancyGuard.
     function transfer(uint256 amount) external {
         // Layer 1: Pausable guard.
-        PausableLib.whenNotPaused();
+        PausableLib.checkNotPaused();
         // Layer 2: Circuit breaker guard.
         CircuitBreakerLib.checkNotTripped(BIG_TRANSFER_KEY);
         // Layer 3: Emergency stop guard.
@@ -300,11 +296,9 @@ contract SecurityLayeredTest is Test {
     //                       5. REENTRANCY GUARD
     //////////////////////////////////////////////////////////////////////////*//
 
-    /// @notice Verifies the reentrancy guard is initialized (status = NOT_ENTERED).
+    /// @notice Verifies the reentrancy guard needs no seeding (transient variant: unlocked by default).
     function test_Security_ReentrancyGuardInitialized() public view {
-        // Indirectly verify: calling transfer succeeds, meaning the guard is set up.
-        // (A non-initialized guard would have status=0, causing a revert on the first call.)
-        // We verify by checking a successful call with no prior access.
+        // Indirectly verify: reads succeed with no prior access — the guard has no init-time storage.
         assertFalse(diamond.paused());
         assertFalse(diamond.isStopped());
         // transferring 0 is a valid no-op for the guard path.

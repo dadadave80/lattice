@@ -5,10 +5,11 @@ import {DiamondLoupeFacet} from "@diamond/facets/DiamondLoupeFacet.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
+import {Receive} from "@lattice/Receive.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
-import {TWAPOracle} from "@lattice/oracles/TWAPOracle.sol";
-import {TWAPOracleInit} from "@lattice/oracles/TWAPOracleInit.sol";
+import {TWAPOracle} from "@lattice/oracles/uniswap/TWAPOracle.sol";
+import {TWAPOracleInit} from "@lattice/oracles/uniswap/TWAPOracleInit.sol";
 
 /// @title DeployTWAPOracle
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
@@ -24,12 +25,13 @@ contract DeployTWAPOracle is BaseDeploy {
     /// @return init The {MultiInit} running {TWAPOracleInit} then {DiamondIntrospectionInit.initUpgradeable}.
     /// @return initCalldata The matching `multiInit` calldata.
     function buildCuts(address admin) public returns (FacetCut[] memory cuts, address init, bytes memory initCalldata) {
-        cuts = new FacetCut[](5);
+        cuts = new FacetCut[](6);
         cuts[0] = _cut(address(new ERC165Facet()));
         cuts[1] = _cut(address(new AccessControl()));
         cuts[2] = _cut(address(new TWAPOracle()));
         cuts[3] = _cut(address(new DiamondLoupeFacet()));
         cuts[4] = _cut(address(new AccessControlDiamondCut()));
+        cuts[5] = _cut(address(new Receive()));
         (init, initCalldata) =
             _withUpgradeableIntrospection(address(new TWAPOracleInit()), abi.encodeCall(TWAPOracleInit.init, (admin)));
     }

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {DeployAccount} from "@lattice-script/base/accounts/DeployAccount.s.sol";
+import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
 import {AccountInit} from "@lattice/accounts/erc7579/AccountInit.sol";
 import {Test} from "forge-std/Test.sol";
 
@@ -24,7 +24,7 @@ abstract contract Base is Test {
     function setUp() public virtual {
         deployAccount = new DeployAccount();
         (FacetCut[] memory cuts, AccountInit init) = deployAccount.buildCuts(entryPoint);
-        Diamond diamond = new Diamond();
+        LatticeDiamond diamond = new LatticeDiamond();
         diamond.initialize(cuts, address(init), abi.encodeCall(AccountInit.init, (owner)));
         account = address(diamond);
     }

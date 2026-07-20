@@ -5,6 +5,7 @@ import {DiamondLoupeFacet} from "@diamond/facets/DiamondLoupeFacet.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
+import {Receive} from "@lattice/Receive.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {BridgeERC7802} from "@lattice/crosschain/BridgeERC7802.sol";
 import {BridgeERC7802Init} from "@lattice/crosschain/BridgeERC7802Init.sol";
@@ -29,13 +30,14 @@ contract DeployBridgeERC7802 is BaseDeploy {
         public
         returns (FacetCut[] memory cuts, address init, bytes memory initCalldata)
     {
-        cuts = new FacetCut[](6);
+        cuts = new FacetCut[](7);
         cuts[0] = _cut(address(new ERC165Facet()));
         cuts[1] = _cut(address(new AccessControl()));
         cuts[2] = _cut(address(new CrosschainLink()));
         cuts[3] = _cut(address(new BridgeERC7802()));
         cuts[4] = _cut(address(new DiamondLoupeFacet()));
         cuts[5] = _cut(address(new AccessControlDiamondCut()));
+        cuts[6] = _cut(address(new Receive()));
         (init, initCalldata) = _withUpgradeableIntrospection(
             address(new BridgeERC7802Init()), abi.encodeCall(BridgeERC7802Init.init, (admin, token))
         );

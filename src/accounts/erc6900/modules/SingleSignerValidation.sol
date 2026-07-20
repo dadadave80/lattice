@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {PackedUserOperation} from "@lattice/interfaces/external/IAccount.sol";
-import {IERC165, IERC6900Module, IERC6900ValidationModule} from "@lattice/interfaces/external/IERC6900.sol";
+import {PackedUserOperation} from "@lattice/interfaces/external/ercs/IAccount.sol";
+import {IERC165, IERC6900Module, IERC6900ValidationModule} from "@lattice/interfaces/external/ercs/IERC6900.sol";
 import {ECDSA} from "@lattice/utils/libraries/ECDSA.sol";
 import {SignatureChecker} from "@lattice/utils/libraries/SignatureChecker.sol";
 

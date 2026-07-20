@@ -2,12 +2,12 @@
 pragma solidity ^0.8.30;
 
 import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {ITWAPOracle} from "@lattice/interfaces/oracles/ITWAPOracle.sol";
-import {TWAPOracle} from "@lattice/oracles/TWAPOracle.sol";
-import {TWAPOracleLib} from "@lattice/oracles/libraries/TWAPOracleLib.sol";
+import {TWAPOracle} from "@lattice/oracles/uniswap/TWAPOracle.sol";
+import {TWAPOracleLib} from "@lattice/oracles/uniswap/TWAPOracleLib.sol";
+import {Initializable} from "@lattice/utils/Initializable.sol";
 import {Test} from "forge-std/Test.sol";
 
 // ---------------------------------------------------------------------------
@@ -16,17 +16,14 @@ import {Test} from "forge-std/Test.sol";
 
 /// @notice Mock Diamond that combines AccessControl + TWAPOracle, matching
 ///         the pattern from TWAPOracleTest.t.sol.
-contract MockTWAPOracleForkContract is AccessControl, TWAPOracle {
+contract MockTWAPOracleForkContract is AccessControl, TWAPOracle, Initializable {
     /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare
     ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing.
     function exportSelectors() external pure virtual override(AccessControl, TWAPOracle) returns (bytes memory) {}
 
-    function initialize(address _admin) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+    function initialize(address _admin) external initializer {
         AccessControlLib.__AccessControl_init(_admin);
         TWAPOracleLib.__TWAPOracle_init();
-        InitializableLib.postInitializer(s);
     }
 
     function supportsInterface(bytes4 _interfaceId) public view returns (bool) {

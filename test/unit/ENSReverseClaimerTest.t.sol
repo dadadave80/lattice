@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {Diamond} from "@diamond/Diamond.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {ENSReverseClaimerTestBase} from "@lattice-test/base/ENSReverseClaimerTestBase.sol";
+import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
 import {ENSReverseClaimer} from "@lattice/ens/ENSReverseClaimer.sol";
 import {ENS_MANAGER_ROLE} from "@lattice/ens/libraries/ENSReverseClaimerLib.sol";
 import {IAccessControl} from "@lattice/interfaces/access/IAccessControl.sol";
 import {IENSReverseClaimer} from "@lattice/interfaces/ens/IENSReverseClaimer.sol";
-import {IReverseRegistrar} from "@lattice/interfaces/external/IReverseRegistrar.sol";
+import {IReverseRegistrar} from "@lattice/interfaces/external/ens/IReverseRegistrar.sol";
 
 /// @title MockReverseRegistrar
 /// @notice Minimal ENS reverse registrar that records the name each caller sets for itself. Kept as a test fixture
@@ -148,7 +148,7 @@ contract ENSReverseClaimerTest is ENSReverseClaimerTestBase {
 
     function test_InitZeroRegistrarReverts() public {
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) = deployer.buildCuts(admin, address(0));
-        Diamond d = new Diamond();
+        LatticeDiamond d = new LatticeDiamond();
         vm.expectRevert(IENSReverseClaimer.ENSReverseClaimerZeroRegistrar.selector);
         d.initialize(cuts, init, initCalldata);
     }

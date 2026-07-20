@@ -2,27 +2,24 @@
 pragma solidity ^0.8.30;
 
 import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
-import {IApi3Proxy} from "@lattice/interfaces/external/IApi3Proxy.sol";
+import {IApi3Proxy} from "@lattice/interfaces/external/api3/IApi3Proxy.sol";
 import {IAPI3Adapter} from "@lattice/interfaces/oracles/IAPI3Adapter.sol";
-import {API3Adapter} from "@lattice/oracles/API3Adapter.sol";
-import {API3AdapterLib} from "@lattice/oracles/libraries/API3AdapterLib.sol";
+import {API3Adapter} from "@lattice/oracles/api3/API3Adapter.sol";
+import {API3AdapterLib} from "@lattice/oracles/api3/API3AdapterLib.sol";
+import {Initializable} from "@lattice/utils/Initializable.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @notice Mock diamond combining AccessControl + API3Adapter.
-contract MockAPI3AdapterForkContract is AccessControl, API3Adapter {
+contract MockAPI3AdapterForkContract is AccessControl, API3Adapter, Initializable {
     /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare
     ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing.
     function exportSelectors() external pure virtual override(AccessControl, API3Adapter) returns (bytes memory) {}
 
-    function initialize(address _admin) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+    function initialize(address _admin) external initializer {
         AccessControlLib.__AccessControl_init(_admin);
         API3AdapterLib.__API3Adapter_init();
-        InitializableLib.postInitializer(s);
     }
 
     function supportsInterface(bytes4 _interfaceId) public view returns (bool) {

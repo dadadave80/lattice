@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {DeployPythAdapter} from "@lattice-script/base/oracles/DeployPythAdapter.s.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
-import {PythAdapter} from "@lattice/oracles/PythAdapter.sol";
+import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
+import {PythAdapter} from "@lattice/oracles/pyth/PythAdapter.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @title PythAdapterTestBase
@@ -30,7 +30,7 @@ abstract contract PythAdapterTestBase is Test, GetSelectors {
         deployer = new DeployPythAdapter();
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) = deployer.buildCuts(admin, pyth);
 
-        Diamond d = new Diamond();
+        LatticeDiamond d = new LatticeDiamond();
         d.initialize(cuts, init, initCalldata);
         diamond_ = address(d);
     }

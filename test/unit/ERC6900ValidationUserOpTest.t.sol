@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {ERC6900ModuleManager} from "@lattice/accounts/erc6900/ERC6900ModuleManager.sol";
@@ -10,8 +9,14 @@ import {ERC6900TypesLib} from "@lattice/accounts/erc6900/libraries/ERC6900TypesL
 import {ERC4337ValidationLib} from "@lattice/accounts/libraries/ERC4337ValidationLib.sol";
 import {IERC6900Executor} from "@lattice/interfaces/accounts/IERC6900Executor.sol";
 import {IERC6900Validation} from "@lattice/interfaces/accounts/IERC6900Validation.sol";
-import {PackedUserOperation} from "@lattice/interfaces/external/IAccount.sol";
-import {HookConfig, IERC6900Account, ModuleEntity, ValidationConfig} from "@lattice/interfaces/external/IERC6900.sol";
+import {PackedUserOperation} from "@lattice/interfaces/external/ercs/IAccount.sol";
+import {
+    HookConfig,
+    IERC6900Account,
+    ModuleEntity,
+    ValidationConfig
+} from "@lattice/interfaces/external/ercs/IERC6900.sol";
+import {Initializable} from "@lattice/utils/Initializable.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @dev A minimal ERC-6900 user-op validation module: records the call and returns a configurable validationData.
@@ -71,7 +76,7 @@ contract MockUserOpHook {
     }
 }
 
-contract MockValAccount is AccessControl, ERC6900ModuleManager, ERC6900Validation {
+contract MockValAccount is AccessControl, ERC6900ModuleManager, ERC6900Validation, Initializable {
     /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare
     ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing.
     function exportSelectors()
@@ -82,12 +87,9 @@ contract MockValAccount is AccessControl, ERC6900ModuleManager, ERC6900Validatio
         returns (bytes memory)
     {}
 
-    function initialize(address admin_, address entryPoint_) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+    function initialize(address admin_, address entryPoint_) external initializer {
         AccessControlLib.__AccessControl_init(admin_);
         ERC4337ValidationLib.__ERC4337Validation_init(entryPoint_);
-        InitializableLib.postInitializer(s);
     }
 }
 

@@ -4,7 +4,7 @@ pragma solidity ^0.8.30;
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {ChainlinkAutomationAdapterTestBase} from "@lattice-test/base/ChainlinkAutomationAdapterTestBase.sol";
 import {IChainlinkAutomationAdapter} from "@lattice/interfaces/oracles/IChainlinkAutomationAdapter.sol";
-import {ChainlinkAutomationAdapter} from "@lattice/oracles/ChainlinkAutomationAdapter.sol";
+import {ChainlinkAutomationAdapter} from "@lattice/oracles/chainlink/ChainlinkAutomationAdapter.sol";
 
 /// @title ChainlinkAutomationAdapterTest
 /// @notice Exercises the ChainlinkAutomationAdapter facet through a REAL {Diamond} assembled by the

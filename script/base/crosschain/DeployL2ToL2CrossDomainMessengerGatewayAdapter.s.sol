@@ -5,13 +5,14 @@ import {DiamondLoupeFacet} from "@diamond/facets/DiamondLoupeFacet.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
+import {Receive} from "@lattice/Receive.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {
     L2ToL2CrossDomainMessengerGatewayAdapter
-} from "@lattice/crosschain/L2ToL2CrossDomainMessengerGatewayAdapter.sol";
+} from "@lattice/crosschain/optimism/L2ToL2CrossDomainMessengerGatewayAdapter.sol";
 import {
     L2ToL2CrossDomainMessengerGatewayAdapterInit
-} from "@lattice/crosschain/L2ToL2CrossDomainMessengerGatewayAdapterInit.sol";
+} from "@lattice/crosschain/optimism/L2ToL2CrossDomainMessengerGatewayAdapterInit.sol";
 import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
 
 /// @title DeployL2ToL2CrossDomainMessengerGatewayAdapter
@@ -30,12 +31,13 @@ contract DeployL2ToL2CrossDomainMessengerGatewayAdapter is BaseDeploy {
     /// @return init The {MultiInit} running {L2ToL2CrossDomainMessengerGatewayAdapterInit} then {DiamondIntrospectionInit.initUpgradeable}.
     /// @return initCalldata The matching `multiInit` calldata.
     function buildCuts(address admin) public returns (FacetCut[] memory cuts, address init, bytes memory initCalldata) {
-        cuts = new FacetCut[](5);
+        cuts = new FacetCut[](6);
         cuts[0] = _cut(address(new ERC165Facet()));
         cuts[1] = _cut(address(new AccessControl()));
         cuts[2] = _cut(address(new L2ToL2CrossDomainMessengerGatewayAdapter()));
         cuts[3] = _cut(address(new DiamondLoupeFacet()));
         cuts[4] = _cut(address(new AccessControlDiamondCut()));
+        cuts[5] = _cut(address(new Receive()));
         (init, initCalldata) = _withUpgradeableIntrospection(
             address(new L2ToL2CrossDomainMessengerGatewayAdapterInit()),
             abi.encodeCall(L2ToL2CrossDomainMessengerGatewayAdapterInit.init, (admin))

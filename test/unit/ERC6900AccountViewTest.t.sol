@@ -2,7 +2,6 @@
 pragma solidity ^0.8.30;
 
 import {DiamondLib, FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {ERC6900AccountView} from "@lattice/accounts/erc6900/ERC6900AccountView.sol";
@@ -19,7 +18,8 @@ import {
     ValidationConfig,
     ValidationDataView,
     ValidationFlags
-} from "@lattice/interfaces/external/IERC6900.sol";
+} from "@lattice/interfaces/external/ercs/IERC6900.sol";
+import {Initializable} from "@lattice/utils/Initializable.sol";
 import {Test} from "forge-std/Test.sol";
 
 contract DummyFacet {
@@ -41,7 +41,7 @@ contract MockModule {
     }
 }
 
-contract MockViewAccount is AccessControl, ERC6900ModuleManager, ERC6900AccountView {
+contract MockViewAccount is AccessControl, ERC6900ModuleManager, ERC6900AccountView, Initializable {
     /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare
     ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing.
     function exportSelectors()
@@ -52,12 +52,9 @@ contract MockViewAccount is AccessControl, ERC6900ModuleManager, ERC6900AccountV
         returns (bytes memory)
     {}
 
-    function initialize(address admin_, FacetCut[] calldata cuts) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+    function initialize(address admin_, FacetCut[] calldata cuts) external initializer {
         AccessControlLib.__AccessControl_init(admin_);
         DiamondLib.diamondCut(cuts, address(0), msg.data[0:0]);
-        InitializableLib.postInitializer(s);
     }
 }
 

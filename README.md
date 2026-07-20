@@ -43,7 +43,8 @@ or interface: `Base64`, `Bytes`, `Calldata`, `Checkpoints`, `ECDSA`, `Enumerable
 module helpers such as `EIP712Lib`, `MulticallLib`, `NoncesLib`, and `VestingWalletLib`.
 
 `src/interfaces/external/` vendors minimal third-party ABIs used by adapters and standards
-integrations. The canonical storage/interface registry is
+integrations, grouped per vendor (`circle/`, `chainlink/`, `layerzero/`, …; pure ERC/EIP standard
+interfaces under `ercs/`). The canonical storage/interface registry is
 [`STORAGE_REGISTRY.md`](STORAGE_REGISTRY.md), and
 `test/unit/StorageSlotVerificationTest.t.sol` re-derives every registered slot and checks
 global uniqueness.
@@ -132,20 +133,28 @@ Add the remappings (mirror of this repo's `remappings.txt` / `foundry.toml`):
 forge-std/=lib/forge-std/src/
 ```
 
-Because facets have no constructors, proxy state is set up through `diamond-lib`'s
-`InitializableLib` with a three-call dance the consumer performs once per module:
+Because facets have no constructors, proxy state is set up through Lattice's vendored
+`Initializable` mixin over `InitializableLib` (both moved into Lattice at diamond-lib v0.3.0).
+Inherit the mixin and guard the init entrypoint with the `initializer` modifier — it wraps the body
+in `preInitializer()`/`postInitializer(slot)`, so nested constructor-initializers finalize exactly
+once. `reinitializer(version)` and `onlyInitializing` are available for upgrades and init-only
+helpers:
 
 ```solidity
+import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
-import {InitializableLib} from "@diamond/.../InitializableLib.sol";
+import {Initializable} from "@lattice/utils/Initializable.sol";
 
-function initialize(address _admin) external {
-    bytes32 s = InitializableLib.initializableSlot();
-    InitializableLib.preInitializer(s);              // set initializing flag, check version
-    AccessControlLib.__AccessControl_init(_admin);   // module init (gated by checkInitializing)
-    InitializableLib.postInitializer(s);             // clear flag, emit Initialized
+contract MyAccessControlled is AccessControl, Initializable {
+    function initialize(address _admin) external initializer {
+        AccessControlLib.__AccessControl_init(_admin); // module init (gated by checkInitializing)
+    }
 }
 ```
+
+Note: init contracts delegatecalled during `diamondCut` (the `*Init.sol` pattern) carry NO guard of
+their own — they already run inside `LatticeDiamond.initialize`'s `initializer` scope, and a nested
+guard reverts outside a constructor context.
 
 When adding new modules, be deliberate about caller semantics. Some existing modules use
 `msg.sender` directly because they authenticate protocol callbacks, Safe calls, EntryPoint
@@ -204,6 +213,36 @@ diamond's own Governor + TimelockController, with every step cranked by
 [`ProposalExecuted` tx](https://sepolia.etherscan.io/tx/0xfba2c57a3063883b43edb905fabcbe508c3ff9d3f0447d2d58fa2739c832df64)
 (run log: [`governanceDemo-latest.json`](broadcast/DeployGovernedVaultENS.s.sol/11155111/governanceDemo-latest.json)).
 
+## Live cross-chain USDC demos (Circle CCTP v2 · Arc testnet)
+
+Two live demos drive real USDC through Lattice diamonds with Circle's CCTP v2, with **Arc testnet as
+the source chain** — Arc's sub-second finality means Iris attests in seconds, not minutes:
+
+- **Arc-hub transfer** (`make demo-cctp`): one hub diamond on Arc burns USDC toward BOTH
+  destinations (Ethereum Sepolia + Base Sepolia); each attested message is relayed and minted on the
+  destination. One command per run: setup → burn → attest → relay → verify, unattended.
+- **Hook showcase** (`make demo-cctp-hook`): programmable USDC. A burn on Arc carries the Lattice
+  hook envelope (`HOOK_MAGIC ‖ vault ‖ beneficiary`); relaying on Base Sepolia through the
+  destination diamond's `relayMessageWithHook` mints to a [`CCTPHookVault`](src/examples/crosschain/CCTPHookVault.sol)
+  **and**, in the same tx, the diamond's `CCTPHookExecutor` credits the beneficiary — one attested
+  message both moves funds and executes logic.
+
+| | |
+|---|---|
+| Arc source hub (transfer demo) | [`0xfc937CD3d175b890fF668f95fdED5CB4D9247d68`](https://testnet.arcscan.app/address/0xfc937CD3d175b890fF668f95fdED5CB4D9247d68) |
+| Mint tx — Ethereum Sepolia | [`0xff2326…39aea`](https://sepolia.etherscan.io/tx/0xff2326eb12dfd5b56e553e43f660e0c0cc8bba01dbc215b12109bf05c8039aea) |
+| Mint tx — Base Sepolia | [`0xf72700…736d3`](https://base-sepolia.blockscout.com/tx/0xf7270031cb59c1ff0c85fc0147768a623b69a7d2a3c12faa4b1d4ded9fc736d3) |
+| Hook demo — Arc hub diamond | [`0x47c96279F2Cd6335A746aaCB4310907c4202B618`](https://testnet.arcscan.app/address/0x47c96279F2Cd6335A746aaCB4310907c4202B618) |
+| Hook demo — Base destination diamond | [`0xD77e02930B0F102642F5Cd37FabDE49fef71A376`](https://base-sepolia.blockscout.com/address/0xD77e02930B0F102642F5Cd37FabDE49fef71A376) |
+| Auto-credit vault (`CCTPHookVault`) | [`0x4327159cac242B1d3411ec84447f2D19975ed52C`](https://base-sepolia.blockscout.com/address/0x4327159cac242B1d3411ec84447f2D19975ed52C) |
+| Burn-with-hook tx (Arc) | [`0xe77f3d…387e5`](https://testnet.arcscan.app/tx/0xe77f3d0ca9890be30bf6009bbb29aabddbeb498eefce6f600af4c384f90387e5) |
+| Relay tx — mint **+** hook, one tx (Base) | [`0xaa9cc2…a7760`](https://base-sepolia.blockscout.com/tx/0xaa9cc2951ab9bd23cb6872cc996302e792e05f05d61c3a1f1e552623c5da7760) — emits `Credited(0xDAdA…C751, 1000000, 26, hub)` |
+| Real-attestation replay test | [`test/fork/CCTPHookDemoFork.t.sol`](test/fork/CCTPHookDemoFork.t.sol) replays the captured [fixture](test/fixtures/cctp/arc-to-base-hook-v2.json) through the live Base diamond on a pinned fork |
+| Broadcast evidence | [`broadcast/multi/`](broadcast/multi) (setups) · [`broadcast/CCTPHookDemo.s.sol/84532/`](broadcast/CCTPHookDemo.s.sol/84532) (hook relay) · [`broadcast/CCTPUSDCDemo.s.sol/`](broadcast/CCTPUSDCDemo.s.sol) (transfer relays) |
+
+All demo contracts are Sourcify-verified (`exact_match`) on both chains. Reproduce with a funded
+keystore: `make demo-cctp-hook KEYSTORE=<name>` (see the [Makefile](Makefile) demos section).
+
 ## Build & test
 
 ```sh
@@ -227,17 +266,18 @@ src/
 ├── access/        # AccessControl(+Enumerable,+Timed), AccessManager(+Managed,+Standalone), Ownable
 ├── accounts/      # Diamond smart accounts — erc7579/ & erc6900/ flavor subfolders + shared (ERC-4337/1271/6551, session keys)
 ├── amm/           # ConstantProduct
-├── crosschain/    # CCIP, Axelar, Wormhole, ERC-7786, bridge tokens, cross-chain timelock
+├── crosschain/    # per-vendor adapter folders (circle/, layerzero/, …), each self-contained (facet+Init+Lib); generic modules at root, shared libs in libraries/
 ├── defi/          # Aave, Compound, Curve, Lido, Uniswap V3, ERC4626 adapters, vault/strategy modules
 ├── ens/           # ENS resolver, reverse claimer, subname issuer
 ├── governance/    # Governor, timelock, governed/Safe diamond cuts, Safe Harbor adoption
-├── oracles/       # Chainlink, Pyth, RedStone, Chronicle, DIA, API3, Band, Tellor, Gelato, TWAP
+├── oracles/       # per-vendor adapter folders (chainlink/, pyth/, redstone/, …, uniswap/ TWAP), each self-contained (facet+Init+Lib)
 ├── privacy/       # Commit-reveal, stealth address standards, Groth16/PLONK, Semaphore, shielded pool
 ├── security/      # Pausable, ReentrancyGuard, RateLimiter, CircuitBreaker, EmergencyStop, InvariantChecker
 ├── tokens/        # per-standard subfolders ERC20/ ERC721/ ERC1155/ ERC2981/ ERC4626/ ERC7802/ (base+extensions); MarketplaceZone at root
 ├── utils/         # EIP712, Multicall, Nonces, VestingWallet(+Standalone)
 │   └── libraries/ # Crypto, encoding, strings, checkpoints, math, multicall/nonces/vesting helpers
-└── interfaces/    # I<Module>.sol mirrored into per-<area> subfolders; external/ for third-party ABIs
+└── interfaces/    # I<Module>.sol mirrored into per-<area> subfolders
+    └── external/  # vendored third-party ABIs, one folder per vendor (circle/, chainlink/, …, ercs/)
 ```
 
 Each `<area>/` also contains a `libraries/` subfolder holding the `<Module>Lib.sol`

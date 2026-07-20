@@ -3,7 +3,6 @@ pragma solidity ^0.8.30;
 
 import {DiamondLib, FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {IEmergencyCut} from "@lattice/interfaces/governance/IEmergencyCut.sol";
 import {IFrozenSelectors} from "@lattice/interfaces/governance/IFrozenSelectors.sol";
@@ -11,6 +10,7 @@ import {IGovernedDiamondCut} from "@lattice/interfaces/governance/IGovernedDiamo
 import {IUpgradeRegistry} from "@lattice/interfaces/governance/IUpgradeRegistry.sol";
 import {EMERGENCY_GUARDIAN_ROLE, EmergencyStopLib} from "@lattice/security/libraries/EmergencyStopLib.sol";
 import {EnumerableSet} from "@lattice/utils/libraries/EnumerableSet.sol";
+import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
 //                                  STORAGE

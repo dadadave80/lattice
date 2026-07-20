@@ -5,10 +5,11 @@ import {DiamondLoupeFacet} from "@diamond/facets/DiamondLoupeFacet.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
+import {Receive} from "@lattice/Receive.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
-import {DIAAdapter} from "@lattice/oracles/DIAAdapter.sol";
-import {DIAAdapterInit} from "@lattice/oracles/DIAAdapterInit.sol";
+import {DIAAdapter} from "@lattice/oracles/dia/DIAAdapter.sol";
+import {DIAAdapterInit} from "@lattice/oracles/dia/DIAAdapterInit.sol";
 
 /// @title DeployDIAAdapter
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
@@ -23,12 +24,13 @@ contract DeployDIAAdapter is BaseDeploy {
     /// @return init The {MultiInit} running {DIAAdapterInit} then {DiamondIntrospectionInit.initUpgradeable}.
     /// @return initCalldata The matching `multiInit` calldata.
     function buildCuts(address admin) public returns (FacetCut[] memory cuts, address init, bytes memory initCalldata) {
-        cuts = new FacetCut[](5);
+        cuts = new FacetCut[](6);
         cuts[0] = _cut(address(new ERC165Facet()));
         cuts[1] = _cut(address(new AccessControl()));
         cuts[2] = _cut(address(new DIAAdapter()));
         cuts[3] = _cut(address(new DiamondLoupeFacet()));
         cuts[4] = _cut(address(new AccessControlDiamondCut()));
+        cuts[5] = _cut(address(new Receive()));
         (init, initCalldata) =
             _withUpgradeableIntrospection(address(new DIAAdapterInit()), abi.encodeCall(DIAAdapterInit.init, (admin)));
     }

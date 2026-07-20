@@ -9,12 +9,22 @@ snapshots/
 !/broadcast
 /broadcast/*/31337/
 /broadcast/**/dry-run/
+# Only `-latest` broadcasts are tracked as evidence; per-run timestamped copies stay local.
+/broadcast/**/run-1*.json
+/broadcast/multi/*.s.sol-1*
 
 # Docs — local only, not tracked (forge doc output, hand-authored notes, CLAUDE.md)
 docs/
 
 # Dotenv file
 .env
+
+# CCTP USDC demo loop journals + its lock dir (.lock) and atomic-write temps (.env.XXXXXX / .burnerr.XXXXXX)
+.cctp-demo.*
+# Keystore-password files for unattended cranks (--password-file); the runbook names .demo.pw.
+# NEVER commit these — they hold the keystore password.
+*.pw
+.demo.pw
 
 # CI-generated contract-size report (forge build --sizes --json)
 sizes.json

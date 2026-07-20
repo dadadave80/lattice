@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {Schema, ZoneParameters} from "@lattice/interfaces/external/SeaportStructs.sol";
-import {ZoneInterface} from "@lattice/interfaces/external/ZoneInterface.sol";
+import {Schema, ZoneParameters} from "@lattice/interfaces/external/seaport/SeaportStructs.sol";
+import {ZoneInterface} from "@lattice/interfaces/external/seaport/ZoneInterface.sol";
 import {IMarketplaceZone} from "@lattice/interfaces/tokens/IMarketplaceZone.sol";
 import {MarketplaceZoneLib} from "@lattice/tokens/libraries/MarketplaceZoneLib.sol";
 

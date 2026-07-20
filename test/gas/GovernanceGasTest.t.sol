@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
 import {GovernorStandalone} from "@lattice/governance/GovernorStandalone.sol";
@@ -15,6 +14,7 @@ import {ERC20} from "@lattice/tokens/ERC20/ERC20.sol";
 import {ERC20Votes} from "@lattice/tokens/ERC20/ERC20Votes.sol";
 import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
 import {ERC20VotesLib} from "@lattice/tokens/ERC20/libraries/ERC20VotesLib.sol";
+import {Initializable} from "@lattice/utils/Initializable.sol";
 import {EIP712Lib} from "@lattice/utils/libraries/EIP712Lib.sol";
 import {NoncesLib} from "@lattice/utils/libraries/NoncesLib.sol";
 import {Test} from "forge-std/Test.sol";
@@ -25,7 +25,7 @@ import {Test} from "forge-std/Test.sol";
 
 /// @notice Mock ERC20Votes token used in governance gas tests. Flattens the composable {ERC20}, {Votes}, and
 ///         {ERC20Votes} facets into one mock; the checkpoint/balance-aware overrides win the clashes.
-contract GovGasERC20Votes is ERC20, Votes, ERC20Votes {
+contract GovGasERC20Votes is ERC20, Votes, ERC20Votes, Initializable {
     /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare
     ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing.
     function exportSelectors() external pure virtual override(ERC20, Votes, ERC20Votes) returns (bytes memory) {}
@@ -49,16 +49,13 @@ contract GovGasERC20Votes is ERC20, Votes, ERC20Votes {
         ERC20Votes.delegateBySig(delegatee, nonce, expiry, v, r, s);
     }
 
-    function initialize(string memory name_, string memory symbol_, address admin) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+    function initialize(string memory name_, string memory symbol_, address admin) external initializer {
         ERC20Lib.__ERC20_init(name_, symbol_);
         EIP712Lib.__EIP712_init(name_, "1");
         NoncesLib.__Nonces_init();
         VotesLib.__Votes_init();
         ERC20VotesLib.__ERC20Votes_init();
         AccessControlLib.__AccessControl_init(admin);
-        InitializableLib.postInitializer(s);
     }
 
     function mint(address to, uint256 value) external {
@@ -67,14 +64,11 @@ contract GovGasERC20Votes is ERC20, Votes, ERC20Votes {
 }
 
 /// @notice Mock AccessControl for checkRole gas tests.
-contract GovGasAccessControl is AccessControl {
+contract GovGasAccessControl is AccessControl, Initializable {
     bytes32 public constant VOTER_ROLE = keccak256("VOTER_ROLE");
 
-    function initialize(address admin) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+    function initialize(address admin) external initializer {
         AccessControlLib.__AccessControl_init(admin);
-        InitializableLib.postInitializer(s);
     }
 
     /// @notice Exposed checkRole for gas measurement.

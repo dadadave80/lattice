@@ -10,8 +10,8 @@ import {
     Schema,
     SpentItem,
     ZoneParameters
-} from "@lattice/interfaces/external/SeaportStructs.sol";
-import {ZoneInterface} from "@lattice/interfaces/external/ZoneInterface.sol";
+} from "@lattice/interfaces/external/seaport/SeaportStructs.sol";
+import {ZoneInterface} from "@lattice/interfaces/external/seaport/ZoneInterface.sol";
 import {IMarketplaceZone} from "@lattice/interfaces/tokens/IMarketplaceZone.sol";
 import {MarketplaceZone} from "@lattice/tokens/MarketplaceZone.sol";
 import {MARKETPLACE_BLOCKED_ROLE} from "@lattice/tokens/libraries/MarketplaceZoneLib.sol";

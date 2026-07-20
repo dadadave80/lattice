@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {ERC6900Executor} from "@lattice/accounts/erc6900/ERC6900Executor.sol";
@@ -14,7 +13,7 @@ import {
     DIRECT_CALL_VALIDATION_ENTITY_ID,
     IERC6900Account,
     ValidationConfig
-} from "@lattice/interfaces/external/IERC6900.sol";
+} from "@lattice/interfaces/external/ercs/IERC6900.sol";
 import {Test} from "forge-std/Test.sol";
 
 contract Target {
@@ -42,11 +41,8 @@ contract MockExecAccount is ModularAccount6900, AccessControl, ERC6900ModuleMana
         returns (bytes memory)
     {}
 
-    function initialize(address admin_) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+    function initialize(address admin_) external initializer {
         AccessControlLib.__AccessControl_init(admin_);
-        InitializableLib.postInitializer(s);
     }
 }
 

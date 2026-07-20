@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {Diamond} from "@diamond/Diamond.sol";
 import {DiamondCutFacet} from "@diamond/facets/DiamondCutFacet.sol";
 import {DiamondLoupeFacet} from "@diamond/facets/DiamondLoupeFacet.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
+import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
+import {Receive} from "@lattice/Receive.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {ERC1271Signature} from "@lattice/accounts/ERC1271Signature.sol";
 import {ERC4337Validation} from "@lattice/accounts/ERC4337Validation.sol";
@@ -16,7 +17,7 @@ import {ERC7821Executor} from "@lattice/accounts/erc7579/ERC7821Executor.sol";
 
 /// @title DeployAccount
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
-/// @notice Canonical single-owner ERC-4337/7579 account composition (8 facets + {AccountInit}) — the ONE
+/// @notice Canonical single-owner ERC-4337/7579 account composition (9 facets + {AccountInit}) — the ONE
 ///         source of truth for "which facets make an account", shared by production deploys (this script,
 ///         or `new AccountFactory(buildCuts(...), init)`) and the account test blueprints. This mirrors
 ///         diamond-lib's {DeployDiamond}/{DeployedDiamondState} split: {buildCuts} is the broadcast-free
@@ -29,10 +30,10 @@ contract DeployAccount is BaseDeploy {
     /// @notice Builds the canonical account facet cuts + initializer. No broadcast, no proxy deploy — the
     ///         reusable primitive both {run} and the test blueprint helper consume.
     /// @param entryPoint_ The EntryPoint the account's {AccountInit} seeds.
-    /// @return cuts The 8 facet cuts (Add) wiring a complete single-owner account.
+    /// @return cuts The 9 facet cuts (Add) wiring a complete single-owner account.
     /// @return init The matching initializer (`init(address owner)` / `init7702()`).
     function buildCuts(address entryPoint_) public returns (FacetCut[] memory cuts, AccountInit init) {
-        cuts = new FacetCut[](8);
+        cuts = new FacetCut[](9);
         cuts[0] = _cut(address(new DiamondCutFacet()), "DiamondCutFacet");
         cuts[1] = _cut(address(new DiamondLoupeFacet()), "DiamondLoupeFacet");
         cuts[2] = _cut(address(new ERC165Facet()), "ERC165Facet");
@@ -41,6 +42,7 @@ contract DeployAccount is BaseDeploy {
         cuts[5] = _cut(address(new ERC4337Validation()));
         cuts[6] = _cut(address(new ERC1271Signature()));
         cuts[7] = _cut(address(new ERC7821Executor()));
+        cuts[8] = _cut(address(new Receive()));
         init = new AccountInit(entryPoint_);
     }
 
@@ -52,7 +54,7 @@ contract DeployAccount is BaseDeploy {
     function run(address entryPoint_, address owner) external returns (address account) {
         vm.startBroadcast();
         (FacetCut[] memory cuts, AccountInit init) = buildCuts(entryPoint_);
-        Diamond diamond = new Diamond();
+        LatticeDiamond diamond = new LatticeDiamond();
         diamond.initialize(cuts, address(init), abi.encodeCall(AccountInit.init, (owner)));
         vm.stopBroadcast();
         account = address(diamond);

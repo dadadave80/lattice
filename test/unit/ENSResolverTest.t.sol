@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {Diamond} from "@diamond/Diamond.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {ENSResolverTestBase} from "@lattice-test/base/ENSResolverTestBase.sol";
+import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
 import {ENSResolver} from "@lattice/ens/ENSResolver.sol";
 import {ENS_MANAGER_ROLE} from "@lattice/ens/libraries/ENSResolverLib.sol";
 import {IAccessControl} from "@lattice/interfaces/access/IAccessControl.sol";
 import {IENSResolver} from "@lattice/interfaces/ens/IENSResolver.sol";
-import {IAddrResolver} from "@lattice/interfaces/external/IAddrResolver.sol";
-import {IENS} from "@lattice/interfaces/external/IENS.sol";
+import {IAddrResolver} from "@lattice/interfaces/external/ens/IAddrResolver.sol";
+import {IENS} from "@lattice/interfaces/external/ens/IENS.sol";
 
 /// @title MockENS
 /// @notice Minimal ENS registry storing a resolver + owner per node. Kept as a test fixture (external contract the
@@ -127,7 +127,7 @@ contract ENSResolverTest is ENSResolverTestBase {
 
     function test_InitZeroRegistryReverts() public {
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) = deployer.buildCuts(admin, address(0));
-        Diamond d = new Diamond();
+        LatticeDiamond d = new LatticeDiamond();
         vm.expectRevert(IENSResolver.ENSResolverZeroRegistry.selector);
         d.initialize(cuts, init, initCalldata);
     }

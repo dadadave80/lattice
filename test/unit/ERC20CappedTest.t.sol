@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {Diamond} from "@diamond/Diamond.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {MultiInit} from "@diamond/initializers/MultiInit.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {DeployERC20Capped} from "@lattice-script/base/tokens/DeployERC20Capped.s.sol";
 import {ERC20TestBase} from "@lattice-test/base/ERC20TestBase.sol";
 import {TokenTestFacet} from "@lattice-test/helpers/TokenTestFacet.sol";
+import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
 import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
 import {IERC20Capped} from "@lattice/interfaces/tokens/IERC20Capped.sol";
 import {ERC20} from "@lattice/tokens/ERC20/ERC20.sol";
@@ -102,7 +102,7 @@ contract ERC20CappedTest is ERC20TestBase {
 
     function test_ZeroCapInInitReverts() public {
         // Pre-deploy the diamond so `expectRevert` can target the initialize call directly.
-        Diamond d = new Diamond();
+        LatticeDiamond d = new LatticeDiamond();
         DeployERC20Capped dep = new DeployERC20Capped();
         (FacetCut[] memory prodCuts, address[] memory inits, bytes[] memory initCalldatas) =
             dep.buildCuts("Bad Cap Token", "BAD", 0);

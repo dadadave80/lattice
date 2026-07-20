@@ -5,9 +5,10 @@ import {DiamondLoupeFacet} from "@diamond/facets/DiamondLoupeFacet.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
+import {Receive} from "@lattice/Receive.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
-import {CCIPGatewayAdapter} from "@lattice/crosschain/CCIPGatewayAdapter.sol";
-import {CCIPGatewayAdapterInit} from "@lattice/crosschain/CCIPGatewayAdapterInit.sol";
+import {CCIPGatewayAdapter} from "@lattice/crosschain/chainlink/CCIPGatewayAdapter.sol";
+import {CCIPGatewayAdapterInit} from "@lattice/crosschain/chainlink/CCIPGatewayAdapterInit.sol";
 import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
 
 /// @title DeployCCIPGatewayAdapter
@@ -29,12 +30,13 @@ contract DeployCCIPGatewayAdapter is BaseDeploy {
         public
         returns (FacetCut[] memory cuts, address init, bytes memory initCalldata)
     {
-        cuts = new FacetCut[](5);
+        cuts = new FacetCut[](6);
         cuts[0] = _cut(address(new ERC165Facet()));
         cuts[1] = _cut(address(new AccessControl()));
         cuts[2] = _cut(address(new CCIPGatewayAdapter()));
         cuts[3] = _cut(address(new DiamondLoupeFacet()));
         cuts[4] = _cut(address(new AccessControlDiamondCut()));
+        cuts[5] = _cut(address(new Receive()));
         (init, initCalldata) = _withUpgradeableIntrospection(
             address(new CCIPGatewayAdapterInit()),
             abi.encodeCall(CCIPGatewayAdapterInit.init, (admin, router, feeToken))

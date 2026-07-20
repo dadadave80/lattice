@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {Diamond} from "@diamond/Diamond.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {IDiamondCut} from "@diamond/interfaces/IDiamondCut.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {Base} from "@lattice-test/Base.t.sol";
 import {Account6900BlueprintHelper} from "@lattice-test/helpers/Account6900BlueprintHelper.sol";
+import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
 import {AccountInit6900} from "@lattice/accounts/erc6900/AccountInit6900.sol";
 import {ERC7821Executor} from "@lattice/accounts/erc7579/ERC7821Executor.sol";
-import {Call} from "@lattice/interfaces/external/IERC7821.sol";
+import {Call} from "@lattice/interfaces/external/ercs/IERC7821.sol";
 
 /// @title UpgradeProbeFacet
 /// @notice One-selector probe cut onto the account AFTER init — calling through it proves the cut applied.
@@ -104,7 +104,7 @@ contract Account6900UpgradeTest is Account6900BlueprintHelper {
 
     function setUp() public {
         (FacetCut[] memory cuts, AccountInit6900 init) = _accountBlueprint6900(entryPoint);
-        Diamond diamond = new Diamond();
+        LatticeDiamond diamond = new LatticeDiamond();
         diamond.initialize(cuts, address(init), abi.encodeCall(AccountInit6900.init, (owner)));
         account = address(diamond);
     }

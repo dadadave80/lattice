@@ -2,7 +2,6 @@
 pragma solidity ^0.8.30;
 
 import {DiamondLib, FacetCut} from "@diamond/libraries/DiamondLib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {ERC6900ModuleManager} from "@lattice/accounts/erc6900/ERC6900ModuleManager.sol";
@@ -17,7 +16,8 @@ import {
     ValidationConfig,
     ValidationDataView,
     ValidationFlags
-} from "@lattice/interfaces/external/IERC6900.sol";
+} from "@lattice/interfaces/external/ercs/IERC6900.sol";
+import {Initializable} from "@lattice/utils/Initializable.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @dev Minimal ERC-6900 module that records its uninstall and can revert in onUninstall (for swallow tests).
@@ -48,7 +48,7 @@ contract MockValModule {
     }
 }
 
-contract MockValManager is ERC6900ModuleManager, AccessControl {
+contract MockValManager is ERC6900ModuleManager, AccessControl, Initializable {
     /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare
     ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing.
     function exportSelectors()
@@ -59,11 +59,8 @@ contract MockValManager is ERC6900ModuleManager, AccessControl {
         returns (bytes memory)
     {}
 
-    function initialize(address admin_) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+    function initialize(address admin_) external initializer {
         AccessControlLib.__AccessControl_init(admin_);
-        InitializableLib.postInitializer(s);
     }
 
     function getValidationData(ModuleEntity v) external view returns (ValidationDataView memory) {

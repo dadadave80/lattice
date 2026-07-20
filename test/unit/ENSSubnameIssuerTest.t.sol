@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {Diamond} from "@diamond/Diamond.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {ENSSubnameIssuerTestBase} from "@lattice-test/base/ENSSubnameIssuerTestBase.sol";
+import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
 import {ENSSubnameIssuer} from "@lattice/ens/ENSSubnameIssuer.sol";
 import {ENS_SUBNAME_ISSUER_ROLE} from "@lattice/ens/libraries/ENSSubnameIssuerLib.sol";
 import {IAccessControl} from "@lattice/interfaces/access/IAccessControl.sol";
 import {IENSSubnameIssuer} from "@lattice/interfaces/ens/IENSSubnameIssuer.sol";
-import {INameWrapper} from "@lattice/interfaces/external/INameWrapper.sol";
+import {INameWrapper} from "@lattice/interfaces/external/ens/INameWrapper.sol";
 
 /// @title MockNameWrapper
 /// @notice Minimal ENS NameWrapper that records the last setSubnodeRecord call and returns the node. Kept as a test
@@ -151,7 +151,7 @@ contract ENSSubnameIssuerTest is ENSSubnameIssuerTestBase {
 
     function test_InitZeroNameWrapperReverts() public {
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) = deployer.buildCuts(admin, address(0));
-        Diamond d = new Diamond();
+        LatticeDiamond d = new LatticeDiamond();
         vm.expectRevert(IENSSubnameIssuer.ENSSubnameIssuerZeroNameWrapper.selector);
         d.initialize(cuts, init, initCalldata);
     }

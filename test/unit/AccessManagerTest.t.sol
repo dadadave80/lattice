@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {AccessManagerTestBase} from "@lattice-test/base/AccessManagerTestBase.sol";
+import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
 import {AccessManager} from "@lattice/access/AccessManager.sol";
 import {IAccessManager} from "@lattice/interfaces/access/IAccessManager.sol";
 import {Vm} from "forge-std/Vm.sol";
@@ -95,7 +95,7 @@ contract AccessManagerTest is AccessManagerTestBase {
 
     function test_InvalidInitialAdminReverts() public {
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) = deployer.buildCuts(address(0));
-        Diamond d = new Diamond();
+        LatticeDiamond d = new LatticeDiamond();
         vm.expectRevert(IAccessManager.AccessManagerInvalidInitialAdmin.selector);
         d.initialize(cuts, init, initCalldata);
     }

@@ -3,17 +3,17 @@ pragma solidity ^0.8.30;
 
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {LayerZeroGatewayAdapterTestBase} from "@lattice-test/base/LayerZeroGatewayAdapterTestBase.sol";
-import {LayerZeroGatewayAdapter} from "@lattice/crosschain/LayerZeroGatewayAdapter.sol";
+import {LayerZeroGatewayAdapter} from "@lattice/crosschain/layerzero/LayerZeroGatewayAdapter.sol";
 import {ILayerZeroGatewayAdapter} from "@lattice/interfaces/crosschain/ILayerZeroGatewayAdapter.sol";
-import {IERC7786GatewaySource, IERC7786Recipient} from "@lattice/interfaces/external/IERC7786.sol";
+import {IERC7786GatewaySource, IERC7786Recipient} from "@lattice/interfaces/external/ercs/IERC7786.sol";
 import {
     ILayerZeroEndpointV2,
     MessagingFee,
     MessagingParams,
     MessagingReceipt,
     Origin
-} from "@lattice/interfaces/external/ILayerZeroEndpointV2.sol";
-import {ILayerZeroReceiver} from "@lattice/interfaces/external/ILayerZeroReceiver.sol";
+} from "@lattice/interfaces/external/layerzero/ILayerZeroEndpointV2.sol";
+import {ILayerZeroReceiver} from "@lattice/interfaces/external/layerzero/ILayerZeroReceiver.sol";
 import {InteroperableAddress} from "@lattice/utils/libraries/InteroperableAddress.sol";
 
 /// @notice Minimal LayerZero v2 EndpointV2 mock. Records the last `send` packet, pulls the native fee the way

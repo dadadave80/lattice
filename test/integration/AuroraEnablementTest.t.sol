@@ -1,22 +1,22 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {Diamond} from "@diamond/Diamond.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {MultiInit} from "@diamond/initializers/MultiInit.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {AuroraConfig} from "@lattice-script/config/EnableAurora.s.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
+import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {ChainRegistry} from "@lattice/crosschain/ChainRegistry.sol";
 import {ChainRegistryInit} from "@lattice/crosschain/ChainRegistryInit.sol";
 import {ERC7786OpenBridge} from "@lattice/crosschain/ERC7786OpenBridge.sol";
 import {ERC7786OpenBridgeInit} from "@lattice/crosschain/ERC7786OpenBridgeInit.sol";
-import {HyperlaneGatewayAdapter} from "@lattice/crosschain/HyperlaneGatewayAdapter.sol";
-import {LayerZeroGatewayAdapter} from "@lattice/crosschain/LayerZeroGatewayAdapter.sol";
+import {HyperlaneGatewayAdapter} from "@lattice/crosschain/hyperlane/HyperlaneGatewayAdapter.sol";
+import {LayerZeroGatewayAdapter} from "@lattice/crosschain/layerzero/LayerZeroGatewayAdapter.sol";
 import {IChainRegistry} from "@lattice/interfaces/crosschain/IChainRegistry.sol";
 import {IERC7786OpenBridge} from "@lattice/interfaces/crosschain/IERC7786OpenBridge.sol";
-import {IERC7786GatewaySource} from "@lattice/interfaces/external/IERC7786.sol";
+import {IERC7786GatewaySource} from "@lattice/interfaces/external/ercs/IERC7786.sol";
 import {InteroperableAddress} from "@lattice/utils/libraries/InteroperableAddress.sol";
 import {Test} from "forge-std/Test.sol";
 
@@ -107,7 +107,7 @@ contract AuroraEnablementTest is Test, GetSelectors {
         inits[1] = address(new ChainRegistryInit());
         initDatas[1] = abi.encodeCall(ChainRegistryInit.init, (admin));
 
-        Diamond d = new Diamond();
+        LatticeDiamond d = new LatticeDiamond();
         d.initialize(cuts, address(new MultiInit()), abi.encodeCall(MultiInit.multiInit, (inits, initDatas)));
         diamond = address(d);
         registry = ChainRegistry(diamond);

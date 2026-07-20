@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {IStarknetMessaging} from "@lattice/interfaces/external/IStarknetMessaging.sol";
+import {IStarknetMessaging} from "@lattice/interfaces/external/starknet/IStarknetMessaging.sol";
 
 /// @title MockStarknetMessaging
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)

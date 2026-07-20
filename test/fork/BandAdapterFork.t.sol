@@ -2,27 +2,24 @@
 pragma solidity ^0.8.30;
 
 import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
-import {InitializableLib} from "@diamond/libraries/InitializableLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
-import {IStdReference} from "@lattice/interfaces/external/IStdReference.sol";
+import {IStdReference} from "@lattice/interfaces/external/band/IStdReference.sol";
 import {IBandAdapter} from "@lattice/interfaces/oracles/IBandAdapter.sol";
-import {BandAdapter} from "@lattice/oracles/BandAdapter.sol";
-import {BandAdapterLib} from "@lattice/oracles/libraries/BandAdapterLib.sol";
+import {BandAdapter} from "@lattice/oracles/band/BandAdapter.sol";
+import {BandAdapterLib} from "@lattice/oracles/band/BandAdapterLib.sol";
+import {Initializable} from "@lattice/utils/Initializable.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @notice Mock diamond combining AccessControl + BandAdapter.
-contract MockBandAdapterForkContract is AccessControl, BandAdapter {
+contract MockBandAdapterForkContract is AccessControl, BandAdapter, Initializable {
     /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare
     ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing.
     function exportSelectors() external pure virtual override(AccessControl, BandAdapter) returns (bytes memory) {}
 
-    function initialize(address _admin, address _reference) external {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.preInitializer(s);
+    function initialize(address _admin, address _reference) external initializer {
         AccessControlLib.__AccessControl_init(_admin);
         BandAdapterLib.__BandAdapter_init(_reference);
-        InitializableLib.postInitializer(s);
     }
 
     function supportsInterface(bytes4 _interfaceId) public view returns (bool) {

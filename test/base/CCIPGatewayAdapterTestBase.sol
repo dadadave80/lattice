@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {DeployCCIPGatewayAdapter} from "@lattice-script/base/crosschain/DeployCCIPGatewayAdapter.s.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
-import {CCIPGatewayAdapter} from "@lattice/crosschain/CCIPGatewayAdapter.sol";
+import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
+import {CCIPGatewayAdapter} from "@lattice/crosschain/chainlink/CCIPGatewayAdapter.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @title CCIPGatewayAdapterTestBase
@@ -34,7 +34,7 @@ abstract contract CCIPGatewayAdapterTestBase is Test, GetSelectors {
         deployer = new DeployCCIPGatewayAdapter();
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) = deployer.buildCuts(admin, router, feeToken);
 
-        Diamond d = new Diamond();
+        LatticeDiamond d = new LatticeDiamond();
         d.initialize(cuts, init, initCalldata);
         diamond_ = address(d);
     }

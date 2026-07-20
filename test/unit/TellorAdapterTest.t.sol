@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {Diamond} from "@diamond/Diamond.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {DeployTellorAdapter} from "@lattice-script/base/oracles/DeployTellorAdapter.s.sol";
 import {TellorAdapterTestBase} from "@lattice-test/base/TellorAdapterTestBase.sol";
-import {ITellor} from "@lattice/interfaces/external/ITellor.sol";
+import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
+import {ITellor} from "@lattice/interfaces/external/tellor/ITellor.sol";
 import {ITellorAdapter} from "@lattice/interfaces/oracles/ITellorAdapter.sol";
-import {TellorAdapter} from "@lattice/oracles/TellorAdapter.sol";
+import {TellorAdapter} from "@lattice/oracles/tellor/TellorAdapter.sol";
 
 // ---------------------------------------------------------------------------
 //                              MOCKS
@@ -82,7 +82,7 @@ contract TellorAdapterTest is TellorAdapterTestBase {
         // Assembling the production recipe with a zero Tellor oracle must revert inside the init delegatecall.
         DeployTellorAdapter d = new DeployTellorAdapter();
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) = d.buildCuts(admin, address(0));
-        Diamond diamond_ = new Diamond();
+        LatticeDiamond diamond_ = new LatticeDiamond();
         vm.expectRevert(ITellorAdapter.TellorContractIsZero.selector);
         diamond_.initialize(cuts, init, initCalldata);
     }

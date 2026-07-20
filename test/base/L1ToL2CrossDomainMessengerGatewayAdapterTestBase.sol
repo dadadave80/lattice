@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {
     DeployL1ToL2CrossDomainMessengerGatewayAdapter
 } from "@lattice-script/base/crosschain/DeployL1ToL2CrossDomainMessengerGatewayAdapter.s.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
+import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
 import {
     L1ToL2CrossDomainMessengerGatewayAdapter
-} from "@lattice/crosschain/L1ToL2CrossDomainMessengerGatewayAdapter.sol";
+} from "@lattice/crosschain/optimism/L1ToL2CrossDomainMessengerGatewayAdapter.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @title L1ToL2CrossDomainMessengerGatewayAdapterTestBase
@@ -43,7 +43,7 @@ abstract contract L1ToL2CrossDomainMessengerGatewayAdapterTestBase is Test, GetS
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) =
             deployer.buildCuts(admin, counterpartChainId, counterpartAdapter, minGasLimit);
 
-        Diamond d = new Diamond();
+        LatticeDiamond d = new LatticeDiamond();
         d.initialize(cuts, init, initCalldata);
         diamond_ = address(d);
     }

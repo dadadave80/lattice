@@ -5,9 +5,10 @@ import {DiamondLoupeFacet} from "@diamond/facets/DiamondLoupeFacet.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
+import {Receive} from "@lattice/Receive.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
-import {AcrossBridgeAdapter} from "@lattice/crosschain/AcrossBridgeAdapter.sol";
-import {AcrossBridgeAdapterInit} from "@lattice/crosschain/AcrossBridgeAdapterInit.sol";
+import {AcrossBridgeAdapter} from "@lattice/crosschain/across/AcrossBridgeAdapter.sol";
+import {AcrossBridgeAdapterInit} from "@lattice/crosschain/across/AcrossBridgeAdapterInit.sol";
 import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
 
 /// @title DeployAcrossBridgeAdapter
@@ -57,10 +58,11 @@ contract DeployAcrossBridgeAdapter is BaseDeploy {
 
     /// @dev The shared cut set of both overloads: the module facets plus {DiamondLoupeFacet} (introspection).
     function _coreCuts() internal returns (FacetCut[] memory cuts) {
-        cuts = new FacetCut[](3);
+        cuts = new FacetCut[](4);
         cuts[0] = _cut(address(new ERC165Facet()));
         cuts[1] = _cut(address(new AcrossBridgeAdapter()));
         cuts[2] = _cut(address(new DiamondLoupeFacet()));
+        cuts[3] = _cut(address(new Receive()));
     }
 
     /// @notice Deploys an Across adapter diamond (broadcasting entrypoint for `forge script ... --broadcast`).
