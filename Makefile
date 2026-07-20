@@ -18,6 +18,9 @@ PATH_GLOB ?=
 ARGS ?=
 SCRIPT ?=
 SIG ?= run()
+# Script target contract; defaults to the file's basename (DeployX.s.sol -> DeployX). Needed because
+# recipe files also hold their recipe-local '*RecipeInit' contract, so forge cannot infer the target.
+TC ?= $(notdir $(basename $(basename $(SCRIPT))))
 ANVIL_PORT ?= 8545
 # Well-known Anvil dev account #0. LOCAL NODE ONLY — publicly known, never a real network.
 # Overridable, but the default is intentionally this throwaway key so `deploy-local` needs no secret.
@@ -125,7 +128,9 @@ coverage: ## Coverage summary (slow; add --ir-minimum via ARGS if a suite hits s
 
 # --------------------------------------------------------------------- local node
 # `deploy-local` signs with the well-known Anvil key (ANVIL_KEY) against the local
-# node ONLY. Pass the script and, if its entrypoint isn't run(), its signature/args:
+# node ONLY, promptless. (Keep keystore settings like ETH_KEYSTORE_ACCOUNT out of .env —
+# forge auto-loads it and an ambient keystore hijacks vm.startBroadcast away from
+# --private-key.) Pass the script and, if its entrypoint isn't run(), its signature/args:
 #   make deploy-local SCRIPT=script/base/security/DeployEmergencyStop.s.sol
 #   make deploy-local SCRIPT=path SIG='run(address)' ARGS='0xabc…'
 
@@ -136,7 +141,7 @@ anvil: ## Start a local Anvil node
 .PHONY: deploy-local
 deploy-local: ## Deploy SCRIPT to local Anvil (SCRIPT=… [SIG='run()'] [ARGS='…'])
 	@test -n '$(SCRIPT)' || { echo "set SCRIPT=<path/to/Deploy*.s.sol> (and SIG/ARGS if run() takes params)"; exit 2; }
-	forge script $(SCRIPT) --sig '$(SIG)' $(ARGS) \
+	forge script $(SCRIPT) --tc '$(TC)' --sig '$(SIG)' $(ARGS) \
 		--rpc-url http://localhost:$(ANVIL_PORT) --private-key $(ANVIL_KEY) --broadcast
 
 # ----------------------------------------------------------------------- demos
