@@ -22,11 +22,19 @@ library LatticeVersion {
     string internal constant VERSION = "0.1.0"; // x-release-please-version
 
     /// @notice The major component of {VERSION}. Pre-1.0 / unaudited while this is 0.
-    uint256 internal constant MAJOR = 0; // x-release-please-major
+    /// @dev The component constants use the digit-free `uint` alias ON PURPOSE: release-please's
+    /// generic updater rewrites numbers on its annotated lines (the trailing markers below), and the
+    /// `256` in `uint256` got clobbered to the non-type `uint0` in the 0.2.0 release PR. Keep those
+    /// lines free of any digits except the version value itself; the forgefmt disable comments stop
+    /// `forge fmt` from normalizing `uint` back to `uint256`.
+    // forgefmt: disable-next-item
+    uint internal constant MAJOR = 0; // x-release-please-major
 
     /// @notice The minor component of {VERSION}.
-    uint256 internal constant MINOR = 1; // x-release-please-minor
+    // forgefmt: disable-next-item
+    uint internal constant MINOR = 1; // x-release-please-minor
 
     /// @notice The patch component of {VERSION}.
-    uint256 internal constant PATCH = 0; // x-release-please-patch
+    // forgefmt: disable-next-item
+    uint internal constant PATCH = 0; // x-release-please-patch
 }
