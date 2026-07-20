@@ -298,9 +298,9 @@ if [[ -z "${BURN_TX}" ]]; then
     fi
 
     # fund check (Arc USDC is the asset AND the gas token) -- a broadcast-free forge READ with --sender, the
-    # driver's own prompt-free idiom, NOT `cast call`: with the repo .env's ETH_KEYSTORE_ACCOUNT set, cast
-    # eagerly unlocks that keystore even for a read and prompts mid-run on /dev/tty (2>/dev/null cannot hide
-    # it, and `env -u` does not stick -- cast re-reads .env). Forking Arc for a READ is fine in revm: only
+    # driver's own prompt-free idiom, NOT `cast call`: an ambient ETH_KEYSTORE_ACCOUNT (shell or .env --
+    # the repo .env no longer sets one) makes cast eagerly unlock that keystore even for a read and
+    # prompt mid-run on /dev/tty (2>/dev/null cannot hide it; `env -u` does not stick -- cast re-reads .env). Forking Arc for a READ is fine in revm: only
     # balance-MOVES route through the 0x1800 precompile. A failed read leaves BAL empty and skips the check;
     # an underfunded burn still fails loudly on-chain.
     BAL="$(forge script "${SCRIPT_TARGET}" --sig 'hookDemoArcBalance(address)' "${ACTOR}" --sender "${ACTOR}" 2>&1 | grep -oE 'DEMO-HOOK-ARCBAL [0-9]+' | awk '{print $2}' || true)"
