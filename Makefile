@@ -160,12 +160,14 @@ deploy-local: ## Deploy SCRIPT to local Anvil (SCRIPT=… [SIG='run()'] [ARGS='�
 #   make demo-governance  KEYSTORE=<name> ARGS='<vault> <ens-name> <actor>'
 #   make demo-cctp        KEYSTORE=<name>      # Arc-hub loop: both destinations; ARGS='<dest>' filters
 #   make demo-cctp-hook   KEYSTORE=<name>      # hook showcase; ARGS='<actor> <beneficiary>' optional
-#   make deploy-cctp      KEYSTORE=<name>      # deploy your OWN stack — serves BOTH CCTP demos
+#   make demo-cctp-roundtrip KEYSTORE=<name>   # USDC Arc -> Base -> Arc; ARGS='<actor>' optional
+#   make deploy-cctp      KEYSTORE=<name>      # deploy your OWN stack — serves ALL CCTP demos
 # The hook demo (Arc -> Base Sepolia) showcases CCTP v2 HOOKS: one attested message both moves USDC
-# and auto-credits a beneficiary in a CCTPHookVault. Deployment is SEPARATE from the demos: anyone
-# with a funded signer can run demo-cctp-hook against the canonical live stack (README evidence
-# contracts); deploy-cctp deploys ONE fresh stack (Arc hub registered for BOTH destinations + Base
-# diamond + vault) that demo-cctp-hook AND demo-cctp then run against.
+# and auto-credits a beneficiary in a CCTPHookVault; the round trip moves USDC Arc -> Base -> Arc
+# through Lattice diamonds on both ends. Deployment is SEPARATE from the demos: anyone with a funded
+# signer can run them against the canonical live stack (README evidence contracts; round-trip-ready);
+# deploy-cctp deploys ONE fresh stack (Arc hub registered for BOTH destinations + Base diamond with
+# the Arc return leg + vault) that all three CCTP demos then run against.
 
 # Expands to the auth wrapper: the keystore helper when KEYSTORE is set, else FORGE_AUTH built from
 # PRIVATE_KEY, else nothing (an ambient FORGE_AUTH passes through) — every demo recipe is then a
@@ -186,12 +188,20 @@ demo-cctp: ## CCTP Arc-hub demo loop — KEYSTORE=/PRIVATE_KEY=; ARGS='<dest>' f
 	@$(AUTH_WRAP) script/config/cctp-usdc-demo-loop.sh $(ARGS)
 
 .PHONY: deploy-cctp
-deploy-cctp: ## Deploy ONE CCTP demo stack (Arc hub + Base diamond + vault) serving demo-cctp AND demo-cctp-hook — KEYSTORE=/PRIVATE_KEY=
+deploy-cctp: ## Deploy ONE CCTP demo stack (Arc hub + Base diamond + vault) serving all three CCTP demos — KEYSTORE=/PRIVATE_KEY=
 	@$(AUTH_WRAP) script/config/cctp-hook-demo.sh --deploy-only $(ARGS)
 
 .PHONY: demo-cctp-hook
 demo-cctp-hook: ## CCTP v2 hook demo vs the live stack (Arc->Base auto-credit) — KEYSTORE=/PRIVATE_KEY=
 	@$(AUTH_WRAP) script/config/cctp-hook-demo.sh $(ARGS)
+
+.PHONY: demo-cctp-roundtrip
+demo-cctp-roundtrip: ## USDC round trip Arc -> Base -> Arc through Lattice diamonds both ways — KEYSTORE=/PRIVATE_KEY=
+	@$(AUTH_WRAP) script/config/cctp-roundtrip-demo.sh $(ARGS)
+
+.PHONY: demo
+demo: ## Interactive CCTP demo tester — pick direction, amount, auth (KEYSTORE=/PRIVATE_KEY= pre-seed the auth)
+	@$(AUTH_WRAP) script/config/cctp-demo-interactive.sh
 
 # ------------------------------------------------------------------------ help
 
