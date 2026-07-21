@@ -4,7 +4,7 @@ pragma solidity ^0.8.30;
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {DeployGovernedVaultENS, TestnetAsset} from "@lattice-script/base/defi/DeployGovernedVaultENS.s.sol";
 import {RegisterEnsName} from "@lattice-script/config/RegisterEnsName.s.sol";
-import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
+import {Lattice} from "@lattice/Lattice.sol";
 import {GovernedVault} from "@lattice/defi/GovernedVault.sol";
 import {GovernedVaultENSParams} from "@lattice/defi/GovernedVaultENSInit.sol";
 import {ENSReverseClaimer} from "@lattice/ens/ENSReverseClaimer.sol";
@@ -120,7 +120,7 @@ contract GovernedVaultENSFork is Test {
 
     function _deploy() internal returns (address diamond_) {
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) = deployer.buildCutsWithENS(_params());
-        LatticeDiamond d = new LatticeDiamond();
+        Lattice d = new Lattice();
         d.initialize(cuts, init, initCalldata);
         diamond_ = address(d);
     }

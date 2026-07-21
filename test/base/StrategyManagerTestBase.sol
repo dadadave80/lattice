@@ -4,7 +4,7 @@ pragma solidity ^0.8.30;
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {DeployStrategyManager} from "@lattice-script/base/defi/DeployStrategyManager.s.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
-import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
+import {Lattice} from "@lattice/Lattice.sol";
 import {StrategyManager} from "@lattice/defi/StrategyManager.sol";
 import {Test} from "forge-std/Test.sol";
 
@@ -29,7 +29,7 @@ abstract contract StrategyManagerTestBase is Test, GetSelectors {
         deployer = new DeployStrategyManager();
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) = deployer.buildCuts(admin);
 
-        LatticeDiamond d = new LatticeDiamond();
+        Lattice d = new Lattice();
         d.initialize(cuts, init, initCalldata);
         diamond_ = address(d);
     }

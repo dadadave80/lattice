@@ -3,7 +3,7 @@ pragma solidity ^0.8.30;
 
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {DeployGovernedVault} from "@lattice-script/base/defi/DeployGovernedVault.s.sol";
-import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
+import {Lattice} from "@lattice/Lattice.sol";
 import {GovernedVaultParams} from "@lattice/defi/GovernedVaultInit.sol";
 import {Test} from "forge-std/Test.sol";
 
@@ -21,7 +21,7 @@ abstract contract GovernedVaultTestBase is Test {
         p.asset = asset;
         deployer = new DeployGovernedVault();
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) = deployer.buildCuts(p);
-        LatticeDiamond d = new LatticeDiamond();
+        Lattice d = new Lattice();
         d.initialize(cuts, init, initCalldata);
         vault = address(d);
     }
