@@ -3,7 +3,7 @@ pragma solidity ^0.8.30;
 
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {MockSafe, SafeDiamondCutTestBase} from "@lattice-test/base/SafeDiamondCutTestBase.sol";
-import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
+import {Lattice} from "@lattice/Lattice.sol";
 import {DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
 import {SafeDiamondCut} from "@lattice/governance/SafeDiamondCut.sol";
 import {SAFE_DIAMOND_CUT_STORAGE_SLOT} from "@lattice/governance/libraries/SafeDiamondCutLib.sol";
@@ -90,14 +90,14 @@ contract SafeDiamondCutTest is SafeDiamondCutTestBase {
 
     function test_InitRejectsZeroSafe() public {
         (FacetCut[] memory cuts, address init, bytes memory cd) = deployer.buildCuts(admin, address(0), MIN_THRESHOLD);
-        LatticeDiamond d = new LatticeDiamond();
+        Lattice d = new Lattice();
         vm.expectRevert(abi.encodeWithSelector(ISafeAuthority.SafeDiamondCutZeroSafe.selector));
         d.initialize(cuts, init, cd);
     }
 
     function test_InitRejectsZeroThreshold() public {
         (FacetCut[] memory cuts, address init, bytes memory cd) = deployer.buildCuts(admin, address(safe), 0);
-        LatticeDiamond d = new LatticeDiamond();
+        Lattice d = new Lattice();
         vm.expectRevert(abi.encodeWithSelector(ISafeAuthority.SafeDiamondCutZeroThreshold.selector));
         d.initialize(cuts, init, cd);
     }
@@ -105,7 +105,7 @@ contract SafeDiamondCutTest is SafeDiamondCutTestBase {
     function test_InitRejectsThresholdTooLow() public {
         // Safe enforces threshold 2, but we demand a minimum of 3.
         (FacetCut[] memory cuts, address init, bytes memory cd) = deployer.buildCuts(admin, address(safe), 3);
-        LatticeDiamond d = new LatticeDiamond();
+        Lattice d = new Lattice();
         vm.expectRevert(
             abi.encodeWithSelector(ISafeAuthority.SafeDiamondCutThresholdTooLow.selector, uint256(2), uint256(3))
         );

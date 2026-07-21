@@ -5,7 +5,7 @@ import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {DeployPausable} from "@lattice-script/base/security/DeployPausable.s.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
 import {PausableTestFacet} from "@lattice-test/helpers/PausableTestFacet.sol";
-import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
+import {Lattice} from "@lattice/Lattice.sol";
 import {Pausable} from "@lattice/security/Pausable.sol";
 import {Test} from "forge-std/Test.sol";
 
@@ -39,7 +39,7 @@ abstract contract PausableTestBase is Test, GetSelectors {
             functionSelectors: _getSelectors("PausableTestFacet")
         });
 
-        LatticeDiamond d = new LatticeDiamond();
+        Lattice d = new Lattice();
         d.initialize(cuts, init, initCalldata);
         diamond_ = address(d);
     }

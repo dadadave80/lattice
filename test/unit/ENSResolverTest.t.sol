@@ -4,7 +4,7 @@ pragma solidity ^0.8.30;
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {ENSResolverTestBase} from "@lattice-test/base/ENSResolverTestBase.sol";
-import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
+import {Lattice} from "@lattice/Lattice.sol";
 import {ENSResolver} from "@lattice/ens/ENSResolver.sol";
 import {ENS_MANAGER_ROLE} from "@lattice/ens/libraries/ENSResolverLib.sol";
 import {IAccessControl} from "@lattice/interfaces/access/IAccessControl.sol";
@@ -127,7 +127,7 @@ contract ENSResolverTest is ENSResolverTestBase {
 
     function test_InitZeroRegistryReverts() public {
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) = deployer.buildCuts(admin, address(0));
-        LatticeDiamond d = new LatticeDiamond();
+        Lattice d = new Lattice();
         vm.expectRevert(IENSResolver.ENSResolverZeroRegistry.selector);
         d.initialize(cuts, init, initCalldata);
     }

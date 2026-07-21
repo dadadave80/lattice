@@ -4,7 +4,7 @@ pragma solidity ^0.8.30;
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {DeployChainRegistry} from "@lattice-script/base/crosschain/DeployChainRegistry.s.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
-import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
+import {Lattice} from "@lattice/Lattice.sol";
 import {ChainRegistry} from "@lattice/crosschain/ChainRegistry.sol";
 import {Test} from "forge-std/Test.sol";
 
@@ -25,7 +25,7 @@ abstract contract ChainRegistryTestBase is Test, GetSelectors {
         deployer = new DeployChainRegistry();
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) = deployer.buildCuts(admin);
 
-        LatticeDiamond d = new LatticeDiamond();
+        Lattice d = new Lattice();
         d.initialize(cuts, init, initCalldata);
         diamond_ = address(d);
     }

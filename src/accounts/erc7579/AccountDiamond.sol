@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {DiamondLib} from "@diamond/libraries/DiamondLib.sol";
-import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
+import {Lattice} from "@lattice/Lattice.sol";
 import {
     ERC7579ModuleConfigLib,
     FALLBACK_CALLTYPE_DELEGATECALL
@@ -21,7 +21,7 @@ import {IModuleConfig} from "@lattice/interfaces/accounts/IModuleConfig.sol";
 /// @dev Forwards to the handler via CALL — with the original caller appended ERC-2771-style — or DELEGATECALL,
 ///      per the handler's registered call type. This is the proxy the `AccountFactory` deploys and that
 ///      `Account7702Diamond` extends, so factory- and 7702-onboarded accounts both get fallback support.
-contract AccountDiamond is LatticeDiamond {
+contract AccountDiamond is Lattice {
     fallback() external payable virtual override {
         // Non-reverting overload: returns address(0) on a miss so we can fall through to the registry (the
         // single-arg `selectorToFacet` reverts {FunctionDoesNotExist}, which is the base Diamond's fallback path).

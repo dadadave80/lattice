@@ -153,7 +153,7 @@ contract MyAccessControlled is AccessControl, Initializable {
 ```
 
 Note: init contracts delegatecalled during `diamondCut` (the `*Init.sol` pattern) carry NO guard of
-their own — they already run inside `LatticeDiamond.initialize`'s `initializer` scope, and a nested
+their own — they already run inside `Lattice.initialize`'s `initializer` scope, and a nested
 guard reverts outside a constructor context.
 
 When adding new modules, be deliberate about caller semantics. Some existing modules use

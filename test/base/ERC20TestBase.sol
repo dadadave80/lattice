@@ -6,7 +6,7 @@ import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {DeployERC20} from "@lattice-script/base/tokens/DeployERC20.s.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
 import {TokenTestFacet} from "@lattice-test/helpers/TokenTestFacet.sol";
-import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
+import {Lattice} from "@lattice/Lattice.sol";
 import {ERC20} from "@lattice/tokens/ERC20/ERC20.sol";
 
 /// @title ERC20TestBase
@@ -55,7 +55,7 @@ abstract contract ERC20TestBase is GetSelectors {
             cuts[prod.length + 1 + j] = extraCuts[j];
         }
 
-        LatticeDiamond d = new LatticeDiamond();
+        Lattice d = new Lattice();
         d.initialize(cuts, init, initCalldata);
         diamond_ = address(d);
     }
@@ -78,7 +78,7 @@ abstract contract ERC20TestBase is GetSelectors {
         cuts[prodCuts.length] = _helperCut();
 
         MultiInit multiInit = new MultiInit();
-        LatticeDiamond d = new LatticeDiamond();
+        Lattice d = new Lattice();
         d.initialize(cuts, address(multiInit), abi.encodeCall(MultiInit.multiInit, (inits, initCalldatas)));
         diamond_ = address(d);
     }

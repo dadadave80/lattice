@@ -6,7 +6,7 @@ import {
     DeployL1ToL2CrossDomainMessengerGatewayAdapter
 } from "@lattice-script/base/crosschain/DeployL1ToL2CrossDomainMessengerGatewayAdapter.s.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
-import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
+import {Lattice} from "@lattice/Lattice.sol";
 import {
     L1ToL2CrossDomainMessengerGatewayAdapter
 } from "@lattice/crosschain/optimism/L1ToL2CrossDomainMessengerGatewayAdapter.sol";
@@ -43,7 +43,7 @@ abstract contract L1ToL2CrossDomainMessengerGatewayAdapterTestBase is Test, GetS
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) =
             deployer.buildCuts(admin, counterpartChainId, counterpartAdapter, minGasLimit);
 
-        LatticeDiamond d = new LatticeDiamond();
+        Lattice d = new Lattice();
         d.initialize(cuts, init, initCalldata);
         diamond_ = address(d);
     }

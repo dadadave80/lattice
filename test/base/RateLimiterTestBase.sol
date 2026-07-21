@@ -4,7 +4,7 @@ pragma solidity ^0.8.30;
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {DeployRateLimiter} from "@lattice-script/base/security/DeployRateLimiter.s.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
-import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
+import {Lattice} from "@lattice/Lattice.sol";
 import {RateLimiter} from "@lattice/security/RateLimiter.sol";
 import {Test} from "forge-std/Test.sol";
 
@@ -28,7 +28,7 @@ abstract contract RateLimiterTestBase is Test, GetSelectors {
         deployer = new DeployRateLimiter();
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) = deployer.buildCuts(admin);
 
-        LatticeDiamond d = new LatticeDiamond();
+        Lattice d = new Lattice();
         d.initialize(cuts, init, initCalldata);
         diamond_ = address(d);
     }
