@@ -29,8 +29,10 @@ import {console} from "forge-std/Script.sol";
 ///            (the relay's mint included) routes through a node-level precompile (0x1800…) that forge's fork
 ///            SIMULATION (revm) does not implement — minting into Arc works ON-CHAIN, but forge always
 ///            simulates before broadcasting, so a relay is NEVER driven into Arc. Here the destinations
-///            (Sepolia / Base Sepolia) do the minting, calling Circle's `MessageTransmitterV2.receiveMessage`
-///            DIRECTLY (the destinations carry no diamond — the Lattice showcase is the SOURCE-side hub). The
+///            (Sepolia / Base Sepolia) do the minting: Sepolia calls Circle's
+///            `MessageTransmitterV2.receiveMessage` DIRECTLY (no diamond lives there), while base-destined
+///            messages from a UNIFIED-deployment hub ({CCTPHookDemo.hookDemoSetup}) are locked to its Base
+///            diamond via `destinationCaller` and relay through {cctpDemoRelayVia} instead. The
 ///            mint recipient is the actor, a plain EOA on each destination. Separately, if the SIGNER's account
 ///            is EIP-7702-delegated (a smart-account/7702 setup on the actor — not an Arc default), the txpool
 ///            caps it at one in-flight tx, forcing `--slow`/sequential sends on the source-side deploy.
@@ -76,8 +78,9 @@ contract CCTPUSDCDemo is DeployCCTPBridgeAdapter {
     /// @notice Circle CCTP v2 `TokenMessengerV2` — identical address on every testnet (Arc, Sepolia, Base).
     address internal constant TOKEN_MESSENGER_V2 = 0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA;
 
-    /// @notice Circle CCTP v2 `MessageTransmitterV2` — identical address on every testnet. The destinations
-    ///         call this DIRECTLY to mint (no diamond on a destination).
+    /// @notice Circle CCTP v2 `MessageTransmitterV2` — identical address on every testnet. Sepolia relays
+    ///         call this DIRECTLY to mint; base relays go through the Base diamond's `relayMessage` when the
+    ///         hub locked them to it (see {cctpDemoRelayVia}).
     address internal constant MESSAGE_TRANSMITTER_V2 = 0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275;
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -276,6 +279,30 @@ contract CCTPUSDCDemo is DeployCCTPBridgeAdapter {
         bool ok = IReceiverV2(MESSAGE_TRANSMITTER_V2).receiveMessage(message, attestation);
         vm.stopBroadcast();
         if (!ok) revert CCTPUSDCDemo__RelayFailed();
+
+        console.log(string.concat("DEMO-RELAY ", vm.toString(IERC20(dest.usdc).balanceOf(actor))));
+    }
+
+    /// @notice RELAY crank variant for a DIAMOND-LOCKED destination: forwards the attested message through the
+    ///         Lattice `diamond`'s permissionless `relayMessage` instead of Circle's transmitter directly.
+    ///         Needed when the hub came from the unified demo setup ({CCTPHookDemo.hookDemoSetup} — `make
+    ///         deploy-cctp`), which locks EVERY base-destined message to the Base diamond via
+    ///         `destinationCaller` so hook messages cannot be consumed hook-lessly; plain transfers then relay
+    ///         through the same diamond (a passthrough — the mint still goes to the encoded recipient). Prints
+    ///         `DEMO-RELAY <recipientBalanceAfter>`.
+    function cctpDemoRelayVia(
+        address diamond,
+        string calldata destKey,
+        bytes calldata message,
+        bytes calldata attestation
+    ) external {
+        Dest memory dest = _dest(destKey);
+        address actor = msg.sender;
+
+        vm.createSelectFork(dest.rpcAlias);
+        vm.startBroadcast();
+        ICCTPBridgeAdapter(diamond).relayMessage(message, attestation);
+        vm.stopBroadcast();
 
         console.log(string.concat("DEMO-RELAY ", vm.toString(IERC20(dest.usdc).balanceOf(actor))));
     }

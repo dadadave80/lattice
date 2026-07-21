@@ -22,12 +22,19 @@ import {console} from "forge-std/Script.sol";
 ///         directly), hooks are INBOUND, so the destination needs a Lattice diamond — that is what fires the
 ///         hook. Only the existing adapter surface is used; no src/ change beyond the standalone example vault.
 ///         TESTNET-ONLY.
-/// @dev RUNBOOK — driven end-to-end by script/config/cctp-hook-demo.sh. <actor> = your keystore address.
+/// @dev RUNBOOK — driven by script/config/cctp-hook-demo.sh; DEPLOYMENT IS SEPARATE FROM THE DEMO.
+///     <actor> = your signer address. Auth either way, any OS: `make <target> KEYSTORE=<name>` (foundry
+///     keystore — unattended on macOS via the Keychain, attended password prompts elsewhere) or
+///     `make <target> PRIVATE_KEY=0x<testnet-key>` — both materialize FORGE_AUTH for the script.
 ///  0. Fund via https://faucet.circle.com : Arc testnet USDC -> actor (Arc's asset AND gas token; >= 1 USDC +
 ///     headroom) and Base Sepolia ETH -> actor (relay gas on the destination).
-///  1. Run:  FORGE_AUTH='--account <name> --password-file <pw>' script/config/cctp-hook-demo.sh
-///     (setup on Arc+Base -> cast-send burn-with-hook on Arc -> Iris attest (seconds) -> relayMessageWithHook on
-///      Base -> verify the vault credited the beneficiary). Optional args: <actor> <beneficiary>.
+///  1. Demo (anyone; no deploy needed):  make demo-cctp-hook KEYSTORE=<name>|PRIVATE_KEY=0x<key>
+///     (cast-send burn-with-hook on Arc -> Iris attest (seconds) -> relayMessageWithHook on Base -> verify the
+///      vault credited the beneficiary). Optional args: <actor> <beneficiary>. Targets, in order: DEMO_* env
+///      override -> .cctp-demo.deployment.env (your own stack) -> the canonical live deployment.
+///  1b. Deploy your OWN stack first (optional, once):  make deploy-cctp KEYSTORE=<name>|PRIVATE_KEY=0x<key>
+///      — runs {hookDemoSetup} on Arc+Base and persists the addresses. ONE deployment serves BOTH demos:
+///      the hub is also registered for Ethereum Sepolia, so the transfer demo (make demo-cctp) adopts it.
 ///  2. Manual equivalents (S=script/base/crosschain/CCTPHookDemo.s.sol:CCTPHookDemo):
 ///     - setup:  ETHERSCAN_API_KEY= forge script S --account <name> --broadcast --verify --verifier sourcify --sig "hookDemoSetup(uint256,uint32)" 0 2000
 ///               (blank the key inline: a set ETHERSCAN_API_KEY makes forge pick Etherscan over the sourcify flag)
@@ -59,13 +66,23 @@ contract CCTPHookDemo is DeployCCTPBridgeAdapter {
     uint32 internal constant BASE_DOMAIN = 6;
     address internal constant BASE_USDC = 0x036CbD53842c5426634e7929541eC2318f3dCF7e;
 
+    /// @notice Ethereum Sepolia — the TRANSFER demo's second destination. The unified setup registers it on
+    ///         the hub with a permissionless `destinationCaller` (plain transfers relay via Circle's
+    ///         transmitter directly; Sepolia carries no diamond), so ONE deployment serves BOTH demos.
+    uint256 internal constant SEPOLIA_CHAIN_ID = 11_155_111;
+    uint32 internal constant SEPOLIA_DOMAIN = 0;
+
     //*//////////////////////////////////////////////////////////////////////////
     //                                 SETUP
     //////////////////////////////////////////////////////////////////////////*//
 
-    /// @notice Deploy the Arc source hub (with Base registered as a destination) AND the Base destination diamond
-    ///         + {CCTPHookVault}, in one multichain broadcast. Prints `DEMO-HOOK-SETUP <arcHub> <baseDiamond>
-    ///         <vault>`. admin = msg.sender (the broadcaster), which is the register/configure caller on Arc.
+    /// @notice Deploy the ONE demo stack serving BOTH CCTP demos, in one multichain broadcast: the Arc source
+    ///         hub (registered for Base Sepolia — hook-locked to the diamond — AND Ethereum Sepolia,
+    ///         permissionless) plus the Base destination diamond + {CCTPHookVault}. Prints `DEMO-HOOK-SETUP
+    ///         <arcHub> <baseDiamond> <vault>`. admin = msg.sender (the broadcaster), which is the
+    ///         register/configure caller on Arc. The transfer demo (cctp-usdc-demo-loop.sh) adopts the hub and
+    ///         relays base-destined transfers through the diamond's `relayMessage` (the hook lock applies to
+    ///         every base-destined message this hub burns).
     function hookDemoSetup(uint256 maxFee, uint32 minFinalityThreshold) external {
         address admin = msg.sender;
 
@@ -88,6 +105,10 @@ contract CCTPHookDemo is DeployCCTPBridgeAdapter {
         ICCTPBridgeAdapter(arcHub).registerChainDomain(BASE_CHAIN_ID, BASE_DOMAIN);
         ICCTPBridgeAdapter(arcHub)
             .configureDomain(BASE_DOMAIN, maxFee, minFinalityThreshold, bytes32(uint256(uint160(baseDiamond))));
+        // Ethereum Sepolia for the TRANSFER demo: permissionless destinationCaller — no diamond lives there,
+        // so plain transfers relay via Circle's transmitter directly.
+        ICCTPBridgeAdapter(arcHub).registerChainDomain(SEPOLIA_CHAIN_ID, SEPOLIA_DOMAIN);
+        ICCTPBridgeAdapter(arcHub).configureDomain(SEPOLIA_DOMAIN, maxFee, minFinalityThreshold, bytes32(0));
         vm.stopBroadcast();
 
         console.log(

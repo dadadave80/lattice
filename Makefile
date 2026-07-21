@@ -3,13 +3,14 @@
 # Every target mirrors a real workflow (the CI gates in .github/workflows/test.yml, the
 # storage-layout guard, the fork suites, the demo loops) — `make ci` locally is the same
 # sequence CI runs. This Makefile deliberately does NOT source .env: forge/cast auto-load
-# it themselves, and it holds keystore settings (ETH_KEYSTORE_ACCOUNT) that must not leak
-# into recipe environments.
+# it themselves, and its secrets (API keys, keyed RPC URLs) must not leak into recipe
+# environments.
 #
 # Common knobs:
 #   make test MATCH=CCTPBridgeAdapter     # filter by contract name
 #   make test-path PATH_GLOB=test/fork/CCTPUSDCDemoFork.t.sol
 #   make demo-cctp-hook KEYSTORE=deplKey              # unattended; password from the macOS Keychain
+#   make demo-cctp-hook PRIVATE_KEY=0x<testnet-key>   # any OS; raw testnet key
 
 .DEFAULT_GOAL := help
 
@@ -146,33 +147,51 @@ deploy-local: ## Deploy SCRIPT to local Anvil (SCRIPT=… [SIG='run()'] [ARGS='�
 
 # ----------------------------------------------------------------------- demos
 # Every demo target takes keystore auth either way:
-#   KEYSTORE=<name>              UNATTENDED (macOS): the password is fetched from the Keychain item
-#                                'foundry-<name>' into a 0600 temp file that is deleted on exit —
-#                                zero prompts, nothing durable on disk. One-time setup per keystore:
+#   KEYSTORE=<name>              foundry keystore, ANY OS. On macOS the password is fetched from
+#                                the Keychain item 'foundry-<name>' into a 0600 temp file deleted
+#                                on exit — UNATTENDED, zero prompts. One-time setup per keystore:
 #                                  security add-generic-password -a "$USER" -s foundry-<name> -w
+#                                On other OSes it runs ATTENDED: forge/cast prompt for the
+#                                keystore password at each signing step.
+#   PRIVATE_KEY=0x<key>          ANY OS, unattended: forwarded as FORGE_AUTH='--private-key …'.
+#                                Testnet keys only — the key is visible in local process args.
 #   FORGE_AUTH='--account <ks>'  ATTENDED: forwarded verbatim; forge prompts per signing step.
 #                                (Add --password-file <f> yourself for a manual unattended run.)
-#   make demo-governance KEYSTORE=<name> ARGS='<vault> <ens-name> <actor>'
-#   make demo-cctp       KEYSTORE=<name>       # Arc-hub loop: both destinations; ARGS='<dest>' filters
-#   make demo-cctp-hook  KEYSTORE=<name>       # hook showcase; ARGS='<actor> <beneficiary>' optional
+#   make demo-governance  KEYSTORE=<name> ARGS='<vault> <ens-name> <actor>'
+#   make demo-cctp        KEYSTORE=<name>      # Arc-hub loop: both destinations; ARGS='<dest>' filters
+#   make demo-cctp-hook   KEYSTORE=<name>      # hook showcase; ARGS='<actor> <beneficiary>' optional
+#   make deploy-cctp      KEYSTORE=<name>      # deploy your OWN stack — serves BOTH CCTP demos
 # The hook demo (Arc -> Base Sepolia) showcases CCTP v2 HOOKS: one attested message both moves USDC
-# and auto-credits a beneficiary in a CCTPHookVault.
+# and auto-credits a beneficiary in a CCTPHookVault. Deployment is SEPARATE from the demos: anyone
+# with a funded signer can run demo-cctp-hook against the canonical live stack (README evidence
+# contracts); deploy-cctp deploys ONE fresh stack (Arc hub registered for BOTH destinations + Base
+# diamond + vault) that demo-cctp-hook AND demo-cctp then run against.
 
-# Expands to the Keychain wrapper when KEYSTORE is set, else to nothing — every demo recipe is then a
-# single `$(KEYCHAIN_WRAP) <script> $(ARGS)` line and new demos cannot drift from the pattern.
-KEYCHAIN_WRAP = $(if $(KEYSTORE),script/config/keychain-auth.sh "$(KEYSTORE)")
+# Expands to the auth wrapper: the keystore helper when KEYSTORE is set, else FORGE_AUTH built from
+# PRIVATE_KEY, else nothing (an ambient FORGE_AUTH passes through) — every demo recipe is then a
+# single `$(AUTH_WRAP) <script> $(ARGS)` line and new demos cannot drift from the pattern.
+# PRIVATE_KEY counts ONLY when given on the make command line: GNU make imports shell-exported env
+# vars as make variables, and an ambient `export PRIVATE_KEY=…` (common for other EVM tooling, and
+# possibly a MAINNET key) must never silently become the signer — the same ambient-auth hijack class
+# the header bans for ETH_KEYSTORE_ACCOUNT. Precedence: KEYSTORE > PRIVATE_KEY > your FORGE_AUTH.
+CLI_PRIVATE_KEY = $(if $(filter command line,$(origin PRIVATE_KEY)),$(PRIVATE_KEY))
+AUTH_WRAP = $(if $(KEYSTORE),script/config/keychain-auth.sh "$(KEYSTORE)",$(if $(CLI_PRIVATE_KEY),FORGE_AUTH='--private-key $(CLI_PRIVATE_KEY)',))
 
 .PHONY: demo-governance
-demo-governance: ## Governance demo loop — KEYSTORE=<name> (or FORGE_AUTH=…) ARGS='<vault> <ens> <actor>'
-	@$(KEYCHAIN_WRAP) script/config/governance-demo-loop.sh $(ARGS)
+demo-governance: ## Governance demo loop — KEYSTORE=/PRIVATE_KEY= ARGS='<vault> <ens> <actor>'
+	@$(AUTH_WRAP) script/config/governance-demo-loop.sh $(ARGS)
 
 .PHONY: demo-cctp
-demo-cctp: ## CCTP Arc-hub demo loop — KEYSTORE=<name> (or FORGE_AUTH=…); ARGS='<dest>' filters
-	@$(KEYCHAIN_WRAP) script/config/cctp-usdc-demo-loop.sh $(ARGS)
+demo-cctp: ## CCTP Arc-hub demo loop — KEYSTORE=/PRIVATE_KEY=; ARGS='<dest>' filters
+	@$(AUTH_WRAP) script/config/cctp-usdc-demo-loop.sh $(ARGS)
+
+.PHONY: deploy-cctp
+deploy-cctp: ## Deploy ONE CCTP demo stack (Arc hub + Base diamond + vault) serving demo-cctp AND demo-cctp-hook — KEYSTORE=/PRIVATE_KEY=
+	@$(AUTH_WRAP) script/config/cctp-hook-demo.sh --deploy-only $(ARGS)
 
 .PHONY: demo-cctp-hook
-demo-cctp-hook: ## CCTP v2 hook demo (Arc->Base auto-credit vault) — KEYSTORE=<name> (or FORGE_AUTH=…)
-	@$(KEYCHAIN_WRAP) script/config/cctp-hook-demo.sh $(ARGS)
+demo-cctp-hook: ## CCTP v2 hook demo vs the live stack (Arc->Base auto-credit) — KEYSTORE=/PRIVATE_KEY=
+	@$(AUTH_WRAP) script/config/cctp-hook-demo.sh $(ARGS)
 
 # ------------------------------------------------------------------------ help
 
