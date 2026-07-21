@@ -33,8 +33,13 @@ import {console} from "forge-std/Script.sol";
 ///      vault credited the beneficiary). Optional args: <actor> <beneficiary>. Targets, in order: DEMO_* env
 ///      override -> .cctp-demo.deployment.env (your own stack) -> the canonical live deployment.
 ///  1b. Deploy your OWN stack first (optional, once):  make deploy-cctp KEYSTORE=<name>|PRIVATE_KEY=0x<key>
-///      — runs {hookDemoSetup} on Arc+Base and persists the addresses. ONE deployment serves BOTH demos:
-///      the hub is also registered for Ethereum Sepolia, so the transfer demo (make demo-cctp) adopts it.
+///      — runs {hookDemoSetup} on Arc+Base and persists the addresses. ONE deployment serves ALL the demos:
+///      the hub is also registered for Ethereum Sepolia (the transfer demo adopts it), and the Base diamond
+///      has Arc registered as a RETURN destination (the round trip burns back through it).
+///  1c. Round trip (make demo-cctp-roundtrip, script/config/cctp-roundtrip-demo.sh): burn Arc -> Base (cast,
+///      mint to the actor via {hookDemoRelayPlain}) then Base -> Arc ({hookDemoReturnBurn} under forge — Base
+///      USDC is a normal ERC-20 — attested after Base's L1 finality, ~13-19 min free tier, then cast-send
+///      `relayMessage` on the Arc hub: the Arc NODE executes the native-USDC mint revm cannot simulate).
 ///  2. Manual equivalents (S=script/base/crosschain/CCTPHookDemo.s.sol:CCTPHookDemo):
 ///     - setup:  ETHERSCAN_API_KEY= forge script S --account <name> --broadcast --verify --verifier sourcify --sig "hookDemoSetup(uint256,uint32)" 0 2000
 ///               (blank the key inline: a set ETHERSCAN_API_KEY makes forge pick Etherscan over the sourcify flag)
@@ -68,7 +73,7 @@ contract CCTPHookDemo is DeployCCTPBridgeAdapter {
 
     /// @notice Ethereum Sepolia — the TRANSFER demo's second destination. The unified setup registers it on
     ///         the hub with a permissionless `destinationCaller` (plain transfers relay via Circle's
-    ///         transmitter directly; Sepolia carries no diamond), so ONE deployment serves BOTH demos.
+    ///         transmitter directly; Sepolia carries no diamond), so ONE deployment serves ALL the demos.
     uint256 internal constant SEPOLIA_CHAIN_ID = 11_155_111;
     uint32 internal constant SEPOLIA_DOMAIN = 0;
 
@@ -76,7 +81,7 @@ contract CCTPHookDemo is DeployCCTPBridgeAdapter {
     //                                 SETUP
     //////////////////////////////////////////////////////////////////////////*//
 
-    /// @notice Deploy the ONE demo stack serving BOTH CCTP demos, in one multichain broadcast: the Arc source
+    /// @notice Deploy the ONE demo stack serving ALL the CCTP demos, in one multichain broadcast: the Arc source
     ///         hub (registered for Base Sepolia — hook-locked to the diamond — AND Ethereum Sepolia,
     ///         permissionless) plus the Base destination diamond + {CCTPHookVault}. Prints `DEMO-HOOK-SETUP
     ///         <arcHub> <baseDiamond> <vault>`. admin = msg.sender (the broadcaster), which is the
@@ -86,11 +91,12 @@ contract CCTPHookDemo is DeployCCTPBridgeAdapter {
     function hookDemoSetup(uint256 maxFee, uint32 minFinalityThreshold) external {
         address admin = msg.sender;
 
-        // Base destination FIRST (inbound relay only -> no domain registration): the diamond + auto-credit
-        // vault. We need the diamond's address to lock the mint to it below.
+        // Base destination FIRST: the diamond + auto-credit vault, with Arc registered ON the diamond for the
+        // RETURN leg (Base -> Arc) — one deployment moves USDC in both directions. We need the diamond's
+        // address to lock the outbound mint to it below.
         vm.createSelectFork(BASE_ALIAS);
         vm.startBroadcast();
-        (address baseDiamond, address vault) = _setupHookDest(admin);
+        (address baseDiamond, address vault) = _setupHookDestWithReturn(admin, maxFee, minFinalityThreshold);
         vm.stopBroadcast();
 
         // Arc source hub: deploy + register Base, configuring its `destinationCaller` to the Base diamond so
@@ -129,15 +135,34 @@ contract CCTPHookDemo is DeployCCTPBridgeAdapter {
         vault = address(new CCTPHookVault(exec, BASE_USDC));
     }
 
+    /// @notice {_setupHookDest} plus the RETURN leg: registers Arc as a destination ON the Base diamond so the
+    ///         same deployment also burns USDC Base -> Arc (`make demo-cctp-roundtrip`). The return domain is
+    ///         configured PERMISSIONLESS (`destinationCaller == 0`) — no hook rides back toward Arc, so the
+    ///         Arc-side mint may be relayed by anyone (the demo cast-sends it through the Arc hub's
+    ///         `relayMessage`; revm cannot simulate Arc's native-USDC mint, so forge never drives it).
+    /// @dev The register/configure sub-calls are admin-gated: under `vm.startBroadcast()` the caller is the
+    ///      broadcaster (== `admin`); a test must pass the CALLING contract as `admin`.
+    function _setupHookDestWithReturn(address admin, uint256 maxFee, uint32 minFinality)
+        public
+        returns (address diamond, address vault)
+    {
+        (diamond, vault) = _setupHookDest(admin);
+        ICCTPBridgeAdapter(diamond).registerChainDomain(ARC_CHAIN_ID, ARC_DOMAIN);
+        ICCTPBridgeAdapter(diamond).configureDomain(ARC_DOMAIN, maxFee, minFinality, bytes32(0));
+    }
+
     //*//////////////////////////////////////////////////////////////////////////
     //                       BROADCAST-FREE ENCODING HELPERS
     //////////////////////////////////////////////////////////////////////////*//
 
-    /// @notice Print `DEMO-HOOK-RECIPIENT <hex>` — the ERC-7930 recipient for the burn: the vault on Base, so
-    ///         CCTP mints the USDC into the vault (the vault's BACKING invariant requires this).
-    function hookDemoRecipient(address vault) external pure {
+    /// @notice Print `DEMO-HOOK-RECIPIENT <hex>` — the ERC-7930 recipient bytes for `recipient` on Base: the
+    ///         VAULT for the hook showcase (CCTP must mint into the vault — its BACKING invariant), or the
+    ///         ACTOR for the round trip's plain outbound transfer.
+    function hookDemoRecipient(address recipient) external pure {
         console.log(
-            string.concat("DEMO-HOOK-RECIPIENT ", vm.toString(InteroperableAddress.formatEvmV1(BASE_CHAIN_ID, vault)))
+            string.concat(
+                "DEMO-HOOK-RECIPIENT ", vm.toString(InteroperableAddress.formatEvmV1(BASE_CHAIN_ID, recipient))
+            )
         );
     }
 
@@ -184,5 +209,69 @@ contract CCTPHookDemo is DeployCCTPBridgeAdapter {
     function hookDemoArcBalance(address actor) external {
         vm.createSelectFork(ARC_ALIAS);
         console.log(string.concat("DEMO-HOOK-ARCBAL ", vm.toString(IERC20(ARC_USDC).balanceOf(actor))));
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                      RETURN LEG (BASE -> ARC ROUND TRIP)
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice Thrown when the actor's Base USDC balance is below `amount` — the return burn never pulls
+    ///         partially.
+    error CCTPHookDemo__InsufficientBaseUSDC(uint256 balance, uint256 required);
+
+    /// @notice Print `DEMO-HOOK-RETURN-READY 0|1` — whether `diamond` (on Base) has Arc registered as a
+    ///         destination, i.e. whether this stack supports the round trip (broadcast-free; invoke with
+    ///         `--sender`). Stacks deployed before the round-trip setup read 0 until their admin runs
+    ///         `registerChainDomain(5042002, 26)` + `configureDomain(26, ...)` on the Base diamond.
+    function hookDemoReturnReady(address diamond) external {
+        vm.createSelectFork(BASE_ALIAS);
+        bool ready;
+        try ICCTPBridgeAdapter(diamond).isChainRegistered(ARC_CHAIN_ID) returns (bool r) {
+            ready = r;
+        } catch {}
+        console.log(string.concat("DEMO-HOOK-RETURN-READY ", ready ? "1" : "0"));
+    }
+
+    /// @notice Read `actor`'s Base Sepolia USDC balance (broadcast-free; invoke with `--sender`). Prints
+    ///         `DEMO-HOOK-BASEBAL <balance>` — the outbound leg's mint target and the return leg's fund check.
+    function hookDemoBaseBalance(address actor) external {
+        vm.createSelectFork(BASE_ALIAS);
+        console.log(string.concat("DEMO-HOOK-BASEBAL ", vm.toString(IERC20(BASE_USDC).balanceOf(actor))));
+    }
+
+    /// @notice Relay an attested PLAIN (hook-less) message on Base through the destination diamond's
+    ///         permissionless `relayMessage` — the outbound round-trip leg: the hub locks every base-destined
+    ///         message to this diamond (`destinationCaller`), so even plain transfers relay through it; the
+    ///         mint goes to the message's encoded recipient. Prints `DEMO-HOOK-RELAY-PLAIN ok`.
+    function hookDemoRelayPlain(address baseDiamond, bytes calldata message, bytes calldata attestation) external {
+        vm.createSelectFork(BASE_ALIAS);
+        vm.startBroadcast();
+        ICCTPBridgeAdapter(baseDiamond).relayMessage(message, attestation);
+        vm.stopBroadcast();
+        console.log("DEMO-HOOK-RELAY-PLAIN ok");
+    }
+
+    /// @notice RETURN-LEG burn (BASE fork, forge-broadcastable — Base USDC is a normal ERC-20, unlike Arc's
+    ///         precompile-backed native USDC): burns `amount` Base USDC through the Base diamond toward
+    ///         `msg.sender` on Arc. `--slow` recommended (approve + burn are two txs). Prints
+    ///         `DEMO-HOOK-RETURN-BURN <actor> <amount>`.
+    function hookDemoReturnBurn(address diamond, uint256 amount) external {
+        address actor = msg.sender;
+        vm.createSelectFork(BASE_ALIAS);
+        vm.startBroadcast();
+        returnBurnStep(diamond, actor, amount);
+        vm.stopBroadcast();
+        console.log(string.concat("DEMO-HOOK-RETURN-BURN ", vm.toString(actor), " ", vm.toString(amount)));
+    }
+
+    /// @notice One broadcast-free return burn: balance-checks `actor` on Base USDC, approves the diamond for
+    ///         exactly `amount`, and burns toward `actor` on Arc (ERC-7930 recipient). Tests drive this
+    ///         directly; {hookDemoReturnBurn} drives it under broadcast with `actor == msg.sender`.
+    function returnBurnStep(address diamond, address actor, uint256 amount) public {
+        uint256 balance = IERC20(BASE_USDC).balanceOf(actor);
+        if (balance < amount) revert CCTPHookDemo__InsufficientBaseUSDC(balance, amount);
+
+        IERC20(BASE_USDC).approve(diamond, amount);
+        ICCTPBridgeAdapter(diamond).depositForBurn(amount, InteroperableAddress.formatEvmV1(ARC_CHAIN_ID, actor));
     }
 }

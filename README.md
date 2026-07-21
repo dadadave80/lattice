@@ -215,8 +215,8 @@ diamond's own Governor + TimelockController, with every step cranked by
 
 ## Live cross-chain USDC demos (Circle CCTP v2 · Arc testnet)
 
-Two live demos drive real USDC through Lattice diamonds with Circle's CCTP v2, with **Arc testnet as
-the source chain** — Arc's sub-second finality means Iris attests in seconds, not minutes:
+Three live demos drive real USDC through Lattice diamonds with Circle's CCTP v2, with **Arc testnet
+as the source chain** — Arc's sub-second finality means Iris attests in seconds, not minutes:
 
 - **Arc-hub transfer** (`make demo-cctp`): one hub diamond on Arc burns USDC toward BOTH
   destinations (Ethereum Sepolia + Base Sepolia); each attested message is relayed and minted on the
@@ -226,6 +226,11 @@ the source chain** — Arc's sub-second finality means Iris attests in seconds, 
   destination diamond's `relayMessageWithHook` mints to a [`CCTPHookVault`](src/examples/crosschain/CCTPHookVault.sol)
   **and**, in the same tx, the diamond's `CCTPHookExecutor` credits the beneficiary — one attested
   message both moves funds and executes logic.
+- **Round trip** (`make demo-cctp-roundtrip`): USDC moves Arc → Base **and back**, through Lattice
+  diamonds on both ends of both legs. Outbound attests in seconds (Arc finality); the return leg
+  attests after Base Sepolia's L1 finality (~13–19 min on the free tier — the run journal makes
+  Ctrl-C safe, re-run to resume). The return mint into Arc is `cast`-sent through the hub's
+  `relayMessage`: the Arc node executes the native-USDC precompile that local simulation cannot.
 
 | | |
 |---|---|
@@ -251,9 +256,10 @@ AND Arc's gas token, from https://faucet.circle.com) plus a little Base Sepolia 
 make demo-cctp-hook PRIVATE_KEY=0x<testnet-key>   # or KEYSTORE=<foundry-keystore-name>
 ```
 
-To deploy your **own** stack instead (once — ONE deployment serves BOTH demos: the Arc hub is
-registered for Ethereum Sepolia and Base Sepolia, so `make demo-cctp` adopts it as its transfer hub
-and `make demo-cctp-hook` gets its hub + diamond + vault):
+To deploy your **own** stack instead (once — ONE deployment serves ALL the demos: the Arc hub is
+registered for Ethereum Sepolia and Base Sepolia, `make demo-cctp` adopts it as its transfer hub,
+`make demo-cctp-hook` gets its hub + diamond + vault, and the Base diamond carries the Arc return
+registration `make demo-cctp-roundtrip` burns back through):
 
 ```sh
 make deploy-cctp PRIVATE_KEY=0x<testnet-key>

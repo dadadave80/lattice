@@ -80,8 +80,8 @@
 #   DST_SETTLE_SECONDS     Post-relay settle sleep (default 10).
 #   DIAMOND      Adopt a pre-deployed Arc hub (skips the setup crank). When unset (and this loop's
 #                journal has no hub), the UNIFIED demo deployment (.cctp-demo.deployment.env, written
-#                by `make deploy-cctp`) is adopted before self-deploying — ONE deployment serves both
-#                CCTP demos.
+#                by `make deploy-cctp`) is adopted before self-deploying — ONE deployment serves all
+#                the CCTP demos.
 #   BASE_DIAMOND The Lattice diamond on Base Sepolia to relay base-destined transfers through. A
 #                unified-deployment hub LOCKS base messages to its diamond (destinationCaller), so
 #                the relay must go via the diamond's permissionless relayMessage; defaults from the
@@ -304,7 +304,7 @@ journal_set() {
     mv "${tmp}" "${JOURNAL}"
 }
 
-# ---- unified demo deployment (ONE deployment serves BOTH CCTP demos) ----------
+# ---- unified demo deployment (ONE deployment serves ALL the CCTP demos) -------
 # `make deploy-cctp` (the hook script's --deploy-only) writes a shared deploy journal whose ARC_HUB is
 # registered for BOTH destinations. Adopt it as the transfer hub when neither a DIAMOND env override
 # nor this loop's own journal names one. Its hub LOCKS base-destined messages to its Base diamond

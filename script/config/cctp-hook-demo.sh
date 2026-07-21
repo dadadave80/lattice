@@ -57,9 +57,10 @@ ARC_EXPLORER="https://testnet.arcscan.app"
 # Blockscout, not basescan: the demo verifies via Sourcify, which Blockscout reads (basescan does not).
 BASE_EXPLORER="https://base-sepolia.blockscout.com"
 JOURNAL=".cctp-demo.hook.env"
-# ONE deployment serves BOTH CCTP demos: this journal (written by --deploy-only / `make deploy-cctp`)
-# is also read by cctp-usdc-demo-loop.sh, which adopts its ARC_HUB as the transfer hub and relays
-# base-destined transfers through its BASE_DIAMOND (the hub locks base messages to that diamond).
+# ONE deployment serves ALL the CCTP demos: this journal (written by --deploy-only / `make
+# deploy-cctp`) is also read by cctp-usdc-demo-loop.sh (adopts ARC_HUB as the transfer hub, relays
+# base-destined transfers through BASE_DIAMOND) and cctp-roundtrip-demo.sh (burns out through the
+# hub and back through the diamond).
 DEPLOY_JOURNAL=".cctp-demo.deployment.env"
 # The canonical LIVE deployment (the README evidence contracts) — the demo's default when neither
 # an env override nor a deploy journal names another. Update together with the README evidence table.
@@ -328,9 +329,10 @@ if (( DEPLOY_ONLY == 1 )); then
     ok "  diamond (Base): ${BASE_EXPLORER}/address/${BASE_DIAMOND}  <- relays + fires the hook"
     ok "  vault (Base):   ${BASE_EXPLORER}/address/${VAULT}  <- receives the mint, credits the beneficiary"
     echo
-    ok "deployment recorded in ${DEPLOY_JOURNAL} — ONE deployment serves BOTH demos:"
-    ok "  'make demo-cctp-hook' runs against it, and 'make demo-cctp' adopts its Arc hub"
-    ok "  (the hub is registered for Ethereum Sepolia AND Base Sepolia)."
+    ok "deployment recorded in ${DEPLOY_JOURNAL} — ONE deployment serves ALL the demos:"
+    ok "  'make demo-cctp-hook' runs against it, 'make demo-cctp' adopts its Arc hub (registered"
+    ok "  for Ethereum Sepolia AND Base Sepolia), and 'make demo-cctp-roundtrip' burns out through"
+    ok "  the hub and back through the Base diamond (Arc is registered on it as a return leg)."
     info "next: fund the actor (https://faucet.circle.com -> Arc testnet USDC, the asset AND gas; plus Base Sepolia ETH"
     info "  for relay gas), then:  make demo-cctp-hook KEYSTORE=<name>    (or PRIVATE_KEY=0x<testnet-key>)"
     exit 0
@@ -396,6 +398,13 @@ if [[ -n "${j_benef}" && "${j_benef}" != "${BENEFICIARY}" ]]; then
 fi
 [[ -n "${j_benef}" ]] && BENEFICIARY="${j_benef}"
 
+# Same for the amount: the burn and the delta verification are bound to the journaled value.
+j_amount="$(journal_get AMOUNT)"
+if [[ -n "${j_amount}" && "${j_amount}" != "${AMOUNT}" ]]; then
+    warn "resuming with the journaled amount ${j_amount} (overrides the requested ${AMOUNT})."
+    AMOUNT="${j_amount}"
+fi
+
 # ---- 2/3. burn-with-hook on Arc (cast send; forge cannot simulate Arc USDC moves) ----
 # Arc USDC is spent ONLY by the approve+burn, so the fund check is scoped to the not-yet-burned case (a resume
 # after a successful burn must not re-demand funds it already spent).
@@ -444,12 +453,16 @@ if [[ -z "${BURN_TX}" ]]; then
         [[ "${CREDIT_BEFORE}" =~ ^[0-9]+$ ]] || { err "could not read the pre-run vault credit baseline (nothing spent yet); re-run when the Base RPC cooperates."; exit 1; }
         journal_set DEPLOYMENT "${cur_dep}"
         journal_set BENEFICIARY "${BENEFICIARY}"
+        journal_set AMOUNT "${AMOUNT}"
         journal_set CREDIT_BEFORE "${CREDIT_BEFORE}"
     fi
     t0=${SECONDS}
     info "approving ${AMOUNT} Arc USDC to the hub..."
+    : > "${ERR_FILE}"
+    # stderr through the scrub path — a transport error embeds the API-keyed RPC URL.
     # shellcheck disable=SC2086
-    cast send "${ARC_USDC}" "approve(address,uint256)" "${ARC_HUB}" "${AMOUNT}" ${FORGE_AUTH} --rpc-url "${ARC_RPC}" >/dev/null
+    cast send "${ARC_USDC}" "approve(address,uint256)" "${ARC_HUB}" "${AMOUNT}" ${FORGE_AUTH} --rpc-url "${ARC_RPC}" >/dev/null 2>"${ERR_FILE}" \
+        || { scrub "$(cat "${ERR_FILE}")"; err "approve failed; nothing was burned. Fix the cause and re-run."; exit 1; }
     info "burning ${AMOUNT} Arc USDC -> Base with hook (target=vault, payload=beneficiary)..."
     journal_set BURN_ATTEMPTED 1 # write-ahead: a crash after this means "check arcscan before re-running"
     rc=0
