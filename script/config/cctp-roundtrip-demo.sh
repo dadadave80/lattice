@@ -161,7 +161,11 @@ if [[ -z "${ACTOR}" ]]; then
     [[ "${ACTOR}" =~ ^0x[0-9a-fA-F]{40}$ ]] || { err "derived signer is not an address: '${ACTOR}'"; exit 2; }
     info "derived signer ${ACTOR} from the FORGE_AUTH keystore."
 fi
-info "actor=${ACTOR}  amount=${AMOUNT} (out AND back)"
+case "${LEGS}" in
+    both) info "actor=${ACTOR}  amount=${AMOUNT} (out AND back)" ;;
+    out) info "actor=${ACTOR}  amount=${AMOUNT} (one way: Arc -> Base)" ;;
+    back) info "actor=${ACTOR}  amount=${AMOUNT} (one way: Base -> Arc)" ;;
+esac
 
 # ---- resolve the deployment (never deploys; `make deploy-cctp` does) -----------
 if [[ -n "${DEMO_ARC_HUB:-}" || -n "${DEMO_BASE_DIAMOND:-}" ]]; then
@@ -524,11 +528,17 @@ delta=$(( arc_bal - ARC_BAL_BEFORE ))
 
 echo
 if (( delta > 0 && delta + ARC_GAS_ALLOWANCE >= AMOUNT )); then
-    ok "ROUND TRIP COMPLETE: ${AMOUNT} USDC left Arc and came back (Arc delta +${delta}; the relay's own"
-    ok "  gas nets out of the mint — Arc gas IS USDC)."
-    ok "  out:  burn ${ARC_EXPLORER}/tx/${OUT_BURN_TX}"
-    OUT_RELAY_TX="$(journal_get OUT_RELAY_TX)"
-    [[ -n "${OUT_RELAY_TX}" ]] && ok "        relay ${BASE_EXPLORER}/tx/${OUT_RELAY_TX}"
+    # Leg-aware closing banner: a '--legs back' run never had an out leg — nothing "left Arc".
+    if [[ "${LEGS}" == "back" ]]; then
+        ok "ONE-WAY COMPLETE (--legs back): ${AMOUNT} USDC units moved Base -> Arc to ${ACTOR} (Arc delta"
+        ok "  +${delta}; the relay's own gas nets out of the mint — Arc gas IS USDC)."
+    else
+        ok "ROUND TRIP COMPLETE: ${AMOUNT} USDC left Arc and came back (Arc delta +${delta}; the relay's own"
+        ok "  gas nets out of the mint — Arc gas IS USDC)."
+        ok "  out:  burn ${ARC_EXPLORER}/tx/${OUT_BURN_TX}"
+        OUT_RELAY_TX="$(journal_get OUT_RELAY_TX)"
+        [[ -n "${OUT_RELAY_TX}" ]] && ok "        relay ${BASE_EXPLORER}/tx/${OUT_RELAY_TX}"
+    fi
     ok "  back: burn ${BASE_EXPLORER}/tx/${BACK_BURN_TX}"
     BACK_RELAY_TX="$(journal_get BACK_RELAY_TX)"
     [[ -n "${BACK_RELAY_TX}" ]] && ok "        relay ${ARC_EXPLORER}/tx/${BACK_RELAY_TX}"
