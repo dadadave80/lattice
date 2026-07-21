@@ -16,10 +16,12 @@
 # WHY ARC AS THE SOURCE HUB
 #   Standard (free) CCTP attests only after SOURCE-chain hard finality. Sepolia
 #   finality is ~13-19 min; Arc has sub-second finality, so an Arc-sourced free
-#   burn attests in SECONDS. Relays run on the plain-EOA destinations (Sepolia /
-#   Base Sepolia) via Circle's MessageTransmitterV2 directly -- never into Arc,
-#   where the native-USDC mint path routes through a node precompile that forge's
-#   revm cannot simulate (see the note in crank_burn).
+#   burn attests in SECONDS. Relays run on the destinations (Sepolia / Base
+#   Sepolia) -- never into Arc, where the native-USDC mint path routes through a
+#   node precompile that forge's revm cannot simulate (see the note in
+#   crank_burn). Sepolia relays call Circle's MessageTransmitterV2 directly; base
+#   relays route through the known Lattice BASE_DIAMOND's relayMessage when one
+#   is known (a unified deployment's hub LOCKS base messages to its diamond).
 #
 # HOW IT WORKS
 #   Each iteration reads a broadcast-free status line
@@ -30,7 +32,8 @@
 #     1 -> print faucet instructions and exit (funding is never automated)
 #     2 -> record the destination baseline, then burn on Arc via `cast send`
 #          (approve + depositForBurn; NOT forge script — see crank_burn for why)
-#     3 -> fetch the Iris attestation (poll), then relay on the dest (cctpDemoRelay)
+#     3 -> fetch the Iris attestation (poll), then relay on the dest (cctpDemoRelay
+#          transmitter-direct, or cctpDemoRelayVia through BASE_DIAMOND -- see crank_relay)
 #     done==1 -> assert the credited amount and finish that destination.
 #   With no destination argument the loop drives BOTH destinations sequentially
 #   (sepolia to DELIVERED, then base) in ONE invocation; an optional 2nd arg
@@ -75,7 +78,14 @@
 #   IRIS_POLL_SECONDS      Iris poll interval (default 5; Arc attests in seconds).
 #   ATTEST_TIMEOUT_SECONDS Iris attestation wait cap (default 300 = 5m).
 #   DST_SETTLE_SECONDS     Post-relay settle sleep (default 10).
-#   DIAMOND      Adopt a pre-deployed Arc hub (skips the setup crank).
+#   DIAMOND      Adopt a pre-deployed Arc hub (skips the setup crank). When unset (and this loop's
+#                journal has no hub), the UNIFIED demo deployment (.cctp-demo.deployment.env, written
+#                by `make deploy-cctp`) is adopted before self-deploying — ONE deployment serves all
+#                the CCTP demos.
+#   BASE_DIAMOND The Lattice diamond on Base Sepolia to relay base-destined transfers through. A
+#                unified-deployment hub LOCKS base messages to its diamond (destinationCaller), so
+#                the relay must go via the diamond's permissionless relayMessage; defaults from the
+#                unified deploy journal, transmitter-direct when unknown.
 #   MAX_ITERS    Loop iteration cap across all driven destinations (default 50).
 #   MAX_WALL_SECONDS  Wall-clock cap in seconds (default 14400 = 4h).
 #   CRANK_SETTLE_SECONDS  Post-crank settle sleep (default 8; Arc mines fast).
@@ -114,7 +124,9 @@ warn() { echo "${C_WARN}[cctp-loop]${C_OFF} $*" >&2; }
 err()  { echo "${C_ERR}[cctp-loop] ERROR:${C_OFF} $*" >&2; }
 
 usage() {
-    sed -n '2,88p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+    # Print the WHOLE header comment (everything between the shebang and `set -euo pipefail`) — a
+    # hardcoded line range silently drops newly added ENVIRONMENT knobs off the end of --help.
+    awk 'NR == 1 { next } /^set -euo pipefail/ { exit } { print }' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
     exit "${1:-0}"
 }
 
@@ -291,6 +303,28 @@ journal_set() {
     printf '%s=%s\n' "${key}" "${val}" >> "${tmp}"
     mv "${tmp}" "${JOURNAL}"
 }
+
+# ---- unified demo deployment (ONE deployment serves ALL the CCTP demos) -------
+# `make deploy-cctp` (the hook script's --deploy-only) writes a shared deploy journal whose ARC_HUB is
+# registered for BOTH destinations. Adopt it as the transfer hub when neither a DIAMOND env override
+# nor this loop's own journal names one. Its hub LOCKS base-destined messages to its Base diamond
+# (destinationCaller — hook messages must not be consumable hook-lessly), so base relays route
+# through the diamond's permissionless relayMessage: BASE_DIAMOND resolves from the same journal
+# (env-overridable) and crank_relay picks the path.
+UNIFIED_DEPLOY_JOURNAL="${REPO_ROOT}/.cctp-demo.deployment.env"
+unified_get() { [[ -f "${UNIFIED_DEPLOY_JOURNAL}" ]] && sed -n "s/^$1=//p" "${UNIFIED_DEPLOY_JOURNAL}" | tail -1 || true; }
+if [[ -z "${ENV_DIAMOND}" && -z "$(journal_get DIAMOND)" ]]; then
+    _unified_hub="$(unified_get ARC_HUB)"
+    if [[ "${_unified_hub}" =~ ^0x[0-9a-fA-F]{40}$ ]]; then
+        ENV_DIAMOND="${_unified_hub}"
+        info "adopting the unified demo deployment's Arc hub ${ENV_DIAMOND} ('make deploy-cctp'; ${UNIFIED_DEPLOY_JOURNAL})."
+    fi
+fi
+# Precedence: env override -> this loop's OWN journal (pinned at burn time — an in-flight base burn
+# is locked to ITS diamond and must survive the unified journal being replaced) -> unified journal.
+BASE_DIAMOND="${BASE_DIAMOND:-$(journal_get BASE_DIAMOND)}"
+BASE_DIAMOND="${BASE_DIAMOND:-$(unified_get BASE_DIAMOND)}"
+[[ -z "${BASE_DIAMOND}" || "${BASE_DIAMOND}" =~ ^0x[0-9a-fA-F]{40}$ ]] || { err "BASE_DIAMOND is not a 20-byte address: '${BASE_DIAMOND}'"; exit 2; }
 
 # ---- parsed status + loop state ----------------------------------------------
 ST=""; WAIT=""; DONE=""; SRCBAL=""; DSTBAL=""
@@ -520,6 +554,13 @@ crank_burn() {
     journal_set "${DEST_PREFIX}_DST_BASELINE" "${DSTBAL}"; DST_BASELINE="${DSTBAL}"
     journal_set "${DEST_PREFIX}_BURN_AMOUNT" "${AMOUNT}"; BURN_AMOUNT="${AMOUNT}"
     journal_set "${DEST_PREFIX}_BURN_MAXFEE" "${MAXFEE}"; BURN_MAXFEE="${MAXFEE}"
+    # Pin the stack this burn is bound to into the loop's OWN journal: a base-destined message is
+    # permanently locked to the hub's Base diamond (destinationCaller), and the unified deploy
+    # journal it was adopted from may be replaced mid-flight — the own-journal record is what a
+    # resume trusts (load_diamond and the BASE_DIAMOND resolution both rank it above the unified
+    # journal).
+    journal_set DIAMOND "${DIAMOND}"
+    if [[ -n "${BASE_DIAMOND}" ]]; then journal_set BASE_DIAMOND "${BASE_DIAMOND}"; fi
 
     # 1. ERC-7930 recipient bytes (broadcast-free helper; never re-encoded in shell).
     fetch_recipient || return 1
@@ -623,17 +664,26 @@ poll_attestation() {
     return 1
 }
 
-# Relay the attested message on the CURRENT destination (destination fork only). Calls Circle's
-# MessageTransmitterV2.receiveMessage DIRECTLY (the destinations carry no diamond). Retries twice.
+# Relay the attested message on the CURRENT destination (destination fork only). Sepolia (and stacks
+# with no known Base diamond) call Circle's MessageTransmitterV2.receiveMessage DIRECTLY; base relays
+# route through the known BASE_DIAMOND's permissionless relayMessage — a unified-deployment hub LOCKS
+# base messages to that diamond (destinationCaller), and for unlocked (caller=0) messages the diamond
+# is a harmless passthrough (the mint still goes to the encoded recipient). Retries twice.
 # No --slow here: relay is a SINGLE tx on a destination chain, so it can never exceed the one-in-flight cap.
 crank_relay() {
     require_auth || return 1
     local attempt=0 rc
+    local sig_args
+    if [[ "${DEST}" == "base" && -n "${BASE_DIAMOND}" ]]; then
+        info "relaying via the Base diamond ${BASE_DIAMOND} (base messages from a unified hub are locked to it)."
+        sig_args=(--sig 'cctpDemoRelayVia(address,string,bytes,bytes)' "${BASE_DIAMOND}" "${DEST}" "${MESSAGE}" "${ATTESTATION}")
+    else
+        sig_args=(--sig 'cctpDemoRelay(string,bytes,bytes)' "${DEST}" "${MESSAGE}" "${ATTESTATION}")
+    fi
     while (( attempt < 3 )); do
         rc=0
         # shellcheck disable=SC2086
-        forge script "${SCRIPT_TARGET}" \
-            --sig 'cctpDemoRelay(string,bytes,bytes)' "${DEST}" "${MESSAGE}" "${ATTESTATION}" \
+        forge script "${SCRIPT_TARGET}" "${sig_args[@]}" \
             ${FORGE_AUTH} --broadcast || rc=$?
         if (( rc == 0 )); then
             journal_set "${DEST_PREFIX}_RELAYED" 1; RELAYED=1

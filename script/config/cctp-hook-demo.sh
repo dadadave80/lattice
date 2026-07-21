@@ -8,19 +8,34 @@
 # fetched, then relayMessageWithHook on Base Sepolia MINTS the USDC into a vault
 # AND, in the same tx, credits the beneficiary via the diamond's CCTPHookExecutor.
 #
-# Unlike the plain Arc-hub loop this is LINEAR (setup -> burn -> attest -> relay ->
-# verify), because a hook demo runs once. State is journaled to .cctp-demo.hook.env
-# (gitignored) so a re-run resumes instead of re-deploying or re-burning.
+# DEPLOYMENT IS SEPARATE FROM THE DEMO — two modes:
+#   demo (default)   LINEAR burn -> attest -> relay -> verify against an EXISTING
+#                    deployment; never deploys. Anyone with a funded signer can run
+#                    it: with nothing configured it targets the CANONICAL live
+#                    deployment (the README evidence contracts). Resolution order:
+#                      1. env override:   DEMO_ARC_HUB= DEMO_BASE_DIAMOND= DEMO_VAULT= (all three)
+#                      2. deploy journal: .cctp-demo.deployment.env (written by --deploy-only)
+#                      3. canonical live deployment (CANON_* constants below)
+#                    Run state is journaled to .cctp-demo.hook.env (gitignored) so a
+#                    re-run resumes instead of re-burning.
+#   --deploy-only    deploy a FRESH Arc hub + Base diamond + vault, persist the
+#                    addresses to the deploy journal (never auto-deleted), and exit;
+#                    later demo runs use them. Refuses while a deploy journal exists
+#                    (rm it to deploy again).
 #
 # USAGE
-#   script/config/cctp-hook-demo.sh [<actor-address>] [<beneficiary-address>]
-#     <actor>       OPTIONAL. Omitted -> derived from the $FORGE_AUTH keystore.
-#     <beneficiary> OPTIONAL. Omitted -> the actor (credit yourself).
+#   script/config/cctp-hook-demo.sh [--deploy-only] [<actor-address>] [<beneficiary-address>]
+#     <actor>       OPTIONAL. Omitted -> derived from the $FORGE_AUTH signer.
+#     <beneficiary> OPTIONAL, demo mode only. Omitted -> the actor (credit yourself).
 #
 # ENVIRONMENT
-#   FORGE_AUTH  Keystore auth forwarded VERBATIM to every broadcast/cast (e.g.
-#               "--account daveKey"; add "--password-file <f>" for an unattended
-#               run). NEVER echoed. Broadcast-free reads pass --sender instead.
+#   FORGE_AUTH  Signer auth forwarded VERBATIM to every broadcast/cast: a keystore
+#               ("--account <name>"; add "--password-file <f>" for an unattended
+#               run) or a raw key ("--private-key 0x<key>", testnet keys only).
+#               NEVER echoed. Prefer `make demo-cctp-hook KEYSTORE=<name>` (any OS;
+#               unattended on macOS via the Keychain, attended prompts elsewhere) or
+#               `PRIVATE_KEY=0x<key>`, which materialize it for you. Broadcast-free
+#               reads pass --sender instead.
 #   AMOUNT      USDC units to bridge (6 decimals; default 1000000 = 1 USDC).
 #   IRIS_API / IRIS_POLL_SECONDS / ATTEST_TIMEOUT_SECONDS  Iris polling knobs.
 #
@@ -42,6 +57,16 @@ ARC_EXPLORER="https://testnet.arcscan.app"
 # Blockscout, not basescan: the demo verifies via Sourcify, which Blockscout reads (basescan does not).
 BASE_EXPLORER="https://base-sepolia.blockscout.com"
 JOURNAL=".cctp-demo.hook.env"
+# ONE deployment serves ALL the CCTP demos: this journal (written by --deploy-only / `make
+# deploy-cctp`) is also read by cctp-usdc-demo-loop.sh (adopts ARC_HUB as the transfer hub, relays
+# base-destined transfers through BASE_DIAMOND) and cctp-roundtrip-demo.sh (burns out through the
+# hub and back through the diamond).
+DEPLOY_JOURNAL=".cctp-demo.deployment.env"
+# The canonical LIVE deployment (the README evidence contracts) — the demo's default when neither
+# an env override nor a deploy journal names another. Update together with the README evidence table.
+CANON_ARC_HUB="0x6ca99B6179eAc891E3aCD4008b610fcE66F63E2d"
+CANON_BASE_DIAMOND="0x957259C5AEAa521c9DcFaEb6692C25ae53F349f1"
+CANON_VAULT="0xe8e10843Ab41B2c359D02eA091b6772C43b05b1f"
 
 FORGE_AUTH="${FORGE_AUTH:-}"
 AMOUNT="${AMOUNT:-1000000}"
@@ -73,14 +98,21 @@ SETUP_LOG="$(mktemp "${TMPDIR:-/tmp}/cctp-hook-demo.setup.XXXXXX")"
 ERR_FILE="$(mktemp "${TMPDIR:-/tmp}/cctp-hook-demo.err.XXXXXX")"
 trap 'rm -f "${SETUP_LOG}" "${ERR_FILE}"' EXIT INT TERM
 
-# ---- journal (KEY=VALUE lines; values are addresses / tx hashes / hex) ---------
-journal_get() { [[ -f "${JOURNAL}" ]] && sed -n "s/^$1=//p" "${JOURNAL}" | tail -1 || true; }
-journal_set() {
-    local key="$1" val="$2" tmp
-    tmp="$(mktemp "${JOURNAL}.XXXXXX")"
-    { [[ -f "${JOURNAL}" ]] && grep -vE "^${key}=" "${JOURNAL}" || true; echo "${key}=${val}"; } >"${tmp}"
-    mv "${tmp}" "${JOURNAL}"
+# ---- journals (KEY=VALUE lines; values are addresses / tx hashes / hex) --------
+# Two files with different lifetimes: the RUN journal (${JOURNAL}) holds one demo's burn/attest/relay
+# state and is deleted on success; the DEPLOY journal (${DEPLOY_JOURNAL}) holds a deployment and is
+# never auto-deleted — deployment outlives any single demo run.
+_kv_get() { [[ -f "$1" ]] && sed -n "s/^$2=//p" "$1" | tail -1 || true; }
+_kv_set() {
+    local file="$1" key="$2" val="$3" tmp
+    tmp="$(mktemp "${file}.XXXXXX")"
+    { [[ -f "${file}" ]] && grep -vE "^${key}=" "${file}" || true; echo "${key}=${val}"; } >"${tmp}"
+    mv "${tmp}" "${file}"
 }
+journal_get() { _kv_get "${JOURNAL}" "$1"; }
+journal_set() { _kv_set "${JOURNAL}" "$1" "$2"; }
+deploy_journal_get() { _kv_get "${DEPLOY_JOURNAL}" "$1"; }
+deploy_journal_set() { _kv_set "${DEPLOY_JOURNAL}" "$1" "$2"; }
 
 # Decimal for a hex word, safely: bash arithmetic is SIGNED 64-BIT, so only convert when the significant
 # digits fit (<= 15 hex digits < 2^60); larger values print as 0x-hex instead of silently wrapping negative.
@@ -170,13 +202,25 @@ render_setup_stream() {
 }
 
 # ---- args ---------------------------------------------------------------------
+DEPLOY_ONLY=0
 ACTOR=""; BENEFICIARY=""
 for arg in "$@"; do
+    if [[ "${arg}" == "--deploy-only" ]]; then DEPLOY_ONLY=1; continue; fi
     [[ "${arg}" =~ ^0x[0-9a-fA-F]{40}$ ]] || { err "not a 20-byte address: '${arg}'"; exit 2; }
     if [[ -z "${ACTOR}" ]]; then ACTOR="${arg}"; elif [[ -z "${BENEFICIARY}" ]]; then BENEFICIARY="${arg}"; else
-        err "too many args; expected [<actor>] [<beneficiary>]"; exit 2
+        err "too many args; expected [--deploy-only] [<actor>] [<beneficiary>]"; exit 2
     fi
 done
+MAKE_TARGET="demo-cctp-hook"; (( DEPLOY_ONLY == 1 )) && MAKE_TARGET="deploy-cctp"
+
+# Fail fast, before any auth/RPC demands: deploying over an existing deployment is never implicit —
+# duplicate stacks cost real gas and silently orphan the journaled one.
+if (( DEPLOY_ONLY == 1 )) && [[ -f "${DEPLOY_JOURNAL}" ]]; then
+    err "a deployment journal already exists (${DEPLOY_JOURNAL}):"
+    err "  hub=$(deploy_journal_get ARC_HUB) diamond=$(deploy_journal_get BASE_DIAMOND) vault=$(deploy_journal_get VAULT)"
+    err "  the demo already uses it. To deploy a FRESH stack: rm ${DEPLOY_JOURNAL} and re-run."
+    exit 2
+fi
 
 # ---- preflight ----------------------------------------------------------------
 for bin in forge cast jq curl; do
@@ -197,7 +241,12 @@ for var in ARC_TESTNET_RPC_URL BASE_SEPOLIA_RPC_URL; do
 done
 ARC_RPC="$(resolve_rpc ARC_TESTNET_RPC_URL)"
 
-[[ -n "${FORGE_AUTH}" ]] || { err "set FORGE_AUTH='--account <name> [--password-file <f>]' (needed to sign)."; exit 2; }
+[[ -n "${FORGE_AUTH}" ]] || {
+    err "no signer. Run via 'make ${MAKE_TARGET} KEYSTORE=<name>' (foundry keystore; unattended on"
+    err "  macOS, attended prompts elsewhere) or 'make ${MAKE_TARGET} PRIVATE_KEY=0x<testnet-key>',"
+    err "  or set FORGE_AUTH='--account <name> [--password-file <f>]' / '--private-key 0x<key>' yourself."
+    exit 2
+}
 
 # Derive the signer from the keystore if no actor was passed (avoids an actor != signer mismatch).
 if [[ -z "${ACTOR}" ]]; then
@@ -207,24 +256,25 @@ if [[ -z "${ACTOR}" ]]; then
     info "derived signer ${ACTOR} from the FORGE_AUTH keystore."
 fi
 [[ -n "${BENEFICIARY}" ]] || BENEFICIARY="${ACTOR}"
-info "actor=${ACTOR}  beneficiary=${BENEFICIARY}  amount=${AMOUNT}"
+if (( DEPLOY_ONLY == 1 )); then info "deployer=${ACTOR}"; else info "actor=${ACTOR}  beneficiary=${BENEFICIARY}  amount=${AMOUNT}"; fi
 
 # Scrub API-keyed RPC URLs out of any raw tool output before it reaches a log.
 BASE_RPC="$(resolve_rpc BASE_SEPOLIA_RPC_URL)"
 scrub() { printf '%s' "$1" | sed -e "s#${ARC_RPC}#<arc-rpc>#g" -e "s#${BASE_RPC}#<base-rpc>#g"; echo; }
 
-# --slow is applied to the multi-tx setup deploy ONLY when the signer is EIP-7702-delegated on Arc (delegated
-# accounts are txpool-capped at one in-flight tx, which the ~10-tx deploy would exceed). Detect it; default to
-# --slow (safe/serial) when unconfirmable. A plain-EOA signer deploys in parallel.
-SLOW="--slow"
-_code="$(curl -s --max-time 15 -X POST "${ARC_RPC}" -H 'content-type: application/json' \
-    -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"eth_getCode\",\"params\":[\"${ACTOR}\",\"latest\"]}" \
-    | jq -r '.result // empty' 2>/dev/null || true)"
-[[ "${_code}" == "0x" ]] && SLOW=""
+# ---- 1. deployment (SEPARATE from the demo) ------------------------------------
+# --deploy-only deploys a fresh stack, persists it, and exits; the demo only CONSUMES a
+# deployment (env override -> deploy journal -> canonical live stack) and never deploys.
+if (( DEPLOY_ONLY == 1 )); then
+    # --slow is applied to the multi-tx setup deploy ONLY when the signer is EIP-7702-delegated on Arc
+    # (delegated accounts are txpool-capped at one in-flight tx, which the ~10-tx deploy would exceed).
+    # Detect it; default to --slow (safe/serial) when unconfirmable. A plain-EOA signer deploys in parallel.
+    SLOW="--slow"
+    _code="$(curl -s --max-time 15 -X POST "${ARC_RPC}" -H 'content-type: application/json' \
+        -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"eth_getCode\",\"params\":[\"${ACTOR}\",\"latest\"]}" \
+        | jq -r '.result // empty' 2>/dev/null || true)"
+    [[ "${_code}" == "0x" ]] && SLOW=""
 
-# ---- 1. setup (Arc hub + Base diamond + vault) --------------------------------
-ARC_HUB="$(journal_get ARC_HUB)"; BASE_DIAMOND="$(journal_get BASE_DIAMOND)"; VAULT="$(journal_get VAULT)"
-if [[ -z "${ARC_HUB}" || -z "${BASE_DIAMOND}" || -z "${VAULT}" ]]; then
     info "setup: deploying Arc hub + Base diamond + vault (~19 contracts across 2 chains; live forge progress):"
     # Verification MUST land on Sourcify (Blockscout/arcscan read it), and two forge behaviors fight that:
     # a set ETHERSCAN_API_KEY makes forge default to the Etherscan verifier EVEN WHEN --verifier sourcify
@@ -261,7 +311,7 @@ if [[ -z "${ARC_HUB}" || -z "${BASE_DIAMOND}" || -z "${VAULT}" ]]; then
         verified_note="wired (verification did not complete — see the warning above)"
     fi
     read -r _ ARC_HUB BASE_DIAMOND VAULT <<<"${line}"
-    journal_set ARC_HUB "${ARC_HUB}"; journal_set BASE_DIAMOND "${BASE_DIAMOND}"; journal_set VAULT "${VAULT}"
+    deploy_journal_set ARC_HUB "${ARC_HUB}"; deploy_journal_set BASE_DIAMOND "${BASE_DIAMOND}"; deploy_journal_set VAULT "${VAULT}"
     D_SETUP=$(( SECONDS - t0 ))
     # Per-chain deploy listing, grouped and NAMED, from the broadcast journal forge just wrote:
     # multichain forge prints no per-tx receipts to stdout (empirical), and the journal is richer
@@ -278,8 +328,81 @@ if [[ -z "${ARC_HUB}" || -z "${BASE_DIAMOND}" || -z "${VAULT}" ]]; then
     ok "  hub (Arc):      ${ARC_EXPLORER}/address/${ARC_HUB}  <- burn goes in here"
     ok "  diamond (Base): ${BASE_EXPLORER}/address/${BASE_DIAMOND}  <- relays + fires the hook"
     ok "  vault (Base):   ${BASE_EXPLORER}/address/${VAULT}  <- receives the mint, credits the beneficiary"
+    echo
+    ok "deployment recorded in ${DEPLOY_JOURNAL} — ONE deployment serves ALL the demos:"
+    ok "  'make demo-cctp-hook' runs against it, 'make demo-cctp' adopts its Arc hub (registered"
+    ok "  for Ethereum Sepolia AND Base Sepolia), and 'make demo-cctp-roundtrip' burns out through"
+    ok "  the hub and back through the Base diamond (Arc is registered on it as a return leg)."
+    info "next: fund the actor (https://faucet.circle.com -> Arc testnet USDC, the asset AND gas; plus Base Sepolia ETH"
+    info "  for relay gas), then:  make demo-cctp-hook KEYSTORE=<name>    (or PRIVATE_KEY=0x<testnet-key>)"
+    exit 0
+fi
+
+# ---- demo mode: resolve which deployment to run against (never deploys) ---------
+# An IN-FLIGHT legacy (pre-split) run outranks everything except an explicit DEMO_* override:
+# pre-split journals kept the deployment in the RUN journal itself, and a journaled burn is locked
+# to THAT stack — resuming it against any other (deploy journal, canonical) can only revert. A
+# legacy journal WITHOUT burn state has nothing to resume; its stack keys are ignored.
+l_hub="$(journal_get ARC_HUB)"; l_dia="$(journal_get BASE_DIAMOND)"; l_vault="$(journal_get VAULT)"
+legacy_inflight=0
+[[ -n "${l_hub}" && -n "${l_dia}" && -n "${l_vault}" && -n "$(journal_get BURN_ATTEMPTED)$(journal_get BURN_TX)$(journal_get MESSAGE)" ]] \
+    && legacy_inflight=1
+if [[ -n "${DEMO_ARC_HUB:-}" || -n "${DEMO_BASE_DIAMOND:-}" || -n "${DEMO_VAULT:-}" ]]; then
+    [[ -n "${DEMO_ARC_HUB:-}" && -n "${DEMO_BASE_DIAMOND:-}" && -n "${DEMO_VAULT:-}" ]] \
+        || { err "partial deployment override: set ALL of DEMO_ARC_HUB, DEMO_BASE_DIAMOND, DEMO_VAULT (or none)."; exit 2; }
+    ARC_HUB="${DEMO_ARC_HUB}"; BASE_DIAMOND="${DEMO_BASE_DIAMOND}"; VAULT="${DEMO_VAULT}"
+    dep_src="env override"
+elif (( legacy_inflight == 1 )); then
+    ARC_HUB="${l_hub}"; BASE_DIAMOND="${l_dia}"; VAULT="${l_vault}"
+    dep_src="legacy run journal (in-flight burn), ${JOURNAL}"
 else
-    info "adopting journaled deployment: hub=${ARC_HUB} diamond=${BASE_DIAMOND} vault=${VAULT}"
+    ARC_HUB="$(deploy_journal_get ARC_HUB)"; BASE_DIAMOND="$(deploy_journal_get BASE_DIAMOND)"; VAULT="$(deploy_journal_get VAULT)"
+    if [[ -n "${ARC_HUB}" && -n "${BASE_DIAMOND}" && -n "${VAULT}" ]]; then
+        dep_src="your deployment, ${DEPLOY_JOURNAL}"
+    else
+        ARC_HUB="${CANON_ARC_HUB}"; BASE_DIAMOND="${CANON_BASE_DIAMOND}"; VAULT="${CANON_VAULT}"
+        dep_src="canonical live deployment; 'make deploy-cctp' deploys your own"
+    fi
+fi
+for v in ARC_HUB BASE_DIAMOND VAULT; do
+    [[ "${!v}" =~ ^0x[0-9a-fA-F]{40}$ ]] || { err "${v} is not a 20-byte address: '${!v}'"; exit 2; }
+done
+info "deployment (${dep_src}):"
+info "  hub (Arc):      ${ARC_EXPLORER}/address/${ARC_HUB}  <- burn goes in here"
+info "  diamond (Base): ${BASE_EXPLORER}/address/${BASE_DIAMOND}  <- relays + fires the hook"
+info "  vault (Base):   ${BASE_EXPLORER}/address/${VAULT}  <- receives the mint, credits the beneficiary"
+
+# A journaled half-done run is only resumable against the SAME deployment: a burn's mint is locked to
+# ITS vault + diamond (mintRecipient/destinationCaller), so replaying it against another stack reverts.
+# The fingerprint is stamped at burn write-ahead time (below), never on a run that got no further than
+# the fund gate — an early exit must not pin a stack and block a later legitimate switch.
+j_dep="$(journal_get DEPLOYMENT)"
+# Legacy journals predate the DEPLOYMENT key — synthesize the fingerprint from their in-flight stack
+# keys, so even a DEMO_* override cannot silently resume a legacy burn against the wrong stack.
+[[ -z "${j_dep}" ]] && (( legacy_inflight == 1 )) && j_dep="${l_hub}:${l_dia}:${l_vault}"
+cur_dep="${ARC_HUB}:${BASE_DIAMOND}:${VAULT}"
+if [[ -n "${j_dep}" && "${j_dep}" != "${cur_dep}" ]]; then
+    err "the run journal (${JOURNAL}) belongs to a different deployment:"
+    err "  journaled: ${j_dep}"
+    err "  selected:  ${cur_dep}"
+    err "  resume against the journaled stack (DEMO_* env override, or restore its ${DEPLOY_JOURNAL}),"
+    err "  or rm ${JOURNAL} to abandon that run and start fresh."
+    exit 2
+fi
+
+# The burn's hook envelope encodes the beneficiary PERMANENTLY — a resumed run must baseline and
+# verify the SAME one regardless of this invocation's args (the relay credits the burned-in one).
+j_benef="$(journal_get BENEFICIARY)"
+if [[ -n "${j_benef}" && "${j_benef}" != "${BENEFICIARY}" ]]; then
+    warn "resuming the in-flight burn's beneficiary ${j_benef} (overrides the requested ${BENEFICIARY})."
+fi
+[[ -n "${j_benef}" ]] && BENEFICIARY="${j_benef}"
+
+# Same for the amount: the burn and the delta verification are bound to the journaled value.
+j_amount="$(journal_get AMOUNT)"
+if [[ -n "${j_amount}" && "${j_amount}" != "${AMOUNT}" ]]; then
+    warn "resuming with the journaled amount ${j_amount} (overrides the requested ${AMOUNT})."
+    AMOUNT="${j_amount}"
 fi
 
 # ---- 2/3. burn-with-hook on Arc (cast send; forge cannot simulate Arc USDC moves) ----
@@ -319,10 +442,27 @@ if [[ -z "${BURN_TX}" ]]; then
     # 4-byte Lattice HOOK_MAGIC ‖ 20-byte hook target (the vault) ‖ payload (the beneficiary to credit).
     info "hook envelope ($(( (${#E} - 2) / 2 )) bytes, rides inside the burn message): ${E}"
     info "  = magic ${E:0:10} ‖ target 0x${E:10:40} (vault) ‖ payload 0x${E:50:40} (beneficiary)"
+    # Pre-run credit baseline: `creditOf` is CUMULATIVE and the vault PERSISTS across runs, so success
+    # must be judged on this run's DELTA — an absolute >= AMOUNT check would pass on a prior run's
+    # credit even when this run's relay failed. Journaled so a resume keeps its original baseline.
+    # The deployment fingerprint is stamped in the same breath: from the approve onward, real value
+    # moves against THIS stack, and both keys describe the stack the run is bound to.
+    CREDIT_BEFORE="$(journal_get CREDIT_BEFORE)"
+    if [[ ! "${CREDIT_BEFORE}" =~ ^[0-9]+$ ]]; then
+        CREDIT_BEFORE="$(forge script "${SCRIPT_TARGET}" --sig 'hookDemoCredit(address,address)' "${VAULT}" "${BENEFICIARY}" --sender "${ACTOR}" 2>&1 | grep -oE 'DEMO-HOOK-CREDIT [0-9]+ [0-9]+' | tail -1 | awk '{print $2}' || true)"
+        [[ "${CREDIT_BEFORE}" =~ ^[0-9]+$ ]] || { err "could not read the pre-run vault credit baseline (nothing spent yet); re-run when the Base RPC cooperates."; exit 1; }
+        journal_set DEPLOYMENT "${cur_dep}"
+        journal_set BENEFICIARY "${BENEFICIARY}"
+        journal_set AMOUNT "${AMOUNT}"
+        journal_set CREDIT_BEFORE "${CREDIT_BEFORE}"
+    fi
     t0=${SECONDS}
     info "approving ${AMOUNT} Arc USDC to the hub..."
+    : > "${ERR_FILE}"
+    # stderr through the scrub path — a transport error embeds the API-keyed RPC URL.
     # shellcheck disable=SC2086
-    cast send "${ARC_USDC}" "approve(address,uint256)" "${ARC_HUB}" "${AMOUNT}" ${FORGE_AUTH} --rpc-url "${ARC_RPC}" >/dev/null
+    cast send "${ARC_USDC}" "approve(address,uint256)" "${ARC_HUB}" "${AMOUNT}" ${FORGE_AUTH} --rpc-url "${ARC_RPC}" >/dev/null 2>"${ERR_FILE}" \
+        || { scrub "$(cat "${ERR_FILE}")"; err "approve failed; nothing was burned. Fix the cause and re-run."; exit 1; }
     info "burning ${AMOUNT} Arc USDC -> Base with hook (target=vault, payload=beneficiary)..."
     journal_set BURN_ATTEMPTED 1 # write-ahead: a crash after this means "check arcscan before re-running"
     rc=0
@@ -454,9 +594,16 @@ credit_line="$(forge script "${SCRIPT_TARGET}" --sig 'hookDemoCredit(address,add
 read -r _ CREDIT VAULT_BAL <<<"${credit_line}"
 if [[ -z "${CREDIT}" ]]; then err "could not read the vault credit; check ${BASE_EXPLORER}/address/${VAULT}"; exit 1; fi
 
+# Judge THIS run by its credit DELTA over the journaled pre-burn baseline (creditOf is cumulative and
+# the vault persists across runs). A journal predating the baseline key falls back to 0 — those runs
+# deployed a fresh vault, where the absolute credit IS the delta.
+CREDIT_BEFORE="$(journal_get CREDIT_BEFORE)"
+[[ "${CREDIT_BEFORE}" =~ ^[0-9]+$ ]] || CREDIT_BEFORE=0
+DELTA=$(( CREDIT - CREDIT_BEFORE ))
+
 echo
-if (( CREDIT >= AMOUNT )); then
-    ok "HOOK DELIVERED: ${BENEFICIARY} auto-credited ${CREDIT} USDC units in the vault (balance ${VAULT_BAL})."
+if (( DELTA >= AMOUNT )); then
+    ok "HOOK DELIVERED: ${BENEFICIARY} auto-credited ${DELTA} USDC units this run (vault credit ${CREDIT}, balance ${VAULT_BAL})."
     ok "  burn (Arc):    ${ARC_EXPLORER}/tx/${BURN_TX}"
     [[ -n "${RELAY_TX:-}" ]] && ok "  relay (Base):  ${BASE_EXPLORER}/tx/${RELAY_TX}  <- mint + hook, one tx"
     ok "  vault (Base):  ${BASE_EXPLORER}/address/${VAULT}"
@@ -469,6 +616,7 @@ if (( CREDIT >= AMOUNT )); then
     ok "  timings:       ${timings}total $(( SECONDS - T_RUN_START ))s (phases skipped by a resume are untimed)"
     rm -f "${JOURNAL}"
 else
-    warn "relay landed but credit=${CREDIT} < ${AMOUNT}; inspect ${BASE_EXPLORER}/address/${VAULT} (journal kept)."
+    warn "relay landed but this run's credit delta=${DELTA} < ${AMOUNT} (credit ${CREDIT}, baseline ${CREDIT_BEFORE});"
+    warn "  inspect ${BASE_EXPLORER}/address/${VAULT} (journal kept)."
     exit 1
 fi
