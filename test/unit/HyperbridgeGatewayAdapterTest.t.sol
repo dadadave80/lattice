@@ -5,7 +5,7 @@ import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {HyperbridgeGatewayAdapterTestBase} from "@lattice-test/base/HyperbridgeGatewayAdapterTestBase.sol";
 import {MockIsmpHost} from "@lattice-test/mocks/MockIsmpHost.sol";
-import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
+import {Lattice} from "@lattice/Lattice.sol";
 import {ChainRegistry} from "@lattice/crosschain/ChainRegistry.sol";
 import {HyperbridgeGatewayAdapter} from "@lattice/crosschain/hyperbridge/HyperbridgeGatewayAdapter.sol";
 import {IBridgeFungible} from "@lattice/interfaces/crosschain/IBridgeFungible.sol";
@@ -312,7 +312,7 @@ contract HyperbridgeGatewayAdapterTest is HyperbridgeGatewayAdapterTestBase {
     ///      through {Diamond.initialize}); `deployer` was created in `setUp`.
     function test_InitRejectsZeroHost() public {
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) = deployer.buildCuts(admin, address(0));
-        LatticeDiamond d = new LatticeDiamond();
+        Lattice d = new Lattice();
         vm.expectRevert(IHyperbridgeGatewayAdapter.HyperbridgeZeroHost.selector);
         d.initialize(cuts, init, initCalldata);
     }

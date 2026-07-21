@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
-import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
+import {Lattice} from "@lattice/Lattice.sol";
 import {ILatticeFactory, RecipeEntry} from "@lattice/interfaces/ILatticeFactory.sol";
 import {ILatticeRegistry} from "@lattice/interfaces/ILatticeRegistry.sol";
 import {IERC8153} from "@lattice/interfaces/external/ercs/IERC8153.sol";
@@ -29,7 +29,7 @@ contract LatticeFactory is ILatticeFactory {
     /// @inheritdoc ILatticeFactory
     ILatticeRegistry public immutable registry;
 
-    /// @dev `keccak256(type(LatticeDiamond).creationCode)` — the CREATE2 initcode hash, fixed at construction.
+    /// @dev `keccak256(type(Lattice).creationCode)` — the CREATE2 initcode hash, fixed at construction.
     bytes32 private immutable _diamondInitCodeHash;
 
     /// @dev The ERC-8153 `exportSelectors()` self-selector (`0x0ef22643`). It is never cut into a diamond:
@@ -40,7 +40,7 @@ contract LatticeFactory is ILatticeFactory {
     constructor(ILatticeRegistry _registry) {
         if (address(_registry) == address(0)) revert LatticeFactory__ZeroRegistry();
         registry = _registry;
-        _diamondInitCodeHash = keccak256(type(LatticeDiamond).creationCode);
+        _diamondInitCodeHash = keccak256(type(Lattice).creationCode);
     }
 
     /// @inheritdoc ILatticeFactory
@@ -94,7 +94,7 @@ contract LatticeFactory is ILatticeFactory {
         // re-calls above skip resolution, so full coverage is unknowable there (recipe-ignored semantics).
         _checkLoupeCoverage(cuts);
 
-        LatticeDiamond proxy = new LatticeDiamond{salt: s}();
+        Lattice proxy = new Lattice{salt: s}();
         proxy.initialize(cuts, init, initCalldata);
 
         emit DiamondDeployed(diamond, msg.sender, salt);

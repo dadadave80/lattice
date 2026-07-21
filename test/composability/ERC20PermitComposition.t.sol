@@ -4,7 +4,7 @@ pragma solidity ^0.8.30;
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {PermitTokenInit} from "@lattice-test/composability/ComposedTokenInit.sol";
 import {TokenBlueprintHelper} from "@lattice-test/helpers/TokenBlueprintHelper.sol";
-import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
+import {Lattice} from "@lattice/Lattice.sol";
 import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
 import {IERC20Permit} from "@lattice/interfaces/tokens/IERC20Permit.sol";
 
@@ -34,7 +34,7 @@ contract ERC20PermitComposition is TokenBlueprintHelper {
     function setUp() public {
         owner = vm.addr(ownerKey);
         (FacetCut[] memory cuts, PermitTokenInit init) = _permitTokenBlueprint();
-        LatticeDiamond diamond = new LatticeDiamond();
+        Lattice diamond = new Lattice();
         // Cut succeeds only because ERC20Permit + EIP712 own disjoint selectors (no shared eip712Domain).
         diamond.initialize(cuts, address(init), abi.encodeCall(PermitTokenInit.init, ()));
         token = address(diamond);

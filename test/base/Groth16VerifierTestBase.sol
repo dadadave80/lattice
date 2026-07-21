@@ -4,7 +4,7 @@ pragma solidity ^0.8.30;
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {DeployGroth16Verifier} from "@lattice-script/base/privacy/DeployGroth16Verifier.s.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
-import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
+import {Lattice} from "@lattice/Lattice.sol";
 import {Groth16Verifier} from "@lattice/privacy/Groth16Verifier.sol";
 import {Test} from "forge-std/Test.sol";
 
@@ -26,7 +26,7 @@ abstract contract Groth16VerifierTestBase is Test, GetSelectors {
         deployer = new DeployGroth16Verifier();
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) = deployer.buildCuts();
 
-        LatticeDiamond d = new LatticeDiamond();
+        Lattice d = new Lattice();
         d.initialize(cuts, init, initCalldata);
         diamond_ = address(d);
     }

@@ -4,7 +4,7 @@ pragma solidity ^0.8.30;
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {ENSSubnameIssuerTestBase} from "@lattice-test/base/ENSSubnameIssuerTestBase.sol";
-import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
+import {Lattice} from "@lattice/Lattice.sol";
 import {ENSSubnameIssuer} from "@lattice/ens/ENSSubnameIssuer.sol";
 import {ENS_SUBNAME_ISSUER_ROLE} from "@lattice/ens/libraries/ENSSubnameIssuerLib.sol";
 import {IAccessControl} from "@lattice/interfaces/access/IAccessControl.sol";
@@ -151,7 +151,7 @@ contract ENSSubnameIssuerTest is ENSSubnameIssuerTestBase {
 
     function test_InitZeroNameWrapperReverts() public {
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) = deployer.buildCuts(admin, address(0));
-        LatticeDiamond d = new LatticeDiamond();
+        Lattice d = new Lattice();
         vm.expectRevert(IENSSubnameIssuer.ENSSubnameIssuerZeroNameWrapper.selector);
         d.initialize(cuts, init, initCalldata);
     }

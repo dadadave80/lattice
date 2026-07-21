@@ -5,7 +5,7 @@ import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {AcrossBridgeAdapterTestBase} from "@lattice-test/base/AcrossBridgeAdapterTestBase.sol";
 import {MockSpokePool} from "@lattice-test/mocks/MockSpokePool.sol";
-import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
+import {Lattice} from "@lattice/Lattice.sol";
 import {AcrossBridgeAdapter} from "@lattice/crosschain/across/AcrossBridgeAdapter.sol";
 import {NonEvmAddress} from "@lattice/crosschain/libraries/NonEvmAddress.sol";
 import {IAcrossBridgeAdapter} from "@lattice/interfaces/crosschain/IAcrossBridgeAdapter.sol";
@@ -166,7 +166,7 @@ contract AcrossBridgeAdapterTest is AcrossBridgeAdapterTestBase {
     ///      this zero-SpokePool init revert is the guarantee.
     function test_InitRejectsZeroSpokePool() public {
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) = deployer.buildCuts(address(0));
-        LatticeDiamond d = new LatticeDiamond();
+        Lattice d = new Lattice();
         vm.expectRevert(IAcrossBridgeAdapter.AcrossZeroAddress.selector);
         d.initialize(cuts, init, initCalldata);
     }

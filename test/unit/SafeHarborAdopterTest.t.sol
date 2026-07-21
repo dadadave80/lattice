@@ -4,7 +4,7 @@ pragma solidity ^0.8.30;
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {SafeHarborAdopterTestBase} from "@lattice-test/base/SafeHarborAdopterTestBase.sol";
-import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
+import {Lattice} from "@lattice/Lattice.sol";
 import {SafeHarborAdopter} from "@lattice/governance/SafeHarborAdopter.sol";
 import {SAFE_HARBOR_ADMIN_ROLE} from "@lattice/governance/libraries/SafeHarborAdopterLib.sol";
 import {IAccessControl} from "@lattice/interfaces/access/IAccessControl.sol";
@@ -262,7 +262,7 @@ contract SafeHarborAdopterTest is SafeHarborAdopterTestBase {
         // A zero registry must abort assembly inside the {SafeHarborAdopterInit} delegatecall window.
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) =
             _buildCuts(admin, address(0), address(factory));
-        LatticeDiamond d = new LatticeDiamond();
+        Lattice d = new Lattice();
         vm.expectRevert(ISafeHarborAdopter.SafeHarborAdopterZeroRegistry.selector);
         d.initialize(cuts, init, initCalldata);
     }

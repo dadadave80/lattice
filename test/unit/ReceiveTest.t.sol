@@ -2,27 +2,27 @@
 pragma solidity ^0.8.30;
 
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
-import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
+import {Lattice} from "@lattice/Lattice.sol";
 import {Receive} from "@lattice/Receive.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @title ReceiveTest
 /// @notice Proves bare-ETH acceptance is a FACET concern: a diamond cut with {Receive} under the zero
 ///         selector accepts plain sends through the fallback's `selectorToFacet(0x00000000)` route, and a
-///         diamond without it rejects them — `LatticeDiamond` itself no longer declares `receive()`.
+///         diamond without it rejects them — `Lattice` itself no longer declares `receive()`.
 contract ReceiveTest is Test {
-    LatticeDiamond internal bare;
-    LatticeDiamond internal receiving;
+    Lattice internal bare;
+    Lattice internal receiving;
 
     function setUp() public {
-        bare = new LatticeDiamond();
+        bare = new Lattice();
         bare.initialize(new FacetCut[](0), address(0), "");
 
         FacetCut[] memory cuts = new FacetCut[](1);
         bytes4[] memory sel = new bytes4[](1);
         sel[0] = bytes4(0);
         cuts[0] = FacetCut({facetAddress: address(new Receive()), action: FacetCutAction.Add, functionSelectors: sel});
-        receiving = new LatticeDiamond();
+        receiving = new Lattice();
         receiving.initialize(cuts, address(0), "");
     }
 

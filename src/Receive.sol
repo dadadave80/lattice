@@ -7,7 +7,7 @@ pragma solidity ^0.8.30;
 ///         diamond accepts plain ETH sends. An empty-calldata call reads as `msg.sig == 0x00000000`
 ///         in the diamond's fallback, routes to this facet, and the empty-calldata delegatecall runs
 ///         this contract's `receive()` in the diamond's context. Every Lattice recipe cuts it —
-///         {LatticeDiamond} itself deliberately declares NO `receive()`, so a diamond without this
+///         {Lattice} itself deliberately declares NO `receive()`, so a diamond without this
 ///         facet rejects bare ETH (an explicit opt-out for contracts that should never hold value).
 /// @dev Stateless, no init, no interface, no ERC-165 registration (there is nothing to register —
 ///      `receive()` has no selector). Only genuinely EMPTY calldata succeeds: 1-4 zero bytes still

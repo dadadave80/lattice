@@ -5,7 +5,7 @@ import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {MultiInit} from "@diamond/initializers/MultiInit.sol";
 import {IDiamondLoupe} from "@diamond/interfaces/IDiamondLoupe.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
-import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
+import {Lattice} from "@lattice/Lattice.sol";
 import {IAccessControl} from "@lattice/interfaces/access/IAccessControl.sol";
 import {IAccessControlDiamondCut} from "@lattice/interfaces/governance/IAccessControlDiamondCut.sol";
 import {Test} from "forge-std/Test.sol";
@@ -35,7 +35,7 @@ abstract contract RecipeGuards is Test {
         internal
         returns (address diamond)
     {
-        LatticeDiamond d = new LatticeDiamond();
+        Lattice d = new Lattice();
         d.initialize(cuts, init, initCalldata);
         diamond = address(d);
     }

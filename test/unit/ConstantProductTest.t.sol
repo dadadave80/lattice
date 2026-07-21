@@ -5,7 +5,7 @@ import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {ConstantProductTestBase} from "@lattice-test/base/ConstantProductTestBase.sol";
 import {IMintableToken} from "@lattice-test/helpers/IMintableToken.sol";
-import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
+import {Lattice} from "@lattice/Lattice.sol";
 import {ConstantProduct} from "@lattice/amm/ConstantProduct.sol";
 import {IConstantProduct} from "@lattice/interfaces/amm/IConstantProduct.sol";
 import {IReentrancyGuard} from "@lattice/interfaces/security/IReentrancyGuard.sol";
@@ -111,7 +111,7 @@ contract ConstantProductTest is ConstantProductTestBase {
     function test_InitSameTokenReverts() public {
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) =
             _buildPoolCuts(admin, address(token0), address(token0));
-        LatticeDiamond d = new LatticeDiamond();
+        Lattice d = new Lattice();
         vm.expectRevert(IConstantProduct.ConstantProductInvalidTokens.selector);
         d.initialize(cuts, init, initCalldata);
     }
@@ -120,7 +120,7 @@ contract ConstantProductTest is ConstantProductTestBase {
     function test_InitZeroToken0Reverts() public {
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) =
             _buildPoolCuts(admin, address(0), address(token1));
-        LatticeDiamond d = new LatticeDiamond();
+        Lattice d = new Lattice();
         vm.expectRevert(IConstantProduct.ConstantProductInvalidTokens.selector);
         d.initialize(cuts, init, initCalldata);
     }
@@ -129,7 +129,7 @@ contract ConstantProductTest is ConstantProductTestBase {
     function test_InitZeroToken1Reverts() public {
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) =
             _buildPoolCuts(admin, address(token0), address(0));
-        LatticeDiamond d = new LatticeDiamond();
+        Lattice d = new Lattice();
         vm.expectRevert(IConstantProduct.ConstantProductInvalidTokens.selector);
         d.initialize(cuts, init, initCalldata);
     }

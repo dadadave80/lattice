@@ -4,7 +4,7 @@ pragma solidity ^0.8.30;
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {AggregatorExecAdapterTestBase} from "@lattice-test/base/AggregatorExecAdapterTestBase.sol";
-import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
+import {Lattice} from "@lattice/Lattice.sol";
 import {AggregatorExecAdapter} from "@lattice/defi/AggregatorExecAdapter.sol";
 import {IAggregatorExecAdapter} from "@lattice/interfaces/defi/IAggregatorExecAdapter.sol";
 import {IReentrancyGuard} from "@lattice/interfaces/security/IReentrancyGuard.sol";
@@ -197,7 +197,7 @@ contract AggregatorExecAdapterTest is AggregatorExecAdapterTestBase {
 
     function test_InitRejectsZeroAdmin() public {
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) = deployer.buildCuts(address(0));
-        LatticeDiamond d = new LatticeDiamond();
+        Lattice d = new Lattice();
         vm.expectRevert(IAggregatorExecAdapter.AggregatorExecZeroAdmin.selector);
         d.initialize(cuts, init, initCalldata);
     }

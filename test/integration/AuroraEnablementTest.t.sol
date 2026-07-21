@@ -6,7 +6,7 @@ import {MultiInit} from "@diamond/initializers/MultiInit.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {AuroraConfig} from "@lattice-script/config/EnableAurora.s.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
-import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
+import {Lattice} from "@lattice/Lattice.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {ChainRegistry} from "@lattice/crosschain/ChainRegistry.sol";
 import {ChainRegistryInit} from "@lattice/crosschain/ChainRegistryInit.sol";
@@ -107,7 +107,7 @@ contract AuroraEnablementTest is Test, GetSelectors {
         inits[1] = address(new ChainRegistryInit());
         initDatas[1] = abi.encodeCall(ChainRegistryInit.init, (admin));
 
-        LatticeDiamond d = new LatticeDiamond();
+        Lattice d = new Lattice();
         d.initialize(cuts, address(new MultiInit()), abi.encodeCall(MultiInit.multiInit, (inits, initDatas)));
         diamond = address(d);
         registry = ChainRegistry(diamond);
