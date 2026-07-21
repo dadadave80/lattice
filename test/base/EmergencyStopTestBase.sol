@@ -5,7 +5,7 @@ import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {DeployEmergencyStop} from "@lattice-script/base/security/DeployEmergencyStop.s.sol";
 import {EmergencyStopTestFacet} from "@lattice-test/helpers/EmergencyStopTestFacet.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
-import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
+import {Lattice} from "@lattice/Lattice.sol";
 import {EmergencyStop} from "@lattice/security/EmergencyStop.sol";
 import {Test} from "forge-std/Test.sol";
 
@@ -39,7 +39,7 @@ abstract contract EmergencyStopTestBase is Test, GetSelectors {
             functionSelectors: _getSelectors("EmergencyStopTestFacet")
         });
 
-        LatticeDiamond d = new LatticeDiamond();
+        Lattice d = new Lattice();
         d.initialize(cuts, init, initCalldata);
         diamond_ = address(d);
     }

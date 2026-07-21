@@ -5,7 +5,7 @@ import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {DeployTellorAdapter} from "@lattice-script/base/oracles/DeployTellorAdapter.s.sol";
 import {TellorAdapterTestBase} from "@lattice-test/base/TellorAdapterTestBase.sol";
-import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
+import {Lattice} from "@lattice/Lattice.sol";
 import {ITellor} from "@lattice/interfaces/external/tellor/ITellor.sol";
 import {ITellorAdapter} from "@lattice/interfaces/oracles/ITellorAdapter.sol";
 import {TellorAdapter} from "@lattice/oracles/tellor/TellorAdapter.sol";
@@ -82,7 +82,7 @@ contract TellorAdapterTest is TellorAdapterTestBase {
         // Assembling the production recipe with a zero Tellor oracle must revert inside the init delegatecall.
         DeployTellorAdapter d = new DeployTellorAdapter();
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) = d.buildCuts(admin, address(0));
-        LatticeDiamond diamond_ = new LatticeDiamond();
+        Lattice diamond_ = new Lattice();
         vm.expectRevert(ITellorAdapter.TellorContractIsZero.selector);
         diamond_.initialize(cuts, init, initCalldata);
     }

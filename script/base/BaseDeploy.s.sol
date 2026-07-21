@@ -4,7 +4,7 @@ pragma solidity ^0.8.30;
 import {MultiInit} from "@diamond/initializers/MultiInit.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
-import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
+import {Lattice} from "@lattice/Lattice.sol";
 import {AccessControlInit} from "@lattice/access/AccessControlInit.sol";
 import {IERC8153} from "@lattice/interfaces/external/ercs/IERC8153.sol";
 import {DiamondIntrospectionInit} from "@lattice/utils/DiamondIntrospectionInit.sol";
@@ -143,7 +143,7 @@ abstract contract BaseDeploy is Script, GetSelectors {
         internal
         returns (address diamond)
     {
-        LatticeDiamond d = new LatticeDiamond();
+        Lattice d = new Lattice();
         d.initialize(cuts, init, initCalldata);
         diamond = address(d);
     }

@@ -4,7 +4,7 @@ pragma solidity ^0.8.30;
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {DeployAccessControlTimed} from "@lattice-script/base/access/DeployAccessControlTimed.s.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
-import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
+import {Lattice} from "@lattice/Lattice.sol";
 import {AccessControlTimed} from "@lattice/access/AccessControlTimed.sol";
 import {Test} from "forge-std/Test.sol";
 
@@ -27,7 +27,7 @@ abstract contract AccessControlTimedTestBase is Test, GetSelectors {
         deployer = new DeployAccessControlTimed();
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) = deployer.buildCuts(admin);
 
-        LatticeDiamond d = new LatticeDiamond();
+        Lattice d = new Lattice();
         d.initialize(cuts, init, initCalldata);
         diamond_ = address(d);
     }

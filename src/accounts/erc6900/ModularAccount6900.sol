@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {DiamondLib} from "@diamond/libraries/DiamondLib.sol";
-import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
+import {Lattice} from "@lattice/Lattice.sol";
 import {ERC6900ExecutorLib} from "@lattice/accounts/erc6900/libraries/ERC6900ExecutorLib.sol";
 
 /// @title ModularAccount6900
@@ -18,7 +18,7 @@ import {ERC6900ExecutorLib} from "@lattice/accounts/erc6900/libraries/ERC6900Exe
 ///      `diamondCut` authority); ERC-6900 execution-module selectors → external CALL to the module (separate
 ///      storage). This is the 6900 analogue of `AccountDiamond` and the proxy a 6900-flavored account blueprint
 ///      deploys.
-contract ModularAccount6900 is LatticeDiamond {
+contract ModularAccount6900 is Lattice {
     fallback() external payable virtual override {
         // Facet wins (diamondCut authority): the standard diamond delegatecall. Non-reverting overload — the
         // single-arg `selectorToFacet` reverts {FunctionDoesNotExist} on a miss.

@@ -33,7 +33,7 @@ import {Initializable} from "@lattice/utils/Initializable.sol";
 ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠉
 */
 
-/// @title LatticeDiamond
+/// @title Lattice
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @author Modified from diamond-lib (https://github.com/dadadave80/diamond-lib)
 /// @notice Lattice's concrete diamond: the initializer-guarded preset over diamond-lib's abstract
@@ -47,7 +47,7 @@ import {Initializable} from "@lattice/utils/Initializable.sol";
 ///      vendored {InitializableLib} — a nested initializer invoked inside a constructor finalizes exactly
 ///      once. Kept `virtual` — account presets override it (e.g. {Account7702Diamond} disables it in favor
 ///      of signature-gated onboarding).
-contract LatticeDiamond is Diamond, Initializable {
+contract Lattice is Diamond, Initializable {
     /// @notice Apply the initial facet cut and run the init delegatecall — callable ONCE.
     /// @param _facetCuts The initial facet cuts to install.
     /// @param _init The initializer contract delegatecalled after the cut (or address(0)).
