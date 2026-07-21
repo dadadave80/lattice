@@ -1,18 +1,19 @@
 #!/usr/bin/env bash
 # ---------------------------------------------------------------------------
-# keychain-auth.sh — run a command with FORGE_AUTH materialized from the macOS
-# Keychain, so unattended runs never park a keystore password in a lasting file.
+# keychain-auth.sh — run a command with FORGE_AUTH materialized from a foundry
+# keystore name, on any OS.
 #
 #   keychain-auth.sh <keystore-name> <command> [args...]
 #
-# Looks up the Keychain item 'foundry-<keystore-name>', writes the password to
-# a 0600 temp file, runs <command> with FORGE_AUTH="--account <keystore-name>
-# --password-file <tmpfile>", and deletes the file on exit (also on Ctrl-C).
-#
+# macOS (UNATTENDED): looks up the Keychain item 'foundry-<keystore-name>', writes
+# the password to a 0600 temp file, runs <command> with FORGE_AUTH="--account
+# <keystore-name> --password-file <tmpfile>", and deletes the file on exit (also on
+# Ctrl-C) — so unattended runs never park a keystore password in a lasting file.
 # One-time setup per keystore (prompts; nothing lands in shell history):
 #   security add-generic-password -a "$USER" -s foundry-<keystore-name> -w
 #
-# macOS-only (uses the `security` CLI). Elsewhere, pass FORGE_AUTH yourself.
+# Other OSes (ATTENDED): no Keychain — runs <command> with FORGE_AUTH="--account
+# <keystore-name>" and forge/cast prompt for the keystore password per signing step.
 # ---------------------------------------------------------------------------
 set -euo pipefail
 
@@ -26,8 +27,12 @@ KS="$1"; shift
 TMP_BASE="${TMPDIR:-/tmp}"
 [[ "${TMP_BASE}" == *[[:space:]]* ]] && TMP_BASE="/tmp"
 
-command -v security >/dev/null 2>&1 \
-    || { echo "keychain-auth: 'security' CLI not found (macOS-only helper) — pass FORGE_AUTH yourself." >&2; exit 2; }
+# Non-macOS: no `security` CLI to fetch a password with — degrade to ATTENDED keystore auth
+# (forge/cast prompt for the password at each signing step) instead of failing.
+command -v security >/dev/null 2>&1 || {
+    echo "keychain-auth: no macOS 'security' CLI — running ATTENDED; forge/cast will prompt for the '${KS}' keystore password." >&2
+    FORGE_AUTH="--account ${KS}" exec "$@"
+}
 
 umask 077
 # The XXXXXX must be TRAILING: macOS/BSD mktemp does not randomize a mid-template X block, silently
