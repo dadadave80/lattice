@@ -240,8 +240,27 @@ the source chain** — Arc's sub-second finality means Iris attests in seconds, 
 | Real-attestation replay test | [`test/fork/CCTPHookDemoFork.t.sol`](test/fork/CCTPHookDemoFork.t.sol) replays the captured [fixture](test/fixtures/cctp/arc-to-base-hook-v2.json) through the live Base diamond on a pinned fork |
 | Broadcast evidence | [`broadcast/multi/`](broadcast/multi) (setups) · [`broadcast/CCTPHookDemo.s.sol/84532/`](broadcast/CCTPHookDemo.s.sol/84532) (hook relay) · [`broadcast/CCTPUSDCDemo.s.sol/`](broadcast/CCTPUSDCDemo.s.sol) (transfer relays) |
 
-All demo contracts are Sourcify-verified (`exact_match`) on both chains. Reproduce with a funded
-keystore: `make demo-cctp-hook KEYSTORE=<name>` (see the [Makefile](Makefile) demos section).
+All demo contracts are Sourcify-verified (`exact_match`) on both chains.
+
+**Anyone can run the hook demo** — deployment is separate from the demo, and by default it runs
+against the live contracts above, so all you need is a funded signer: Arc testnet USDC (the asset
+AND Arc's gas token, from https://faucet.circle.com) plus a little Base Sepolia ETH for relay gas
+(any Base Sepolia faucet):
+
+```sh
+make demo-cctp-hook PRIVATE_KEY=0x<testnet-key>   # or KEYSTORE=<foundry-keystore-name>
+```
+
+To deploy your **own** stack instead (once — ONE deployment serves BOTH demos: the Arc hub is
+registered for Ethereum Sepolia and Base Sepolia, so `make demo-cctp` adopts it as its transfer hub
+and `make demo-cctp-hook` gets its hub + diamond + vault):
+
+```sh
+make deploy-cctp PRIVATE_KEY=0x<testnet-key>
+```
+
+See the [Makefile](Makefile) demos section for the full auth matrix (`KEYSTORE=` / `PRIVATE_KEY=` /
+raw `FORGE_AUTH=`).
 
 ## Build & test
 
