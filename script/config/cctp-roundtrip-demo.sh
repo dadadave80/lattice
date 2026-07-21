@@ -22,13 +22,13 @@
 # commands that upgrade them.
 #
 # USAGE
-#   script/config/cctp-roundtrip-demo.sh [--legs out|back|both] [<actor-address>]
+#   script/config/cctp-roundtrip-demo.sh [--legs out|back|both]
 #     --legs   Which legs to run (default both): `out` = Arc -> Base only (stops
 #              after the Base mint is verified); `back` = Base -> Arc only (the
-#              actor must already hold the Base USDC); `both` = the round trip.
-#     <actor>  OPTIONAL. Omitted -> derived from the $FORGE_AUTH signer. The
-#              USDC leaves from and returns to this address (it MUST be the
-#              signer — both burns pull from the signer).
+#              signer must already hold the Base USDC); `both` = the round trip.
+#   The actor is ALWAYS the $FORGE_AUTH signer — both burns pull from it and
+#   both mints go to it, so an actor override could only skew the fund gates
+#   and balance verification against the wrong address (no arg is accepted).
 #
 # RPC: needs ARC_TESTNET_RPC_URL and BASE_SEPOLIA_RPC_URL (shell env or ./.env;
 # names match foundry.toml's [rpc_endpoints] — see .env.example).
@@ -120,9 +120,15 @@ for arg in "$@"; do
         --legs) expect_legs=1; continue ;;
         --legs=*) LEGS="${arg#--legs=}"; continue ;;
     esac
-    [[ "${arg}" =~ ^0x[0-9a-fA-F]{40}$ ]] || { err "unrecognized arg '${arg}'; expected [--legs out|back|both] [<actor>]"; exit 2; }
-    [[ -z "${ACTOR}" ]] || { err "too many args; expected [--legs out|back|both] [<actor>]"; exit 2; }
-    ACTOR="${arg}"
+    if [[ "${arg}" =~ ^0x[0-9a-fA-F]{40}$ ]]; then
+        # The burns pull from the SIGNER and the mints go to the SIGNER — an actor override would
+        # only point the fund gates and verification at a different address (proven live: the run
+        # proceeds, then verifies the wrong balances forever).
+        err "the round trip always burns from and mints to the FORGE_AUTH signer; an actor cannot be"
+        err "  overridden. Drop '${arg}' — the signer address is derived automatically."
+        exit 2
+    fi
+    err "unrecognized arg '${arg}'; expected [--legs out|back|both]"; exit 2
 done
 (( expect_legs == 0 )) || { err "--legs needs a value: out | back | both"; exit 2; }
 case "${LEGS}" in out | back | both) ;; *) err "invalid --legs '${LEGS}' (out | back | both)"; exit 2 ;; esac
@@ -155,12 +161,10 @@ scrub() { printf '%s' "$1" | sed -e "s#${ARC_RPC}#<arc-rpc>#g" -e "s#${BASE_RPC}
     exit 2
 }
 
-if [[ -z "${ACTOR}" ]]; then
-    # shellcheck disable=SC2086
-    ACTOR="$(cast wallet address ${FORGE_AUTH})" || { err "could not derive signer from FORGE_AUTH (add --password-file, or pass the address)."; exit 2; }
-    [[ "${ACTOR}" =~ ^0x[0-9a-fA-F]{40}$ ]] || { err "derived signer is not an address: '${ACTOR}'"; exit 2; }
-    info "derived signer ${ACTOR} from the FORGE_AUTH keystore."
-fi
+# shellcheck disable=SC2086
+ACTOR="$(cast wallet address ${FORGE_AUTH})" || { err "could not derive the signer from FORGE_AUTH (add --password-file for unattended runs)."; exit 2; }
+[[ "${ACTOR}" =~ ^0x[0-9a-fA-F]{40}$ ]] || { err "derived signer is not an address: '${ACTOR}'"; exit 2; }
+info "derived signer ${ACTOR} from the FORGE_AUTH keystore."
 case "${LEGS}" in
     both) info "actor=${ACTOR}  amount=${AMOUNT} (out AND back)" ;;
     out) info "actor=${ACTOR}  amount=${AMOUNT} (one way: Arc -> Base)" ;;
@@ -314,8 +318,10 @@ if [[ "${LEGS}" != "back" && -z "${OUT_BURN_TX}" ]]; then
         exit 1
     fi
     BAL="$(read_balance hookDemoArcBalance)"
-    if [[ -n "${BAL}" ]] && (( BAL < AMOUNT )); then
-        err "actor holds ${BAL} of the ${AMOUNT} Arc USDC units needed (plus gas headroom — Arc gas IS USDC)."
+    # HARD gate: never burn blind — a flaked read must not wave real funds through (proven live).
+    [[ "${BAL}" =~ ^[0-9]+$ ]] || { err "could not read the signer's Arc USDC balance; refusing to burn blind — re-run."; exit 1; }
+    if (( BAL < AMOUNT )); then
+        err "signer holds ${BAL} of the ${AMOUNT} Arc USDC units needed (plus gas headroom — Arc gas IS USDC)."
         info "Fund via https://faucet.circle.com : Arc testnet USDC -> ${ACTOR}."
         exit 1
     fi
@@ -437,8 +443,10 @@ if [[ -z "${BACK_BURN_TX}" ]]; then
     # out/both runs stamp at the OUT burn (the DEPLOYMENT/ACTOR/AMOUNT guards need it on resume).
     if [[ "${LEGS}" == "back" ]]; then
         bb="$(read_balance hookDemoBaseBalance)"
-        if [[ -n "${bb}" ]] && (( bb < AMOUNT )); then
-            err "actor holds ${bb} of the ${AMOUNT} Base USDC units needed for the return burn."
+        # HARD gate: never burn blind — a flaked read must not wave real funds through (proven live).
+        [[ "${bb}" =~ ^[0-9]+$ ]] || { err "could not read the signer's Base USDC balance; refusing to burn blind — re-run."; exit 1; }
+        if (( bb < AMOUNT )); then
+            err "signer holds ${bb} of the ${AMOUNT} Base USDC units needed for the return burn."
             info "Bridge some out first (make demo-cctp-roundtrip, or ARGS='--legs out'), or fund ${ACTOR} on Base Sepolia."
             exit 1
         fi
