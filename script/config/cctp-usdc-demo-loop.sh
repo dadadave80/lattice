@@ -280,14 +280,55 @@ JOURNAL="${REPO_ROOT}/.cctp-demo.arc-hub.env"
 # cron/systemd-composable --once runs) could each observe an empty BURN_TX and double-burn, or race journal_set
 # whole-file rewrites and drop keys. `mkdir` is atomic on POSIX filesystems (flock(1) does not exist on macOS);
 # the EXIT trap releases it on every exit path. Derived from ${JOURNAL} so finalize_all's `rm -f` leaves the
-# lock lifecycle untouched.
+# lock lifecycle untouched. The lock is PID-stamped so one left behind by a KILLED run self-heals: a live
+# holder still refuses (double-burn), a dead one is reclaimed under a dedicated reclaim mutex that
+# RE-verifies before removing — the stale dir cannot be swapped while it occupies the path, so
+# verify-then-remove cannot race a fresh winner in (a bare judge-then-rename protocol can, proven by test).
 LOCK_DIR="${JOURNAL}.lock"
-if ! mkdir "${LOCK_DIR}" 2>/dev/null; then
-    err "another cctp-usdc-demo-loop invocation holds ${LOCK_DIR}; refusing to run concurrently (a parallel crank could double-burn)."
-    err "  if no other instance is running, remove the stale lock: rmdir ${LOCK_DIR}"
-    exit 1
-fi
-trap 'rmdir "${LOCK_DIR}" 2>/dev/null || true' EXIT
+acquire_lock() {
+    local attempt holder
+    for attempt in 1 2 3; do
+        if mkdir "${LOCK_DIR}" 2>/dev/null; then
+            # temp + rename so a concurrent reclaimer can never observe a partially written pid.
+            echo "$$" > "${LOCK_DIR}/pid.$$" && mv "${LOCK_DIR}/pid.$$" "${LOCK_DIR}/pid"
+            return 0
+        fi
+        holder="$(cat "${LOCK_DIR}/pid" 2>/dev/null || true)"
+        if [[ "${holder}" =~ ^[0-9]+$ ]] && ps -p "${holder}" >/dev/null 2>&1; then
+            err "another cctp-usdc-demo-loop invocation (pid ${holder}) holds ${LOCK_DIR}; refusing to run concurrently (a parallel crank could double-burn)."
+            return 1
+        fi
+        if [[ ! "${holder}" =~ ^[0-9]+$ ]] && [[ -n "$(find "${LOCK_DIR}" -maxdepth 0 -mmin -1 2>/dev/null)" ]]; then
+            # No pid yet and the lock is seconds old: another invocation is MID-ACQUIRE — that is a
+            # live holder, not a stale one.
+            err "another cctp-usdc-demo-loop invocation is acquiring ${LOCK_DIR}; refusing to run concurrently."
+            return 1
+        fi
+        # A reclaim mutex SIGKILLed mid-reclaim (held for microseconds) would block reclaim forever;
+        # an aged-out empty one is safe to clear.
+        [[ -z "$(find "${LOCK_DIR}.reclaim" -maxdepth 0 -mmin +5 2>/dev/null)" ]] || rmdir "${LOCK_DIR}.reclaim" 2>/dev/null || true
+        if mkdir "${LOCK_DIR}.reclaim" 2>/dev/null; then
+            # Sole reclaimer: RE-verify the CURRENT occupant under the mutex. A fresh winner shows a
+            # live pid (kept); a winner mid-acquire shows no pid on a seconds-old dir (kept).
+            holder="$(cat "${LOCK_DIR}/pid" 2>/dev/null || true)"
+            if [[ "${holder}" =~ ^[0-9]+$ ]]; then
+                ps -p "${holder}" >/dev/null 2>&1 || { rm -rf "${LOCK_DIR}"; warn "reclaimed a stale lock left by a dead run (pid ${holder})."; }
+            elif [[ -z "$(find "${LOCK_DIR}" -maxdepth 0 -mmin -1 2>/dev/null)" ]]; then
+                rm -rf "${LOCK_DIR}"; warn "reclaimed a stale lock with no recorded holder (pre-PID or interrupted acquire)."
+            fi
+            rmdir "${LOCK_DIR}.reclaim" 2>/dev/null || true
+        fi
+        # Retry: either the reclaim freed it, another reclaimer's did, or the holder is live after all.
+        sleep 0.2
+    done
+    err "could not acquire ${LOCK_DIR}; if no loop is truly running: rm -rf ${LOCK_DIR} ${LOCK_DIR}.reclaim"
+    return 1
+}
+acquire_lock || exit 1
+trap 'rm -rf "${LOCK_DIR}"' EXIT
+# INT/TERM release explicitly: EXIT-trap-on-signal-death is bash-version-dependent, and a held lock
+# blocks every future run until reclaim ages in.
+trap 'rm -rf "${LOCK_DIR}"; exit 130' INT TERM
 
 journal_get() {
     local key="$1"
