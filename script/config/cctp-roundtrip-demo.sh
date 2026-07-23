@@ -152,7 +152,9 @@ for var in ARC_TESTNET_RPC_URL BASE_SEPOLIA_RPC_URL; do
 done
 ARC_RPC="$(resolve_rpc ARC_TESTNET_RPC_URL)"
 BASE_RPC="$(resolve_rpc BASE_SEPOLIA_RPC_URL)"
-scrub() { printf '%s' "$1" | sed -e "s#${ARC_RPC}#<arc-rpc>#g" -e "s#${BASE_RPC}#<base-rpc>#g"; echo; }
+# Exact-literal redaction via parameter expansion: no sed, so URL metacharacters (#, ?, ., &) can
+# neither break the substitution nor over-match — a transport error's API-keyed RPC URL is always masked.
+scrub() { local t="$1"; t="${t//"${ARC_RPC}"/<arc-rpc>}"; t="${t//"${BASE_RPC}"/<base-rpc>}"; printf '%s\n' "${t}"; }
 
 [[ -n "${FORGE_AUTH}" ]] || {
     err "no signer. Run via 'make demo-cctp-roundtrip KEYSTORE=<name>' (foundry keystore; unattended on"
