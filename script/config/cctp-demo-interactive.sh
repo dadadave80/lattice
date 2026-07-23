@@ -47,7 +47,29 @@ ask() {
     read -rp "$1${2:+ [$2]}: " ans || true
     printf '%s' "${ans:-${2:-}}"
 }
-jget() { [[ -f "$1" ]] && sed -n "s/^$2=//p" "$1" | tail -1 || true; }
+
+# jget <journal> <key> — last value wins. Pure bash: no sed|tail fork per lookup.
+jget() {
+    local line val=""
+    [[ -f "$1" ]] || return 0
+    while IFS= read -r line || [[ -n "${line}" ]]; do
+        [[ "${line}" == "$2="* ]] && val="${line#"$2="}"
+    done < "$1"
+    printf '%s' "${val}"
+}
+
+# scrape <marker> <file> — last "<marker> <digits>" number in the file. Pure bash,
+# and last-match-wins so a repeated marker can never smuggle a newline into the value.
+scrape() {
+    local re="$1 ([0-9]+)" line out=""
+    [[ -f "$2" ]] || return 0
+    while IFS= read -r line || [[ -n "${line}" ]]; do
+        [[ "${line}" =~ ${re} ]] && out="${BASH_REMATCH[1]}"
+    done < "$2"
+    printf '%s' "${out}"
+}
+
+is_addr() { [[ "$1" =~ ^0x[0-9a-fA-F]{40}$ ]]; }
 
 RT_J=".cctp-demo.roundtrip.env"; HOOK_J=".cctp-demo.hook.env"; LOOP_J=".cctp-demo.arc-hub.env"
 
@@ -57,7 +79,7 @@ echo
 # ---- resume scan (before any prompt: the children's own errors say 're-run to resume') --------
 RESUME=""
 for spec in "${RT_J}|round trip (Arc <-> Base)|rt" "${HOOK_J}|hook showcase (auto-credit vault)|hook" "${LOOP_J}|transfer loop (Arc -> Sepolia/Base)|loop"; do
-    jfile="${spec%%|*}"; rest="${spec#*|}"; jdesc="${rest%%|*}"; jkind="${rest##*|}"
+    IFS='|' read -r jfile jdesc jkind <<< "${spec}"
     [[ -f "${jfile}" ]] || continue
     info "found a half-done ${jdesc} run (${jfile})."
     choice="$(ask "  [r]esume it, [d]elete it, or [i]gnore" "r")"
@@ -67,7 +89,14 @@ for spec in "${RT_J}|round trip (Arc <-> Base)|rt" "${HOOK_J}|hook showcase (aut
         *) warn "  ignoring it — a fresh run against the same stack may be refused by its guards." ;;
     esac
 done
-[[ -d "${LOOP_J}.lock" ]] && warn "stale transfer-loop lock ${LOOP_J}.lock — if no loop is running: rmdir ${LOOP_J}.lock"
+if [[ -d "${LOOP_J}.lock" ]]; then
+    loop_pid="$(cat "${LOOP_J}.lock/pid" 2>/dev/null || true)"
+    if [[ "${loop_pid}" =~ ^[0-9]+$ ]] && ps -p "${loop_pid}" >/dev/null 2>&1; then
+        warn "a transfer loop is RUNNING (pid ${loop_pid}, ${LOOP_J}.lock) — direction 4 will refuse until it finishes."
+    else
+        info "leftover transfer-loop lock ${LOOP_J}.lock (no live holder) — the loop reclaims it automatically."
+    fi
+fi
 
 # ---- direction ----------------------------------------------------------------
 DIRECTION=""
@@ -117,12 +146,12 @@ elif [[ "${RESUME}" != "loop" ]]; then
         DEMO_ARC_HUB="$(ask "  Arc hub address" "")"
         DEMO_BASE_DIAMOND="$(ask "  Base diamond address" "")"
         for v in DEMO_ARC_HUB DEMO_BASE_DIAMOND; do
-            [[ "${!v}" =~ ^0x[0-9a-fA-F]{40}$ ]] || { err "${v} is not a 20-byte address."; exit 2; }
+            is_addr "${!v}" || { err "${v} is not a 20-byte address."; exit 2; }
         done
         export DEMO_ARC_HUB DEMO_BASE_DIAMOND
         if [[ "${DIRECTION}" == "5" ]]; then
             DEMO_VAULT="$(ask "  CCTPHookVault address" "")"
-            [[ "${DEMO_VAULT}" =~ ^0x[0-9a-fA-F]{40}$ ]] || { err "DEMO_VAULT is not a 20-byte address."; exit 2; }
+            is_addr "${DEMO_VAULT}" || { err "DEMO_VAULT is not a 20-byte address."; exit 2; }
             export DEMO_VAULT
         fi
         if [[ "${DIRECTION}" == "4" ]]; then
@@ -138,11 +167,13 @@ AUTH_MODE="env"
 ACTOR=""
 auth_desc=""
 if [[ -n "${FORGE_AUTH:-}" ]]; then
-    case "${FORGE_AUTH}" in
-        *--private-key*) auth_desc="private key (redacted)" ;;
-        *--account*) auth_desc="keystore '$(printf '%s' "${FORGE_AUTH}" | sed -n 's/.*--account \([^ ]*\).*/\1/p')'" ;;
-        *) auth_desc="FORGE_AUTH (redacted)" ;;
-    esac
+    if [[ "${FORGE_AUTH}" == *--private-key* ]]; then
+        auth_desc="private key (redacted)"
+    elif [[ "${FORGE_AUTH}" =~ --account[[:space:]]+([^[:space:]]+) ]]; then
+        auth_desc="keystore '${BASH_REMATCH[1]}'"
+    else
+        auth_desc="FORGE_AUTH (redacted)"
+    fi
     if [[ "$(ask "sign with the ambient ${auth_desc}? [Y]es / [n]o, pick another" "Y")" =~ ^[nN]$ ]]; then
         FORGE_AUTH=""
     fi
@@ -163,7 +194,9 @@ if [[ -z "${FORGE_AUTH:-}" ]]; then
             done
             (( i > 0 )) || { err "no keystores in ~/.foundry/keystores — create one: cast wallet import <name> --interactive"; exit 2; }
             pick="$(ask "  keystore #" "1")"
-            if [[ ! "${pick}" =~ ^[0-9]+$ ]] || (( pick < 1 || pick > i )); then err "pick 1-${i}."; exit 2; fi
+            [[ "${pick}" =~ ^[0-9]+$ ]] || { err "pick 1-${i}."; exit 2; }
+            pick=$(( 10#${pick} ))   # same octal trap the amount parser guards against: '08' must reject cleanly, not crash
+            (( pick >= 1 && pick <= i )) || { err "pick 1-${i}."; exit 2; }
             ks="${ks_names[$(( pick - 1 ))]}"
             # Probe the Keychain BEFORE promising an unattended run (keychain-auth.sh errors late).
             if command -v security >/dev/null 2>&1 && security find-generic-password -s "foundry-${ks}" -w >/dev/null 2>&1; then
@@ -187,6 +220,27 @@ if [[ -z "${FORGE_AUTH:-}" ]]; then
         *) err "pick 1 or 2."; exit 2 ;;
     esac
 fi
+# An auth that can SIGN without a prompt can also DERIVE without a prompt — give every such
+# mode the same pre-flight balance read as a freshly typed key: a --private-key (make demo
+# PRIVATE_KEY=…), a keychain-materialized --account + --password-file (make demo KEYSTORE=…),
+# or an interactively picked Keychain-backed keystore (derived THROUGH keychain-auth.sh so the
+# password never takes a new path in this script). A bare --account stays skipped: deriving it
+# would fire the keystore password prompt early.
+if [[ -z "${ACTOR}" ]]; then
+    if [[ "${FORGE_AUTH:-}" =~ --private-key[[:space:]]+(0x[0-9a-fA-F]{64}) ]]; then
+        ACTOR="$(cast wallet address --private-key "${BASH_REMATCH[1]}" 2>/dev/null || true)"
+    elif [[ "${FORGE_AUTH:-}" == *--password-file* ]]; then
+        # keychain-auth.sh guarantees whitespace-free components; unquoted FORGE_AUTH is the repo's design.
+        # shellcheck disable=SC2086
+        ACTOR="$(cast wallet address ${FORGE_AUTH} 2>/dev/null || true)"
+    elif [[ "${AUTH_MODE}" == keychain:* ]]; then
+        # Single quotes are deliberate: FORGE_AUTH is materialized by keychain-auth.sh and must
+        # expand (unquoted, per the repo's design) inside the wrapped shell, not here.
+        # shellcheck disable=SC2016
+        ACTOR="$("${SCRIPT_DIR}/keychain-auth.sh" "${AUTH_MODE#keychain:}" bash -c 'cast wallet address ${FORGE_AUTH}' 2>/dev/null || true)"
+    fi
+fi
+is_addr "${ACTOR}" || ACTOR=""   # invariant: ACTOR is an address or empty — nothing else ever reaches --sender
 
 # ---- amount + extras ----------------------------------------------------------
 AMOUNT_UNITS=""
@@ -198,13 +252,23 @@ if [[ -n "${RESUME}" ]]; then
     [[ -n "${AMOUNT_UNITS}" ]] && info "amount: ${AMOUNT_UNITS} USDC units (journaled — the run is bound to it)."
 else
     # Balances are advisory: the children re-check authoritatively before spending, and on Arc the
-    # gas IS USDC, so leave headroom. Reading them forks the chain (skipped for the loop — it has
-    # its own status/fund gate; and skipped when the signer address is not derivable without a
-    # password prompt).
+    # gas IS USDC, so leave headroom. Reading one forks a chain (seconds each), so both forks run
+    # in parallel — foundry's build lock serializes any compile; the RPC forks overlap. Skipped
+    # for the loop (it has its own status/fund gate) and when the signer address is not derivable
+    # without a password prompt.
     if [[ "${DIRECTION}" != "4" && -n "${ACTOR}" ]]; then
-        info "reading balances (forks the chain; takes a few seconds)..."
-        arc_bal="$(forge script script/base/crosschain/CCTPHookDemo.s.sol:CCTPHookDemo --sig 'hookDemoArcBalance(address)' "${ACTOR}" --sender "${ACTOR}" 2>&1 | grep -oE 'DEMO-HOOK-ARCBAL [0-9]+' | awk '{print $2}' || true)"
-        base_bal="$(forge script script/base/crosschain/CCTPHookDemo.s.sol:CCTPHookDemo --sig 'hookDemoBaseBalance(address)' "${ACTOR}" --sender "${ACTOR}" 2>&1 | grep -oE 'DEMO-HOOK-BASEBAL [0-9]+' | awk '{print $2}' || true)"
+        info "reading balances (forks Arc and Base in parallel; takes a few seconds)..."
+        BAL_TMP="$(mktemp -d)"
+        trap 'rm -rf "${BAL_TMP}"' EXIT
+        # wait returns immediately on a caught signal, so Ctrl-C during the forks cleans up
+        # deterministically on every bash (EXIT-trap-on-signal-death is version-dependent).
+        trap 'rm -rf "${BAL_TMP}"; exit 130' INT TERM
+        forge script script/base/crosschain/CCTPHookDemo.s.sol:CCTPHookDemo --sig 'hookDemoArcBalance(address)' "${ACTOR}" --sender "${ACTOR}" >"${BAL_TMP}/arc" 2>&1 &
+        forge script script/base/crosschain/CCTPHookDemo.s.sol:CCTPHookDemo --sig 'hookDemoBaseBalance(address)' "${ACTOR}" --sender "${ACTOR}" >"${BAL_TMP}/base" 2>&1 &
+        wait
+        arc_bal="$(scrape DEMO-HOOK-ARCBAL "${BAL_TMP}/arc")"
+        base_bal="$(scrape DEMO-HOOK-BASEBAL "${BAL_TMP}/base")"
+        rm -rf "${BAL_TMP}"; trap - EXIT INT TERM   # explicit: exec below never fires EXIT traps
         info "  Arc USDC:  ${arc_bal:-unknown} units   (asset AND Arc gas — https://faucet.circle.com)"
         info "  Base USDC: ${base_bal:-unknown} units   (Base gas is ETH — any Base Sepolia faucet)"
     fi
@@ -229,7 +293,7 @@ fi
 BENEFICIARY=""
 if [[ "${DIRECTION}" == "5" && -z "${RESUME}" ]]; then
     BENEFICIARY="$(ask "beneficiary to auto-credit (Enter = credit yourself)" "")"
-    [[ -z "${BENEFICIARY}" || "${BENEFICIARY}" =~ ^0x[0-9a-fA-F]{40}$ ]] || { err "not a 20-byte address."; exit 2; }
+    [[ -z "${BENEFICIARY}" ]] || is_addr "${BENEFICIARY}" || { err "not a 20-byte address."; exit 2; }
 fi
 DEST_FILTER=""
 if [[ "${DIRECTION}" == "4" && -z "${RESUME}" ]]; then
@@ -251,7 +315,7 @@ case "${DIRECTION}" in
                 info "deriving the signer address to pass the beneficiary (may prompt for the keystore password)..."
                 # shellcheck disable=SC2086
                 ACTOR="$(cast wallet address ${FORGE_AUTH:-} 2>/dev/null || true)"
-                [[ "${ACTOR}" =~ ^0x[0-9a-fA-F]{40}$ ]] || { err "could not derive the signer; re-run and credit yourself, or use PRIVATE_KEY/Keychain auth."; exit 2; }
+                is_addr "${ACTOR}" || { err "could not derive the signer; re-run and credit yourself, or use PRIVATE_KEY/Keychain auth."; exit 2; }
             fi
             CHILD_ARGS=("${ACTOR}" "${BENEFICIARY}")
         fi
@@ -279,10 +343,10 @@ echo
 [[ -n "${AMOUNT_UNITS}" ]] && export AMOUNT="${AMOUNT_UNITS}"
 case "${AUTH_MODE}" in
     keychain:*)
-        exec "script/config/keychain-auth.sh" "${AUTH_MODE#keychain:}" "script/config/${CHILD}" ${CHILD_ARGS[@]+"${CHILD_ARGS[@]}"}
+        exec "${SCRIPT_DIR}/keychain-auth.sh" "${AUTH_MODE#keychain:}" "${SCRIPT_DIR}/${CHILD}" ${CHILD_ARGS[@]+"${CHILD_ARGS[@]}"}
         ;;
     *)
         export FORGE_AUTH
-        exec "script/config/${CHILD}" ${CHILD_ARGS[@]+"${CHILD_ARGS[@]}"}
+        exec "${SCRIPT_DIR}/${CHILD}" ${CHILD_ARGS[@]+"${CHILD_ARGS[@]}"}
         ;;
 esac

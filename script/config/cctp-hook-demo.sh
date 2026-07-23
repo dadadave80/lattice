@@ -260,7 +260,9 @@ if (( DEPLOY_ONLY == 1 )); then info "deployer=${ACTOR}"; else info "actor=${ACT
 
 # Scrub API-keyed RPC URLs out of any raw tool output before it reaches a log.
 BASE_RPC="$(resolve_rpc BASE_SEPOLIA_RPC_URL)"
-scrub() { printf '%s' "$1" | sed -e "s#${ARC_RPC}#<arc-rpc>#g" -e "s#${BASE_RPC}#<base-rpc>#g"; echo; }
+# Exact-literal redaction via parameter expansion: no sed, so URL metacharacters (#, ?, ., &) can
+# neither break the substitution nor over-match — a transport error's API-keyed RPC URL is always masked.
+scrub() { local t="$1"; t="${t//"${ARC_RPC}"/<arc-rpc>}"; t="${t//"${BASE_RPC}"/<base-rpc>}"; printf '%s\n' "${t}"; }
 
 # ---- 1. deployment (SEPARATE from the demo) ------------------------------------
 # --deploy-only deploys a fresh stack, persists it, and exits; the demo only CONSUMES a
