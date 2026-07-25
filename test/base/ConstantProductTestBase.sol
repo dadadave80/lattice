@@ -7,7 +7,7 @@ import {DeployERC20} from "@lattice-script/base/tokens/DeployERC20.s.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
 import {IMintableToken} from "@lattice-test/helpers/IMintableToken.sol";
 import {TokenTestFacet} from "@lattice-test/helpers/TokenTestFacet.sol";
-import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
+import {Lattice} from "@lattice/Lattice.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @title ConstantProductTestBase
@@ -43,7 +43,7 @@ abstract contract ConstantProductTestBase is Test, GetSelectors {
             functionSelectors: _getSelectors("TokenTestFacet")
         });
 
-        LatticeDiamond d = new LatticeDiamond();
+        Lattice d = new Lattice();
         d.initialize(cuts, init, initCalldata);
         token_ = address(d);
     }
@@ -65,7 +65,7 @@ abstract contract ConstantProductTestBase is Test, GetSelectors {
     /// @return pool_ The deployed pool diamond.
     function _deployPool(address admin_, address tokenA_, address tokenB_) internal returns (address pool_) {
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) = _buildPoolCuts(admin_, tokenA_, tokenB_);
-        LatticeDiamond d = new LatticeDiamond();
+        Lattice d = new Lattice();
         d.initialize(cuts, init, initCalldata);
         pool_ = address(d);
     }

@@ -4,7 +4,7 @@ pragma solidity ^0.8.30;
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {DeployBandAdapter} from "@lattice-script/base/oracles/DeployBandAdapter.s.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
-import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
+import {Lattice} from "@lattice/Lattice.sol";
 import {BandAdapter} from "@lattice/oracles/band/BandAdapter.sol";
 import {Test} from "forge-std/Test.sol";
 
@@ -31,7 +31,7 @@ abstract contract BandAdapterTestBase is Test, GetSelectors {
         deployer = new DeployBandAdapter();
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) = deployer.buildCuts(admin, reference_);
 
-        LatticeDiamond d = new LatticeDiamond();
+        Lattice d = new Lattice();
         d.initialize(cuts, init, initCalldata);
         diamond_ = address(d);
     }

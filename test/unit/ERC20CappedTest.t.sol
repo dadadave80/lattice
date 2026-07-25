@@ -7,7 +7,7 @@ import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {DeployERC20Capped} from "@lattice-script/base/tokens/DeployERC20Capped.s.sol";
 import {ERC20TestBase} from "@lattice-test/base/ERC20TestBase.sol";
 import {TokenTestFacet} from "@lattice-test/helpers/TokenTestFacet.sol";
-import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
+import {Lattice} from "@lattice/Lattice.sol";
 import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
 import {IERC20Capped} from "@lattice/interfaces/tokens/IERC20Capped.sol";
 import {ERC20} from "@lattice/tokens/ERC20/ERC20.sol";
@@ -102,7 +102,7 @@ contract ERC20CappedTest is ERC20TestBase {
 
     function test_ZeroCapInInitReverts() public {
         // Pre-deploy the diamond so `expectRevert` can target the initialize call directly.
-        LatticeDiamond d = new LatticeDiamond();
+        Lattice d = new Lattice();
         DeployERC20Capped dep = new DeployERC20Capped();
         (FacetCut[] memory prodCuts, address[] memory inits, bytes[] memory initCalldatas) =
             dep.buildCuts("Bad Cap Token", "BAD", 0);

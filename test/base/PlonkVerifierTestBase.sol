@@ -4,7 +4,7 @@ pragma solidity ^0.8.30;
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {DeployPlonkVerifier} from "@lattice-script/base/privacy/DeployPlonkVerifier.s.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
-import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
+import {Lattice} from "@lattice/Lattice.sol";
 import {PlonkVerifier} from "@lattice/privacy/PlonkVerifier.sol";
 import {Test} from "forge-std/Test.sol";
 
@@ -26,7 +26,7 @@ abstract contract PlonkVerifierTestBase is Test, GetSelectors {
         deployer = new DeployPlonkVerifier();
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) = deployer.buildCuts();
 
-        LatticeDiamond d = new LatticeDiamond();
+        Lattice d = new Lattice();
         d.initialize(cuts, init, initCalldata);
         diamond_ = address(d);
     }

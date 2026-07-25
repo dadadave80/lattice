@@ -4,7 +4,7 @@ pragma solidity ^0.8.30;
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {DeployLayerZeroGatewayAdapter} from "@lattice-script/base/crosschain/DeployLayerZeroGatewayAdapter.s.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
-import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
+import {Lattice} from "@lattice/Lattice.sol";
 import {LayerZeroGatewayAdapter} from "@lattice/crosschain/layerzero/LayerZeroGatewayAdapter.sol";
 import {Test} from "forge-std/Test.sol";
 
@@ -30,7 +30,7 @@ abstract contract LayerZeroGatewayAdapterTestBase is Test, GetSelectors {
         deployer = new DeployLayerZeroGatewayAdapter();
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) = deployer.buildCuts(admin, endpoint);
 
-        LatticeDiamond d = new LatticeDiamond();
+        Lattice d = new Lattice();
         d.initialize(cuts, init, initCalldata);
         diamond_ = address(d);
     }

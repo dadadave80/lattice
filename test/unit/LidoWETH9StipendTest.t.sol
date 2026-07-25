@@ -3,7 +3,7 @@ pragma solidity ^0.8.30;
 
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
-import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
+import {Lattice} from "@lattice/Lattice.sol";
 import {Receive} from "@lattice/Receive.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {LidoAdapter} from "@lattice/defi/LidoAdapter.sol";
@@ -111,7 +111,7 @@ contract LidoWETH9StipendTest is Test, GetSelectors {
         zero[0] = bytes4(0);
         cuts[1] = FacetCut({facetAddress: receiveFacet, action: FacetCutAction.Add, functionSelectors: zero});
 
-        LatticeDiamond d = new LatticeDiamond();
+        Lattice d = new Lattice();
         d.initialize(
             cuts,
             address(new LidoStipendInit()),

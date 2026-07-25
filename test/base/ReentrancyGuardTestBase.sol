@@ -4,7 +4,7 @@ pragma solidity ^0.8.30;
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
 import {ReentrancyGuardTestFacet} from "@lattice-test/helpers/ReentrancyGuardTestFacet.sol";
-import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
+import {Lattice} from "@lattice/Lattice.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @title ReentrancyGuardTestBase
@@ -29,7 +29,7 @@ abstract contract ReentrancyGuardTestBase is Test, GetSelectors {
             functionSelectors: _getSelectors("ReentrancyGuardTestFacet")
         });
 
-        LatticeDiamond d = new LatticeDiamond();
+        Lattice d = new Lattice();
         d.initialize(cuts, address(0), "");
         diamond_ = address(d);
     }

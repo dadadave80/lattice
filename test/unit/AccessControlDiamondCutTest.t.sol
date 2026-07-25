@@ -7,7 +7,7 @@ import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {IDiamondLoupe} from "@diamond/interfaces/IDiamondLoupe.sol";
 import {IFacet} from "@diamond/interfaces/IFacet.sol";
 import {DiamondLib, FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
-import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
+import {Lattice} from "@lattice/Lattice.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
@@ -65,7 +65,7 @@ contract AccessControlDiamondCutTest is Test {
         cuts[2] = _cut8153(address(new DiamondLoupeFacet()));
         cuts[3] = _cut8153(address(new AccessControlDiamondCut()));
         cuts[4] = _cut8153(address(new EmergencyStop()));
-        LatticeDiamond d = new LatticeDiamond();
+        Lattice d = new Lattice();
         d.initialize(
             cuts,
             address(new AccessControlDiamondCutInitFixture()),

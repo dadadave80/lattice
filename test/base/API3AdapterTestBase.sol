@@ -4,7 +4,7 @@ pragma solidity ^0.8.30;
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {DeployAPI3Adapter} from "@lattice-script/base/oracles/DeployAPI3Adapter.s.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
-import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
+import {Lattice} from "@lattice/Lattice.sol";
 import {API3Adapter} from "@lattice/oracles/api3/API3Adapter.sol";
 import {Test} from "forge-std/Test.sol";
 
@@ -27,7 +27,7 @@ abstract contract API3AdapterTestBase is Test, GetSelectors {
         deployer = new DeployAPI3Adapter();
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) = deployer.buildCuts(admin);
 
-        LatticeDiamond d = new LatticeDiamond();
+        Lattice d = new Lattice();
         d.initialize(cuts, init, initCalldata);
         diamond_ = address(d);
     }

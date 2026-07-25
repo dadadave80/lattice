@@ -6,7 +6,7 @@ import {DiamondLoupeFacet} from "@diamond/facets/DiamondLoupeFacet.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
-import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
+import {Lattice} from "@lattice/Lattice.sol";
 import {Receive} from "@lattice/Receive.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {ERC1271Signature} from "@lattice/accounts/ERC1271Signature.sol";
@@ -54,7 +54,7 @@ contract DeployAccount is BaseDeploy {
     function run(address entryPoint_, address owner) external returns (address account) {
         vm.startBroadcast();
         (FacetCut[] memory cuts, AccountInit init) = buildCuts(entryPoint_);
-        LatticeDiamond diamond = new LatticeDiamond();
+        Lattice diamond = new Lattice();
         diamond.initialize(cuts, address(init), abi.encodeCall(AccountInit.init, (owner)));
         vm.stopBroadcast();
         account = address(diamond);
