@@ -1,5 +1,41 @@
 # Changelog
 
+## [0.3.0](https://github.com/dadadave80/lattice/compare/v0.2.0...v0.3.0) (2026-07-25)
+
+
+### ⚠ BREAKING CHANGES
+
+* rename LatticeDiamond to Lattice
+
+### Features
+
+* **demos:** deployment split, unified stack, round trip, interactive tester — CCTP demos runnable by anyone ([eb68012](https://github.com/dadadave80/lattice/commit/eb6801281a3d4b4755f5957a1f8f490431ffd6bd))
+* **demos:** interactive tester — 'make demo' picks direction, amount, auth ([23dbd26](https://github.com/dadadave80/lattice/commit/23dbd26a2ffd496f2ee498860028204ccd13e4fc))
+* **demos:** parallel balance reads + self-healing loop lock ([cdc9bc0](https://github.com/dadadave80/lattice/commit/cdc9bc02bd31b4b29134e26af8b87afb0503eb28))
+* **demos:** parallel balance reads + self-healing loop lock ([989c8bc](https://github.com/dadadave80/lattice/commit/989c8bc451c90858ed46244a478bde3d856285cc))
+* **demos:** split deployment from the CCTP demos — one stack serves both, auth for anyone ([03a7e50](https://github.com/dadadave80/lattice/commit/03a7e50050bfe8519a69421b971e82a8d0fd6996))
+* **demos:** USDC round trip Arc &lt;-&gt; Base through Lattice diamonds both ways ([59a6f5e](https://github.com/dadadave80/lattice/commit/59a6f5e0f996dc89c9549b7f17145815148524e4))
+
+
+### Bug Fixes
+
+* **demos:** leg-aware closing banner for --legs back runs ([a8dd270](https://github.com/dadadave80/lattice/commit/a8dd2706b0d709ed19c9f8d0bf018cc68660bd63))
+* **demos:** leg-aware closing banner for --legs back runs ([5533601](https://github.com/dadadave80/lattice/commit/5533601df0f447cc2d00de65021d748521111d7e))
+* **demos:** roundtrip actor is always the signer; fund gates never wave a flaked read through ([4ba59e5](https://github.com/dadadave80/lattice/commit/4ba59e51cd5892235ae6309c5dbdd8fc76bccbb8))
+
+
+### Refactors
+
+* rename LatticeDiamond to Lattice ([7a666ce](https://github.com/dadadave80/lattice/commit/7a666ce22b081ad66c125d18e80dc1565340b686))
+
+
+### Documentation
+
+* add banner, update defi module list in README ([632cfee](https://github.com/dadadave80/lattice/commit/632cfee0b7ad1ec9cd7c6bbad0bea5336bd2469c))
+* add banner, update defi module list, skip CI on docs-only PRs ([31ea6d7](https://github.com/dadadave80/lattice/commit/31ea6d7d348178e07475b8b8f83244f44dd178d6))
+* **grants:** re-point hook-demo evidence at the 2026-07-20 rerun ([77c0a44](https://github.com/dadadave80/lattice/commit/77c0a44e4b519db71273e01d37d89d8ab6d0aa1c))
+* **grants:** re-point hook-demo evidence at the 2026-07-20 rerun ([1e06ca7](https://github.com/dadadave80/lattice/commit/1e06ca70ef530bf45854c5d89114fb75143561d5))
+
 ## [0.2.0](https://github.com/dadadave80/lattice/compare/v0.1.0...v0.2.0) (2026-07-20)
 
 
