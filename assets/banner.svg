@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="400" viewBox="0 0 1280 400" fill="none" role="img" aria-label="Lattice — compose on-chain protocols from already-deployed parts">
+  <title>Lattice</title>
+  <defs>
+    <pattern id="dg" width="24" height="24" patternUnits="userSpaceOnUse">
+      <circle cx="1" cy="1" r="1" fill="#16150F" fill-opacity="0.08"></circle>
+    </pattern>
+    <clipPath id="frame"><rect x="1" y="1" width="1278" height="398"></rect></clipPath>
+  </defs>
+
+  
+  <rect x="0.5" y="0.5" width="1279" height="399" fill="#F3F1E9" stroke="#16150F" stroke-opacity="0.32"></rect>
+  <g clip-path="url(#frame)">
+    <rect x="1" y="1" width="1278" height="398" fill="url(#dg)"></rect>
+
+    
+    <g stroke="#16150F" stroke-opacity="0.35">
+      <path d="M24 40 V24 H40"></path><path d="M1256 40 V24 H1240"></path>
+      <path d="M24 360 V376 H40"></path><path d="M1256 360 V376 H1240"></path>
+    </g>
+
+    
+    <g stroke="#16150F" stroke-width="5.5" stroke-linejoin="miter">
+      <path d="M128 120 L184 176 L128 232 L72 176 Z"></path>
+      <path d="M128 147 L157 176 L128 205 L99 176 Z"></path>
+      <path d="M128 120 L128 147 M184 176 L157 176 M128 232 L128 205 M72 176 L99 176"></path>
+    </g>
+
+    
+    <rect x="240" y="118" width="7" height="7" fill="#1F4FE0"></rect>
+    <text x="258" y="126" font-family="Inter, &#39;Helvetica Neue&#39;, Arial, sans-serif" font-size="13" font-weight="600" letter-spacing="2.4" fill="#635E52">EIP-2535 DIAMOND COMPOSER</text>
+
+    
+    <text x="240" y="206" font-family="Inter, &#39;Helvetica Neue&#39;, Arial, sans-serif" font-size="84" font-weight="700" letter-spacing="-1.7" fill="#16150F">Lattice</text>
+
+    
+    <text x="241" y="252" font-family="&#39;JetBrains Mono&#39;,&#39;SFMono-Regular&#39;,ui-monospace,Menlo,monospace" font-size="17" letter-spacing="0.2" fill="#3C3931">Compose on-chain protocols from already-deployed parts.</text>
+
+    
+    <g stroke="#16150F" stroke-opacity="0.85" stroke-width="1.4" stroke-linejoin="miter">
+      <path d="M1016 56 L1136 176 L1016 296 L896 176 Z"></path>
+      <path d="M1016 112 L1080 176 L1016 240 L952 176 Z"></path>
+      <path d="M1136 176 L1080 176 M1016 296 L1016 240 M896 176 L952 176"></path>
+    </g>
+    
+    <g stroke="#1F4FE0" stroke-width="1.5">
+      <path d="M830 246 H868 V176 H896" stroke-opacity="0.6"></path>
+      <path d="M1016 56 L1016 112" stroke-width="1.6"></path>
+    </g>
+    <circle cx="830" cy="246" r="2.5" fill="#1F4FE0" fill-opacity="0.7"></circle>
+    <circle cx="1016" cy="56" r="4" fill="#1F4FE0"></circle>
+
+    
+    <g stroke="#635E52" stroke-opacity="0.75">
+      <path d="M1030 56 H1192"></path><path d="M1030 296 H1192"></path>
+      <path d="M1184 62 V290"></path>
+    </g>
+    <path d="M1184 56 L1181 64 H1187 Z" fill="#635E52"></path>
+    <path d="M1184 296 L1181 288 H1187 Z" fill="#635E52"></path>
+    <text x="1176" y="176" transform="rotate(-90 1176 176)" text-anchor="middle" font-family="&#39;JetBrains Mono&#39;,&#39;SFMono-Regular&#39;,ui-monospace,Menlo,monospace" font-size="11" letter-spacing="1" fill="#635E52">24u</text>
+
+    
+    <g stroke="#16150F" stroke-opacity="0.45">
+      <rect x="64.5" y="336.5" width="1151" height="47"></rect>
+      <path d="M264.5 336.5 V383.5 M524.5 336.5 V383.5 M1004.5 336.5 V383.5"></path>
+    </g>
+    <g font-family="Inter, &#39;Helvetica Neue&#39;, Arial, sans-serif" font-size="8.5" font-weight="600" letter-spacing="1.4" fill="#8B8676">
+      <text x="76" y="352">PROJECT</text>
+      <text x="276" y="352">STANDARD</text>
+      <text x="536" y="352">DEPLOY</text>
+      <text x="1016" y="352">LICENSE</text>
+    </g>
+    <g font-family="&#39;JetBrains Mono&#39;,&#39;SFMono-Regular&#39;,ui-monospace,Menlo,monospace" font-size="12.5" letter-spacing="0.6" fill="#16150F">
+      <text x="76" y="372">LATTICE</text>
+      <text x="276" y="372">EIP-2535 DIAMOND</text>
+      <text x="536" y="372" fill="#1F4FE0">CREATEX · DETERMINISTIC</text>
+      <text x="1016" y="372">MIT</text>
+    </g>
+  </g>
+</svg>
