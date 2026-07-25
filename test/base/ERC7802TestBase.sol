@@ -4,7 +4,7 @@ pragma solidity ^0.8.30;
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {DeployERC7802} from "@lattice-script/base/tokens/DeployERC7802.s.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
-import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
+import {Lattice} from "@lattice/Lattice.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @title ERC7802TestBase
@@ -31,7 +31,7 @@ abstract contract ERC7802TestBase is Test, GetSelectors {
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) =
             deployer.buildCuts(admin, bridge, name_, symbol_);
 
-        LatticeDiamond d = new LatticeDiamond();
+        Lattice d = new Lattice();
         d.initialize(cuts, init, initCalldata);
         diamond_ = address(d);
     }

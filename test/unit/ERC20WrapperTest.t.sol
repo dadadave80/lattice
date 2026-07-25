@@ -7,7 +7,7 @@ import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {DeployERC20Wrapper} from "@lattice-script/base/tokens/DeployERC20Wrapper.s.sol";
 import {ERC20TestBase} from "@lattice-test/base/ERC20TestBase.sol";
 import {TokenTestFacet} from "@lattice-test/helpers/TokenTestFacet.sol";
-import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
+import {Lattice} from "@lattice/Lattice.sol";
 import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
 import {IERC20Wrapper} from "@lattice/interfaces/tokens/IERC20Wrapper.sol";
 import {ERC20} from "@lattice/tokens/ERC20/ERC20.sol";
@@ -106,7 +106,7 @@ contract ERC20WrapperTest is ERC20TestBase {
 
     function test_InitRevertsWhenUnderlyingIsSelf() public {
         // Pre-deploy the diamond so its address is known, then init the wrapper with itself as the underlying.
-        LatticeDiamond d = new LatticeDiamond();
+        Lattice d = new Lattice();
         DeployERC20Wrapper dep = new DeployERC20Wrapper();
         (FacetCut[] memory prodCuts, address[] memory inits, bytes[] memory initCalldatas) =
             dep.buildCuts("Wrapped Underlying", "wUND", address(d));

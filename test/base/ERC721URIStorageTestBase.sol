@@ -6,7 +6,7 @@ import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {DeployERC721URIStorage} from "@lattice-script/base/tokens/DeployERC721URIStorage.s.sol";
 import {ERC721TestFacet} from "@lattice-test/helpers/ERC721TestFacet.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
-import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
+import {Lattice} from "@lattice/Lattice.sol";
 import {ERC721URIStorage} from "@lattice/tokens/ERC721/ERC721URIStorage.sol";
 
 /// @title ERC721URIStorageTestBase
@@ -49,7 +49,7 @@ abstract contract ERC721URIStorageTestBase is GetSelectors {
         });
 
         MultiInit multiInit = new MultiInit();
-        LatticeDiamond d = new LatticeDiamond();
+        Lattice d = new Lattice();
         d.initialize(cuts, address(multiInit), abi.encodeCall(MultiInit.multiInit, (inits, initCalldatas)));
         diamond_ = address(d);
     }

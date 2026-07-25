@@ -4,7 +4,7 @@ pragma solidity ^0.8.30;
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
-import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
+import {Lattice} from "@lattice/Lattice.sol";
 import {LatticeRegistry} from "@lattice/LatticeRegistry.sol";
 import {ILatticeRegistry} from "@lattice/interfaces/ILatticeRegistry.sol";
 import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
@@ -80,7 +80,7 @@ contract LatticeRegistryCompositionTest is GetSelectors {
         address bob = makeAddr("bob");
 
         RegistryErc20Init init = new RegistryErc20Init();
-        LatticeDiamond diamond = new LatticeDiamond();
+        Lattice diamond = new Lattice();
         diamond.initialize(
             cuts, address(init), abi.encodeCall(RegistryErc20Init.init, ("Lattice Token", "LAT", alice, 1_000e18))
         );

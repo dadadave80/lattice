@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/banner.svg" alt="Lattice — EIP-2535 Diamond Composer" width="100%">
+</p>
+
 # Lattice
 
 Lattice is a Solidity library of modular contract modules built on top of the
@@ -27,7 +31,7 @@ consumed as a Forge dependency; there is no application or canonical deployment 
 | `accounts/` | Diamond smart-account building blocks — two modular-account flavors ([see below](#smart-account-flavors-erc-7579-and-erc-6900)), each in its own subfolder. **`accounts/erc7579/`:** `AccountDiamond`, `Account7702Diamond`, `AccountFactory`, `AccountInit`, `AccountSigner`, `ERC7821Executor`, `ERC7579ModuleConfig`. **`accounts/erc6900/`:** `ModularAccount6900`, `AccountFactory6900`, `AccountInit6900`, `ERC6900ModuleManager`, `ERC6900Executor`, `ERC6900Validation`, `ERC6900Signature`, `ERC6900AccountView` (+ reference modules `modules/SingleSignerValidation`, `modules/SpendingLimit`). **Shared base + standalone account types (`accounts/`):** `ERC4337Validation`, `ERC1271Signature` (the ERC-4337/1271 base both flavors build on), plus the single-facet standalone types `ERC6551Account` (token-bound) and `SessionKey` |
 | `amm/` | `ConstantProduct` |
 | `crosschain/` | **Message gateways:** `CCIPGatewayAdapter`, `AxelarGatewayAdapter`, `WormholeGatewayAdapter`, `LayerZeroGatewayAdapter`, `HyperlaneGatewayAdapter`, `ZetaChainGatewayAdapter` (hub-routed), `HyperbridgeGatewayAdapter` (proof-verified), `L2ToL2`/`L1ToL2CrossDomainMessengerGatewayAdapter` (OP). **Token rails:** `CCTPBridgeAdapter` (burn/mint), `AcrossBridgeAdapter` (intent), `StargateBridgeAdapter` (pooled), `BridgeERC20`, `BridgeERC7802`, `SuperchainETHBridgeAdapter`. **Non-EVM:** `StarknetGatewayAdapter` (felt252, L1↔L2). **Composition:** `ERC7786OpenBridge` (M-of-N), `CrosschainLink`, `ChainRegistry` (one-action fan-out), `CrosschainTimelockHandler`. See [`CROSSCHAIN.md`](CROSSCHAIN.md) for the adapter-shape reference + off-chain dependency matrix |
-| `defi/` | `AaveV3Adapter`, `CompoundV3Adapter`, `CurveStableSwapAdapter`, `ERC4626Adapter`, `LidoAdapter`, `StrategyManager`, `UniswapV3Adapter`, `VaultCore` |
+| `defi/` | `AaveV3Adapter`, `AggregatorExecAdapter`, `CompoundV3Adapter`, `CurveStableSwapAdapter`, `ERC4626Adapter`, `GovernedVault`, `LidoAdapter`, `StrategyManager`, `UniswapV3Adapter`, `VaultCore`, `WETHUnwrapper` |
 | `ens/` | `ENSResolver`, `ENSReverseClaimer`, `ENSSubnameIssuer` |
 | `governance/` | `Governor` (+ `GovernorStandalone`), `TimelockController` (+ `TimelockControllerStandalone`), `Votes`, `GovernedDiamondCut`, `SafeDiamondCut`, `GovernedSafeDiamondCut`, `SafeHarborAdopter` |
 | `oracles/` | `API3Adapter`, `API3QRNGAdapter`, `BandAdapter`, `ChainlinkAdapter`, `ChainlinkAutomationAdapter`, `ChainlinkCREAdapter`, `ChainlinkVRF`, `ChronicleAdapter`, `DIAAdapter`, `GelatoAutomateAdapter`, `GelatoVRFAdapter`, `PythAdapter`, `PythEntropyAdapter`, `RedStoneAdapter`, `TWAPOracle`, `TellorAdapter` |
@@ -153,7 +157,7 @@ contract MyAccessControlled is AccessControl, Initializable {
 ```
 
 Note: init contracts delegatecalled during `diamondCut` (the `*Init.sol` pattern) carry NO guard of
-their own — they already run inside `LatticeDiamond.initialize`'s `initializer` scope, and a nested
+their own — they already run inside `Lattice.initialize`'s `initializer` scope, and a nested
 guard reverts outside a constructor context.
 
 When adding new modules, be deliberate about caller semantics. Some existing modules use
@@ -215,8 +219,8 @@ diamond's own Governor + TimelockController, with every step cranked by
 
 ## Live cross-chain USDC demos (Circle CCTP v2 · Arc testnet)
 
-Two live demos drive real USDC through Lattice diamonds with Circle's CCTP v2, with **Arc testnet as
-the source chain** — Arc's sub-second finality means Iris attests in seconds, not minutes:
+Three live demos drive real USDC through Lattice diamonds with Circle's CCTP v2, with **Arc testnet
+as the source chain** — Arc's sub-second finality means Iris attests in seconds, not minutes:
 
 - **Arc-hub transfer** (`make demo-cctp`): one hub diamond on Arc burns USDC toward BOTH
   destinations (Ethereum Sepolia + Base Sepolia); each attested message is relayed and minted on the
@@ -226,22 +230,47 @@ the source chain** — Arc's sub-second finality means Iris attests in seconds, 
   destination diamond's `relayMessageWithHook` mints to a [`CCTPHookVault`](src/examples/crosschain/CCTPHookVault.sol)
   **and**, in the same tx, the diamond's `CCTPHookExecutor` credits the beneficiary — one attested
   message both moves funds and executes logic.
+- **Round trip** (`make demo-cctp-roundtrip`): USDC moves Arc → Base **and back**, through Lattice
+  diamonds on both ends of both legs. Outbound attests in seconds (Arc finality); the return leg
+  attests after Base Sepolia's L1 finality (~13–19 min on the free tier — the run journal makes
+  Ctrl-C safe, re-run to resume). The return mint into Arc is `cast`-sent through the hub's
+  `relayMessage`: the Arc node executes the native-USDC precompile that local simulation cannot.
 
 | | |
 |---|---|
 | Arc source hub (transfer demo) | [`0xfc937CD3d175b890fF668f95fdED5CB4D9247d68`](https://testnet.arcscan.app/address/0xfc937CD3d175b890fF668f95fdED5CB4D9247d68) |
 | Mint tx — Ethereum Sepolia | [`0xff2326…39aea`](https://sepolia.etherscan.io/tx/0xff2326eb12dfd5b56e553e43f660e0c0cc8bba01dbc215b12109bf05c8039aea) |
 | Mint tx — Base Sepolia | [`0xf72700…736d3`](https://base-sepolia.blockscout.com/tx/0xf7270031cb59c1ff0c85fc0147768a623b69a7d2a3c12faa4b1d4ded9fc736d3) |
-| Hook demo — Arc hub diamond | [`0x47c96279F2Cd6335A746aaCB4310907c4202B618`](https://testnet.arcscan.app/address/0x47c96279F2Cd6335A746aaCB4310907c4202B618) |
-| Hook demo — Base destination diamond | [`0xD77e02930B0F102642F5Cd37FabDE49fef71A376`](https://base-sepolia.blockscout.com/address/0xD77e02930B0F102642F5Cd37FabDE49fef71A376) |
-| Auto-credit vault (`CCTPHookVault`) | [`0x4327159cac242B1d3411ec84447f2D19975ed52C`](https://base-sepolia.blockscout.com/address/0x4327159cac242B1d3411ec84447f2D19975ed52C) |
-| Burn-with-hook tx (Arc) | [`0xe77f3d…387e5`](https://testnet.arcscan.app/tx/0xe77f3d0ca9890be30bf6009bbb29aabddbeb498eefce6f600af4c384f90387e5) |
-| Relay tx — mint **+** hook, one tx (Base) | [`0xaa9cc2…a7760`](https://base-sepolia.blockscout.com/tx/0xaa9cc2951ab9bd23cb6872cc996302e792e05f05d61c3a1f1e552623c5da7760) — emits `Credited(0xDAdA…C751, 1000000, 26, hub)` |
+| Hook demo — Arc hub diamond | [`0x6ca99B6179eAc891E3aCD4008b610fcE66F63E2d`](https://testnet.arcscan.app/address/0x6ca99B6179eAc891E3aCD4008b610fcE66F63E2d) |
+| Hook demo — Base destination diamond | [`0x957259C5AEAa521c9DcFaEb6692C25ae53F349f1`](https://base-sepolia.blockscout.com/address/0x957259C5AEAa521c9DcFaEb6692C25ae53F349f1) |
+| Auto-credit vault (`CCTPHookVault`) | [`0xe8e10843Ab41B2c359D02eA091b6772C43b05b1f`](https://base-sepolia.blockscout.com/address/0xe8e10843Ab41B2c359D02eA091b6772C43b05b1f) |
+| Burn-with-hook tx (Arc) | [`0xc9ba15…a77a4`](https://testnet.arcscan.app/tx/0xc9ba159c51f027ab336d56b054a5947be02f8d2ba398ffd304ffbbaf0e5a77a4) |
+| Relay tx — mint **+** hook, one tx (Base) | [`0x7f82f3…b5d00`](https://base-sepolia.blockscout.com/tx/0x7f82f3c2128bf6026b340cbb1265ca5d5182de076d55d35a2223114ce09b5d00) — emits `Credited(0x11Cf…eC00, 1000000, 26, hub)` |
 | Real-attestation replay test | [`test/fork/CCTPHookDemoFork.t.sol`](test/fork/CCTPHookDemoFork.t.sol) replays the captured [fixture](test/fixtures/cctp/arc-to-base-hook-v2.json) through the live Base diamond on a pinned fork |
 | Broadcast evidence | [`broadcast/multi/`](broadcast/multi) (setups) · [`broadcast/CCTPHookDemo.s.sol/84532/`](broadcast/CCTPHookDemo.s.sol/84532) (hook relay) · [`broadcast/CCTPUSDCDemo.s.sol/`](broadcast/CCTPUSDCDemo.s.sol) (transfer relays) |
 
-All demo contracts are Sourcify-verified (`exact_match`) on both chains. Reproduce with a funded
-keystore: `make demo-cctp-hook KEYSTORE=<name>` (see the [Makefile](Makefile) demos section).
+All demo contracts are Sourcify-verified (`exact_match`) on both chains.
+
+**Anyone can run the hook demo** — deployment is separate from the demo, and by default it runs
+against the live contracts above, so all you need is a funded signer: Arc testnet USDC (the asset
+AND Arc's gas token, from https://faucet.circle.com) plus a little Base Sepolia ETH for relay gas
+(any Base Sepolia faucet):
+
+```sh
+make demo-cctp-hook PRIVATE_KEY=0x<testnet-key>   # or KEYSTORE=<foundry-keystore-name>
+```
+
+To deploy your **own** stack instead (once — ONE deployment serves ALL the demos: the Arc hub is
+registered for Ethereum Sepolia and Base Sepolia, `make demo-cctp` adopts it as its transfer hub,
+`make demo-cctp-hook` gets its hub + diamond + vault, and the Base diamond carries the Arc return
+registration `make demo-cctp-roundtrip` burns back through):
+
+```sh
+make deploy-cctp PRIVATE_KEY=0x<testnet-key>
+```
+
+See the [Makefile](Makefile) demos section for the full auth matrix (`KEYSTORE=` / `PRIVATE_KEY=` /
+raw `FORGE_AUTH=`).
 
 ## Build & test
 
@@ -267,7 +296,7 @@ src/
 ├── accounts/      # Diamond smart accounts — erc7579/ & erc6900/ flavor subfolders + shared (ERC-4337/1271/6551, session keys)
 ├── amm/           # ConstantProduct
 ├── crosschain/    # per-vendor adapter folders (circle/, layerzero/, …), each self-contained (facet+Init+Lib); generic modules at root, shared libs in libraries/
-├── defi/          # Aave, Compound, Curve, Lido, Uniswap V3, ERC4626 adapters, vault/strategy modules
+├── defi/          # Aave, Compound, Curve, Lido, Uniswap V3, ERC4626 adapters, AggregatorExec, GovernedVault, WETHUnwrapper
 ├── ens/           # ENS resolver, reverse claimer, subname issuer
 ├── governance/    # Governor, timelock, governed/Safe diamond cuts, Safe Harbor adoption
 ├── oracles/       # per-vendor adapter folders (chainlink/, pyth/, redstone/, …, uniswap/ TWAP), each self-contained (facet+Init+Lib)

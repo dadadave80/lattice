@@ -5,7 +5,7 @@ import {DiamondLoupeFacet} from "@diamond/facets/DiamondLoupeFacet.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {Account6900BlueprintHelper} from "@lattice-test/helpers/Account6900BlueprintHelper.sol";
-import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
+import {Lattice} from "@lattice/Lattice.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccountFactory6900} from "@lattice/accounts/erc6900/AccountFactory6900.sol";
 import {AccountInit6900} from "@lattice/accounts/erc6900/AccountInit6900.sol";
@@ -106,6 +106,6 @@ contract AccountFactory6900Test is Account6900BlueprintHelper {
         address account = factory.createAccount(owner, salt);
         FacetCut[] memory empty = new FacetCut[](0);
         vm.expectRevert();
-        LatticeDiamond(payable(account)).initialize(empty, address(0), "");
+        Lattice(payable(account)).initialize(empty, address(0), "");
     }
 }

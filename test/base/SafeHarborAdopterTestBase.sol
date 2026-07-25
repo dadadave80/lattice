@@ -4,7 +4,7 @@ pragma solidity ^0.8.30;
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {DeploySafeHarborAdopter} from "@lattice-script/base/governance/DeploySafeHarborAdopter.s.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
-import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
+import {Lattice} from "@lattice/Lattice.sol";
 import {SafeHarborAdopter} from "@lattice/governance/SafeHarborAdopter.sol";
 import {Test} from "forge-std/Test.sol";
 
@@ -45,7 +45,7 @@ abstract contract SafeHarborAdopterTestBase is Test, GetSelectors {
     {
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) = _buildCuts(admin, registry, factory);
 
-        LatticeDiamond d = new LatticeDiamond();
+        Lattice d = new Lattice();
         d.initialize(cuts, init, initCalldata);
         diamond_ = address(d);
     }

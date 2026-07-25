@@ -3,7 +3,7 @@ pragma solidity ^0.8.30;
 
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {DeployAccount} from "@lattice-script/base/accounts/DeployAccount.s.sol";
-import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
+import {Lattice} from "@lattice/Lattice.sol";
 import {AccountInit} from "@lattice/accounts/erc7579/AccountInit.sol";
 import {Test} from "forge-std/Test.sol";
 
@@ -24,7 +24,7 @@ abstract contract Base is Test {
     function setUp() public virtual {
         deployAccount = new DeployAccount();
         (FacetCut[] memory cuts, AccountInit init) = deployAccount.buildCuts(entryPoint);
-        LatticeDiamond diamond = new LatticeDiamond();
+        Lattice diamond = new Lattice();
         diamond.initialize(cuts, address(init), abi.encodeCall(AccountInit.init, (owner)));
         account = address(diamond);
     }

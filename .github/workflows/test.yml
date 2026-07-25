@@ -10,7 +10,31 @@ on:
     branches:
       - main
       - dev
+    paths-ignore:
+      - "*.md"
+      - "assets/**"
+      - "docs/**"
+      - "broadcast/**"
+      - "deployments/**"
+      - "snapshots/**"
+      - "CHANGELOG.md"
+      - "LICENSE"
+      - "CODE_OF_CONDUCT.md"
+      - "CONTRIBUTING.md"
+      - "SECURITY.md"
   pull_request:
+    paths-ignore:
+      - "*.md"
+      - "assets/**"
+      - "docs/**"
+      - "broadcast/**"
+      - "deployments/**"
+      - "snapshots/**"
+      - "CHANGELOG.md"
+      - "LICENSE"
+      - "CODE_OF_CONDUCT.md"
+      - "CONTRIBUTING.md"
+      - "SECURITY.md"
   workflow_dispatch:
 
 # Cancel superseded runs: a new commit on the same ref/PR aborts the in-flight run instead of queuing behind it.

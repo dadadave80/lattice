@@ -5,7 +5,7 @@ import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {DeployERC20Crosschain} from "@lattice-script/base/tokens/DeployERC20Crosschain.s.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
 import {TokenTestFacet} from "@lattice-test/helpers/TokenTestFacet.sol";
-import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
+import {Lattice} from "@lattice/Lattice.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @title ERC20CrosschainTestBase
@@ -47,7 +47,7 @@ abstract contract ERC20CrosschainTestBase is Test, GetSelectors {
         }
         cuts[prod.length] = _helperCut();
 
-        LatticeDiamond d = new LatticeDiamond();
+        Lattice d = new Lattice();
         d.initialize(cuts, init, initCalldata);
         diamond_ = address(d);
         helper = TokenTestFacet(diamond_);

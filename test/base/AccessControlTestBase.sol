@@ -5,7 +5,7 @@ import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {DeployAccessControl} from "@lattice-script/base/access/DeployAccessControl.s.sol";
 import {AccessControlTestFacet} from "@lattice-test/helpers/AccessControlTestFacet.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
-import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
+import {Lattice} from "@lattice/Lattice.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {Test} from "forge-std/Test.sol";
 
@@ -39,7 +39,7 @@ abstract contract AccessControlTestBase is Test, GetSelectors {
             functionSelectors: _getSelectors("AccessControlTestFacet")
         });
 
-        LatticeDiamond d = new LatticeDiamond();
+        Lattice d = new Lattice();
         d.initialize(cuts, init, initCalldata);
         diamond_ = address(d);
     }

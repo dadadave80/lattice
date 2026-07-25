@@ -4,7 +4,7 @@ pragma solidity ^0.8.30;
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {DeployERC5564Announcer} from "@lattice-script/base/privacy/DeployERC5564Announcer.s.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
-import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
+import {Lattice} from "@lattice/Lattice.sol";
 import {ERC5564Announcer} from "@lattice/privacy/ERC5564Announcer.sol";
 import {Test} from "forge-std/Test.sol";
 
@@ -26,7 +26,7 @@ abstract contract ERC5564AnnouncerTestBase is Test, GetSelectors {
         deployer = new DeployERC5564Announcer();
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) = deployer.buildCuts();
 
-        LatticeDiamond d = new LatticeDiamond();
+        Lattice d = new Lattice();
         d.initialize(cuts, init, initCalldata);
         diamond_ = address(d);
     }
