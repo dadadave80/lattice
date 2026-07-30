@@ -160,6 +160,7 @@ deploy-local: ## Deploy SCRIPT to local Anvil (SCRIPT=… [SIG='run()'] [ARGS='�
 #   make demo-governance  KEYSTORE=<name> ARGS='<vault> <ens-name> <actor>'
 #   make demo-cctp        KEYSTORE=<name>      # Arc-hub loop: both destinations; ARGS='<dest>' filters
 #   make demo-cctp-hook   KEYSTORE=<name>      # hook showcase; ARGS='<actor> <beneficiary>' optional
+#   make demo-cctp-receipt KEYSTORE=<name>     # direct USDC delivery + position-style receipt NFT
 #   make demo-cctp-roundtrip KEYSTORE=<name>   # USDC Arc -> Base -> Arc; ARGS='<actor>' optional
 #   make deploy-cctp      KEYSTORE=<name>      # deploy your OWN stack — serves ALL CCTP demos
 # The hook demo (Arc -> Base Sepolia) showcases CCTP v2 HOOKS: one attested message both moves USDC
@@ -194,6 +195,14 @@ deploy-cctp: ## Deploy ONE CCTP demo stack (Arc hub + Base diamond + vault) serv
 .PHONY: demo-cctp-hook
 demo-cctp-hook: ## CCTP v2 hook demo vs the live stack (Arc->Base auto-credit) — KEYSTORE=/PRIVATE_KEY=
 	@$(AUTH_WRAP) script/config/cctp-hook-demo.sh $(ARGS)
+
+.PHONY: deploy-cctp-receipt
+deploy-cctp-receipt: ## Deploy a receipt NFT against an existing Base CCTP diamond — KEYSTORE=/PRIVATE_KEY=
+	@$(AUTH_WRAP) script/config/cctp-hook-receipt-demo.sh --deploy-only $(ARGS)
+
+.PHONY: demo-cctp-receipt
+demo-cctp-receipt: ## CCTP receipt NFT demo — Arc->Base USDC delivery + on-chain receipt
+	@$(AUTH_WRAP) script/config/cctp-hook-receipt-demo.sh $(ARGS)
 
 .PHONY: demo-cctp-roundtrip
 demo-cctp-roundtrip: ## USDC round trip Arc -> Base -> Arc through Lattice diamonds both ways — KEYSTORE=/PRIVATE_KEY=
