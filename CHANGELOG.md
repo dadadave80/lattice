@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.4.0](https://github.com/dadadave80/lattice/compare/v0.3.0...v0.4.0) (2026-07-31)
+
+
+### Features
+
+* **cctp:** add hook receipt NFT demo ([339c490](https://github.com/dadadave80/lattice/commit/339c49089856eefb8561cd7d69db1855926481f2))
+* **cctp:** add hook receipt NFT demo ([02681de](https://github.com/dadadave80/lattice/commit/02681de70111398c05944d94a7e1c357eaecede1))
+
+
+### Documentation
+
+* **cctp:** capture grant demo receipt relay ([f4faf99](https://github.com/dadadave80/lattice/commit/f4faf99ec498a23665964eb989f8a8011b5ca8f6))
+
 ## [0.3.0](https://github.com/dadadave80/lattice/compare/v0.2.0...v0.3.0) (2026-07-25)
 
 
