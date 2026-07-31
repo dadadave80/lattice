@@ -11,6 +11,7 @@
 #   [3] One way     Base -> Arc          (cctp-roundtrip-demo.sh --legs back)
 #   [4] Transfer    Arc -> Sepolia+Base  (cctp-usdc-demo-loop.sh)
 #   [5] Hook        Arc -> Base vault    (cctp-hook-demo.sh)
+#   [6] Receipt NFT Arc -> Base          (cctp-hook-receipt-demo.sh)
 #
 # A half-done run's journal is detected BEFORE any prompt and offered for
 # resume (direction/stack/amount re-derived from the journal; only auth is
@@ -72,13 +73,14 @@ scrape() {
 is_addr() { [[ "$1" =~ ^0x[0-9a-fA-F]{40}$ ]]; }
 
 RT_J=".cctp-demo.roundtrip.env"; HOOK_J=".cctp-demo.hook.env"; LOOP_J=".cctp-demo.arc-hub.env"
+RECEIPT_J=".cctp-demo.receipt.env"
 
 echo "${C_BOLD}Lattice CCTP demo — real testnet USDC through diamonds on both ends${C_OFF}"
 echo
 
 # ---- resume scan (before any prompt: the children's own errors say 're-run to resume') --------
 RESUME=""
-for spec in "${RT_J}|round trip (Arc <-> Base)|rt" "${HOOK_J}|hook showcase (auto-credit vault)|hook" "${LOOP_J}|transfer loop (Arc -> Sepolia/Base)|loop"; do
+for spec in "${RT_J}|round trip (Arc <-> Base)|rt" "${HOOK_J}|hook showcase (auto-credit vault)|hook" "${LOOP_J}|transfer loop (Arc -> Sepolia/Base)|loop" "${RECEIPT_J}|receipt NFT (direct delivery + proof)|receipt"; do
     IFS='|' read -r jfile jdesc jkind <<< "${spec}"
     [[ -f "${jfile}" ]] || continue
     info "found a half-done ${jdesc} run (${jfile})."
@@ -107,6 +109,7 @@ case "${RESUME}" in
         ;;
     hook) DIRECTION=5 ;;
     loop) DIRECTION=4 ;;
+    receipt) DIRECTION=6 ;;
     *)
         echo
         echo "  ${C_BOLD}Where should the USDC go?${C_OFF}"
@@ -115,8 +118,9 @@ case "${RESUME}" in
         echo "    [3] One way      Base -> Arc          (you must already hold Base Sepolia USDC)"
         echo "    [4] Transfer     Arc -> Sepolia + Base (self-cranking loop, both destinations)"
         echo "    [5] Hook         Arc -> Base           (programmable USDC: vault auto-credits a beneficiary)"
+        echo "    [6] Receipt NFT  Arc -> Base           (USDC to recipient + position-style proof NFT)"
         DIRECTION="$(ask "  direction" "1")"
-        [[ "${DIRECTION}" =~ ^[1-5]$ ]] || { err "pick 1-5."; exit 2; }
+        [[ "${DIRECTION}" =~ ^[1-6]$ ]] || { err "pick 1-6."; exit 2; }
         ;;
 esac
 
@@ -136,6 +140,12 @@ elif [[ "${RESUME}" == "hook" ]]; then
         export DEMO_ARC_HUB="${dep%%:*}" DEMO_VAULT="${dep##*:}"
         mid="${dep#*:}"; export DEMO_BASE_DIAMOND="${mid%%:*}"
     fi
+elif [[ "${RESUME}" == "receipt" ]]; then
+    dep="$(jget "${RECEIPT_J}" DEPLOYMENT)"
+    if [[ -n "${dep}" ]]; then
+        export DEMO_ARC_HUB="${dep%%:*}" DEMO_RECEIPT="${dep##*:}"
+        mid="${dep#*:}"; export DEMO_BASE_DIAMOND="${mid%%:*}"
+    fi
 elif [[ "${RESUME}" != "loop" ]]; then
     if [[ -f .cctp-demo.deployment.env ]]; then
         info "stack: your deployment (.cctp-demo.deployment.env, from 'make deploy-cctp')."
@@ -153,6 +163,11 @@ elif [[ "${RESUME}" != "loop" ]]; then
             DEMO_VAULT="$(ask "  CCTPHookVault address" "")"
             is_addr "${DEMO_VAULT}" || { err "DEMO_VAULT is not a 20-byte address."; exit 2; }
             export DEMO_VAULT
+        fi
+        if [[ "${DIRECTION}" == "6" ]]; then
+            DEMO_RECEIPT="$(ask "  CCTPHookReceipt address" "")"
+            is_addr "${DEMO_RECEIPT}" || { err "DEMO_RECEIPT is not a 20-byte address."; exit 2; }
+            export DEMO_RECEIPT
         fi
         if [[ "${DIRECTION}" == "4" ]]; then
             export DIAMOND="${DEMO_ARC_HUB}" BASE_DIAMOND="${DEMO_BASE_DIAMOND}"
@@ -243,6 +258,12 @@ fi
 is_addr "${ACTOR}" || ACTOR=""   # invariant: ACTOR is an address or empty — nothing else ever reaches --sender
 
 # ---- amount + extras ----------------------------------------------------------
+RECEIPT_RECIPIENT=""
+if [[ "${DIRECTION}" == "6" && -z "${RESUME}" ]]; then
+    RECEIPT_RECIPIENT="$(ask "USDC + NFT recipient (Enter = signer)" "")"
+    [[ -z "${RECEIPT_RECIPIENT}" ]] || is_addr "${RECEIPT_RECIPIENT}" || { err "not a 20-byte address."; exit 2; }
+fi
+
 AMOUNT_UNITS=""
 if [[ -n "${RESUME}" ]]; then
     case "${RESUME}" in
@@ -264,7 +285,9 @@ else
         # deterministically on every bash (EXIT-trap-on-signal-death is version-dependent).
         trap 'rm -rf "${BAL_TMP}"; exit 130' INT TERM
         forge script script/base/crosschain/CCTPHookDemo.s.sol:CCTPHookDemo --sig 'hookDemoArcBalance(address)' "${ACTOR}" --sender "${ACTOR}" >"${BAL_TMP}/arc" 2>&1 &
-        forge script script/base/crosschain/CCTPHookDemo.s.sol:CCTPHookDemo --sig 'hookDemoBaseBalance(address)' "${ACTOR}" --sender "${ACTOR}" >"${BAL_TMP}/base" 2>&1 &
+        base_balance_owner="${ACTOR}"
+        [[ "${DIRECTION}" == "6" && -n "${RECEIPT_RECIPIENT}" ]] && base_balance_owner="${RECEIPT_RECIPIENT}"
+        forge script script/base/crosschain/CCTPHookDemo.s.sol:CCTPHookDemo --sig 'hookDemoBaseBalance(address)' "${base_balance_owner}" --sender "${ACTOR}" >"${BAL_TMP}/base" 2>&1 &
         wait
         arc_bal="$(scrape DEMO-HOOK-ARCBAL "${BAL_TMP}/arc")"
         base_bal="$(scrape DEMO-HOOK-BASEBAL "${BAL_TMP}/base")"
@@ -320,6 +343,18 @@ case "${DIRECTION}" in
             CHILD_ARGS=("${ACTOR}" "${BENEFICIARY}")
         fi
         ;;
+    6)
+        CHILD="cctp-hook-receipt-demo.sh"; CHILD_ARGS=(); flow="receipt NFT Arc -> Base"
+        if [[ -n "${RECEIPT_RECIPIENT}" ]]; then
+            if [[ -z "${ACTOR}" ]]; then
+                info "deriving the signer address to pass the recipient (may prompt for the keystore password)..."
+                # shellcheck disable=SC2086
+                ACTOR="$(cast wallet address ${FORGE_AUTH:-} 2>/dev/null || true)"
+                is_addr "${ACTOR}" || { err "could not derive the signer; use PRIVATE_KEY/Keychain auth."; exit 2; }
+            fi
+            CHILD_ARGS=("${ACTOR}" "${RECEIPT_RECIPIENT}")
+        fi
+        ;;
 esac
 
 echo
@@ -327,6 +362,7 @@ echo "  ${C_BOLD}About to run:${C_OFF}"
 echo "    flow:    ${flow}${RESUME:+  (RESUMING a half-done run)}"
 echo "    amount:  ${AMOUNT_UNITS:-per-journal} USDC units"
 echo "    stack:   ${DEMO_ARC_HUB:-auto (deploy journal, else canonical)}${DEMO_BASE_DIAMOND:+ / ${DEMO_BASE_DIAMOND}}"
+[[ "${DIRECTION}" == "6" ]] && echo "    receipt: ${DEMO_RECEIPT:-auto (receipt deployment journal)}"
 echo "    auth:    ${auth_desc}"
 case "${DIRECTION}" in
     1 | 3) echo "    timing:  the Base -> Arc leg attests after Base Sepolia's L1 finality (~13-19 min; Ctrl-C safe, re-run resumes)." ;;
