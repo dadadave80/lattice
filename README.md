@@ -230,6 +230,11 @@ as the source chain** — Arc's sub-second finality means Iris attests in second
   destination diamond's `relayMessageWithHook` mints to a [`CCTPHookVault`](src/examples/crosschain/CCTPHookVault.sol)
   **and**, in the same tx, the diamond's `CCTPHookExecutor` credits the beneficiary — one attested
   message both moves funds and executes logic.
+- **Position-style receipt NFT** (`make demo-cctp-receipt`): USDC is minted directly to the Base
+  recipient while the same attested relay mints a fully on-chain [`CCTPHookReceipt`](src/examples/crosschain/CCTPHookReceipt.sol)
+  showing the net amount, CCTP source domain, source contract, original recipient, route, and delivery
+  time. The transferable NFT is immutable proof of delivery — it never custodies, controls, or redeems
+  the USDC.
 - **Round trip** (`make demo-cctp-roundtrip`): USDC moves Arc → Base **and back**, through Lattice
   diamonds on both ends of both legs. Outbound attests in seconds (Arc finality); the return leg
   attests after Base Sepolia's L1 finality (~13–19 min on the free tier — the run journal makes
@@ -247,6 +252,10 @@ as the source chain** — Arc's sub-second finality means Iris attests in second
 | Burn-with-hook tx (Arc) | [`0xc9ba15…a77a4`](https://testnet.arcscan.app/tx/0xc9ba159c51f027ab336d56b054a5947be02f8d2ba398ffd304ffbbaf0e5a77a4) |
 | Relay tx — mint **+** hook, one tx (Base) | [`0x7f82f3…b5d00`](https://base-sepolia.blockscout.com/tx/0x7f82f3c2128bf6026b340cbb1265ca5d5182de076d55d35a2223114ce09b5d00) — emits `Credited(0x11Cf…eC00, 1000000, 26, hub)` |
 | Real-attestation replay test | [`test/fork/CCTPHookDemoFork.t.sol`](test/fork/CCTPHookDemoFork.t.sol) replays the captured [fixture](test/fixtures/cctp/arc-to-base-hook-v2.json) through the live Base diamond on a pinned fork |
+| Receipt NFT (`CCTPHookReceipt`) | [`0x6De791…71a65`](https://base-sepolia.blockscout.com/address/0x6De7919B31b5FCBC771baD221B7A305F43871a65) |
+| Receipt demo burn (Arc) | [`0x7a923b…c6f07`](https://testnet.arcscan.app/tx/0x7a923bb854ea4e172cbb452d16cf5c1ff75765189c73f3e36d45ed65bf8c6f07) |
+| Receipt relay — direct USDC + NFT (Base) | [`0xbdcd52…5a8a7`](https://base-sepolia.blockscout.com/tx/0xbdcd52bb632dd2f2d031da3ba55ac421ad73b0cf3cf3f679047cfa51d5e5a8a7) — grant-video run; mints 5 USDC and receipt #4 to `0xDAda…C751` |
+| Receipt real-attestation replay | [`test/fork/CCTPHookReceiptDemoFork.t.sol`](test/fork/CCTPHookReceiptDemoFork.t.sol) replays the captured [receipt fixture](test/fixtures/cctp/arc-to-base-receipt-v2.json) |
 | Broadcast evidence | [`broadcast/multi/`](broadcast/multi) (setups) · [`broadcast/CCTPHookDemo.s.sol/84532/`](broadcast/CCTPHookDemo.s.sol/84532) (hook relay) · [`broadcast/CCTPUSDCDemo.s.sol/`](broadcast/CCTPUSDCDemo.s.sol) (transfer relays) |
 
 All demo contracts are Sourcify-verified (`exact_match`) on both chains.
@@ -259,6 +268,18 @@ AND Arc's gas token, from https://faucet.circle.com) plus a little Base Sepolia 
 ```sh
 make demo-cctp-hook PRIVATE_KEY=0x<testnet-key>   # or KEYSTORE=<foundry-keystore-name>
 ```
+
+The receipt demo is intentionally separate from the vault demo. Deploy its NFT once against the existing
+Base destination diamond, then run it directly or choose **Receipt NFT** inside `make demo`:
+
+```sh
+make deploy-cctp-receipt PRIVATE_KEY=0x<testnet-key>
+make demo-cctp-receipt PRIVATE_KEY=0x<testnet-key>
+```
+
+`CCTPHookReceipt` renders its JSON and SVG entirely on-chain. Its `source contract` field is Circle's
+attested CCTP message sender (normally the Arc hub diamond), not an asserted source-user wallet. The live
+deployment and first receipt relay are linked in the evidence table above.
 
 To deploy your **own** stack instead (once — ONE deployment serves ALL the demos: the Arc hub is
 registered for Ethereum Sepolia and Base Sepolia, `make demo-cctp` adopts it as its transfer hub,
