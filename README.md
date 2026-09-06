@@ -120,6 +120,13 @@ storage struct they operate on. A few contracts are standalone rather than facet
 standard or deployment model requires it, for example `AccountFactory`, `GovernorStandalone`,
 `TimelockControllerStandalone`, `AccessManagerStandalone`, and `VestingWalletStandalone`.
 
+## Compose a governed Diamond
+
+Start with [Compose your own Diamond](docs/guides/compose-your-own-diamond.md), or run the
+[local governance example](examples/governance-upgradeable-diamond/README.md). The
+[reusable storage-layout Action](.github/actions/storage-layout/README.md) checks source-bound
+ERC-7201 layouts against a trusted previous commit. See [grant progress](PROGRESS.md) for public evidence.
+
 ## Install / usage
 
 Install as a Forge dependency:
