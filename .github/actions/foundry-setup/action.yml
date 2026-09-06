@@ -14,9 +14,7 @@ inputs:
 runs:
   using: composite
   steps:
-    # Pin the release channel so CI is reproducible instead of tracking whatever nightly happens to be current
-    # (unpinned Foundry defaults to nightly, which drifts `forge fmt`/lint output between runs). `stable` matches
-    # the channel OpenZeppelin pins in its setup action.
+    # Tests and docs/formatting pin their tested releases independently.
     - name: Install Foundry
       uses: foundry-rs/foundry-toolchain@v1
       with:
