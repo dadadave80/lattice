@@ -58,8 +58,6 @@ jobs:
           submodules: recursive
           persist-credentials: false
       - uses: ./.github/actions/foundry-setup
-        with:
-          version: v1.7.0
       - name: Run Forge fmt
         run: forge fmt --check
 
@@ -157,19 +155,8 @@ jobs:
             cache
           key: forge-build-${{ runner.os }}-${{ hashFiles('foundry.toml', 'remappings.txt', 'src/**/*.sol', 'lib/**/*.sol') }}
       # `jq` is preinstalled on ubuntu-latest runners.
-      - name: Fetch trusted baseline
-        env:
-          BASE_REF: ${{ github.event.pull_request.base.sha || github.event.before || github.sha }}
-        run: git fetch --no-tags origin "$BASE_REF"
       - name: Check ERC-7201 storage layout
-        uses: ./.github/actions/storage-layout
-        with:
-          probe: script/upgrades/StorageLayoutProbe.sol:StorageLayoutProbe
-          manifest: script/upgrades/storage-layout.manifest.json
-          baseline: script/upgrades/storage-layout.baseline
-          baseline-ref: ${{ github.event.pull_request.base.sha || github.event.before || github.sha }}
-      - name: Storage guard regression checks
-        run: python3 .github/actions/storage-layout/test_check.py
+        run: ./script/upgrades/check-storage-layout.sh
 
   # Restores the `build` cache, so only test/ files are compiled here, not src/.
   test:

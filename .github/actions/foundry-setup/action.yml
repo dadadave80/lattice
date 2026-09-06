@@ -7,18 +7,16 @@ description: >-
   populates), so each job runs actions/checkout inline before
   `uses: ./.github/actions/foundry-setup`.
 
-inputs:
-  version:
-    description: Pinned Foundry release (formatting uses the established 1.7 formatter)
-    default: v1.8.1
 runs:
   using: composite
   steps:
-    # Tests and docs/formatting pin their tested releases independently.
+    # Pin the release channel so CI is reproducible instead of tracking whatever nightly happens to be current
+    # (unpinned Foundry defaults to nightly, which drifts `forge fmt`/lint output between runs). `stable` matches
+    # the channel OpenZeppelin pins in its setup action.
     - name: Install Foundry
       uses: foundry-rs/foundry-toolchain@v1
       with:
-        version: ${{ inputs.version }}
+        version: stable
 
     - name: Show Forge version
       shell: bash
