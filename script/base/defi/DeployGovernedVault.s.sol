@@ -5,7 +5,6 @@ import {DiamondLoupeFacet} from "@diamond/facets/DiamondLoupeFacet.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
-import {LatticeFactory} from "@lattice/LatticeFactory.sol";
 import {Receive} from "@lattice/Receive.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {GovernedVault} from "@lattice/defi/GovernedVault.sol";
@@ -15,8 +14,6 @@ import {GovernedDiamondCut} from "@lattice/governance/GovernedDiamondCut.sol";
 import {Governor} from "@lattice/governance/Governor.sol";
 import {TimelockController} from "@lattice/governance/TimelockController.sol";
 import {Votes} from "@lattice/governance/Votes.sol";
-import {DiamondValidationLib} from "@lattice/governance/libraries/DiamondValidationLib.sol";
-import {RecipeEntry} from "@lattice/interfaces/ILatticeFactory.sol";
 import {EmergencyStop} from "@lattice/security/EmergencyStop.sol";
 import {ERC20} from "@lattice/tokens/ERC20/ERC20.sol";
 import {ERC20Votes} from "@lattice/tokens/ERC20/ERC20Votes.sol";
@@ -53,30 +50,9 @@ contract DeployGovernedVault is BaseDeploy {
         public
         returns (FacetCut[] memory cuts, address init, bytes memory initCalldata)
     {
-        DiamondValidationLib.assertNamespacesDisjoint(storageNamespaces());
         cuts = _buildBaseCuts();
         init = address(new GovernedVaultInit());
         initCalldata = abi.encodeCall(GovernedVaultInit.init, (p));
-    }
-
-    /// @notice Unique storage owners, including dependencies shared across facets.
-    /// @dev Initializable and the reentrancy guard use fixed non-ERC-7201 slots; see the guide.
-    function storageNamespaces() public pure returns (string[] memory ids) {
-        ids = new string[](14);
-        ids[0] = "diamond.lib.storage";
-        ids[1] = "diamond.lib.storage.ERC165";
-        ids[2] = "lattice.storage.AccessControl";
-        ids[3] = "lattice.storage.TimelockController";
-        ids[4] = "lattice.storage.ERC20";
-        ids[5] = "lattice.storage.ERC4626";
-        ids[6] = "lattice.storage.VaultCore";
-        ids[7] = "lattice.storage.Votes";
-        ids[8] = "lattice.storage.Governor";
-        ids[9] = "lattice.storage.GovernedVault";
-        ids[10] = "lattice.storage.EmergencyStop";
-        ids[11] = "lattice.storage.GovernedDiamondCut";
-        ids[12] = "lattice.storage.EIP712";
-        ids[13] = "lattice.storage.Nonces";
     }
 
     /// @dev The 14 base facet cuts alone — shared with recipes that EXTEND this one under a different
@@ -102,16 +78,6 @@ contract DeployGovernedVault is BaseDeploy {
         cuts[11] = _cut(address(new EmergencyStop()));
         cuts[12] = _cut(address(new GovernedDiamondCut()));
         cuts[13] = _cut(address(new Receive()));
-    }
-
-    /// @notice Uses the existing factory to create and initialize the proxy in one transaction.
-    /// @dev Custom cuts use no registry entries; the factory binds salt to the caller.
-    function deployAtomic(GovernedVaultParams memory p, LatticeFactory factory, bytes32 salt)
-        public
-        returns (address vault)
-    {
-        (FacetCut[] memory cuts, address init, bytes memory data) = buildCuts(p);
-        vault = factory.deploy(new RecipeEntry[](0), cuts, init, data, salt);
     }
 
     /// @notice Deploys a self-governed vault diamond (broadcasting entrypoint for `forge script ... --broadcast`).

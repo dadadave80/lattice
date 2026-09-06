@@ -28,12 +28,3 @@ docs/
 
 # CI-generated contract-size report (forge build --sizes --json)
 sizes.json
-
-# Publish only these hand-authored grant guides; preserve unrelated local docs.
-!docs/
-docs/*
-!docs/guides/
-docs/guides/*
-!docs/guides/compose-your-own-diamond.md
-!docs/guides/quickstart.md
-__pycache__/
