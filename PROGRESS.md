@@ -27,11 +27,26 @@ Tag: `grant-m1` — created on `main` when this evidence is promoted from `dev`.
 
 ## Milestone 2 — Worked integration example + composition guide
 
-Not started.
+Implementation prepared for [#173](https://github.com/dadadave80/lattice/issues/173); release proof pending.
+
+- [Composition guide](docs/guides/compose-your-own-diamond.md) and [runnable local example](examples/governance-upgradeable-diamond/README.md).
+- [Canonical upgrade test](test/unit/GovernedVaultUpgradeTest.t.sol) uses the production recipe and atomic factory deployment.
+- Local validation: 13 focused vault tests pass; Anvil completes deposit → delegate → propose → vote → queue → execute,
+  returning `grantVersion() = 2` with all 1,000 deposited assets preserved.
+- Acceptance still requires merged commit permalinks, a public green CI run, and the accepted `grant-m2` tag.
 
 ## Milestone 3 — Docs site + reusable storage-safety Action
 
-Not started.
+Implementation prepared for [#173](https://github.com/dadadave80/lattice/issues/173); publication proof pending.
+
+- [Documentation workflow](.github/workflows/docs.yml) generates forge-doc reference plus the hand-authored guides;
+  its mdBook build and entrypoint/link checks pass locally. Public deployment is gated on `main`.
+- [Storage Action](.github/actions/storage-layout/README.md) checks 88 source-bound namespaces, nested layouts,
+  candidate snapshot drift, and compatibility against a trusted historical commit.
+- Independent-consumer regression checks cover unsafe source changes, malicious snapshot regeneration,
+  metadata mismatches, and safe top-level appends.
+- Acceptance still requires the live Pages URL, published Action ref, external consumer red/green runs,
+  and accepted `grant-m3` tag. No milestone is marked complete until those links are recorded.
 
 # Circle Arc Grant (2026 Cohort 2 — application evidence)
 
