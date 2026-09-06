@@ -21,7 +21,7 @@ for page in (book / 'src').rglob('*.md'):
     text = re.sub(r'\]\(/(src/[^)#]+)(#[^)]*)?\)',
                   lambda m: '](' + os.path.relpath(book / 'src' / m[1], page.parent) + (m[2] or '') + ')', text)
     page.write_text(text)
-p = book / 'src/SUMMARY.md' 
+p = book / 'src/SUMMARY.md'
 s = p.read_text()
 s = s.replace('# src', '# Guides\n- [Quickstart](guides/quickstart.md)\n- [Compose your own Diamond](guides/compose-your-own-diamond.md)\n- [Storage Action](guides/storage-action.md)\n# API reference', 1)
 p.write_text(s)
