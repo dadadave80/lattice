@@ -122,6 +122,10 @@ standard or deployment model requires it, for example `AccountFactory`, `Governo
 
 ## Install / usage
 
+For ENS grant Milestone 2, see [Compose your own Diamond](docs/guides/compose-your-own-diamond.md)
+and the [local governance example](examples/governance-upgradeable-diamond/README.md).
+Acceptance evidence is tracked in [grant progress](PROGRESS.md).
+
 Install as a Forge dependency:
 
 ```sh
