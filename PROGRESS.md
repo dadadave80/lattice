@@ -27,7 +27,13 @@ Tag: `grant-m1` — created on `main` when this evidence is promoted from `dev`.
 
 ## Milestone 2 — Worked integration example + composition guide
 
-Not started.
+Draft implementation for [#173](https://github.com/dadadave80/lattice/issues/173), split from the
+reverted combined PR #174. Not accepted or released.
+
+- [Composition guide](docs/guides/compose-your-own-diamond.md) and [local example](examples/governance-upgradeable-diamond/README.md).
+- [Canonical upgrade test](test/unit/GovernedVaultUpgradeTest.t.sol) exercises the factory deployment path.
+- Review, fresh validation, accepted commit permalinks, public CI evidence, and the authorized
+  `grant-m2` tag remain outstanding. Historical combined-branch runs do not complete this milestone.
 
 ## Milestone 3 — Docs site + reusable storage-safety Action
 
