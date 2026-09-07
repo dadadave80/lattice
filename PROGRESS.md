@@ -31,7 +31,14 @@ Not started.
 
 ## Milestone 3 — Docs site + reusable storage-safety Action
 
-Not started.
+Draft implementation for [#177](https://github.com/dadadave80/lattice/issues/177), split from the
+reverted combined PR #174. Not accepted or released.
+
+- [Documentation workflow](.github/workflows/docs.yml) and [storage Action](.github/actions/storage-layout/README.md).
+- Review blockers include the unapproved Python rewrite, split Foundry versions, and the M2 guide
+  dependency. Existing published artifacts are historical and must be revalidated for revised code.
+- Live-site verification, accepted Action/consumer proof, and an explicitly authorized `grant-m3`
+  tag remain outstanding.
 
 # Circle Arc Grant (2026 Cohort 2 — application evidence)
 
