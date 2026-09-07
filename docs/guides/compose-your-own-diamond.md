@@ -7,7 +7,8 @@ The contracts are unaudited. The walkthrough uses local development assets.
 ## Start from a clean checkout
 
 This draft was tested with Foundry **v1.8.1** (forge, cast, anvil), Git, Bash, jq, and Make.
-The example compiles with Solidity 0.8.36. The shared CI toolchain pin is pending review.
+The example compiles with Solidity 0.8.36. All CI jobs use the shared Foundry v1.8.1 pin.
+Install the same release locally with `foundryup --install v1.8.1`.
 
 ```sh
 git clone --recurse-submodules --branch feat/ens-grant-milestone-2 https://github.com/dadadave80/lattice.git
