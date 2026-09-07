@@ -31,8 +31,8 @@ Draft implementation for [#173](https://github.com/dadadave80/lattice/issues/173
 reverted combined PR #174. Not accepted or released.
 
 - [Composition guide](docs/guides/compose-your-own-diamond.md) and [RPC example](examples/governance-upgradeable-diamond/README.md).
-- `make deploy-grant RPC=<alias-or-URL> KEYSTORE=<name>` deploys the example; `make demo-grant`
-  executes governance with real-clock polling. Local Anvil acceleration requires `LOCAL=1`.
+- `make example RPC=<alias-or-URL> KEYSTORE=<name>` deploys and runs the full governance example
+  with real-clock polling. Local Anvil acceleration requires `LOCAL=1`.
 - [Canonical upgrade test](test/unit/GovernedVaultUpgradeTest.t.sol) exercises the factory deployment path.
 - Review, fresh validation, accepted commit permalinks, public CI evidence, and the authorized
   `grant-m2` tag remain outstanding. Historical combined-branch runs do not complete this milestone.

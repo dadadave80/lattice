@@ -188,23 +188,17 @@ VERIFIER ?= etherscan
 VERIFIER_URL ?=
 POLL_INTERVAL ?= 5
 WAIT_TIMEOUT ?= 3600
-deploy-grant demo-grant: export RPC_URL = $(RPC)
-deploy-grant demo-grant: export LOCAL := $(LOCAL)
-deploy-grant demo-grant: export VERIFY := $(VERIFY)
-deploy-grant demo-grant: export VERIFIER := $(VERIFIER)
-deploy-grant demo-grant: export VERIFIER_URL := $(VERIFIER_URL)
-deploy-grant demo-grant: export POLL_INTERVAL := $(POLL_INTERVAL)
-deploy-grant demo-grant: export WAIT_TIMEOUT := $(WAIT_TIMEOUT)
-deploy-grant demo-grant: export VAULT := $(VAULT)
-deploy-grant demo-grant: export ASSET := $(ASSET)
-deploy-grant demo-grant: export PROBE := $(PROBE)
+example: export RPC_URL = $(RPC)
+example: export LOCAL := $(LOCAL)
+example: export VERIFY := $(VERIFY)
+example: export VERIFIER := $(VERIFIER)
+example: export VERIFIER_URL := $(VERIFIER_URL)
+example: export POLL_INTERVAL := $(POLL_INTERVAL)
+example: export WAIT_TIMEOUT := $(WAIT_TIMEOUT)
 
-.PHONY: deploy-grant demo-grant test-grant-runner
-deploy-grant: ## Deploy the M2 example: RPC=<alias|URL> KEYSTORE=<name> (LOCAL=1 for Anvil)
-	@$(AUTH_WRAP) examples/governance-upgradeable-diamond/run.sh deploy
-
-demo-grant: ## Run M2 deployment + governance on RPC; optionally reuse VAULT= ASSET= PROBE=
-	@$(AUTH_WRAP) examples/governance-upgradeable-diamond/run.sh demo
+.PHONY: example test-grant-runner
+example: ## Deploy and run the complete example: RPC=<alias|URL> KEYSTORE=<name> (LOCAL=1 for Anvil)
+	@$(AUTH_WRAP) examples/governance-upgradeable-diamond/run.sh
 
 test-grant-runner: ## Check M2 runner authentication, RPC timing, and transaction failures
 	@bash examples/governance-upgradeable-diamond/test-run.sh
