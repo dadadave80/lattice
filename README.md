@@ -122,6 +122,10 @@ standard or deployment model requires it, for example `AccountFactory`, `Governo
 
 ## Install / usage
 
+ENS grant Milestone 3 provides the [documentation quickstart](docs/guides/quickstart.md)
+and [reusable storage-layout Action](.github/actions/storage-layout/README.md).
+These are draft deliverables under review in [#177](https://github.com/dadadave80/lattice/issues/177).
+
 Install as a Forge dependency:
 
 ```sh

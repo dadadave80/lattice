@@ -1,0 +1,618 @@
+[
+  {
+    "variable": "s0",
+    "source": "src/access/libraries/AccessControlEnumerableLib.sol",
+    "type": "AccessControlEnumerableStorage",
+    "namespace": "lattice.storage.AccessControlEnumerable",
+    "slot-constant": "ACCESS_CONTROL_ENUMERABLE_STORAGE_SLOT"
+  },
+  {
+    "variable": "s1",
+    "source": "src/access/libraries/AccessControlLib.sol",
+    "type": "AccessControlStorage",
+    "namespace": "lattice.storage.AccessControl",
+    "slot-constant": "ACCESS_CONTROL_STORAGE_SLOT"
+  },
+  {
+    "variable": "s2",
+    "source": "src/access/libraries/AccessControlTimedLib.sol",
+    "type": "AccessControlTimedStorage",
+    "namespace": "lattice.storage.AccessControlTimed",
+    "slot-constant": "ACCESS_CONTROL_TIMED_STORAGE_SLOT"
+  },
+  {
+    "variable": "s3",
+    "source": "src/access/libraries/AccessManagedLib.sol",
+    "type": "AccessManagedStorage",
+    "namespace": "lattice.storage.AccessManaged",
+    "slot-constant": "ACCESS_MANAGED_STORAGE_SLOT"
+  },
+  {
+    "variable": "s4",
+    "source": "src/access/libraries/AccessManagerLib.sol",
+    "type": "AccessManagerStorage",
+    "namespace": "lattice.storage.AccessManager",
+    "slot-constant": "ACCESS_MANAGER_STORAGE_SLOT"
+  },
+  {
+    "variable": "s5",
+    "source": "src/accounts/erc6900/libraries/ERC6900ModuleManagerLib.sol",
+    "type": "ERC6900ModuleManagerStorage",
+    "namespace": "lattice.storage.ERC6900ModuleManager",
+    "slot-constant": "ERC6900_MODULE_MANAGER_STORAGE_SLOT"
+  },
+  {
+    "variable": "s6",
+    "source": "src/accounts/erc7579/libraries/ERC7579ModuleConfigLib.sol",
+    "type": "ERC7579ModuleConfigStorage",
+    "namespace": "lattice.storage.ERC7579ModuleConfig",
+    "slot-constant": "ERC7579_MODULE_CONFIG_STORAGE_SLOT"
+  },
+  {
+    "variable": "s7",
+    "source": "src/accounts/libraries/AccountSignerLib.sol",
+    "type": "AccountSignerStorage",
+    "namespace": "lattice.storage.AccountSigner",
+    "slot-constant": "ACCOUNT_SIGNER_STORAGE_SLOT"
+  },
+  {
+    "variable": "s8",
+    "source": "src/accounts/libraries/ERC4337ValidationLib.sol",
+    "type": "ERC4337ValidationStorage",
+    "namespace": "lattice.storage.ERC4337Validation",
+    "slot-constant": "ERC4337_VALIDATION_STORAGE_SLOT"
+  },
+  {
+    "variable": "s9",
+    "source": "src/accounts/libraries/ERC6551AccountLib.sol",
+    "type": "ERC6551AccountStorage",
+    "namespace": "lattice.storage.ERC6551Account",
+    "slot-constant": "ERC6551_ACCOUNT_STORAGE_SLOT"
+  },
+  {
+    "variable": "s10",
+    "source": "src/accounts/libraries/SessionKeyLib.sol",
+    "type": "SessionKeyStorage",
+    "namespace": "lattice.storage.SessionKey",
+    "slot-constant": "SESSION_KEY_STORAGE_SLOT"
+  },
+  {
+    "variable": "s11",
+    "source": "src/amm/libraries/ConstantProductLib.sol",
+    "type": "ConstantProductStorage",
+    "namespace": "lattice.storage.ConstantProduct",
+    "slot-constant": "CONSTANT_PRODUCT_STORAGE_SLOT"
+  },
+  {
+    "variable": "s12",
+    "source": "src/crosschain/across/AcrossBridgeAdapterLib.sol",
+    "type": "AcrossBridgeAdapterStorage",
+    "namespace": "lattice.storage.AcrossBridgeAdapter",
+    "slot-constant": "ACROSS_BRIDGE_ADAPTER_STORAGE_SLOT"
+  },
+  {
+    "variable": "s13",
+    "source": "src/crosschain/axelar/AxelarGatewayAdapterLib.sol",
+    "type": "AxelarGatewayAdapterStorage",
+    "namespace": "lattice.storage.AxelarGatewayAdapter",
+    "slot-constant": "AXELAR_GATEWAY_ADAPTER_STORAGE_SLOT"
+  },
+  {
+    "variable": "s14",
+    "source": "src/crosschain/chainlink/CCIPGatewayAdapterLib.sol",
+    "type": "CCIPGatewayAdapterStorage",
+    "namespace": "lattice.storage.CCIPGatewayAdapter",
+    "slot-constant": "CCIP_GATEWAY_ADAPTER_STORAGE_SLOT"
+  },
+  {
+    "variable": "s15",
+    "source": "src/crosschain/circle/CCTPBridgeAdapterLib.sol",
+    "type": "CCTPBridgeAdapterStorage",
+    "namespace": "lattice.storage.CCTPBridgeAdapter",
+    "slot-constant": "CCTP_BRIDGE_ADAPTER_STORAGE_SLOT"
+  },
+  {
+    "variable": "s16",
+    "source": "src/crosschain/hyperbridge/HyperbridgeGatewayAdapterLib.sol",
+    "type": "HyperbridgeGatewayAdapterStorage",
+    "namespace": "lattice.storage.HyperbridgeGatewayAdapter",
+    "slot-constant": "HYPERBRIDGE_GATEWAY_ADAPTER_STORAGE_SLOT"
+  },
+  {
+    "variable": "s17",
+    "source": "src/crosschain/hyperlane/HyperlaneGatewayAdapterLib.sol",
+    "type": "HyperlaneGatewayAdapterStorage",
+    "namespace": "lattice.storage.HyperlaneGatewayAdapter",
+    "slot-constant": "HYPERLANE_GATEWAY_ADAPTER_STORAGE_SLOT"
+  },
+  {
+    "variable": "s18",
+    "source": "src/crosschain/layerzero/LayerZeroGatewayAdapterLib.sol",
+    "type": "LayerZeroGatewayAdapterStorage",
+    "namespace": "lattice.storage.LayerZeroGatewayAdapter",
+    "slot-constant": "LAYERZERO_GATEWAY_ADAPTER_STORAGE_SLOT"
+  },
+  {
+    "variable": "s19",
+    "source": "src/crosschain/layerzero/StargateBridgeAdapterLib.sol",
+    "type": "StargateBridgeAdapterStorage",
+    "namespace": "lattice.storage.StargateBridgeAdapter",
+    "slot-constant": "STARGATE_BRIDGE_ADAPTER_STORAGE_SLOT"
+  },
+  {
+    "variable": "s20",
+    "source": "src/crosschain/libraries/BridgeERC20Lib.sol",
+    "type": "BridgeERC20Storage",
+    "namespace": "lattice.storage.BridgeERC20",
+    "slot-constant": "BRIDGE_ERC20_STORAGE_SLOT"
+  },
+  {
+    "variable": "s21",
+    "source": "src/crosschain/libraries/BridgeERC7802Lib.sol",
+    "type": "BridgeERC7802Storage",
+    "namespace": "lattice.storage.BridgeERC7802",
+    "slot-constant": "BRIDGE_ERC7802_STORAGE_SLOT"
+  },
+  {
+    "variable": "s22",
+    "source": "src/crosschain/libraries/ChainRegistryLib.sol",
+    "type": "ChainRegistryStorage",
+    "namespace": "lattice.storage.ChainRegistry",
+    "slot-constant": "CHAIN_REGISTRY_STORAGE_SLOT"
+  },
+  {
+    "variable": "s23",
+    "source": "src/crosschain/libraries/CrosschainLinkLib.sol",
+    "type": "CrosschainLinkStorage",
+    "namespace": "lattice.storage.CrosschainLink",
+    "slot-constant": "CROSSCHAIN_LINK_STORAGE_SLOT"
+  },
+  {
+    "variable": "s24",
+    "source": "src/crosschain/libraries/ERC7786OpenBridgeLib.sol",
+    "type": "ERC7786OpenBridgeStorage",
+    "namespace": "lattice.storage.ERC7786OpenBridge",
+    "slot-constant": "ERC7786_OPEN_BRIDGE_STORAGE_SLOT"
+  },
+  {
+    "variable": "s25",
+    "source": "src/crosschain/optimism/L1ToL2CrossDomainMessengerGatewayAdapterLib.sol",
+    "type": "L1ToL2CrossDomainMessengerGatewayAdapterStorage",
+    "namespace": "lattice.storage.L1ToL2CrossDomainMessengerGatewayAdapter",
+    "slot-constant": "L1_TO_L2_CROSS_DOMAIN_MESSENGER_GATEWAY_ADAPTER_STORAGE_SLOT"
+  },
+  {
+    "variable": "s26",
+    "source": "src/crosschain/optimism/L2ToL2CrossDomainMessengerGatewayAdapterLib.sol",
+    "type": "L2ToL2CrossDomainMessengerGatewayAdapterStorage",
+    "namespace": "lattice.storage.L2ToL2CrossDomainMessengerGatewayAdapter",
+    "slot-constant": "L2_TO_L2_CROSS_DOMAIN_MESSENGER_GATEWAY_ADAPTER_STORAGE_SLOT"
+  },
+  {
+    "variable": "s27",
+    "source": "src/crosschain/starknet/StarknetGatewayAdapterLib.sol",
+    "type": "StarknetGatewayAdapterStorage",
+    "namespace": "lattice.storage.StarknetGatewayAdapter",
+    "slot-constant": "STARKNET_GATEWAY_ADAPTER_STORAGE_SLOT"
+  },
+  {
+    "variable": "s28",
+    "source": "src/crosschain/wormhole/WormholeGatewayAdapterLib.sol",
+    "type": "WormholeGatewayAdapterStorage",
+    "namespace": "lattice.storage.WormholeGatewayAdapter",
+    "slot-constant": "WORMHOLE_GATEWAY_ADAPTER_STORAGE_SLOT"
+  },
+  {
+    "variable": "s29",
+    "source": "src/crosschain/zetachain/ZetaChainGatewayAdapterLib.sol",
+    "type": "ZetaChainGatewayAdapterStorage",
+    "namespace": "lattice.storage.ZetaChainGatewayAdapter",
+    "slot-constant": "ZETACHAIN_GATEWAY_ADAPTER_STORAGE_SLOT"
+  },
+  {
+    "variable": "s30",
+    "source": "src/defi/libraries/AaveV3AdapterLib.sol",
+    "type": "AaveV3AdapterStorage",
+    "namespace": "lattice.storage.AaveV3Adapter",
+    "slot-constant": "AAVE_V3_ADAPTER_STORAGE_SLOT"
+  },
+  {
+    "variable": "s31",
+    "source": "src/defi/libraries/AggregatorExecAdapterLib.sol",
+    "type": "AggregatorExecAdapterStorage",
+    "namespace": "lattice.storage.AggregatorExecAdapter",
+    "slot-constant": "AGGREGATOR_EXEC_ADAPTER_STORAGE_SLOT"
+  },
+  {
+    "variable": "s32",
+    "source": "src/defi/libraries/CompoundV3AdapterLib.sol",
+    "type": "CompoundV3AdapterStorage",
+    "namespace": "lattice.storage.CompoundV3Adapter",
+    "slot-constant": "COMPOUND_V3_ADAPTER_STORAGE_SLOT"
+  },
+  {
+    "variable": "s33",
+    "source": "src/defi/libraries/CurveStableSwapAdapterLib.sol",
+    "type": "CurveStableSwapAdapterStorage",
+    "namespace": "lattice.storage.CurveStableSwapAdapter",
+    "slot-constant": "CURVE_STABLE_SWAP_ADAPTER_STORAGE_SLOT"
+  },
+  {
+    "variable": "s34",
+    "source": "src/defi/libraries/ERC4626AdapterLib.sol",
+    "type": "ERC4626AdapterStorage",
+    "namespace": "lattice.storage.ERC4626Adapter",
+    "slot-constant": "ERC4626_ADAPTER_STORAGE_SLOT"
+  },
+  {
+    "variable": "s35",
+    "source": "src/defi/libraries/GovernedVaultLib.sol",
+    "type": "GovernedVaultStorage",
+    "namespace": "lattice.storage.GovernedVault",
+    "slot-constant": "GOVERNED_VAULT_STORAGE_SLOT"
+  },
+  {
+    "variable": "s36",
+    "source": "src/defi/libraries/LidoAdapterLib.sol",
+    "type": "LidoAdapterStorage",
+    "namespace": "lattice.storage.LidoAdapter",
+    "slot-constant": "LIDO_ADAPTER_STORAGE_SLOT"
+  },
+  {
+    "variable": "s37",
+    "source": "src/defi/libraries/StrategyManagerLib.sol",
+    "type": "StrategyManagerStorage",
+    "namespace": "lattice.storage.StrategyManager",
+    "slot-constant": "STRATEGY_MANAGER_STORAGE_SLOT"
+  },
+  {
+    "variable": "s38",
+    "source": "src/defi/libraries/UniswapV3AdapterLib.sol",
+    "type": "UniswapV3AdapterStorage",
+    "namespace": "lattice.storage.UniswapV3Adapter",
+    "slot-constant": "UNISWAP_V3_ADAPTER_STORAGE_SLOT"
+  },
+  {
+    "variable": "s39",
+    "source": "src/defi/libraries/VaultCoreLib.sol",
+    "type": "VaultCoreStorage",
+    "namespace": "lattice.storage.VaultCore",
+    "slot-constant": "VAULT_CORE_STORAGE_SLOT"
+  },
+  {
+    "variable": "s40",
+    "source": "src/ens/libraries/ENSResolverLib.sol",
+    "type": "ENSResolverStorage",
+    "namespace": "lattice.storage.ENSResolver",
+    "slot-constant": "ENS_RESOLVER_STORAGE_SLOT"
+  },
+  {
+    "variable": "s41",
+    "source": "src/ens/libraries/ENSReverseClaimerLib.sol",
+    "type": "ENSReverseClaimerStorage",
+    "namespace": "lattice.storage.ENSReverseClaimer",
+    "slot-constant": "ENS_REVERSE_CLAIMER_STORAGE_SLOT"
+  },
+  {
+    "variable": "s42",
+    "source": "src/ens/libraries/ENSSubnameIssuerLib.sol",
+    "type": "ENSSubnameIssuerStorage",
+    "namespace": "lattice.storage.ENSSubnameIssuer",
+    "slot-constant": "ENS_SUBNAME_ISSUER_STORAGE_SLOT"
+  },
+  {
+    "variable": "s43",
+    "source": "src/governance/libraries/GovernedDiamondCutLib.sol",
+    "type": "GovernedDiamondCutStorage",
+    "namespace": "lattice.storage.GovernedDiamondCut",
+    "slot-constant": "GOVERNED_DIAMOND_CUT_STORAGE_SLOT"
+  },
+  {
+    "variable": "s44",
+    "source": "src/governance/libraries/GovernedSafeDiamondCutLib.sol",
+    "type": "GovernedSafeDiamondCutStorage",
+    "namespace": "lattice.storage.GovernedSafeDiamondCut",
+    "slot-constant": "GOVERNED_SAFE_DIAMOND_CUT_STORAGE_SLOT"
+  },
+  {
+    "variable": "s45",
+    "source": "src/governance/libraries/GovernorLib.sol",
+    "type": "GovernorStorage",
+    "namespace": "lattice.storage.Governor",
+    "slot-constant": "GOVERNOR_STORAGE_SLOT"
+  },
+  {
+    "variable": "s46",
+    "source": "src/governance/libraries/SafeDiamondCutLib.sol",
+    "type": "SafeDiamondCutStorage",
+    "namespace": "lattice.storage.SafeDiamondCut",
+    "slot-constant": "SAFE_DIAMOND_CUT_STORAGE_SLOT"
+  },
+  {
+    "variable": "s47",
+    "source": "src/governance/libraries/SafeHarborAdopterLib.sol",
+    "type": "SafeHarborAdopterStorage",
+    "namespace": "lattice.storage.SafeHarborAdopter",
+    "slot-constant": "SAFE_HARBOR_ADOPTER_STORAGE_SLOT"
+  },
+  {
+    "variable": "s48",
+    "source": "src/governance/libraries/TimelockControllerLib.sol",
+    "type": "TimelockControllerStorage",
+    "namespace": "lattice.storage.TimelockController",
+    "slot-constant": "TIMELOCK_CONTROLLER_STORAGE_SLOT"
+  },
+  {
+    "variable": "s49",
+    "source": "src/governance/libraries/VotesLib.sol",
+    "type": "VotesStorage",
+    "namespace": "lattice.storage.Votes",
+    "slot-constant": "VOTES_STORAGE_SLOT"
+  },
+  {
+    "variable": "s50",
+    "source": "src/oracles/api3/API3AdapterLib.sol",
+    "type": "API3AdapterStorage",
+    "namespace": "lattice.storage.API3Adapter",
+    "slot-constant": "API3_ADAPTER_STORAGE_SLOT"
+  },
+  {
+    "variable": "s51",
+    "source": "src/oracles/api3/API3QRNGAdapterLib.sol",
+    "type": "API3QRNGAdapterStorage",
+    "namespace": "lattice.storage.API3QRNGAdapter",
+    "slot-constant": "API3_QRNG_ADAPTER_STORAGE_SLOT"
+  },
+  {
+    "variable": "s52",
+    "source": "src/oracles/band/BandAdapterLib.sol",
+    "type": "BandAdapterStorage",
+    "namespace": "lattice.storage.BandAdapter",
+    "slot-constant": "BAND_ADAPTER_STORAGE_SLOT"
+  },
+  {
+    "variable": "s53",
+    "source": "src/oracles/chainlink/ChainlinkAdapterLib.sol",
+    "type": "ChainlinkAdapterStorage",
+    "namespace": "lattice.storage.ChainlinkAdapter",
+    "slot-constant": "CHAINLINK_ADAPTER_STORAGE_SLOT"
+  },
+  {
+    "variable": "s54",
+    "source": "src/oracles/chainlink/ChainlinkAutomationAdapterLib.sol",
+    "type": "ChainlinkAutomationAdapterStorage",
+    "namespace": "lattice.storage.ChainlinkAutomationAdapter",
+    "slot-constant": "CHAINLINK_AUTOMATION_ADAPTER_STORAGE_SLOT"
+  },
+  {
+    "variable": "s55",
+    "source": "src/oracles/chainlink/ChainlinkCREAdapterLib.sol",
+    "type": "ChainlinkCREAdapterStorage",
+    "namespace": "lattice.storage.ChainlinkCREAdapter",
+    "slot-constant": "CHAINLINK_CRE_ADAPTER_STORAGE_SLOT"
+  },
+  {
+    "variable": "s56",
+    "source": "src/oracles/chainlink/ChainlinkVRFLib.sol",
+    "type": "ChainlinkVRFStorage",
+    "namespace": "lattice.storage.ChainlinkVRF",
+    "slot-constant": "CHAINLINK_VRF_STORAGE_SLOT"
+  },
+  {
+    "variable": "s57",
+    "source": "src/oracles/chronicle/ChronicleAdapterLib.sol",
+    "type": "ChronicleAdapterStorage",
+    "namespace": "lattice.storage.ChronicleAdapter",
+    "slot-constant": "CHRONICLE_ADAPTER_STORAGE_SLOT"
+  },
+  {
+    "variable": "s58",
+    "source": "src/oracles/dia/DIAAdapterLib.sol",
+    "type": "DIAAdapterStorage",
+    "namespace": "lattice.storage.DIAAdapter",
+    "slot-constant": "DIA_ADAPTER_STORAGE_SLOT"
+  },
+  {
+    "variable": "s59",
+    "source": "src/oracles/gelato/GelatoAutomateAdapterLib.sol",
+    "type": "GelatoAutomateAdapterStorage",
+    "namespace": "lattice.storage.GelatoAutomateAdapter",
+    "slot-constant": "GELATO_AUTOMATE_ADAPTER_STORAGE_SLOT"
+  },
+  {
+    "variable": "s60",
+    "source": "src/oracles/gelato/GelatoVRFAdapterLib.sol",
+    "type": "GelatoVRFAdapterStorage",
+    "namespace": "lattice.storage.GelatoVRFAdapter",
+    "slot-constant": "GELATO_VRF_ADAPTER_STORAGE_SLOT"
+  },
+  {
+    "variable": "s61",
+    "source": "src/oracles/pyth/PythAdapterLib.sol",
+    "type": "PythAdapterStorage",
+    "namespace": "lattice.storage.PythAdapter",
+    "slot-constant": "PYTH_ADAPTER_STORAGE_SLOT"
+  },
+  {
+    "variable": "s62",
+    "source": "src/oracles/pyth/PythEntropyAdapterLib.sol",
+    "type": "PythEntropyAdapterStorage",
+    "namespace": "lattice.storage.PythEntropyAdapter",
+    "slot-constant": "PYTH_ENTROPY_ADAPTER_STORAGE_SLOT"
+  },
+  {
+    "variable": "s63",
+    "source": "src/oracles/redstone/RedStoneAdapterLib.sol",
+    "type": "RedStoneAdapterStorage",
+    "namespace": "lattice.storage.RedStoneAdapter",
+    "slot-constant": "REDSTONE_ADAPTER_STORAGE_SLOT"
+  },
+  {
+    "variable": "s64",
+    "source": "src/oracles/tellor/TellorAdapterLib.sol",
+    "type": "TellorAdapterStorage",
+    "namespace": "lattice.storage.TellorAdapter",
+    "slot-constant": "TELLOR_ADAPTER_STORAGE_SLOT"
+  },
+  {
+    "variable": "s65",
+    "source": "src/oracles/uniswap/TWAPOracleLib.sol",
+    "type": "TWAPOracleStorage",
+    "namespace": "lattice.storage.TWAPOracle",
+    "slot-constant": "TWAP_ORACLE_STORAGE_SLOT"
+  },
+  {
+    "variable": "s66",
+    "source": "src/privacy/libraries/CommitRevealLib.sol",
+    "type": "CommitRevealStorage",
+    "namespace": "lattice.storage.CommitReveal",
+    "slot-constant": "COMMIT_REVEAL_STORAGE_SLOT"
+  },
+  {
+    "variable": "s67",
+    "source": "src/privacy/libraries/ERC6538RegistryLib.sol",
+    "type": "ERC6538RegistryStorage",
+    "namespace": "lattice.storage.ERC6538Registry",
+    "slot-constant": "ERC6538REGISTRY_STORAGE_SLOT"
+  },
+  {
+    "variable": "s68",
+    "source": "src/privacy/libraries/PrivateVotingLib.sol",
+    "type": "PrivateVotingStorage",
+    "namespace": "lattice.storage.PrivateVoting",
+    "slot-constant": "PRIVATE_VOTING_STORAGE_SLOT"
+  },
+  {
+    "variable": "s69",
+    "source": "src/privacy/libraries/SemaphoreLib.sol",
+    "type": "SemaphoreStorage",
+    "namespace": "lattice.storage.Semaphore",
+    "slot-constant": "SEMAPHORE_STORAGE_SLOT"
+  },
+  {
+    "variable": "s70",
+    "source": "src/privacy/libraries/ShieldedPoolLib.sol",
+    "type": "ShieldedPoolStorage",
+    "namespace": "lattice.storage.ShieldedPool",
+    "slot-constant": "SHIELDED_POOL_STORAGE_SLOT"
+  },
+  {
+    "variable": "s71",
+    "source": "src/security/libraries/CircuitBreakerLib.sol",
+    "type": "CircuitBreakerStorage",
+    "namespace": "lattice.storage.CircuitBreaker",
+    "slot-constant": "CIRCUIT_BREAKER_STORAGE_SLOT"
+  },
+  {
+    "variable": "s72",
+    "source": "src/security/libraries/EmergencyStopLib.sol",
+    "type": "EmergencyStopStorage",
+    "namespace": "lattice.storage.EmergencyStop",
+    "slot-constant": "EMERGENCY_STOP_STORAGE_SLOT"
+  },
+  {
+    "variable": "s73",
+    "source": "src/security/libraries/InvariantCheckerLib.sol",
+    "type": "InvariantCheckerStorage",
+    "namespace": "lattice.storage.InvariantChecker",
+    "slot-constant": "INVARIANT_CHECKER_STORAGE_SLOT"
+  },
+  {
+    "variable": "s74",
+    "source": "src/security/libraries/PausableLib.sol",
+    "type": "PausableStorage",
+    "namespace": "lattice.storage.Pausable",
+    "slot-constant": "PAUSABLE_STORAGE_SLOT"
+  },
+  {
+    "variable": "s75",
+    "source": "src/security/libraries/RateLimiterLib.sol",
+    "type": "RateLimiterStorage",
+    "namespace": "lattice.storage.RateLimiter",
+    "slot-constant": "RATE_LIMITER_STORAGE_SLOT"
+  },
+  {
+    "variable": "s76",
+    "source": "src/tokens/ERC1155/libraries/ERC1155Lib.sol",
+    "type": "ERC1155Storage",
+    "namespace": "lattice.storage.ERC1155",
+    "slot-constant": "ERC1155_STORAGE_SLOT"
+  },
+  {
+    "variable": "s77",
+    "source": "src/tokens/ERC20/libraries/ERC20CappedLib.sol",
+    "type": "ERC20CappedStorage",
+    "namespace": "lattice.storage.ERC20Capped",
+    "slot-constant": "ERC20CAPPED_STORAGE_SLOT"
+  },
+  {
+    "variable": "s78",
+    "source": "src/tokens/ERC20/libraries/ERC20Lib.sol",
+    "type": "ERC20Storage",
+    "namespace": "lattice.storage.ERC20",
+    "slot-constant": "ERC20_STORAGE_SLOT"
+  },
+  {
+    "variable": "s79",
+    "source": "src/tokens/ERC20/libraries/ERC20WrapperLib.sol",
+    "type": "ERC20WrapperStorage",
+    "namespace": "lattice.storage.ERC20Wrapper",
+    "slot-constant": "ERC20WRAPPER_STORAGE_SLOT"
+  },
+  {
+    "variable": "s80",
+    "source": "src/tokens/ERC2981/libraries/ERC2981Lib.sol",
+    "type": "ERC2981Storage",
+    "namespace": "lattice.storage.ERC2981",
+    "slot-constant": "ERC2981_STORAGE_SLOT"
+  },
+  {
+    "variable": "s81",
+    "source": "src/tokens/ERC4626/libraries/ERC4626Lib.sol",
+    "type": "ERC4626Storage",
+    "namespace": "lattice.storage.ERC4626",
+    "slot-constant": "ERC4626_STORAGE_SLOT"
+  },
+  {
+    "variable": "s82",
+    "source": "src/tokens/ERC721/libraries/ERC721Lib.sol",
+    "type": "ERC721Storage",
+    "namespace": "lattice.storage.ERC721",
+    "slot-constant": "ERC721_STORAGE_SLOT"
+  },
+  {
+    "variable": "s83",
+    "source": "src/tokens/ERC721/libraries/ERC721URIStorageLib.sol",
+    "type": "ERC721URIStorageStorage",
+    "namespace": "lattice.storage.ERC721URIStorage",
+    "slot-constant": "ERC721URISTORAGE_STORAGE_SLOT"
+  },
+  {
+    "variable": "s84",
+    "source": "src/tokens/libraries/MarketplaceZoneLib.sol",
+    "type": "MarketplaceZoneStorage",
+    "namespace": "lattice.storage.MarketplaceZone",
+    "slot-constant": "MARKETPLACE_ZONE_STORAGE_SLOT"
+  },
+  {
+    "variable": "s85",
+    "source": "src/utils/libraries/EIP712Lib.sol",
+    "type": "EIP712Storage",
+    "namespace": "lattice.storage.EIP712",
+    "slot-constant": "EIP712_STORAGE_SLOT"
+  },
+  {
+    "variable": "s86",
+    "source": "src/utils/libraries/NoncesLib.sol",
+    "type": "NoncesStorage",
+    "namespace": "lattice.storage.Nonces",
+    "slot-constant": "NONCES_STORAGE_SLOT"
+  },
+  {
+    "variable": "s87",
+    "source": "src/utils/libraries/VestingWalletLib.sol",
+    "type": "VestingWalletStorage",
+    "namespace": "lattice.storage.VestingWallet",
+    "slot-constant": "VESTING_WALLET_STORAGE_SLOT"
+  }
+]
