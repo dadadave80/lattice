@@ -178,6 +178,8 @@ jobs:
             out
             cache
           key: forge-build-${{ runner.os }}-${{ hashFiles('foundry.toml', 'remappings.txt', 'src/**/*.sol', 'lib/**/*.sol') }}
+      - name: Test grant RPC runner
+        run: make test-grant-runner
       - name: Run Forge tests
         run: forge test -vvv
 

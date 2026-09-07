@@ -1,24 +1,76 @@
 # Governance-upgradeable Diamond
 
-The executable example reuses the production `DeployGovernedVault` recipe and `LatticeFactory`.
+Milestone 2 uses the existing `DeployGovernedVault` recipe and experimental `LatticeFactory`.
+Run everything from the repository root through Make. Install Foundry v1.8.1, Git, Bash, jq, and Make.
 
 ```sh
-git submodule update --init --recursive
-forge test --match-contract 'GovernedVault(Upgrade)?Test' -vv
+make install
+make test MATCH='GovernedVault(Upgrade)?Test'
+make test-grant-runner
 ```
 
-The canonical test is `test/unit/GovernedVaultUpgradeTest.t.sol`. It proves namespace preflight,
-one-time initialization, the real proxy's governed cut, timelock/replay rejection, and state preservation.
-The companion integration suite tests quorum and the vault's self-governed wiring.
+## Testnet or another EVM RPC
 
-For actual local transactions, start `anvil` in another terminal, then run:
+Use a funded test wallet in a Foundry encrypted keystore. `RPC` accepts a configured Foundry alias
+(such as `sepolia`) or an RPC URL. Configure `ETHERSCAN_API_KEY` in your environment or `.env` for
+Etherscan verification. Existing `KEYSTORE` authentication uses the project's Keychain helper on
+macOS; on other platforms, Foundry prompts for the password.
+
+Deploy the vault, open-mint **test asset**, and upgrade probe:
 
 ```sh
-./examples/governance-upgradeable-diamond/run-local.sh
+make deploy-grant RPC=sepolia KEYSTORE=my-testnet-wallet
 ```
 
-This uses Anvil's public unlocked development account and refuses other chain IDs.
-The factory creates and initializes the proxy atomically. The script then deposits, delegates,
-proposes a new facet, votes, queues, advances local time, executes, and checks the result.
+Deploy a fresh example and execute the entire governance walkthrough:
 
-See [Compose your own Diamond](../../docs/guides/compose-your-own-diamond.md).
+```sh
+make demo-grant RPC=https://your-evm-rpc.example KEYSTORE=my-testnet-wallet
+```
+
+Alternatively, pass all three addresses printed by `deploy-grant` to use that deployment:
+
+```sh
+make demo-grant RPC=sepolia KEYSTORE=my-testnet-wallet \
+  VAULT=0x... ASSET=0x... PROBE=0x...
+```
+
+The walkthrough mints and deposits 1,000 test assets, delegates, proposes, votes, queues, waits,
+executes the upgrade, and checks that the new facet works with assets and shares preserved. On a
+public network it **waits for real blocks**: 60-second voting delay, 600-second voting period, and
+300-second timelock, plus transaction inclusion time. `POLL_INTERVAL=5` controls polling;
+`WAIT_TIMEOUT=3600` bounds each wait. A stalled clock or failed transaction stops the script.
+The address inputs support a freshly deployed example, not automatic recovery of a partially run demo.
+
+Deployment enables `--verify` by default. For a Blockscout explorer:
+
+```sh
+make deploy-grant RPC=https://your-evm-rpc.example KEYSTORE=my-testnet-wallet \
+  VERIFIER=blockscout VERIFIER_URL=https://your-explorer.example/api/
+```
+
+`VERIFY=0` is available for private/development RPCs without an explorer. Verify public deployments.
+The sample asset has an unrestricted faucet; this is an experimental demonstration, not a production
+asset/vault configuration. An arbitrary RPC still needs compatible EVM execution and sufficient gas.
+
+## Local Anvil
+
+In one terminal:
+
+```sh
+make anvil
+```
+
+In another:
+
+```sh
+make demo-grant LOCAL=1
+```
+
+`LOCAL=1` uses the public unlocked Anvil account, skips explorer verification, and advances local time.
+It requires a loopback URL, chain ID 31337, and an Anvil client. For another port, use
+`make anvil ANVIL_PORT=8547` and `make demo-grant LOCAL=1 ANVIL_PORT=8547`.
+Without `LOCAL=1`, the runner never invokes time-travel RPC methods, even on a local endpoint.
+
+The canonical Solidity test is `test/unit/GovernedVaultUpgradeTest.t.sol`; the runner is `run.sh`.
+See [Compose your own Diamond](../../docs/guides/compose-your-own-diamond.md) for composition and authority.
