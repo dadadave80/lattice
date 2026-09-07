@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
-# Shared Makefile entrypoint for deployment and the governance walkthrough on an EVM RPC.
+# Deploy and run the complete governance example on an EVM RPC through make example.
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/../.."
 fail() { echo "grant: $*" >&2; exit 1; }
-MODE=${1:-demo}
-[[ $# -le 1 && ( "$MODE" == deploy || "$MODE" == demo ) ]] || fail 'usage: run.sh [deploy|demo]'
+[[ $# == 0 ]] || fail 'use make example RPC=<alias-or-URL> KEYSTORE=<name>'
 RPC_URL=${RPC_URL:-http://127.0.0.1:8545}
 LOCAL=${LOCAL:-0}
 VERIFY=${VERIFY:-1}
@@ -49,20 +48,14 @@ send() {
   jq -e '.status == "0x1" or .status == 1' <<< "$receipt" >/dev/null || fail 'transaction receipt reports failure'
   jq -r '"Confirmed " + .transactionHash' <<< "$receipt" >&2
 }
-# Optional addresses let deploy-grant and demo-grant be run separately, without another deployment.
-if [[ -n "${VAULT:-}${ASSET:-}${PROBE:-}" ]]; then
-  [[ "$MODE" == demo ]] || fail 'deploy-grant always creates a fresh example; omit VAULT/ASSET/PROBE'
-else
-  forge script script/base/defi/GrantExample.s.sol:GrantExample --sig 'run()' \
-    --rpc-url "$RPC_URL" --sender "$ACCOUNT" "${AUTH[@]}" --broadcast --slow \
-    ${VERIFY_ARGS[@]+"${VERIFY_ARGS[@]}"} | tee "$LOG"
-  VAULT=$(awk '$1 == "VAULT" {print $2}' "$LOG")
-  ASSET=$(awk '$1 == "ASSET" {print $2}' "$LOG")
-  PROBE=$(awk '$1 == "PROBE" {print $2}' "$LOG")
-fi
+forge script script/base/defi/GrantExample.s.sol:GrantExample --sig 'run()' \
+  --rpc-url "$RPC_URL" --sender "$ACCOUNT" "${AUTH[@]}" --broadcast --slow \
+  ${VERIFY_ARGS[@]+"${VERIFY_ARGS[@]}"} | tee "$LOG"
+VAULT=$(awk '$1 == "VAULT" {print $2}' "$LOG")
+ASSET=$(awk '$1 == "ASSET" {print $2}' "$LOG")
+PROBE=$(awk '$1 == "PROBE" {print $2}' "$LOG")
 [[ "${VAULT:-}" =~ ^0x[[:xdigit:]]{40}$ && "${ASSET:-}" =~ ^0x[[:xdigit:]]{40}$ && "${PROBE:-}" =~ ^0x[[:xdigit:]]{40}$ ]] || fail 'VAULT, ASSET, and PROBE must all be valid addresses'
 printf 'VAULT=%s\nASSET=%s\nPROBE=%s\n' "$VAULT" "$ASSET" "$PROBE"
-[[ "$MODE" == demo ]] || exit 0
 [[ "$(call "$VAULT" 'asset()(address)' | tr '[:upper:]' '[:lower:]')" == "$(printf '%s' "$ASSET" | tr '[:upper:]' '[:lower:]')" ]] || fail 'ASSET does not match the vault'
 [[ "$(call "$PROBE" 'grantVersion()(uint256)' | number)" == 2 ]] || fail 'PROBE is not the example upgrade facet'
 SELECTOR=$(cast sig 'grantVersion()')

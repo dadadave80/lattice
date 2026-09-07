@@ -93,19 +93,17 @@ For a testnet or another EVM-compatible RPC, use a funded encrypted keystore and
 or URL. Configure the explorer API key in the environment or `.env` when required:
 
 ```sh
-make deploy-grant RPC=sepolia KEYSTORE=my-testnet-wallet
+make example RPC=sepolia KEYSTORE=my-testnet-wallet
 ```
 
-This deploys the vault, faucet asset, and upgrade probe and prints their addresses. To deploy a fresh
-example and execute the full governance walkthrough instead:
+This deploys the vault, faucet asset, and upgrade probe, then executes the full governance walkthrough.
+An RPC URL works the same way:
 
 ```sh
-make demo-grant RPC=https://your-evm-rpc.example KEYSTORE=my-testnet-wallet
+make example RPC=https://your-evm-rpc.example KEYSTORE=my-testnet-wallet
 ```
 
-To use the fresh deployment from `deploy-grant`, pass its three addresses as `VAULT=... ASSET=...
-PROBE=...` to `demo-grant`. The runner validates the asset and probe before using them. It is not a
-general-purpose or resumable governance client; a partially completed demo may need manual recovery.
+Each invocation starts a fresh example. A partially completed run may need manual recovery.
 
 Public RPC mode waits for the voting clock and block timestamps; it never requests time travel.
 The configured 60/600/300-second phases take approximately 16 minutes plus transaction inclusion.
@@ -128,7 +126,7 @@ make anvil
 In terminal two, from the checkout root:
 
 ```sh
-make demo-grant LOCAL=1
+make example LOCAL=1
 ```
 
 The Make targets default to `http://127.0.0.1:8545`; set `RPC` or `ANVIL_PORT` for another port.
@@ -158,7 +156,7 @@ For the standalone non-ENS example on Sepolia, import your wallet into an encryp
 set the RPC alias and explorer API key, then run:
 
 ```sh
-make deploy-grant RPC=sepolia KEYSTORE=YOUR_KEYSTORE
+make example RPC=sepolia KEYSTORE=YOUR_KEYSTORE
 ```
 
 Use only test assets. Omit `LOCAL=1` on public networks; use keystore authentication and verification.

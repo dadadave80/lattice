@@ -16,23 +16,16 @@ Use a funded test wallet in a Foundry encrypted keystore. `RPC` accepts a config
 Etherscan verification. Existing `KEYSTORE` authentication uses the project's Keychain helper on
 macOS; on other platforms, Foundry prompts for the password.
 
-Deploy the vault, open-mint **test asset**, and upgrade probe:
+One command deploys the vault, open-mint **test asset**, and upgrade probe, then runs the entire example:
 
 ```sh
-make deploy-grant RPC=sepolia KEYSTORE=my-testnet-wallet
+make example RPC=sepolia KEYSTORE=my-testnet-wallet
 ```
 
-Deploy a fresh example and execute the entire governance walkthrough:
+Or supply an RPC URL:
 
 ```sh
-make demo-grant RPC=https://your-evm-rpc.example KEYSTORE=my-testnet-wallet
-```
-
-Alternatively, pass all three addresses printed by `deploy-grant` to use that deployment:
-
-```sh
-make demo-grant RPC=sepolia KEYSTORE=my-testnet-wallet \
-  VAULT=0x... ASSET=0x... PROBE=0x...
+make example RPC=https://your-evm-rpc.example KEYSTORE=my-testnet-wallet
 ```
 
 The walkthrough mints and deposits 1,000 test assets, delegates, proposes, votes, queues, waits,
@@ -40,12 +33,12 @@ executes the upgrade, and checks that the new facet works with assets and shares
 public network it **waits for real blocks**: 60-second voting delay, 600-second voting period, and
 300-second timelock, plus transaction inclusion time. `POLL_INTERVAL=5` controls polling;
 `WAIT_TIMEOUT=3600` bounds each wait. A stalled clock or failed transaction stops the script.
-The address inputs support a freshly deployed example, not automatic recovery of a partially run demo.
+Each invocation starts a fresh example; a partially completed run may need manual recovery.
 
 Deployment enables `--verify` by default. For a Blockscout explorer:
 
 ```sh
-make deploy-grant RPC=https://your-evm-rpc.example KEYSTORE=my-testnet-wallet \
+make example RPC=https://your-evm-rpc.example KEYSTORE=my-testnet-wallet \
   VERIFIER=blockscout VERIFIER_URL=https://your-explorer.example/api/
 ```
 
@@ -64,12 +57,12 @@ make anvil
 In another:
 
 ```sh
-make demo-grant LOCAL=1
+make example LOCAL=1
 ```
 
 `LOCAL=1` uses the public unlocked Anvil account, skips explorer verification, and advances local time.
 It requires a loopback URL, chain ID 31337, and an Anvil client. For another port, use
-`make anvil ANVIL_PORT=8547` and `make demo-grant LOCAL=1 ANVIL_PORT=8547`.
+`make anvil ANVIL_PORT=8547` and `make example LOCAL=1 ANVIL_PORT=8547`.
 Without `LOCAL=1`, the runner never invokes time-travel RPC methods, even on a local endpoint.
 
 The canonical Solidity test is `test/unit/GovernedVaultUpgradeTest.t.sol`; the runner is `run.sh`.

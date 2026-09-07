@@ -54,32 +54,26 @@ reset_mock() { : > "$MOCK_LOG"; echo 0 > "$MOCK_CLOCK"; }
 run() { make --no-print-directory RPC=https://example.invalid FORGE_AUTH='--account fixture --password-file /fixture/password' POLL_INTERVAL=1 WAIT_TIMEOUT=10 "$@" > "$TEMP/output" 2>&1; }
 absent() { if grep -q "$1" "$MOCK_LOG"; then echo "unexpected call: $1" >&2; exit 1; fi; }
 reset_mock
-run demo-grant
+run example
 grep -q 'assets and shares preserved' "$TEMP/output"
 grep -q -- '--broadcast --slow --verify --verifier etherscan' "$MOCK_LOG"
 grep -q -- '--account fixture --password-file /fixture/password' "$MOCK_LOG"
 absent 'evm_'
 reset_mock
-run deploy-grant VERIFIER=blockscout VERIFIER_URL=https://explorer.invalid/api
+run example VERIFIER=blockscout VERIFIER_URL=https://explorer.invalid/api
 grep -q -- '--verifier-url https://explorer.invalid/api' "$MOCK_LOG"
-absent 'cast send'
+grep -q 'execute(address' "$MOCK_LOG"
 reset_mock
-run demo-grant VAULT=0x1111111111111111111111111111111111111111 ASSET=0x2222222222222222222222222222222222222222 PROBE=0x3333333333333333333333333333333333333333
-absent '^forge '
-reset_mock
-if run demo-grant LOCAL=1; then echo 'accepted remote time travel' >&2; exit 1; fi
+if run example LOCAL=1; then echo 'accepted remote time travel' >&2; exit 1; fi
 absent 'cast send\|^forge '
 reset_mock
-if run deploy-grant FORGE_AUTH=; then echo 'accepted missing signer' >&2; exit 1; fi
+if run example FORGE_AUTH=; then echo 'accepted missing signer' >&2; exit 1; fi
 reset_mock
-if MOCK_STATUS=0x0 run demo-grant; then echo 'ignored reverted receipt' >&2; exit 1; fi
+if MOCK_STATUS=0x0 run example; then echo 'ignored reverted receipt' >&2; exit 1; fi
 absent 'approve(address'
 reset_mock
-if MOCK_FREEZE=1 run demo-grant WAIT_TIMEOUT=1; then echo 'ignored clock timeout' >&2; exit 1; fi
+if MOCK_FREEZE=1 run example WAIT_TIMEOUT=1; then echo 'ignored clock timeout' >&2; exit 1; fi
 absent 'propose(address'
 reset_mock
-if MOCK_BAD_CLOCK=1 run demo-grant; then echo 'accepted malformed clock' >&2; exit 1; fi
-reset_mock
-if run demo-grant VAULT=0x1111111111111111111111111111111111111111; then echo 'accepted incomplete deployment addresses' >&2; exit 1; fi
-absent 'cast send\|^forge '
-echo 'Grant runner: RPC, signer, verification, reuse, clock, and receipt checks passed'
+if MOCK_BAD_CLOCK=1 run example; then echo 'accepted malformed clock' >&2; exit 1; fi
+echo 'Example runner: deployment, governance, RPC, signer, verification, clock, and receipt checks passed'
