@@ -6,15 +6,16 @@ The contracts are unaudited. The walkthrough uses local development assets.
 
 ## Start from a clean checkout
 
-This draft was tested with Foundry **v1.8.1** (forge, cast, anvil), Git, Bash, and jq.
+This draft was tested with Foundry **v1.8.1** (forge, cast, anvil), Git, Bash, jq, and Make.
 The example compiles with Solidity 0.8.36. The shared CI toolchain pin is pending review.
 
 ```sh
 git clone --recurse-submodules --branch feat/ens-grant-milestone-2 https://github.com/dadadave80/lattice.git
 cd lattice
 forge --version
-forge build --sizes --skip test script
-forge test --match-contract 'GovernedVault(Upgrade)?Test' -vv
+make sizes
+make test-v MATCH='GovernedVault(Upgrade)?Test'
+make test-grant-runner
 ```
 
 On an existing checkout, run `git submodule update --init --recursive` first. Run from the repository
@@ -86,23 +87,53 @@ Only the diamond's timelock self-call reaches the upgrade executor role. Voting 
 clock; voting delay/period and timelock delay are expressed in seconds. The example uses 60, 600,
 and 300 seconds respectively, a zero proposal threshold and 4% quorum. These are demo settings.
 
-## Deploy and upgrade on local Anvil
+## Deploy and upgrade through Make
+
+For a testnet or another EVM-compatible RPC, use a funded encrypted keystore and a Foundry RPC alias
+or URL. Configure the explorer API key in the environment or `.env` when required:
+
+```sh
+make deploy-grant RPC=sepolia KEYSTORE=my-testnet-wallet
+```
+
+This deploys the vault, faucet asset, and upgrade probe and prints their addresses. To deploy a fresh
+example and execute the full governance walkthrough instead:
+
+```sh
+make demo-grant RPC=https://your-evm-rpc.example KEYSTORE=my-testnet-wallet
+```
+
+To use the fresh deployment from `deploy-grant`, pass its three addresses as `VAULT=... ASSET=...
+PROBE=...` to `demo-grant`. The runner validates the asset and probe before using them. It is not a
+general-purpose or resumable governance client; a partially completed demo may need manual recovery.
+
+Public RPC mode waits for the voting clock and block timestamps; it never requests time travel.
+The configured 60/600/300-second phases take approximately 16 minutes plus transaction inclusion.
+Set `POLL_INTERVAL` (1–60 seconds) and `WAIT_TIMEOUT` (1–86400 seconds per phase) as needed.
+Failed receipts or stalled clocks stop subsequent steps.
+
+Deployments enable source verification. For another explorer, pass `VERIFIER=blockscout` and
+`VERIFIER_URL=https://your-explorer.example/api/`, or another supported Foundry verifier.
+Private/development RPCs without an explorer can use `VERIFY=0`; verify public deployments.
+The example always uses an open-mint test asset and experimental Registry/Factory contracts.
+
+### Local Anvil
 
 In terminal one:
 
 ```sh
-anvil
+make anvil
 ```
 
 In terminal two, from the checkout root:
 
 ```sh
-./examples/governance-upgradeable-diamond/run-local.sh
+make demo-grant LOCAL=1
 ```
 
-The script defaults to `http://127.0.0.1:8545`; set `RPC_URL` for another local Anvil port. It uses the
-public unlocked Anvil account and checks chain ID 31337. No secret key or funded public-network account
-is required. It prints VAULT, ASSET, and PROBE addresses, then:
+The Make targets default to `http://127.0.0.1:8545`; set `RPC` or `ANVIL_PORT` for another port.
+`LOCAL=1` requires a loopback URL, chain ID 31337, and an Anvil client. It uses the public unlocked
+Anvil account and skips explorer verification. It prints VAULT, ASSET, and PROBE addresses, then:
 
 1. Mints 1,000 faucet assets, approves the vault, deposits, and delegates shares to the voter.
 2. Builds a `diamondCut` to add `GrantUpgradeProbe.grantVersion` and proposes it to the vault's Governor.
@@ -110,8 +141,8 @@ is required. It prints VAULT, ASSET, and PROBE addresses, then:
 4. Queues the operation, reads its ETA, advances time, and executes through Governor.
 5. Checks `grantVersion() == 2` through the proxy and that all deposited assets remain.
 
-Expected final line: `Governed upgrade verified at …; grantVersion() = 2; assets preserved.`
-Public networks cannot fast-forward time; wait for the on-chain snapshot, deadline, and ETA instead.
+Expected final line: `Governed upgrade verified at …; grantVersion() = 2; assets and shares preserved.`
+In public RPC mode the same runner polls instead of advancing time.
 The runnable test additionally checks historical voting power, loupe routing, executor identity,
 initialization replay, and execution replay. The factory unit suite covers failed initialization rollback.
 
@@ -127,12 +158,10 @@ For the standalone non-ENS example on Sepolia, import your wallet into an encryp
 set the RPC alias and explorer API key, then run:
 
 ```sh
-forge script script/base/defi/GrantExample.s.sol:GrantExample --sig 'run()' \
-  --rpc-url sepolia --account YOUR_KEYSTORE --sender YOUR_ADDRESS --broadcast \
-  --verify --etherscan-api-key "$ETHERSCAN_API_KEY"
+make deploy-grant RPC=sepolia KEYSTORE=YOUR_KEYSTORE
 ```
 
-Use only test assets. Do not use the local unlocked-account shell script on a public network.
+Use only test assets. Omit `LOCAL=1` on public networks; use keystore authentication and verification.
 
 ## Compose a different module or upgrade
 

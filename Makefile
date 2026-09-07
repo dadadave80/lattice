@@ -180,6 +180,35 @@ deploy-local: ## Deploy SCRIPT to local Anvil (SCRIPT=… [SIG='run()'] [ARGS='�
 CLI_PRIVATE_KEY = $(if $(filter command line,$(origin PRIVATE_KEY)),$(PRIVATE_KEY))
 AUTH_WRAP = $(if $(KEYSTORE),script/config/keychain-auth.sh "$(KEYSTORE)",$(if $(CLI_PRIVATE_KEY),FORGE_AUTH='--private-key $(CLI_PRIVATE_KEY)',))
 
+# Grant walkthrough: RPC accepts a Foundry alias or URL. Local time travel is explicit.
+RPC ?= http://127.0.0.1:$(ANVIL_PORT)
+LOCAL ?= 0
+VERIFY ?= 1
+VERIFIER ?= etherscan
+VERIFIER_URL ?=
+POLL_INTERVAL ?= 5
+WAIT_TIMEOUT ?= 3600
+deploy-grant demo-grant: export RPC_URL = $(RPC)
+deploy-grant demo-grant: export LOCAL := $(LOCAL)
+deploy-grant demo-grant: export VERIFY := $(VERIFY)
+deploy-grant demo-grant: export VERIFIER := $(VERIFIER)
+deploy-grant demo-grant: export VERIFIER_URL := $(VERIFIER_URL)
+deploy-grant demo-grant: export POLL_INTERVAL := $(POLL_INTERVAL)
+deploy-grant demo-grant: export WAIT_TIMEOUT := $(WAIT_TIMEOUT)
+deploy-grant demo-grant: export VAULT := $(VAULT)
+deploy-grant demo-grant: export ASSET := $(ASSET)
+deploy-grant demo-grant: export PROBE := $(PROBE)
+
+.PHONY: deploy-grant demo-grant test-grant-runner
+deploy-grant: ## Deploy the M2 example: RPC=<alias|URL> KEYSTORE=<name> (LOCAL=1 for Anvil)
+	@$(AUTH_WRAP) examples/governance-upgradeable-diamond/run.sh deploy
+
+demo-grant: ## Run M2 deployment + governance on RPC; optionally reuse VAULT= ASSET= PROBE=
+	@$(AUTH_WRAP) examples/governance-upgradeable-diamond/run.sh demo
+
+test-grant-runner: ## Check M2 runner authentication, RPC timing, and transaction failures
+	@bash examples/governance-upgradeable-diamond/test-run.sh
+
 .PHONY: demo-governance
 demo-governance: ## Governance demo loop — KEYSTORE=/PRIVATE_KEY= ARGS='<vault> <ens> <actor>'
 	@$(AUTH_WRAP) script/config/governance-demo-loop.sh $(ARGS)
