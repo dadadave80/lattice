@@ -10,6 +10,7 @@ import json
 site = Path('docs/.generated/src/pages')
 package = Path('docs/.generated/package.json')
 package_data = json.loads(package.read_text())
+package_data['type'] = 'module'
 package_data['dependencies']['vocs'] = '2.8.5'
 package_data['dependencies']['waku'] = '1.0.0-beta.9'
 package.write_text(json.dumps(package_data, indent=2) + '\n')
