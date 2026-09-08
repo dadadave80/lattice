@@ -1,0 +1,45 @@
+name: Documentation
+on:
+  pull_request:
+    paths: ['src/**', 'lib/**', 'docs/guides/**', 'script/docs/**', '.github/actions/storage-layout/README.md', '.github/workflows/docs.yml', 'foundry.toml', 'remappings.txt']
+  push:
+    branches: [main]
+    paths: ['src/**', 'lib/**', 'docs/guides/**', 'script/docs/**', '.github/actions/storage-layout/README.md', '.github/workflows/docs.yml', 'foundry.toml', 'remappings.txt']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: docs-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - uses: ./.github/actions/foundry-setup
+      - name: Cache npm dependencies
+        uses: actions/cache@v6
+        with:
+          path: docs/.generated/node_modules
+          key: docs-npm-${{ runner.os }}-${{ hashFiles('foundry.toml', 'remappings.txt', 'src/**/*.sol', 'lib/**/*.sol', '.github/actions/storage-layout/README.md', 'docs/guides/**', 'script/docs/**') }}
+      - run: ./script/docs/build.sh
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: docs/.generated/dist/public
+  deploy:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
