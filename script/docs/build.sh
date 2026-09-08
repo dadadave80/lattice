@@ -14,6 +14,11 @@ package_data['type'] = 'module'
 package_data['dependencies']['vocs'] = '2.8.5'
 package_data['dependencies']['waku'] = '1.0.0-beta.9'
 package.write_text(json.dumps(package_data, indent=2) + '\n')
+config = Path('docs/.generated/vocs.config.ts')
+config.write_text(config.read_text().replace(
+    '  title: "Documentation",',
+    '  title: "Documentation",\n  renderStrategy: "full-static",',
+))
 guides = site / 'guides'
 guides.mkdir(exist_ok=True)
 quickstart = Path('docs/guides/quickstart.md').read_text()
@@ -40,5 +45,6 @@ sidebar.write_text(sidebar.read_text().replace(
     'export const sidebar = [',
     'export const sidebar = [\n  { text: "Guides", items: [\n' + '\n'.join(items) + '\n  ] },', 1))
 PY
+rm -rf docs/.generated/dist
 (cd docs/.generated && npm install --legacy-peer-deps --no-audit --no-fund && npm run build)
-python3 script/docs/check.py docs/.generated/dist
+python3 script/docs/check.py docs/.generated/dist/public

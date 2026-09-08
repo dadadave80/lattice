@@ -28,7 +28,7 @@ jobs:
       - run: ./script/docs/build.sh
       - uses: actions/upload-pages-artifact@v4
         with:
-          path: docs/.generated/dist
+          path: docs/.generated/dist/public
   deploy:
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     needs: build
