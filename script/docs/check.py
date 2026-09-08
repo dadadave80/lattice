@@ -6,9 +6,11 @@ import sys
 from urllib.parse import unquote, urlsplit
 
 root = Path(sys.argv[1]).resolve()
-pages = ['index.html', 'guides/quickstart.html', 'guides/compose-your-own-diamond.html',
-         'guides/storage-action.html', 'src/Lattice.sol/contract.Lattice.html',
-         'src/governance/Governor.sol/contract.Governor.html']
+pages = ['index.html', 'guides/quickstart/index.html', 'guides/storage-action/index.html',
+         'src/contract.Lattice/index.html', 'src/governance/contract.Governor/index.html']
+compose = root / 'guides/compose-your-own-diamond/index.html'
+if compose.is_file():
+    pages.insert(2, 'guides/compose-your-own-diamond/index.html')
 errors = []
 class Links(HTMLParser):
     def handle_starttag(self, tag, attrs):
@@ -18,7 +20,8 @@ class Links(HTMLParser):
             url = urlsplit(value)
             if url.scheme or url.netloc or not url.path:
                 continue
-            target = (page.parent / unquote(url.path)).resolve()
+            target = (root / unquote(url.path.lstrip('/')) if url.path.startswith('/')
+                      else page.parent / unquote(url.path)).resolve()
             if not target.is_relative_to(root) or not target.exists():
                 errors.append(f'{page.relative_to(root)}: missing local target {value}')
 for name in pages:

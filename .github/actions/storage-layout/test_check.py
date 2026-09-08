@@ -23,6 +23,10 @@ def rejects(fn):
 
 
 def main():
+    source = 'contract Example { string constant LABEL = "a b"; uint256 value; }'
+    assert g.same_solidity(source, source.replace('; ', ';\n'))
+    assert not g.same_solidity(source, source.replace('a b', 'ab'))
+    assert not g.same_solidity(source, source.replace('uint256', 'uint128'))
     root = Path(__file__).resolve().parents[3]
     old = json.loads((root / 'script/upgrades/storage-layout.baseline').read_text())
     g.compatible(old, copy.deepcopy(old))

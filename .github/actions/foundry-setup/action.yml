@@ -7,18 +7,14 @@ description: >-
   populates), so each job runs actions/checkout inline before
   `uses: ./.github/actions/foundry-setup`.
 
-inputs:
-  version:
-    description: Pinned Foundry release (formatting uses the established 1.7 formatter)
-    default: v1.8.1
 runs:
   using: composite
   steps:
-    # Tests and docs/formatting pin their tested releases independently.
+    # Use the same stable release for every job and local development.
     - name: Install Foundry
       uses: foundry-rs/foundry-toolchain@v1
       with:
-        version: ${{ inputs.version }}
+        version: v1.8.1
 
     - name: Show Forge version
       shell: bash

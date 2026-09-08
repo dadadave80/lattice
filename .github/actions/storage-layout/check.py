@@ -19,6 +19,12 @@ def require(condition, message):
         raise ValueError(message)
 
 
+def same_solidity(before, after):
+    # Canonical formatting preserves literals; stripping whitespace would not.
+    return run(['forge', 'fmt', '--raw', '-'], input=before) == run(
+        ['forge', 'fmt', '--raw', '-'], input=after)
+
+
 def walk(node):
     if isinstance(node, dict):
         yield node
@@ -151,11 +157,16 @@ def main():
         if text.startswith('### '):
             require(relative == 'script/upgrades/storage-layout.baseline' and source ==
                     'script/upgrades/StorageLayoutProbe.sol', 'Legacy format is only supported for Lattice migration')
-            # One-time Lattice migration requires identical production sources/dependencies.
+            # One-time migration permits formatting only; dependencies must remain identical.
             old_names = set(re.findall(r'^### \w+ @ erc7201:([^\s]+)', text, re.M))
             require(old_names and old_names <= current['namespaces'].keys(), 'Legacy namespaces missing')
-            changed = run(['git', 'diff', '--name-only', ref, '--', 'src', 'lib'])
-            require(not changed, 'Legacy migration requires unchanged src/lib: ' + changed)
+            changed = run(['git', 'diff', '--name-only', '-z', ref, '--', 'src', 'lib'])
+            for path in filter(None, changed.split('\0')):
+                require(path.startswith('src/') and path.endswith('.sol') and Path(path).is_file()
+                        and not Path(path).is_symlink(), 'Legacy migration changed source/dependency: ' + path)
+                before = run(['git', 'show', f'{ref}:{path}'])
+                require(same_solidity(before, Path(path).read_text()),
+                        'Legacy migration requires unchanged Solidity: ' + path)
         else:
             compatible(json.loads(text), current)
     if args.update:
