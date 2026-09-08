@@ -20,6 +20,10 @@ compose = Path('docs/guides/compose-your-own-diamond.md')
 if not compose.is_file():
     quickstart = quickstart.replace('[composition guide](compose-your-own-diamond.md)',
                                     'the composition guide supplied by Milestone 2')
+else:
+    quickstart = quickstart.replace('(compose-your-own-diamond.md)',
+                                    '(/guides/compose-your-own-diamond)')
+quickstart = quickstart.replace('(storage-action.md)', '(/guides/storage-action)')
 (guides / 'quickstart.mdx').write_text(quickstart)
 (guides / 'storage-action.mdx').write_text(Path('.github/actions/storage-layout/README.md').read_text())
 if compose.is_file():
