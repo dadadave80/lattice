@@ -6,7 +6,12 @@ DOCS_FORGE="${DOCS_FORGE:-forge}"
 "$DOCS_FORGE" doc --out docs/.generated
 python3 - <<'PY'
 from pathlib import Path
+import json
 site = Path('docs/.generated/src/pages')
+package = Path('docs/.generated/package.json')
+package_data = json.loads(package.read_text())
+package_data['dependencies']['vocs'] = '2.8.5'
+package.write_text(json.dumps(package_data, indent=2) + '\n')
 guides = site / 'guides'
 guides.mkdir(exist_ok=True)
 quickstart = Path('docs/guides/quickstart.md').read_text()
