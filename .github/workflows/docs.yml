@@ -19,21 +19,16 @@ jobs:
         with:
           submodules: recursive
           persist-credentials: false
-      - uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: v1.7.0
-      - name: Cache mdBook
-        id: mdbook
+      - uses: ./.github/actions/foundry-setup
+      - name: Cache npm dependencies
         uses: actions/cache@v6
         with:
-          path: ~/.cargo/bin/mdbook
-          key: mdbook-linux-0.4.51
-      - if: steps.mdbook.outputs.cache-hit != 'true'
-        run: cargo install mdbook --version 0.4.51 --locked
+          path: docs/.generated/node_modules
+          key: docs-npm-${{ runner.os }}-${{ hashFiles('foundry.toml', 'remappings.txt', 'src/**/*.sol', 'lib/**/*.sol', '.github/actions/storage-layout/README.md', 'docs/guides/**', 'script/docs/**') }}
       - run: ./script/docs/build.sh
       - uses: actions/upload-pages-artifact@v4
         with:
-          path: docs/.generated/book
+          path: docs/.generated/dist
   deploy:
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     needs: build

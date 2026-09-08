@@ -97,9 +97,9 @@ Numeric compiler AST IDs are ignored; enum ordering is not. Missing namespaces/t
 invalid metadata, source/probe mismatches, and malformed snapshots fail closed.
 
 For Lattice's one-time text-to-JSON baseline migration only, historical comparison accepts an existing
-legacy snapshot if all its namespaces remain covered and **all production `src/` and `lib/` content is
-unchanged**. After migration, JSON structural comparison applies. This is not an external-consumer
-bootstrap mechanism.
+legacy snapshot if all its namespaces remain covered and production Solidity is unchanged after canonical
+formatting. Dependency changes and semantic source changes still fail. After migration, JSON structural
+comparison applies. This is not an external-consumer bootstrap mechanism.
 
 ## Limits
 
@@ -113,5 +113,4 @@ Keep workflows and release baselines protected: malicious workflow/checker edits
 
 In Lattice, `script/upgrades/check-storage-layout.sh` delegates to this exact implementation;
 `python3 .github/actions/storage-layout/test_check.py` runs its regression checks. The documentation
-build uses `DOCS_FORGE=/path/to/forge-v1.7.0 ./script/docs/build.sh` with mdbook v0.4.51, preserving
-forge-doc's mdBook output without switching to a new site framework.
+build uses `./script/docs/build.sh` with Foundry v1.8.1 and the Vocs/Node toolchain emitted by `forge doc`.

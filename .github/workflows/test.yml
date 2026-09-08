@@ -58,8 +58,6 @@ jobs:
           submodules: recursive
           persist-credentials: false
       - uses: ./.github/actions/foundry-setup
-        with:
-          version: v1.7.0
       - name: Run Forge fmt
         run: forge fmt --check
 
