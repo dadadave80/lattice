@@ -54,26 +54,26 @@ reset_mock() { : > "$MOCK_LOG"; echo 0 > "$MOCK_CLOCK"; }
 run() { make --no-print-directory RPC=https://example.invalid FORGE_AUTH='--account fixture --password-file /fixture/password' POLL_INTERVAL=1 WAIT_TIMEOUT=10 "$@" > "$TEMP/output" 2>&1; }
 absent() { if grep -q "$1" "$MOCK_LOG"; then echo "unexpected call: $1" >&2; exit 1; fi; }
 reset_mock
-run example
+run example-ens-grant-m2
 grep -q 'assets and shares preserved' "$TEMP/output"
 grep -q -- '--broadcast --slow --verify --verifier etherscan' "$MOCK_LOG"
 grep -q -- '--account fixture --password-file /fixture/password' "$MOCK_LOG"
 absent 'evm_'
 reset_mock
-run example VERIFIER=blockscout VERIFIER_URL=https://explorer.invalid/api
+run example-ens-grant-m2 VERIFIER=blockscout VERIFIER_URL=https://explorer.invalid/api
 grep -q -- '--verifier-url https://explorer.invalid/api' "$MOCK_LOG"
 grep -q 'execute(address' "$MOCK_LOG"
 reset_mock
-if run example LOCAL=1; then echo 'accepted remote time travel' >&2; exit 1; fi
+if run example-ens-grant-m2 LOCAL=1; then echo 'accepted remote time travel' >&2; exit 1; fi
 absent 'cast send\|^forge '
 reset_mock
-if run example FORGE_AUTH=; then echo 'accepted missing signer' >&2; exit 1; fi
+if run example-ens-grant-m2 FORGE_AUTH=; then echo 'accepted missing signer' >&2; exit 1; fi
 reset_mock
-if MOCK_STATUS=0x0 run example; then echo 'ignored reverted receipt' >&2; exit 1; fi
+if MOCK_STATUS=0x0 run example-ens-grant-m2; then echo 'ignored reverted receipt' >&2; exit 1; fi
 absent 'approve(address'
 reset_mock
-if MOCK_FREEZE=1 run example WAIT_TIMEOUT=1; then echo 'ignored clock timeout' >&2; exit 1; fi
+if MOCK_FREEZE=1 run example-ens-grant-m2 WAIT_TIMEOUT=1; then echo 'ignored clock timeout' >&2; exit 1; fi
 absent 'propose(address'
 reset_mock
-if MOCK_BAD_CLOCK=1 run example; then echo 'accepted malformed clock' >&2; exit 1; fi
+if MOCK_BAD_CLOCK=1 run example-ens-grant-m2; then echo 'accepted malformed clock' >&2; exit 1; fi
 echo 'Example runner: deployment, governance, RPC, signer, verification, clock, and receipt checks passed'

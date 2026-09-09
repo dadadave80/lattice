@@ -188,16 +188,16 @@ VERIFIER ?= etherscan
 VERIFIER_URL ?=
 POLL_INTERVAL ?= 5
 WAIT_TIMEOUT ?= 3600
-example: export RPC_URL = $(RPC)
-example: export LOCAL := $(LOCAL)
-example: export VERIFY := $(VERIFY)
-example: export VERIFIER := $(VERIFIER)
-example: export VERIFIER_URL := $(VERIFIER_URL)
-example: export POLL_INTERVAL := $(POLL_INTERVAL)
-example: export WAIT_TIMEOUT := $(WAIT_TIMEOUT)
+example-ens-grant-m2: export RPC_URL = $(RPC)
+example-ens-grant-m2: export LOCAL := $(LOCAL)
+example-ens-grant-m2: export VERIFY := $(VERIFY)
+example-ens-grant-m2: export VERIFIER := $(VERIFIER)
+example-ens-grant-m2: export VERIFIER_URL := $(VERIFIER_URL)
+example-ens-grant-m2: export POLL_INTERVAL := $(POLL_INTERVAL)
+example-ens-grant-m2: export WAIT_TIMEOUT := $(WAIT_TIMEOUT)
 
-.PHONY: example test-grant-runner
-example: ## Deploy and run the complete example: RPC=<alias|URL> KEYSTORE=<name> (LOCAL=1 for Anvil)
+.PHONY: example-ens-grant-m2 test-grant-runner
+example-ens-grant-m2: ## Deploy and run the complete example: RPC=<alias|URL> KEYSTORE=<name> (LOCAL=1 for Anvil)
 	@$(AUTH_WRAP) examples/governance-upgradeable-diamond/run.sh
 
 test-grant-runner: ## Check M2 runner authentication, RPC timing, and transaction failures

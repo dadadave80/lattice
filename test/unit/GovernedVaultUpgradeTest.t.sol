@@ -4,9 +4,12 @@ pragma solidity ^0.8.30;
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {IDiamondLoupe} from "@diamond/interfaces/IDiamondLoupe.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
+import {DeployGovernedVault} from "@lattice-script/base/defi/DeployGovernedVault.s.sol";
 import {TestnetAsset} from "@lattice-script/base/defi/DeployGovernedVaultENS.s.sol";
 import {GovernedVaultTestBase} from "@lattice-test/base/GovernedVaultTestBase.sol";
 import {Lattice} from "@lattice/Lattice.sol";
+import {LatticeFactory} from "@lattice/LatticeFactory.sol";
+import {LatticeRegistry} from "@lattice/LatticeRegistry.sol";
 import {GovernedVaultParams} from "@lattice/defi/GovernedVaultInit.sol";
 import {Governor} from "@lattice/governance/Governor.sol";
 import {DiamondValidationLib} from "@lattice/governance/libraries/DiamondValidationLib.sol";
@@ -169,8 +172,11 @@ contract GovernedVaultUpgradeTest is GovernedVaultTestBase {
 
     /// @notice The declared composition rejects an accidental duplicated storage owner.
     function test_DuplicateNamespaceRejected() public {
-        string[] memory ids = deployer.storageNamespaces();
-        ids[1] = ids[0];
+        CollidingGovernedVaultRecipe recipe = new CollidingGovernedVaultRecipe();
+        LatticeFactory factory = new LatticeFactory(new LatticeRegistry(address(this)));
+        GovernedVaultParams memory p =
+            GovernedVaultParams(address(asset), "Collision test", "TEST", 0, 300, 60, 600, 0, 4);
+        string[] memory ids = recipe.storageNamespaces();
         vm.expectRevert(
             abi.encodeWithSelector(
                 DiamondValidationLib.NamespaceCollision.selector,
@@ -179,11 +185,8 @@ contract GovernedVaultUpgradeTest is GovernedVaultTestBase {
                 ids[0]
             )
         );
-        this.validateNamespaces(ids);
-    }
-
-    function validateNamespaces(string[] memory ids) external pure {
-        DiamondValidationLib.assertNamespacesDisjoint(ids);
+        recipe.deployAtomic(p, factory, bytes32(0));
+        assertEq(factory.predict(address(recipe), bytes32(0)).code.length, 0);
     }
 
     /// @notice The three-stage initialization window finalized and cannot be reopened.
@@ -223,5 +226,13 @@ contract GovernedVaultUpgradeTest is GovernedVaultTestBase {
         for (uint256 i; i < frozen.length; ++i) {
             assertTrue(IFrozenSelectors(vault).isSelectorFrozen(frozen[i]), "selector not frozen");
         }
+    }
+}
+
+/// @notice Exercises the production deployment path with an invalid declared composition.
+contract CollidingGovernedVaultRecipe is DeployGovernedVault {
+    function storageNamespaces() public pure override returns (string[] memory ids) {
+        ids = super.storageNamespaces();
+        ids[1] = ids[0];
     }
 }

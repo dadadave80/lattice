@@ -19,13 +19,13 @@ macOS; on other platforms, Foundry prompts for the password.
 One command deploys the vault, open-mint **test asset**, and upgrade probe, then runs the entire example:
 
 ```sh
-make example RPC=sepolia KEYSTORE=my-testnet-wallet
+make example-ens-grant-m2 RPC=sepolia KEYSTORE=my-testnet-wallet
 ```
 
 Or supply an RPC URL:
 
 ```sh
-make example RPC=https://your-evm-rpc.example KEYSTORE=my-testnet-wallet
+make example-ens-grant-m2 RPC=https://your-evm-rpc.example KEYSTORE=my-testnet-wallet
 ```
 
 The walkthrough mints and deposits 1,000 test assets, delegates, proposes, votes, queues, waits,
@@ -38,7 +38,7 @@ Each invocation starts a fresh example; a partially completed run may need manua
 Deployment enables `--verify` by default. For a Blockscout explorer:
 
 ```sh
-make example RPC=https://your-evm-rpc.example KEYSTORE=my-testnet-wallet \
+make example-ens-grant-m2 RPC=https://your-evm-rpc.example KEYSTORE=my-testnet-wallet \
   VERIFIER=blockscout VERIFIER_URL=https://your-explorer.example/api/
 ```
 
@@ -57,12 +57,12 @@ make anvil
 In another:
 
 ```sh
-make example LOCAL=1
+make example-ens-grant-m2 LOCAL=1
 ```
 
 `LOCAL=1` uses the public unlocked Anvil account, skips explorer verification, and advances local time.
 It requires a loopback URL, chain ID 31337, and an Anvil client. For another port, use
-`make anvil ANVIL_PORT=8547` and `make example LOCAL=1 ANVIL_PORT=8547`.
+`make anvil ANVIL_PORT=8547` and `make example-ens-grant-m2 LOCAL=1 ANVIL_PORT=8547`.
 Without `LOCAL=1`, the runner never invokes time-travel RPC methods, even on a local endpoint.
 
 The canonical Solidity test is `test/unit/GovernedVaultUpgradeTest.t.sol`; the runner is `run.sh`.

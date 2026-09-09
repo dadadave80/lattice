@@ -61,7 +61,7 @@ contract DeployGovernedVault is BaseDeploy {
 
     /// @notice Unique storage owners, including dependencies shared across facets.
     /// @dev Initializable and the reentrancy guard use fixed non-ERC-7201 slots; see the guide.
-    function storageNamespaces() public pure returns (string[] memory ids) {
+    function storageNamespaces() public pure virtual returns (string[] memory ids) {
         ids = new string[](14);
         ids[0] = "diamond.lib.storage";
         ids[1] = "diamond.lib.storage.ERC165";
