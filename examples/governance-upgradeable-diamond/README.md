@@ -12,8 +12,8 @@ make test-grant-runner
 ## Testnet or another EVM RPC
 
 Use a funded test wallet in a Foundry encrypted keystore. `RPC` accepts a configured Foundry alias
-(such as `sepolia`) or an RPC URL. Configure `ETHERSCAN_API_KEY` in your environment or `.env` for
-Etherscan verification. Existing `KEYSTORE` authentication uses the project's Keychain helper on
+(such as `sepolia`) or an RPC URL. Source verification defaults to Sourcify, without an Etherscan API key.
+Existing `KEYSTORE` authentication uses the project's Keychain helper on
 macOS; on other platforms, Foundry prompts for the password.
 
 One command deploys the vault, open-mint **test asset**, and upgrade probe, then runs the entire example:
@@ -35,7 +35,8 @@ public network it **waits for real blocks**: 60-second voting delay, 600-second 
 `WAIT_TIMEOUT=3600` bounds each wait. A stalled clock or failed transaction stops the script.
 Each invocation starts a fresh example; a partially completed run may need manual recovery.
 
-Deployment enables `--verify` by default. For a Blockscout explorer:
+Deployment enables `--verify --verifier sourcify` by default. Set `VERIFIER_URL` only for a custom
+endpoint; an empty value uses the provider default. For a Blockscout explorer:
 
 ```sh
 make example-ens-grant-m2 RPC=https://your-evm-rpc.example KEYSTORE=my-testnet-wallet \

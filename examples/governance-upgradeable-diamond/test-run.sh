@@ -11,6 +11,8 @@ set -euo pipefail
 printf '%s ' "$(basename "$0")" "$@" >> "$MOCK_LOG"
 printf '\n' >> "$MOCK_LOG"
 if [[ "$(basename "$0")" == forge ]]; then
+  [[ ! ${VERIFIER_URL+x} || -n "$VERIFIER_URL" ]] || { echo 'empty VERIFIER_URL reached Forge' >&2; exit 1; }
+  printf 'verifier_url=%s\n' "${VERIFIER_URL-<unset>}" >> "$MOCK_LOG"
   printf 'VAULT 0x1111111111111111111111111111111111111111\nASSET 0x2222222222222222222222222222222222222222\nPROBE 0x3333333333333333333333333333333333333333\n'
   exit
 fi
@@ -51,17 +53,19 @@ ln -s tool "$TEMP/forge"
 ln -s tool "$TEMP/cast"
 export PATH="$TEMP:$PATH"
 reset_mock() { : > "$MOCK_LOG"; echo 0 > "$MOCK_CLOCK"; }
-run() { make --no-print-directory RPC=https://example.invalid FORGE_AUTH='--account fixture --password-file /fixture/password' POLL_INTERVAL=1 WAIT_TIMEOUT=10 "$@" > "$TEMP/output" 2>&1; }
+run() { make --no-print-directory RPC=https://example.invalid FORGE_AUTH='--account fixture --password-file /fixture/password' POLL_INTERVAL=1 WAIT_TIMEOUT=10 VERIFIER_URL= "$@" > "$TEMP/output" 2>&1; }
 absent() { if grep -q "$1" "$MOCK_LOG"; then echo "unexpected call: $1" >&2; exit 1; fi; }
 reset_mock
 run example-ens-grant-m2
 grep -q 'assets and shares preserved' "$TEMP/output"
-grep -q -- '--broadcast --slow --verify --verifier etherscan' "$MOCK_LOG"
+grep -q -- '--broadcast --slow --verify --verifier sourcify' "$MOCK_LOG"
 grep -q -- '--account fixture --password-file /fixture/password' "$MOCK_LOG"
+grep -q '^verifier_url=<unset>$' "$MOCK_LOG"
 absent 'evm_'
 reset_mock
 run example-ens-grant-m2 VERIFIER=blockscout VERIFIER_URL=https://explorer.invalid/api
 grep -q -- '--verifier-url https://explorer.invalid/api' "$MOCK_LOG"
+grep -q '^verifier_url=https://explorer.invalid/api$' "$MOCK_LOG"
 grep -q 'execute(address' "$MOCK_LOG"
 reset_mock
 if run example-ens-grant-m2 LOCAL=1; then echo 'accepted remote time travel' >&2; exit 1; fi

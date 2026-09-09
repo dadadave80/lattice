@@ -7,6 +7,8 @@ fail() { echo "grant: $*" >&2; exit 1; }
 RPC_URL=${RPC_URL:-http://127.0.0.1:8545}
 LOCAL=${LOCAL:-0}
 VERIFY=${VERIFY:-1}
+# Foundry reads VERIFIER_URL directly; an exported empty value overrides its default endpoint.
+[[ -n "${VERIFIER_URL:-}" ]] || unset VERIFIER_URL
 POLL_INTERVAL=${POLL_INTERVAL:-5}
 WAIT_TIMEOUT=${WAIT_TIMEOUT:-3600}
 [[ "$LOCAL" == 0 || "$LOCAL" == 1 ]] || fail 'LOCAL must be 0 or 1'
@@ -28,7 +30,7 @@ else
   read -r -a AUTH <<< "$FORGE_AUTH"
   ACCOUNT=$(cast wallet address "${AUTH[@]}")
   if [[ "$VERIFY" == 1 ]]; then
-    VERIFY_ARGS=(--verify --verifier "${VERIFIER:-etherscan}")
+    VERIFY_ARGS=(--verify --verifier "${VERIFIER:-sourcify}")
     [[ -z "${VERIFIER_URL:-}" ]] || VERIFY_ARGS+=(--verifier-url "$VERIFIER_URL")
   fi
 fi
