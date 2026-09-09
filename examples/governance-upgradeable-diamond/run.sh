@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Deploy and run the complete governance example on an EVM RPC through make example.
+# Deploy and run the complete governance example on an EVM RPC through make example-ens-grant-m2.
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/../.."
 fail() { echo "grant: $*" >&2; exit 1; }
-[[ $# == 0 ]] || fail 'use make example RPC=<alias-or-URL> KEYSTORE=<name>'
+[[ $# == 0 ]] || fail 'use make example-ens-grant-m2 RPC=<alias-or-URL> KEYSTORE=<name>'
 RPC_URL=${RPC_URL:-http://127.0.0.1:8545}
 LOCAL=${LOCAL:-0}
 VERIFY=${VERIFY:-1}

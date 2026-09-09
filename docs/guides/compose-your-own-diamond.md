@@ -46,7 +46,9 @@ selector twice or replace the vote-aware transfer seam with a plain ERC20 transf
 
 `DeployGovernedVault.storageNamespaces()` lists unique ERC-7201 storage owners, including shared
 EIP712, Nonces, Diamond, and ERC165 dependencies. `buildCuts` invokes
-`DiamondValidationLib.assertNamespacesDisjoint` before deploying facets.
+`DiamondValidationLib.assertNamespacesDisjoint` before deploying facets. The collision regression uses an
+overridden namespace list and calls the production `deployAtomic` path; removing its validation makes
+the test fail.
 
 This is a **declared namespace** check: it does not discover arbitrary assembly storage. Facets that
 intentionally share ERC20/Votes library storage represent one owner. Initializable and the reentrancy
@@ -94,14 +96,14 @@ For a testnet or another EVM-compatible RPC, use a funded encrypted keystore and
 or URL. Configure the explorer API key in the environment or `.env` when required:
 
 ```sh
-make example RPC=sepolia KEYSTORE=my-testnet-wallet
+make example-ens-grant-m2 RPC=sepolia KEYSTORE=my-testnet-wallet
 ```
 
 This deploys the vault, faucet asset, and upgrade probe, then executes the full governance walkthrough.
 An RPC URL works the same way:
 
 ```sh
-make example RPC=https://your-evm-rpc.example KEYSTORE=my-testnet-wallet
+make example-ens-grant-m2 RPC=https://your-evm-rpc.example KEYSTORE=my-testnet-wallet
 ```
 
 Each invocation starts a fresh example. A partially completed run may need manual recovery.
@@ -127,7 +129,7 @@ make anvil
 In terminal two, from the checkout root:
 
 ```sh
-make example LOCAL=1
+make example-ens-grant-m2 LOCAL=1
 ```
 
 The Make targets default to `http://127.0.0.1:8545`; set `RPC` or `ANVIL_PORT` for another port.
@@ -141,7 +143,8 @@ Anvil account and skips explorer verification. It prints VAULT, ASSET, and PROBE
 5. Checks `grantVersion() == 2` through the proxy and that all deposited assets remain.
 
 Expected final line: `Governed upgrade verified at …; grantVersion() = 2; assets and shares preserved.`
-In public RPC mode the same runner polls instead of advancing time.
+CI starts Anvil and runs `make example-ens-grant-m2 LOCAL=1`, exercising the real Forge/Cast runner
+in addition to the mocked failure cases. In public RPC mode the same runner polls instead of advancing time.
 The runnable test additionally checks historical voting power, loupe routing, executor identity,
 initialization replay, and execution replay. The factory unit suite covers failed initialization rollback.
 
@@ -157,7 +160,7 @@ For the standalone non-ENS example on Sepolia, import your wallet into an encryp
 set the RPC alias and explorer API key, then run:
 
 ```sh
-make example RPC=sepolia KEYSTORE=YOUR_KEYSTORE
+make example-ens-grant-m2 RPC=sepolia KEYSTORE=YOUR_KEYSTORE
 ```
 
 Use only test assets. Omit `LOCAL=1` on public networks; use keystore authentication and verification.
