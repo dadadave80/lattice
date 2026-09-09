@@ -92,7 +92,9 @@ library ERC6900SignatureLib {
     }
 
     function _exec1271Validation(ModuleEntity vf, bytes32 hash, bytes calldata finalSig) private view returns (bytes4) {
-        if (!ERC6900ModuleManagerLib.erc6900ModuleManagerStorage()._validations[vf].validationFlags
+        if (!ERC6900ModuleManagerLib.erc6900ModuleManagerStorage()
+                ._validations[vf]
+                .validationFlags
                 .isSignatureValidation()) {
             (address module, uint32 entityId) = vf.unpack();
             revert IERC6900Validation.SignatureValidationInvalid(module, entityId);
