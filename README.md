@@ -122,6 +122,12 @@ standard or deployment model requires it, for example `AccountFactory`, `Governo
 
 ## Install / usage
 
+For ENS grant Milestone 2, see [Compose your own Diamond](docs/guides/compose-your-own-diamond.md)
+and the [RPC governance example](examples/governance-upgradeable-diamond/README.md).
+Use `make example-ens-grant-m2 RPC=<alias-or-URL> KEYSTORE=<name>` to deploy and run the full governance example.
+Local Anvil uses `make example-ens-grant-m2 LOCAL=1`.
+Acceptance evidence is tracked in [grant progress](PROGRESS.md).
+
 Install as a Forge dependency:
 
 ```sh

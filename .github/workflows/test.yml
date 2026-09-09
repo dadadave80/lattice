@@ -178,6 +178,21 @@ jobs:
             out
             cache
           key: forge-build-${{ runner.os }}-${{ hashFiles('foundry.toml', 'remappings.txt', 'src/**/*.sol', 'lib/**/*.sol') }}
+      - name: Test grant RPC runner
+        run: make test-grant-runner
+      - name: Run Milestone 2 example on Anvil
+        timeout-minutes: 5
+        run: |
+          anvil --silent > "$RUNNER_TEMP/grant-m2-anvil.log" 2>&1 &
+          anvil_pid=$!
+          trap 'kill "$anvil_pid"; wait "$anvil_pid" || true' EXIT
+          for _attempt in {1..30}; do
+            if cast chain-id --rpc-url http://127.0.0.1:8545 >/dev/null 2>&1; then
+              break
+            fi
+            sleep 1
+          done
+          make example-ens-grant-m2 LOCAL=1 WAIT_TIMEOUT=60
       - name: Run Forge tests
         run: forge test -vvv
 
@@ -192,10 +207,14 @@ jobs:
           persist-credentials: false
           submodules: recursive
 
-      # Advisory for now (continue-on-error + fail-on: none). Triage findings, then make this
+      - uses: ./.github/actions/foundry-setup
+      - name: Install Slither
+        run: pipx install slither-analyzer==0.11.6
+
+      # Run on the host so crytic-compile uses the shared pinned Forge, without a container's
+      # independent Foundry installer. Slither/Python remain the existing analysis dependencies.
+      # Advisory for now (continue-on-error + --fail-none). Triage findings, then make this
       # a hard gate per the architecture spec's "0 high/medium" target.
       - name: Run Slither
-        uses: crytic/slither-action@v0.4.2
         continue-on-error: true
-        with:
-          fail-on: none
+        run: slither . --fail-none

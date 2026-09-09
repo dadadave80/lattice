@@ -28,3 +28,10 @@ docs/
 
 # CI-generated contract-size report (forge build --sizes --json)
 sizes.json
+
+# Milestone 2 authored guide; generated docs and local notes remain ignored.
+!docs/
+docs/*
+!docs/guides/
+docs/guides/*
+!docs/guides/compose-your-own-diamond.md

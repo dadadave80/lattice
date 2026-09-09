@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {DeployGovernedVault} from "@lattice-script/base/defi/DeployGovernedVault.s.sol";
-import {Lattice} from "@lattice/Lattice.sol";
+import {LatticeFactory} from "@lattice/LatticeFactory.sol";
+import {LatticeRegistry} from "@lattice/LatticeRegistry.sol";
 import {GovernedVaultParams} from "@lattice/defi/GovernedVaultInit.sol";
 import {Test} from "forge-std/Test.sol";
 
@@ -20,9 +20,7 @@ abstract contract GovernedVaultTestBase is Test {
     function _deployGovernedVault(address asset, GovernedVaultParams memory p) internal returns (address vault) {
         p.asset = asset;
         deployer = new DeployGovernedVault();
-        (FacetCut[] memory cuts, address init, bytes memory initCalldata) = deployer.buildCuts(p);
-        Lattice d = new Lattice();
-        d.initialize(cuts, init, initCalldata);
-        vault = address(d);
+        LatticeFactory factory = new LatticeFactory(new LatticeRegistry(address(this)));
+        vault = deployer.deployAtomic(p, factory, bytes32(0));
     }
 }
