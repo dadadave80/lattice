@@ -20,7 +20,7 @@ abstract contract GovernedVaultTestBase is Test {
     function _deployGovernedVault(address asset, GovernedVaultParams memory p) internal returns (address vault) {
         p.asset = asset;
         deployer = new DeployGovernedVault();
-        LatticeFactory factory = new LatticeFactory(new LatticeRegistry(address(this)));
+        LatticeFactory factory = new LatticeFactory(new LatticeRegistry(address(this)), address(0), address(0));
         vault = deployer.deployAtomic(p, factory, bytes32(0));
     }
 }
