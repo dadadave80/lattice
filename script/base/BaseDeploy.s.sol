@@ -4,7 +4,7 @@ pragma solidity ^0.8.30;
 import {MultiInit} from "@diamond/initializers/MultiInit.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
-import {Lattice} from "@lattice/Lattice.sol";
+import {LatticeDeployer} from "@lattice/LatticeDeployer.sol";
 import {AccessControlInit} from "@lattice/access/AccessControlInit.sol";
 import {IERC8153} from "@lattice/interfaces/external/ercs/IERC8153.sol";
 import {DiamondIntrospectionInit} from "@lattice/utils/DiamondIntrospectionInit.sol";
@@ -137,15 +137,15 @@ abstract contract BaseDeploy is Script, GetSelectors {
         return false;
     }
 
-    /// @notice Deploys a {Diamond} and initializes it with `cuts` + a single `init` delegatecall.
-    /// @dev Broadcast-free — a production `run()` wraps the call in `vm.startBroadcast()`; tests call directly.
+    /// @notice Deploys and initializes a {Diamond} atomically with `cuts` + a single `init` delegatecall.
+    /// @dev Broadcast-free — a production `run()` wraps this call in `vm.startBroadcast()`; tests call directly.
+    ///      The deployer and its call are separate transactions, but the proxy only exists inside the latter,
+    ///      where initialization must succeed before it can complete.
     function _assemble(FacetCut[] memory cuts, address init, bytes memory initCalldata)
         internal
         returns (address diamond)
     {
-        Lattice d = new Lattice();
-        d.initialize(cuts, init, initCalldata);
-        diamond = address(d);
+        diamond = new LatticeDeployer().deploy(cuts, init, initCalldata);
     }
 
     /// @notice Deploys a {Diamond} whose init runs SEVERAL initializers in order via {MultiInit} — the way to
