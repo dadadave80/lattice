@@ -21,6 +21,10 @@ import {IReverseRegistrar} from "@lattice/interfaces/external/ens/IReverseRegist
 /// @title GuardReverseRegistrar
 /// @notice Minimal reverse registrar accepting any setName (ENS-vault guard fixture).
 contract GuardReverseRegistrar is IReverseRegistrar {
+    function claim(address) external pure returns (bytes32) {
+        return bytes32(0);
+    }
+
     function setName(string memory) external {}
 }
 

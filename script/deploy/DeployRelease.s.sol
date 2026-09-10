@@ -161,7 +161,7 @@ contract DeployRelease is Script {
 
         (out.factory, deployedNow) = _deployOrSkip(
             FACTORY_SALT,
-            abi.encodePacked(type(LatticeFactory).creationCode, abi.encode(out.registry)),
+            abi.encodePacked(type(LatticeFactory).creationCode, abi.encode(out.registry, address(0), address(0))),
             "LatticeFactory"
         );
         console.log(deployedNow ? "LatticeFactory deployed:" : "LatticeFactory already deployed:", out.factory);

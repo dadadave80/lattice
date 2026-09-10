@@ -53,7 +53,8 @@ contract DeployReleaseTest is Test, DeployRelease {
         assertEq(registry.owner(), address(this), "registry owner not wired");
 
         // Factory: deployed and bound to the registry.
-        bytes memory factoryInitCode = abi.encodePacked(type(LatticeFactory).creationCode, abi.encode(out.registry));
+        bytes memory factoryInitCode =
+            abi.encodePacked(type(LatticeFactory).creationCode, abi.encode(out.registry, address(0), address(0)));
         assertEq(
             out.factory,
             CreateXDeployer.predictRaw(FACTORY_SALT, keccak256(factoryInitCode)),
