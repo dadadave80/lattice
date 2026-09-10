@@ -93,7 +93,7 @@ and 300 seconds respectively, a zero proposal threshold and 4% quorum. These are
 ## Deploy and upgrade through Make
 
 For a testnet or another EVM-compatible RPC, use a funded encrypted keystore and a Foundry RPC alias
-or URL. Configure the explorer API key in the environment or `.env` when required:
+or URL. Verification defaults to Sourcify and does not require an Etherscan API key:
 
 ```sh
 make example-ens-grant-m2 RPC=sepolia KEYSTORE=my-testnet-wallet
@@ -113,7 +113,8 @@ The configured 60/600/300-second phases take approximately 16 minutes plus trans
 Set `POLL_INTERVAL` (1–60 seconds) and `WAIT_TIMEOUT` (1–86400 seconds per phase) as needed.
 Failed receipts or stalled clocks stop subsequent steps.
 
-Deployments enable source verification. For another explorer, pass `VERIFIER=blockscout` and
+Deployments enable Sourcify source verification by default. An empty `VERIFIER_URL` uses the provider
+default. For another explorer, pass `VERIFIER=blockscout` and
 `VERIFIER_URL=https://your-explorer.example/api/`, or another supported Foundry verifier.
 Private/development RPCs without an explorer can use `VERIFY=0`; verify public deployments.
 The example always uses an open-mint test asset and experimental Registry/Factory contracts.
@@ -157,7 +158,7 @@ atomic creation. Add the ENSReverseClaimer storage owner to preflight for your e
 Configure the chain's reverse registrar and ensure the name owner sets the matching forward record.
 
 For the standalone non-ENS example on Sepolia, import your wallet into an encrypted Foundry keystore,
-set the RPC alias and explorer API key, then run:
+configure the RPC alias, then run:
 
 ```sh
 make example-ens-grant-m2 RPC=sepolia KEYSTORE=YOUR_KEYSTORE
