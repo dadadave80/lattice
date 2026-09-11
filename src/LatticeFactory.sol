@@ -5,10 +5,12 @@ import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {Lattice} from "@lattice/Lattice.sol";
 import {ILatticeFactory, RecipeEntry} from "@lattice/interfaces/ILatticeFactory.sol";
 import {ILatticeRegistry} from "@lattice/interfaces/ILatticeRegistry.sol";
+import {IReverseRegistrar} from "@lattice/interfaces/external/ens/IReverseRegistrar.sol";
 import {IERC8153} from "@lattice/interfaces/external/ercs/IERC8153.sol";
 
 /// @title LatticeFactory
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from ENS ReverseRegistrar (https://github.com/ensdomains/ens-contracts)
 /// @notice Stateless factory that assembles a complete EIP-2535 {Diamond} in ONE transaction from cuts
 ///         resolved out of the deploy-once {ILatticeRegistry} (issue #120). Recipe entries become
 ///         live-verified `Add` cuts straight off the registry — no facet re-`CREATE`, no FFI — classic
@@ -37,10 +39,20 @@ contract LatticeFactory is ILatticeFactory {
     bytes4 private constant EXPORT_SELECTOR = IERC8153.exportSelectors.selector;
 
     /// @param _registry The deploy-once {ILatticeRegistry} recipe entries are resolved against; non-zero.
-    constructor(ILatticeRegistry _registry) {
+    /// @param reverseRegistrar The chain's ENS reverse registrar, or zero with `reverseRecordOwner` to disable ENS.
+    /// @param reverseRecordOwner The account that will manage this factory's reverse record, or zero to disable ENS.
+    constructor(ILatticeRegistry _registry, address reverseRegistrar, address reverseRecordOwner) {
         if (address(_registry) == address(0)) revert LatticeFactory__ZeroRegistry();
         registry = _registry;
         _diamondInitCodeHash = keccak256(type(Lattice).creationCode);
+
+        if ((reverseRegistrar == address(0)) != (reverseRecordOwner == address(0))) {
+            revert LatticeFactory__IncompleteENSConfiguration();
+        }
+        if (reverseRegistrar != address(0)) {
+            if (reverseRegistrar.code.length == 0) revert LatticeFactory__InvalidReverseRegistrar(reverseRegistrar);
+            IReverseRegistrar(reverseRegistrar).claim(reverseRecordOwner);
+        }
     }
 
     /// @inheritdoc ILatticeFactory
