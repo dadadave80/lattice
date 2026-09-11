@@ -28,6 +28,10 @@ contract MockReverseRegistrar is IReverseRegistrar {
     mapping(address caller => string name) public nameOf;
     uint256 public setNameCalls;
 
+    function claim(address) external pure returns (bytes32) {
+        return bytes32(0);
+    }
+
     function setName(string memory name) external {
         nameOf[msg.sender] = name;
         ++setNameCalls;
