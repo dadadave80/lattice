@@ -3,9 +3,12 @@ pragma solidity ^0.8.30;
 
 import {MultiInit} from "@diamond/initializers/MultiInit.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
+import {CreateXDeployer} from "@lattice-script/lib/CreateXDeployer.sol";
+import {FacetInventory} from "@lattice-script/lib/FacetInventory.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
 import {LatticeFactory} from "@lattice/LatticeFactory.sol";
 import {LatticeRegistry} from "@lattice/LatticeRegistry.sol";
+import {LatticeVersion} from "@lattice/LatticeVersion.sol";
 import {AccessControlInit} from "@lattice/access/AccessControlInit.sol";
 import {RecipeEntry} from "@lattice/interfaces/ILatticeFactory.sol";
 import {IERC8153} from "@lattice/interfaces/external/ercs/IERC8153.sol";
@@ -145,6 +148,37 @@ abstract contract BaseDeploy is Script, GetSelectors {
             if (set[i] == sel) return true;
         }
         return false;
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                            RELEASED FACETS
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice The {FacetInventory} facet `name` at its release address (see {DeployRelease}): reused when code
+    ///         already lives there, otherwise deployed there through CreateX. Chains without CreateX (Anvil,
+    ///         tests) get a plain CREATE instead.
+    /// @dev The address commits to the initcode, so a facet compiled from code that differs from the release
+    ///      at {LatticeVersion.VERSION} lands at an unrelated address instead of colliding with it. Anyone may
+    ///      deploy a missing facet; {DeployRelease} later skips it and registers it.
+    /// @param name The facet contract name exactly as listed in {FacetInventory}.
+    function _facet(string memory name) internal returns (address facet) {
+        string memory path = _inventoryPath(name);
+        if (address(CreateXDeployer.CREATEX).code.length == 0) return deployCode(path);
+        bytes memory initCode = vm.getCode(path);
+        bytes32 salt = keccak256(abi.encodePacked("lattice.", name, ".", LatticeVersion.VERSION));
+        facet = CreateXDeployer.predictRaw(salt, keccak256(initCode));
+        if (facet.code.length == 0) {
+            require(CreateXDeployer.deployRaw(salt, initCode) == facet, "BaseDeploy: facet deployed != predicted");
+        }
+    }
+
+    /// @dev The `vm.getCode` artifact path of {FacetInventory} entry `name`.
+    function _inventoryPath(string memory name) private pure returns (string memory) {
+        (string[] memory names, string[] memory paths) = FacetInventory.inventory();
+        for (uint256 i; i < names.length; ++i) {
+            if (keccak256(bytes(names[i])) == keccak256(bytes(name))) return paths[i];
+        }
+        revert(string.concat("BaseDeploy: ", name, " is not in FacetInventory"));
     }
 
     /// @notice Deploys a {Lattice} proxy and initializes it with `cuts` + a single `init` delegatecall in ONE
