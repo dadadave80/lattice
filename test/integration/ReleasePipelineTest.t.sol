@@ -6,10 +6,13 @@ import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {IDiamondLoupe} from "@diamond/interfaces/IDiamondLoupe.sol";
 import {IFacet} from "@diamond/interfaces/IFacet.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
+import {DeployGovernedVault} from "@lattice-script/base/defi/DeployGovernedVault.s.sol";
 import {DeployRelease} from "@lattice-script/deploy/DeployRelease.s.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
 import {MockCreateX} from "@lattice-test/helpers/MockCreateX.sol";
 import {LatticeFactory} from "@lattice/LatticeFactory.sol";
+import {LatticeVersion} from "@lattice/LatticeVersion.sol";
+import {GovernedVaultParams} from "@lattice/defi/GovernedVaultInit.sol";
 import {RecipeEntry} from "@lattice/interfaces/ILatticeFactory.sol";
 import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
 import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
@@ -105,5 +108,19 @@ contract ReleasePipelineTest is GetSelectors, DeployRelease {
         //    ERC165Facet as the custom cut) — the flagship pipeline diamond is INTROSPECTABLE.
         assertEq(IDiamondLoupe(diamond).facetAddresses().length, 3, "loupe census");
         assertTrue(IDiamondLoupe(diamond).facetAddress(bytes4(0x7a0ed627)) != address(0), "loupe self-routed");
+    }
+
+    /// @notice On a CreateX chain the governed-vault recipe cuts the RELEASED facets instead of deploying its own.
+    function test_GovernedVaultRecipeReusesReleasedFacets() public {
+        DeployRelease.ReleaseOutput memory out = this.release(LatticeVersion.VERSION, address(this));
+        (FacetCut[] memory cuts,,) =
+            new DeployGovernedVault().buildCuts(GovernedVaultParams(address(1), "Vault", "VLT", 0, 300, 60, 600, 0, 4));
+        for (uint256 i; i < cuts.length; ++i) {
+            bool released;
+            for (uint256 j; j < out.facets.length && !released; ++j) {
+                released = out.facets[j] == cuts[i].facetAddress;
+            }
+            assertTrue(released, "recipe facet is not the released facet");
+        }
     }
 }
