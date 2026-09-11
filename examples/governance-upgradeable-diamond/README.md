@@ -49,9 +49,19 @@ LATTICE_FACTORY=0x9E49FB5CDBb09ECf65513F7c690909E093170037 LATTICE_SALT=$(cast k
   make example-ens-grant-m2 RPC=sepolia KEYSTORE=my-testnet-wallet
 ```
 
-A factory embeds the `Lattice` proxy bytecode of the commit it was built from, so its vaults verify
-exactly only from a checkout of that commit. The Sepolia factory above (`factory.lattice.studio.eth`) was
-built from `fba66cb`; vaults it creates from a later checkout may verify only partially.
+A factory embeds the `Lattice` proxy bytecode of the commit it was built from. When your checkout's
+`Lattice` differs, `--verify` skips the vault ("haven't found any matching bytecode") while still
+verifying everything else. The Sepolia factory above (`factory.lattice.studio.eth`) was built from
+`fba66cb`, so verify its vaults from that commit:
+
+```sh
+git worktree add ../lattice-fba66cb fba66cb
+cd ../lattice-fba66cb && git submodule update --init --recursive
+forge verify-contract <VAULT> src/Lattice.sol:Lattice --chain sepolia --verifier sourcify
+```
+
+`Lattice` has no constructor arguments. Etherscan usually shows such a vault as a Similar Match of an
+already verified one; it refuses a second submission for that address.
 
 Deployment enables `--verify --verifier sourcify` by default. Set `VERIFIER_URL` only for a custom
 endpoint; an empty value uses the provider default. For a Blockscout explorer:
