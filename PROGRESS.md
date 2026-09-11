@@ -25,17 +25,25 @@ which then executed a full governance lifecycle against itself.
 
 Tag: `grant-m1` — created on `main` when this evidence is promoted from `dev`.
 
-## Milestone 2 — Worked integration example + composition guide
+## Milestone 2 — Worked integration example + composition guide ✅
 
-Draft implementation for [#173](https://github.com/dadadave80/lattice/issues/173), split from the
-reverted combined PR #174. Not accepted or released.
+A runnable governance-upgradeable Diamond example and a "Compose your own Diamond" guide, exercised in CI on
+Anvil and reproduced live on Sepolia, where the example vault upgraded itself through its own Governor +
+TimelockController.
 
-- [Composition guide](docs/guides/compose-your-own-diamond.md) and [RPC example](examples/governance-upgradeable-diamond/README.md).
-- `make example-ens-grant-m2 RPC=<alias-or-URL> KEYSTORE=<name>` deploys and runs the full governance example
-  with real-clock polling. Local Anvil acceleration requires `LOCAL=1`.
-- [Canonical upgrade test](test/unit/GovernedVaultUpgradeTest.t.sol) exercises the factory deployment path.
-- Review, fresh validation, accepted commit permalinks, public CI evidence, and the authorized
-  `grant-m2` tag remain outstanding. Historical combined-branch runs do not complete this milestone.
+| Evidence | Link |
+|---|---|
+| Composition guide | [`docs/guides/compose-your-own-diamond.md`](https://github.com/dadadave80/lattice/blob/grant-m2/docs/guides/compose-your-own-diamond.md) |
+| Runnable example (one `make` command, local Anvil or any EVM RPC) | [`examples/governance-upgradeable-diamond/`](https://github.com/dadadave80/lattice/tree/grant-m2/examples/governance-upgradeable-diamond) |
+| Canonical test: namespace check → atomic init → propose → vote → timelock → `diamondCut`, state preserved | [`test/unit/GovernedVaultUpgradeTest.t.sol`](https://github.com/dadadave80/lattice/blob/grant-m2/test/unit/GovernedVaultUpgradeTest.t.sol) |
+| Green CI running the example end to end on Anvil | [CI run 34620029310](https://github.com/dadadave80/lattice/actions/runs/34620029310) on `9ccdcaf` (the tag adds only this evidence and docs) |
+| Live Sepolia vault (all 20 contracts verified on Etherscan and Sourcify) | [`0x942592e135FFfF39d993F43B735aF34605E829d5`](https://sepolia.etherscan.io/address/0x942592e135FFfF39d993F43B735aF34605E829d5#code) |
+| Governed upgrade executed on-chain | [`ProposalExecuted` tx `0xbe354e…0c08`](https://sepolia.etherscan.io/tx/0xbe354e29b26c4e95ac54db7b6c3ca66fc72752dd25fb7f7460b8c0be90630c08) — `grantVersion()` returns 2 through the proxy; deposited assets and shares unchanged |
+| Source of the live run (commit permalink) | [`script/base/defi/GrantExample.s.sol` @ `d5a89e6`](https://github.com/dadadave80/lattice/blob/d5a89e6e0a643d12710bd715dba785d6fec6eaa8/script/base/defi/GrantExample.s.sol) |
+| Deploy broadcast log | [`broadcast/GrantExample.s.sol/11155111/run-latest.json`](broadcast/GrantExample.s.sol/11155111/run-latest.json) |
+| Every recipe deploys and initializes in one transaction | [#182](https://github.com/dadadave80/lattice/pull/182); `make check-atomic-deploy` runs in CI |
+
+Tag: `grant-m2` — on `main`; the repository links above resolve at the tag.
 
 ## Milestone 3 — Docs site + reusable storage-safety Action
 
