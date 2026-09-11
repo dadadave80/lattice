@@ -15,6 +15,7 @@ struct RecipeEntry {
 
 /// @title ILatticeFactory
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from ENS ReverseRegistrar (https://github.com/ensdomains/ens-contracts)
 /// @notice Stateless factory that assembles a complete EIP-2535 {Diamond} in ONE transaction: recipe entries
 ///         are resolved into live-verified `Add` cuts by the deploy-once {ILatticeRegistry} (no facet
 ///         re-`CREATE`, no FFI), classic custom cuts are appended for facets outside the curated catalog,
@@ -70,6 +71,13 @@ interface ILatticeFactory {
     /// @notice Thrown when constructing a factory with a zero registry (a permanent, silent
     ///         misconfiguration since the factory is immutable).
     error LatticeFactory__ZeroRegistry();
+
+    /// @notice Thrown when exactly one of the reverse registrar and reverse-record owner is zero.
+    error LatticeFactory__IncompleteENSConfiguration();
+
+    /// @notice Thrown when ENS naming is enabled but the supplied reverse registrar has no bytecode.
+    /// @param registrar The invalid reverse registrar address.
+    error LatticeFactory__InvalidReverseRegistrar(address registrar);
 
     //*//////////////////////////////////////////////////////////////////////////
     //                                  EVENTS

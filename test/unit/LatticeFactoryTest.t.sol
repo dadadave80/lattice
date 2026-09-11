@@ -13,6 +13,7 @@ import {LatticeFactory} from "@lattice/LatticeFactory.sol";
 import {LatticeRegistry} from "@lattice/LatticeRegistry.sol";
 import {ILatticeFactory, RecipeEntry} from "@lattice/interfaces/ILatticeFactory.sol";
 import {ILatticeRegistry} from "@lattice/interfaces/ILatticeRegistry.sol";
+import {IReverseRegistrar} from "@lattice/interfaces/external/ens/IReverseRegistrar.sol";
 import {Test} from "forge-std/Test.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
@@ -109,6 +110,35 @@ contract MockRevertingInit {
     }
 }
 
+/// @dev Records constructor-time reverse claims so the factory/owner boundary is observable.
+contract RecordingReverseRegistrar is IReverseRegistrar {
+    address public claimant;
+    address public reverseRecordOwner;
+
+    function claim(address owner_) external returns (bytes32 node) {
+        claimant = msg.sender;
+        reverseRecordOwner = owner_;
+        node = keccak256(abi.encodePacked(msg.sender));
+    }
+
+    function setName(string memory) external {}
+}
+
+/// @dev Has code and the right selector, but deliberately returns malformed empty data.
+contract EmptyReturnReverseRegistrar {
+    fallback() external {}
+}
+
+contract RevertingReverseRegistrar is IReverseRegistrar {
+    error ClaimRefused();
+
+    function claim(address) external pure returns (bytes32) {
+        revert ClaimRefused();
+    }
+
+    function setName(string memory) external {}
+}
+
 /// @notice BTT-style unit suite for the stateless {LatticeFactory} (issue #120 PR 1): registry-resolved
 ///         recipe entries, classic custom cuts, CREATE2 determinism, idempotency, and revert propagation.
 contract LatticeFactoryTest is Test {
@@ -126,7 +156,7 @@ contract LatticeFactoryTest is Test {
 
     function setUp() public {
         registry = new LatticeRegistry(owner);
-        factory = new LatticeFactory(registry);
+        factory = new LatticeFactory(registry, address(0), address(0));
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -198,7 +228,47 @@ contract LatticeFactoryTest is Test {
 
     function test_ConstructorRevertsOnZeroRegistry() public {
         vm.expectRevert(ILatticeFactory.LatticeFactory__ZeroRegistry.selector);
-        new LatticeFactory(ILatticeRegistry(address(0)));
+        new LatticeFactory(ILatticeRegistry(address(0)), address(0), address(0));
+    }
+
+    function test_ConstructorClaimsReverseRecordForExplicitOwner() public {
+        RecordingReverseRegistrar registrar = new RecordingReverseRegistrar();
+        address reverseRecordOwner = makeAddr("reverseRecordOwner");
+
+        LatticeFactory namedFactory = new LatticeFactory(registry, address(registrar), reverseRecordOwner);
+
+        assertEq(registrar.claimant(), address(namedFactory), "factory must claim its own reverse node");
+        assertEq(registrar.reverseRecordOwner(), reverseRecordOwner, "explicit reverse owner not forwarded");
+        assertEq(address(namedFactory.registry()), address(registry), "registry binding changed");
+    }
+
+    function test_ConstructorRevertsOnIncompleteENSConfiguration() public {
+        RecordingReverseRegistrar registrar = new RecordingReverseRegistrar();
+        vm.expectRevert(ILatticeFactory.LatticeFactory__IncompleteENSConfiguration.selector);
+        new LatticeFactory(registry, address(registrar), address(0));
+
+        vm.expectRevert(ILatticeFactory.LatticeFactory__IncompleteENSConfiguration.selector);
+        new LatticeFactory(registry, address(0), makeAddr("reverseRecordOwner"));
+    }
+
+    function test_ConstructorRevertsOnRegistrarWithoutCode() public {
+        address registrar = makeAddr("registrar");
+        vm.expectRevert(
+            abi.encodeWithSelector(ILatticeFactory.LatticeFactory__InvalidReverseRegistrar.selector, registrar)
+        );
+        new LatticeFactory(registry, registrar, makeAddr("reverseRecordOwner"));
+    }
+
+    function test_ConstructorRevertsOnMalformedClaimReturn() public {
+        EmptyReturnReverseRegistrar registrar = new EmptyReturnReverseRegistrar();
+        vm.expectRevert();
+        new LatticeFactory(registry, address(registrar), makeAddr("reverseRecordOwner"));
+    }
+
+    function test_ConstructorBubblesRegistrarRevert() public {
+        RevertingReverseRegistrar registrar = new RevertingReverseRegistrar();
+        vm.expectRevert(RevertingReverseRegistrar.ClaimRefused.selector);
+        new LatticeFactory(registry, address(registrar), makeAddr("reverseRecordOwner"));
     }
 
     //*//////////////////////////////////////////////////////////////////////////

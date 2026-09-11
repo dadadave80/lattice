@@ -53,7 +53,7 @@ contract LatticeFactoryCompositionTest is GetSelectors {
 
         // 1. Deploy the standalone registry singleton and the stateless factory bound to it.
         registry = new LatticeRegistry(owner);
-        factory = new LatticeFactory(registry);
+        factory = new LatticeFactory(registry, address(0), address(0));
 
         // 2. Curate the base ERC-20 facet (an ERC-8153 Lattice facet). register pulls + pins its exported
         //    selectors and mirrors the codehash into the permissionless Tier-A resolver. The diamond-lib
