@@ -402,18 +402,18 @@ library UniswapV3AdapterLib {
         (uint256 newId, uint128 liquidity, uint256 a0,) = INonfungiblePositionManager($._positionManager)
             .mint(
                 INonfungiblePositionManager.MintParams({
-                token0: $._token0,
-                token1: $._token1,
-                fee: $._fee,
-                tickLower: $._tickLower,
-                tickUpper: $._tickUpper,
-                amount0Desired: bal0,
-                amount1Desired: bal1,
-                amount0Min: (bal0 * (UNISWAP_V3_BPS_DENOMINATOR - bps)) / UNISWAP_V3_BPS_DENOMINATOR,
-                amount1Min: (bal1 * (UNISWAP_V3_BPS_DENOMINATOR - bps)) / UNISWAP_V3_BPS_DENOMINATOR,
-                recipient: address(this),
-                deadline: block.timestamp
-            })
+                    token0: $._token0,
+                    token1: $._token1,
+                    fee: $._fee,
+                    tickLower: $._tickLower,
+                    tickUpper: $._tickUpper,
+                    amount0Desired: bal0,
+                    amount1Desired: bal1,
+                    amount0Min: (bal0 * (UNISWAP_V3_BPS_DENOMINATOR - bps)) / UNISWAP_V3_BPS_DENOMINATOR,
+                    amount1Min: (bal1 * (UNISWAP_V3_BPS_DENOMINATOR - bps)) / UNISWAP_V3_BPS_DENOMINATOR,
+                    recipient: address(this),
+                    deadline: block.timestamp
+                })
             );
         $._tokenId = newId;
         emit IUniswapV3Adapter.UniswapV3PositionMinted(newId, liquidity);
@@ -429,13 +429,13 @@ library UniswapV3AdapterLib {
         (, uint256 a0,) = INonfungiblePositionManager($._positionManager)
             .increaseLiquidity(
                 INonfungiblePositionManager.IncreaseLiquidityParams({
-                tokenId: $._tokenId,
-                amount0Desired: bal0,
-                amount1Desired: bal1,
-                amount0Min: (bal0 * (UNISWAP_V3_BPS_DENOMINATOR - bps)) / UNISWAP_V3_BPS_DENOMINATOR,
-                amount1Min: (bal1 * (UNISWAP_V3_BPS_DENOMINATOR - bps)) / UNISWAP_V3_BPS_DENOMINATOR,
-                deadline: block.timestamp
-            })
+                    tokenId: $._tokenId,
+                    amount0Desired: bal0,
+                    amount1Desired: bal1,
+                    amount0Min: (bal0 * (UNISWAP_V3_BPS_DENOMINATOR - bps)) / UNISWAP_V3_BPS_DENOMINATOR,
+                    amount1Min: (bal1 * (UNISWAP_V3_BPS_DENOMINATOR - bps)) / UNISWAP_V3_BPS_DENOMINATOR,
+                    deadline: block.timestamp
+                })
             );
         return a0;
     }
@@ -497,8 +497,8 @@ library UniswapV3AdapterLib {
         INonfungiblePositionManager($._positionManager)
             .collect(
                 INonfungiblePositionManager.CollectParams({
-                tokenId: id, recipient: address(this), amount0Max: type(uint128).max, amount1Max: type(uint128).max
-            })
+                    tokenId: id, recipient: address(this), amount0Max: type(uint128).max, amount1Max: type(uint128).max
+                })
             );
 
         address recipient = $._rewardRecipient;
@@ -567,8 +567,8 @@ library UniswapV3AdapterLib {
         INonfungiblePositionManager(npm)
             .decreaseLiquidity(
                 INonfungiblePositionManager.DecreaseLiquidityParams({
-                tokenId: id, liquidity: liquidityToRemove, amount0Min: 0, amount1Min: 0, deadline: block.timestamp
-            })
+                    tokenId: id, liquidity: liquidityToRemove, amount0Min: 0, amount1Min: 0, deadline: block.timestamp
+                })
             );
         // Collect the freed amounts directly to `to` (this withdraw intentionally also sweeps any
         // accrued fees to `to`, since they are owed-tokens too — acceptable: it returns value to the
@@ -576,8 +576,8 @@ library UniswapV3AdapterLib {
         (collected0, collected1) = INonfungiblePositionManager(npm)
             .collect(
                 INonfungiblePositionManager.CollectParams({
-                tokenId: id, recipient: to, amount0Max: type(uint128).max, amount1Max: type(uint128).max
-            })
+                    tokenId: id, recipient: to, amount0Max: type(uint128).max, amount1Max: type(uint128).max
+                })
             );
     }
 }

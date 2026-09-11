@@ -6,31 +6,31 @@ import {DiamondLib, FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {Initializable} from "@lattice/utils/Initializable.sol";
 
 /*
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⡀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣴⣿⣿⣦⡀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣴⣿⣿⣿⣿⣿⣿⣦⡀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣴⣿⣿⠟⢹⣿⣿⡏⠻⣿⣿⣦⡀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣴⣿⣿⠟⠁⠀⢸⣿⣿⡇⠀⠈⠻⣿⣿⣦⡀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣴⣿⣿⠟⠁⠀⠀⠀⢸⣿⣿⡇⠀⠀⠀⠈⠻⣿⣿⣦⡀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣴⣿⣿⠟⠁⠀⠀⠀⠀⠀⣸⣿⣿⣇⠀⠀⠀⠀⠀⠈⠻⣿⣿⣦⡀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣴⣿⣿⠟⠁⠀⠀⠀⠀⠀⣠⣾⣿⡿⢿⣿⣷⣄⠀⠀⠀⠀⠀⠈⠻⣿⣿⣦⡀
-⠀⠀⠀⠀⠀⠀⠀⠀⢀⣴⣿⣿⠟⠁⠀⠀⠀⠀⠀⣠⣾⣿⡿⠋⠀⠀⠙⢿⣿⣷⣄⠀⠀⠀⠀⠀⠈⠻⣿⣿⣦⡀
-⠀⠀⠀⠀⠀⠀⢀⣴⣿⣿⠟⠁⠀⠀⠀⠀⠀⣠⣾⣿⡿⠋⠀⠀⠀⠀⠀⠀⠙⢿⣿⣷⣄⠀⠀⠀⠀⠀⠈⠻⣿⣿⣦⡀
-⠀⠀⠀⠀⢀⣴⣿⣿⠟⠁⠀⠀⠀⠀⠀⣠⣾⣿⡿⠋⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠙⢿⣿⣷⣄⠀⠀⠀⠀⠀⠈⠻⣿⣿⣦⡀
-⠀⠀⢀⣴⣿⣿⣟⣁⣀⣀⣀⣀⣀⣠⣾⣿⡿⠋⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠙⢿⣿⣷⣄⣀⣀⣀⣀⣀⣈⣻⣿⣿⣦⡀
-⠀⠰⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣏⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣹⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠆
-⠀⠀⠈⠻⣿⣿⣯⡉⠉⠉⠉⠉⠉⠙⢿⣿⣷⣄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⣾⣿⡿⠋⠉⠉⠉⠉⠉⢉⣽⣿⣿⠟⠁
-⠀⠀⠀⠀⠈⠻⣿⣿⣦⡀⠀⠀⠀⠀⠀⠙⢿⣿⣷⣄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⣾⣿⡿⠋⠀⠀⠀⠀⠀⢀⣴⣿⣿⠟⠁
-⠀⠀⠀⠀⠀⠀⠈⠻⣿⣿⣦⡀⠀⠀⠀⠀⠀⠙⢿⣿⣷⣄⠀⠀⠀⠀⠀⠀⣠⣾⣿⡿⠋⠀⠀⠀⠀⠀⢀⣴⣿⣿⠟⠁
-⠀⠀⠀⠀⠀⠀⠀⠀⠈⠻⣿⣿⣦⡀⠀⠀⠀⠀⠀⠙⢿⣿⣷⣄⠀⠀⣠⣾⣿⡿⠋⠀⠀⠀⠀⠀⢀⣴⣿⣿⠟⠁
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠻⣿⣿⣦⡀⠀⠀⠀⠀⠀⠙⢿⣿⣷⣾⣿⡿⠋⠀⠀⠀⠀⠀⢀⣴⣿⣿⠟⠁
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠻⣿⣿⣦⡀⠀⠀⠀⠀⠀⢹⣿⣿⡏⠀⠀⠀⠀⠀⢀⣴⣿⣿⠟⠁
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠻⣿⣿⣦⡀⠀⠀⠀⢸⣿⣿⡇⠀⠀⠀⢀⣴⣿⣿⠟⠁
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠻⣿⣿⣦⡀⠀⢸⣿⣿⡇⠀⢀⣴⣿⣿⠟⠁
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠻⣿⣿⣦⣸⣿⣿⣇⣴⣿⣿⠟⠁
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠻⣿⣿⣿⣿⣿⣿⠟⠁
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠙⢿⣿⡿⠋
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠉
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣴⣦⡀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣴⣿⣿⣿⣿⣦⡀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣴⣿⣿⠟⣿⣿⠻⣿⣿⣦⡀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣴⣿⣿⠟⠁⠀⣿⣿⠀⠈⠻⣿⣿⣦⡀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣴⣿⣿⠟⠁⠀⠀⠀⣿⣿⠀⠀⠀⠈⠻⣿⣿⣦⡀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣴⣿⣿⠟⠁⠀⠀⠀⠀⠀⣿⣿⠀⠀⠀⠀⠀⠈⠻⣿⣿⣦⡀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣴⣿⣿⠟⠁⠀⠀⠀⠀⠀⢀⣴⣿⣿⣦⡀⠀⠀⠀⠀⠀⠈⠻⣿⣿⣦⡀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣴⣿⣿⠟⠁⠀⠀⠀⠀⠀⢀⣴⣿⣿⠟⠻⣿⣿⣦⡀⠀⠀⠀⠀⠀⠈⠻⣿⣿⣦⡀
+⠀⠀⠀⠀⠀⠀⠀⢀⣴⣿⣿⠟⠁⠀⠀⠀⠀⠀⢀⣴⣿⣿⠟⠁⠀⠀⠈⠻⣿⣿⣦⡀⠀⠀⠀⠀⠀⠈⠻⣿⣿⣦⡀
+⠀⠀⠀⠀⠀⢀⣴⣿⣿⠟⠁⠀⠀⠀⠀⠀⢀⣴⣿⣿⠟⠁⠀⠀⠀⠀⠀⠀⠈⠻⣿⣿⣦⡀⠀⠀⠀⠀⠀⠈⠻⣿⣿⣦⡀
+⠀⠀⠀⢀⣴⣿⣿⠟⠁⠀⠀⠀⠀⠀⢀⣴⣿⣿⠟⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠻⣿⣿⣦⡀⠀⠀⠀⠀⠀⠈⠻⣿⣿⣦⡀
+⠀⢀⣴⣿⣿⠟⠁⠀⠀⠀⠀⠀⢀⣴⣿⣿⠟⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠻⣿⣿⣦⡀⠀⠀⠀⠀⠀⠈⠻⣿⣿⣦⡀
+⠰⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢈⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠆
+⠀⠈⠻⣿⣿⣦⡀⠀⠀⠀⠀⠀⠈⠻⣿⣿⣦⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣴⣿⣿⠟⠁⠀⠀⠀⠀⠀⢀⣴⣿⣿⠟⠁
+⠀⠀⠀⠈⠻⣿⣿⣦⡀⠀⠀⠀⠀⠀⠈⠻⣿⣿⣦⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣴⣿⣿⠟⠁⠀⠀⠀⠀⠀⢀⣴⣿⣿⠟⠁
+⠀⠀⠀⠀⠀⠈⠻⣿⣿⣦⡀⠀⠀⠀⠀⠀⠈⠻⣿⣿⣦⡀⠀⠀⠀⠀⠀⠀⢀⣴⣿⣿⠟⠁⠀⠀⠀⠀⠀⢀⣴⣿⣿⠟⠁
+⠀⠀⠀⠀⠀⠀⠀⠈⠻⣿⣿⣦⡀⠀⠀⠀⠀⠀⠈⠻⣿⣿⣦⡀⠀⠀⢀⣴⣿⣿⠟⠁⠀⠀⠀⠀⠀⢀⣴⣿⣿⠟⠁
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠻⣿⣿⣦⡀⠀⠀⠀⠀⠀⠈⠻⣿⣿⣦⣴⣿⣿⠟⠁⠀⠀⠀⠀⠀⢀⣴⣿⣿⠟⠁
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠻⣿⣿⣦⡀⠀⠀⠀⠀⠀⠈⠻⣿⣿⠟⠁⠀⠀⠀⠀⠀⢀⣴⣿⣿⠟⠁
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠻⣿⣿⣦⡀⠀⠀⠀⠀⠀⣿⣿⠀⠀⠀⠀⠀⢀⣴⣿⣿⠟⠁
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠻⣿⣿⣦⡀⠀⠀⠀⣿⣿⠀⠀⠀⢀⣴⣿⣿⠟⠁
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠻⣿⣿⣦⡀⠀⣿⣿⠀⢀⣴⣿⣿⠟⠁
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠻⣿⣿⣦⣿⣿⣴⣿⣿⠟⠁
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠻⣿⣿⣿⣿⠟⠁
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠻⠟⠁
 */
 
 /// @title Lattice
@@ -41,8 +41,10 @@ import {Initializable} from "@lattice/utils/Initializable.sol";
 ///         `initialize`/`receive`; this contract restores the guarded `initialize`, Lattice-owned).
 ///         Bare-ETH acceptance is deliberately NOT restored here — cut the {Receive} facet under the
 ///         zero selector instead (every Lattice recipe does); a diamond without it rejects plain sends.
-///         Deployed bare (directly or via {LatticeFactory} CREATE2), then cut ONCE through {initialize};
-///         all later upgrades go through whichever cut facet the initial cut installed.
+///         Must be created and initialized in ONE transaction — {LatticeFactory} does this, and every script
+///         recipe deploys through it. {initialize} is first-caller-wins, so a proxy initialized in a later
+///         transaction can be taken over in between. All later upgrades go through whichever cut facet the
+///         initial cut installed.
 /// @dev `initialize` is guarded by the `initializer` modifier from the {Initializable} mixin over the
 ///      vendored {InitializableLib} — a nested initializer invoked inside a constructor finalizes exactly
 ///      once. Kept `virtual` — account presets override it (e.g. {Account7702Diamond} disables it in favor

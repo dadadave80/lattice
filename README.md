@@ -122,6 +122,12 @@ standard or deployment model requires it, for example `AccountFactory`, `Governo
 
 ## Install / usage
 
+For ENS grant Milestone 2, see [Compose your own Diamond](docs/guides/compose-your-own-diamond.md)
+and the [RPC governance example](examples/governance-upgradeable-diamond/README.md).
+Use `make example-ens-grant-m2 RPC=<alias-or-URL> KEYSTORE=<name>` to deploy and run the full governance example.
+Local Anvil uses `make example-ens-grant-m2 LOCAL=1`.
+Acceptance evidence is tracked in [grant progress](PROGRESS.md).
+
 Install as a Forge dependency:
 
 ```sh
@@ -206,6 +212,14 @@ forge script script/base/defi/DeployGovernedVaultENS.s.sol --tc DeployGovernedVa
   "((0x0000000000000000000000000000000000000000,\"Governed Vault Share\",\"gVLT\",0,300,60,600,0,4),<ReverseRegistrar>,\"<name>\")" \
   --verify --etherscan-api-key "$ETHERSCAN_API_KEY"
 ```
+
+Every `script/base/**` recipe creates and initializes its diamond in one transaction through
+`LatticeFactory`. (The Milestone 1 deployment above predates this and used two transactions.) By default a
+run first deploys its own `LatticeRegistry` + `LatticeFactory`. Set `LATTICE_FACTORY=<address>` to reuse a
+deployed factory, for example the release factory in `deployments/<chainid>/release-<version>.json`. Set
+`LATTICE_SALT=<0x + 64 hex characters>` to choose addresses: diamond `i` of a run lands at
+`factory.predict(<broadcaster>, keccak256(abi.encode(LATTICE_SALT, i)))`. Re-running with a salt that is
+already used reverts before anything is broadcast.
 
 The broadcast run log for this deployment is committed at
 [`broadcast/DeployGovernedVaultENS.s.sol/11155111/run-latest.json`](broadcast/DeployGovernedVaultENS.s.sol/11155111/run-latest.json).
