@@ -173,7 +173,7 @@ contract GovernedVaultUpgradeTest is GovernedVaultTestBase {
     /// @notice The declared composition rejects an accidental duplicated storage owner.
     function test_DuplicateNamespaceRejected() public {
         CollidingGovernedVaultRecipe recipe = new CollidingGovernedVaultRecipe();
-        LatticeFactory factory = new LatticeFactory(new LatticeRegistry(address(this)));
+        LatticeFactory factory = new LatticeFactory(new LatticeRegistry(address(this)), address(0), address(0));
         GovernedVaultParams memory p =
             GovernedVaultParams(address(asset), "Collision test", "TEST", 0, 300, 60, 600, 0, 4);
         string[] memory ids = recipe.storageNamespaces();
