@@ -1,5 +1,48 @@
 # Changelog
 
+## [0.4.0](https://github.com/dadadave80/lattice/compare/v0.3.0...v0.4.0) (2026-09-11)
+
+
+### Features
+
+* **cctp:** add hook receipt NFT demo ([339c490](https://github.com/dadadave80/lattice/commit/339c49089856eefb8561cd7d69db1855926481f2))
+* **cctp:** add hook receipt NFT demo ([02681de](https://github.com/dadadave80/lattice/commit/02681de70111398c05944d94a7e1c357eaecede1))
+* **factory:** support ENS infrastructure names ([7eca40a](https://github.com/dadadave80/lattice/commit/7eca40a5b3e7de23b80975ea6726666db99fabf1))
+* **factory:** support ENS reverse record ownership ([fba66cb](https://github.com/dadadave80/lattice/commit/fba66cb6237476751dd12d0e2caafbb0cc8ac63d))
+* **grants:** deliver ENS composition example, docs, and storage Action ([d589068](https://github.com/dadadave80/lattice/commit/d58906824692c12af582b235a294ad0ae74c1bde))
+* **grants:** implement ENS composition guide and reusable storage guard ([52c0fe0](https://github.com/dadadave80/lattice/commit/52c0fe0cfd245f8eca298f162b6ce6213d99ab17))
+* **grants:** Milestone 2 governed composition example and guide ([d5a89e6](https://github.com/dadadave80/lattice/commit/d5a89e6e0a643d12710bd715dba785d6fec6eaa8))
+* **grants:** run milestone 2 deployments and governance through make on any EVM RPC ([b7b688b](https://github.com/dadadave80/lattice/commit/b7b688b46e91f21cee355ae026f6d81c0d4229b4))
+* **grants:** separate milestone 2 composition example for review ([992ec06](https://github.com/dadadave80/lattice/commit/992ec06819cab19be1ac1613907f32fbd25f0a7b))
+* promote ENS milestone 2 and atomic recipe deployments to main ([9ccdcaf](https://github.com/dadadave80/lattice/commit/9ccdcaf293071dcc39a60f55c2ace66ea5f554e0))
+* **scripts:** promote shared facet and factory reuse to main ([704459a](https://github.com/dadadave80/lattice/commit/704459ada5b89d3e9b67d0c7802384f854fb9793))
+* **scripts:** reuse released facets and a shared factory in recipes ([660914c](https://github.com/dadadave80/lattice/commit/660914cd9e16151874259e7e1bc1c1a6c285a52f))
+* **scripts:** reuse released facets and a shared factory in recipes ([83fe3c7](https://github.com/dadadave80/lattice/commit/83fe3c790c41ac5b66ce95309f8f0019927a6e06))
+
+
+### Bug Fixes
+
+* **ci:** pin Foundry and apply current Solidity formatting ([e50520d](https://github.com/dadadave80/lattice/commit/e50520dc495213f3ad403df64f6ab4b925f1da37))
+* **deploy:** assemble recipe diamonds through LatticeFactory ([ecde163](https://github.com/dadadave80/lattice/commit/ecde163823fb050c612d58ad00db151fcc31c3ed))
+* **deploy:** create and initialize recipe diamonds atomically through LatticeFactory ([c407a3d](https://github.com/dadadave80/lattice/commit/c407a3d5f49fad52da3315e6d6a59208a95f3823))
+* **deploy:** initialize lattice atomically ([465ef5d](https://github.com/dadadave80/lattice/commit/465ef5d14c6cc47263d6fad5722dff6415ea95bc))
+* **examples:** use one make example command for deployment and governance ([49ca8c2](https://github.com/dadadave80/lattice/commit/49ca8c255bccf971edbaf863882e8fc35a75aff4))
+* **grants:** default M2 verification to Sourcify ([92994b4](https://github.com/dadadave80/lattice/commit/92994b40f7e846bbd9da0ae09a744fcd6f4d74bb))
+* **grants:** default M2 verification to Sourcify ([cb9cbd7](https://github.com/dadadave80/lattice/commit/cb9cbd7cfd0b310212b8796fd5a4dded09a8990f))
+* **grants:** exercise M2 deployment in CI and unify analysis toolchain ([d3294e3](https://github.com/dadadave80/lattice/commit/d3294e31450d782298b9c85121871e14f135120a))
+* make Lattice braille artwork symmetric ([0e19496](https://github.com/dadadave80/lattice/commit/0e1949614498d81b7eec17b0a2b92ac2eeb4944b))
+
+
+### Documentation
+
+* **cctp:** capture grant demo receipt relay ([f4faf99](https://github.com/dadadave80/lattice/commit/f4faf99ec498a23665964eb989f8a8011b5ca8f6))
+* **example:** explain verifying vaults from the shared Sepolia factory ([0ad172f](https://github.com/dadadave80/lattice/commit/0ad172fe3c3f40e6eb66d3fdd4739c75eed55c1e))
+* **example:** explain verifying vaults from the shared Sepolia factory ([891e2f8](https://github.com/dadadave80/lattice/commit/891e2f8d8fa101fb7c295395a99bbb8a80af9ee3))
+* **example:** note which checkout verifies vaults from a shared factory ([4fe3943](https://github.com/dadadave80/lattice/commit/4fe3943ca44a84e7a973e84e0858e2a1610a88a3))
+* **grants:** promote milestone 2 evidence to main ([94b7d93](https://github.com/dadadave80/lattice/commit/94b7d93cfe14e80252ae5b670691dce22f03a802))
+* **grants:** record milestone 2 evidence and pin the guide to grant-m2 ([3c62483](https://github.com/dadadave80/lattice/commit/3c624833ff11fd29b7b19faed0b9ebf6ecd9da13))
+* **grants:** record milestone 2 evidence and pin the guide to grant-m2 ([90a50d4](https://github.com/dadadave80/lattice/commit/90a50d425ce29a28128dc0c3dd649bbfcc63b38c))
+
 ## [0.3.0](https://github.com/dadadave80/lattice/compare/v0.2.0...v0.3.0) (2026-07-25)
 
 
