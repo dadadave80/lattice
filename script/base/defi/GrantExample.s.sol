@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.34;
 
+import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {DeployGovernedVault} from "@lattice-script/base/defi/DeployGovernedVault.s.sol";
 import {TestnetAsset} from "@lattice-script/base/defi/DeployGovernedVaultENS.s.sol";
-import {LatticeFactory} from "@lattice/LatticeFactory.sol";
-import {LatticeRegistry} from "@lattice/LatticeRegistry.sol";
 import {GovernedVaultParams} from "@lattice/defi/GovernedVaultInit.sol";
 import {console} from "forge-std/console.sol";
 
@@ -18,13 +17,14 @@ contract GrantUpgradeProbe {
 
 /// @title GrantExample
 /// @notice Self-contained testnet example using the production recipe and atomic factory deployment.
+/// @dev Reuses released facets where they exist (see {_facet}) and `LATTICE_FACTORY` when set (see {_assemble}).
 contract GrantExample is DeployGovernedVault {
     function run() external returns (address vault, address asset, address probe) {
         vm.startBroadcast();
         asset = address(new TestnetAsset("Grant example asset", "TEST"));
-        LatticeFactory factory = new LatticeFactory(new LatticeRegistry(msg.sender), address(0), address(0));
-        GovernedVaultParams memory p = GovernedVaultParams(asset, "Grant vault", "gVLT", 0, 300, 60, 600, 0, 4);
-        vault = deployAtomic(p, factory, bytes32(0));
+        (FacetCut[] memory cuts, address init, bytes memory data) =
+            buildCuts(GovernedVaultParams(asset, "Grant vault", "gVLT", 0, 300, 60, 600, 0, 4));
+        vault = _assemble(cuts, init, data);
         probe = address(new GrantUpgradeProbe());
         vm.stopBroadcast();
         console.log("VAULT", vault);
