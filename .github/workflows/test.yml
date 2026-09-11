@@ -180,8 +180,8 @@ jobs:
           key: forge-build-${{ runner.os }}-${{ hashFiles('foundry.toml', 'remappings.txt', 'src/**/*.sol', 'lib/**/*.sol') }}
       - name: Test grant RPC runner
         run: make test-grant-runner
-      - name: Run Milestone 2 example on Anvil
-        timeout-minutes: 5
+      - name: Run Anvil deployment checks
+        timeout-minutes: 8
         run: |
           anvil --silent > "$RUNNER_TEMP/grant-m2-anvil.log" 2>&1 &
           anvil_pid=$!
@@ -193,6 +193,7 @@ jobs:
             sleep 1
           done
           make example-ens-grant-m2 LOCAL=1 WAIT_TIMEOUT=60
+          make check-atomic-deploy
       - name: Run Forge tests
         run: forge test -vvv
 

@@ -4,11 +4,14 @@ pragma solidity ^0.8.30;
 import {MultiInit} from "@diamond/initializers/MultiInit.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
-import {Lattice} from "@lattice/Lattice.sol";
+import {LatticeFactory} from "@lattice/LatticeFactory.sol";
+import {LatticeRegistry} from "@lattice/LatticeRegistry.sol";
 import {AccessControlInit} from "@lattice/access/AccessControlInit.sol";
+import {RecipeEntry} from "@lattice/interfaces/ILatticeFactory.sol";
 import {IERC8153} from "@lattice/interfaces/external/ercs/IERC8153.sol";
 import {DiamondIntrospectionInit} from "@lattice/utils/DiamondIntrospectionInit.sol";
 import {Script} from "forge-std/Script.sol";
+import {VmSafe} from "forge-std/Vm.sol";
 
 /// @title BaseDeploy
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
@@ -21,8 +24,9 @@ import {Script} from "forge-std/Script.sol";
 ///         upstream interface); the STRING helpers (`_cut(addr, "Name")`) resolve selectors from the facet's
 ///         real ABI via the vendored {GetSelectors}/`forge inspect` FFI and remain ONLY for legacy call sites
 ///         and non-8153 test fixtures (new code should use the address helpers). Both paths strip
-///         `exportSelectors()` (0x0ef22643): the diamond never exposes ERC-8153 facet introspection. `_assemble*` are broadcast-free so tests reuse the exact production
-///         composition; concrete scripts wrap their `run()` in `vm.startBroadcast()`. Mirrors the intent of
+///         `exportSelectors()` (0x0ef22643): the diamond never exposes ERC-8153 facet introspection.
+///         `_assemble*` create and initialize each proxy in ONE transaction through {LatticeFactory}; concrete
+///         scripts wrap their `run()` in `vm.startBroadcast()`, and tests compose via `buildCuts`. Mirrors the intent of
 ///         diamond-lib's {DeployDiamond} but factored so per-family scripts ({DeployAccount}, {DeployERC20}, …)
 ///         stay tiny.
 abstract contract BaseDeploy is Script, GetSelectors {
@@ -32,6 +36,12 @@ abstract contract BaseDeploy is Script, GetSelectors {
     ///      of the same recipe would revert `CannotAddFunctionToDiamondThatAlreadyExists`. The address-based
     ///      helpers read the runtime `exportSelectors()` return, which already excludes it by the ERC-8153 rule.
     bytes4 private constant _EXPORT_SELECTORS = 0x0ef22643;
+
+    /// @dev The factory `_assemble` uses on each chain during this run (multi-fork scripts assemble on several).
+    mapping(uint256 chainId => LatticeFactory) private _factories;
+
+    /// @dev Diamonds assembled so far by this script instance — mixed into each diamond's CREATE2 salt.
+    uint256 private _assembled;
 
     //*//////////////////////////////////////////////////////////////////////////
     //                      STRING (forge inspect) CUTS
@@ -137,15 +147,54 @@ abstract contract BaseDeploy is Script, GetSelectors {
         return false;
     }
 
-    /// @notice Deploys a {Diamond} and initializes it with `cuts` + a single `init` delegatecall.
-    /// @dev Broadcast-free — a production `run()` wraps the call in `vm.startBroadcast()`; tests call directly.
+    /// @notice Deploys a {Lattice} proxy and initializes it with `cuts` + a single `init` delegatecall in ONE
+    ///         transaction, through {LatticeFactory}.
+    /// @dev The proxy's initializer is first-caller-wins, so deploying the proxy and initializing it in separate
+    ///      broadcast transactions would let anyone initialize it in between. The factory does both atomically.
+    ///      Diamond `i` of a run uses salt `keccak256(abi.encode(LATTICE_SALT, i))`, which the factory binds to
+    ///      its caller. An occupied address reverts here instead of taking the factory's idempotent return,
+    ///      which would silently ignore these cuts. Broadcast-free — a production `run()` wraps the call in
+    ///      `vm.startBroadcast()`.
     function _assemble(FacetCut[] memory cuts, address init, bytes memory initCalldata)
         internal
         returns (address diamond)
     {
-        Lattice d = new Lattice();
-        d.initialize(cuts, init, initCalldata);
-        diamond = address(d);
+        address broadcaster = _broadcaster();
+        LatticeFactory factory = _latticeFactory();
+        bytes32 baseSalt = broadcaster == address(0) ? bytes32(0) : vm.envOr("LATTICE_SALT", bytes32(0));
+        bytes32 salt = keccak256(abi.encode(baseSalt, _assembled++));
+        address caller = broadcaster == address(0) ? address(this) : broadcaster;
+        require(
+            factory.predict(caller, salt).code.length == 0,
+            "BaseDeploy: diamond already deployed for this caller and salt; set a new LATTICE_SALT"
+        );
+        diamond = factory.deploy(new RecipeEntry[](0), cuts, init, initCalldata, salt);
+    }
+
+    /// @notice The {LatticeFactory} `_assemble` deploys through: `LATTICE_FACTORY` while broadcasting, else a
+    ///         {LatticeRegistry} + {LatticeFactory} pair created once per chain for this run.
+    /// @dev Tests never read the environment, so a developer's `.env` cannot change test deployments.
+    function _latticeFactory() internal virtual returns (LatticeFactory factory) {
+        address broadcaster = _broadcaster();
+        address configured = broadcaster == address(0) ? address(0) : vm.envOr("LATTICE_FACTORY", address(0));
+        if (configured != address(0)) {
+            require(configured.code.length != 0, "BaseDeploy: LATTICE_FACTORY has no code on this chain");
+            return LatticeFactory(configured);
+        }
+        factory = _factories[block.chainid];
+        if (address(factory).code.length == 0) {
+            address registryOwner = broadcaster == address(0) ? address(this) : broadcaster;
+            factory = new LatticeFactory(new LatticeRegistry(registryOwner), address(0), address(0));
+            _factories[block.chainid] = factory;
+        }
+    }
+
+    /// @dev The active broadcaster, or `address(0)` outside `vm.startBroadcast()` (tests call recipes directly).
+    function _broadcaster() private view returns (address broadcaster) {
+        (VmSafe.CallerMode mode, address sender,) = vm.readCallers();
+        if (mode == VmSafe.CallerMode.Broadcast || mode == VmSafe.CallerMode.RecurrentBroadcast) {
+            broadcaster = sender;
+        }
     }
 
     /// @notice Deploys a {Diamond} whose init runs SEVERAL initializers in order via {MultiInit} — the way to

@@ -213,6 +213,14 @@ forge script script/base/defi/DeployGovernedVaultENS.s.sol --tc DeployGovernedVa
   --verify --etherscan-api-key "$ETHERSCAN_API_KEY"
 ```
 
+Every `script/base/**` recipe creates and initializes its diamond in one transaction through
+`LatticeFactory`. (The Milestone 1 deployment above predates this and used two transactions.) By default a
+run first deploys its own `LatticeRegistry` + `LatticeFactory`. Set `LATTICE_FACTORY=<address>` to reuse a
+deployed factory, for example the release factory in `deployments/<chainid>/release-<version>.json`. Set
+`LATTICE_SALT=<0x + 64 hex characters>` to choose addresses: diamond `i` of a run lands at
+`factory.predict(<broadcaster>, keccak256(abi.encode(LATTICE_SALT, i)))`. Re-running with a salt that is
+already used reverts before anything is broadcast.
+
 The broadcast run log for this deployment is committed at
 [`broadcast/DeployGovernedVaultENS.s.sol/11155111/run-latest.json`](broadcast/DeployGovernedVaultENS.s.sol/11155111/run-latest.json).
 

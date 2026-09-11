@@ -5,7 +5,9 @@ import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {MultiInit} from "@diamond/initializers/MultiInit.sol";
 import {IDiamondLoupe} from "@diamond/interfaces/IDiamondLoupe.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
-import {Lattice} from "@lattice/Lattice.sol";
+import {LatticeFactory} from "@lattice/LatticeFactory.sol";
+import {LatticeRegistry} from "@lattice/LatticeRegistry.sol";
+import {RecipeEntry} from "@lattice/interfaces/ILatticeFactory.sol";
 import {IAccessControl} from "@lattice/interfaces/access/IAccessControl.sol";
 import {IAccessControlDiamondCut} from "@lattice/interfaces/governance/IAccessControlDiamondCut.sol";
 import {Test} from "forge-std/Test.sol";
@@ -30,14 +32,19 @@ abstract contract RecipeGuards is Test {
     address internal constant UPGRADE_ADMIN = address(0xAD2);
     address internal constant STRANGER = address(0xBAD);
 
-    /// @dev Mirrors {BaseDeploy._assemble} (BaseDeploy is a Script; tests re-implement the two-liner).
+    LatticeFactory private _factory;
+    uint256 private _assembled;
+
+    /// @dev Mirrors {BaseDeploy._assemble}: one factory per test contract and a new salt per diamond, so every
+    ///      recipe passes the factory's production checks (loupe coverage, no export selector) in one call.
     function _assemble(FacetCut[] memory cuts, address init, bytes memory initCalldata)
         internal
         returns (address diamond)
     {
-        Lattice d = new Lattice();
-        d.initialize(cuts, init, initCalldata);
-        diamond = address(d);
+        if (address(_factory) == address(0)) {
+            _factory = new LatticeFactory(new LatticeRegistry(address(this)), address(0), address(0));
+        }
+        diamond = _factory.deploy(new RecipeEntry[](0), cuts, init, initCalldata, bytes32(_assembled++));
     }
 
     /// @dev Mirrors {BaseDeploy._assembleMulti} for recipes returning (cuts, inits[], calldatas[]).
