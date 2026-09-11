@@ -1,26 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {DiamondLoupeFacet} from "@diamond/facets/DiamondLoupeFacet.sol";
-import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
 import {LatticeFactory} from "@lattice/LatticeFactory.sol";
-import {Receive} from "@lattice/Receive.sol";
-import {AccessControl} from "@lattice/access/AccessControl.sol";
-import {GovernedVault} from "@lattice/defi/GovernedVault.sol";
 import {GovernedVaultInit, GovernedVaultParams} from "@lattice/defi/GovernedVaultInit.sol";
-import {VaultCore} from "@lattice/defi/VaultCore.sol";
-import {GovernedDiamondCut} from "@lattice/governance/GovernedDiamondCut.sol";
-import {Governor} from "@lattice/governance/Governor.sol";
-import {TimelockController} from "@lattice/governance/TimelockController.sol";
-import {Votes} from "@lattice/governance/Votes.sol";
 import {DiamondValidationLib} from "@lattice/governance/libraries/DiamondValidationLib.sol";
 import {RecipeEntry} from "@lattice/interfaces/ILatticeFactory.sol";
-import {EmergencyStop} from "@lattice/security/EmergencyStop.sol";
-import {ERC20} from "@lattice/tokens/ERC20/ERC20.sol";
-import {ERC20Votes} from "@lattice/tokens/ERC20/ERC20Votes.sol";
-import {ERC4626} from "@lattice/tokens/ERC4626/ERC4626.sol";
 
 /// @title DeployGovernedVault
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
@@ -85,23 +71,24 @@ contract DeployGovernedVault is BaseDeploy {
     ///      {EmergencyStop} (guardian halt + resume surface for the governed cut), and
     ///      {GovernedDiamondCut} (the `0x1f931c1c` upgrade path, reachable ONLY through a passed,
     ///      timelock-executed proposal — see {GovernedVaultInit}). All diamond-lib facets are cut via the
-    ///      ERC-8153 address helpers (diamond-lib ≥0.2.0 facets self-report their selectors) — no FFI.
+    ///      ERC-8153 address helpers (diamond-lib ≥0.2.0 facets self-report their selectors) — no FFI. Every
+    ///      facet comes from {_facet}, so on a CreateX chain vaults share one released facet set.
     function _buildBaseCuts() internal returns (FacetCut[] memory cuts) {
         cuts = new FacetCut[](14);
-        cuts[0] = _cut(address(new ERC165Facet()));
-        cuts[1] = _cut(address(new AccessControl()));
-        cuts[2] = _cut(address(new TimelockController()));
-        cuts[3] = _cutExcept(address(new ERC20()), _erc20Exclusions());
-        cuts[4] = _cutExcept(address(new ERC4626()), _erc4626Exclusions());
-        cuts[5] = _cutExcept(address(new VaultCore()), _vaultExclusions());
-        cuts[6] = _cutExcept(address(new Votes()), _votesExclusions());
-        cuts[7] = _cutExcept(address(new ERC20Votes()), _erc20VotesExclusions());
-        cuts[8] = _cutExcept(address(new Governor()), _governorExclusions());
-        cuts[9] = _cut(address(new GovernedVault()));
-        cuts[10] = _cut(address(new DiamondLoupeFacet()));
-        cuts[11] = _cut(address(new EmergencyStop()));
-        cuts[12] = _cut(address(new GovernedDiamondCut()));
-        cuts[13] = _cut(address(new Receive()));
+        cuts[0] = _cut(_facet("ERC165Facet"));
+        cuts[1] = _cut(_facet("AccessControl"));
+        cuts[2] = _cut(_facet("TimelockController"));
+        cuts[3] = _cutExcept(_facet("ERC20"), _erc20Exclusions());
+        cuts[4] = _cutExcept(_facet("ERC4626"), _erc4626Exclusions());
+        cuts[5] = _cutExcept(_facet("VaultCore"), _vaultExclusions());
+        cuts[6] = _cutExcept(_facet("Votes"), _votesExclusions());
+        cuts[7] = _cutExcept(_facet("ERC20Votes"), _erc20VotesExclusions());
+        cuts[8] = _cutExcept(_facet("Governor"), _governorExclusions());
+        cuts[9] = _cut(_facet("GovernedVault"));
+        cuts[10] = _cut(_facet("DiamondLoupeFacet"));
+        cuts[11] = _cut(_facet("EmergencyStop"));
+        cuts[12] = _cut(_facet("GovernedDiamondCut"));
+        cuts[13] = _cut(_facet("Receive"));
     }
 
     /// @notice Uses the existing factory to create and initialize the proxy in one transaction.

@@ -35,6 +35,24 @@ public network it **waits for real blocks**: 60-second voting delay, 600-second 
 `WAIT_TIMEOUT=3600` bounds each wait. A stalled clock or failed transaction stops the script.
 Each invocation starts a fresh example; a partially completed run may need manual recovery.
 
+### Reuse shared contracts
+
+On chains with CreateX (Sepolia included), the recipe takes each facet from its release address: the
+address `DeployRelease` uses for this code at its `LatticeVersion`. The first run deploys any facet
+missing there, and later runs skip it. Chains without CreateX, such as plain Anvil, deploy fresh facets.
+
+Each run still deploys its own registry and factory unless `LATTICE_FACTORY` names an existing one.
+The factory binds salts to the caller, so give every run from the same wallet a new `LATTICE_SALT`:
+
+```sh
+LATTICE_FACTORY=0x9E49FB5CDBb09ECf65513F7c690909E093170037 LATTICE_SALT=$(cast keccak "$(date)") \
+  make example-ens-grant-m2 RPC=sepolia KEYSTORE=my-testnet-wallet
+```
+
+A factory embeds the `Lattice` proxy bytecode of the commit it was built from, so its vaults verify
+exactly only from a checkout of that commit. The Sepolia factory above (`factory.lattice.studio.eth`) was
+built from `fba66cb`; vaults it creates from a later checkout may verify only partially.
+
 Deployment enables `--verify --verifier sourcify` by default. Set `VERIFIER_URL` only for a custom
 endpoint; an empty value uses the provider default. For a Blockscout explorer:
 
