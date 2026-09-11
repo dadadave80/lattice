@@ -37,7 +37,8 @@ Production deploy logic lives in `script/`:
 
 - `script/base/` — canonical facet-set compositions, the single source of truth reused by both production
   deploys and test setup (mirrors diamond-lib's `DeployDiamond`/`DeployedDiamondState` split). `BaseDeploy.s.sol`
-  is the shared primitive (`_cut`/`_cutExcept`/`_assemble`/`_assembleMulti`); the `Deploy*` recipes are
+  is the shared primitive (`_cut`/`_cutExcept`/`_assemble`/`_assembleMulti`; `_assemble*` create and initialize
+  each proxy in one transaction through `LatticeFactory`); the `Deploy*` recipes are
   organized into per-domain subfolders **mirroring `src/`** — `script/base/{access,accounts,amm,crosschain,defi,ens,governance,oracles,privacy,security,tokens,utils}/`.
   A recipe is a collection of facets (modified or as-is) composed to work together; e.g.
   `script/base/defi/DeployGovernedVault.s.sol` cuts `VaultCore` + `ERC20Votes` + `Governor` +

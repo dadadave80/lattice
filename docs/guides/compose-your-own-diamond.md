@@ -72,8 +72,8 @@ The grant's “three-call init dance” is three internal stages, not three publ
 
 Recipe init contracts must not add another `initializer` modifier: they execute inside the proxy's
 window. Each guarded module init checks that window. An initializer replay reverts. A revert rolls back
-the cut and its state; a failed factory call also rolls back proxy creation. The older recipe `run(params)`
-uses bare assembly and should not be used for this walkthrough; use the atomic example entrypoint.
+the cut and its state; a failed factory call also rolls back proxy creation. `run(params)` also deploys
+through `LatticeFactory` in one transaction; `deployAtomic` additionally lets you choose the factory and salt.
 
 ## Understand authority
 

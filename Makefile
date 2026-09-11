@@ -203,6 +203,10 @@ example-ens-grant-m2: ## Deploy and run the complete example: RPC=<alias|URL> KE
 test-grant-runner: ## Check M2 runner authentication, RPC timing, and transaction failures
 	@bash examples/governance-upgradeable-diamond/test-run.sh
 
+.PHONY: check-atomic-deploy
+check-atomic-deploy: ## Prove recipe deploys create + initialize proxies in one tx (needs `make anvil`)
+	@RPC_URL=http://127.0.0.1:$(ANVIL_PORT) bash script/deploy/check-atomic-deploy.sh
+
 .PHONY: demo-governance
 demo-governance: ## Governance demo loop — KEYSTORE=/PRIVATE_KEY= ARGS='<vault> <ens> <actor>'
 	@$(AUTH_WRAP) script/config/governance-demo-loop.sh $(ARGS)
