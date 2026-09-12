@@ -108,6 +108,13 @@ concern does not arise.
 
 - **`Account7702Diamond`.** EIP-7702 is HIP-1340, approved and implemented, but
   `contracts.codeDelegations.enabled = false` even on the v0.77 branch. Gate its recipe on chain id.
+- **`SignerType.HederaAccount` on a non-Hedera chain.** `setHederaAccountSigner` refuses outright where HAS
+  does not answer, and that refusal is load-bearing rather than defensive: a Lattice account is its own
+  `DEFAULT_ADMIN_ROLE` holder, so the signer you install is the one every later admin call must satisfy —
+  `setOwner`, the only route back to ECDSA, included. Arming a Hedera signer with no live HAS would make
+  every signature `false` with no authority left able to undo it, stranding the account and its `diamondCut`
+  upgrade path permanently. The check probes the system contract for a real answer rather than allowlisting
+  chain ids, so it stays correct on previewnet, a Solo local network, and any future Hedera chain id.
 - **P256 / WebAuthn signers.** Hedera has no secp256r1 precompile (EIP-7951 is an Osaka feature) and `0x100`
   there is a system account, so `SignerType.P256` and `SignerType.WebAuthn` return `false` unless the Solady
   fallback verifier contract is deployed on the chain. Use `SignerType.HederaAccount` instead — it is strictly

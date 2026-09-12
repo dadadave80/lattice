@@ -174,8 +174,14 @@ library AccountSignerLib {
     /// @dev Stores the Hedera account in `_owner` (the scheme keeps no key material) and clears the passkey
     ///      fields, so no stale P256 key or UV policy survives the switch. Owner, scheme and UV policy share
     ///      slot 0; the two key words are cleared separately.
+    ///
+    ///      REFUSES a chain where HAS does not answer. An account is its own admin, so the signer this call
+    ///      installs is the same signer every later admin call must satisfy — including {setOwner}, the only
+    ///      route back. Arming a Hedera signer without a live HAS therefore strands the account for good, and
+    ///      it would do so SILENTLY: the setter would succeed and only the next signature would reveal it.
     function _setHederaAccountSigner(address account) private {
         if (account == address(0)) revert IAccountSigner.InvalidOwner();
+        if (!HASSignatureVerifierLib.isAvailable()) revert IAccountSigner.HederaAccountServiceUnavailable();
         AccountSignerStorage storage $ = accountSignerStorage();
         $._owner = account;
         $._signerType = uint8(IAccountSigner.SignerType.HederaAccount);

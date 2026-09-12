@@ -39,6 +39,10 @@ interface IAccountSigner {
     /// @notice The P256 public key is (0, 0).
     error InvalidP256Key();
 
+    /// @notice The Hedera Account Service system contract is not live on this chain, so a Hedera signer
+    ///         could never verify anything and arming one would strand the account.
+    error HederaAccountServiceUnavailable();
+
     /// @notice The ECDSA owner. Authoritative only when `signerType() == ECDSA`.
     function owner() external view returns (address);
 
@@ -62,6 +66,12 @@ interface IAccountSigner {
 
     /// @notice Sets a native Hedera account (ED25519 or ECDSA key) as the owner: signatures are verified by
     ///         the Hedera Account Service system contract (HIP-632), so no key material is stored. Admin only.
+    /// @dev Reverts {HederaAccountServiceUnavailable} on a chain where HAS does not answer. That guard is
+    ///      load-bearing, not defensive: a Lattice account is its OWN `DEFAULT_ADMIN_ROLE` holder
+    ///      ({AccountInit} seeds `address(this)`), so every admin call — including {setOwner}, the only way
+    ///      back to ECDSA — has to pass the signer that this call replaces. Arming a Hedera signer where HAS
+    ///      is dead would make every signature `false` and leave no authority able to undo it: the account,
+    ///      its owner change and its `diamondCut` upgrade path would all be permanently stranded.
     /// @param account The Hedera account's EVM alias or long-zero `0x000…<accountNum>` address.
     function setHederaAccountSigner(address account) external;
 }
