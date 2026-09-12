@@ -134,6 +134,20 @@ contract HASSignatureVerifierTest is Test {
         assertFalse(verifier.isAuthorizedRaw(signerAddr, messageHash, malformed), "malformed blob not swallowed");
     }
 
+    /// @notice The other half of the never-revert contract: a halted frame whose revert reason is LONGER than
+    ///         a decodable word. The returndata-length guard cannot catch this one — only the failed-call flag
+    ///         can — so the wrapper must still answer `false` instead of decoding the reason as a bool.
+    function test_IsAuthorizedRaw_HaltedFrameReturnsFalse() public {
+        bytes32 messageHash = keccak256("hedera message");
+        bytes memory sig = _ecdsaSig(signerPk, messageHash);
+        hederaService.forceRevert(true);
+
+        vm.expectRevert(bytes("MockHederaAccountService: the system contract halted this frame"));
+        hederaService.isAuthorizedRaw(signerAddr, abi.encodePacked(messageHash), sig);
+
+        assertFalse(verifier.isAuthorizedRaw(signerAddr, messageHash, sig), "halted frame not swallowed");
+    }
+
     /// @notice Off Hedera there is no system contract at 0x16a: the staticcall returns no data and the wrapper
     ///         must answer `false` rather than decode garbage or revert.
     function test_IsAuthorizedRaw_NoSystemContract() public {

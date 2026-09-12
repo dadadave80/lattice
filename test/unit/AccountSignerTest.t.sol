@@ -54,6 +54,17 @@ contract AccountSignerTest is AccountBlueprintHelper {
         signer.initialize(admin, ownerAddr);
     }
 
+    /// @dev {IAccountSigner.SignerType} is documented APPEND-ONLY because the active scheme is persisted as a
+    ///      `uint8`. Every other assertion in this suite compares `uint8(signerType())` against
+    ///      `uint8(SignerType.X)`, so both sides move together under a reorder — these pin the ordinals
+    ///      numerically, which is what a reorder or an inserted value has to break.
+    function test_SignerTypeOrdinalsAreAppendOnly() public pure {
+        assertEq(uint256(IAccountSigner.SignerType.ECDSA), 0, "ECDSA must stay ordinal 0");
+        assertEq(uint256(IAccountSigner.SignerType.P256), 1, "P256 must stay ordinal 1");
+        assertEq(uint256(IAccountSigner.SignerType.WebAuthn), 2, "WebAuthn must stay ordinal 2");
+        assertEq(uint256(IAccountSigner.SignerType.HederaAccount), 3, "HederaAccount must stay ordinal 3");
+    }
+
     function test_InitialOwner() public view {
         assertEq(signer.owner(), ownerAddr, "owner not set at init");
     }

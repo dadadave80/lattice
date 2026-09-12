@@ -57,7 +57,8 @@ IHTSAdapter(diamond).associateToken(token);   // HTS_MANAGER_ROLE
 ```
 
 Dissociation fails with `TRANSACTION_REQUIRES_ZERO_TOKEN_BALANCES` (195, surfaced as `HTSNonZeroBalance`)
-while any balance remains.
+while any balance remains, and with `ACCOUNT_IS_TREASURY` (196, surfaced as `HTSAccountIsTreasury`) for a token
+the diamond treasuries — the treasury seat is refused first, however empty the balance is.
 
 Two consequences worth planning for: a diamond that is a token treasury or holds HTS tokens cannot be torn
 down, and a diamond that is a token's auto-renew account takes on that token's renewal charges — so it must

@@ -30,26 +30,49 @@ contract MockHRC719Token is IHRC719 {
 /// @title MockHederaTokenService
 /// @notice `vm.etch`-able stand-in for the HTS system contract at 0x167. Returns RESPONSE CODES (never reverts)
 ///         like the real system contract, keeps just enough state (associations, balances, NFT serial owners,
-///         allowances, supply key holder) to exercise the adapter's happy paths, and lets a test force any code
-///         for the next call of a selector.
+///         allowances, treasury, admin / supply key holders) to exercise the adapter's happy paths, records the
+///         `HederaToken` body every create submitted, and lets a test force any code for the next call of a
+///         selector.
 /// @dev Must not rely on constructor state: an etched contract starts with empty storage. Token addresses are
 ///      real contracts (MockHRC719Token) so the HIP-719 `isAssociated()` facade path can be unit-tested.
+///      {forceRevert} is the ONE deviation from "never reverts": it is off by default and must be armed per
+///      selector, and it exists only so the adapter's halted-frame defaults (response code UNKNOWN) are
+///      reachable — a code the system contract itself can never return.
 contract MockHederaTokenService {
     mapping(address account => mapping(address token => bool)) public associated;
     mapping(address token => mapping(address account => int64)) public balanceOf;
     mapping(address token => mapping(int64 serial => address owner)) public nftOwner;
     mapping(address token => int64) public lastSerial;
     mapping(address token => mapping(address owner => mapping(address spender => uint256))) public allowances;
+    mapping(address token => address) public treasury;
+    mapping(address token => address) public adminKeyHolder;
     mapping(address token => address) public supplyKeyHolder;
     mapping(address token => int64) public totalSupply;
     mapping(address token => int32) public tokenType; // 0 FT, 1 NFT
     mapping(address token => bool) public tokenExists;
     mapping(bytes4 selector => int64) public forcedCode;
+    mapping(bytes4 selector => bool) public forcedRevert;
+    mapping(address token => IHederaTokenService.HederaToken) private _submittedToken;
     address[] public tokens;
+
+    /// @notice A test armed {forceRevert} for `selector`, so this frame halts instead of returning a code.
+    error HTSFrameHalted(bytes4 selector);
 
     /// @notice Force the next call of `selector` to return `code` (0 clears).
     function force(bytes4 selector, int64 code) external {
         forcedCode[selector] = code;
+    }
+
+    /// @notice Arm (`on`) or disarm the frame-failure injector for `selector`: an armed selector REVERTS.
+    /// @dev Off by default, and sticky rather than one-shot — the revert rolls back any self-disarm — so a
+    ///      test that needs the selector working again must clear it explicitly.
+    function forceRevert(bytes4 selector, bool on) external {
+        forcedRevert[selector] = on;
+    }
+
+    /// @notice The `HederaToken` body submitted when `token` was created, recorded verbatim.
+    function submittedToken(address token) external view returns (IHederaTokenService.HederaToken memory) {
+        return _submittedToken[token];
     }
 
     /// @notice TEST HELPER — deliberately NOT an HTS selector. Seeds the allowance `owner` granted `spender`
@@ -63,8 +86,30 @@ contract MockHederaTokenService {
         if (code != 0) delete forcedCode[selector];
     }
 
+    /// @dev The opt-in halt: an armed selector never reaches its response-code logic.
+    function _failFrame(bytes4 selector) private view {
+        if (forcedRevert[selector]) revert HTSFrameHalted(selector);
+    }
+
+    /// @dev Field-by-field because the legacy pipeline cannot copy a `TokenKey[] memory` straight to storage.
+    function _record(address token, IHederaTokenService.HederaToken memory t) private {
+        IHederaTokenService.HederaToken storage submitted = _submittedToken[token];
+        submitted.name = t.name;
+        submitted.symbol = t.symbol;
+        submitted.treasury = t.treasury;
+        submitted.memo = t.memo;
+        submitted.tokenSupplyType = t.tokenSupplyType;
+        submitted.maxSupply = t.maxSupply;
+        submitted.freezeDefault = t.freezeDefault;
+        submitted.expiry = t.expiry;
+        for (uint256 i; i < t.tokenKeys.length; ++i) {
+            submitted.tokenKeys.push(t.tokenKeys[i]);
+        }
+    }
+
     // ---- associations ----
     function associateToken(address account, address token) public returns (int64) {
+        _failFrame(IHederaTokenService.associateToken.selector);
         int64 forced = _consumeForced(IHederaTokenService.associateToken.selector);
         if (forced != 0) return forced;
         if (!tokenExists[token]) return HederaResponseCodes.INVALID_TOKEN_ID;
@@ -74,9 +119,13 @@ contract MockHederaTokenService {
     }
 
     function dissociateToken(address account, address token) public returns (int64) {
+        _failFrame(IHederaTokenService.dissociateToken.selector);
         int64 forced = _consumeForced(IHederaTokenService.dissociateToken.selector);
         if (forced != 0) return forced;
         if (!associated[account][token]) return HederaResponseCodes.TOKEN_NOT_ASSOCIATED_TO_ACCOUNT;
+        // A treasury can never dissociate itself, however empty it is: the consensus node's dissociate handler
+        // refuses with ACCOUNT_IS_TREASURY BEFORE it ever looks at the balance.
+        if (treasury[token] == account) return HederaResponseCodes.ACCOUNT_IS_TREASURY;
         if (balanceOf[token][account] != 0) return HederaResponseCodes.TRANSACTION_REQUIRES_ZERO_TOKEN_BALANCES;
         associated[account][token] = false;
         return HederaResponseCodes.SUCCESS;
@@ -84,6 +133,7 @@ contract MockHederaTokenService {
 
     // ---- transfers (sender authorization = msg.sender is the sender, like a contract moving its own funds) ----
     function transferToken(address token, address sender, address receiver, int64 amount) external returns (int64) {
+        _failFrame(IHederaTokenService.transferToken.selector);
         int64 forced = _consumeForced(IHederaTokenService.transferToken.selector);
         if (forced != 0) return forced;
         if (!tokenExists[token]) return HederaResponseCodes.INVALID_TOKEN_ID;
@@ -97,6 +147,7 @@ contract MockHederaTokenService {
     }
 
     function transferNFT(address token, address sender, address receiver, int64 serialNumber) external returns (int64) {
+        _failFrame(IHederaTokenService.transferNFT.selector);
         int64 forced = _consumeForced(IHederaTokenService.transferNFT.selector);
         if (forced != 0) return forced;
         if (!tokenExists[token]) return HederaResponseCodes.INVALID_TOKEN_ID;
@@ -114,6 +165,7 @@ contract MockHederaTokenService {
     ///      check runs before the first write — a response code is not a revert, so a half-applied transfer
     ///      would persist.
     function transferFrom(address token, address from, address to, uint256 amount) external returns (int64) {
+        _failFrame(IHederaTokenService.transferFrom.selector);
         int64 forced = _consumeForced(IHederaTokenService.transferFrom.selector);
         if (forced != 0) return forced;
         if (!tokenExists[token]) return HederaResponseCodes.INVALID_TOKEN_ID;
@@ -136,6 +188,7 @@ contract MockHederaTokenService {
         external
         returns (int64, int64, int64[] memory serials)
     {
+        _failFrame(IHederaTokenService.mintToken.selector);
         int64 forced = _consumeForced(IHederaTokenService.mintToken.selector);
         if (forced != 0) return (forced, 0, serials);
         if (!tokenExists[token]) return (HederaResponseCodes.INVALID_TOKEN_ID, 0, serials);
@@ -161,6 +214,7 @@ contract MockHederaTokenService {
     }
 
     function burnToken(address token, int64 amount, int64[] memory serials) external returns (int64, int64) {
+        _failFrame(IHederaTokenService.burnToken.selector);
         int64 forced = _consumeForced(IHederaTokenService.burnToken.selector);
         if (forced != 0) return (forced, 0);
         if (supplyKeyHolder[token] != msg.sender) {
@@ -192,6 +246,7 @@ contract MockHederaTokenService {
         payable
         returns (int64, address token)
     {
+        _failFrame(IHederaTokenService.createFungibleToken.selector);
         int64 forced = _consumeForced(IHederaTokenService.createFungibleToken.selector);
         if (forced != 0) return (forced, address(0));
         if (msg.value == 0) return (HederaResponseCodes.INSUFFICIENT_PAYER_BALANCE, address(0));
@@ -206,6 +261,7 @@ contract MockHederaTokenService {
         payable
         returns (int64, address token)
     {
+        _failFrame(IHederaTokenService.createNonFungibleToken.selector);
         int64 forced = _consumeForced(IHederaTokenService.createNonFungibleToken.selector);
         if (forced != 0) return (forced, address(0));
         if (msg.value == 0) return (HederaResponseCodes.INSUFFICIENT_PAYER_BALANCE, address(0));
@@ -217,12 +273,16 @@ contract MockHederaTokenService {
         token = address(new MockHRC719Token());
         tokenExists[token] = true;
         tokenType[token] = type_;
+        treasury[token] = t.treasury;
         associated[t.treasury][token] = true;
         tokens.push(token);
+        _record(token, t);
         // Honour the key semantics that matter for a diamond: only a delegatableContractId key activates for a
         // caller running in a delegatecall frame, which is every facet call. A contractId key is recorded as
-        // "no holder" so a mint from a diamond fails the way the network would fail it.
+        // "no holder" so a mint from a diamond fails the way the network would fail it. Admin (bit 1) and
+        // supply (bit 16) are recorded separately — a token may carry either without the other.
         for (uint256 i; i < t.tokenKeys.length; ++i) {
+            if (t.tokenKeys[i].keyType & 1 != 0) adminKeyHolder[token] = t.tokenKeys[i].key.delegatableContractId;
             if (t.tokenKeys[i].keyType & 16 != 0) supplyKeyHolder[token] = t.tokenKeys[i].key.delegatableContractId;
         }
     }

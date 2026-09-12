@@ -33,7 +33,12 @@ contract HTSAdapterTest is HTSAdapterTestBase {
     string constant NFT_SYMBOL = "LHC";
     string constant MEMO = "lattice hts adapter test";
     int64 constant INITIAL_SUPPLY = 1_000;
+    int64 constant MAX_SUPPLY = 5_000;
     uint256 constant CREATION_FEE = 1 ether;
+    /// @dev The admin|supply `keyType` bit field (1 | 16) and the 90-day auto-renew period the adapter submits,
+    ///      both pinned here independently of the module so a changed template fails loudly.
+    uint256 constant ADMIN_AND_SUPPLY_KEY_TYPE = 17;
+    int64 constant AUTO_RENEW_PERIOD = 7_776_000;
 
     MockHederaTokenService hts;
 
@@ -97,6 +102,27 @@ contract HTSAdapterTest is HTSAdapterTestBase {
     ///      never signs, so the receiver-must-be-associated network rule can be satisfied.
     function _associate(address account, address token) internal {
         hts.associateToken(account, token);
+    }
+
+    /// @dev Gives the diamond a balance of a token it is NOT the treasury of: the test contract creates and
+    ///      mints it, then pushes `amount` across — the only way to reach a balance-gated path on a token the
+    ///      diamond does not treasury.
+    function _fundDiamondWithAForeignToken(int64 amount) internal returns (address token) {
+        token = _foreignToken(address(this));
+        IHederaTokenService(HTS).mintToken(token, amount, new bytes[](0));
+        vm.prank(admin);
+        htsAdapter.associateToken(token);
+        IHederaTokenService(HTS).transferToken(token, address(this), diamond, amount);
+    }
+
+    /// @dev Arms the mock to HALT the next `selector` frame and expects the adapter to surface the halted-frame
+    ///      default: {HTSCallFailed} carrying `selector` and UNKNOWN, a code no response-code path can produce.
+    function _expectHaltedFrame(bytes4 selector) internal {
+        hts.forceRevert(selector, true);
+        vm.prank(admin);
+        vm.expectRevert(
+            abi.encodeWithSelector(IHTSAdapter.HTSCallFailed.selector, selector, HederaResponseCodes.UNKNOWN)
+        );
     }
 
     /// @dev Forces `code` as the next `transferToken` response and asserts the adapter maps it to
@@ -189,9 +215,19 @@ contract HTSAdapterTest is HTSAdapterTestBase {
         assertFalse(htsAdapter.isAssociated(token), "diamond must be dissociated");
     }
 
-    /// @notice HTS 195: the treasury still holds the created supply, so dissociation is refused.
-    function test_DissociateToken_RevertsOnNonZeroBalance() public {
+    /// @notice HTS 196: the diamond treasuries the token, so it can never dissociate itself from it — the
+    ///         network refuses on that seat alone, before it ever weighs the balance.
+    function test_DissociateToken_RevertsWhenTheDiamondIsTheTreasury() public {
         address token = _createFungibleToken();
+        vm.prank(admin);
+        vm.expectRevert(abi.encodeWithSelector(IHTSAdapter.HTSAccountIsTreasury.selector, token, diamond));
+        htsAdapter.dissociateToken(token);
+    }
+
+    /// @notice HTS 195: a token the diamond merely holds (somebody else is the treasury) still cannot be
+    ///         dissociated while any of it remains.
+    function test_DissociateToken_RevertsOnNonZeroBalance() public {
+        address token = _fundDiamondWithAForeignToken(100);
         vm.prank(admin);
         vm.expectRevert(abi.encodeWithSelector(IHTSAdapter.HTSNonZeroBalance.selector, token, diamond));
         htsAdapter.dissociateToken(token);
@@ -220,17 +256,59 @@ contract HTSAdapterTest is HTSAdapterTestBase {
     //////////////////////////////////////////////////////////////////////////*//
 
     /// @notice Creation puts the diamond in BOTH load-bearing seats: treasury of the initial supply and holder
-    ///         of the supply key as a `delegatableContractId` key — the only form a facet frame activates (the
-    ///         ledger records `address(0)` for a plain `contractId` key, so this assertion is the proof).
-    function test_CreateFungibleToken_DiamondIsTreasuryAndSupplyKeyHolder() public {
-        address token = _createFungibleToken();
+    ///         of the admin AND supply keys as `delegatableContractId` keys — the only form a facet frame
+    ///         activates (the ledger records `address(0)` for a plain `contractId` key, so these assertions are
+    ///         the proof). {HTSTokenCreated} carries `fungible = true`; the token address is assigned by the
+    ///         ledger during the call, so only the event data is matched.
+    function test_CreateFungibleToken_DiamondIsTreasuryAndKeyHolder() public {
+        vm.prank(admin);
+        vm.expectEmit(false, false, false, true, diamond);
+        emit IHTSAdapter.HTSTokenCreated(address(0), true);
+        address token =
+            htsAdapter.createFungibleToken{value: CREATION_FEE}(FT_NAME, FT_SYMBOL, MEMO, 8, INITIAL_SUPPLY, int64(0));
 
         assertTrue(hts.tokenExists(token), "token must exist on the ledger");
-        assertEq(hts.balanceOf(token, diamond), INITIAL_SUPPLY, "diamond must be the treasury");
+        assertEq(hts.treasury(token), diamond, "diamond must be the treasury");
+        assertEq(hts.balanceOf(token, diamond), INITIAL_SUPPLY, "the initial supply sits in the treasury");
+        assertEq(hts.adminKeyHolder(token), diamond, "admin key must be delegatableContractId(diamond)");
         assertEq(hts.supplyKeyHolder(token), diamond, "supply key must be delegatableContractId(diamond)");
         assertTrue(htsAdapter.isAssociated(token), "the treasury is auto-associated");
         assertTrue(htsAdapter.isHTSToken(token), "created token must be an HTS token");
         assertEq(htsAdapter.htsTokenType(token), 0, "fungible token type");
+    }
+
+    /// @notice The `HederaToken` body the adapter submits, asserted field by field against what the ledger
+    ///         recorded: names, the diamond in every seat, an infinite supply, one admin|supply key carried as
+    ///         `delegatableContractId` (never `contractId`), and the 90-day auto-renew the network expects.
+    function test_CreateFungibleToken_SubmitsTheExpectedTemplate() public {
+        address token = _createFungibleToken();
+        IHederaTokenService.HederaToken memory submitted = hts.submittedToken(token);
+
+        assertEq(submitted.name, FT_NAME, "name");
+        assertEq(submitted.symbol, FT_SYMBOL, "symbol");
+        assertEq(submitted.memo, MEMO, "memo");
+        assertEq(submitted.treasury, diamond, "treasury");
+        assertFalse(submitted.tokenSupplyType, "a zero max supply is INFINITE");
+        assertEq(submitted.maxSupply, int64(0), "max supply");
+        assertFalse(submitted.freezeDefault, "accounts must not be frozen by default");
+        assertEq(submitted.tokenKeys.length, 1, "exactly one key entry");
+        assertEq(submitted.tokenKeys[0].keyType, ADMIN_AND_SUPPLY_KEY_TYPE, "admin | supply key bits");
+        assertEq(submitted.tokenKeys[0].key.delegatableContractId, diamond, "key must be delegatableContractId");
+        assertEq(submitted.tokenKeys[0].key.contractId, address(0), "a contractId key never activates for a facet");
+        assertEq(submitted.expiry.autoRenewAccount, diamond, "the diamond pays its own auto-renew");
+        assertEq(submitted.expiry.autoRenewPeriod, AUTO_RENEW_PERIOD, "auto-renew period");
+    }
+
+    /// @notice A non-zero cap flips the template to FINITE and carries the cap through verbatim.
+    function test_CreateFungibleToken_SubmitsAFiniteSupplyTemplate() public {
+        vm.prank(admin);
+        address token = htsAdapter.createFungibleToken{value: CREATION_FEE}(
+            FT_NAME, FT_SYMBOL, MEMO, 8, INITIAL_SUPPLY, MAX_SUPPLY
+        );
+        IHederaTokenService.HederaToken memory submitted = hts.submittedToken(token);
+
+        assertTrue(submitted.tokenSupplyType, "a non-zero max supply is FINITE");
+        assertEq(submitted.maxSupply, MAX_SUPPLY, "max supply");
     }
 
     /// @notice Creation is `HTS_MANAGER_ROLE`.
@@ -340,16 +418,42 @@ contract HTSAdapterTest is HTSAdapterTestBase {
     //                           NON-FUNGIBLE TOKEN LIFE
     //////////////////////////////////////////////////////////////////////////*//
 
-    /// @notice Creation seats the diamond as treasury and `delegatableContractId` supply-key holder; the
-    ///         collection starts empty and reports the non-fungible type.
-    function test_CreateNonFungibleToken_DiamondIsTreasuryAndSupplyKeyHolder() public {
-        address token = _createNonFungibleToken();
+    /// @notice Creation seats the diamond as treasury and `delegatableContractId` admin / supply-key holder;
+    ///         the collection starts empty, reports the non-fungible type, and {HTSTokenCreated} carries
+    ///         `fungible = false` (the token address is assigned by the ledger during the call).
+    function test_CreateNonFungibleToken_DiamondIsTreasuryAndKeyHolder() public {
+        vm.prank(admin);
+        vm.expectEmit(false, false, false, true, diamond);
+        emit IHTSAdapter.HTSTokenCreated(address(0), false);
+        address token = htsAdapter.createNonFungibleToken{value: CREATION_FEE}(NFT_NAME, NFT_SYMBOL, MEMO, int64(0));
 
         assertTrue(hts.tokenExists(token), "token must exist on the ledger");
+        assertEq(hts.treasury(token), diamond, "diamond must be the treasury");
+        assertEq(hts.adminKeyHolder(token), diamond, "admin key must be delegatableContractId(diamond)");
         assertEq(hts.supplyKeyHolder(token), diamond, "supply key must be delegatableContractId(diamond)");
         assertEq(hts.balanceOf(token, diamond), 0, "a fresh collection holds no serials");
         assertTrue(htsAdapter.isAssociated(token), "the treasury is auto-associated");
         assertEq(htsAdapter.htsTokenType(token), 1, "non-fungible token type");
+    }
+
+    /// @notice The collection goes through the same template: the diamond in every seat, a FINITE cap when one
+    ///         is asked for, one admin|supply `delegatableContractId` key, and the 90-day auto-renew.
+    function test_CreateNonFungibleToken_SubmitsTheExpectedTemplate() public {
+        vm.prank(admin);
+        address token = htsAdapter.createNonFungibleToken{value: CREATION_FEE}(NFT_NAME, NFT_SYMBOL, MEMO, MAX_SUPPLY);
+        IHederaTokenService.HederaToken memory submitted = hts.submittedToken(token);
+
+        assertEq(submitted.name, NFT_NAME, "name");
+        assertEq(submitted.symbol, NFT_SYMBOL, "symbol");
+        assertEq(submitted.memo, MEMO, "memo");
+        assertEq(submitted.treasury, diamond, "treasury");
+        assertTrue(submitted.tokenSupplyType, "a non-zero max supply is FINITE");
+        assertEq(submitted.maxSupply, MAX_SUPPLY, "max supply");
+        assertEq(submitted.tokenKeys.length, 1, "exactly one key entry");
+        assertEq(submitted.tokenKeys[0].keyType, ADMIN_AND_SUPPLY_KEY_TYPE, "admin | supply key bits");
+        assertEq(submitted.tokenKeys[0].key.delegatableContractId, diamond, "key must be delegatableContractId");
+        assertEq(submitted.expiry.autoRenewAccount, diamond, "the diamond pays its own auto-renew");
+        assertEq(submitted.expiry.autoRenewPeriod, AUTO_RENEW_PERIOD, "auto-renew period");
     }
 
     /// @notice Local guard: a negative max supply never reaches the system contract.
@@ -588,6 +692,16 @@ contract HTSAdapterTest is HTSAdapterTestBase {
         );
     }
 
+    /// @notice HTS 196 → {HTSAccountIsTreasury}.
+    function test_ErrorMapping_AccountIsTreasury() public {
+        address token = _createFungibleToken();
+        _assertTransferCodeMapsTo(
+            token,
+            HederaResponseCodes.ACCOUNT_IS_TREASURY,
+            abi.encodeWithSelector(IHTSAdapter.HTSAccountIsTreasury.selector, token, diamond)
+        );
+    }
+
     /// @notice HTS 7 and HTS 326 → {HTSKeyNotActive} (for a diamond: a `contractId` key that never activates).
     function test_ErrorMapping_KeyNotActive() public {
         address token = _createFungibleToken();
@@ -694,6 +808,82 @@ contract HTSAdapterTest is HTSAdapterTestBase {
                 HederaResponseCodes.TOKEN_WAS_DELETED
             )
         );
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                        HALTED SYSTEM-CONTRACT FRAME
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice A halted frame carries no response code, so the adapter substitutes UNKNOWN (21) — the default
+    ///         every call path needs and no response code can ever produce. One test per call path: the three
+    ///         `_callForCode` / `_decodeCreate` / inline-decode shapes each own their own default.
+
+    /// @notice `associateToken`: the frame halts instead of answering.
+    function test_AssociateToken_RevertsWhenTheFrameHalts() public {
+        address token = _foreignToken(address(0));
+        _expectHaltedFrame(IHederaTokenService.associateToken.selector);
+        htsAdapter.associateToken(token);
+    }
+
+    /// @notice `dissociateToken`: the frame halts instead of answering.
+    function test_DissociateToken_RevertsWhenTheFrameHalts() public {
+        address token = _createFungibleToken();
+        _expectHaltedFrame(IHederaTokenService.dissociateToken.selector);
+        htsAdapter.dissociateToken(token);
+    }
+
+    /// @notice `transferToken`: the frame halts instead of answering.
+    function test_TransferToken_RevertsWhenTheFrameHalts() public {
+        address token = _createFungibleToken();
+        _expectHaltedFrame(IHederaTokenService.transferToken.selector);
+        htsAdapter.transferToken(token, alice, 1);
+    }
+
+    /// @notice `transferFrom`: the frame halts instead of answering.
+    function test_TransferTokenFrom_RevertsWhenTheFrameHalts() public {
+        address token = _createFungibleToken();
+        _expectHaltedFrame(IHederaTokenService.transferFrom.selector);
+        htsAdapter.transferTokenFrom(token, alice, bob, 1);
+    }
+
+    /// @notice `transferNFT`: the frame halts instead of answering.
+    function test_TransferNFT_RevertsWhenTheFrameHalts() public {
+        address token = _createNonFungibleToken();
+        _expectHaltedFrame(IHederaTokenService.transferNFT.selector);
+        htsAdapter.transferNFT(token, alice, 1);
+    }
+
+    /// @notice `createFungibleToken`: a halted create must never be mistaken for a create of `address(0)`.
+    function test_CreateFungibleToken_RevertsWhenTheFrameHalts() public {
+        _expectHaltedFrame(IHederaTokenService.createFungibleToken.selector);
+        htsAdapter.createFungibleToken{value: CREATION_FEE}(FT_NAME, FT_SYMBOL, MEMO, 8, INITIAL_SUPPLY, int64(0));
+    }
+
+    /// @notice `createNonFungibleToken`: a halted create must never be mistaken for a create of `address(0)`.
+    function test_CreateNonFungibleToken_RevertsWhenTheFrameHalts() public {
+        _expectHaltedFrame(IHederaTokenService.createNonFungibleToken.selector);
+        htsAdapter.createNonFungibleToken{value: CREATION_FEE}(NFT_NAME, NFT_SYMBOL, MEMO, int64(0));
+    }
+
+    /// @notice `mintToken`: the frame halts instead of answering.
+    function test_MintToken_RevertsWhenTheFrameHalts() public {
+        address token = _createFungibleToken();
+        _expectHaltedFrame(IHederaTokenService.mintToken.selector);
+        htsAdapter.mintToken(token, 1, new bytes[](0));
+    }
+
+    /// @notice `burnToken`: the frame halts instead of answering.
+    function test_BurnToken_RevertsWhenTheFrameHalts() public {
+        address token = _createFungibleToken();
+        _expectHaltedFrame(IHederaTokenService.burnToken.selector);
+        htsAdapter.burnToken(token, 1, new int64[](0));
+    }
+
+    /// @notice The injector is opt-in: nothing is armed by default, so the create path answers with a response
+    ///         code as the real system contract always does.
+    function test_HaltedFrame_IsOffByDefault() public {
+        address token = _createFungibleToken();
+        assertTrue(hts.tokenExists(token), "an unarmed mock must never halt a frame");
     }
 
     //*//////////////////////////////////////////////////////////////////////////
