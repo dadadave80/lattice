@@ -2,6 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
+import {HASSignatureVerifierLib} from "@lattice/accounts/hedera/HASSignatureVerifierLib.sol";
 import {IAccountSigner} from "@lattice/interfaces/accounts/IAccountSigner.sol";
 import {ECDSA} from "@lattice/utils/libraries/ECDSA.sol";
 import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
@@ -19,7 +20,9 @@ bytes32 constant ACCOUNT_SIGNER_STORAGE_SLOT = 0x0da6d1e39c7e91c8bb664dbc699f525
 /// @notice ERC-7201 namespaced storage for the account's single-owner signer.
 /// @custom:storage-location erc7201:lattice.storage.AccountSigner
 struct AccountSignerStorage {
-    /// @notice ECDSA owner (EOA or ERC-1271). Authoritative only when `_signerType == ECDSA`. APPEND-ONLY.
+    /// @notice Address owner: an ECDSA EOA/ERC-1271 contract when `_signerType == ECDSA`, a native Hedera
+    ///         account when `_signerType == HederaAccount`. Not authoritative for the passkey schemes.
+    ///         APPEND-ONLY.
     address _owner;
     /// @notice Active signature scheme as `uint8(SignerType)` (0 == ECDSA). Stored as `uint8`, not the enum,
     ///         so the inspected storage layout is reproducible (`t_enum` carries a non-deterministic solc AST
@@ -36,13 +39,15 @@ struct AccountSignerStorage {
 /// @title AccountSignerLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice Logic + ERC-7201 storage for the account's single owner, backing both ERC-4337 `validateUserOp`
-///         and ERC-1271 `isValidSignature`. ECDSA is the default scheme; a P256 raw key or a WebAuthn passkey
-///         can be set as the owner instead.
+///         and ERC-1271 `isValidSignature`. ECDSA is the default scheme; a P256 raw key, a WebAuthn passkey,
+///         or a native Hedera account can be set as the owner instead.
 /// @dev `isValidSignatureNow` is the signer seam consumed unchanged by the validation / 1271 / executor facets.
 ///      It dispatches on the STORED signer type (not the signature shape) and never reverts on malformed input
 ///      (returns false), so the 4337 path yields `SIG_VALIDATION_FAILED` rather than reverting. P256/WebAuthn
 ///      verification is delegated to vendored audited Solady libs (RIP-7212 precompile with a verifier fallback;
-///      low-S enforced). The ECDSA branch is byte-for-byte the legacy path.
+///      low-S enforced); Hedera-account verification is delegated to the HAS system contract through
+///      {HASSignatureVerifierLib}, which reports every system-contract revert as `false`. The ECDSA branch is
+///      byte-for-byte the legacy path.
 library AccountSignerLib {
     function accountSignerStorage() internal pure returns (AccountSignerStorage storage $) {
         assembly {
@@ -108,6 +113,15 @@ library AccountSignerLib {
             return P256.verifySignature(hash, r, s, $._p256X, $._p256Y); // low-S enforced
         }
 
+        if (t == IAccountSigner.SignerType.HederaAccount) {
+            // HIP-632: the network checks `signature` against the Hedera account's OWN key (64 bytes ED25519 or
+            // 65 bytes ECDSA), so this account stores no key material — `_owner` is the Hedera account address.
+            // The system contract reverts on a malformed blob (and on a key list); the wrapper reports that as
+            // `false`, so the seam's never-revert contract holds and the 4337 path still yields
+            // SIG_VALIDATION_FAILED.
+            return HASSignatureVerifierLib.isAuthorizedRaw($._owner, hash, signature);
+        }
+
         // WebAuthn: `signature` is the COMPACT assertion encoding (see {WebAuthn.tryEncodeAuthCompact}):
         // `abi.encodePacked(uint16 authDataLen, authData, clientDataJSON, uint16 challengeIndex, uint16 typeIndex,
         // bytes32 r, bytes32 s)` — chosen over the ABI envelope to shave UserOp calldata. The decoder never
@@ -139,6 +153,12 @@ library AccountSignerLib {
         _setSigner(IAccountSigner.SignerType.WebAuthn, x, y, requireUV);
     }
 
+    /// @notice Sets a native Hedera account (ED25519 or ECDSA key) as the owner. Admin only.
+    function setHederaAccountSigner(address account) internal {
+        AccessControlLib.checkRole(DEFAULT_ADMIN_ROLE);
+        _setHederaAccountSigner(account);
+    }
+
     //*//////////////////////////////////////////////////////////////////////////
     //                                  INTERNAL
     //////////////////////////////////////////////////////////////////////////*//
@@ -149,6 +169,20 @@ library AccountSignerLib {
         emit IAccountSigner.OwnerSet($._owner, newOwner);
         $._owner = newOwner;
         $._signerType = uint8(IAccountSigner.SignerType.ECDSA); // re-arm the ECDSA path on owner change
+    }
+
+    /// @dev Stores the Hedera account in `_owner` (the scheme keeps no key material) and clears the passkey
+    ///      fields, so no stale P256 key or UV policy survives the switch. Owner, scheme and UV policy share
+    ///      slot 0; the two key words are cleared separately.
+    function _setHederaAccountSigner(address account) private {
+        if (account == address(0)) revert IAccountSigner.InvalidOwner();
+        AccountSignerStorage storage $ = accountSignerStorage();
+        $._owner = account;
+        $._signerType = uint8(IAccountSigner.SignerType.HederaAccount);
+        $._p256X = bytes32(0);
+        $._p256Y = bytes32(0);
+        $._requireUV = false;
+        emit IAccountSigner.HederaAccountSignerSet(account);
     }
 
     function _setSigner(IAccountSigner.SignerType t, bytes32 x, bytes32 y, bool uv) private {
