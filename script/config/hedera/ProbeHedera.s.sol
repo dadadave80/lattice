@@ -179,19 +179,19 @@ contract HederaProbeFacet {
 ///        frame, so anything that CONSUMES such a value runs in a later command and reads it back through
 ///        `vm.rpc("eth_call", ...)`, which hands the call to the relay where the mirror node executes it.
 ///
-///      CANNOT BE RUN WITH `forge script` ON HEDERA. `forge script` always opens a fork backend, which pins
-///      by block hash and then asks for the sender's nonce as
-///      `eth_getTransactionCount(addr, {"blockHash": .., "requireCanonical": false})` — an EIP-1898 object
-///      that `hiero-json-rpc-relay` rejects (`-32602 Invalid parameter 1 ... [object Object]`). Confirmed
-///      2026-09-12 on Foundry 1.8.1 against BOTH hashio and a QuickNode endpoint, using a script that
-///      deploys NOTHING, so it is the backend and not this script. Rejected under --legacy, --slow,
-///      --skip-simulation (with and without --broadcast), --fork-block-number (resolved to a hash anyway),
-///      --no-storage-caching, --offline and --sender-nonce. No flag and no relay avoids it.
+///      FOUNDRY VERSION — run this under Foundry 1.7.1, NOT 1.8.x. The 1.8.x fork backend pins by block hash
+///      and asks for the sender's nonce as `eth_getTransactionCount(addr, {"blockHash": .., ..})`, an
+///      EIP-1898 object that hiero-json-rpc-relay rejects (`-32602 Invalid parameter 1 ... [object Object]`);
+///      no 1.8.x flag and no relay avoids it. 1.7.1 sends `"latest"` and works: this script ran against
+///      hedera-testnet on 2026-09-12 under 1.7.1. The repo pins 1.8.1, so select 1.7.1 with
+///      `foundryup --use v1.7.1` for the broadcast and switch back afterwards.
 ///
-///      This contract therefore stands as the SPECIFICATION of the eight probes — what to call, in what
-///      order, and what each outcome settles — and the runbook below is how it would be driven once a
-///      Hedera relay accepts EIP-1898. To run the probes today, deploy the facets with `forge create` and
-///      drive the calls with `cast send`; both use plain string block params and work against Hedera now.
+///      LIVE RESULTS 2026-09-12 (diamond 0x45634e329053336819550485FC3F4a41b259d781): probe 2 confirmed.
+///      Probe 3's negative control turned out DEGENERATE — its `contractId(address(this))` supply key is
+///      byte-identical to the diamond's own account key, which the node elides as the child dispatch's
+///      payer key before verifying anything, so the mint returned 22 (supply 1777) rather than 326. A valid
+///      probe 3 needs a diamond whose account key is not `contractId(self)`. Every outcome, and the
+///      mechanism, is recorded in docs/guides/hedera.md.
 ///
 ///      RUNBOOK — Hedera testnet (chain 296), a funded key, and `FOUNDRY_PROFILE=hedera` throughout
 ///      (Hedera runs Cancun; the profile also keeps Sourcify verification reproducible).
@@ -234,7 +234,11 @@ contract ProbeHedera is DeployHTSAdapter {
 
     /// @notice Probe 6 schedules its callback this many seconds out — far enough past consensus time to be
     ///         accepted, near enough to poll inside one sitting.
-    uint256 internal constant SCHEDULE_DELAY = 60;
+    /// @dev Generous on purpose. The expiry is fixed when the script BODY runs, but the schedule
+    ///      transaction is broadcast afterwards — behind every other probe under `--slow` — so the margin
+    ///      has to cover the whole broadcast queue. A 60 s delay was already 125 s stale when it landed on
+    ///      2026-09-12 and the network rejected it with `HSSInvalidExpiry`.
+    uint256 internal constant SCHEDULE_DELAY = 600;
 
     /// @notice Gas the network reserves for the scheduled callback (an event emit through diamond dispatch).
     uint256 internal constant SCHEDULE_GAS_LIMIT = 200_000;
@@ -377,7 +381,7 @@ contract ProbeHedera is DeployHTSAdapter {
             "read HederaProbeContractIdKey(createCode, token, mintCode) from the receipt: createCode 22 with"
             " mintCode 326 (INVALID_FULL_PREFIX_SIGNATURE_FOR_PRECOMPILE) confirms a contractId key held by a"
             " diamond is DEAD - the exact failure IHTSAdapter.HTSKeyNotActive names - and that HTSAdapterLib is"
-            " right to set delegatableContractId always; mintCode 22 would refute it"
+            " right to set delegatableContractId always; mintCode 22 on a relay-deployed diamond is the payer-key elision (the key equals the diamond's own account key), NOT a refutation - see docs/guides/hedera.md"
         );
 
         // --- PROBE 5: the redirectForAccount experiment -------------------------------------------------
@@ -395,7 +399,9 @@ contract ProbeHedera is DeployHTSAdapter {
         // --- PROBE 6: scheduleSelfCall at the probe callback --------------------------------------------
         console2.log("");
         console2.log("--- PROBE 6: scheduleSelfCall ~60s out at the probe callback -------------------");
-        uint256 expiry = block.timestamp + SCHEDULE_DELAY;
+        // Wall clock, NOT `block.timestamp`: the fork clock is pinned to the block the backend forked at
+        // and runs behind consensus time, and HSS rejects an expiry at or below consensus time.
+        uint256 expiry = (vm.unixTime() / 1000) + SCHEDULE_DELAY;
         _probe(
             diamond,
             0,
@@ -671,14 +677,12 @@ contract ProbeHedera is DeployHTSAdapter {
     ///      length-checks what it gets, so a wrong shape degrades to a raw / `<empty>` log line instead of
     ///      reverting the whole report.
     function _rpc(string memory method, string memory params) private returns (bytes memory payload) {
-        bytes memory encoded = vm.rpc(HEDERA_TESTNET_ALIAS, method, params);
-        if (encoded.length < 64) return encoded;
-        bytes32 head;
-        assembly ("memory-safe") {
-            head := mload(add(encoded, 0x20))
-        }
-        if (head != bytes32(uint256(0x20))) return encoded;
-        payload = abi.decode(encoded, (bytes));
+        // `vm.rpc` hands back the call's result bytes verbatim on Foundry 1.7/1.8 — do NOT try to unwrap
+        // them. An earlier version of this helper treated a leading 0x20 word as an `abi.encode(bytes)`
+        // envelope and unwrapped it, which silently corrupted EVERY dynamic return type (an `address[]`
+        // return also begins with a 0x20 offset) and made `follow()` revert decoding `createdTokens()`.
+        // There is no way to tell an envelope from a payload that starts with an offset, so do neither.
+        payload = vm.rpc(HEDERA_TESTNET_ALIAS, method, params);
     }
 
     /// @dev Big-endian value of up to 32 bytes, right-aligned — for a JSON-RPC quantity (`eth_getBalance`
