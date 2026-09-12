@@ -179,15 +179,19 @@ contract HederaProbeFacet {
 ///        frame, so anything that CONSUMES such a value runs in a later command and reads it back through
 ///        `vm.rpc("eth_call", ...)`, which hands the call to the relay where the mirror node executes it.
 ///
-///      RELAY REQUIREMENT — the endpoint MUST implement EIP-1898, and the public hashio relay does NOT.
-///      `forge script` always opens a fork backend; the backend pins by block hash and then asks for the
-///      sender's nonce as `eth_getTransactionCount(addr, {"blockHash": .., "requireCanonical": false})`,
-///      which hashio answers `-32602 Invalid parameter 1 ... [object Object]`. Confirmed 2026-09-12 on
-///      Foundry 1.8.1 with a script that deploys NOTHING, so it is the backend and not the script: rejected
-///      under --legacy, --slow, --skip-simulation (with and without --broadcast), --fork-block-number
-///      (resolved to a hash anyway), --no-storage-caching, --offline and --sender-nonce. No flag avoids it.
-///      Point `HEDERA_TESTNET_RPC_URL` at a provider relay that implements EIP-1898, or drive the steps with
-///      `cast`, which sends plain string block params and works against hashio today.
+///      CANNOT BE RUN WITH `forge script` ON HEDERA. `forge script` always opens a fork backend, which pins
+///      by block hash and then asks for the sender's nonce as
+///      `eth_getTransactionCount(addr, {"blockHash": .., "requireCanonical": false})` — an EIP-1898 object
+///      that `hiero-json-rpc-relay` rejects (`-32602 Invalid parameter 1 ... [object Object]`). Confirmed
+///      2026-09-12 on Foundry 1.8.1 against BOTH hashio and a QuickNode endpoint, using a script that
+///      deploys NOTHING, so it is the backend and not this script. Rejected under --legacy, --slow,
+///      --skip-simulation (with and without --broadcast), --fork-block-number (resolved to a hash anyway),
+///      --no-storage-caching, --offline and --sender-nonce. No flag and no relay avoids it.
+///
+///      This contract therefore stands as the SPECIFICATION of the eight probes — what to call, in what
+///      order, and what each outcome settles — and the runbook below is how it would be driven once a
+///      Hedera relay accepts EIP-1898. To run the probes today, deploy the facets with `forge create` and
+///      drive the calls with `cast send`; both use plain string block params and work against Hedera now.
 ///
 ///      RUNBOOK — Hedera testnet (chain 296), a funded key, and `FOUNDRY_PROFILE=hedera` throughout
 ///      (Hedera runs Cancun; the profile also keeps Sourcify verification reproducible).
