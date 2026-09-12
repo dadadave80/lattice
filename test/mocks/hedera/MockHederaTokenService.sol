@@ -104,7 +104,9 @@ contract MockHederaTokenService {
         balanceOf[token][msg.sender] += minted; // treasury == key holder in the mock
         if (tokenType[token] == 1) {
             serials = new int64[](metadata.length);
-            for (uint256 i; i < metadata.length; ++i) serials[i] = totalSupply[token] - minted + int64(int256(i)) + 1;
+            for (uint256 i; i < metadata.length; ++i) {
+                serials[i] = totalSupply[token] - minted + int64(int256(i)) + 1;
+            }
         }
         return (HederaResponseCodes.SUCCESS, totalSupply[token], serials);
     }
@@ -112,7 +114,9 @@ contract MockHederaTokenService {
     function burnToken(address token, int64 amount, int64[] memory serials) external returns (int64, int64) {
         int64 forced = _consumeForced(IHederaTokenService.burnToken.selector);
         if (forced != 0) return (forced, 0);
-        if (supplyKeyHolder[token] != msg.sender) return (HederaResponseCodes.INVALID_FULL_PREFIX_SIGNATURE_FOR_PRECOMPILE, 0);
+        if (supplyKeyHolder[token] != msg.sender) {
+            return (HederaResponseCodes.INVALID_FULL_PREFIX_SIGNATURE_FOR_PRECOMPILE, 0);
+        }
         int64 burned = tokenType[token] == 0 ? amount : int64(int256(serials.length));
         if (balanceOf[token][msg.sender] < burned) return (HederaResponseCodes.INSUFFICIENT_TOKEN_BALANCE, 0);
         totalSupply[token] -= burned;
@@ -135,7 +139,11 @@ contract MockHederaTokenService {
         return (HederaResponseCodes.SUCCESS, token);
     }
 
-    function createNonFungibleToken(IHederaTokenService.HederaToken memory t) external payable returns (int64, address token) {
+    function createNonFungibleToken(IHederaTokenService.HederaToken memory t)
+        external
+        payable
+        returns (int64, address token)
+    {
         int64 forced = _consumeForced(IHederaTokenService.createNonFungibleToken.selector);
         if (forced != 0) return (forced, address(0));
         if (msg.value == 0) return (HederaResponseCodes.INSUFFICIENT_PAYER_BALANCE, address(0));

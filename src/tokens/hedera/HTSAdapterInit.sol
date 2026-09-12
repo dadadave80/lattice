@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
-import {HTS_MANAGER_ROLE, HTS_OPERATOR_ROLE, HTSAdapterLib} from "@lattice/tokens/hedera/HTSAdapterLib.sol";
+import {HTSAdapterLib, HTS_MANAGER_ROLE, HTS_OPERATOR_ROLE} from "@lattice/tokens/hedera/HTSAdapterLib.sol";
 
 /// @title HTSAdapterInit
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
