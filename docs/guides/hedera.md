@@ -29,21 +29,41 @@ the raw code, so an integrator can always recover the network's own answer. A fa
 ## The delegatable-key rule
 
 This is the one Hedera fact that changes how you configure a token, and it exists **because** Lattice is a
-diamond.
+diamond. It is also more subtle than it first appears — we measured it on testnet and the naive statement
+of it is wrong.
 
-A facet call is a `delegatecall` frame. When that frame calls HTS, the consensus node passes
-`hasParentDelegateCall = true`, which becomes `onlyDelegatableContractKeysActive`. The effect is absolute:
+A facet call is a `delegatecall` frame. When that frame calls HTS, the node passes
+`hasParentDelegateCall = true`, which becomes `onlyDelegatableContractKeysActive`, and
+`ActiveContractVerificationStrategy.decideForPrimitive` then returns `INVALID` for a plain `contractId`
+key. So **wherever a `contractId` key is actually verified, it fails.** `HTSAdapterLib` therefore sets
+`key.delegatableContractId = address(this)` on every key it creates, and that is the right call.
 
-- a token key of the form `contractId = <diamond>` is **dead** — it never activates, and the operation fails
-  with `INVALID_FULL_PREFIX_SIGNATURE_FOR_PRECOMPILE` (326), surfaced as `HTSKeyNotActive`;
-- a token key of the form `delegatableContractId = <diamond>` activates normally.
+What is **not** true is the tempting shorter version — "a `contractId` key held by a diamond is dead and
+fails with 326". On testnet (consensus node 0.76.3, 2026-09-12) a token whose supply key was
+`contractId(<diamond>)` minted **successfully** from a facet, twice, including through the production
+`HTSAdapter.mintToken` path (token `0.0.10506858`, supply 1000 → 1777).
 
-Every key `HTSAdapterLib` sets on a token it creates therefore uses `key.delegatableContractId = address(this)`.
-If you hand a diamond a token that was created elsewhere, update its keys to the delegatable form first
-(`updateTokenKeys`) or the diamond will not be able to operate it.
+The reason is **payer-key elision**, not activation. A relay-deployed contract's own account key is
+`contractId(self)`. The dispatched child `TokenMint`'s synthetic payer is the diamond, so its payer key is
+`contractId(<diamond>)` — byte-identical to that supply key — and `PreHandleContextImpl.requireKey` drops a
+required key equal to the payer key. The supply key was never verified at all. A `delegatableContractId`
+key is a different protobuf oneof (field 8 vs field 1), so it is *not* equal to the payer key: it really is
+required, really is verified, and really does pass.
 
-Operations that need only the diamond's own account authority — moving its own balance, associating itself —
-work regardless, because the diamond is the child transaction's payer.
+Keep using `delegatableContractId`, because it is the form that is verified-and-passes rather than merely
+skipped, and because the elision does not cover:
+
+- a diamond whose account key is not `contractId(self)` (e.g. created by a HAPI `ContractCreate` with an
+  explicit ED25519 admin key) — there a `contractId` key is verified, and dies;
+- a `contractId` nested inside a `KeyList` or `ThresholdKey` — not `.equals()` the payer key, so required;
+- any key naming a contract other than the caller.
+
+Those three are read from consensus-node source and are **not** measured — treat them as inference.
+
+If you hand a diamond a token created elsewhere, update its keys to the delegatable form
+(`updateTokenKeys`) rather than relying on the elision. Operations needing only the diamond's own account
+authority — moving its own balance, associating itself — work regardless, because the diamond is the child
+transaction's payer.
 
 ## Associate before you receive
 
@@ -92,51 +112,32 @@ The default profile is untouched and still targets `osaka`. Switch `[profile.hed
 `hedera` (295) and `hedera-testnet` (296) are already named RPC aliases in `foundry.toml`; set
 `HEDERA_RPC_URL` / `HEDERA_TESTNET_RPC_URL` in `.env`.
 
-**`forge script` cannot reach Hedera through the public hashio relay at all.** This is not a tuning
-problem and no flag works around it. `forge script` always opens a fork backend, and the backend pins the
-fork by block **hash**, then asks for the sender's nonce with an EIP-1898 object:
+**`forge script` broke on Hedera in Foundry 1.8.x.** It works on 1.7.1 and fails on 1.8.1, so pin 1.7.1
+for Hedera broadcasts until this is fixed upstream. The regression is in the fork backend, which 1.8.x pins
+by block **hash** and then queries with an EIP-1898 object that no Hedera relay implements:
 
 ```
-eth_getTransactionCount(addr, {"blockHash": "0x671a…", "requireCanonical": false})
-  -> -32602 Invalid parameter 1: The value passed is not valid: [object Object].
-     Expected 0x prefixed hexadecimal block number, or the string "latest", "earliest" or "pending"
+forge 1.7.1 -> eth_getTransactionCount(addr, "latest")                              exit 0
+forge 1.8.1 -> eth_getTransactionCount(addr, {"blockHash": "0x671a…", ...})          -32602
+               Invalid parameter 1: The value passed is not valid: [object Object].
 ```
 
-Hashio implements only the string form. Verified on 2026-09-12 against Foundry 1.8.1, using a script that
-deploys **nothing**, so the failure is the backend and not the script:
+Verified on 2026-09-12 with a script that deploys **nothing**, so it is the backend and not the script. On
+1.8.1 no flag avoids it — `--legacy`, `--slow`, `--skip-simulation` (with and without `--broadcast`),
+`--fork-block-number` (resolved to a hash anyway), `--no-storage-caching`, `--offline`, `--sender-nonce`,
+`--unlocked`, `--sender` and `--estimate` were all rejected. Changing relay does not help either: a
+QuickNode Hedera-testnet endpoint returns the byte-identical error with the same relay Request-ID format,
+so this is `hiero-json-rpc-relay` behaviour, not one operator's.
 
-| attempted | result |
-| --- | --- |
-| `--legacy`, `--slow`, `--legacy --slow` | rejected |
-| `--skip-simulation` (with and without `--broadcast`) | rejected |
-| `--fork-block-number <n>` | rejected — the number is still resolved to a hash |
-| `--no-storage-caching`, `--offline`, `--sender-nonce` | rejected |
+Everything that does not open a fork backend is unaffected on **both** Foundry versions — `forge create`,
+`cast send` / `call` / `mktx`, and `vm.rpc` inside a test (which is why the relay-backed fork test passes).
+`--legacy` is worth passing as Hedera's native transaction form, but it is *not* what fixes this: `cast
+mktx` signs cleanly in both legacy and EIP-1559 form, so the envelope was never the problem. `--slow` still
+helps against rate limits.
 
-`cast` is unaffected: it sends plain string block params (`eth_chainId`, `eth_gasPrice`, `eth_estimateGas`,
-`eth_getTransactionCount`), and `cast mktx` builds and signs against hashio cleanly in both legacy and
-EIP-1559 form. `vm.rpc` is unaffected too, which is why the relay-backed fork test passes there.
-
-**Changing relay does not help.** The rejection comes from `hiero-json-rpc-relay` itself, not from any one
-operator: a QuickNode Hedera-testnet endpoint returns the byte-identical error, with the same relay
-Request-ID format. Assume every Hedera relay behaves this way.
-
-What *does* work is everything that does not open a fork backend:
-
-| tool | on Hedera | why |
-| --- | --- | --- |
-| `forge script` | **unusable** | always forks; pins by block hash; EIP-1898 nonce fetch |
-| `forge create` | works | `eth_chainId`, `eth_gasPrice`, `eth_estimateGas`, `eth_getTransactionCount`, all plain string block params |
-| `cast send` / `cast call` / `cast mktx` | works | same |
-| `vm.rpc` inside a test | works | same — this is why the relay-backed fork test passes |
-
-So deploy with `forge create` and drive calls with `cast send`. `--legacy` is worth passing (Hedera's
-native form) but is *not* what fixes this — `cast mktx` signs cleanly in both legacy and EIP-1559 form, so
-the envelope was never the problem. `--slow` still helps against rate limits.
-
-The practical consequence for this repo: `script/base/**` recipes and `script/config/hedera/ProbeHedera.s.sol`
-are `forge script` contracts, so they can be used as the source of truth for WHAT to deploy, but on Hedera
-the deployment itself has to be driven facet-by-facet through `forge create` plus a `cast send` to assemble
-the diamond.
+This repo pins Foundry 1.8.1 for CI (`.github/actions/foundry-setup`). Running a Hedera broadcast therefore
+means temporarily selecting 1.7.1 (`foundryup --use v1.7.1`) and switching back — a real tension with
+AGENTS.md's "pin one version uniformly" rule that is worth resolving deliberately rather than by drift.
 
 ## Deterministic deployment: Arachnid, not CreateX
 
@@ -190,12 +191,12 @@ exists to settle them, and is deliberately not broadcast by CI.
 
 | # | Behaviour | Status |
 | --- | --- | --- |
-| 1 | `associateToken` from a facet, then an inbound transfer | assumed |
-| 2 | `createFungibleToken` with `delegatableContractId` keys, then `mintToken` from a facet; whether excess `msg.value` on create is refunded | assumed |
-| 3 | The same create with a `contractId` key → 326 | assumed |
+| 1 | `associateToken` from a facet, then an inbound transfer | still assumed — the probe's association target was its own treasury token, so it could only ever return 194 |
+| 2 | `createFungibleToken` with `delegatableContractId` keys, then `mintToken` from a facet | **confirmed live, 2026-09-12** — token `0.0.10506856` created by a facet with the diamond as treasury and delegatable admin+supply keys; `HTSAdapter.mintToken` minted 500. Excess-`msg.value` refund still unmeasured |
+| 3 | The same create with a `contractId` key → 326 | **REFUTED live, 2026-09-12** — minted successfully instead (token `0.0.10506858`, supply 1000 → 1777). The control was degenerate: the key was byte-identical to the diamond's own account key and got elided before verification. See "The delegatable-key rule" |
 | 4 | HTS getters and both HAS auth functions staying `view` (`staticcall`-safe) | partly confirmed — `isToken` answers `(22, true)` through the relay's `eth_call` (2026-09-12); whether a diamond's own `view` facet function may `staticcall` it *inside a transaction* is still assumed |
-| 5 | `redirectForAccount(address(this), …)` giving a diamond unlimited auto-associations | unknown — experiment |
-| 6 | `scheduleSelfCall` firing with `msg.sender == address(this)` | assumed — the load-bearing HSS design assumption |
+| 5 | `redirectForAccount(address(this), …)` giving a diamond unlimited auto-associations | partially measured — the frame succeeded and returned 32 bytes decoding to `15`, so `0x16a` does expose the entrypoint; whether the association limit actually changed is unverified, and `redirectForAccount` stays out of the vendored interface until it is |
+| 6 | `scheduleSelfCall` firing with `msg.sender == address(this)` | still assumed — the attempt reverted `HSSInvalidExpiry`: the probe computed the expiry from the fork clock, 125 s behind consensus time |
 | 7 | ED25519 verification through `isAuthorizedRaw` from the ERC-1271 path | assumed |
 | 8 | Sourcify verification reproducing under `FOUNDRY_PROFILE=hedera` | assumed |
 | — | System-contract code shape, **both** networks: `eth_getCode(0x167)` is `0xfe`; `0x168`, `0x169`, `0x16a` and `0x16b` are all empty. (The research brief said `0x16b` also answers `0xfe` — it does not.) | **confirmed live, 2026-09-12** |
