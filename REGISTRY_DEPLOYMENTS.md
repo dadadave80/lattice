@@ -184,7 +184,11 @@ instead of four — the proxy guards nothing, so the raw salt goes straight in:
 
 ```bash
 SALT=$(cast keccak "lattice.ERC20.0.1.0")
-INITHASH=$(cast keccak $(forge inspect src/tokens/ERC20/ERC20.sol:ERC20 bytecode))
+
+# Hedera builds under [profile.hedera] (evm_version = cancun). The profile changes the metadata hash, so
+# the initcode hash — and therefore the address — differs from a default-profile build. Reproduce with the
+# SAME profile the facet was deployed under, or the address will not match what is on chain.
+INITHASH=$(FOUNDRY_PROFILE=hedera cast keccak $(FOUNDRY_PROFILE=hedera forge inspect src/tokens/ERC20/ERC20.sol:ERC20 bytecode))
 
 # no guard step, and the PROXY is the deployer
 cast create2 --deployer 0x4e59b44847b379578588920cA78FbF26c0B4956C --salt $SALT --init-code-hash $INITHASH

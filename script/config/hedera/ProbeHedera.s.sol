@@ -166,7 +166,7 @@ contract HederaProbeFacet {
 ///
 ///      WHY THREE ENTRYPOINTS. `forge script` runs the script body in revm against a fork BEFORE it
 ///      broadcasts anything, and a Hedera fork cannot execute a system contract at all: the relay reports
-///      `0xfe` as the code of 0x167 / 0x16b and nothing for 0x168 / 0x169 / 0x16a, so every HTS / HSS frame
+///      `0xfe` as the code of 0x167 and nothing for 0x168 / 0x169 / 0x16a / 0x16b, so every HTS / HSS frame
 ///      halts locally and every 0x168 / 0x16a frame returns empty. Two consequences shape this script:
 ///      - every probe call is a LOW-LEVEL call whose failure is logged, never propagated. Run with
 ///        `--skip-simulation`. THE LOAD-BEARING ASSUMPTION: Foundry queues a broadcast transaction when the
@@ -613,7 +613,7 @@ contract ProbeHedera is DeployHTSAdapter {
     }
 
     /// @dev Broadcasts one probe call and logs it. The call is LOW-LEVEL and its failure is never propagated:
-    ///      in the local frame every Hedera system contract is dead (0x167 / 0x16b answer `0xfe`, 0x168 /
+    ///      in the local frame every Hedera system contract is dead (0x167 answers `0xfe`, 0x168 / 0x169 / 0x16a /
     ///      0x169 / 0x16a have no code), so `ok == false` here is the EXPECTED local result and says nothing
     ///      about the broadcast transaction — ASSUMING Foundry queued it at frame entry (see this contract's
     ///      header). Read the receipt, the emitted events, and `report(address)`.

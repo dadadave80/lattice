@@ -67,6 +67,17 @@ interface IHSSAdapter {
 
     /// @notice Schedules a call to the diamond itself under `jobId` (one live schedule per job). The callback
     ///         must clear the job via {completeSelfCall} so it can be re-scheduled.
+    /// @dev KNOWN PHASE-2 LIMITATION — a `jobId` can be stranded. {completeSelfCall} is the ONLY path that
+    ///      clears `jobId`, and it is callable only by the diamond executing its own scheduled call. So if the
+    ///      schedule never fires — the scheduler deletes it with {deleteSchedule}, the expiry passes
+    ///      unexecuted, or the diamond is out of HBAR at fire time — `jobId` stays occupied and every later
+    ///      `scheduleSelfCall` for it reverts {HSSJobAlreadyScheduled} forever. {deleteSchedule} takes a
+    ///      schedule address and cannot free the job. Recovery today needs a diamond cut. The fix (a
+    ///      scheduler-gated cancel that clears the map) is deliberately deferred: it changes this interface's
+    ///      function set and therefore its pinned `interfaceId`, and the whole self-call design rests on the
+    ///      unverified assumption that a fired schedule presents `msg.sender == address(this)` — probe 6 in
+    ///      `script/config/hedera/ProbeHedera.s.sol` settles that first. Do not build a recurring job on
+    ///      `scheduleSelfCall` until both land.
     function scheduleSelfCall(bytes32 jobId, uint256 expirySecond, uint256 gasLimit, bytes calldata data)
         external
         returns (address scheduleAddress);
