@@ -42,6 +42,8 @@ interface IHTSAdapter {
     error HTSTokenAlreadyAssociated(address token, address account);
     /// @notice `account` holds too little of `token` (HTS 178 / 28).
     error HTSInsufficientBalance(address token, address account);
+    /// @notice `account` still holds a balance of `token`, so it cannot be dissociated (HTS 195).
+    error HTSNonZeroBalance(address token, address account);
     /// @notice No active key authorized the operation (HTS 7 / 326). For a diamond this almost always means a
     ///         token key was set as `contractId` instead of `delegatableContractId`.
     error HTSKeyNotActive(address token);

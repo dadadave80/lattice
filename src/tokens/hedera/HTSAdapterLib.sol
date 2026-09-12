@@ -294,6 +294,9 @@ library HTSAdapterLib {
             code == HederaResponseCodes.INSUFFICIENT_TOKEN_BALANCE
                 || code == HederaResponseCodes.INSUFFICIENT_ACCOUNT_BALANCE
         ) revert IHTSAdapter.HTSInsufficientBalance(token, account);
+        if (code == HederaResponseCodes.TRANSACTION_REQUIRES_ZERO_TOKEN_BALANCES) {
+            revert IHTSAdapter.HTSNonZeroBalance(token, account);
+        }
         if (
             code == HederaResponseCodes.INVALID_SIGNATURE
                 || code == HederaResponseCodes.INVALID_FULL_PREFIX_SIGNATURE_FOR_PRECOMPILE
