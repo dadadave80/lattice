@@ -85,8 +85,22 @@ The default profile is untouched and still targets `osaka`. Switch `[profile.hed
 `"prague"` once v0.77 is live.
 
 `hedera` (295) and `hedera-testnet` (296) are already named RPC aliases in `foundry.toml`; set
-`HEDERA_RPC_URL` / `HEDERA_TESTNET_RPC_URL` in `.env`. Hashio is rate-limited — pass `--slow` for
-development and use a provider key for anything repeated.
+`HEDERA_RPC_URL` / `HEDERA_TESTNET_RPC_URL` in `.env`.
+
+**Your relay must implement EIP-1898, and the public hashio endpoint does not.** Foundry fetches account
+state with an object block parameter (`{"blockNumber": "0x…"}`) rather than the string `"latest"`, and
+hashio rejects that outright:
+
+```
+params: [addr, "latest"]                     -> 0x3635c9adc5dea00000
+params: [addr, {"blockNumber": "0x268e12a"}] -> -32602 Invalid parameter 1 ... [object Object]
+```
+
+So against hashio, **every** `forge script` run fails before it broadcasts anything — `--skip-simulation`
+does not avoid it, and neither does pinning a fork block. `cast` is unaffected (it sends plain string block
+params), and so is `vm.rpc`, which is why the relay-backed fork test works there. Use a Hedera JSON-RPC
+provider endpoint that supports EIP-1898 for anything that deploys. Hashio is also rate-limited, so pass
+`--slow` even when it does work.
 
 ## Deterministic deployment: Arachnid, not CreateX
 
@@ -151,6 +165,7 @@ exists to settle them, and is deliberately not broadcast by CI.
 | — | System-contract code shape, **both** networks: `eth_getCode(0x167)` is `0xfe`; `0x168`, `0x169`, `0x16a` and `0x16b` are all empty. (The research brief said `0x16b` also answers `0xfe` — it does not.) | **confirmed live, 2026-09-12** |
 | — | CreateX `0xba5Ed099…ba5Ed` has no code on Hedera mainnet or testnet | **confirmed live, 2026-09-12** |
 | — | The Arachnid proxy `0x4e59b448…956C` has code on Hedera mainnet **and** testnet, byte-identical to `test/helpers/ArachnidProxy.RUNTIME` | **confirmed live, 2026-09-12** |
+| — | The public hashio relay does not implement EIP-1898, so `forge script` cannot broadcast through it at all (`cast` and `vm.rpc` are unaffected) | **confirmed live, 2026-09-12** |
 
 To run the probes you need a funded testnet account: set `HEDERA_TESTNET_RPC_URL` and `HEDERA_TESTNET_PK`
 in `.env` and fund the derived address from the Hedera portal faucet. Record each outcome in the relevant

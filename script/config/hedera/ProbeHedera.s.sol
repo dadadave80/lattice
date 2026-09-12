@@ -179,6 +179,13 @@ contract HederaProbeFacet {
 ///        frame, so anything that CONSUMES such a value runs in a later command and reads it back through
 ///        `vm.rpc("eth_call", ...)`, which hands the call to the relay where the mirror node executes it.
 ///
+///      RELAY REQUIREMENT — the endpoint MUST implement EIP-1898. Foundry fetches account state with an
+///      object block parameter (`{"blockNumber": "0x.."}`); the public hashio relay rejects it
+///      (`-32602 Invalid parameter 1 ... [object Object]`, confirmed 2026-09-12), so every `forge script`
+///      run below fails against hashio BEFORE it broadcasts — `--skip-simulation` does not avoid it and
+///      neither does pinning a fork block. Point `HEDERA_TESTNET_RPC_URL` at a provider relay that supports
+///      it. `cast` and `vm.rpc` send plain string block params and are unaffected.
+///
 ///      RUNBOOK — Hedera testnet (chain 296), a funded key, and `FOUNDRY_PROFILE=hedera` throughout
 ///      (Hedera runs Cancun; the profile also keeps Sourcify verification reproducible).
 ///      `S=script/config/hedera/ProbeHedera.s.sol:ProbeHedera`
