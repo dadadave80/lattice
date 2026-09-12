@@ -136,7 +136,9 @@ library HSSAdapterLib {
         );
         int64 code = HederaResponseCodes.UNKNOWN;
         if (ok) (code, scheduleAddress) = abi.decode(ret, (int64, address));
-        if (code == HederaResponseCodes.SCHEDULE_EXPIRY_IS_BUSY) revert IHSSAdapter.HSSExpiryBusy(expirySecond, gasLimit);
+        if (code == HederaResponseCodes.SCHEDULE_EXPIRY_IS_BUSY) {
+            revert IHSSAdapter.HSSExpiryBusy(expirySecond, gasLimit);
+        }
         if (code != HederaResponseCodes.SUCCESS) {
             revert IHSSAdapter.HSSCallFailed(IHederaScheduleService.scheduleCall.selector, code);
         }
