@@ -75,9 +75,14 @@ pin the setting. Build and deploy everything Hedera-bound under the dedicated pr
 
 ```sh
 FOUNDRY_PROFILE=hedera forge build --skip test script
-FOUNDRY_PROFILE=hedera forge script script/base/tokens/DeployHTSAdapter.s.sol \
-    --sig "run(address)" <ADMIN> \
-    --rpc-url hedera-testnet --account <keystore> --broadcast --slow \
+```
+
+Deploy with `forge create`, **not** `forge script` — see the relay note below for why the script path cannot
+work on Hedera at all:
+
+```sh
+FOUNDRY_PROFILE=hedera forge create src/tokens/hedera/HTSAdapter.sol:HTSAdapter \
+    --rpc-url hedera-testnet --account <keystore> --broadcast --legacy \
     --verify --verifier sourcify
 ```
 
@@ -111,10 +116,27 @@ deploys **nothing**, so the failure is the backend and not the script:
 `eth_getTransactionCount`), and `cast mktx` builds and signs against hashio cleanly in both legacy and
 EIP-1559 form. `vm.rpc` is unaffected too, which is why the relay-backed fork test passes there.
 
-So: point `HEDERA_TESTNET_RPC_URL` at a JSON-RPC provider relay that implements EIP-1898 for anything that
-deploys, or drive the deployment with `cast`. `--legacy` is *not* the fix for this — Hedera accepts type-2
-transactions — though hashio is rate-limited, so `--slow` is still worth passing once you have a relay that
-works.
+**Changing relay does not help.** The rejection comes from `hiero-json-rpc-relay` itself, not from any one
+operator: a QuickNode Hedera-testnet endpoint returns the byte-identical error, with the same relay
+Request-ID format. Assume every Hedera relay behaves this way.
+
+What *does* work is everything that does not open a fork backend:
+
+| tool | on Hedera | why |
+| --- | --- | --- |
+| `forge script` | **unusable** | always forks; pins by block hash; EIP-1898 nonce fetch |
+| `forge create` | works | `eth_chainId`, `eth_gasPrice`, `eth_estimateGas`, `eth_getTransactionCount`, all plain string block params |
+| `cast send` / `cast call` / `cast mktx` | works | same |
+| `vm.rpc` inside a test | works | same — this is why the relay-backed fork test passes |
+
+So deploy with `forge create` and drive calls with `cast send`. `--legacy` is worth passing (Hedera's
+native form) but is *not* what fixes this — `cast mktx` signs cleanly in both legacy and EIP-1559 form, so
+the envelope was never the problem. `--slow` still helps against rate limits.
+
+The practical consequence for this repo: `script/base/**` recipes and `script/config/hedera/ProbeHedera.s.sol`
+are `forge script` contracts, so they can be used as the source of truth for WHAT to deploy, but on Hedera
+the deployment itself has to be driven facet-by-facet through `forge create` plus a `cast send` to assemble
+the diamond.
 
 ## Deterministic deployment: Arachnid, not CreateX
 
@@ -179,7 +201,7 @@ exists to settle them, and is deliberately not broadcast by CI.
 | — | System-contract code shape, **both** networks: `eth_getCode(0x167)` is `0xfe`; `0x168`, `0x169`, `0x16a` and `0x16b` are all empty. (The research brief said `0x16b` also answers `0xfe` — it does not.) | **confirmed live, 2026-09-12** |
 | — | CreateX `0xba5Ed099…ba5Ed` has no code on Hedera mainnet or testnet | **confirmed live, 2026-09-12** |
 | — | The Arachnid proxy `0x4e59b448…956C` has code on Hedera mainnet **and** testnet, byte-identical to `test/helpers/ArachnidProxy.RUNTIME` | **confirmed live, 2026-09-12** |
-| — | `forge script` cannot broadcast through hashio under ANY flag combination: the fork backend queries `eth_getTransactionCount` with an EIP-1898 `{blockHash,requireCanonical}` object, which hashio rejects. `cast` and `vm.rpc` are unaffected | **confirmed live, 2026-09-12** |
+| — | `forge script` cannot broadcast to Hedera at all — no flag combination, and no relay: the fork backend queries `eth_getTransactionCount` with an EIP-1898 `{blockHash,requireCanonical}` object and both hashio and a QuickNode endpoint reject it identically. `forge create`, `cast` and `vm.rpc` all work | **confirmed live, 2026-09-12** |
 
 To run the probes you need a funded testnet account: set `HEDERA_TESTNET_RPC_URL` and `HEDERA_TESTNET_PK`
 in `.env` and fund the derived address from the Hedera portal faucet. Record each outcome in the relevant
