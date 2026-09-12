@@ -7,7 +7,8 @@ import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 
 /// @dev 0x8e848f42 is `type(IHederaPrngAdapter).interfaceId`.
 /// `keccak256(abi.encode(bytes4(0x8e848f42), 0x9ca7f3e2e2bfb15fdf072b85dde92837cddacee6cf2f6b38cd06c9457c1c4200))`.
-bytes32 constant ERC165_MAP_IHEDERAPRNGADAPTER_SLOT = 0xe34a308c0f52419d136ed1b5d11f586cf680db1cc128f8b2678f2b24615706b7;
+bytes32 constant ERC165_MAP_IHEDERAPRNGADAPTER_SLOT =
+    0xe34a308c0f52419d136ed1b5d11f586cf680db1cc128f8b2678f2b24615706b7;
 
 /// @dev The PRNG system contract (HIP-351). No bytecode; never `delegatecall` or `staticcall` it.
 address constant PRNG_SYSTEM_CONTRACT = 0x0000000000000000000000000000000000000169;
