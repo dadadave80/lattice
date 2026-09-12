@@ -10,6 +10,8 @@ mintToken(token, amount, metadata)
     ├── when amount is negative
     │   └── it should revert HTSInvalidAmount                    → test_MintToken_RevertsOnNegativeAmount
     └── when amount is zero or positive
+        ├── given the system-contract frame halts (no code)
+        │   └── it should revert HTSCallFailed(sel, UNKNOWN)     → test_MintToken_RevertsWhenTheFrameHalts
         ├── given the address is not an HTS token (HTS 167)
         │   └── it should revert HTSNotAToken                    → test_MintToken_RevertsWhenNotAToken
         ├── given the token has no supply key (HTS 180)

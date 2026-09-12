@@ -297,6 +297,9 @@ library HTSAdapterLib {
         if (code == HederaResponseCodes.TRANSACTION_REQUIRES_ZERO_TOKEN_BALANCES) {
             revert IHTSAdapter.HTSNonZeroBalance(token, account);
         }
+        if (code == HederaResponseCodes.ACCOUNT_IS_TREASURY) {
+            revert IHTSAdapter.HTSAccountIsTreasury(token, account);
+        }
         if (
             code == HederaResponseCodes.INVALID_SIGNATURE
                 || code == HederaResponseCodes.INVALID_FULL_PREFIX_SIGNATURE_FOR_PRECOMPILE
