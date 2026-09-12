@@ -619,6 +619,18 @@ contract StorageLayoutProbe {
         mapping(bytes32 chainKey => ChainRecord record) _chains;
     }
 
+    /// @dev Verbatim mirror of `HTSAdapterLib.HTSAdapterStorage`
+    ///      (`@custom:storage-location erc7201:lattice.storage.HTSAdapter`). Append-only.
+    struct HTSAdapterStorage {
+        EnumerableSet.AddressSet _createdTokens;
+    }
+
+    /// @dev Verbatim mirror of `HSSAdapterLib.HSSAdapterStorage`
+    ///      (`@custom:storage-location erc7201:lattice.storage.HSSAdapter`). Append-only.
+    struct HSSAdapterStorage {
+        mapping(bytes32 jobId => address scheduleAddress) _schedules;
+    }
+
     /// @dev Forces solc to emit the struct types into `storageLayout`. Never read, never deployed.
     GovernedDiamondCutStorage internal _unusedGovernedDiamondCut;
     SafeDiamondCutStorage internal _unusedSafeDiamondCut;
@@ -672,4 +684,6 @@ contract StorageLayoutProbe {
     StargateBridgeAdapterStorage internal _unusedStargateBridgeAdapter;
     HyperbridgeGatewayAdapterStorage internal _unusedHyperbridgeGatewayAdapter;
     GovernedVaultStorage internal _unusedGovernedVault;
+    HTSAdapterStorage internal _unusedHTSAdapter;
+    HSSAdapterStorage internal _unusedHSSAdapter;
 }

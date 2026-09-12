@@ -4,6 +4,7 @@ pragma solidity ^0.8.30;
 import {DeployRelease} from "@lattice-script/deploy/DeployRelease.s.sol";
 import {CreateXDeployer} from "@lattice-script/lib/CreateXDeployer.sol";
 import {FacetInventory} from "@lattice-script/lib/FacetInventory.sol";
+import {ArachnidProxy} from "@lattice-test/helpers/ArachnidProxy.sol";
 import {MockCreateX} from "@lattice-test/helpers/MockCreateX.sol";
 import {LatticeFactory} from "@lattice/LatticeFactory.sol";
 import {LatticeRegistry} from "@lattice/LatticeRegistry.sol";
@@ -64,7 +65,7 @@ contract DeployReleaseTest is Test, DeployRelease {
 
         // Every inventory facet: deployed at its predicted address, registered, and flagged latest.
         (string[] memory names,) = FacetInventory.inventory();
-        assertEq(names.length, 100, "inventory count drifted");
+        assertEq(names.length, 105, "inventory count drifted");
         assertEq(out.facets.length, names.length, "release output facet count mismatch");
         for (uint256 i; i < names.length; ++i) {
             assertGt(out.facets[i].code.length, 0, string.concat(names[i], ": no code at released address"));
@@ -218,6 +219,38 @@ contract DeployReleaseTest is Test, DeployRelease {
         ILatticeRegistry(out.registry).get(nameHash, PACKED);
     }
 
+    /// @notice The Hedera shape: no CreateX on the chain at all, but the Arachnid deterministic-deployment
+    ///         proxy is there. The whole release runs through the proxy at THAT chain's deterministic
+    ///         addresses — deployer-independent and initcode-committed exactly as on a CreateX chain, just
+    ///         not the same addresses (the proxy applies no salt guard).
+    function test_Release_RunsOnAnArachnidOnlyChain() public {
+        vm.etch(CANONICAL, "");
+        vm.etch(ArachnidProxy.PROXY, ArachnidProxy.RUNTIME);
+
+        DeployRelease.ReleaseOutput memory out = this.release(VERSION, address(this));
+
+        bytes memory registryInitCode = abi.encodePacked(type(LatticeRegistry).creationCode, abi.encode(address(this)));
+        assertEq(
+            out.registry,
+            CreateXDeployer.predictRaw(REGISTRY_SALT, keccak256(registryInitCode)),
+            "registry not at its predicted Arachnid address"
+        );
+        ILatticeRegistry registry = ILatticeRegistry(out.registry);
+        assertEq(registry.owner(), address(this), "registry owner not wired");
+
+        (string[] memory names, string[] memory paths) = FacetInventory.inventory();
+        for (uint256 i; i < names.length; ++i) {
+            assertEq(
+                out.facets[i],
+                CreateXDeployer.predictRaw(facetSalt(names[i], VERSION), keccak256(vm.getCode(paths[i]))),
+                string.concat(names[i], ": not at its predicted Arachnid address")
+            );
+            assertGt(out.facets[i].code.length, 0, string.concat(names[i], ": no code at released address"));
+            bytes32 nameHash = keccak256(abi.encodePacked("lattice.", names[i]));
+            assertEq(registry.get(nameHash, PACKED).facet, out.facets[i], string.concat(names[i], ": not registered"));
+        }
+    }
+
     //*//////////////////////////////////////////////////////////////////////////
     //                             VERSION PARSER
     //////////////////////////////////////////////////////////////////////////*//
@@ -250,13 +283,13 @@ contract DeployReleaseTest is Test, DeployRelease {
     //                              INVENTORY
     //////////////////////////////////////////////////////////////////////////*//
 
-    /// @notice Pins the inventory's internal consistency: exactly 100 entries, every path ends with
+    /// @notice Pins the inventory's internal consistency: exactly 105 entries, every path ends with
     ///         `<name>.sol:<name>` (dir-qualified for src/ facets, bare-basename for the diamond-lib core
     ///         facets — a swapped or drifted name<->path pairing fails loudly either way), and no
     ///         duplicate names (duplicate names would collide on nameHash + salt).
     function test_Inventory_NamePathPairingUniqueCount() public pure {
         (string[] memory names, string[] memory paths) = FacetInventory.inventory();
-        assertEq(names.length, 100, "inventory count drifted");
+        assertEq(names.length, 105, "inventory count drifted");
         assertEq(paths.length, names.length, "names/paths length mismatch");
 
         for (uint256 i; i < names.length; ++i) {
@@ -365,13 +398,16 @@ contract DeployReleaseTest is Test, DeployRelease {
     }
 }
 
-/// @notice release() without CreateX code at the canonical address must fail loudly and point local runs at
-///         the mock helper — separate contract so no setUp etch runs.
-contract DeployReleaseNoCreateXTest is Test, DeployRelease {
-    function test_Release_RevertsWithoutCreateX() public {
+/// @notice release() on a chain with NEITHER deterministic deployer — no CreateX and no Arachnid proxy —
+///         must fail loudly and point local runs at the mock helper. Separate contract so no setUp etch runs.
+contract DeployReleaseNoDeployerTest is Test, DeployRelease {
+    /// @dev Foundry's test EVM PRE-DEPLOYS the Arachnid proxy (it is also Foundry's default CREATE2
+    ///      deployer), so a genuinely deployer-less chain means etching that address empty first.
+    function test_Release_RevertsWithoutAnyDeterministicDeployer() public {
+        vm.etch(ArachnidProxy.PROXY, "");
         vm.expectRevert(
             bytes(
-                "DeployRelease: CreateX has no code at 0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed on this chain; for local/test runs etch test/helpers/MockCreateX.sol at that address first"
+                "DeployRelease: this chain has no deterministic deployer; neither CreateX at 0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed nor the Arachnid proxy at 0x4e59b44847b379578588920cA78FbF26c0B4956C has code. For local/test runs etch test/helpers/MockCreateX.sol at the CreateX address first"
             )
         );
         this.release("0.1.0", address(this));
