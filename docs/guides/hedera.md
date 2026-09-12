@@ -87,20 +87,34 @@ The default profile is untouched and still targets `osaka`. Switch `[profile.hed
 `hedera` (295) and `hedera-testnet` (296) are already named RPC aliases in `foundry.toml`; set
 `HEDERA_RPC_URL` / `HEDERA_TESTNET_RPC_URL` in `.env`.
 
-**Your relay must implement EIP-1898, and the public hashio endpoint does not.** Foundry fetches account
-state with an object block parameter (`{"blockNumber": "0x…"}`) rather than the string `"latest"`, and
-hashio rejects that outright:
+**`forge script` cannot reach Hedera through the public hashio relay at all.** This is not a tuning
+problem and no flag works around it. `forge script` always opens a fork backend, and the backend pins the
+fork by block **hash**, then asks for the sender's nonce with an EIP-1898 object:
 
 ```
-params: [addr, "latest"]                     -> 0x3635c9adc5dea00000
-params: [addr, {"blockNumber": "0x268e12a"}] -> -32602 Invalid parameter 1 ... [object Object]
+eth_getTransactionCount(addr, {"blockHash": "0x671a…", "requireCanonical": false})
+  -> -32602 Invalid parameter 1: The value passed is not valid: [object Object].
+     Expected 0x prefixed hexadecimal block number, or the string "latest", "earliest" or "pending"
 ```
 
-So against hashio, **every** `forge script` run fails before it broadcasts anything — `--skip-simulation`
-does not avoid it, and neither does pinning a fork block. `cast` is unaffected (it sends plain string block
-params), and so is `vm.rpc`, which is why the relay-backed fork test works there. Use a Hedera JSON-RPC
-provider endpoint that supports EIP-1898 for anything that deploys. Hashio is also rate-limited, so pass
-`--slow` even when it does work.
+Hashio implements only the string form. Verified on 2026-09-12 against Foundry 1.8.1, using a script that
+deploys **nothing**, so the failure is the backend and not the script:
+
+| attempted | result |
+| --- | --- |
+| `--legacy`, `--slow`, `--legacy --slow` | rejected |
+| `--skip-simulation` (with and without `--broadcast`) | rejected |
+| `--fork-block-number <n>` | rejected — the number is still resolved to a hash |
+| `--no-storage-caching`, `--offline`, `--sender-nonce` | rejected |
+
+`cast` is unaffected: it sends plain string block params (`eth_chainId`, `eth_gasPrice`, `eth_estimateGas`,
+`eth_getTransactionCount`), and `cast mktx` builds and signs against hashio cleanly in both legacy and
+EIP-1559 form. `vm.rpc` is unaffected too, which is why the relay-backed fork test passes there.
+
+So: point `HEDERA_TESTNET_RPC_URL` at a JSON-RPC provider relay that implements EIP-1898 for anything that
+deploys, or drive the deployment with `cast`. `--legacy` is *not* the fix for this — Hedera accepts type-2
+transactions — though hashio is rate-limited, so `--slow` is still worth passing once you have a relay that
+works.
 
 ## Deterministic deployment: Arachnid, not CreateX
 
@@ -165,7 +179,7 @@ exists to settle them, and is deliberately not broadcast by CI.
 | — | System-contract code shape, **both** networks: `eth_getCode(0x167)` is `0xfe`; `0x168`, `0x169`, `0x16a` and `0x16b` are all empty. (The research brief said `0x16b` also answers `0xfe` — it does not.) | **confirmed live, 2026-09-12** |
 | — | CreateX `0xba5Ed099…ba5Ed` has no code on Hedera mainnet or testnet | **confirmed live, 2026-09-12** |
 | — | The Arachnid proxy `0x4e59b448…956C` has code on Hedera mainnet **and** testnet, byte-identical to `test/helpers/ArachnidProxy.RUNTIME` | **confirmed live, 2026-09-12** |
-| — | The public hashio relay does not implement EIP-1898, so `forge script` cannot broadcast through it at all (`cast` and `vm.rpc` are unaffected) | **confirmed live, 2026-09-12** |
+| — | `forge script` cannot broadcast through hashio under ANY flag combination: the fork backend queries `eth_getTransactionCount` with an EIP-1898 `{blockHash,requireCanonical}` object, which hashio rejects. `cast` and `vm.rpc` are unaffected | **confirmed live, 2026-09-12** |
 
 To run the probes you need a funded testnet account: set `HEDERA_TESTNET_RPC_URL` and `HEDERA_TESTNET_PK`
 in `.env` and fund the derived address from the Hedera portal faucet. Record each outcome in the relevant
