@@ -179,12 +179,15 @@ contract HederaProbeFacet {
 ///        frame, so anything that CONSUMES such a value runs in a later command and reads it back through
 ///        `vm.rpc("eth_call", ...)`, which hands the call to the relay where the mirror node executes it.
 ///
-///      RELAY REQUIREMENT — the endpoint MUST implement EIP-1898. Foundry fetches account state with an
-///      object block parameter (`{"blockNumber": "0x.."}`); the public hashio relay rejects it
-///      (`-32602 Invalid parameter 1 ... [object Object]`, confirmed 2026-09-12), so every `forge script`
-///      run below fails against hashio BEFORE it broadcasts — `--skip-simulation` does not avoid it and
-///      neither does pinning a fork block. Point `HEDERA_TESTNET_RPC_URL` at a provider relay that supports
-///      it. `cast` and `vm.rpc` send plain string block params and are unaffected.
+///      RELAY REQUIREMENT — the endpoint MUST implement EIP-1898, and the public hashio relay does NOT.
+///      `forge script` always opens a fork backend; the backend pins by block hash and then asks for the
+///      sender's nonce as `eth_getTransactionCount(addr, {"blockHash": .., "requireCanonical": false})`,
+///      which hashio answers `-32602 Invalid parameter 1 ... [object Object]`. Confirmed 2026-09-12 on
+///      Foundry 1.8.1 with a script that deploys NOTHING, so it is the backend and not the script: rejected
+///      under --legacy, --slow, --skip-simulation (with and without --broadcast), --fork-block-number
+///      (resolved to a hash anyway), --no-storage-caching, --offline and --sender-nonce. No flag avoids it.
+///      Point `HEDERA_TESTNET_RPC_URL` at a provider relay that implements EIP-1898, or drive the steps with
+///      `cast`, which sends plain string block params and works against hashio today.
 ///
 ///      RUNBOOK — Hedera testnet (chain 296), a funded key, and `FOUNDRY_PROFILE=hedera` throughout
 ///      (Hedera runs Cancun; the profile also keeps Sourcify verification reproducible).
