@@ -99,6 +99,9 @@ library HSSAdapterLib {
         emit IHSSAdapter.HSSCallScheduled(scheduleAddress, address(this), jobId, expirySecond, gasLimit);
     }
 
+    /// @dev The ONLY path that clears `jobId`. See the stranding limitation on
+    ///      {IHSSAdapter.scheduleSelfCall}: a schedule that is deleted or expires unfired leaves its job
+    ///      permanently occupied, because nothing else may write this mapping.
     function completeSelfCall(bytes32 jobId) internal {
         checkScheduledSelfCall();
         delete hssAdapterStorage()._schedules[jobId];

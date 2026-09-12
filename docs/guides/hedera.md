@@ -75,7 +75,9 @@ pin the setting. Build and deploy everything Hedera-bound under the dedicated pr
 ```sh
 FOUNDRY_PROFILE=hedera forge build --skip test script
 FOUNDRY_PROFILE=hedera forge script script/base/tokens/DeployHTSAdapter.s.sol \
-    --rpc-url hedera-testnet --broadcast --verify --verifier sourcify
+    --sig "run(address)" <ADMIN> \
+    --rpc-url hedera-testnet --account <keystore> --broadcast --slow \
+    --verify --verifier sourcify
 ```
 
 The default profile is untouched and still targets `osaka`. Switch `[profile.hedera]`'s `evm_version` to
@@ -113,7 +115,7 @@ concern does not arise.
   registry, so `SafeDiamondCut` / `GovernedSafeDiamondCut` recipes must point at v1.3.0.
 - **HIP-1028 token metadata keys** (Deferred) and **HIP-1195 hooks** (approved, disabled by default).
 - **Fork tests that execute a system contract.** A Foundry fork fetches state over RPC and executes locally in
-  revm; the relay reports `0xfe` as the code of `0x167`/`0x16b` and nothing for `0x168`/`0x169`/`0x16a`, so no
+  revm; the relay reports `0xfe` as the code of `0x167` and nothing at all for `0x168`/`0x169`/`0x16a`/`0x16b`, so no
   HTS/HAS/HSS call executes on a plain fork — reads included. `test/fork/HTSAdapterFork.t.sol` asserts that
   local shape and uses `vm.rpc("eth_call", …)` to hand anything that must really execute to the relay, where
   the mirror node simulates it. Worse, the public hashio relay cannot be forked at all: Foundry fetches
@@ -138,7 +140,9 @@ exists to settle them, and is deliberately not broadcast by CI.
 | 6 | `scheduleSelfCall` firing with `msg.sender == address(this)` | assumed — the load-bearing HSS design assumption |
 | 7 | ED25519 verification through `isAuthorizedRaw` from the ERC-1271 path | assumed |
 | 8 | Sourcify verification reproducing under `FOUNDRY_PROFILE=hedera` | assumed |
-| — | The system contracts have no code for a fork to replay: `eth_getCode(0x167)` is `0xfe`, `eth_getCode(0x16a)` is empty | **confirmed live, 2026-09-12** |
+| — | System-contract code shape, **both** networks: `eth_getCode(0x167)` is `0xfe`; `0x168`, `0x169`, `0x16a` and `0x16b` are all empty. (The research brief said `0x16b` also answers `0xfe` — it does not.) | **confirmed live, 2026-09-12** |
+| — | CreateX `0xba5Ed099…ba5Ed` has no code on Hedera mainnet or testnet | **confirmed live, 2026-09-12** |
+| — | The Arachnid proxy `0x4e59b448…956C` has code on Hedera mainnet **and** testnet, byte-identical to `test/helpers/ArachnidProxy.RUNTIME` | **confirmed live, 2026-09-12** |
 
 To run the probes you need a funded testnet account: set `HEDERA_TESTNET_RPC_URL` and `HEDERA_TESTNET_PK`
 in `.env` and fund the derived address from the Hedera portal faucet. Record each outcome in the relevant
@@ -147,6 +151,8 @@ v0.77 changes gas accounting.
 
 ## Out of scope for now
 
-HSS, exchange-rate and PRNG recipes and tests (Phase 2, gated on probe 6); custom fees, KYC/freeze/pause/wipe,
+HSS, exchange-rate and PRNG recipes and tests (Phase 2, gated on probe 6 — and note the known
+`scheduleSelfCall` job-stranding limitation documented on `IHSSAdapter`: do not build a recurring job on it
+until that is fixed); custom fees, KYC/freeze/pause/wipe,
 HIP-904 airdrops, `hedera-forking` facade tests and a Solo local-node CI job (Phase 3). The skeleton files for
 the Phase 2 modules compile and are inventoried, but they have no recipes or tests yet.
