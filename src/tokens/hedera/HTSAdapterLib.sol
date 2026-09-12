@@ -179,8 +179,7 @@ library HTSAdapterLib {
     function transferToken(address token, address to, int64 amount) internal {
         AccessControlLib.checkRole(HTS_OPERATOR_ROLE);
         if (amount <= 0) revert IHTSAdapter.HTSInvalidAmount();
-        int64 code =
-            _callForCode(abi.encodeCall(IHederaTokenService.transferToken, (token, address(this), to, amount)));
+        int64 code = _callForCode(abi.encodeCall(IHederaTokenService.transferToken, (token, address(this), to, amount)));
         _check(IHederaTokenService.transferToken.selector, code, token, address(this));
         emit IHTSAdapter.HTSTokenTransferred(token, address(this), to, amount);
     }
@@ -190,9 +189,8 @@ library HTSAdapterLib {
     function transferTokenFrom(address token, address from, address to, int64 amount) internal {
         AccessControlLib.checkRole(HTS_OPERATOR_ROLE);
         if (amount <= 0) revert IHTSAdapter.HTSInvalidAmount();
-        int64 code = _callForCode(
-            abi.encodeCall(IHederaTokenService.transferFrom, (token, from, to, uint256(uint64(amount))))
-        );
+        int64 code =
+            _callForCode(abi.encodeCall(IHederaTokenService.transferFrom, (token, from, to, uint256(uint64(amount)))));
         _check(IHederaTokenService.transferFrom.selector, code, token, from);
         emit IHTSAdapter.HTSTokenTransferred(token, from, to, amount);
     }
@@ -233,7 +231,9 @@ library HTSAdapterLib {
         int64 code = HederaResponseCodes.UNKNOWN;
         if (ok) (code, newTotalSupply) = abi.decode(ret, (int64, int64));
         _check(IHederaTokenService.burnToken.selector, code, token, address(this));
-        emit IHTSAdapter.HTSTokenBurned(token, amount == 0 ? int64(int256(serialNumbers.length)) : amount, newTotalSupply);
+        emit IHTSAdapter.HTSTokenBurned(
+            token, amount == 0 ? int64(int256(serialNumbers.length)) : amount, newTotalSupply
+        );
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -312,7 +312,8 @@ library HTSAdapterLib {
         if (code == HederaResponseCodes.INSUFFICIENT_GAS) revert IHTSAdapter.HTSInsufficientGas();
         if (code == HederaResponseCodes.INVALID_TOKEN_ID) revert IHTSAdapter.HTSNotAToken(token);
         if (
-            code == HederaResponseCodes.INVALID_TOKEN_MINT_AMOUNT || code == HederaResponseCodes.INVALID_TOKEN_BURN_AMOUNT
+            code == HederaResponseCodes.INVALID_TOKEN_MINT_AMOUNT
+                || code == HederaResponseCodes.INVALID_TOKEN_BURN_AMOUNT
                 || code == HederaResponseCodes.INVALID_TOKEN_NFT_SERIAL_NUMBER
         ) revert IHTSAdapter.HTSInvalidAmount();
         revert IHTSAdapter.HTSCallFailed(selector, code);

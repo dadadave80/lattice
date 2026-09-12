@@ -101,9 +101,7 @@ interface IHederaTokenService {
     function transferNFT(address token, address sender, address receiver, int64 serialNumber)
         external
         returns (int64 responseCode);
-    function transferFrom(address token, address from, address to, uint256 amount)
-        external
-        returns (int64 responseCode);
+    function transferFrom(address token, address from, address to, uint256 amount) external returns (int64 responseCode);
 
     // ---- supply ----
     function mintToken(address token, int64 amount, bytes[] memory metadata)

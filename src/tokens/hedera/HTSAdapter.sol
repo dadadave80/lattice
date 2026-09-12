@@ -120,6 +120,7 @@ contract HTSAdapter is IHTSAdapter {
     ///      `transferToken(address,address,int64)` 0x75fd1606
     ///      `transferTokenFrom(address,address,address,int64)` 0x5f34cf96
     function exportSelectors() external pure virtual returns (bytes memory selectors) {
-        selectors = hex"a7efe348d6910d06deaac2bb6830760a54771086d5d607b6caaf0325d55fe58220cab858e0f4059a84ec465275fd16065f34cf96";
+        selectors =
+            hex"a7efe348d6910d06deaac2bb6830760a54771086d5d607b6caaf0325d55fe58220cab858e0f4059a84ec465275fd16065f34cf96";
     }
 }
