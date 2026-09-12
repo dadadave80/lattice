@@ -13,11 +13,11 @@ pragma solidity ^0.8.30;
 ///      artifact contract names exactly: the registry key is `keccak256("lattice.<name>")` and the facet
 ///      deploy salt is `keccak256("lattice.<name>.<version>")`, so renaming an entry re-derives BOTH.
 library FacetInventory {
-    /// @notice The 100 release facets (96 Lattice + 4 diamond-lib core) as (contract name, `"<file>:<Name>"` deploy path) pairs.
+    /// @notice The 105 release facets (101 Lattice + 4 diamond-lib core) as (contract name, `"<file>:<Name>"` deploy path) pairs.
     /// @return names The facet contract names (registry name = `"lattice." ++ name`).
     /// @return paths The matching `vm.getCode`/`deployCode` artifact paths, index-aligned with `names`.
     function inventory() internal pure returns (string[] memory names, string[] memory paths) {
-        string[100] memory n = [
+        string[105] memory n = [
             "AcrossBridgeAdapter",
             "AxelarGatewayAdapter",
             "BridgeERC20",
@@ -49,6 +49,9 @@ library FacetInventory {
             "DIAAdapter",
             "GelatoAutomateAdapter",
             "GelatoVRFAdapter",
+            "HederaExchangeRateAdapter",
+            "HederaPrngAdapter",
+            "HSSAdapter",
             "PythAdapter",
             "PythEntropyAdapter",
             "RedStoneAdapter",
@@ -67,6 +70,7 @@ library FacetInventory {
             "ERC4626",
             "ERC721",
             "ERC7802",
+            "HTSAdapter",
             "MarketplaceZone",
             "AccountSigner",
             "ERC1271Signature",
@@ -77,6 +81,7 @@ library FacetInventory {
             "ERC6900Signature",
             "ERC6900Validation",
             "ERC7821Executor",
+            "HASSignatureVerifier",
             "ConstantProduct",
             "AggregatorExecAdapter",
             "GovernedVault",
@@ -122,7 +127,7 @@ library FacetInventory {
             "ERC165Facet",
             "OwnableFacet"
         ];
-        string[100] memory p = [
+        string[105] memory p = [
             "src/crosschain/across/AcrossBridgeAdapter.sol:AcrossBridgeAdapter",
             "src/crosschain/axelar/AxelarGatewayAdapter.sol:AxelarGatewayAdapter",
             "src/crosschain/BridgeERC20.sol:BridgeERC20",
@@ -154,6 +159,9 @@ library FacetInventory {
             "src/oracles/dia/DIAAdapter.sol:DIAAdapter",
             "src/oracles/gelato/GelatoAutomateAdapter.sol:GelatoAutomateAdapter",
             "src/oracles/gelato/GelatoVRFAdapter.sol:GelatoVRFAdapter",
+            "src/oracles/hedera/HederaExchangeRateAdapter.sol:HederaExchangeRateAdapter",
+            "src/oracles/hedera/HederaPrngAdapter.sol:HederaPrngAdapter",
+            "src/oracles/hedera/HSSAdapter.sol:HSSAdapter",
             "src/oracles/pyth/PythAdapter.sol:PythAdapter",
             "src/oracles/pyth/PythEntropyAdapter.sol:PythEntropyAdapter",
             "src/oracles/redstone/RedStoneAdapter.sol:RedStoneAdapter",
@@ -172,6 +180,7 @@ library FacetInventory {
             "src/tokens/ERC4626/ERC4626.sol:ERC4626",
             "src/tokens/ERC721/ERC721.sol:ERC721",
             "src/tokens/ERC7802/ERC7802.sol:ERC7802",
+            "src/tokens/hedera/HTSAdapter.sol:HTSAdapter",
             "src/tokens/MarketplaceZone.sol:MarketplaceZone",
             "src/accounts/erc7579/AccountSigner.sol:AccountSigner",
             "src/accounts/ERC1271Signature.sol:ERC1271Signature",
@@ -182,6 +191,7 @@ library FacetInventory {
             "src/accounts/erc6900/ERC6900Signature.sol:ERC6900Signature",
             "src/accounts/erc6900/ERC6900Validation.sol:ERC6900Validation",
             "src/accounts/erc7579/ERC7821Executor.sol:ERC7821Executor",
+            "src/accounts/hedera/HASSignatureVerifier.sol:HASSignatureVerifier",
             "src/amm/ConstantProduct.sol:ConstantProduct",
             "src/defi/AggregatorExecAdapter.sol:AggregatorExecAdapter",
             "src/defi/GovernedVault.sol:GovernedVault",
@@ -226,9 +236,9 @@ library FacetInventory {
             "ERC165Facet.sol:ERC165Facet",
             "OwnableFacet.sol:OwnableFacet"
         ];
-        names = new string[](100);
-        paths = new string[](100);
-        for (uint256 i; i < 100; ++i) {
+        names = new string[](105);
+        paths = new string[](105);
+        for (uint256 i; i < 105; ++i) {
             names[i] = n[i];
             paths[i] = p[i];
         }
