@@ -23,7 +23,13 @@ import {Script, console} from "forge-std/Script.sol";
 ///     --sig "run(string,address)" 0.1.0 <OWNER> \
 ///     --rpc-url <chain> --account <name> --broadcast
 ///
-/// @dev Salt scheme — raw protocol salts, so every address is deployer- AND chain-independent and commits
+/// @dev DETERMINISTIC DEPLOYER: CreateX wherever it exists, otherwise the {CreateXDeployer.ARACHNID_PROXY}
+///      fallback on chains CreateX never reached (Hedera). A release is deterministic and permissionlessly
+///      completable on both, but the proxy guards no salt, so an Arachnid chain's release addresses differ
+///      from every CreateX chain's (see {CreateXDeployer.predictRaw} and REGISTRY_DEPLOYMENTS.md). A chain
+///      with NEITHER deployer is refused outright.
+///
+///      Salt scheme — raw protocol salts, so every address is deployer- AND chain-independent and commits
 ///      to the initcode (see {CreateXDeployer.deployRaw}):
 ///        registry: `keccak256("lattice.LatticeRegistry")` (deploy-once singleton, versionless)
 ///        factory:  `keccak256("lattice.LatticeFactory")`  (versionless)
@@ -143,8 +149,8 @@ contract DeployRelease is Script {
     /// @return out The released addresses (see {ReleaseOutput}).
     function release(string memory version, address owner) public returns (ReleaseOutput memory out) {
         require(
-            address(CreateXDeployer.CREATEX).code.length != 0,
-            "DeployRelease: CreateX has no code at 0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed on this chain; for local/test runs etch test/helpers/MockCreateX.sol at that address first"
+            CreateXDeployer.hasRawDeployer(),
+            "DeployRelease: this chain has no deterministic deployer; neither CreateX at 0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed nor the Arachnid proxy at 0x4e59b44847b379578588920cA78FbF26c0B4956C has code. For local/test runs etch test/helpers/MockCreateX.sol at the CreateX address first"
         );
 
         uint64 packed = packVersion(version);
