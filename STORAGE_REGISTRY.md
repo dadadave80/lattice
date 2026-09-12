@@ -185,11 +185,16 @@ and a row here.
   **HederaExchangeRateAdapter** (`0x409e5cd5`) and **HederaPrngAdapter** (`0x8e848f42`) are stateless: no
   ERC-7201 slot and no row in the storage-uniqueness array, one ERC-165 map slot each. Together the five add
   **two** ERC-7201 storage slots and **five** ERC-165 map slots.
-  DIAMOND-SPECIFIC RULE: a facet call is a `delegatecall` frame, so HTS activates only
-  `DELEGATABLE_CONTRACT_ID` keys for the diamond — a `contractId` key held by a diamond is dead
-  (`INVALID_FULL_PREFIX_SIGNATURE_FOR_PRECOMPILE`, 326). Every token key `HTSAdapterLib` sets therefore uses
-  `key.delegatableContractId = address(this)`, and a token created elsewhere must have its keys updated to
-  that form before a diamond can operate it. A diamond also has zero auto-association slots, so
+  DIAMOND-SPECIFIC RULE: a facet call is a `delegatecall` frame, so HTS refuses a plain `CONTRACT_ID` key
+  wherever it verifies one (`INVALID_FULL_PREFIX_SIGNATURE_FOR_PRECOMPILE`, 326). Every token key
+  `HTSAdapterLib` sets therefore uses `key.delegatableContractId = address(this)`, and a token created
+  elsewhere should have its keys updated to that form. MEASURED CAVEAT (testnet 2026-09-12): the blunter
+  claim that a `contractId` key on a diamond is simply dead is false for the ordinary deployment shape —
+  on a relay-deployed diamond such a key is byte-identical to the diamond's own account key, which is the
+  dispatched child's payer key, so it is elided before verification and works. `delegatableContractId` is
+  a different protobuf oneof and is genuinely verified; it is also the only form that survives a diamond
+  whose account key is not `contractId(self)`, a key nested in a KeyList/ThresholdKey, or a key naming
+  another contract. See `docs/guides/hedera.md`. A diamond also has zero auto-association slots, so
   `associateToken(address(this), token)` is a required step before any inbound transfer.
   `SignerType.HederaAccount` is **appended** to `IAccountSigner.SignerType` (stored as a `uint8`, so appending
   is layout-safe) and adds no storage field: `AccountSignerStorage` is unchanged, and `IAccountSigner` remains

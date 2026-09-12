@@ -49,8 +49,18 @@ struct HTSAdapterStorage {
 /// @dev All system-contract calls are plain `call`s from the diamond (a facet `delegatecall` frame): HTS sees
 ///      `msg.sender == diamond`, so the diamond's account is the one whose associations, balances, allowances,
 ///      and keys are checked. Because that frame IS a delegatecall frame, HTS activates only
-///      `delegatableContractId` keys for the diamond — never `contractId` keys — so every key this library
-///      sets on a created token uses `delegatableContractId = address(this)`.
+///      `delegatableContractId` keys for the diamond wherever a key is actually verified, so every key this
+///      library sets on a created token uses `delegatableContractId = address(this)`.
+///
+///      MEASURED CAVEAT (hedera-testnet, consensus node 0.76.3, 2026-09-12): the shorter claim that a
+///      `contractId` key on a diamond is simply dead is FALSE for the ordinary deployment shape. A
+///      relay-deployed contract's own account key is `contractId(self)`, and the dispatched child
+///      transaction's payer is the diamond, so a `contractId(<diamond>)` token key is byte-identical to the
+///      payer key and `PreHandleContextImpl.requireKey` elides it before verification — such a key mints
+///      fine. `delegatableContractId` is a different protobuf oneof, so it is genuinely required, verified
+///      and passed; it is also the only form that survives a diamond whose account key is not
+///      `contractId(self)`, a key nested in a KeyList/ThresholdKey, or a key naming another contract. That
+///      is why this library sets it unconditionally rather than relying on the elision.
 library HTSAdapterLib {
     using EnumerableSet for EnumerableSet.AddressSet;
 

@@ -46,8 +46,13 @@ interface IHTSAdapter {
     error HTSNonZeroBalance(address token, address account);
     /// @notice `account` is `token`'s treasury, so it can never be dissociated from it (HTS 196).
     error HTSAccountIsTreasury(address token, address account);
-    /// @notice No active key authorized the operation (HTS 7 / 326). For a diamond this almost always means a
-    ///         token key was set as `contractId` instead of `delegatableContractId`.
+    /// @notice No active key authorized the operation (HTS 7 / 326). For a diamond the usual cause is a token
+    ///         key set as `contractId` instead of `delegatableContractId`: a facet reaches HTS inside a
+    ///         delegatecall frame, where a `contractId` key is refused wherever it is verified. Note this
+    ///         error is NOT what you get for a `contractId(<diamond>)` key on a relay-deployed diamond —
+    ///         that key is byte-identical to the diamond's own account key, which is the dispatched child's
+    ///         payer key, so it is elided before verification and the call succeeds. Measured on testnet
+    ///         2026-09-12; see docs/guides/hedera.md.
     error HTSKeyNotActive(address token);
     /// @notice `token` has no supply key (HTS 180).
     error HTSTokenNoSupplyKey(address token);

@@ -277,9 +277,17 @@ contract MockHederaTokenService {
         associated[t.treasury][token] = true;
         tokens.push(token);
         _record(token, t);
-        // Honour the key semantics that matter for a diamond: only a delegatableContractId key activates for a
-        // caller running in a delegatecall frame, which is every facet call. A contractId key is recorded as
-        // "no holder" so a mint from a diamond fails the way the network would fail it. Admin (bit 1) and
+        // Honour the key semantics that matter for a diamond: only a delegatableContractId key is verified
+        // and accepted for a caller running in a delegatecall frame, which is every facet call. A contractId
+        // key is recorded as "no holder" so a mint from a diamond fails.
+        //
+        // This is deliberately STRICTER than the live network for one shape. Testnet 2026-09-12 showed a
+        // `contractId(<diamond>)` key minting fine, because on a relay-deployed diamond that key is
+        // byte-identical to the diamond's own account key — the dispatched child's payer key — and the node
+        // elides a required key equal to the payer key before verifying it. The mock models the rule rather
+        // than the elision on purpose: the elision does not hold for a diamond whose account key is not
+        // contractId(self), for a contractId nested in a KeyList/ThresholdKey, or for a key naming another
+        // contract, so a test that relied on it would encode an accident. See docs/guides/hedera.md. Admin (bit 1) and
         // supply (bit 16) are recorded separately — a token may carry either without the other.
         for (uint256 i; i < t.tokenKeys.length; ++i) {
             if (t.tokenKeys[i].keyType & 1 != 0) adminKeyHolder[token] = t.tokenKeys[i].key.delegatableContractId;
