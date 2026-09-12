@@ -29,13 +29,17 @@ contract MockHRC719Token is IHRC719 {
 
 /// @title MockHederaTokenService
 /// @notice `vm.etch`-able stand-in for the HTS system contract at 0x167. Returns RESPONSE CODES (never reverts)
-///         like the real system contract, keeps just enough state (associations, balances, supply key holder)
-///         to exercise the adapter's happy paths, and lets a test force any code for the next call of a selector.
+///         like the real system contract, keeps just enough state (associations, balances, NFT serial owners,
+///         allowances, supply key holder) to exercise the adapter's happy paths, and lets a test force any code
+///         for the next call of a selector.
 /// @dev Must not rely on constructor state: an etched contract starts with empty storage. Token addresses are
 ///      real contracts (MockHRC719Token) so the HIP-719 `isAssociated()` facade path can be unit-tested.
 contract MockHederaTokenService {
     mapping(address account => mapping(address token => bool)) public associated;
     mapping(address token => mapping(address account => int64)) public balanceOf;
+    mapping(address token => mapping(int64 serial => address owner)) public nftOwner;
+    mapping(address token => int64) public lastSerial;
+    mapping(address token => mapping(address owner => mapping(address spender => uint256))) public allowances;
     mapping(address token => address) public supplyKeyHolder;
     mapping(address token => int64) public totalSupply;
     mapping(address token => int32) public tokenType; // 0 FT, 1 NFT
@@ -46,6 +50,12 @@ contract MockHederaTokenService {
     /// @notice Force the next call of `selector` to return `code` (0 clears).
     function force(bytes4 selector, int64 code) external {
         forcedCode[selector] = code;
+    }
+
+    /// @notice TEST HELPER — deliberately NOT an HTS selector. Seeds the allowance `owner` granted `spender`
+    ///         on `token`, standing in for the `approve` / `approveNFT` transaction a counterparty signs off-chain.
+    function seedAllowance(address token, address owner, address spender, uint256 amount) external {
+        allowances[token][owner][spender] = amount;
     }
 
     function _consumeForced(bytes4 selector) private returns (int64 code) {
@@ -86,6 +96,40 @@ contract MockHederaTokenService {
         return HederaResponseCodes.SUCCESS;
     }
 
+    function transferNFT(address token, address sender, address receiver, int64 serialNumber) external returns (int64) {
+        int64 forced = _consumeForced(IHederaTokenService.transferNFT.selector);
+        if (forced != 0) return forced;
+        if (!tokenExists[token]) return HederaResponseCodes.INVALID_TOKEN_ID;
+        if (sender != msg.sender) return HederaResponseCodes.INVALID_FULL_PREFIX_SIGNATURE_FOR_PRECOMPILE;
+        if (!associated[sender][token]) return HederaResponseCodes.TOKEN_NOT_ASSOCIATED_TO_ACCOUNT;
+        if (!associated[receiver][token]) return HederaResponseCodes.TOKEN_NOT_ASSOCIATED_TO_ACCOUNT;
+        if (nftOwner[token][serialNumber] != sender) return HederaResponseCodes.SENDER_DOES_NOT_OWN_NFT_SERIAL_NO;
+        nftOwner[token][serialNumber] = receiver;
+        balanceOf[token][sender] -= 1;
+        balanceOf[token][receiver] += 1;
+        return HederaResponseCodes.SUCCESS;
+    }
+
+    /// @dev Allowance path: the SPENDER is `msg.sender`, so the diamond spends what `from` granted it. Every
+    ///      check runs before the first write — a response code is not a revert, so a half-applied transfer
+    ///      would persist.
+    function transferFrom(address token, address from, address to, uint256 amount) external returns (int64) {
+        int64 forced = _consumeForced(IHederaTokenService.transferFrom.selector);
+        if (forced != 0) return forced;
+        if (!tokenExists[token]) return HederaResponseCodes.INVALID_TOKEN_ID;
+        uint256 allowed = allowances[token][from][msg.sender];
+        if (allowed == 0) return HederaResponseCodes.SPENDER_DOES_NOT_HAVE_ALLOWANCE;
+        if (allowed < amount) return HederaResponseCodes.AMOUNT_EXCEEDS_ALLOWANCE;
+        if (!associated[from][token]) return HederaResponseCodes.TOKEN_NOT_ASSOCIATED_TO_ACCOUNT;
+        if (!associated[to][token]) return HederaResponseCodes.TOKEN_NOT_ASSOCIATED_TO_ACCOUNT;
+        int64 value = int64(int256(amount));
+        if (balanceOf[token][from] < value) return HederaResponseCodes.INSUFFICIENT_TOKEN_BALANCE;
+        allowances[token][from][msg.sender] = allowed - amount;
+        balanceOf[token][from] -= value;
+        balanceOf[token][to] += value;
+        return HederaResponseCodes.SUCCESS;
+    }
+
     // ---- supply (authorization = msg.sender holds the supply key; the real network additionally requires the
     //      key to be a delegatableContractId key when the caller runs in a delegatecall frame) ----
     function mintToken(address token, int64 amount, bytes[] memory metadata)
@@ -103,9 +147,14 @@ contract MockHederaTokenService {
         totalSupply[token] += minted;
         balanceOf[token][msg.sender] += minted; // treasury == key holder in the mock
         if (tokenType[token] == 1) {
+            // Serials come from a monotonic per-token counter, never from the supply: a burned serial is gone
+            // for good and must never be handed out again.
             serials = new int64[](metadata.length);
             for (uint256 i; i < metadata.length; ++i) {
-                serials[i] = totalSupply[token] - minted + int64(int256(i)) + 1;
+                int64 serial = lastSerial[token] + 1;
+                lastSerial[token] = serial;
+                nftOwner[token][serial] = msg.sender; // treasury == key holder in the mock
+                serials[i] = serial;
             }
         }
         return (HederaResponseCodes.SUCCESS, totalSupply[token], serials);
@@ -118,7 +167,20 @@ contract MockHederaTokenService {
             return (HederaResponseCodes.INVALID_FULL_PREFIX_SIGNATURE_FOR_PRECOMPILE, 0);
         }
         int64 burned = tokenType[token] == 0 ? amount : int64(int256(serials.length));
+        // Validate every listed serial before touching state (a returned code cannot roll back a write).
+        if (tokenType[token] == 1) {
+            for (uint256 i; i < serials.length; ++i) {
+                if (nftOwner[token][serials[i]] != msg.sender) {
+                    return (HederaResponseCodes.SENDER_DOES_NOT_OWN_NFT_SERIAL_NO, 0);
+                }
+            }
+        }
         if (balanceOf[token][msg.sender] < burned) return (HederaResponseCodes.INSUFFICIENT_TOKEN_BALANCE, 0);
+        if (tokenType[token] == 1) {
+            for (uint256 i; i < serials.length; ++i) {
+                delete nftOwner[token][serials[i]];
+            }
+        }
         totalSupply[token] -= burned;
         balanceOf[token][msg.sender] -= burned;
         return (HederaResponseCodes.SUCCESS, totalSupply[token]);
