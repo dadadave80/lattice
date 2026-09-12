@@ -231,7 +231,7 @@ contract ExportSelectorsParityTest is Test {
     //                              INVENTORY
     //////////////////////////////////////////////////////////////////////////*//
 
-    /// @dev The 100 release facets (96 Lattice + 4 diamond-lib core) under ERC-8153 parity, as (contract name, `"<file>:<Name>"` deploy path)
+    /// @dev The 105 release facets (101 Lattice + 4 diamond-lib core) under ERC-8153 parity, as (contract name, `"<file>:<Name>"` deploy path)
     ///      pairs — sourced from the SHARED {FacetInventory}, the same list {DeployRelease} releases from.
     function _inventory() private pure returns (string[] memory names, string[] memory paths) {
         (names, paths) = FacetInventory.inventory();
