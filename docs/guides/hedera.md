@@ -94,17 +94,20 @@ either way — but the **metadata is not**, so source verification on HashScan/S
 pin the setting. Build and deploy everything Hedera-bound under the dedicated profile:
 
 ```sh
-FOUNDRY_PROFILE=hedera forge build --skip test script
+script/config/hedera/forge-hedera.sh build --skip test script
 ```
 
-Deploy with `forge create`, **not** `forge script` — see the relay note below for why the script path cannot
-work on Hedera at all:
+Deploy with the canonical recipe, through the same wrapper (the relay note below explains the pin):
 
 ```sh
-FOUNDRY_PROFILE=hedera forge create src/tokens/hedera/HTSAdapter.sol:HTSAdapter \
-    --rpc-url hedera-testnet --account <keystore> --broadcast --legacy \
+script/config/hedera/forge-hedera.sh script script/base/tokens/DeployHTSAdapter.s.sol \
+    --sig "run(address)" <ADMIN> \
+    --rpc-url hedera-testnet --account <keystore> --broadcast --slow --legacy \
     --verify --verifier sourcify
 ```
+
+That command without `--broadcast` simulates cleanly against hedera-testnet (checked 2026-09-12). Sourcify
+verification under the pin is still unconfirmed — probe 8 in the table below.
 
 The default profile is untouched and still targets `osaka`. Switch `[profile.hedera]`'s `evm_version` to
 `"prague"` once v0.77 is live.
@@ -112,32 +115,39 @@ The default profile is untouched and still targets `osaka`. Switch `[profile.hed
 `hedera` (295) and `hedera-testnet` (296) are already named RPC aliases in `foundry.toml`; set
 `HEDERA_RPC_URL` / `HEDERA_TESTNET_RPC_URL` in `.env`.
 
-**`forge script` broke on Hedera in Foundry 1.8.x.** It works on 1.7.1 and fails on 1.8.1, so pin 1.7.1
-for Hedera broadcasts until this is fixed upstream. The regression is in the fork backend, which 1.8.x pins
-by block **hash** and then queries with an EIP-1898 object that no Hedera relay implements:
+**Run Hedera `forge script` work on Foundry 1.7.1.** On Foundry 1.8.1 `forge script` cannot reach Hedera's
+JSON-RPC relay; on 1.7.1 it can. The two versions ask the relay for account state differently:
 
 ```
-forge 1.7.1 -> eth_getTransactionCount(addr, "latest")                              exit 0
-forge 1.8.1 -> eth_getTransactionCount(addr, {"blockHash": "0x671a…", ...})          -32602
+forge 1.7.1 -> eth_getTransactionCount(addr, "latest")                        exit 0
+forge 1.8.1 -> eth_getTransactionCount(addr, {"blockHash": "0x671a…", ...})    -32602
                Invalid parameter 1: The value passed is not valid: [object Object].
 ```
 
-Verified on 2026-09-12 with a script that deploys **nothing**, so it is the backend and not the script. On
-1.8.1 no flag avoids it — `--legacy`, `--slow`, `--skip-simulation` (with and without `--broadcast`),
-`--fork-block-number` (resolved to a hash anyway), `--no-storage-caching`, `--offline`, `--sender-nonce`,
-`--unlocked`, `--sender` and `--estimate` were all rejected. Changing relay does not help either: a
-QuickNode Hedera-testnet endpoint returns the byte-identical error with the same relay Request-ID format,
-so this is `hiero-json-rpc-relay` behaviour, not one operator's.
+1.8.1's fork backend sends an EIP-1898 block-hash object; Hedera's relay (`hiero-json-rpc-relay`) accepts only a
+block number or tag. EIP-1898 is standard Ethereum JSON-RPC, and so is the older form, so **whether the fix
+belongs in Foundry or in the relay is still open.** Measured 2026-09-12 with a script that deploys nothing: on
+1.8.1 no flag avoids it (`--legacy`, `--slow`, `--skip-simulation` with and without `--broadcast`,
+`--fork-block-number`, `--no-storage-caching`, `--offline`, `--sender-nonce`, `--unlocked`, `--sender`,
+`--estimate`), and changing relay does not help — a QuickNode Hedera-testnet endpoint returns the
+byte-identical error with the same relay Request-ID format.
 
-Everything that does not open a fork backend is unaffected on **both** Foundry versions — `forge create`,
-`cast send` / `call` / `mktx`, and `vm.rpc` inside a test (which is why the relay-backed fork test passes).
-`--legacy` is worth passing as Hedera's native transaction form, but it is *not* what fixes this: `cast
-mktx` signs cleanly in both legacy and EIP-1559 form, so the envelope was never the problem. `--slow` still
-helps against rate limits.
+The repo keeps 1.8.1 as its shared pin for CI, builds and tests, so Hedera work goes through a wrapper that
+runs the installed 1.7.1 binary directly under `FOUNDRY_PROFILE=hedera`, without touching your active `forge`:
 
-This repo pins Foundry 1.8.1 for CI (`.github/actions/foundry-setup`). Running a Hedera broadcast therefore
-means temporarily selecting 1.7.1 (`foundryup --use v1.7.1`) and switching back — a real tension with
-AGENTS.md's "pin one version uniformly" rule that is worth resolving deliberately rather than by drift.
+```sh
+foundryup --install v1.7.1    # once; then `foundryup --use <your usual version>` if foundryup switched to it
+script/config/hedera/forge-hedera.sh <forge args…>
+```
+
+The pin does not change what gets deployed. Under `[profile.hedera]`, Foundry 1.7.1 and 1.8.1 produce
+byte-identical creation and runtime bytecode (checked for `HTSAdapter`, `ERC20` and `Lattice`), so an Arachnid
+address or a Sourcify metadata hash computed under one version holds for a deploy made under the other.
+
+Anything that never opens a fork backend works on **both** versions — `forge create`, `cast send` / `call` /
+`mktx`, and `vm.rpc` inside a test. `--legacy` is worth passing as Hedera's native transaction form, but it is
+not what fixes this: `cast mktx` signs cleanly in both legacy and EIP-1559 form. `--slow` helps against rate
+limits.
 
 ## Deterministic deployment: Arachnid, not CreateX
 
@@ -177,11 +187,10 @@ concern does not arise.
   revm; the relay reports `0xfe` as the code of `0x167` and nothing at all for `0x168`/`0x169`/`0x16a`/`0x16b`, so no
   HTS/HAS/HSS call executes on a plain fork — reads included. `test/fork/HTSAdapterFork.t.sol` asserts that
   local shape and uses `vm.rpc("eth_call", …)` to hand anything that must really execute to the relay, where
-  the mirror node simulates it. Worse, the public hashio relay cannot be forked at all: Foundry fetches
-  accounts with an EIP-1898 block-parameter object and hashio rejects it, aborting the run with a database
-  error no `try`/`catch` can turn into a skip. The one test that forks therefore sits behind its own
-  `HEDERA_TEST_FORK=true` opt-in, so setting `HEDERA_TEST_TOKEN` alone gives you the relay-backed test
-  (which passes against hashio today) plus a skip — never a spurious failure.
+  the mirror node simulates it. The one test that forks reaches hashio only on the pinned Foundry 1.7.1 — on
+  1.8.1 its fork backend's EIP-1898 block-hash params are rejected — so it sits behind its own
+  `HEDERA_TEST_FORK=true` opt-in and must run through `script/config/hedera/forge-hedera.sh`. Setting
+  `HEDERA_TEST_TOKEN` alone gives you the relay-backed test plus a skip, never a spurious failure.
 
 ## Verification status
 
@@ -202,7 +211,7 @@ exists to settle them, and is deliberately not broadcast by CI.
 | — | System-contract code shape, **both** networks: `eth_getCode(0x167)` is `0xfe`; `0x168`, `0x169`, `0x16a` and `0x16b` are all empty. (The research brief said `0x16b` also answers `0xfe` — it does not.) | **confirmed live, 2026-09-12** |
 | — | CreateX `0xba5Ed099…ba5Ed` has no code on Hedera mainnet or testnet | **confirmed live, 2026-09-12** |
 | — | The Arachnid proxy `0x4e59b448…956C` has code on Hedera mainnet **and** testnet, byte-identical to `test/helpers/ArachnidProxy.RUNTIME` | **confirmed live, 2026-09-12** |
-| — | `forge script` cannot broadcast to Hedera at all — no flag combination, and no relay: the fork backend queries `eth_getTransactionCount` with an EIP-1898 `{blockHash,requireCanonical}` object and both hashio and a QuickNode endpoint reject it identically. `forge create`, `cast` and `vm.rpc` all work | **confirmed live, 2026-09-12** |
+| — | `forge script` on Foundry 1.8.1 cannot reach Hedera's relay (its fork backend's EIP-1898 block-hash params are rejected, by hashio and QuickNode alike); Foundry 1.7.1 can, and the probe run was made with it. Whether Foundry or the relay should change is open | **confirmed live, 2026-09-12** |
 
 To run the probes you need a funded testnet account: set `HEDERA_TESTNET_RPC_URL` and `HEDERA_TESTNET_PK`
 in `.env` and fund the derived address from the Hedera portal faucet. Record each outcome in the relevant

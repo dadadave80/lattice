@@ -60,7 +60,7 @@ test-path: ## Run tests by path (PATH_GLOB=test/fork/Foo.t.sol)
 	forge test --match-path '$(PATH_GLOB)'
 
 .PHONY: test-fork
-test-fork: ## Run the fork suites (env-gated: SEPOLIA/BASE_SEPOLIA/ARC_TESTNET/MAINNET _RPC_URL, plus HEDERA_TESTNET_RPC_URL + HEDERA_TEST_TOKEN/HEDERA_TEST_ACCOUNT for the Hedera lanes; unset lanes skip cleanly)
+test-fork: ## Run the fork suites (env-gated: SEPOLIA/BASE_SEPOLIA/ARC_TESTNET/MAINNET _RPC_URL, plus HEDERA_TESTNET_RPC_URL + HEDERA_TEST_TOKEN/HEDERA_TEST_ACCOUNT for the Hedera lanes — HEDERA_TEST_FORK runs only via script/config/hedera/forge-hedera.sh test; unset lanes skip cleanly)
 	forge test --match-path 'test/fork/*'
 
 .PHONY: snapshot

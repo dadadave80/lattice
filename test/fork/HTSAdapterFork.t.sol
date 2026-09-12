@@ -20,24 +20,24 @@ import {HTS_SYSTEM_CONTRACT} from "@lattice/tokens/hedera/HTSAdapterLib.sol";
 /// Enabling fork tests:
 ///   export HEDERA_TESTNET_RPC_URL=<hedera-testnet-json-rpc-relay>
 ///   export HEDERA_TEST_TOKEN=<live-hedera-testnet-HTS-token>
-///   FOUNDRY_PROFILE=hedera forge test --match-path "test/fork/HTSAdapterFork.t.sol"
+///   script/config/hedera/forge-hedera.sh test --match-path "test/fork/HTSAdapterFork.t.sol"
 ///
 /// Without HEDERA_TEST_TOKEN set, all tests in this contract are skipped.
 ///
-/// {test_Fork_AssociateTokenCannotExecuteHTSOnAFork} needs one thing more than the others — a relay Foundry
-/// can actually fork from — and is skipped unless you opt in:
+/// {test_Fork_AssociateTokenCannotExecuteHTSOnAFork} is the one test that opens a fork. It is skipped unless you
+/// also opt in, and it must run through the command above (Foundry 1.7.1):
 ///   export HEDERA_TEST_FORK=true
 ///
 /// @dev Only {test_Fork_AssociateTokenCannotExecuteHTSOnAFork} forks, and it opens the fork in its own body
-///      rather than in `setUp`, because forking hedera-testnet at all needs a relay that accepts EIP-1898
-///      block-parameter objects: Foundry fetches every account with one, and the public hashio relay rejects
-///      it (`Invalid parameter 1: The value passed is not valid: [object Object]`) whether or not the fork is
-///      pinned to a block. That is why it carries its OWN `HEDERA_TEST_FORK` opt-in: on the endpoint
-///      `.env.example` documents, forking aborts the test with a database error that no `try`/`catch` can
-///      turn into a skip, so leaving it ungated would hand anyone who merely sets HEDERA_TEST_TOKEN a red
-///      suite for an endpoint limitation. {test_Fork_RelayEthCallSeesALiveHTSToken} is unaffected — `vm.rpc`
-///      addresses the endpoint by its `rpc_endpoints` alias and never opens a fork — so it still runs
-///      against hashio, and it is the test that actually exercises the live network.
+///      rather than in `setUp`, so the relay-backed test never depends on forking. It needs the Hedera-pinned
+///      Foundry: on Foundry 1.8.1 the fork backend fetches accounts with EIP-1898 block-hash objects, which
+///      Hedera's relay rejects (`Invalid parameter 1: The value passed is not valid: [object Object]`), aborting
+///      the test with a database error no `try`/`catch` can turn into a skip. Under Foundry 1.7.1 — what
+///      `script/config/hedera/forge-hedera.sh` runs — it forks hashio and passes (2026-09-12). The separate
+///      `HEDERA_TEST_FORK` opt-in exists because plain `forge test` and `make test-fork` run the shared 1.8.1
+///      pin, where setting HEDERA_TEST_TOKEN alone must not turn the suite red. Whether Foundry or the relay
+///      should change is still open. {test_Fork_RelayEthCallSeesALiveHTSToken} works on either version:
+///      `vm.rpc` addresses the endpoint by its `rpc_endpoints` alias and never opens a fork.
 contract HTSAdapterFork is HTSAdapterTestBase {
     /// @dev The `rpc_endpoints` alias (chain 296), shared by the fork and the relay `eth_call`.
     string constant HEDERA_TESTNET = "hedera-testnet";

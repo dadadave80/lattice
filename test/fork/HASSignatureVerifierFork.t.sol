@@ -26,8 +26,9 @@ import {Test} from "forge-std/Test.sol";
 /// Without HEDERA_TEST_ACCOUNT and HEDERA_TEST_SIG set, all tests in this contract are skipped.
 ///
 /// @dev No `vm.createSelectFork` here: nothing in this suite executes locally, and forking hedera-testnet
-///      needs a relay that accepts EIP-1898 block-parameter objects, which the public hashio relay rejects.
-///      `vm.rpc` addresses the endpoint by its `rpc_endpoints` alias instead.
+///      needs the Hedera-pinned Foundry 1.7.1 (`script/config/hedera/forge-hedera.sh`), because Foundry
+///      1.8.1's fork backend sends EIP-1898 block-hash params that Hedera's relay rejects. `vm.rpc`
+///      addresses the endpoint by its `rpc_endpoints` alias instead.
 contract HASSignatureVerifierFork is Test {
     /// @dev The `rpc_endpoints` alias (chain 296) the `eth_call` is sent to.
     string constant HEDERA_TESTNET = "hedera-testnet";
