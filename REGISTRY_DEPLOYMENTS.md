@@ -4,13 +4,16 @@ This file is the **canonical reference** for how Lattice releases land on-chain:
 address scheme of the [`LatticeRegistry`](src/LatticeRegistry.sol) singleton, the
 [`LatticeFactory`](src/LatticeFactory.sol), and every
 [`FacetInventory`](script/lib/FacetInventory.sol) facet, all deployed through the canonical
-**CreateX** singleton by [`script/deploy/DeployRelease.s.sol`](script/deploy/DeployRelease.s.sol).
-Every address below is reproducible offline from a salt string and an initcode hash — nothing depends
-on who broadcasts, what nonce they are at, or which chain they broadcast on.
+**CreateX** singleton — or, on a chain CreateX never reached, through the [Arachnid
+proxy](#chains-without-createx-the-arachnid-fallback) — by
+[`script/deploy/DeployRelease.s.sol`](script/deploy/DeployRelease.s.sol). Every address below is
+reproducible offline from a salt string and an initcode hash — nothing depends on who broadcasts or
+what nonce they are at. The one thing that does vary per chain is **which** of the two deterministic
+deployers that chain has.
 
 ## The CreateX singleton
 
-All release deployments go through **CreateX**
+Release deployments go through **CreateX**
 ([pcaversaccio/createx](https://github.com/pcaversaccio/createx)), deployed as a singleton at the
 **same address on every supported chain**:
 
@@ -18,9 +21,11 @@ All release deployments go through **CreateX**
 0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed
 ```
 
-`DeployRelease.release()` refuses to run on a chain where that address has no code. For local/test
-runs, etch [`test/helpers/MockCreateX.sol`](test/helpers/MockCreateX.sol) — a faithful mock of the
-`_guard` transform and the CREATE2/CREATE3 derivations — at that address first (see
+Where that address has no code, the release falls back to the [Arachnid
+proxy](#chains-without-createx-the-arachnid-fallback); `DeployRelease.release()` refuses to run only
+on a chain that has **neither** deployer. For local/test runs, etch
+[`test/helpers/MockCreateX.sol`](test/helpers/MockCreateX.sol) — a faithful mock of the `_guard`
+transform and the CREATE2/CREATE3 derivations — at the CreateX address first (see
 [`test/unit/DeployReleaseTest.t.sol`](test/unit/DeployReleaseTest.t.sol)).
 
 ## Salt formulas
@@ -72,6 +77,50 @@ string, and the **initcode**. Same salt + same initcode ⇒ same address on ever
 the guard-reproducing prediction (CreateX's public `computeCreate2Address` does **not** re-guard the
 salt it is given — `predictRaw` applies `keccak256(abi.encode(salt))` itself).
 
+## Chains without CreateX: the Arachnid fallback
+
+CreateX is not everywhere. **Hedera** is the motivating case: the singleton is deployed on neither
+Hedera mainnet nor testnet. What those chains do have is the **Arachnid deterministic-deployment
+proxy** ([Arachnid/deterministic-deployment-proxy](https://github.com/Arachnid/deterministic-deployment-proxy),
+Hedera mainnet entity `0.0.6264020`, testnet `0.0.4283707`), itself at one address everywhere:
+
+```
+0x4e59b44847b379578588920cA78FbF26c0B4956C
+```
+
+So on a chain where CreateX has no code and that proxy does,
+[`CreateXDeployer.deployRaw`/`predictRaw`](script/lib/CreateXDeployer.sol) route the raw-salt path
+through the proxy instead: its 69-byte runtime takes `salt ++ initCode` as raw calldata, CREATE2-deploys,
+and returns the bare 20-byte address. CreateX wins wherever both have code, so **no existing chain's
+addresses move**. The fallback covers the raw-salt release path only — there is no CREATE3 equivalent,
+so the adapters' `deploy`/`predict` still require CreateX itself.
+
+The proxy applies **no guard** to the salt it is handed, so its derivation is the plain EIP-1014 form
+over the **raw, unguarded** salt, with the proxy as deployer:
+
+```
+address = keccak256(0xff ++ 0x4e59b44847b379578588920cA78FbF26c0B4956C ++ salt ++ keccak256(initCode))[12:]
+```
+
+Compare with the CreateX form above, which hashes the salt first (`keccak256(abi.encode(salt))`) and
+uses the CreateX singleton as the deployer. **Two deployers, two address families**: the same facet,
+built from the same source at the same version, lands at one address on every CreateX chain and at a
+different one on every Arachnid-only chain. That second address is no weaker — it is equally
+deterministic, equally deployer-independent, equally permissionless to complete, and equally committed
+to `keccak256(initCode)`, so everything the sections above claim still holds of it. What is lost is
+only the symmetry *between* the families: `lattice.ERC20.0.1.0` has one address on
+Ethereum/Base/Arbitrum/… and another on Hedera. Read a release's addresses off that chain's manifest
+rather than assuming the CreateX ones.
+
+A chain with **neither** deployer has no deterministic path at all. `DeployRelease.release()` keeps
+refusing it (naming both addresses), and the `script/base/` recipes fall back to plain `CREATE` there
+([`BaseDeploy._facet`](script/base/BaseDeploy.s.sol)) — a working diamond at an address nobody can
+predict, which is fine for a throwaway local deployment and useless for a release. Note that Anvil and
+Foundry's test EVM **pre-deploy** the Arachnid proxy (it is Foundry's own default CREATE2 deployer), so
+a local run takes the proxy path unless that address is etched empty;
+[`test/helpers/ArachnidProxy.sol`](test/helpers/ArachnidProxy.sol) carries the fetched runtime for
+tests that need to put it somewhere it is missing.
+
 ## Why CREATE2 here (and CREATE3 for the adapters)
 
 The release path deliberately uses **CREATE2, not CREATE3**, because the CREATE2 address **commits
@@ -95,6 +144,9 @@ same address everywhere, anyone may finish the job".
 
 ## What changes an address
 
+- **Which deterministic deployer the chain has.** CreateX and the Arachnid proxy derive different
+  addresses from identical inputs (see [the fallback](#chains-without-createx-the-arachnid-fallback)).
+  This is the only input that varies by chain rather than by release.
 - **The initcode.** `initCode = creationCode ++ abi.encode(constructor args)`, and `creationCode` is
   a function of the source **and the compiler configuration** (solc version, optimizer settings,
   metadata). A release therefore only reproduces across machines/chains when built with the pinned
@@ -127,6 +179,17 @@ cast create2 --deployer 0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed --salt $GUARD
 For the registry/factory, step 3 appends the constructor arg:
 `cast keccak $(cast concat-hex $(forge inspect src/LatticeRegistry.sol:LatticeRegistry bytecode) $(cast abi-encode "f(address)" $OWNER))`.
 
+On an [Arachnid-only chain](#chains-without-createx-the-arachnid-fallback) the same facet is two steps
+instead of four — the proxy guards nothing, so the raw salt goes straight in:
+
+```bash
+SALT=$(cast keccak "lattice.ERC20.0.1.0")
+INITHASH=$(cast keccak $(forge inspect src/tokens/ERC20/ERC20.sol:ERC20 bytecode))
+
+# no guard step, and the PROXY is the deployer
+cast create2 --deployer 0x4e59b44847b379578588920cA78FbF26c0B4956C --salt $SALT --init-code-hash $INITHASH
+```
+
 ## The release manifest
 
 Every `run(version, owner)` writes `deployments/<chainid>/release-<version>.json`:
@@ -154,7 +217,11 @@ Every `run(version, owner)` writes `deployments/<chainid>/release-<version>.json
 ```
 
 `codehash` and `selectorsHash` are exactly the two pins `LatticeRegistry.register` records and its
-live-read views re-verify, so the manifest diffs directly against on-chain state.
+live-read views re-verify, so the manifest diffs directly against on-chain state. The `createx` field
+records the CreateX singleton address; on an
+[Arachnid-only chain](#chains-without-createx-the-arachnid-fallback) the deployer the addresses
+actually derive from is the proxy, and the manifest's own `registry`/`factory`/`facets` entries — not
+that field — are the authority on where the release landed.
 
 ## Idempotency and resume
 
