@@ -179,12 +179,11 @@ contract HederaProbeFacet {
 ///        frame, so anything that CONSUMES such a value runs in a later command and reads it back through
 ///        `vm.rpc("eth_call", ...)`, which hands the call to the relay where the mirror node executes it.
 ///
-///      FOUNDRY VERSION — run this under Foundry 1.7.1, NOT 1.8.x. The 1.8.x fork backend pins by block hash
-///      and asks for the sender's nonce as `eth_getTransactionCount(addr, {"blockHash": .., ..})`, an
-///      EIP-1898 object that hiero-json-rpc-relay rejects (`-32602 Invalid parameter 1 ... [object Object]`);
-///      no 1.8.x flag and no relay avoids it. 1.7.1 sends `"latest"` and works: this script ran against
-///      hedera-testnet on 2026-09-12 under 1.7.1. The repo pins 1.8.1, so select 1.7.1 with
-///      `foundryup --use v1.7.1` for the broadcast and switch back afterwards.
+///      FOUNDRY VERSION — run this through `script/config/hedera/forge-hedera.sh`, which pins Foundry 1.7.1.
+///      On 1.8.1 the fork backend asks for the sender's nonce as
+///      `eth_getTransactionCount(addr, {"blockHash": .., ..})`, an EIP-1898 object Hedera's relay rejects
+///      (`-32602 Invalid parameter 1 ... [object Object]`); 1.7.1 sends `"latest"` and works, and this script
+///      ran against hedera-testnet on 2026-09-12 under it. Whether Foundry or the relay should change is open.
 ///
 ///      LIVE RESULTS 2026-09-12 (diamond 0x45634e329053336819550485FC3F4a41b259d781): probe 2 confirmed.
 ///      Probe 3's negative control turned out DEGENERATE — its `contractId(address(this))` supply key is
@@ -193,17 +192,17 @@ contract HederaProbeFacet {
 ///      probe 3 needs a diamond whose account key is not `contractId(self)`. Every outcome, and the
 ///      mechanism, is recorded in docs/guides/hedera.md.
 ///
-///      RUNBOOK — Hedera testnet (chain 296), a funded key, and `FOUNDRY_PROFILE=hedera` throughout
+///      RUNBOOK — Hedera testnet (chain 296), a funded key, and `script/config/hedera/forge-hedera.sh` throughout (it sets `FOUNDRY_PROFILE=hedera`)
 ///      (Hedera runs Cancun; the profile also keeps Sourcify verification reproducible).
 ///      `S=script/config/hedera/ProbeHedera.s.sol:ProbeHedera`
 ///       1. deploy + the self-contained probes (2-create, 3, 5, 6):
-///          FOUNDRY_PROFILE=hedera forge script $S --sig "run()" --rpc-url hedera-testnet \
-///            --account <name> --sender <addr> --broadcast --slow --skip-simulation
+///          script/config/hedera/forge-hedera.sh script $S --sig "run()" --rpc-url hedera-testnet \
+///            --account <name> --sender <addr> --broadcast --slow --skip-simulation --legacy
 ///       2. the probes that need the created token (1, 2-mint), read back live first:
-///          FOUNDRY_PROFILE=hedera forge script $S --sig "follow(address)" <diamond> --rpc-url hedera-testnet \
-///            --account <name> --sender <addr> --broadcast --slow --skip-simulation
+///          script/config/hedera/forge-hedera.sh script $S --sig "follow(address)" <diamond> --rpc-url hedera-testnet \
+///            --account <name> --sender <addr> --broadcast --slow --skip-simulation --legacy
 ///       3. the read-only report (probes 1-state, 2-balance, 4, 6-schedule, 7) — broadcast-free, re-runnable:
-///          FOUNDRY_PROFILE=hedera forge script $S --sig "report(address)" <diamond> --rpc-url hedera-testnet
+///          script/config/hedera/forge-hedera.sh script $S --sig "report(address)" <diamond> --rpc-url hedera-testnet
 ///      Step 3 after step 1 shows the pre-association state; after step 2 the post state. Poll the schedule
 ///      address from step 1 on the mirror node (`/api/v1/schedules/<id>`) about a minute after it is created,
 ///      then read the `HederaProbeCallback` log on HashScan.
