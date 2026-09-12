@@ -51,6 +51,26 @@ library HASSignatureVerifierLib {
         return abi.decode(ret, (bool));
     }
 
+    /// @notice True when the HAS system contract is actually live on this chain and answering.
+    /// @dev Used to REFUSE arming a Hedera signer on a chain that cannot verify one. The check is a capability
+    ///      probe, deliberately not a chain-id allowlist: an allowlist goes stale (previewnet, a Solo local
+    ///      network, any future Hedera chain id) and would have to be edited to stay correct, whereas this
+    ///      asks the system contract itself.
+    ///
+    ///      Why returndata LENGTH is the signal, not the boolean: calling an address with no code SUCCEEDS on
+    ///      the EVM and yields EMPTY returndata, so `ok` alone cannot tell a live HAS from a bare chain. A live
+    ///      HAS answers `isAuthorizedRaw` with one 32-byte word whatever the verdict. The probe therefore uses
+    ///      a well-formed 65-byte (ECDSA-shaped) blob — HAS reverts on a malformed length, which would make a
+    ///      live chain look dead — and only asks whether a word came back, never what it said.
+    function isAvailable() internal view returns (bool available) {
+        (bool ok, bytes memory ret) = HAS_SYSTEM_CONTRACT.staticcall(
+            abi.encodeCall(
+                IHederaAccountService.isAuthorizedRaw, (address(this), abi.encodePacked(bytes32(0)), new bytes(65))
+            )
+        );
+        return ok && ret.length >= 32;
+    }
+
     /// @notice True if `signatureMap` satisfies `account`'s key structure over `message`; false otherwise.
     function isAuthorized(address account, bytes memory message, bytes memory signatureMap)
         internal

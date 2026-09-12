@@ -247,10 +247,16 @@ contract AccountSignerTest is AccountBlueprintHelper {
     ///      ({AccountInit} grants it `DEFAULT_ADMIN_ROLE`), so every setter is pranked as the diamond.
     function _hederaAccountDiamond(address hederaAccount) internal returns (address account) {
         account = _newAccountDiamond();
-        hederaService = MockHederaAccountService(HAS_SYSTEM_CONTRACT);
-        vm.etch(HAS_SYSTEM_CONTRACT, address(new MockHederaAccountService()).code);
+        _etchHederaAccountService();
         vm.prank(account);
         AccountSigner(account).setHederaAccountSigner(hederaAccount);
+    }
+
+    /// @dev Puts a live HAS stand-in at 0x16a. Required before arming a Hedera signer: the setter refuses a
+    ///      chain where HAS does not answer, because an account is its own admin and could never undo it.
+    function _etchHederaAccountService() internal {
+        hederaService = MockHederaAccountService(HAS_SYSTEM_CONTRACT);
+        vm.etch(HAS_SYSTEM_CONTRACT, address(new MockHederaAccountService()).code);
     }
 
     /// @dev A complete single-owner account diamond owned (ECDSA) by `ownerAddr`.
@@ -278,6 +284,7 @@ contract AccountSignerTest is AccountBlueprintHelper {
 
     function test_Hedera_SetSignerEmitsAndSwitchesType() public {
         address account = _newAccountDiamond();
+        _etchHederaAccountService();
         vm.expectEmit(true, false, false, true, account);
         emit IAccountSigner.HederaAccountSignerSet(hederaAddr);
         vm.prank(account);
@@ -293,6 +300,7 @@ contract AccountSignerTest is AccountBlueprintHelper {
     /// @dev The switch must leave no stale passkey material behind.
     function test_Hedera_SetSignerClearsPasskeyFields() public {
         address account = _newAccountDiamond();
+        _etchHederaAccountService();
         (uint256 x, uint256 y) = vm.publicKeyP256(PASSKEY_PK);
         vm.prank(account);
         AccountSigner(account).setWebAuthnSigner(bytes32(x), bytes32(y), true);
@@ -313,9 +321,29 @@ contract AccountSignerTest is AccountBlueprintHelper {
 
     function test_Hedera_SetSignerRevertNotAdmin() public {
         address account = _newAccountDiamond();
+        _etchHederaAccountService();
         vm.prank(stranger);
         vm.expectRevert();
         AccountSigner(account).setHederaAccountSigner(hederaAddr);
+    }
+
+    /// @dev The brick guard. An account is its OWN DEFAULT_ADMIN_ROLE holder, so the signer this call installs
+    ///      is the one every later admin call must satisfy — `setOwner` included. On a chain where HAS is dead
+    ///      every signature would return false and NOTHING could undo it, so the setter must refuse up front
+    ///      rather than succeed and strand the account on the next signature.
+    function test_Hedera_SetSignerRevertsWhereHasIsNotDeployed() public {
+        address account = _newAccountDiamond();
+        vm.etch(HAS_SYSTEM_CONTRACT, ""); // a chain that is not Hedera
+
+        vm.prank(account);
+        vm.expectRevert(IAccountSigner.HederaAccountServiceUnavailable.selector);
+        AccountSigner(account).setHederaAccountSigner(hederaAddr);
+
+        // still ECDSA, so the account can still be administered
+        assertEq(uint8(AccountSigner(account).signerType()), uint8(IAccountSigner.SignerType.ECDSA));
+        vm.prank(account);
+        AccountSigner(account).setOwner(stranger);
+        assertEq(AccountSigner(account).owner(), stranger);
     }
 
     /// @dev ECDSA-keyed Hedera account: HAS recovers the EVM alias from the 65-byte blob and it matches.
