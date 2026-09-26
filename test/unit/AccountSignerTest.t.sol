@@ -1,15 +1,23 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
+import {AccountBlueprintHelper} from "@lattice-test/helpers/AccountBlueprintHelper.sol";
+import {MockHederaAccountService} from "@lattice-test/mocks/hedera/MockHederaAccountService.sol";
+import {Lattice} from "@lattice/Lattice.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
+import {ERC4337Validation} from "@lattice/accounts/ERC4337Validation.sol";
+import {AccountInit} from "@lattice/accounts/erc7579/AccountInit.sol";
 import {AccountSigner} from "@lattice/accounts/erc7579/AccountSigner.sol";
+import {HAS_SYSTEM_CONTRACT} from "@lattice/accounts/hedera/HASSignatureVerifierLib.sol";
 import {AccountSignerLib} from "@lattice/accounts/libraries/AccountSignerLib.sol";
 import {IAccountSigner} from "@lattice/interfaces/accounts/IAccountSigner.sol";
+import {PackedUserOperation} from "@lattice/interfaces/external/ercs/IAccount.sol";
 import {Initializable} from "@lattice/utils/Initializable.sol";
 import {Base64} from "@lattice/utils/libraries/Base64.sol";
+import {ECDSA} from "@lattice/utils/libraries/ECDSA.sol";
 import {WebAuthn} from "@lattice/utils/libraries/WebAuthn.sol";
-import {Test} from "forge-std/Test.sol";
 
 /// @dev Test harness: the signer facet + access facet, with an `initialize` that runs the module inits.
 contract MockAccountSigner is AccessControl, AccountSigner, Initializable {
@@ -28,19 +36,33 @@ contract MockAccountSigner is AccessControl, AccountSigner, Initializable {
     }
 }
 
-contract AccountSignerTest is Test {
+contract AccountSignerTest is AccountBlueprintHelper {
     MockAccountSigner signer;
     address admin = address(0x1);
     address ownerAddr;
     uint256 ownerPk;
     address stranger;
     uint256 strangerPk;
+    address hederaAddr; // ECDSA-keyed Hedera account: its EVM alias IS the recovered address
+    uint256 hederaPk;
 
     function setUp() public {
         (ownerAddr, ownerPk) = makeAddrAndKey("owner");
         (stranger, strangerPk) = makeAddrAndKey("stranger");
+        (hederaAddr, hederaPk) = makeAddrAndKey("hederaAccount");
         signer = new MockAccountSigner();
         signer.initialize(admin, ownerAddr);
+    }
+
+    /// @dev {IAccountSigner.SignerType} is documented APPEND-ONLY because the active scheme is persisted as a
+    ///      `uint8`. Every other assertion in this suite compares `uint8(signerType())` against
+    ///      `uint8(SignerType.X)`, so both sides move together under a reorder — these pin the ordinals
+    ///      numerically, which is what a reorder or an inserted value has to break.
+    function test_SignerTypeOrdinalsAreAppendOnly() public pure {
+        assertEq(uint256(IAccountSigner.SignerType.ECDSA), 0, "ECDSA must stay ordinal 0");
+        assertEq(uint256(IAccountSigner.SignerType.P256), 1, "P256 must stay ordinal 1");
+        assertEq(uint256(IAccountSigner.SignerType.WebAuthn), 2, "WebAuthn must stay ordinal 2");
+        assertEq(uint256(IAccountSigner.SignerType.HederaAccount), 3, "HederaAccount must stay ordinal 3");
     }
 
     function test_InitialOwner() public view {
@@ -210,5 +232,178 @@ contract AccountSignerTest is Test {
         bytes memory compact = WebAuthn.tryEncodeAuthCompact(auth);
         assertGt(compact.length, 0, "compact encode failed");
         assertLt(compact.length, abi.encode(auth).length, "compact not smaller than the ABI envelope");
+    }
+
+    // ---- native Hedera account owner (HIP-632, through the HAS system contract at 0x16a) ----
+
+    address constant HEDERA_ENTRY_POINT = address(0xE417);
+    /// @dev A Hedera account whose key is ED25519 has no EVM alias to recover — it is a long-zero address.
+    address constant ED25519_ACCOUNT = address(0x0000000000000000000000000000000000000457);
+
+    MockHederaAccountService hederaService; // the etched stand-in living at 0x16a
+
+    /// @dev Assembles a REAL account diamond from the canonical {DeployAccount} blueprint, etches the HAS
+    ///      mock at 0x16a, and repoints the signer at `hederaAccount`. The account administers itself
+    ///      ({AccountInit} grants it `DEFAULT_ADMIN_ROLE`), so every setter is pranked as the diamond.
+    function _hederaAccountDiamond(address hederaAccount) internal returns (address account) {
+        account = _newAccountDiamond();
+        _etchHederaAccountService();
+        vm.prank(account);
+        AccountSigner(account).setHederaAccountSigner(hederaAccount);
+    }
+
+    /// @dev Puts a live HAS stand-in at 0x16a. Required before arming a Hedera signer: the setter refuses a
+    ///      chain where HAS does not answer, because an account is its own admin and could never undo it.
+    function _etchHederaAccountService() internal {
+        hederaService = MockHederaAccountService(HAS_SYSTEM_CONTRACT);
+        vm.etch(HAS_SYSTEM_CONTRACT, address(new MockHederaAccountService()).code);
+    }
+
+    /// @dev A complete single-owner account diamond owned (ECDSA) by `ownerAddr`.
+    function _newAccountDiamond() internal returns (address account) {
+        (FacetCut[] memory cuts, AccountInit init) = _accountBlueprint(HEDERA_ENTRY_POINT);
+        Lattice diamond = new Lattice();
+        diamond.initialize(cuts, address(init), abi.encodeCall(AccountInit.init, (ownerAddr)));
+        account = address(diamond);
+    }
+
+    /// @dev Drives the ERC-4337 seam: the EntryPoint validating `signature` over `opHash`. Returns
+    ///      `validationData` (0 = accepted, 1 = SIG_VALIDATION_FAILED).
+    function _validateUserOp(address account, bytes32 opHash, bytes memory signature) internal returns (uint256) {
+        PackedUserOperation memory op;
+        op.sender = account;
+        op.signature = signature;
+        vm.prank(HEDERA_ENTRY_POINT);
+        return ERC4337Validation(payable(account)).validateUserOp(op, opHash, 0);
+    }
+
+    /// @dev The digest the signer seam actually sees for a user op (EIP-191 over the user op hash).
+    function _opDigest(bytes32 opHash) internal pure returns (bytes32) {
+        return ECDSA.toEthSignedMessageHash(opHash);
+    }
+
+    function test_Hedera_SetSignerEmitsAndSwitchesType() public {
+        address account = _newAccountDiamond();
+        _etchHederaAccountService();
+        vm.expectEmit(true, false, false, true, account);
+        emit IAccountSigner.HederaAccountSignerSet(hederaAddr);
+        vm.prank(account);
+        AccountSigner(account).setHederaAccountSigner(hederaAddr);
+        assertEq(
+            uint8(AccountSigner(account).signerType()),
+            uint8(IAccountSigner.SignerType.HederaAccount),
+            "type not HederaAccount"
+        );
+        assertEq(AccountSigner(account).owner(), hederaAddr, "Hedera account not stored as the owner");
+    }
+
+    /// @dev The switch must leave no stale passkey material behind.
+    function test_Hedera_SetSignerClearsPasskeyFields() public {
+        address account = _newAccountDiamond();
+        _etchHederaAccountService();
+        (uint256 x, uint256 y) = vm.publicKeyP256(PASSKEY_PK);
+        vm.prank(account);
+        AccountSigner(account).setWebAuthnSigner(bytes32(x), bytes32(y), true);
+        vm.prank(account);
+        AccountSigner(account).setHederaAccountSigner(hederaAddr);
+        (bytes32 px, bytes32 py) = AccountSigner(account).p256PublicKey();
+        assertEq(px, bytes32(0), "P256 X not cleared");
+        assertEq(py, bytes32(0), "P256 Y not cleared");
+        assertFalse(AccountSigner(account).requireUserVerification(), "UV policy not cleared");
+    }
+
+    function test_Hedera_SetSignerRevertZero() public {
+        address account = _newAccountDiamond();
+        vm.prank(account);
+        vm.expectRevert(IAccountSigner.InvalidOwner.selector);
+        AccountSigner(account).setHederaAccountSigner(address(0));
+    }
+
+    function test_Hedera_SetSignerRevertNotAdmin() public {
+        address account = _newAccountDiamond();
+        _etchHederaAccountService();
+        vm.prank(stranger);
+        vm.expectRevert();
+        AccountSigner(account).setHederaAccountSigner(hederaAddr);
+    }
+
+    /// @dev The brick guard. An account is its OWN DEFAULT_ADMIN_ROLE holder, so the signer this call installs
+    ///      is the one every later admin call must satisfy — `setOwner` included. On a chain where HAS is dead
+    ///      every signature would return false and NOTHING could undo it, so the setter must refuse up front
+    ///      rather than succeed and strand the account on the next signature.
+    function test_Hedera_SetSignerRevertsWhereHasIsNotDeployed() public {
+        address account = _newAccountDiamond();
+        vm.etch(HAS_SYSTEM_CONTRACT, ""); // a chain that is not Hedera
+
+        vm.prank(account);
+        vm.expectRevert(IAccountSigner.HederaAccountServiceUnavailable.selector);
+        AccountSigner(account).setHederaAccountSigner(hederaAddr);
+
+        // still ECDSA, so the account can still be administered
+        assertEq(uint8(AccountSigner(account).signerType()), uint8(IAccountSigner.SignerType.ECDSA));
+        vm.prank(account);
+        AccountSigner(account).setOwner(stranger);
+        assertEq(AccountSigner(account).owner(), stranger);
+    }
+
+    /// @dev ECDSA-keyed Hedera account: HAS recovers the EVM alias from the 65-byte blob and it matches.
+    function test_Hedera_EcdsaSignatureAccepted() public {
+        address account = _hederaAccountDiamond(hederaAddr);
+        bytes32 opHash = keccak256("hedera user op");
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(hederaPk, _opDigest(opHash));
+        assertEq(_validateUserOp(account, opHash, abi.encodePacked(r, s, v)), 0, "HAS ECDSA signature rejected");
+    }
+
+    function test_Hedera_EcdsaWrongSignerRejected() public {
+        address account = _hederaAccountDiamond(hederaAddr);
+        bytes32 opHash = keccak256("hedera user op");
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(strangerPk, _opDigest(opHash));
+        assertEq(_validateUserOp(account, opHash, abi.encodePacked(r, s, v)), 1, "stranger signature accepted");
+    }
+
+    /// @dev ED25519 has no EVM precompile, so the network answers from its own key lookup — modelled here by
+    ///      the mock's fixture table over (account, messageHash, signature).
+    function test_Hedera_Ed25519AuthorizedAccepted() public {
+        address account = _hederaAccountDiamond(ED25519_ACCOUNT);
+        bytes32 opHash = keccak256("ed25519 user op");
+        bytes memory sig = _ed25519Sig();
+        hederaService.setEd25519Authorized(ED25519_ACCOUNT, _opDigest(opHash), sig, true);
+        assertEq(_validateUserOp(account, opHash, sig), 0, "authorized ED25519 signature rejected");
+    }
+
+    function test_Hedera_Ed25519UnauthorizedRejected() public {
+        address account = _hederaAccountDiamond(ED25519_ACCOUNT);
+        bytes32 opHash = keccak256("ed25519 user op");
+        assertEq(_validateUserOp(account, opHash, _ed25519Sig()), 1, "unauthorized ED25519 signature accepted");
+    }
+
+    /// @dev THE never-revert proof: the system contract reverts on a blob that is neither 64 nor 65 bytes, and
+    ///      the seam must still return `false` — so the 4337 path yields SIG_VALIDATION_FAILED, not a revert.
+    function test_Hedera_MalformedSignatureFailsWithoutReverting() public {
+        address account = _hederaAccountDiamond(hederaAddr);
+        bytes32 opHash = keccak256("hedera user op");
+        bytes memory malformed = hex"00112233445566778899"; // 10 bytes: the mock reverts on this length
+        vm.expectRevert(MockHederaAccountService.InvalidTransactionBody.selector);
+        MockHederaAccountService(HAS_SYSTEM_CONTRACT)
+            .isAuthorizedRaw(hederaAddr, abi.encodePacked(_opDigest(opHash)), malformed);
+        assertEq(_validateUserOp(account, opHash, malformed), 1, "malformed signature did not fail safely");
+    }
+
+    /// @dev Switching back is a plain `setOwner`, which re-arms the ECDSA scheme (the Hedera branch is gone).
+    function test_Hedera_SetOwnerReArmsEcdsa() public {
+        address account = _hederaAccountDiamond(hederaAddr);
+        vm.prank(account);
+        AccountSigner(account).setOwner(ownerAddr);
+        assertEq(uint8(AccountSigner(account).signerType()), uint8(IAccountSigner.SignerType.ECDSA), "type not reset");
+        bytes32 opHash = keccak256("back to ecdsa op");
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerPk, _opDigest(opHash));
+        assertEq(_validateUserOp(account, opHash, abi.encodePacked(r, s, v)), 0, "ECDSA owner sig rejected");
+        (v, r, s) = vm.sign(hederaPk, _opDigest(opHash));
+        assertEq(_validateUserOp(account, opHash, abi.encodePacked(r, s, v)), 1, "Hedera account still authorized");
+    }
+
+    /// @dev A 64-byte stand-in for an ED25519 signature (the mock keys its fixture table on the exact bytes).
+    function _ed25519Sig() internal pure returns (bytes memory) {
+        return abi.encodePacked(keccak256("ed25519-R"), keccak256("ed25519-S"));
     }
 }
