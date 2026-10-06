@@ -27,6 +27,6 @@ jobs:
       pull-requests: write # open/update the standing release PR
     steps:
       # Manifest-driven mode: reads release-please-config.json + .release-please-manifest.json from the repo.
-      - uses: googleapis/release-please-action@v5
+      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
         with:
           token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
