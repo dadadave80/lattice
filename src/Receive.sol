@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.30;
+pragma solidity ^0.8.30 ;
 
 /// @title Receive
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
