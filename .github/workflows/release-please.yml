@@ -29,4 +29,4 @@ jobs:
       # Manifest-driven mode: reads release-please-config.json + .release-please-manifest.json from the repo.
       - uses: googleapis/release-please-action@v5
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
