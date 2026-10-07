@@ -35,3 +35,4 @@ docs/*
 !docs/guides/
 docs/guides/*
 !docs/guides/compose-your-own-diamond.md
+!docs/guides/hedera.md

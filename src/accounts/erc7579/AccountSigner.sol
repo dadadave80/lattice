@@ -8,7 +8,8 @@ import {IAccountSigner} from "@lattice/interfaces/accounts/IAccountSigner.sol";
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice Single-owner signer facet. The configured owner's signatures authorize ERC-4337 `validateUserOp`
 ///         (see `ERC4337Validation`) and ERC-1271 `isValidSignature` (see `ERC1271Signature`). ECDSA is the
-///         default scheme; a P256 (secp256r1) raw key or a WebAuthn passkey can be set as the owner instead.
+///         default scheme; a P256 (secp256r1) raw key, a WebAuthn passkey, or a native Hedera account can be
+///         set as the owner instead.
 /// @dev Stateless delegator — logic/storage live in {AccountSignerLib}. The ECDSA owner may be an EOA or an
 ///      ERC-1271 contract; passkey verification uses the vendored audited Solady P256/WebAuthn libs.
 /// @custom:lattice-version 0.2.0
@@ -48,6 +49,11 @@ contract AccountSigner is IAccountSigner {
         AccountSignerLib.setWebAuthnSigner(x, y, requireUserVerification_);
     }
 
+    /// @inheritdoc IAccountSigner
+    function setHederaAccountSigner(address account) external virtual {
+        AccountSignerLib.setHederaAccountSigner(account);
+    }
+
     /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
     /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
     ///      `forge inspect AccountSigner methodIdentifiers` (alphabetical by signature); kept in exact parity by
@@ -55,11 +61,12 @@ contract AccountSigner is IAccountSigner {
     ///      `owner()` 0x8da5cb5b
     ///      `p256PublicKey()` 0x29ede33c
     ///      `requireUserVerification()` 0x90d1a7de
+    ///      `setHederaAccountSigner(address)` 0x9c012f57
     ///      `setOwner(address)` 0x13af4035
     ///      `setP256Signer(bytes32,bytes32)` 0x0987050a
     ///      `setWebAuthnSigner(bytes32,bytes32,bool)` 0x2c87b6e5
     ///      `signerType()` 0x37d694aa
     function exportSelectors() external pure virtual returns (bytes memory selectors) {
-        selectors = hex"8da5cb5b29ede33c90d1a7de13af40350987050a2c87b6e537d694aa";
+        selectors = hex"8da5cb5b29ede33c90d1a7de9c012f5713af40350987050a2c87b6e537d694aa";
     }
 }

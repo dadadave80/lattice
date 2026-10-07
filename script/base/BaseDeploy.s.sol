@@ -155,15 +155,17 @@ abstract contract BaseDeploy is Script, GetSelectors {
     //////////////////////////////////////////////////////////////////////////*//
 
     /// @notice The {FacetInventory} facet `name` at its release address (see {DeployRelease}): reused when code
-    ///         already lives there, otherwise deployed there through CreateX. Chains without CreateX (Anvil,
-    ///         tests) get a plain CREATE instead.
+    ///         already lives there, otherwise deployed there through CreateX — or, on a chain CreateX never
+    ///         reached, through the {CreateXDeployer.ARACHNID_PROXY} fallback at that chain's own release
+    ///         address. Only a chain with NEITHER deployer gets a plain CREATE instead — rarer than it sounds,
+    ///         since Anvil and Foundry's test EVM both pre-deploy that proxy as their default CREATE2 deployer.
     /// @dev The address commits to the initcode, so a facet compiled from code that differs from the release
     ///      at {LatticeVersion.VERSION} lands at an unrelated address instead of colliding with it. Anyone may
     ///      deploy a missing facet; {DeployRelease} later skips it and registers it.
     /// @param name The facet contract name exactly as listed in {FacetInventory}.
     function _facet(string memory name) internal returns (address facet) {
         string memory path = _inventoryPath(name);
-        if (address(CreateXDeployer.CREATEX).code.length == 0) return deployCode(path);
+        if (!CreateXDeployer.hasRawDeployer()) return deployCode(path);
         bytes memory initCode = vm.getCode(path);
         bytes32 salt = keccak256(abi.encodePacked("lattice.", name, ".", LatticeVersion.VERSION));
         facet = CreateXDeployer.predictRaw(salt, keccak256(initCode));

@@ -174,6 +174,31 @@ and a row here.
   leaving every namespace string and storage slot below untouched. (Errors/events added to
   `IProtocolAdapter` in the same change — `ProtocolAdapterUnauthorized`, `ProtocolAdapterInvalidRecipient`,
   `OperatorSet` — do not affect a Solidity `interfaceId`, so `0x8f7783e6` is unchanged.)
+- **Hedera system-contract modules** wrap the network's fixed-address system contracts, which have no
+  bytecode and must never be `delegatecall`ed: HTS `0x167`, Exchange Rate `0x168`, PRNG `0x169`, HAS `0x16a`,
+  HSS `0x16b`. Only two of the five are storage-bearing. **HTSAdapter** keeps a single field —
+  `_createdTokens`, the set of HTS tokens the diamond treasuries — because associations, balances and
+  allowances live in HTS and a cached copy would drift; it mints `IHTSAdapter` (`0x37ae8968`) and is gated on
+  `HTS_MANAGER_ROLE` (associate / create) and `HTS_OPERATOR_ROLE` (move treasury funds, mint, burn).
+  **HSSAdapter** keeps one `_schedules` map (job id → live schedule address) and mints `IHSSAdapter`
+  (`0xd07095cf`), gated on `HSS_SCHEDULER_ROLE`. **HASSignatureVerifier** (`0x96c247cb`),
+  **HederaExchangeRateAdapter** (`0x409e5cd5`) and **HederaPrngAdapter** (`0x8e848f42`) are stateless: no
+  ERC-7201 slot and no row in the storage-uniqueness array, one ERC-165 map slot each. Together the five add
+  **two** ERC-7201 storage slots and **five** ERC-165 map slots.
+  DIAMOND-SPECIFIC RULE: a facet call is a `delegatecall` frame, so HTS refuses a plain `CONTRACT_ID` key
+  wherever it verifies one (`INVALID_FULL_PREFIX_SIGNATURE_FOR_PRECOMPILE`, 326). Every token key
+  `HTSAdapterLib` sets therefore uses `key.delegatableContractId = address(this)`, and a token created
+  elsewhere should have its keys updated to that form. MEASURED CAVEAT (testnet 2026-09-12): the blunter
+  claim that a `contractId` key on a diamond is simply dead is false for the ordinary deployment shape —
+  on a relay-deployed diamond such a key is byte-identical to the diamond's own account key, which is the
+  dispatched child's payer key, so it is elided before verification and works. `delegatableContractId` is
+  a different protobuf oneof and is genuinely verified; it is also the only form that survives a diamond
+  whose account key is not `contractId(self)`, a key nested in a KeyList/ThresholdKey, or a key naming
+  another contract. See `docs/guides/hedera.md`. A diamond also has zero auto-association slots, so
+  `associateToken(address(this), token)` is a required step before any inbound transfer.
+  `SignerType.HederaAccount` is **appended** to `IAccountSigner.SignerType` (stored as a `uint8`, so appending
+  is layout-safe) and adds no storage field: `AccountSignerStorage` is unchanged, and `IAccountSigner` remains
+  the unregistered internal signer seam it already was.
 
 ## Registry
 
@@ -200,6 +225,7 @@ and a row here.
 | ERC1155 (metadata URI) | `lattice.storage.ERC1155` | (shares ERC1155 slot) | `IERC1155MetadataURI` | `0x0e89341c` | `0x16223e323116e54e339612437d2478d553a51948c039066bf3354fac71c5ef6c` |
 | ERC2981 | `lattice.storage.ERC2981` | `0xf01000cac811e850d05bb5588943b621fb762a575809c98a87e3540df4e97a00` | `IERC2981` | `0x2a55205a` | `0x0b6e5f3aef2b5db6c8b7f9a90550b00e1bcf3efa09341feda1a90dabdea92899` |
 | ERC4626 | `lattice.storage.ERC4626` | `0x748f49bc653df23655f3b413e3d5c91c1b4c965af17a32d743e995b145325100` | `IERC4626` | `0x87dfe5a0` | `0xdad016fc8af4f826152a6bfdd6ece63fb81a66a94f522cc8a79db8d6838e2732` |
+| HTSAdapter | `lattice.storage.HTSAdapter` | `0x91b64afeea686e80e2bda212862c0850ed3389288ac3f914b1109537d6e3f500` | `IHTSAdapter` | `0x37ae8968` | `0x0785670462ca582bde40afa31cf7989a7c25557d842b1003652c1ca6b4044d81` |
 
 ### Governance
 
@@ -254,6 +280,9 @@ and a row here.
 | ChainlinkAutomationAdapter | `lattice.storage.ChainlinkAutomationAdapter` | `0x79ff96d501e28b99bca4f72c19ec619bce29c1cac16a5bcab62634e5e94dcb00` | `IChainlinkAutomationAdapter` | `0x97290114` | `0xda518c4395658f1bda3e69bd76a71c3cebddb4103a2ca4f795abdfcb18525c7c` |
 | ChainlinkCREAdapter | `lattice.storage.ChainlinkCREAdapter` | `0x38811f86f85f0447c0970d57466dc7a3c4187640f04a44e7622c183e45f90b00` | `IReceiver` (canonical CRE id) | `0x805f2132` | `0x441e497903b68a1fc13e526fe3469e615b027289cdd3d767c8ce4993ccc4bf83` |
 | TWAPOracle | `lattice.storage.TWAPOracle` | `0xc2bcc163613aea761b734a9692ad3548aab9088be29b53e03facf6a2a351df00` | `ITWAPOracle` | `0xd1baebe0` | `0x3edcb012a40cef5fed8aba3a5816c3233af9ecd91b8a1965a2b67b8940a0f49f` |
+| HSSAdapter | `lattice.storage.HSSAdapter` | `0x12fa09b7b2cb13ace416911567e16cefd04261b5db45857ec33ecae7c1298700` | `IHSSAdapter` | `0xd07095cf` | `0x336d3eab18c157b0aa1696b6a9cef1943b53e0b1cdacf2490de1d33245c45247` |
+| HederaExchangeRateAdapter | — (stateless) | — | `IHederaExchangeRateAdapter` | `0x409e5cd5` | `0x63eb9226e864b43834b3b55a3188cdb0170b49fdd7f8a67c2a48bd7b9f6a8378` |
+| HederaPrngAdapter | — (stateless) | — | `IHederaPrngAdapter` | `0x8e848f42` | `0xe34a308c0f52419d136ed1b5d11f586cf680db1cc128f8b2678f2b24615706b7` |
 
 ### Crosschain
 
@@ -296,6 +325,7 @@ and a row here.
 | SessionKey | `lattice.storage.SessionKey` | `0xd72f45b3818762a6cc49804ed52c577908badd7fff8bbd7849829b4fc764ae00` | — (admin/policy) | — | — |
 | ERC7579ModuleConfig | `lattice.storage.ERC7579ModuleConfig` | `0xf5855f8dc57bbb54955d6871575c862d7a11401119f5a873c91e7ac60628d800` | `IERC7579Execution` / `IERC7579AccountConfig` / `IERC7579ModuleConfig` | `0x3f3f9537` / `0xbe1d6cf6` / `0x232dbb4a` | `0x1adc25256844eecf70d1111a7d897d059d6c39bccc33e2fe1bcdd0aa07e45227` / `0xca27659497801bbd07af0889ead6ea5a1a9b8739438e7af51464f7082b08ae43` / `0x1c2e0d7514777ddafe41add8aefc1cb6319fbc463de0c6eb0b00433efbdbdd41` |
 | ERC6551Account | `lattice.storage.ERC6551Account` | `0x5d509296c8693d1a2071f7702ffb166090e7cdcee4fc11a42df61b6a19026100` | `IERC6551Account` / `IERC6551Executable` | `0x6faff5f1` / `0x51945447` | `0xe5e50471a231013bea8f6034ec0b978814d697120ebd88e3624ed42959ed0a66` / `0x7119a8e42d55700f1f34f34e17ffb769e414497fcab2ff2004aa97c610742b4b` |
+| HASSignatureVerifier | — (stateless) | — | `IHASSignatureVerifier` | `0x96c247cb` | `0x6abd9841429d5258dad1bcd53196ecd11f06899bbc66ddc8c90a5bb0ca520e26` |
 
 ### Security
 
@@ -339,7 +369,7 @@ and a row here.
 
 ---
 
-**Counts:** 86 storage-bearing modules (86 unique ERC-7201 slots) and 87 ERC-165 interface
+**Counts:** 88 storage-bearing modules (88 unique ERC-7201 slots) and 92 ERC-165 interface
 map slots (the privacy track adds the stateful `ERC6538Registry` — one ERC-7201 slot and one
 `IERC6538Registry` ERC-165 slot — plus the stateless `ERC5564Announcer` — no ERC-7201 slot, one
 `IERC5564Announcer` ERC-165 slot — and the stateless `Groth16Verifier` — no ERC-7201 slot, one
@@ -413,7 +443,11 @@ P256 key, or a WebAuthn passkey — #58 item 3) backs both `validateUserOp` and 
 defensive rehashing on the 1271 path (#59) composing audited OZ/Solady rather than hand-rolled crypto. The
 `ERC6551Account` facet (#58 item 8) makes the Diamond a token-bound account controlled by the owner of a bound
 ERC-721 — a fifth ERC-7201 slot and two more ERC-165 ids (`IERC6551Account` `0x6faff5f1`, `IERC6551Executable`
-`0x51945447`), bringing accounts to five ERC-7201 slots and seven ERC-165 map slots.
+`0x51945447`), bringing accounts to five ERC-7201 slots and seven ERC-165 map slots. The Hedera system-contract
+track adds five facets across three areas: `HTSAdapter` (tokens) and `HSSAdapter` (oracles) are
+storage-bearing — one ERC-7201 slot and one ERC-165 map slot each — while `HASSignatureVerifier`
+(accounts), `HederaExchangeRateAdapter` and `HederaPrngAdapter` (oracles) are stateless: no ERC-7201 slot,
+one ERC-165 map slot each. So Hedera contributes two ERC-7201 slots and five ERC-165 map slots.
 
 **EIP-7702 storage-collision review (#58 item 7).** The same facets run as an EIP-7702 delegate, executing
 against the *EOA's own storage*. This is collision-safe by construction: every slot the account touches is high
