@@ -1,5 +1,72 @@
 # Changelog
 
+## [0.4.0](https://github.com/dadadave80/lattice/compare/v0.3.0...v0.4.0) (2026-10-07)
+
+
+### Features
+
+* **accounts:** HederaAccount signer type via HAS ([530bb5d](https://github.com/dadadave80/lattice/commit/530bb5d5854a59bfe97712898e893585364af226))
+* **cctp:** add hook receipt NFT demo ([9383ab4](https://github.com/dadadave80/lattice/commit/9383ab447b1a0b08c0a5f8a13c17aaec7167f933))
+* **cctp:** add hook receipt NFT demo ([70cab00](https://github.com/dadadave80/lattice/commit/70cab00a8a675ec8de7990a81044a27930e901b8))
+* **factory:** support ENS infrastructure names ([683c998](https://github.com/dadadave80/lattice/commit/683c998888b3b9ec1b71c3bd0dd4fa3666c1686c))
+* **factory:** support ENS reverse record ownership ([c0c8e50](https://github.com/dadadave80/lattice/commit/c0c8e50e3855c0f8f701f2ae6c611f12b002077a))
+* **grants:** deliver ENS composition example, docs, and storage Action ([413cc3d](https://github.com/dadadave80/lattice/commit/413cc3d35c7d9e38501522af1332e2648f992ab1))
+* **grants:** implement ENS composition guide and reusable storage guard ([d90c510](https://github.com/dadadave80/lattice/commit/d90c5103dcb22c023ef3bc02c6e8d2a3bae1d670))
+* **grants:** Milestone 2 governed composition example and guide ([0e1560b](https://github.com/dadadave80/lattice/commit/0e1560bca65abc937050b166eccbfb1d254831d3))
+* **grants:** run milestone 2 deployments and governance through make on any EVM RPC ([647257b](https://github.com/dadadave80/lattice/commit/647257b95aa41cbb2ca4c54423e2f7c90206dbfb))
+* **grants:** separate milestone 2 composition example for review ([9380e05](https://github.com/dadadave80/lattice/commit/9380e05b56f3287e445be62195b5d79e1456c260))
+* **grants:** strengthen the Milestone 2 example and guide ([2cdea5a](https://github.com/dadadave80/lattice/commit/2cdea5a640f81451f67f400391e17e57a2673307))
+* **grants:** strengthen the Milestone 2 example and guide ([6b006b4](https://github.com/dadadave80/lattice/commit/6b006b4b439ed94a91b3f2afe5512bee250ae730))
+* **hedera:** finish HTSAdapter + recipe ([b1b57ef](https://github.com/dadadave80/lattice/commit/b1b57ef91c35a419542dcbb0c2fc5907c4ef8f43))
+* **hedera:** Hedera system-contract modules (HTS, HAS, HSS, exchange rate, PRNG) ([52dc747](https://github.com/dadadave80/lattice/commit/52dc7478fed179ef58d7c9f640ad46a24e4f9c56))
+* **hedera:** put the five facets under the release and storage gates ([d6cd4d2](https://github.com/dadadave80/lattice/commit/d6cd4d242a3ff97f4f3197bfba66f3dd65064fb6))
+* **hedera:** scaffold Hedera system-contract modules (HTS, HAS, HSS, exchange rate, PRNG) ([28e08be](https://github.com/dadadave80/lattice/commit/28e08be04c9ade241688a427cfe85fcfdbc02b6a))
+* promote ENS milestone 2 and atomic recipe deployments to main ([25db4d7](https://github.com/dadadave80/lattice/commit/25db4d7c49489dba6b9787703e85b4bf5a59ba1c))
+* **script:** Arachnid fallback for chains without CreateX ([47ed15f](https://github.com/dadadave80/lattice/commit/47ed15fc74ab9fc6ef6d6adf62e5c4a19cd9956b))
+* **scripts:** promote shared facet and factory reuse to main ([f421cd5](https://github.com/dadadave80/lattice/commit/f421cd5e3825eac5c5ea3829861ee438605babae))
+* **scripts:** reuse released facets and a shared factory in recipes ([83f6276](https://github.com/dadadave80/lattice/commit/83f6276bea643b3b04332801c6d164e7e5c57f00))
+* **scripts:** reuse released facets and a shared factory in recipes ([a844edf](https://github.com/dadadave80/lattice/commit/a844edf3ea2eea1b297b89e9899bb070b2e8cd59))
+
+
+### Bug Fixes
+
+* **accounts:** refuse a Hedera signer where HAS cannot answer ([9fc7757](https://github.com/dadadave80/lattice/commit/9fc77579247f4dd5a6bac96fe2832cf5c0858869))
+* **ci:** pin Foundry and apply current Solidity formatting ([49e1a69](https://github.com/dadadave80/lattice/commit/49e1a6903025dfe5f2a19f8647fd7f99af09192b))
+* **deploy:** assemble recipe diamonds through LatticeFactory ([c6c4d1c](https://github.com/dadadave80/lattice/commit/c6c4d1c16c0c06afd07835e0538f9713d3bd57f7))
+* **deploy:** create and initialize recipe diamonds atomically through LatticeFactory ([f2de9ec](https://github.com/dadadave80/lattice/commit/f2de9ecb53547145ecb9b4ba82da36fa54733a95))
+* **deploy:** initialize lattice atomically ([4d95f2f](https://github.com/dadadave80/lattice/commit/4d95f2f6d7f8e106211aaeb526457caee9c95ebd))
+* **deps:** foundry.lock pins diamond-lib at the submodule's commit ([cf59285](https://github.com/dadadave80/lattice/commit/cf59285fe3a2e3ebf10c7f5b6a240c970bae127c))
+* **deps:** foundry.lock pins diamond-lib at the submodule's commit ([9d3a847](https://github.com/dadadave80/lattice/commit/9d3a847dcda85d35a85509ba76b4f5b0d3bd9b81))
+* **examples:** use one make example command for deployment and governance ([6ae4b24](https://github.com/dadadave80/lattice/commit/6ae4b24c2c58ac7df37cf342565e1614d43a802d))
+* **grants:** default M2 verification to Sourcify ([6aca8f3](https://github.com/dadadave80/lattice/commit/6aca8f3cada7df57a5b50a877062c9b73a5c66d0))
+* **grants:** default M2 verification to Sourcify ([d5e72af](https://github.com/dadadave80/lattice/commit/d5e72af4b4a176c903348b34c3670df4652815e7))
+* **grants:** exercise M2 deployment in CI and unify analysis toolchain ([f47e3fa](https://github.com/dadadave80/lattice/commit/f47e3faa61fd088e3302474210dab344a4f7201b))
+* **hedera:** correct two confident claims using live testnet evidence ([37f5ed7](https://github.com/dadadave80/lattice/commit/37f5ed78508ef502421197acf213601b5b8bb826))
+* **hedera:** corrections from the adversarial review pass ([3d818a2](https://github.com/dadadave80/lattice/commit/3d818a290f6eea7f8e7b5b44123b71f22b170d22))
+* **hedera:** probe script — rpc decode, schedule expiry, Foundry version ([af5b05e](https://github.com/dadadave80/lattice/commit/af5b05e068bd9ec36b3b104e1940d15cfa443701))
+* make Lattice braille artwork symmetric ([3d5a3ca](https://github.com/dadadave80/lattice/commit/3d5a3cadad2c26994773bb2e7e378ebafa9f9143))
+
+
+### Documentation
+
+* **assets:** add Lattice logomark ([ca1fbe4](https://github.com/dadadave80/lattice/commit/ca1fbe45f62f06943d3259959d63682baa7498f8))
+* **assets:** add Lattice logomark ([768f881](https://github.com/dadadave80/lattice/commit/768f881d8474657cfc92ef1950c4098583006d53))
+* **broadcast:** track receipt setup and Sepolia factory deployment logs ([3649919](https://github.com/dadadave80/lattice/commit/36499195c3466173870f0b57e334eb197e6d679a))
+* **broadcast:** track receipt setup and Sepolia factory deployment logs ([01c4d91](https://github.com/dadadave80/lattice/commit/01c4d9175ca98b6c39976b27de0a06a8241bed82))
+* **cctp:** capture grant demo receipt relay ([cbd59e5](https://github.com/dadadave80/lattice/commit/cbd59e543e9957768a71b073cd6dfdd02b37272d))
+* **example:** explain verifying vaults from the shared Sepolia factory ([21ee97f](https://github.com/dadadave80/lattice/commit/21ee97f5ba0916ed0ab802677cd5a4b9052c85be))
+* **example:** explain verifying vaults from the shared Sepolia factory ([1abc6ae](https://github.com/dadadave80/lattice/commit/1abc6ae96c0da2071279186942461aff4eff671a))
+* **example:** note which checkout verifies vaults from a shared factory ([a299582](https://github.com/dadadave80/lattice/commit/a299582bef832009eac57df8d9d63532e19c283b))
+* **grants:** promote milestone 2 evidence to main ([4e95664](https://github.com/dadadave80/lattice/commit/4e956649aebb8cebf7d3d73fd4c472ab3ecbea2b))
+* **grants:** record milestone 2 evidence and pin the guide to grant-m2 ([3e4dfe5](https://github.com/dadadave80/lattice/commit/3e4dfe57c76137f2aa1c5928abe95c840e57d850))
+* **grants:** record milestone 2 evidence and pin the guide to grant-m2 ([5abad39](https://github.com/dadadave80/lattice/commit/5abad39eed3778308e21c386a6dc75dba720403d))
+* **grants:** repair Milestone 2 evidence after the history rewrite ([04927af](https://github.com/dadadave80/lattice/commit/04927af512c2dffde5067ad9d2a2fc772dc88ef9))
+* **grants:** repair Milestone 2 evidence after the history rewrite ([a4e32e2](https://github.com/dadadave80/lattice/commit/a4e32e2f841ab4ef3df075b8b91548d737eee7fa))
+* **hedera:** forge script cannot broadcast through the hashio relay ([b4b084c](https://github.com/dadadave80/lattice/commit/b4b084c8a8b4beeafabbc87fde61c103141009a4))
+* **hedera:** forge script is unusable on Hedera; deploy with forge create ([551cc56](https://github.com/dadadave80/lattice/commit/551cc56da17f1120b40c70d6ce4bde794ff86792))
+* **hedera:** guide + registry rows ([572310f](https://github.com/dadadave80/lattice/commit/572310fc8fce663f73ee4cf1b96590a5b116dded))
+* **hedera:** no forge script flag works around hashio; name the exact call ([b159407](https://github.com/dadadave80/lattice/commit/b159407e6dc421f2fb21433d7c343f485c5a18bf))
+
 ## [0.3.0](https://github.com/dadadave80/lattice/compare/v0.2.0...v0.3.0) (2026-07-25)
 
 
