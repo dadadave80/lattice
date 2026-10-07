@@ -44,7 +44,7 @@ test: ## Run the test suite (MATCH=<Contract> to filter)
 ifeq ($(strip $(MATCH)),)
 	forge test
 else
-	forge test --match-contract $(MATCH)
+	forge test --match-contract '$(MATCH)'
 endif
 
 .PHONY: test-v
@@ -52,7 +52,7 @@ test-v: ## Verbose test run (MATCH=<Contract> to filter)
 ifeq ($(strip $(MATCH)),)
 	forge test -vvv
 else
-	forge test --match-contract $(MATCH) -vvv
+	forge test --match-contract '$(MATCH)' -vvv
 endif
 
 .PHONY: test-path
