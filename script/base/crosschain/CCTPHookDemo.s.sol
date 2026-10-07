@@ -99,10 +99,14 @@ contract CCTPHookDemo is DeployCCTPBridgeAdapter {
         (address baseDiamond, address vault) = _setupHookDestWithReturn(admin, maxFee, minFinalityThreshold);
         vm.stopBroadcast();
 
-        // Arc source hub: deploy + register Base, configuring its `destinationCaller` to the Base diamond so
-        // ONLY that diamond's relayMessageWithHook can consume the message. Without this lock the mint is
-        // permissionless and a third party could receiveMessage hook-lessly, stranding USDC in the vault with
-        // no hook fired. (No USDC moves here, so it broadcasts fine on Arc despite revm's precompile gap.)
+        // Arc source hub: deploy + register Base, configuring its `destinationCaller` to the Base diamond. This
+        // is REQUIRED for Lattice hooked burns (`depositForBurnWithHook` reverts
+        // CCTPHookWithoutDestinationCaller at `bytes32(0)`): without the lock a third party could call Circle's
+        // receiveMessage directly and mint hook-lessly, stranding USDC in the vault with no hook fired. With it,
+        // only the Base diamond can receive the message, and the diamond's plain `relayMessage` refuses a hooked
+        // burn unless the caller is its mintRecipient, so a third party must go through `relayMessageWithHook`.
+        // The lock is per domain, so plain burns to Base also go through the Base diamond. (No USDC moves here,
+        // so it broadcasts fine on Arc despite revm's precompile gap.)
         vm.createSelectFork(ARC_ALIAS);
         vm.startBroadcast();
         (FacetCut[] memory cuts, address init, bytes memory cd) =

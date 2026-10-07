@@ -14,6 +14,16 @@ pragma solidity >=0.8.4;
 ///      authority: the executor calls with no funds and no roles, so a hostile hook gains nothing beyond a plain
 ///      EOA's reach. Implementations MUST NOT assume the mint went to them, MUST NOT trust `payload`, and any
 ///      revert here is swallowed by the executor (the mint stands and the CCTP nonce is consumed regardless).
+///      Running out of gas in THIS frame is the exception: it reverts the whole relay (mint unwound, nonce live),
+///      so a hook that always exhausts its gas can only be bypassed by the `mintRecipient` relaying hook-less
+///      itself. The executor sees only this frame, though: when a sub-call this hook makes runs out of gas, the
+///      hook keeps its 1/64 reserve and its revert is an ORDINARY failure (swallowed, nonce consumed), so a
+///      relayer could pick a gas limit that starves the sub-call and skips the hook for good.
+///      Implementations that do gas-hungry work in sub-calls (a vault deposit, a swap) MUST therefore re-raise
+///      starvation by consuming ALL remaining gas (`assembly { invalid() }`), which trips the executor's check:
+///      either at entry when `gasleft()` is below what the hook needs, or after a low-level sub-call that failed
+///      with at most 1/63 of its pre-call gas left. A plain `require`/`revert` does NOT re-raise it — it hands
+///      the unspent gas back and reads as an ordinary failure.
 interface ICCTPHookReceiver {
     /// @notice Invoked by the {CCTPHookExecutor} after the attested USDC mint, with Circle-attested context.
     /// @param sourceDomain  The CCTP domain the burn originated on (from the attested message header).

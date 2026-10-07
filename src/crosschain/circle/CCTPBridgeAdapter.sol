@@ -13,7 +13,9 @@ import {ICCTPBridgeAdapter} from "@lattice/interfaces/crosschain/ICCTPBridgeAdap
 ///         this facet is deliberately not an `IERC7786GatewaySource` and never routes through OpenBridge.
 /// @dev Stateless delegator — logic/storage live in {CCTPBridgeAdapterLib}. The outbound burn is `nonReentrant`
 ///      with strict CEI and exact-amount approval hygiene; the inbound relay is a PERMISSIONLESS passthrough
-///      (trust roots in Circle's Iris attester set + denylist, not this contract).
+///      (trust roots in Circle's Iris attester set + denylist, not this contract), except that `relayMessage`
+///      refuses a Lattice hooked burn from anyone but its `mintRecipient` so the hook cannot be skipped. A Lattice
+///      hooked burn requires the destination domain's `destinationCaller` to be the destination diamond.
 /// @custom:lattice-version 0.1.0
 /// @custom:lattice-source Circle
 contract CCTPBridgeAdapter is ICCTPBridgeAdapter {

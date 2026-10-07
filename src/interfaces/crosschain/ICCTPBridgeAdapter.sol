@@ -48,7 +48,9 @@ interface ICCTPBridgeAdapter {
     );
 
     /// @notice Emitted after an inbound hooked message is relayed: `success` is whether the hook target ran
-    ///         without reverting. The mint stands and the CCTP `nonce` is consumed regardless of `success`.
+    ///         without reverting. The mint stands and the CCTP `nonce` is consumed regardless of `success` (a
+    ///         target whose OWN frame runs out of gas reverts the relay instead; an out-of-gas in a sub-call it
+    ///         makes still emits `false` unless the target re-raises it, see {ICCTPHookReceiver}).
     event HookExecuted(bytes32 indexed nonce, address indexed target, bool success);
 
     // -------------------------------------------------------------------------
@@ -92,6 +94,15 @@ interface ICCTPBridgeAdapter {
     /// @notice An inbound message is not a CCTP v2 `BurnMessageV2` addressed to this adapter's TokenMessenger
     ///         (wrong length, wrong header/body version, or a mismatched header recipient).
     error CCTPNotBurnMessage();
+
+    /// @notice {relayMessage} was given a burn carrying a valid Lattice hook envelope by someone other than its
+    ///         attested `mintRecipient`. Relay it through {relayMessageWithHook} so the hook runs.
+    error CCTPHookRelayRequired();
+
+    /// @notice {depositForBurnWithHook} sent a Lattice hook envelope toward a domain whose `destinationCaller` is
+    ///         `bytes32(0)`: anyone could then mint through Circle's transmitter directly and skip the hook.
+    ///         Configure the destination diamond as the domain's `destinationCaller` first.
+    error CCTPHookWithoutDestinationCaller(uint32 domain);
 
     // -------------------------------------------------------------------------
     //                                  Reads
@@ -146,18 +157,29 @@ interface ICCTPBridgeAdapter {
 
     /// @notice Like {depositForBurn} but attaches CCTP v2 `hookData` to the burn message (via
     ///         `TokenMessengerV2.depositForBurnWithHook`) for the destination recipient to execute. Reverts
-    ///         {CCTPEmptyHookData} if `hookData` is empty (use {depositForBurn} for a hook-less burn).
+    ///         {CCTPEmptyHookData} if `hookData` is empty (use {depositForBurn} for a hook-less burn). When
+    ///         `hookData` is a Lattice envelope (`HOOK_MAGIC ‖ target ‖ payload`) it also reverts
+    ///         {CCTPHookWithoutDestinationCaller} unless the destination domain's `destinationCaller` is set: it
+    ///         MUST be the destination diamond, or anyone could mint via Circle's transmitter and skip the hook.
+    ///         Other `hookData` is not guarded (the destination relays it plainly). The lock is PER DOMAIN, so it
+    ///         also routes plain {depositForBurn} burns to that domain through the destination diamond.
     function depositForBurnWithHook(uint256 amount, bytes calldata recipient, bytes calldata hookData) external;
 
     /// @notice PERMISSIONLESS passthrough: forwards an Iris-attested CCTP message to the transmitter, which
     ///         mints USDC directly to the recipient. Reverts {CCTPRelayFailed} if the transmitter returns false.
+    ///         A burn carrying a valid Lattice hook envelope (one {relayMessageWithHook} accepts) reverts
+    ///         {CCTPHookRelayRequired} BEFORE minting unless the caller is its attested `mintRecipient` (an
+    ///         escape hatch that delivers the funds without running the hook).
     function relayMessage(bytes calldata message, bytes calldata attestation) external;
 
     /// @notice PERMISSIONLESS relay that ALSO executes a Lattice hook envelope carried in the burn message: it
     ///         validates the message is a `BurnMessageV2` addressed to this adapter's TokenMessenger carrying a
     ///         valid Lattice `hookData` envelope, mints via the transmitter, THEN calls the decoded hook target
     ///         through the {CCTPHookExecutor} with Circle-ATTESTED context. Hook execution is LENIENT — a
-    ///         reverting/return-bombing target does NOT revert the relay (the mint stands, nonce consumed).
+    ///         reverting/return-bombing target does NOT revert the relay (the mint stands, nonce consumed) —
+    ///         but a target whose OWN frame runs out of gas reverts the whole relay with
+    ///         {ICCTPHookExecutor-CCTPHookOutOfGas}, leaving the nonce live for a retry with more gas. A sub-call
+    ///         out-of-gas reads as an ordinary revert unless the target re-raises it ({ICCTPHookReceiver}).
     ///         Reverts {CCTPNotBurnMessage} / {CCTPInvalidHookData} on a non-conforming message BEFORE minting,
     ///         and {CCTPRelayFailed} if the transmitter returns false.
     function relayMessageWithHook(bytes calldata message, bytes calldata attestation) external;
