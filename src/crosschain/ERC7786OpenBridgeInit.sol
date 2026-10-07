@@ -11,7 +11,9 @@ import {ERC7786OpenBridgeLib} from "@lattice/crosschain/libraries/ERC7786OpenBri
 ///         recipient interfaces via ERC-165. Delegatecalled by {Diamond.initialize} inside the initializing window
 ///         (so it must NOT open its own pre/postInitializer; each `__*_init` guard passes because the window is
 ///         already open). Companion to the {ERC2981Init} and {ChainlinkAdapterInit} patterns — a first-class
-///         production deploy artifact.
+///         production deploy artifact. The bridge starts at threshold 0 and executes nothing until configured;
+///         the admin must then call `addGateway` (each gateway), `setThreshold`, and only then
+///         `registerRemoteBridge` (which reverts while the threshold is 0).
 contract ERC7786OpenBridgeInit {
     /// @notice Runs the access-control + open-bridge module initializers. MUST be invoked via the diamond's
     ///         `initialize` `_init` delegatecall.

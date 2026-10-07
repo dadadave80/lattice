@@ -80,6 +80,9 @@ and re-derived from first principles by `test/unit/StorageSlotVerificationTest.t
   attestations (content-keyed trackers, one-shot execution). `setMinDirectCoverage(k)` (0 = off)
   hard-refuses destinations whose **direct** registry coverage is below `k` — hub-routed coverage
   (ZetaChain via the ZEVM) never counts. Aurora is the M=2 showcase (`script/config/EnableAurora.s.sol`).
+  The bridge starts at threshold 0 and never executes an inbound message in that state, so the admin
+  configures it in this order: `addGateway` (each gateway), then `setThreshold`, then `registerRemoteBridge`,
+  which reverts with `ThresholdViolation` while the threshold is still 0.
 - **`CrosschainLink`** authorizes exactly **one gateway per source chain** and tag-dispatches inbound
   payloads (`FUNGIBLE_BRIDGE_TAG` → the bridge libs). This is what makes cross-adapter replay a
   non-issue: a second transport is rejected at auth, or counts as an OpenBridge attestation.

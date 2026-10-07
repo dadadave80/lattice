@@ -55,7 +55,8 @@ interface IERC7786OpenBridge {
     /// @notice The recipient returned a value other than the ERC-7786 magic.
     error InvalidExecutionReturnValue();
 
-    /// @notice The threshold must satisfy `0 < N <= M` (M = number of gateways).
+    /// @notice The threshold must satisfy `0 < N <= M` (M = number of gateways). Also thrown by
+    ///         `registerRemoteBridge` while the threshold is still 0.
     error ThresholdViolation();
 
     /// @notice The destination chain's DIRECT gateway coverage in the {IChainRegistry} is below the configured
@@ -82,6 +83,8 @@ interface IERC7786OpenBridge {
     function setThreshold(uint8 threshold) external;
 
     /// @notice Registers the matching OpenBridge on a remote chain (full ERC-7930 interoperable address).
+    ///         Reverts with {ThresholdViolation} until `setThreshold` has been called (configure gateways, then the
+    ///         threshold, then remotes).
     function registerRemoteBridge(bytes calldata bridge) external;
 
     /// @notice Sets the M-of-N coverage-awareness knob: when non-zero, `sendMessage` hard-refuses destinations

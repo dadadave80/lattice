@@ -4,9 +4,11 @@ pragma solidity ^0.8.30;
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {ERC7786OpenBridgeTestBase} from "@lattice-test/base/ERC7786OpenBridgeTestBase.sol";
 import {ERC7786OpenBridge} from "@lattice/crosschain/ERC7786OpenBridge.sol";
+import {ERC7786_OPEN_BRIDGE_STORAGE_SLOT} from "@lattice/crosschain/libraries/ERC7786OpenBridgeLib.sol";
 import {IERC7786OpenBridge} from "@lattice/interfaces/crosschain/IERC7786OpenBridge.sol";
 import {IERC7786GatewaySource, IERC7786Recipient} from "@lattice/interfaces/external/ercs/IERC7786.sol";
 import {InteroperableAddress} from "@lattice/utils/libraries/InteroperableAddress.sol";
+import {Vm} from "forge-std/Vm.sol";
 
 /// @notice A source gateway used both as a fan-out target (sendMessage) and an attester (its address).
 contract MockSourceGateway is IERC7786GatewaySource {
@@ -188,6 +190,81 @@ contract ERC7786OpenBridgeTest is ERC7786OpenBridgeTestBase {
         vm.prank(address(g1));
         vm.expectRevert(IERC7786OpenBridge.InvalidCrosschainSender.selector);
         bridge.receiveMessage(bytes32(0), notTheBridge, _inbound(hex"01"));
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                        THRESHOLD 0 (UNCONFIGURED) — #217
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @dev Forces `_threshold` (slot base + 2, alone in its word) back to 0 — the state of a bridge whose
+    ///      remote was registered before any `setThreshold`, which `registerRemoteBridge` now refuses to reach.
+    function _zeroThreshold() internal {
+        vm.store(diamond, bytes32(uint256(ERC7786_OPEN_BRIDGE_STORAGE_SLOT) + 2), bytes32(0));
+        assertEq(bridge.getThreshold(), 0, "threshold slot zeroed");
+    }
+
+    function _countExecutionSuccess(Vm.Log[] memory logs) internal view returns (uint256 n) {
+        for (uint256 i; i < logs.length; ++i) {
+            if (logs[i].emitter == diamond && logs[i].topics[0] == IERC7786OpenBridge.ExecutionSuccess.selector) ++n;
+        }
+    }
+
+    function test_ThresholdZeroNonGatewayDeliveryDoesNotExecute() public {
+        _zeroThreshold();
+        bytes memory payload = _inbound(hex"f0f0");
+
+        vm.recordLogs();
+        vm.prank(user); // not a gateway: forges originalSender + payload
+        bridge.receiveMessage(bytes32(0), remoteBridge, payload);
+
+        assertEq(recipient.calls(), 0, "forged message not delivered at threshold 0");
+        assertEq(_countExecutionSuccess(vm.getRecordedLogs()), 0, "no ExecutionSuccess at threshold 0");
+    }
+
+    function test_ThresholdZeroGatewayAttestationsExecuteOnceAfterSetThreshold() public {
+        _zeroThreshold();
+        bytes memory payload = _inbound(hex"c0ffee");
+        bytes32 id = keccak256(abi.encode(remoteBridge, payload));
+
+        vm.prank(address(g1));
+        vm.expectEmit(true, true, false, false, diamond);
+        emit IERC7786OpenBridge.Received(id, address(g1));
+        bridge.receiveMessage(bytes32(0), remoteBridge, payload);
+        vm.prank(address(g2));
+        vm.expectEmit(true, true, false, false, diamond);
+        emit IERC7786OpenBridge.Received(id, address(g2));
+        bridge.receiveMessage(bytes32(0), remoteBridge, payload);
+        assertEq(recipient.calls(), 0, "attestations recorded but not executed at threshold 0");
+
+        vm.prank(admin);
+        bridge.setThreshold(2);
+
+        vm.recordLogs();
+        vm.prank(user); // anyone can trigger the now-satisfied delivery
+        bridge.receiveMessage(bytes32(0), remoteBridge, payload);
+        vm.prank(address(g1));
+        bridge.receiveMessage(bytes32(0), remoteBridge, payload);
+
+        assertEq(_countExecutionSuccess(vm.getRecordedLogs()), 1, "executed exactly once after setThreshold");
+        assertEq(recipient.calls(), 1, "delivered exactly once");
+        assertEq(recipient.lastReceiveId(), id);
+        assertEq(recipient.lastPayload(), hex"c0ffee");
+    }
+
+    function test_RegisterRemoteBridgeRevertsAtThresholdZero() public {
+        address fresh = _deployERC7786OpenBridge(admin);
+        ERC7786OpenBridge b = ERC7786OpenBridge(payable(fresh));
+        assertEq(b.getThreshold(), 0, "fresh bridge starts at threshold 0");
+
+        vm.startPrank(admin);
+        b.addGateway(address(g1));
+        vm.expectRevert(IERC7786OpenBridge.ThresholdViolation.selector);
+        b.registerRemoteBridge(remoteBridge);
+
+        b.setThreshold(1);
+        b.registerRemoteBridge(remoteBridge);
+        vm.stopPrank();
+        assertEq(b.getRemoteBridge(InteroperableAddress.formatEvmV1(REMOTE_CHAIN)), remoteBridge);
     }
 
     function test_SupportsInterfaceGatewaySource() public view {
