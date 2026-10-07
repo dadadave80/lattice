@@ -286,3 +286,9 @@
 
 ### GovernedVaultStorage @ erc7201:lattice.storage.GovernedVault (slot 0xce91473269200f209353d1f9f84b7900d57f30b14d017212fb8c61b25320cc00)
 0	0	_ballotNonces	t_mapping(t_address,t_uint256)
+
+### HTSAdapterStorage @ erc7201:lattice.storage.HTSAdapter (slot 0x91b64afeea686e80e2bda212862c0850ed3389288ac3f914b1109537d6e3f500)
+0	0	_createdTokens	t_struct(AddressSet)_storage
+
+### HSSAdapterStorage @ erc7201:lattice.storage.HSSAdapter (slot 0x12fa09b7b2cb13ace416911567e16cefd04261b5db45857ec33ecae7c1298700)
+0	0	_schedules	t_mapping(t_bytes32,t_address)

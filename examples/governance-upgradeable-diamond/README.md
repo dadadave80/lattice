@@ -5,7 +5,7 @@ Run everything from the repository root through Make. Install Foundry v1.8.1, Gi
 
 ```sh
 make install
-make test MATCH='GovernedVault(Upgrade)?Test'
+forge test --match-contract 'GovernedVault(Upgrade)?Test'
 make test-grant-runner
 ```
 
@@ -52,11 +52,12 @@ LATTICE_FACTORY=0x9E49FB5CDBb09ECf65513F7c690909E093170037 LATTICE_SALT=$(cast k
 A factory embeds the `Lattice` proxy bytecode of the commit it was built from. When your checkout's
 `Lattice` differs, `--verify` skips the vault ("haven't found any matching bytecode") while still
 verifying everything else. The Sepolia factory above (`factory.lattice.studio.eth`) was built from
-`fba66cb`, so verify its vaults from that commit:
+`c0c8e50` (on `main`; earlier copies of this page cited `fba66cb`, the same tree before a history rewrite),
+so verify its vaults from that commit:
 
 ```sh
-git worktree add ../lattice-fba66cb fba66cb
-cd ../lattice-fba66cb && git submodule update --init --recursive
+git worktree add ../lattice-c0c8e50 c0c8e50
+cd ../lattice-c0c8e50 && git submodule update --init --recursive
 forge verify-contract <VAULT> src/Lattice.sol:Lattice --chain sepolia --verifier sourcify
 ```
 

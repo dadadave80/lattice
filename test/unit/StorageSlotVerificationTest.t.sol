@@ -315,11 +315,13 @@ import {
 // Interfaces (for type(...).interfaceId)
 // ---------------------------------------------------------------------------
 
+import {ERC165_MAP_IHASSIGNATUREVERIFIER_SLOT} from "@lattice/accounts/hedera/HASSignatureVerifierLib.sol";
 import {IAccessControl} from "@lattice/interfaces/access/IAccessControl.sol";
 import {IAccessControlEnumerable} from "@lattice/interfaces/access/IAccessControlEnumerable.sol";
 import {IAccessControlTimed} from "@lattice/interfaces/access/IAccessControlTimed.sol";
 import {IAccessManaged} from "@lattice/interfaces/access/IAccessManaged.sol";
 import {IAccessManager} from "@lattice/interfaces/access/IAccessManager.sol";
+import {IHASSignatureVerifier} from "@lattice/interfaces/accounts/IHASSignatureVerifier.sol";
 import {IConstantProduct} from "@lattice/interfaces/amm/IConstantProduct.sol";
 import {IAcrossBridgeAdapter} from "@lattice/interfaces/crosschain/IAcrossBridgeAdapter.sol";
 import {IBridgeFungible} from "@lattice/interfaces/crosschain/IBridgeFungible.sol";
@@ -363,6 +365,9 @@ import {IChronicleAdapter} from "@lattice/interfaces/oracles/IChronicleAdapter.s
 import {IDIAAdapter} from "@lattice/interfaces/oracles/IDIAAdapter.sol";
 import {IGelatoAutomateAdapter} from "@lattice/interfaces/oracles/IGelatoAutomateAdapter.sol";
 import {IGelatoVRFAdapter} from "@lattice/interfaces/oracles/IGelatoVRFAdapter.sol";
+import {IHSSAdapter} from "@lattice/interfaces/oracles/IHSSAdapter.sol";
+import {IHederaExchangeRateAdapter} from "@lattice/interfaces/oracles/IHederaExchangeRateAdapter.sol";
+import {IHederaPrngAdapter} from "@lattice/interfaces/oracles/IHederaPrngAdapter.sol";
 import {IPythAdapter} from "@lattice/interfaces/oracles/IPythAdapter.sol";
 import {IPythEntropyAdapter} from "@lattice/interfaces/oracles/IPythEntropyAdapter.sol";
 import {IRedStoneAdapter} from "@lattice/interfaces/oracles/IRedStoneAdapter.sol";
@@ -386,9 +391,14 @@ import {IERC20Capped} from "@lattice/interfaces/tokens/IERC20Capped.sol";
 import {IERC20Wrapper} from "@lattice/interfaces/tokens/IERC20Wrapper.sol";
 import {IERC2981} from "@lattice/interfaces/tokens/IERC2981.sol";
 import {IERC4626} from "@lattice/interfaces/tokens/IERC4626.sol";
+import {IHTSAdapter} from "@lattice/interfaces/tokens/IHTSAdapter.sol";
 import {IEIP712} from "@lattice/interfaces/utils/IEIP712.sol";
 import {INonces} from "@lattice/interfaces/utils/INonces.sol";
 import {IVestingWallet} from "@lattice/interfaces/utils/IVestingWallet.sol";
+import {ERC165_MAP_IHSSADAPTER_SLOT, HSS_ADAPTER_STORAGE_SLOT} from "@lattice/oracles/hedera/HSSAdapterLib.sol";
+import {ERC165_MAP_IHEDERAEXCHANGERATEADAPTER_SLOT} from "@lattice/oracles/hedera/HederaExchangeRateAdapterLib.sol";
+import {ERC165_MAP_IHEDERAPRNGADAPTER_SLOT} from "@lattice/oracles/hedera/HederaPrngAdapterLib.sol";
+import {ERC165_MAP_IHTSADAPTER_SLOT, HTS_ADAPTER_STORAGE_SLOT} from "@lattice/tokens/hedera/HTSAdapterLib.sol";
 
 /// @title StorageSlotVerificationTest
 /// @notice Re-derives every ERC-7201 storage slot and ERC-165 map slot from first principles
@@ -696,6 +706,18 @@ contract StorageSlotVerificationTest is Test {
             PYTH_ENTROPY_ADAPTER_STORAGE_SLOT,
             _erc7201Slot("lattice.storage.PythEntropyAdapter"),
             "PythEntropyAdapter storage slot mismatch"
+        );
+    }
+
+    function test_HTSAdapterStorageSlot() public pure {
+        assertEq(
+            HTS_ADAPTER_STORAGE_SLOT, _erc7201Slot("lattice.storage.HTSAdapter"), "HTSAdapter storage slot mismatch"
+        );
+    }
+
+    function test_HSSAdapterStorageSlot() public pure {
+        assertEq(
+            HSS_ADAPTER_STORAGE_SLOT, _erc7201Slot("lattice.storage.HSSAdapter"), "HSSAdapter storage slot mismatch"
         );
     }
 
@@ -1461,6 +1483,46 @@ contract StorageSlotVerificationTest is Test {
         );
     }
 
+    function test_Erc165MapIHTSAdapterSlot() public pure {
+        assertEq(
+            ERC165_MAP_IHTSADAPTER_SLOT,
+            _erc165MapSlot(type(IHTSAdapter).interfaceId, ERC165_STORAGE_LOCATION),
+            "ERC165 IHTSAdapter map slot mismatch"
+        );
+    }
+
+    function test_Erc165MapIHSSAdapterSlot() public pure {
+        assertEq(
+            ERC165_MAP_IHSSADAPTER_SLOT,
+            _erc165MapSlot(type(IHSSAdapter).interfaceId, ERC165_STORAGE_LOCATION),
+            "ERC165 IHSSAdapter map slot mismatch"
+        );
+    }
+
+    function test_Erc165MapIHASSignatureVerifierSlot() public pure {
+        assertEq(
+            ERC165_MAP_IHASSIGNATUREVERIFIER_SLOT,
+            _erc165MapSlot(type(IHASSignatureVerifier).interfaceId, ERC165_STORAGE_LOCATION),
+            "ERC165 IHASSignatureVerifier map slot mismatch"
+        );
+    }
+
+    function test_Erc165MapIHederaExchangeRateAdapterSlot() public pure {
+        assertEq(
+            ERC165_MAP_IHEDERAEXCHANGERATEADAPTER_SLOT,
+            _erc165MapSlot(type(IHederaExchangeRateAdapter).interfaceId, ERC165_STORAGE_LOCATION),
+            "ERC165 IHederaExchangeRateAdapter map slot mismatch"
+        );
+    }
+
+    function test_Erc165MapIHederaPrngAdapterSlot() public pure {
+        assertEq(
+            ERC165_MAP_IHEDERAPRNGADAPTER_SLOT,
+            _erc165MapSlot(type(IHederaPrngAdapter).interfaceId, ERC165_STORAGE_LOCATION),
+            "ERC165 IHederaPrngAdapter map slot mismatch"
+        );
+    }
+
     function test_Erc165MapIGelatoVRFAdapterSlot() public pure {
         assertEq(
             ERC165_MAP_IGELATOVRFADAPTER_SLOT,
@@ -1943,7 +2005,7 @@ contract StorageSlotVerificationTest is Test {
     // ======================== Slot inventories ========================
 
     function _allStorageSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](87);
+        slots = new bytes32[](89);
         uint256 i;
         // access
         slots[i++] = ACCESS_CONTROL_STORAGE_SLOT;
@@ -2045,10 +2107,14 @@ contract StorageSlotVerificationTest is Test {
         slots[i++] = ENS_REVERSE_CLAIMER_STORAGE_SLOT;
         slots[i++] = ENS_RESOLVER_STORAGE_SLOT;
         slots[i++] = ENS_SUBNAME_ISSUER_STORAGE_SLOT;
+        // hedera system-contract modules (only these two are storage-bearing; HASSignatureVerifier,
+        // HederaExchangeRateAdapter and HederaPrngAdapter are stateless)
+        slots[i++] = HTS_ADAPTER_STORAGE_SLOT;
+        slots[i++] = HSS_ADAPTER_STORAGE_SLOT;
     }
 
     function _allErc165MapSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](88);
+        slots = new bytes32[](93);
         uint256 i;
         // access
         slots[i++] = ERC165_MAP_IACCESSCONTROL_SLOT;
@@ -2171,5 +2237,12 @@ contract StorageSlotVerificationTest is Test {
         slots[i++] = ERC165_MAP_IENSREVERSECLAIMER_SLOT;
         slots[i++] = ERC165_MAP_IENSRESOLVER_SLOT;
         slots[i++] = ERC165_MAP_IENSSUBNAMEISSUER_SLOT;
+        // hedera system-contract modules (HASSignatureVerifier, HederaExchangeRateAdapter and
+        // HederaPrngAdapter are stateless — one map slot each, no ERC-7201 row above)
+        slots[i++] = ERC165_MAP_IHTSADAPTER_SLOT;
+        slots[i++] = ERC165_MAP_IHSSADAPTER_SLOT;
+        slots[i++] = ERC165_MAP_IHASSIGNATUREVERIFIER_SLOT;
+        slots[i++] = ERC165_MAP_IHEDERAEXCHANGERATEADAPTER_SLOT;
+        slots[i++] = ERC165_MAP_IHEDERAPRNGADAPTER_SLOT;
     }
 }

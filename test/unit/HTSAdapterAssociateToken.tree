@@ -1,0 +1,17 @@
+HTSAdapter::associateToken(token) — branching-tree (BTT)
+See the Testing section of the Solidity standards (branching-tree technique). Each leaf maps to a
+named test in HTSAdapterTest.t.sol; a "given" is a state-setup modifier, a "when" is a parameter
+branch, an "it should" is the asserted outcome. Source: HTSAdapterLib.associateToken().
+
+associateToken(token)
+├── given the caller does not hold HTS_MANAGER_ROLE
+│   └── it should revert AccessControlUnauthorizedAccount   → test_AssociateToken_RevertsForOperatorWithoutManagerRole
+└── given the caller holds HTS_MANAGER_ROLE
+    ├── given the system-contract frame halts (no code)
+    │   └── it should revert HTSCallFailed(sel, UNKNOWN)    → test_AssociateToken_RevertsWhenTheFrameHalts
+    ├── given the address is not an HTS token (HTS 167)
+    │   └── it should revert HTSNotAToken                   → test_AssociateToken_RevertsWhenNotAToken
+    ├── given the diamond is already associated (HTS 194)
+    │   └── it should revert HTSTokenAlreadyAssociated      → test_AssociateToken_RevertsWhenAlreadyAssociated
+    └── given the diamond is not associated yet
+        └── it should associate and emit HTSTokenAssociated → test_AssociateToken_AssociatesTheDiamond

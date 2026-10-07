@@ -23,32 +23,54 @@ on:
       - "CONTRIBUTING.md"
       - "SECURITY.md"
   pull_request:
-    paths-ignore:
-      - "*.md"
-      - "assets/**"
-      - "docs/**"
-      - "broadcast/**"
-      - "deployments/**"
-      - "snapshots/**"
-      - "CHANGELOG.md"
-      - "LICENSE"
-      - "CODE_OF_CONDUCT.md"
-      - "CONTRIBUTING.md"
-      - "SECURITY.md"
   workflow_dispatch:
 
-# Cancel superseded runs: a new commit on the same ref/PR aborts the in-flight run instead of queuing behind it.
+# Cancel superseded PR runs only. Push runs on dev/main always finish, so every merge commit gets a full result.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   FOUNDRY_PROFILE: ci
 
 jobs:
+  # Decides whether a PR touches anything that needs the Solidity gates. The skip list mirrors the
+  # push-side paths-ignore above; keep the two in sync. Non-PR events always run everything.
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      code: ${{ steps.diff.outputs.code }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - id: diff
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          if [ -z "$BASE" ]; then
+            echo "code=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          files=$(git diff --name-only "$BASE...$HEAD")
+          code=false
+          if [ -z "$files" ] || grep -qvE '^[^/]+\.md$|^LICENSE$|^(assets|docs|broadcast|deployments|snapshots)/' <<< "$files"; then
+            code=true
+          fi
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          echo "code=$code"; echo "$files"
+
   # Formatting needs no compilation, so it runs standalone and fails fast.
   fmt:
     name: Format
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -67,6 +89,8 @@ jobs:
   # keyed on src + lib (NOT test/script), so a test-only change does not invalidate this build.
   build:
     name: Build (EIP-170)
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -96,6 +120,8 @@ jobs:
   # legacy build cache -- it runs standalone, in parallel, and does not block `test`.
   via-ir:
     name: Build via_ir (IR parity)
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -138,7 +164,8 @@ jobs:
   storage-layout:
     name: Storage layout (append-only)
     runs-on: ubuntu-latest
-    needs: build
+    needs: [changes, build]
+    if: needs.changes.outputs.code == 'true'
     permissions:
       contents: read
     steps:
@@ -162,7 +189,8 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
-    needs: build
+    needs: [changes, build]
+    if: needs.changes.outputs.code == 'true'
     permissions:
       contents: read
     steps:
@@ -196,6 +224,33 @@ jobs:
           make check-atomic-deploy
       - name: Run Forge tests
         run: forge test -vvv
+
+  # The single required check. Runs even when earlier jobs fail or are cancelled (a skipped required
+  # check would otherwise report success). Fails on any failure/cancellation; when code changed, every
+  # gated job must have succeeded.
+  ci-ok:
+    name: CI OK
+    runs-on: ubuntu-latest
+    needs: [changes, fmt, build, via-ir, storage-layout, test]
+    if: always()
+    permissions: {}
+    steps:
+      - env:
+          NEEDS: ${{ toJSON(needs) }}
+          CODE: ${{ needs.changes.outputs.code }}
+        run: |
+          set -euo pipefail
+          echo "$NEEDS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
+          if echo "$NEEDS" | jq -e 'any(.[]; .result == "failure" or .result == "cancelled")' > /dev/null; then
+            echo "::error::A required job failed or was cancelled."; exit 1
+          fi
+          if [ "$(echo "$NEEDS" | jq -r '.changes.result')" != "success" ]; then
+            echo "::error::Change detection did not succeed."; exit 1
+          fi
+          if [ "$CODE" = "true" ] && echo "$NEEDS" | jq -e 'any(.[]; .result != "success")' > /dev/null; then
+            echo "::error::Code changed but not every gated job succeeded."; exit 1
+          fi
+          echo "CI OK (code=$CODE)"
 
   slither:
     name: Slither (advisory)

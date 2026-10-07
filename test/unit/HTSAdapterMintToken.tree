@@ -1,0 +1,27 @@
+HTSAdapter::mintToken(token, amount, metadata) — branching-tree (BTT)
+See the Testing section of the Solidity standards (branching-tree technique). Each leaf maps to a
+named test in HTSAdapterTest.t.sol; a "given" is a state-setup modifier, a "when" is a parameter
+branch, an "it should" is the asserted outcome. Source: HTSAdapterLib.mintToken().
+
+mintToken(token, amount, metadata)
+├── given the caller does not hold HTS_OPERATOR_ROLE
+│   └── it should revert AccessControlUnauthorizedAccount        → test_MintToken_RevertsForManagerWithoutOperatorRole
+└── given the caller holds HTS_OPERATOR_ROLE
+    ├── when amount is negative
+    │   └── it should revert HTSInvalidAmount                    → test_MintToken_RevertsOnNegativeAmount
+    └── when amount is zero or positive
+        ├── given the system-contract frame halts (no code)
+        │   └── it should revert HTSCallFailed(sel, UNKNOWN)     → test_MintToken_RevertsWhenTheFrameHalts
+        ├── given the address is not an HTS token (HTS 167)
+        │   └── it should revert HTSNotAToken                    → test_MintToken_RevertsWhenNotAToken
+        ├── given the token has no supply key (HTS 180)
+        │   └── it should revert HTSTokenNoSupplyKey             → test_MintToken_RevertsWithoutSupplyKey
+        ├── given the supply key is not the diamond (HTS 326)
+        │   └── it should revert HTSKeyNotActive                 → test_MintToken_RevertsWhenSupplyKeyIsNotTheDiamond
+        ├── given the mint exceeds the max supply (HTS 236)
+        │   └── it should revert HTSMaxSupplyReached             → test_MintToken_RevertsWhenMaxSupplyReached
+        └── given the diamond holds the supply key
+            ├── when the token is fungible
+            │   └── it should mint amount to the treasury        → test_MintToken_MintsFungibleSupplyToTreasury
+            └── when the token is non-fungible
+                └── it should mint one serial per metadata entry → test_MintToken_MintsNonFungibleSerialsFromMetadata

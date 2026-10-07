@@ -40,6 +40,11 @@ if older documentation conflicts with the development policy below, apply this p
 - Pin one current latest stable Foundry release uniformly across local development and CI,
   including builds, tests, formatting, and documentation. Verify the current release when setting
   or updating the pin; do not use a floating release or split versions to work around incompatibility.
+- Recorded exception (user-approved 2026-09-12): Hedera `forge script` work runs on Foundry 1.7.1
+  through `script/config/hedera/forge-hedera.sh`. `forge script` on the shared pin cannot reach Hedera's
+  JSON-RPC relay (it sends EIP-1898 block-hash params the relay rejects), and whether the fix belongs in
+  Foundry or the relay is unresolved. CI and all other work stay on the shared pin. Remove the exception
+  once that root cause is resolved, and do not extend it to other chains.
 - Adapt the implementation to the shared toolchain and surface compatibility problems. Do not
   silently downgrade an individual job or change unrelated toolchain settings.
 - Improve existing scripts, helpers, and workflows first. Require user approval before replacing

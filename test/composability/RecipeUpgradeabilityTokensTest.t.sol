@@ -19,6 +19,7 @@ import {DeployERC4626} from "@lattice-script/base/tokens/DeployERC4626.s.sol";
 import {DeployERC721} from "@lattice-script/base/tokens/DeployERC721.s.sol";
 import {DeployERC721URIStorage} from "@lattice-script/base/tokens/DeployERC721URIStorage.s.sol";
 import {DeployERC7802} from "@lattice-script/base/tokens/DeployERC7802.s.sol";
+import {DeployHTSAdapter} from "@lattice-script/base/tokens/DeployHTSAdapter.s.sol";
 import {DeployMarketplaceZone} from "@lattice-script/base/tokens/DeployMarketplaceZone.s.sol";
 import {RecipeGuards} from "@lattice-test/composability/RecipeGuards.sol";
 import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
@@ -236,6 +237,13 @@ contract RecipeUpgradeabilityTokensTest is RecipeGuards {
             new DeployERC7802().buildCuts(ADMIN, address(this), "Tok", "TOK");
         address d = _assemble(cuts, init, cd);
         _assertIntrospectable(d, 7);
+        _assertAdminCanCut(d, ADMIN);
+    }
+
+    function test_Upgradeable_HTSAdapter() public {
+        (FacetCut[] memory cuts, address init, bytes memory cd) = new DeployHTSAdapter().buildCuts(ADMIN);
+        address d = _assemble(cuts, init, cd);
+        _assertIntrospectable(d, 6);
         _assertAdminCanCut(d, ADMIN);
     }
 }
