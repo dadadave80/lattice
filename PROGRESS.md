@@ -36,14 +36,37 @@ TimelockController.
 | Composition guide | [`docs/guides/compose-your-own-diamond.md`](https://github.com/dadadave80/lattice/blob/grant-m2/docs/guides/compose-your-own-diamond.md) |
 | Runnable example (one `make` command, local Anvil or any EVM RPC) | [`examples/governance-upgradeable-diamond/`](https://github.com/dadadave80/lattice/tree/grant-m2/examples/governance-upgradeable-diamond) |
 | Canonical test: namespace check → atomic init → propose → vote → timelock → `diamondCut`, state preserved | [`test/unit/GovernedVaultUpgradeTest.t.sol`](https://github.com/dadadave80/lattice/blob/grant-m2/test/unit/GovernedVaultUpgradeTest.t.sol) |
-| Green CI running the example end to end on Anvil | [CI run 34620029310](https://github.com/dadadave80/lattice/actions/runs/34620029310) on `9ccdcaf` (the tag adds only this evidence and docs) |
+| Green CI running the example end to end on Anvil | [CI run 37650708789](https://github.com/dadadave80/lattice/actions/runs/37650708789) on the tagged commit [`4e95664`](https://github.com/dadadave80/lattice/commit/4e956649aebb8cebf7d3d73fd4c472ab3ecbea2b); originally [run 34620029310](https://github.com/dadadave80/lattice/actions/runs/34620029310) on [`25db4d7`](https://github.com/dadadave80/lattice/commit/25db4d7c49489dba6b9787703e85b4bf5a59ba1c) (identical tree; see the note below) |
 | Live Sepolia vault (all 20 contracts verified on Etherscan and Sourcify) | [`0x942592e135FFfF39d993F43B735aF34605E829d5`](https://sepolia.etherscan.io/address/0x942592e135FFfF39d993F43B735aF34605E829d5#code) |
 | Governed upgrade executed on-chain | [`ProposalExecuted` tx `0xbe354e…0c08`](https://sepolia.etherscan.io/tx/0xbe354e29b26c4e95ac54db7b6c3ca66fc72752dd25fb7f7460b8c0be90630c08) — `grantVersion()` returns 2 through the proxy; deposited assets and shares unchanged |
-| Source of the live run (commit permalink) | [`script/base/defi/GrantExample.s.sol` @ `d5a89e6`](https://github.com/dadadave80/lattice/blob/d5a89e6e0a643d12710bd715dba785d6fec6eaa8/script/base/defi/GrantExample.s.sol) |
+| Source of the live run (commit permalink) | [`script/base/defi/GrantExample.s.sol` @ `0e1560b`](https://github.com/dadadave80/lattice/blob/0e1560bca65abc937050b166eccbfb1d254831d3/script/base/defi/GrantExample.s.sol) (the deployed contracts are verified on Sourcify against this tree) |
 | Deploy broadcast log | [`broadcast/GrantExample.s.sol/11155111/run-latest.json`](broadcast/GrantExample.s.sol/11155111/run-latest.json) |
 | Every recipe deploys and initializes in one transaction | [#182](https://github.com/dadadave80/lattice/pull/182); `make check-atomic-deploy` runs in CI |
 
-Tag: `grant-m2` — on `main`; the repository links above resolve at the tag.
+| Full governance flow on-chain (all status 1) | [mint](https://sepolia.etherscan.io/tx/0x4c219786640b3f6238b4a949239d8f40dcf5679037044da016913a898f91be2b) → [approve](https://sepolia.etherscan.io/tx/0xa270467b13d273d3156699103fe536e42a060e12c19f03f02c644e7d905dccba) → [deposit](https://sepolia.etherscan.io/tx/0xc1cb951f8bc763cff449d5ade1278d69daf686d4683ce3f4dc40fdb87f1096af) → [delegate](https://sepolia.etherscan.io/tx/0xaf6b4ce89d1711c24db68324ff23d1bd28677287c9656fc3167b46a189886621) → [propose](https://sepolia.etherscan.io/tx/0xb7e518aee9c8de4b8af28fdf6f93e825bc17451841ebc5c55f7a17624496fa2f) → [castVote](https://sepolia.etherscan.io/tx/0xc3af69dc314d96adc10416bf62b725110d0277a8bbad4a189b5402698be91762) → [queue](https://sepolia.etherscan.io/tx/0xd343dbc4cae33e35bc9f5ac3d4b8c6b10f4a5bb39c95d38cf7b45270ff7a10da) → [execute](https://sepolia.etherscan.io/tx/0xbe354e29b26c4e95ac54db7b6c3ca66fc72752dd25fb7f7460b8c0be90630c08) |
+
+Tag: [`grant-m2`](https://github.com/dadadave80/lattice/releases/tag/grant-m2), commit `4e95664`, on `main`; the repository links above resolve at the tag.
+
+**Commit history note.** `dev` and `main` were rewritten after the milestone was delivered, which re-created the
+tag on a new commit with the same tree. Commits cited in earlier copies of this page still resolve on GitHub but
+are no longer on a branch. Each has a tree-identical commit on `main`:
+
+| Cited earlier | Now on `main` | Tree |
+|---|---|---|
+| `9ccdcaf` (head of CI run 34620029310) | [`25db4d7`](https://github.com/dadadave80/lattice/commit/25db4d7c49489dba6b9787703e85b4bf5a59ba1c) | `9fb66c2` |
+| `d5a89e6` (source of the live run) | [`0e1560b`](https://github.com/dadadave80/lattice/commit/0e1560bca65abc937050b166eccbfb1d254831d3) | `c5bcc9e` |
+| `94b7d93` (tag commit; [CI run 34623283525](https://github.com/dadadave80/lattice/actions/runs/34623283525)) | [`4e95664`](https://github.com/dadadave80/lattice/commit/4e956649aebb8cebf7d3d73fd4c472ab3ecbea2b) | `beba22a` |
+
+**Demo scope and known issues.** The live vault is a testnet demo:
+- **Governance can be taken over.** The deployer holds every vote, but the demo asset's `mint` is open to
+  anyone, and governance delays are minutes (voting delay 60 s, voting period 600 s, timelock 300 s; quorum 4).
+  Anyone could mint, delegate and outvote the deployer.
+- **Issues found after delivery.** They don't change the M2 flow:
+  - [#214](https://github.com/dadadave80/lattice/issues/214): ERC-4626 shares are priced on the idle balance.
+    This is latent here, because the vault has no strategy manager.
+  - [#222](https://github.com/dadadave80/lattice/issues/222): an ERC20Votes ERC-165 constant writes to slot
+    `keccak256(0)`. The write is present in this vault's storage.
+  - [#255](https://github.com/dadadave80/lattice/issues/255): `supportsInterface(0x01ffc9a7)` returns false.
 
 ## Milestone 3 — Docs site + reusable storage-safety Action
 

@@ -11,6 +11,7 @@ import {ENSReverseClaimer} from "@lattice/ens/ENSReverseClaimer.sol";
 import {ENS_MANAGER_ROLE} from "@lattice/ens/libraries/ENSReverseClaimerLib.sol";
 import {Governor} from "@lattice/governance/Governor.sol";
 import {TimelockController} from "@lattice/governance/TimelockController.sol";
+import {DiamondValidationLib} from "@lattice/governance/libraries/DiamondValidationLib.sol";
 import {UPGRADE_EXECUTOR_ROLE} from "@lattice/governance/libraries/GovernedDiamondCutLib.sol";
 import {IAccessControl} from "@lattice/interfaces/access/IAccessControl.sol";
 import {IENSReverseClaimer} from "@lattice/interfaces/ens/IENSReverseClaimer.sol";
@@ -279,5 +280,32 @@ contract GovernedVaultENSInitTest is Test {
     function test_BuildCutsWithENSReturnsFifteenCuts() public {
         (FacetCut[] memory cuts,,) = deployer.buildCutsWithENS(_params(address(asset), ENS_NAME));
         assertEq(cuts.length, 15, "14 base cuts + ENSReverseClaimer");
+    }
+
+    /// @notice The ENS recipe checks its storage owners before assembly, including the claimer it adds.
+    function test_BuildCutsWithENSChecksNamespaces() public {
+        string[] memory ids = deployer.storageNamespacesWithENS();
+        assertEq(ids.length, deployer.storageNamespaces().length + 1, "base owners + ENSReverseClaimer");
+        assertEq(ids[ids.length - 1], "lattice.storage.ENSReverseClaimer");
+
+        CollidingGovernedVaultENSRecipe colliding = new CollidingGovernedVaultENSRecipe();
+        string[] memory bad = colliding.storageNamespacesWithENS();
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                DiamondValidationLib.NamespaceCollision.selector,
+                DiamondValidationLib.erc7201Slot(bad[0]),
+                bad[0],
+                bad[0]
+            )
+        );
+        colliding.buildCutsWithENS(_params(address(asset), ENS_NAME));
+    }
+}
+
+/// @notice The ENS recipe with its added owner declared twice, to prove the preflight runs on this path.
+contract CollidingGovernedVaultENSRecipe is DeployGovernedVaultENS {
+    function storageNamespacesWithENS() public pure override returns (string[] memory ids) {
+        ids = super.storageNamespacesWithENS();
+        ids[ids.length - 1] = ids[0];
     }
 }

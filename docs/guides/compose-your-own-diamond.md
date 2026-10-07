@@ -6,18 +6,27 @@ The contracts are unaudited. The walkthrough uses local development assets.
 
 ## Start from a clean checkout
 
-Tested with Foundry **v1.8.1** (forge, cast, anvil), Git, Bash, jq, and Make.
-The example compiles with Solidity 0.8.36. All CI jobs use the shared Foundry v1.8.1 pin.
-Install the same release locally with `foundryup --install v1.8.1`.
+The `grant-m2` tag was tested with Foundry **v1.8.1** (forge, cast, anvil), Git, Bash, jq, and Make, and it
+also passes on v1.8.5. The example compiles with Solidity 0.8.36. Install the tag's release locally with
+`foundryup --install v1.8.1`.
 
 ```sh
 git clone --recurse-submodules --branch grant-m2 https://github.com/dadadave80/lattice.git
 cd lattice
 forge --version
 make sizes
-make test-v MATCH='GovernedVault(Upgrade)?Test'
+forge test --match-contract 'GovernedVault(Upgrade)?Test' -vvv
 make test-grant-runner
 ```
+
+Expected:
+- `make sizes` lists every contract with a positive runtime margin.
+- The `forge test` line reports `13 tests passed, 0 failed` across `GovernedVaultTest` (6) and
+  `GovernedVaultUpgradeTest` (7).
+- `make test-grant-runner` exits 0.
+
+Call `forge test` directly, as above. At the tag, `make test MATCH=<regex>` passes the pattern to the shell
+unquoted, so a regex containing parentheses fails with a shell syntax error.
 
 On an existing checkout, run `git submodule update --init --recursive` first. Run from the repository
 root: its remappings define `@lattice/=src/`, `@lattice-script/=script/`, `@lattice-test/=test/`,
@@ -59,7 +68,10 @@ is a Milestone 3 deliverable tracked in #177; it is not required to run this exa
 ## Initialize in one transaction
 
 Use `DeployGovernedVault.deployAtomic(params, factory, salt)` with the existing `LatticeFactory`.
-The factory creates the proxy and calls `Lattice.initialize` in **one transaction**. The factory binds
+The factory creates the proxy and calls `Lattice.initialize` in **one transaction**. This matters
+because `initialize` is first-caller-wins. A proxy that is deployed in one transaction and initialized in a
+later one can be front-run: anyone who sees the deployment can call `initialize` first with their own cut
+and take the diamond. The factory binds
 CREATE2 salts to the caller; reuse of an occupied caller/salt returns the existing deployment, so use a
 new salt for a different recipe. The example creates a fresh factory each run.
 
@@ -151,14 +163,23 @@ initialization replay, and execution replay. The factory unit suite covers faile
 
 ## Optional public testnet / ENS reference
 
-The root README's “Live testnet deployment” section and `PROGRESS.md` retain the verified Milestone 1
-Sepolia vault and its ENS name. `DeployGovernedVaultENS.buildCutsWithENS` composes the additional
-ENSReverseClaimer facet and combined initializer; send those cuts through `LatticeFactory.deploy` for
-atomic creation. Add the ENSReverseClaimer storage owner to preflight for your extended composition.
-Configure the chain's reverse registrar and ensure the name owner sets the matching forward record.
+ENS ties the milestones together. The Milestone 1 vault is ENS-named, and so is the shared Sepolia
+`LatticeFactory` (`factory.lattice.studio.eth`), both through the ENSReverseClaimer facet. The ENS variant
+of this example is the same composition plus that one facet: `DeployGovernedVaultENS.buildCutsWithENS`
+adds ENSReverseClaimer and a combined initializer that replays the base init sequence. Send those cuts
+through `LatticeFactory.deploy` for atomic creation. The root README's “Live testnet deployment” section and
+`PROGRESS.md` record the verified Milestone 1 vault and its name.
 
-For the standalone non-ENS example on Sepolia, import your wallet into an encrypted Foundry keystore,
-configure the RPC alias, then run:
+On `dev` and `main` after the `grant-m2` tag, `buildCutsWithENS` also runs the namespace preflight over
+`storageNamespacesWithENS()`, which is the base list plus `lattice.storage.ENSReverseClaimer`. At the tag,
+add that owner to your own preflight. Configure the chain's reverse registrar, and make sure the name owner
+sets the matching forward record.
+
+For the standalone non-ENS example on Sepolia, import your wallet into an encrypted Foundry keystore and
+set `SEPOLIA_RPC_URL` (copy `.env.example` to `.env`; the `sepolia` alias reads it). On macOS, `KEYSTORE`
+reads the keystore password from the login Keychain item `foundry-<name>`; add it once with
+`security add-generic-password -a "$USER" -s foundry-<name> -w`. Other systems prompt for the password.
+Then run:
 
 ```sh
 make example-ens-grant-m2 RPC=sepolia KEYSTORE=YOUR_KEYSTORE
@@ -168,9 +189,56 @@ Use only test assets. Omit `LOCAL=1` on public networks; use keystore authentica
 
 ## Compose a different module or upgrade
 
-Keep the same recipe pattern: add the facet's exported selectors, reconcile intentional overlaps, add
-its distinct storage owner, and run its module initializer in dependency order. Do not grow an
-inheritance mega-facet past the deployment size limit. For an existing-state upgrade, preserve storage
+The same four steps build any composition. A worked example, an admin-upgradeable capped ERC-20, lives in
+[`test/integration/ComposeYourOwnDiamondTest.t.sol`](https://github.com/dadadave80/lattice/blob/dev/test/integration/ComposeYourOwnDiamondTest.t.sol), so CI keeps it compiling. It was added after the
+`grant-m2` tag, so read it on `dev` or `main`.
+
+1. **Pick modules.** Cut each facet for its own exported selectors. These facets share no selector, so no
+   `_cutExcept` is needed; the vault recipe above shows that case.
+
+   ```solidity
+   cuts[0] = _cut(address(new ERC165Facet()));
+   cuts[1] = _cut(address(new AccessControl()));
+   cuts[2] = _cut(address(new AccessControlDiamondCut())); // upgrades gated on DEFAULT_ADMIN_ROLE
+   cuts[3] = _cut(address(new DiamondLoupeFacet()));
+   cuts[4] = _cut(address(new ERC20()));
+   cuts[5] = _cut(address(new ERC20Capped()));
+   cuts[6] = _cut(address(new Receive()));
+   ```
+
+2. **Declare every storage owner, including transitive ones,** and validate them before deploying. The cut
+   facet calls `EmergencyStopLib.checkNotStopped`, so EmergencyStop storage is an owner even though no
+   EmergencyStop facet is cut.
+
+   ```solidity
+   ids[0] = "diamond.lib.storage";
+   ids[1] = "diamond.lib.storage.ERC165";
+   ids[2] = "lattice.storage.AccessControl";
+   ids[3] = "lattice.storage.EmergencyStop";
+   ids[4] = "lattice.storage.ERC20";
+   ids[5] = "lattice.storage.ERC20Capped";
+   // in buildCuts, before any facet is deployed:
+   DiamondValidationLib.assertNamespacesDisjoint(storageNamespaces());
+   ```
+
+3. **Write one initializer** that runs the module inits in dependency order. It opens no window of its own.
+
+   ```solidity
+   AccessControlLib.__AccessControl_init(p.admin);           // authority first
+   DiamondLib.registerInterface();                            // cut + loupe ERC-165 flags
+   ERC20Lib.__ERC20_init(p.name, p.symbol);                   // the token
+   ERC20CappedLib.__ERC20Capped_init(p.cap);                  // then its cap
+   ERC20CappedLib._checkCap(ERC20Lib.totalSupply() + p.supply);
+   ERC20Lib._mint(p.holder, p.supply);                        // seed supply last
+   ```
+
+4. **Deploy in one transaction** with `factory.deploy(new RecipeEntry[](0), cuts, init, data, salt)`.
+
+The test also shows a later upgrade: the admin cuts `ERC20Burnable` in with `diamondCut`, and a stranger's
+attempt reverts. For governed upgrades, cut GovernedDiamondCut and EmergencyStop instead of
+AccessControlDiamondCut, and wire Governor and the timelock as `GovernedVaultInit` does.
+
+Do not grow an inheritance mega-facet past the deployment size limit. For an existing-state upgrade, preserve storage
 compatibility or implement and test an explicit migration before proposing the cut through Governor.
 Fresh pre-major deployments may use intentionally breaking layouts; document that deployment choice
 and update the reviewed baseline. If a cut runs a new initializer, use a strictly
@@ -187,7 +255,7 @@ increasing reinitializer version; never rerun the original init or overwrite exi
 | Zero votes / threshold failure | Deposit, delegate, then move past the checkpoint before proposing |
 | Defeated proposal | Voting window, delegation at snapshot, and quorum |
 | Timelock operation not ready | Queue first; execute strictly after the reported ETA |
-| Stale storage snapshot | Run the local update command and review compatibility with the prior baseline |
+| Stale storage snapshot | Run `make storage-update` and review the baseline diff against the prior release |
 
 The documentation site and reusable guard are separate Milestone 3 work tracked in
 [#177](https://github.com/dadadave80/lattice/issues/177).
