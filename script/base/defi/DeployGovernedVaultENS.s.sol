@@ -6,6 +6,7 @@ import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {DeployGovernedVault} from "@lattice-script/base/defi/DeployGovernedVault.s.sol";
 import {GovernedVaultENSInit, GovernedVaultENSParams} from "@lattice/defi/GovernedVaultENSInit.sol";
 import {ENSReverseClaimer} from "@lattice/ens/ENSReverseClaimer.sol";
+import {DiamondValidationLib} from "@lattice/governance/libraries/DiamondValidationLib.sol";
 import {IENSReverseClaimer} from "@lattice/interfaces/ens/IENSReverseClaimer.sol";
 import {IEmergencyCut} from "@lattice/interfaces/governance/IEmergencyCut.sol";
 import {IFrozenSelectors} from "@lattice/interfaces/governance/IFrozenSelectors.sol";
@@ -135,6 +136,7 @@ contract DeployGovernedVaultENS is DeployGovernedVault {
         public
         returns (FacetCut[] memory cuts, address init, bytes memory initCalldata)
     {
+        DiamondValidationLib.assertNamespacesDisjoint(storageNamespacesWithENS());
         FacetCut[] memory baseCuts = _buildBaseCuts();
         cuts = new FacetCut[](baseCuts.length + 1);
         for (uint256 i; i < baseCuts.length; ++i) {
@@ -144,6 +146,16 @@ contract DeployGovernedVaultENS is DeployGovernedVault {
 
         init = address(new GovernedVaultENSInit());
         initCalldata = abi.encodeCall(GovernedVaultENSInit.init, (p));
+    }
+
+    /// @notice The base vault's storage owners plus the {ENSReverseClaimer} namespace this recipe adds.
+    function storageNamespacesWithENS() public pure virtual returns (string[] memory ids) {
+        string[] memory base = storageNamespaces();
+        ids = new string[](base.length + 1);
+        for (uint256 i; i < base.length; ++i) {
+            ids[i] = base[i];
+        }
+        ids[base.length] = "lattice.storage.ENSReverseClaimer";
     }
 
     /// @notice Deploys the ENS-named self-governed vault diamond (broadcasting entrypoint for
