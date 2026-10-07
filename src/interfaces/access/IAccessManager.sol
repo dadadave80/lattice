@@ -88,6 +88,12 @@ interface IAccessManager {
     function setTargetAdminDelay(address target, uint32 newDelay) external;
     function setTargetClosed(address target, bool closed) external;
 
+    // ---- Managed targets ----
+
+    /// @notice Points managed `target` at `newAuthority`. Only callable by `ADMIN_ROLE`; this manager must be
+    ///         `target`'s current authority.
+    function updateAuthority(address target, address newAuthority) external;
+
     // ---- Operation scheduling ----
 
     function schedule(address target, bytes calldata data, uint48 when)

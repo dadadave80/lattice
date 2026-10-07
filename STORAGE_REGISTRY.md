@@ -209,8 +209,8 @@ and a row here.
 | AccessControl | `lattice.storage.AccessControl` | `0xb914f813e2d49e02dd5aa794466aa4a74f9c100c2b1e98e29e7267020b834d00` | `IAccessControl` | `0x7965db0b` | `0xce317eb1da4e1492e501dc3f63d2206e3e9294a33442f09d99ce09cbbaaeae1f` |
 | AccessControlEnumerable | `lattice.storage.AccessControlEnumerable` | `0xae7c738306b742461a657cbf6c6b56bd5351917d4cf69da559703284f7d34500` | `IAccessControlEnumerable` | `0xf92172dc` | `0xdfb0020c4bf380ed4a6e172ee8a12845bb7e78959d456aee21dd4cc4e0a60edf` |
 | AccessControlTimed | `lattice.storage.AccessControlTimed` | `0xc28360e6402e1e090270be0970bdf75960435f822fc9a49d7b8c286806e6af00` | `IAccessControlTimed` | `0x55658261` | `0x6389d98b1603c26ed93ee23dd27c7d50ce87ec4985c6f5adaf89a862d65f1d7e` |
-| AccessManager | `lattice.storage.AccessManager` | `0x031c2bc21c63b497895ca319b75b15a6c2f2e4b0e91bbd5327f580843bca1a00` | `IAccessManager` | `0x8fc52f86` | `0xa0825c9ce05c3e98cbd409c12bc8bdadc253d720dbb80af60f4b2f3807f3c1dd` |
-| AccessManaged | `lattice.storage.AccessManaged` | `0x1d3b28af968dd6edd45cccd73c2668243fb5bd57c6ee16239765b74aa3d5e100` | `IAccessManaged` | `0xe5b444fd` | `0x18229ea668ffe17715e3d827216c081ca3411cbbb4f8a9b8908fb47aee1d7887` |
+| AccessManager | `lattice.storage.AccessManager` | `0x031c2bc21c63b497895ca319b75b15a6c2f2e4b0e91bbd5327f580843bca1a00` | `IAccessManager` | `0x973a37ba` | `0x304f07754e3471eed76a10f74882180cd56a3ba41b618b8d59fea26197b1881d` |
+| AccessManaged | `lattice.storage.AccessManaged` | `0x1d3b28af968dd6edd45cccd73c2668243fb5bd57c6ee16239765b74aa3d5e100` | `IAccessManaged` | `0x4a531f33` | `0x97f7b4db7c24da5392018b796b53913aa0747b5c0b28d3c6627e928edcc14372` |
 
 ### Tokens
 

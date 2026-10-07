@@ -14,8 +14,9 @@ import {TimelockLib} from "@lattice/utils/libraries/TimelockLib.sol";
 /// @dev `keccak256(abi.encode(uint256(keccak256("lattice.storage.AccessManager")) - 1)) & ~bytes32(uint256(0xff))`.
 bytes32 constant ACCESS_MANAGER_STORAGE_SLOT = 0x031c2bc21c63b497895ca319b75b15a6c2f2e4b0e91bbd5327f580843bca1a00;
 
-/// @dev `0x8fc52f86` is `type(IAccessManager).interfaceId`.
-bytes32 constant ERC165_MAP_IACCESSMANAGER_SLOT = 0xa0825c9ce05c3e98cbd409c12bc8bdadc253d720dbb80af60f4b2f3807f3c1dd;
+/// @dev `0x973a37ba` is `type(IAccessManager).interfaceId` (includes updateAuthority).
+/// `keccak256(abi.encode(bytes4(0x973a37ba), 0x9ca7f3e2e2bfb15fdf072b85dde92837cddacee6cf2f6b38cd06c9457c1c4200))`.
+bytes32 constant ERC165_MAP_IACCESSMANAGER_SLOT = 0x304f07754e3471eed76a10f74882180cd56a3ba41b618b8d59fea26197b1881d;
 
 struct Delay {
     uint32 value;
@@ -53,6 +54,9 @@ struct AccessManagerStorage {
     TimelockLib.MultiSchedule _operationQueue;
     mapping(bytes32 operationId => uint32 nonce) _nonces;
     uint32 _nextNonce;
+    /// @dev `keccak256(abi.encode(target, selector))` of the call {AccessManagerLib.execute} is making, or the
+    ///      enclosing call's id (0 outside any `execute`). Regular storage, as in OZ: EIP-1153 is not assumed.
+    bytes32 _executionId;
 }
 
 /// @title AccessManagerLib
@@ -156,6 +160,9 @@ library AccessManagerLib {
         return accessManagerStorage()._targets[target].closed;
     }
 
+    /// @notice Whether `caller` may call `selector` on `target` now (`immediate`) or after scheduling (`delay`).
+    /// @dev The manager itself is an authorized caller only while {execute} is calling that exact
+    ///      (`target`, `selector`), so a managed target accepts manager-driven calls without any target-side flag.
     function canCall(address caller, address target, bytes4 selector)
         internal
         view
@@ -163,6 +170,7 @@ library AccessManagerLib {
     {
         AccessManagerStorage storage $ = accessManagerStorage();
         if ($._targets[target].closed) return (false, 0);
+        if (caller == address(this)) return ($._executionId == _hashExecutionId(target, selector), 0);
         uint64 roleId = $._targets[target].allowedRoles[selector];
         if (roleId == PUBLIC_ROLE) return (true, 0);
         (bool isMember, uint32 executionDelay) = hasRole(roleId, caller);
@@ -354,20 +362,14 @@ library AccessManagerLib {
 
         emit IAccessManager.OperationExecuted(operationId, nonce);
 
-        // Set the consuming flag on AccessManaged targets so restrictedCheck() passes.
-        // We use try/catch: if the target does not implement IAccessManaged, the call
-        // reverts and we skip silently (non-AccessManaged targets are unaffected).
-        bool isAccessManaged = false;
-        try IAccessManaged(target).setConsumingScheduledOp(true) {
-            isAccessManaged = true;
-        } catch {}
+        // Authorize the manager as caller for this (target, selector) only, for the duration of the call.
+        // Restoring the previous id (rather than zeroing it) keeps an enclosing execute intact.
+        bytes32 executionIdBefore = $._executionId;
+        $._executionId = _hashExecutionId(target, bytes4(data[0:4]));
 
         (bool ok, bytes memory ret) = target.call{value: msg.value}(data);
 
-        // Always clear the flag, even if the call failed.
-        if (isAccessManaged) {
-            try IAccessManaged(target).setConsumingScheduledOp(false) {} catch {}
-        }
+        $._executionId = executionIdBefore;
 
         if (!ok) {
             // Bubble up the original revert reason if the target provided one;
@@ -403,7 +405,20 @@ library AccessManagerLib {
         emit IAccessManager.OperationCanceled(operationId, nonce);
     }
 
+    // ---- Managed targets ----
+
+    /// @notice Points managed `target` at `newAuthority`. Reverts unless the caller holds `ADMIN_ROLE` and this
+    ///         manager is `target`'s current authority.
+    function updateAuthority(address target, address newAuthority) internal {
+        _checkAdmin();
+        IAccessManaged(target).setAuthority(newAuthority);
+    }
+
     // ---- Internal helpers ----
+
+    function _hashExecutionId(address target, bytes4 selector) private pure returns (bytes32) {
+        return keccak256(abi.encode(target, selector));
+    }
 
     function _effectiveDelay(Delay storage d) private view returns (uint32) {
         if (d.effectAt != 0 && block.timestamp >= d.effectAt) return d.pendingValue;
