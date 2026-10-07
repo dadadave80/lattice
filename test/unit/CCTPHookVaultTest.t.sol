@@ -2,6 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {CCTPBridgeAdapterTestBase} from "@lattice-test/base/CCTPBridgeAdapterTestBase.sol";
+import {MockCCTPMessageTransmitter} from "@lattice-test/mocks/MockCCTPMessageTransmitter.sol";
 import {HOOK_MAGIC} from "@lattice/crosschain/circle/CCTPBridgeAdapterLib.sol";
 import {CCTPHookVault} from "@lattice/examples/crosschain/CCTPHookVault.sol";
 import {ICCTPBridgeAdapter} from "@lattice/interfaces/crosschain/ICCTPBridgeAdapter.sol";
@@ -317,6 +318,41 @@ contract CCTPHookVaultTest is CCTPBridgeAdapterTestBase {
         assertEq(vault.totalCredited(), AMOUNT, "vault total credited");
     }
 
+    /// @notice #216 regression: a third party relaying a hooked message minted to the vault through the
+    ///         hook-less `relayMessage` used to mint the USDC and burn the nonce WITHOUT the credit, stranding the
+    ///         funds forever (the vault has no sweep). Now the plain relay refuses it with the nonce still live,
+    ///         the `destinationCaller` lock keeps Circle's transmitter itself diamond-only, and the hook relay
+    ///         books exactly the net-minted amount. Uses a nonce-consuming, fee-netting transmitter mock.
+    function test_Integration_ThirdPartyPlainRelayCannotStrandVaultFunds() public {
+        address messenger = makeAddr("tokenMessenger");
+        MockCCTPMessageTransmitter transmitter = new MockCCTPMessageTransmitter(address(usdc));
+        address diamond = _deployCCTPBridgeAdapter(address(this), messenger, address(transmitter), address(usdc));
+        CCTPHookVault vault = new CCTPHookVault(ICCTPBridgeAdapter(diamond).hookExecutor(), address(usdc));
+
+        uint256 fee = 1_234;
+        bytes memory hookData = abi.encodePacked(HOOK_MAGIC, bytes20(address(vault)), bytes20(BENEFICIARY));
+        bytes memory message = _hookMessageFull(messenger, _b32(diamond), _b32(address(vault)), AMOUNT, fee, hookData);
+
+        address attacker = makeAddr("attacker");
+        vm.prank(attacker);
+        vm.expectRevert(ICCTPBridgeAdapter.CCTPHookRelayRequired.selector);
+        ICCTPBridgeAdapter(diamond).relayMessage(message, hex"01");
+
+        vm.prank(attacker);
+        vm.expectRevert("Invalid caller for message");
+        transmitter.receiveMessage(message, hex"01");
+
+        assertFalse(transmitter.usedNonces(bytes32(uint256(0x1234))), "nonce still live");
+        assertEq(usdc.balanceOf(address(vault)), 0, "nothing minted yet");
+
+        vm.prank(attacker);
+        ICCTPBridgeAdapter(diamond).relayMessageWithHook(message, hex"01");
+
+        assertEq(usdc.balanceOf(address(vault)), AMOUNT - fee, "net amount minted to the vault");
+        assertEq(vault.totalCredited(), AMOUNT - fee, "totalCredited == net minted amount");
+        assertEq(vault.creditOf(BENEFICIARY), AMOUNT - fee, "beneficiary credited");
+    }
+
     //*//////////////////////////////////////////////////////////////////////////
     //                                 HELPERS
     //////////////////////////////////////////////////////////////////////////*//
@@ -325,14 +361,25 @@ contract CCTPHookVaultTest is CCTPBridgeAdapterTestBase {
         return bytes32(uint256(uint160(a)));
     }
 
-    /// @dev Minimal valid CCTP v2 MessageV2 + BurnMessageV2 with a hook body. Byte offsets per the CCTP v2
-    ///      spec: header version 1 at 0, recipient at 76; body version 1 at 148, mintRecipient at 184, amount at
-    ///      216, messageSender at 248, feeExecuted 0 at 312, hookData at 376.
     function _hookMessage(address headerRecipient, bytes32 mintRecipient, uint256 amount, bytes memory hookData)
         internal
         pure
         returns (bytes memory)
     {
+        return _hookMessageFull(headerRecipient, bytes32(0), mintRecipient, amount, 0, hookData);
+    }
+
+    /// @dev Minimal valid CCTP v2 MessageV2 + BurnMessageV2 with a hook body. Byte offsets per the CCTP v2
+    ///      spec: header version 1 at 0, recipient at 76, destinationCaller at 108; body version 1 at 148,
+    ///      mintRecipient at 184, amount at 216, messageSender at 248, feeExecuted at 312, hookData at 376.
+    function _hookMessageFull(
+        address headerRecipient,
+        bytes32 destinationCaller,
+        bytes32 mintRecipient,
+        uint256 amount,
+        uint256 feeExecuted,
+        bytes memory hookData
+    ) internal pure returns (bytes memory) {
         bytes memory header = abi.encodePacked(
             uint32(1), // version @0
             SRC_DOMAIN, // sourceDomain @4
@@ -340,7 +387,7 @@ contract CCTPHookVaultTest is CCTPBridgeAdapterTestBase {
             bytes32(uint256(0x1234)), // nonce @12
             bytes32(0), // sender @44
             bytes32(uint256(uint160(headerRecipient))), // recipient @76
-            bytes32(0), // destinationCaller @108
+            destinationCaller, // destinationCaller @108
             uint32(0), // minFinalityThreshold @140
             uint32(0) // finalityThresholdExecuted @144
         );
@@ -351,7 +398,7 @@ contract CCTPHookVaultTest is CCTPBridgeAdapterTestBase {
             amount, // amount @216
             SENDER, // messageSender @248
             uint256(0), // maxFee @280
-            uint256(0), // feeExecuted @312
+            feeExecuted, // feeExecuted @312
             uint256(0), // expirationBlock @344
             hookData // @376
         );

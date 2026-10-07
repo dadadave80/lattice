@@ -4,6 +4,7 @@ pragma solidity ^0.8.30;
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {CCTPBridgeAdapterTestBase} from "@lattice-test/base/CCTPBridgeAdapterTestBase.sol";
+import {MockCCTPMessageTransmitter} from "@lattice-test/mocks/MockCCTPMessageTransmitter.sol";
 import {Lattice} from "@lattice/Lattice.sol";
 import {CCTPBridgeAdapter} from "@lattice/crosschain/circle/CCTPBridgeAdapter.sol";
 import {HOOK_MAGIC} from "@lattice/crosschain/circle/CCTPBridgeAdapterLib.sol";
@@ -101,6 +102,7 @@ contract MockHookReceiver is ICCTPHookReceiver {
     bool public shouldRevert;
     bool public returnBomb;
     address public reenterTarget; // if set, re-enter this diamond's relayMessage (must hit the reentrancy guard)
+    uint256 public gasBurn; // if set, spin until this much gas is spent (out-of-gas when starved)
 
     function setShouldRevert(bool v) external {
         shouldRevert = v;
@@ -112,6 +114,10 @@ contract MockHookReceiver is ICCTPHookReceiver {
 
     function setReenterTarget(address t) external {
         reenterTarget = t;
+    }
+
+    function setGasBurn(uint256 g) external {
+        gasBurn = g;
     }
 
     function onCCTPHook(
@@ -129,6 +135,11 @@ contract MockHookReceiver is ICCTPHookReceiver {
         lastPayload = payload;
         ++calls;
 
+        uint256 burn = gasBurn;
+        if (burn != 0) {
+            uint256 start = gasleft();
+            while (start - gasleft() < burn) {}
+        }
         if (reenterTarget != address(0)) {
             // Hostile re-entry: the inner relayMessage must revert on the shared reentrancy guard, which
             // propagates up and makes this hook revert — the executor then reports success == false.
@@ -140,6 +151,47 @@ contract MockHookReceiver is ICCTPHookReceiver {
                 return(0x00, 0x40000) // 256 KiB of returndata — a return bomb the executor must ignore
             }
         }
+    }
+}
+
+/// @notice Spins until `g` gas is spent — the expensive work of a nested hook (a vault deposit, a swap).
+contract GasSink {
+    function burn(uint256 g) external view {
+        uint256 start = gasleft();
+        while (start - gasleft() < g) {}
+    }
+}
+
+/// @notice A hook whose expensive work runs in a SUB-call. An out-of-gas there surfaces in this frame as an
+///         ordinary failure, which the executor's own-frame starvation check cannot see. `guarded` re-raises it
+///         the way {ICCTPHookReceiver} requires: a starved sub-call burns ALL remaining gas via `invalid()`.
+contract NestedHookReceiver is ICCTPHookReceiver {
+    GasSink public immutable sink = new GasSink();
+    uint256 public immutable subCallGas;
+    bool public immutable guarded;
+    uint256 public credited;
+
+    constructor(uint256 subCallGas_, bool guarded_) {
+        subCallGas = subCallGas_;
+        guarded = guarded_;
+    }
+
+    function onCCTPHook(uint32, bytes32, bytes32, uint256 amount, bytes calldata) external {
+        if (guarded) {
+            uint256 gasBefore = gasleft();
+            (bool ok,) = address(sink).call(abi.encodeCall(GasSink.burn, (subCallGas)));
+            if (!ok) {
+                if (gasleft() <= gasBefore / 63) {
+                    assembly {
+                        invalid()
+                    }
+                }
+                revert("sub-call failed");
+            }
+        } else {
+            sink.burn(subCallGas);
+        }
+        credited += amount;
     }
 }
 
@@ -577,6 +629,49 @@ contract CCTPBridgeAdapterTest is CCTPBridgeAdapterTestBase {
         assertEq(usdcToken.balanceOf(address(messenger)), amount, "messenger burned the amount");
     }
 
+    /// @notice #216: a hooked burn toward a domain with no `destinationCaller` would let anyone call Circle's
+    ///         transmitter directly and mint without the hook, so it reverts BEFORE any USDC moves.
+    function test_DepositForBurnWithHookRequiresDestinationCaller() public {
+        vm.prank(admin);
+        adapter.configureDomain(BASE_DOMAIN, MAX_FEE, MIN_FINALITY, bytes32(0));
+        bytes memory hookData = _latticeHookData(address(hookReceiver), hex"01");
+        _fund(1_000_000);
+
+        vm.prank(user);
+        vm.expectRevert(
+            abi.encodeWithSelector(ICCTPBridgeAdapter.CCTPHookWithoutDestinationCaller.selector, BASE_DOMAIN)
+        );
+        adapter.depositForBurnWithHook(1_000_000, recip, hookData);
+        assertEq(messenger.calls(), 0, "nothing burned");
+        assertEq(usdcToken.balanceOf(user), 1_000_000, "nothing pulled");
+
+        // A hook-less burn toward the same permissionless domain is unaffected.
+        vm.prank(user);
+        adapter.depositForBurn(1_000_000, recip);
+        assertEq(messenger.calls(), 1, "plain burn still allowed at a zero destinationCaller");
+    }
+
+    /// @notice The destinationCaller guard covers exactly the Lattice envelopes {relayMessage} refuses inbound:
+    ///         `hookData` that is not one (wrong magic, or shorter than 24 bytes) is relayed plainly at the
+    ///         destination anyway, so the lock would protect no Lattice hook and the burn proceeds.
+    function test_DepositForBurnWithHookNonLatticeHookDataSkipsDestinationCallerGuard() public {
+        vm.prank(admin);
+        adapter.configureDomain(BASE_DOMAIN, MAX_FEE, MIN_FINALITY, bytes32(0));
+        bytes memory foreign = abi.encodePacked(bytes4(0xdeadbeef), bytes20(address(hookReceiver)), hex"01");
+        bytes memory short = abi.encodePacked(HOOK_MAGIC, bytes19(0));
+        _fund(2_000_000);
+
+        vm.startPrank(user);
+        adapter.depositForBurnWithHook(1_000_000, recip, foreign);
+        adapter.depositForBurnWithHook(1_000_000, recip, short);
+        vm.stopPrank();
+
+        assertEq(messenger.calls(), 2, "both non-Lattice hooked burns proceeded");
+        assertTrue(messenger.lastWasHook(), "still the depositForBurnWithHook path");
+        assertEq(messenger.lastHookData(), short, "hookData forwarded verbatim");
+        assertEq(messenger.lastDestinationCaller(), bytes32(0));
+    }
+
     function test_DepositForBurnWithHookEmitsEvent() public {
         uint256 amount = 1_000_000;
         bytes memory hookData = _latticeHookData(address(hookReceiver), hex"deadbeef");
@@ -611,13 +706,131 @@ contract CCTPBridgeAdapterTest is CCTPBridgeAdapterTestBase {
     //                          INBOUND HOOKS
     //////////////////////////////////////////////////////////////////////////*//
 
-    function test_RelayMessageIgnoresHookData() public {
+    /// @notice #216: a third party can no longer consume a hooked message through the hook-less relay (which
+    ///         would mint, burn the CCTP nonce and never run the hook). It reverts BEFORE the transmitter call,
+    ///         so the nonce stays live for {relayMessageWithHook}.
+    function test_RelayMessageRefusesHookedMessageFromThirdParty() public {
         bytes memory message = _validHookedMessage(address(hookReceiver), hex"1122");
         vm.prank(relayer);
-        adapter.relayMessage(message, hex"c0ffee"); // plain relay never touches the executor
+        vm.expectRevert(ICCTPBridgeAdapter.CCTPHookRelayRequired.selector);
+        adapter.relayMessage(message, hex"c0ffee");
+
+        assertEq(transmitter.calls(), 0, "transmitter NOT called: the nonce stays live");
+        assertEq(hookReceiver.calls(), 0, "hook not run");
+
+        // The same message still relays through the hook path.
+        vm.prank(relayer);
+        adapter.relayMessageWithHook(message, hex"c0ffee");
+        assertEq(transmitter.calls(), 1, "minted via relayMessageWithHook");
+        assertEq(hookReceiver.calls(), 1, "hook ran");
+    }
+
+    /// @notice Escape hatch: the attested `mintRecipient` itself may relay its hooked message WITHOUT the hook,
+    ///         so a hook that can never succeed cannot lock the funds.
+    function test_RelayMessageHookedByMintRecipientSkipsHook() public {
+        bytes memory message = _validHookedMessage(address(hookReceiver), hex"1122");
+
+        vm.expectEmit(true, false, false, false, diamond);
+        emit ICCTPBridgeAdapter.RelayedMessage(evmRecipient);
+        vm.prank(evmRecipient); // == the attested mintRecipient in `_validHookedMessage`
+        adapter.relayMessage(message, hex"c0ffee");
 
         assertEq(transmitter.calls(), 1, "transmitter minted");
-        assertEq(hookReceiver.calls(), 0, "hook receiver NEVER called by the plain relay");
+        assertEq(hookReceiver.calls(), 0, "hook skipped on the mintRecipient's own plain relay");
+    }
+
+    /// @notice The escape hatch compares the FULL 32-byte `mintRecipient`: a recipient whose low 20 bytes equal
+    ///         the caller but whose high bytes are set (a non-EVM-shaped recipient) is still refused.
+    function test_RelayMessageHookedEscapeHatchComparesFullBytes32() public {
+        bytes32 aliased = bytes32(uint256(uint160(relayer)) | (uint256(1) << 160));
+        bytes memory message = _buildMessage(
+            1,
+            SRC_DOMAIN,
+            NONCE,
+            address(messenger),
+            1,
+            aliased,
+            HOOK_AMOUNT,
+            SENDER,
+            _latticeHookData(address(hookReceiver), hex"01")
+        );
+        vm.prank(relayer);
+        vm.expectRevert(ICCTPBridgeAdapter.CCTPHookRelayRequired.selector);
+        adapter.relayMessage(message, hex"01");
+    }
+
+    /// @notice A hook that ALWAYS runs out of gas reverts every {relayMessageWithHook} (the executor's starvation
+    ///         check cannot tell it from a starved call), so only the escape hatch can deliver the funds.
+    function test_RelayMessageEscapeHatchDeliversAlwaysOutOfGasHook() public {
+        hookReceiver.setGasBurn(type(uint256).max);
+        bytes memory message = _validHookedMessage(address(hookReceiver), hex"01");
+
+        vm.prank(relayer);
+        vm.expectRevert(ICCTPHookExecutor.CCTPHookOutOfGas.selector);
+        adapter.relayMessageWithHook{gas: 2_000_000}(message, hex"01");
+        assertEq(transmitter.calls(), 0, "hook path cannot deliver");
+
+        vm.prank(evmRecipient);
+        adapter.relayMessage(message, hex"01");
+        assertEq(transmitter.calls(), 1, "mintRecipient delivered the funds hook-less");
+    }
+
+    /// @notice Messages {relayMessageWithHook} refuses are NOT hook envelopes, so {relayMessage} still relays
+    ///         them for anyone — no message is refused by both entry points.
+    function test_RelayMessageStillRelaysNonHookMessages() public {
+        bytes memory hook = _latticeHookData(address(hookReceiver), hex"01");
+        bytes32 mintTo = bytes32(uint256(uint160(evmRecipient)));
+
+        // A plain burn: exactly the 376-byte header + body, no hookData.
+        _assertPlainRelays(_buildMessage(1, SRC_DOMAIN, NONCE, address(messenger), 1, mintTo, HOOK_AMOUNT, SENDER, ""));
+        // Leading bytes are not HOOK_MAGIC.
+        _assertPlainRelays(
+            _buildMessage(
+                1,
+                SRC_DOMAIN,
+                NONCE,
+                address(messenger),
+                1,
+                mintTo,
+                HOOK_AMOUNT,
+                SENDER,
+                abi.encodePacked(bytes4(0xdeadbeef), bytes20(address(hookReceiver)))
+            )
+        );
+        // Envelope shorter than 24 bytes.
+        _assertPlainRelays(
+            _buildMessage(
+                1,
+                SRC_DOMAIN,
+                NONCE,
+                address(messenger),
+                1,
+                mintTo,
+                HOOK_AMOUNT,
+                SENDER,
+                abi.encodePacked(HOOK_MAGIC, bytes19(0))
+            )
+        );
+        // Foreign header recipient, wrong header version, wrong body version.
+        _assertPlainRelays(_buildMessage(1, SRC_DOMAIN, NONCE, address(0xBAD), 1, mintTo, HOOK_AMOUNT, SENDER, hook));
+        _assertPlainRelays(
+            _buildMessage(0, SRC_DOMAIN, NONCE, address(messenger), 1, mintTo, HOOK_AMOUNT, SENDER, hook)
+        );
+        _assertPlainRelays(
+            _buildMessage(1, SRC_DOMAIN, NONCE, address(messenger), 0, mintTo, HOOK_AMOUNT, SENDER, hook)
+        );
+        // Shorter than a burn message.
+        _assertPlainRelays(new bytes(375));
+
+        assertEq(hookReceiver.calls(), 0, "no hook ever runs on the plain relay");
+    }
+
+    function _assertPlainRelays(bytes memory message) internal {
+        uint256 before = transmitter.calls();
+        vm.prank(relayer);
+        adapter.relayMessage(message, hex"01");
+        assertEq(transmitter.calls(), before + 1, "relayed plainly");
+        assertEq(transmitter.lastMessage(), message);
     }
 
     function test_RelayMessageWithHookExecutesHook() public {
@@ -776,6 +989,102 @@ contract CCTPBridgeAdapterTest is CCTPBridgeAdapterTestBase {
         adapter.relayMessageWithHook{gas: 750_000}(message, hex"01");
 
         assertEq(transmitter.calls(), 1, "relay succeeded despite the return bomb");
+    }
+
+    /// @notice #216 secondary route: a relayer must not be able to starve a gas-hungry hook (~180k) so that it
+    ///         fails while the mint stands and the nonce is burnt. Sweeps the relay's gas limit across the window:
+    ///         at EVERY limit the relay either reverts with the mint unwound or completes WITH the hook having
+    ///         run. Against a nonce-consuming transmitter, the starved attempts leave the nonce live and an
+    ///         honest retry delivers.
+    function test_RelayMessageWithHookGasStarvedHookRevertsRelay() public {
+        MockCCTPMessageTransmitter cctp = new MockCCTPMessageTransmitter(address(usdcToken));
+        address d = _deployCCTPBridgeAdapter(admin, address(messenger), address(cctp), address(usdcToken));
+        hookReceiver.setGasBurn(25_000); // + the receiver's own cold writes: the hook needs ~180k in total
+        bytes memory data = abi.encodeCall(
+            ICCTPBridgeAdapter.relayMessageWithHook, (_validHookedMessage(address(hookReceiver), hex"01"), hex"01")
+        );
+
+        uint256 starved;
+        uint256 delivered;
+        for (uint256 g = 150_000; g <= 400_000; g += 1_000) {
+            uint256 snap = vm.snapshotState();
+            (bool ok, bytes memory ret) = d.call{gas: g}(data);
+            if (ok) {
+                assertEq(hookReceiver.calls(), 1, "relay completed only because the hook ran");
+                ++delivered;
+            } else {
+                assertEq(cctp.calls(), 0, "mint unwound");
+                assertFalse(cctp.usedNonces(NONCE), "nonce still live");
+                if (ret.length == 4 && bytes4(ret) == ICCTPHookExecutor.CCTPHookOutOfGas.selector) ++starved;
+            }
+            vm.revertToState(snap);
+        }
+        assertGt(starved, 0, "the executor's starvation check fired inside the window");
+        assertGt(delivered, 0, "ample gas delivers");
+
+        // Honest retry with ample gas: the nonce was never consumed.
+        (bool retried,) = d.call{gas: 1_000_000}(data);
+        assertTrue(retried, "retry delivers");
+        assertEq(hookReceiver.calls(), 1, "hook ran on the retry");
+        assertTrue(cctp.usedNonces(NONCE), "nonce consumed by the delivering relay");
+        assertEq(usdcToken.balanceOf(evmRecipient), HOOK_AMOUNT, "net amount minted once");
+    }
+
+    /// @notice DOCUMENTED LIMITATION: the executor sees only the target's OWN frame. When a hook's expensive
+    ///         work runs in a sub-call that runs out of gas, the hook frame keeps its 1/64 reserve and reverts
+    ///         normally, so the executor reports `false`: the mint stands, the nonce is consumed and the hook
+    ///         never runs. {ICCTPHookReceiver} therefore requires such receivers to re-raise starvation.
+    function test_RelayMessageWithHookNestedOutOfGasIsOrdinaryFailure() public {
+        NestedHookReceiver h = new NestedHookReceiver(175_000, false);
+        (address d, MockCCTPMessageTransmitter cctp, bytes memory data, uint256 skipped, uint256 firstG) =
+            _sweepNestedHook(h);
+        assertGt(skipped, 0, "an unguarded nested hook can be starved");
+
+        vm.expectEmit(true, true, false, true, d);
+        emit ICCTPBridgeAdapter.HookExecuted(NONCE, address(h), false);
+        (bool ok,) = d.call{gas: firstG}(data);
+        assertTrue(ok, "relay completed");
+        assertTrue(cctp.usedNonces(NONCE), "nonce consumed");
+        assertEq(h.credited(), 0, "hook effect missing");
+        assertEq(usdcToken.balanceOf(evmRecipient), HOOK_AMOUNT, "minted");
+        (bool again,) = d.call{gas: 2_000_000}(data);
+        assertFalse(again, "the message can never be delivered with its hook again");
+    }
+
+    /// @notice The {ICCTPHookReceiver} pattern closes that gap: a receiver that burns ALL its remaining gas
+    ///         (`invalid()`) when its sub-call was starved trips the executor's check, so no gas limit completes
+    ///         the relay with the hook skipped.
+    function test_RelayMessageWithHookGuardedNestedHookCannotBeStarved() public {
+        NestedHookReceiver h = new NestedHookReceiver(175_000, true);
+        (address d, MockCCTPMessageTransmitter cctp, bytes memory data, uint256 skipped,) = _sweepNestedHook(h);
+        assertEq(skipped, 0, "a guarded nested hook is never skipped");
+
+        (bool ok,) = d.call{gas: 2_000_000}(data);
+        assertTrue(ok, "ample gas delivers");
+        assertTrue(cctp.usedNonces(NONCE), "nonce consumed by the delivering relay");
+        assertEq(h.credited(), HOOK_AMOUNT, "hook ran");
+    }
+
+    /// @dev Deploys a recipe-built diamond on a nonce-consuming transmitter and sweeps the relay gas limit over
+    ///      150k..600k, counting limits at which the relay COMPLETES while the hook's effect is missing.
+    function _sweepNestedHook(NestedHookReceiver h)
+        internal
+        returns (address d, MockCCTPMessageTransmitter cctp, bytes memory data, uint256 skipped, uint256 firstG)
+    {
+        cctp = new MockCCTPMessageTransmitter(address(usdcToken));
+        d = _deployCCTPBridgeAdapter(admin, address(messenger), address(cctp), address(usdcToken));
+        data = abi.encodeCall(
+            ICCTPBridgeAdapter.relayMessageWithHook, (_validHookedMessage(address(h), hex"01"), hex"01")
+        );
+        for (uint256 g = 150_000; g <= 600_000; g += 1_000) {
+            uint256 snap = vm.snapshotState();
+            (bool ok,) = d.call{gas: g}(data);
+            if (ok && h.credited() == 0) {
+                ++skipped;
+                if (firstG == 0) firstG = g;
+            }
+            vm.revertToState(snap);
+        }
     }
 
     /// @notice The hook receives the amount ACTUALLY MINTED — burn `amount` (@216) minus `feeExecuted` (@312) —
