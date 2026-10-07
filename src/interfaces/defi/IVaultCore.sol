@@ -42,6 +42,16 @@ interface IVaultCore is IERC4626 {
     ///      Blocking these entries defeats read-only reentrancy via a strategy callback.
     error VaultCoreManagerRebalancing();
 
+    /// @dev Reverts from `totalAssets()` when the configured strategy manager's `totalAllocated()` read fails
+    ///      (e.g. a registered strategy's `totalAssetsManaged()` reverts). The vault's NAV is then unknown, so
+    ///      share pricing fails closed: `totalAssets()`, the converters and the previews revert, the ERC-4626
+    ///      `max*` views return 0 and every entry and exit reverts. Recovery: the manager admin force-removes a
+    ///      strategy whose read reverts (see {IStrategyManager-removeStrategy}); if none can be removed (e.g. a
+    ///      well-formed balance that overflows the sum), the vault admin calls `setStrategyManager` with a
+    ///      fresh manager. Either way the affected strategies' funds leave the NAV, and returning them later
+    ///      moves their value to whoever holds shares at that moment.
+    error VaultCoreStrategyNavUnavailable(address manager);
+
     //*//////////////////////////////////////////////////////////////////////////
     //                              VIEW FUNCTIONS
     //////////////////////////////////////////////////////////////////////////*//
@@ -53,7 +63,8 @@ interface IVaultCore is IERC4626 {
     function idleAssets() external view returns (uint256);
 
     /// @notice Returns the total assets allocated to strategies (totalAssets() - idleAssets()).
-    /// @dev Will be 0 when no strategy manager is set.
+    /// @dev Will be 0 when no strategy manager is set. Reverts with {VaultCoreStrategyNavUnavailable}, like
+    ///      `totalAssets()`, when the manager's `totalAllocated()` read fails.
     function allocatedAssets() external view returns (uint256);
 
     //*//////////////////////////////////////////////////////////////////////////

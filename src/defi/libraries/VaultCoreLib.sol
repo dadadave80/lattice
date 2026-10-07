@@ -43,8 +43,9 @@ struct VaultCoreStorage {
 ///      - When a StrategyManager is configured, it can direct the vault to PUSH assets to
 ///        external strategies via `allocateToStrategy`. The strategy later PUSHES back via
 ///        its own `withdraw` call.
-///      - `totalAssets()` is overridden to include both idle and allocated assets so that
-///        share price accurately reflects all vault assets regardless of location.
+///      - `totalAssets()` is overridden to include both idle and allocated assets. {ERC4626Lib} prices
+///        shares by self-staticcalling the diamond's `totalAssets()`, so conversions, previews and
+///        mutators all use this full NAV, while `maxWithdraw`/`maxRedeem` stay capped at idle assets.
 library VaultCoreLib {
     //*//////////////////////////////////////////////////////////////////////////
     //                              STORAGE ACCESS
@@ -96,9 +97,13 @@ library VaultCoreLib {
     }
 
     /// @notice Returns the total assets held by the vault, including strategy allocations.
-    /// @dev Overrides ERC4626Lib.totalAssets(). When a manager is set, adds the manager's
+    /// @dev Backs the diamond's `totalAssets()` selector (replacing {ERC4626Lib.totalAssets}), which
+    ///      {ERC4626Lib} reads for all share pricing. When a manager is set, adds the manager's
     ///      `totalAllocated()` view (which sums each strategy's self-reported balance).
     ///      Trust assumption: strategy balance reports are accurate.
+    ///      Fails closed: if the manager read reverts or returns malformed data, this reverts with
+    ///      {IVaultCore.VaultCoreStrategyNavUnavailable} rather than under-reporting the NAV as idle, which
+    ///      would let deposits mint shares cheaply and exits redeem at a discount. `allocatedAssets()` reverts too.
     function totalAssets() internal view returns (uint256) {
         uint256 idle = idleAssets();
         address manager = vaultCoreStorage()._strategyManager;
@@ -106,7 +111,7 @@ library VaultCoreLib {
         // IStrategyManager.totalAllocated() is the sum of IStrategy.totalAssetsManaged()
         // across all registered strategies.
         (bool ok, bytes memory data) = manager.staticcall(abi.encodeWithSignature("totalAllocated()"));
-        if (!ok || data.length < 32) return idle;
+        if (!ok || data.length < 32) revert IVaultCore.VaultCoreStrategyNavUnavailable(manager);
         uint256 allocated = abi.decode(data, (uint256));
         return idle + allocated;
     }

@@ -24,6 +24,7 @@ import {VaultCoreLib} from "@lattice/defi/libraries/VaultCoreLib.sol";
 import {IStrategyManager} from "@lattice/interfaces/defi/IStrategyManager.sol";
 import {IVaultCore} from "@lattice/interfaces/defi/IVaultCore.sol";
 import {IStrategy} from "@lattice/interfaces/external/yearn/IStrategy.sol";
+import {IERC4626} from "@lattice/interfaces/tokens/IERC4626.sol";
 import {ERC20} from "@lattice/tokens/ERC20/ERC20.sol";
 import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
 import {ERC4626} from "@lattice/tokens/ERC4626/ERC4626.sol";
@@ -355,16 +356,25 @@ contract VaultStrategyTest is Test {
         uint256 idleAfterRecall = vault.idleAssets();
         assertApproxEqAbs(idleAfterRecall, DEPOSIT_AMOUNT / 2, 1, "recalled funds are in vault");
 
-        // User redeems all shares — vault's totalAssets covers idle + stratB.
+        // Shares are priced on the full NAV (idle + stratB), but exits are capped at idle liquidity.
         uint256 totalBefore = vault.totalAssets();
-        assertApproxEqAbs(totalBefore, DEPOSIT_AMOUNT, 1, "total assets still equals deposit");
+        assertEq(totalBefore, DEPOSIT_AMOUNT, "total assets still equals deposit");
+        assertEq(vault.maxRedeem(user), DEPOSIT_AMOUNT / 2, "redeemable shares capped at idle");
 
         vm.prank(user);
-        uint256 withdrawn = vault.redeem(shares, user, user);
+        vm.expectRevert(
+            abi.encodeWithSelector(IERC4626.ERC4626ExceededMaxRedeem.selector, user, shares, DEPOSIT_AMOUNT / 2)
+        );
+        vault.redeem(shares, user, user);
 
-        // Vault can only give idle (stratB balance still locked in strategy).
-        // ERC-4626 redeem uses the idle balance; user gets back the idle portion.
-        assertGt(withdrawn, 0, "user received tokens");
+        vm.prank(user);
+        uint256 withdrawn = vault.redeem(DEPOSIT_AMOUNT / 2, user, user);
+
+        // Half the shares are paid out of idle at the full-NAV price; the other half keep stratB's value.
+        assertEq(withdrawn, DEPOSIT_AMOUNT / 2, "redeemed shares paid at NAV");
+        assertEq(asset.balanceOf(user), DEPOSIT_AMOUNT / 2, "user received the idle half");
+        assertEq(vault.idleAssets(), 0, "idle drained");
+        assertEq(vault.convertToAssets(vault.balanceOf(user)), DEPOSIT_AMOUNT / 2, "remaining shares keep NAV");
     }
 
     //*//////////////////////////////////////////////////////////////////////////

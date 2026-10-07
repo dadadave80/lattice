@@ -8,6 +8,7 @@ import {StrategyManager} from "@lattice/defi/StrategyManager.sol";
 import {IStrategyManager} from "@lattice/interfaces/defi/IStrategyManager.sol";
 import {IVaultCore} from "@lattice/interfaces/defi/IVaultCore.sol";
 import {IERC4626} from "@lattice/interfaces/tokens/IERC4626.sol";
+import {Vm} from "forge-std/Vm.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
 //                          MOCK UNDERLYING ERC20
@@ -115,25 +116,32 @@ contract MockStrategy {
 }
 
 //*//////////////////////////////////////////////////////////////////////////
-//              REVERTING STRATEGY (T-1: DoS resilience test)
+//          REVERTING STRATEGY (fail-closed / force-remove, #214)
 //////////////////////////////////////////////////////////////////////////*//
 
-/// @notice Strategy whose totalAssetsManaged() always reverts.
-/// @dev Used to verify that the VaultCore's staticcall guard keeps the vault
-///      operational even when a registered strategy is bricked.
+/// @notice Strategy whose totalAssetsManaged() reverts once `brick()` is called.
+/// @dev Used to verify that a bricked strategy makes `totalAllocated()` revert (so the vault
+///      fails closed) and that `removeStrategy` force-removes it. It starts healthy because
+///      `addStrategy` rejects a strategy whose balance read reverts.
 contract RevertingStrategy {
     MockToken public token;
+    bool public bricked;
 
     constructor(MockToken _token) {
         token = _token;
+    }
+
+    function brick() external {
+        bricked = true;
     }
 
     function asset() external view returns (address) {
         return address(token);
     }
 
-    function totalAssetsManaged() external pure returns (uint256) {
-        revert("strategy bricked");
+    function totalAssetsManaged() external view returns (uint256) {
+        if (bricked) revert("strategy bricked");
+        return 0;
     }
 
     function withdraw(uint256, address) external pure returns (uint256) {
@@ -351,6 +359,25 @@ contract StrategyManagerTest is StrategyManagerTestBase {
         mgr.addStrategy(address(strategyA), 1000);
     }
 
+    /// @notice A strategy that already reports a balance cannot be added: it would step the NAV up on add (#214).
+    function test_AddStrategy_NonzeroBalance_Reverts() public {
+        strategyA.setManagedBalance(1);
+        vm.prank(admin);
+        vm.expectRevert(
+            abi.encodeWithSelector(IStrategyManager.StrategyManagerStrategyNotEmpty.selector, address(strategyA), 1)
+        );
+        mgr.addStrategy(address(strategyA), 1000);
+    }
+
+    /// @notice A strategy whose balance read reverts cannot be added: it would freeze the vault on the spot.
+    function test_AddStrategy_RevertingRead_Reverts() public {
+        RevertingStrategy bricked = new RevertingStrategy(token);
+        bricked.brick();
+        vm.prank(admin);
+        vm.expectRevert(bytes("strategy bricked"));
+        mgr.addStrategy(address(bricked), 1000);
+    }
+
     //*//////////////////////////////////////////////////////////////////////////
     //                         REMOVE STRATEGY TESTS
     //////////////////////////////////////////////////////////////////////////*//
@@ -421,6 +448,82 @@ contract StrategyManagerTest is StrategyManagerTestBase {
             abi.encodeWithSelector(IStrategyManager.StrategyManagerStrategyNotFound.selector, address(strategyA))
         );
         mgr.removeStrategy(address(strategyA));
+    }
+
+    /// @notice A strategy whose balance read reverts bricks totalAllocated(); removeStrategy force-removes it (#214).
+    function test_RemoveStrategy_RevertingStrategy_ForceRemoves() public {
+        RevertingStrategy bricked = new RevertingStrategy(token);
+        vm.startPrank(admin);
+        mgr.setVault(address(mockVault));
+        mgr.addStrategy(address(bricked), 3000);
+        mgr.addStrategy(address(strategyA), 2000);
+        vm.stopPrank();
+        strategyA.setManagedBalance(100e18);
+        bricked.brick();
+
+        vm.expectRevert(bytes("strategy bricked"));
+        mgr.totalAllocated();
+
+        vm.expectEmit(true, false, false, false, diamond);
+        emit IStrategyManager.StrategyForceRemoved(address(bricked));
+        vm.expectEmit(true, false, false, false, diamond);
+        emit IStrategyManager.StrategyRemoved(address(bricked));
+        vm.prank(admin);
+        mgr.removeStrategy(address(bricked));
+
+        assertEq(mgr.getStrategies().length, 1, "one strategy left");
+        assertEq(mgr.getStrategies()[0], address(strategyA), "swap-and-pop kept strategyA");
+        assertEq(mgr.totalTargetBps(), 2000, "bricked target released");
+        assertEq(mgr.getStrategyTarget(address(bricked)), 0, "bricked target cleared");
+        assertEq(mgr.totalAllocated(), 100e18, "totalAllocated readable again");
+    }
+
+    /// @notice A strategy whose code is gone (empty return data) also bricks totalAllocated() and is
+    ///         force-removed: the removal check treats a read it cannot decode as failed.
+    function test_RemoveStrategy_CodelessStrategy_ForceRemoves() public {
+        address codeless = address(new RevertingStrategy(token));
+        vm.prank(admin);
+        mgr.addStrategy(codeless, 1000); // no vault set, so no asset check
+        vm.etch(codeless, "");
+
+        vm.expectRevert();
+        mgr.totalAllocated();
+
+        vm.expectEmit(true, false, false, false, diamond);
+        emit IStrategyManager.StrategyForceRemoved(codeless);
+        vm.prank(admin);
+        mgr.removeStrategy(codeless);
+        assertEq(mgr.getStrategies().length, 0);
+    }
+
+    /// @notice A healthy zero-balance removal is not reported as forced.
+    function test_RemoveStrategy_ZeroBalance_NotForced() public {
+        vm.prank(admin);
+        mgr.addStrategy(address(strategyA), 5000);
+
+        vm.recordLogs();
+        vm.prank(admin);
+        mgr.removeStrategy(address(strategyA));
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        for (uint256 i; i < logs.length; ++i) {
+            assertTrue(logs[i].topics[0] != IStrategyManager.StrategyForceRemoved.selector, "not forced");
+        }
+    }
+
+    /// @notice Force removal stays admin-gated.
+    function test_RemoveStrategy_RevertingStrategy_NonAdminReverts() public {
+        RevertingStrategy bricked = new RevertingStrategy(token);
+        vm.prank(admin);
+        mgr.addStrategy(address(bricked), 1000);
+        bricked.brick();
+
+        vm.prank(user);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                bytes4(keccak256("AccessControlUnauthorizedAccount(address,bytes32)")), user, DEFAULT_ADMIN_ROLE
+            )
+        );
+        mgr.removeStrategy(address(bricked));
     }
 
     //*//////////////////////////////////////////////////////////////////////////

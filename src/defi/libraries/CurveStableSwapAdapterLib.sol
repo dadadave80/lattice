@@ -241,6 +241,11 @@ library CurveStableSwapAdapterLib {
     ///      `deploy()` idle→~0 while LP grows by the same value, so the sum is invariant across
     ///      deploy. The idle asset is held loose by the adapter (not in the pool), so reading it is
     ///      free of the `get_virtual_price` read-only-reentrancy concern.
+    /// @dev **UNSAFE as a share-pricing source until #221.** VaultCore vaults price ERC-4626 shares on
+    ///      their full NAV, which includes this value. The guards above cover only Lattice's own
+    ///      mutators and the rebalance flag; an outsider re-entering the vault from a pool's ETH callback
+    ///      runs no Lattice code, passes them, and deposits or redeems against a skewed
+    ///      `get_virtual_price()`. Do not wire this adapter into a vault's StrategyManager until then.
     function totalAssetsManaged() internal view returns (uint256) {
         CurveStableSwapAdapterStorage storage $ = curveStableSwapAdapterStorage();
         uint256 idle = AdapterBaseLib.balanceOfSelf($._asset);

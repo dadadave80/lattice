@@ -27,8 +27,8 @@ bytes32 constant STRATEGY_MANAGER_ERC165_STORAGE_LOCATION =
 bytes32 constant ERC165_MAP_ISTRATEGYMANAGER_SLOT = 0x3d05027e9ebc1daac4235d8ac5fc59b9acea5ece08ff307b79ab5b69ad569930;
 
 /// @dev Maximum number of strategies that can be registered simultaneously.
-/// Limits the iteration cost of totalAllocated() (called on every ERC-4626 operation
-/// via VaultCore.totalAssets()) and rebalance(), preventing gas-based DoS.
+/// Limits the iteration cost of totalAllocated() (read by every ERC-4626 conversion, preview,
+/// max* view and mutator via VaultCore.totalAssets()) and rebalance(), preventing gas-based DoS.
 uint256 constant MAX_STRATEGIES = 20;
 
 /// @notice Storage struct for StrategyManager module.
@@ -121,6 +121,9 @@ library StrategyManagerLib {
     /// @dev Trust assumption: each registered strategy must accurately report
     ///      `totalAssetsManaged()`. A malicious strategy could inflate this value,
     ///      causing the vault to miscalculate share prices. Only add audited strategies.
+    ///      Reverts if any strategy's read reverts (or the sum overflows); the vault then fails closed until
+    ///      the admin force-removes a reverting strategy through `removeStrategy`, or, as a last resort, the
+    ///      vault admin points `VaultCore.setStrategyManager` at a fresh manager.
     function totalAllocated() internal view returns (uint256 total) {
         StrategyManagerStorage storage $ = strategyManagerStorage();
         uint256 len = $._strategies.length;
@@ -148,6 +151,8 @@ library StrategyManagerLib {
     }
 
     /// @notice Registers a new strategy with a target allocation. Admin-only.
+    /// @dev Reverts with {IStrategyManager.StrategyManagerStrategyNotEmpty} if the strategy already reports a
+    ///      balance, and bubbles the revert if its `totalAssetsManaged()` read fails.
     /// @param strategy Strategy contract address.
     /// @param targetBps Target allocation in basis points (0–10 000).
     function addStrategy(address strategy, uint16 targetBps) internal {
@@ -171,6 +176,12 @@ library StrategyManagerLib {
             if (strategyAsset != vaultAsset) revert IStrategyManager.StrategyManagerAssetMismatch(strategy);
         }
 
+        // A new strategy must start empty: a reported balance would step the vault's NAV up on add, handing
+        // that value to whoever holds shares now (e.g. re-adding a force-removed strategy that still holds
+        // the stranded funds). A reverting read bubbles: such a strategy would freeze the vault on the spot.
+        uint256 balance = IStrategy(strategy).totalAssetsManaged();
+        if (balance > 0) revert IStrategyManager.StrategyManagerStrategyNotEmpty(strategy, balance);
+
         // Validate total allocation would not exceed 100%.
         uint256 newTotal = $._totalTargetBps + targetBps;
         if (newTotal > 10_000) revert IStrategyManager.StrategyManagerInvalidAllocation(newTotal);
@@ -184,6 +195,7 @@ library StrategyManagerLib {
     }
 
     /// @notice Removes a registered strategy. Admin-only. Uses swap-and-pop.
+    /// @dev A strategy whose `totalAssetsManaged()` read fails is force-removed (see {_removeStrategy}).
     /// @param strategy Strategy address to remove.
     function removeStrategy(address strategy) internal {
         AccessControlLib.checkRole(DEFAULT_ADMIN_ROLE);
@@ -191,6 +203,17 @@ library StrategyManagerLib {
     }
 
     /// @dev Inner logic for removeStrategy.
+    ///      Force removal: a failing balance read makes {totalAllocated} revert, which makes the vault's
+    ///      `totalAssets()` revert and freezes the vault (fail closed). To recover, a strategy whose read
+    ///      reverts or returns malformed data is removed without the balance check and emits
+    ///      {IStrategyManager.StrategyForceRemoved}. Any funds it still holds leave the vault's NAV and
+    ///      deposits reopen at the lower NAV. Funds it later returns to the vault, by any path, accrue to
+    ///      whoever holds shares at that moment, including depositors who entered after the removal, so a
+    ///      recovery moves value from pre-removal holders to them. {_addStrategy} rejects re-adding it while
+    ///      it still reports a balance.
+    ///      A strategy that reports a well-formed but overflowing balance also freezes the vault, yet is not
+    ///      a failed read here and cannot be force-removed; the last resort is `VaultCore.setStrategyManager`
+    ///      with a fresh manager, which drops all of this manager's strategies from the NAV.
     function _removeStrategy(address strategy) internal {
         StrategyManagerStorage storage $ = strategyManagerStorage();
 
@@ -201,10 +224,18 @@ library StrategyManagerLib {
         // Removing a live strategy silently removes those assets from totalAllocated()
         // accounting, immediately dropping the share price and stranding the capital.
         // Operators must rebalance (or set targetBps to 0 and rebalance) to recall
-        // funds before removing a strategy.
-        uint256 liveBalance = IStrategy(strategy).totalAssetsManaged();
-        if (liveBalance > 0) {
-            revert IStrategyManager.StrategyManagerStrategyStillAllocated(strategy, liveBalance);
+        // funds before removing a strategy. A low-level staticcall (rather than try/catch,
+        // which cannot catch a return-data decode failure) treats a reverting or undecodable
+        // read as failed. An overflowing sum in {totalAllocated} is not caught here.
+        (bool ok, bytes memory data) =
+            strategy.staticcall(abi.encodeWithSelector(IStrategy.totalAssetsManaged.selector));
+        if (ok && data.length >= 32) {
+            uint256 liveBalance = abi.decode(data, (uint256));
+            if (liveBalance > 0) {
+                revert IStrategyManager.StrategyManagerStrategyStillAllocated(strategy, liveBalance);
+            }
+        } else {
+            emit IStrategyManager.StrategyForceRemoved(strategy);
         }
 
         uint256 arrIdx = idx - 1; // convert to 0-based
