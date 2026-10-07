@@ -18,7 +18,9 @@ import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondC
 ///         is, shared by production (`run --broadcast`) and the facet tests (which build on {buildCuts}).
 ///         `AccessControl` is part of the base recipe because the gateway-set, threshold and remote-bridge setters
 ///         are `DEFAULT_ADMIN_ROLE`-gated. The bridge is gateway-agnostic, so the gateway set is configured
-///         post-deploy by the admin rather than at init.
+///         post-deploy by the admin rather than at init, in this order: `addGateway` (each gateway), `setThreshold`,
+///         then `registerRemoteBridge`. `registerRemoteBridge` reverts while the threshold is 0, and the bridge
+///         never executes an inbound message at threshold 0.
 contract DeployERC7786OpenBridge is BaseDeploy {
     /// @notice Builds the open-bridge diamond cuts + initializer (no broadcast, no proxy deploy).
     /// @param admin The address granted `DEFAULT_ADMIN_ROLE` (controls the gateway set, threshold and remotes).
