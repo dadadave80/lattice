@@ -15,8 +15,8 @@
 # HOW IT WORKS
 #   1. `forge inspect <Probe> storageLayout` under FOUNDRY_PROFILE=ci (which the
 #      repo already sets `extra_output = ["storageLayout"]`) emits the field-by-
-#      field layout of each module struct, mirrored as a real state variable in
-#      `script/upgrades/StorageLayoutProbe.sol`. (A module's real struct is only
+#      field layout of each module struct, imported and declared as a state variable
+#      in `script/upgrades/StorageLayoutProbe.sol`. (A module's real struct is only
 #      reached via an assembly slot-cast, so solc emits NO layout for the library
 #      itself -- the probe is what makes the layout inspectable. This is the
 #      standard Foundry idiom for ERC-7201 namespaced storage.)
@@ -30,15 +30,10 @@
 #      diff in code review); a reorder/retype/shrink/removal ALSO changes it and
 #      is the incompatible case the reviewer must reject.
 #
-# LIMITATION (nested value-structs): the diff captures a struct member typed as a
-#   nested value-struct (or a mapping to one) by its TYPE NAME only, not by that
-#   nested struct's internal field layout. So reordering/retyping the fields of a
-#   nested struct (e.g. `Group` inside SemaphoreStorage, `CutRecord` inside the
-#   *DiamondCut storages, `Commitment` inside CommitReveal) is NOT caught here.
-#   Mitigation: every such nested struct is mirrored VERBATIM in
-#   StorageLayoutProbe.sol, so the change is visible in code review -- reviewers
-#   MUST manually inspect any edit to a nested value-struct's fields. (A future
-#   enhancement could recursively expand nested structs into the diffed layout.)
+# NESTED STRUCTS: every other struct type reachable from a guarded struct (e.g. `Group` inside
+#   SemaphoreStorage, `CutRecord` inside the *DiamondCut storages, `ChainRecord` inside
+#   ChainRegistryStorage) gets its own "(nested)" section, so reordering or retyping a nested
+#   struct's fields fails the check too.
 #
 # USAGE
 #   script/upgrades/check-storage-layout.sh            # verify (CI mode; exit 1 on drift)
@@ -47,6 +42,8 @@
 # REQUIRES: foundry (`forge`, `cast`) and `jq` (preinstalled on GitHub runners).
 # ---------------------------------------------------------------------------
 set -euo pipefail
+# Byte-order collation, so `sort` gives the same section order on macOS and on the Linux CI runner.
+export LC_ALL=C
 
 # Resolve repo root from this script's location so it runs from anywhere.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -56,68 +53,26 @@ cd "${REPO_ROOT}"
 BASELINE="script/upgrades/storage-layout.baseline"
 PROBE="StorageLayoutProbe"
 
-# Module structs to guard. Add a line "<StructName> <erc7201-namespace>" here when
-# you mirror a new module struct into StorageLayoutProbe.sol.
-#   <StructName>            : the struct name as declared in the probe.
-#   <namespace>             : the module's @custom:storage-location erc7201 string.
-GUARDED_STRUCTS=(
-    "GovernedDiamondCutStorage lattice.storage.GovernedDiamondCut"
-    "SafeDiamondCutStorage lattice.storage.SafeDiamondCut"
-    "GovernedSafeDiamondCutStorage lattice.storage.GovernedSafeDiamondCut"
-    "ERC6538RegistryStorage lattice.storage.ERC6538Registry"
-    "ENSReverseClaimerStorage lattice.storage.ENSReverseClaimer"
-    "ENSResolverStorage lattice.storage.ENSResolver"
-    "ENSSubnameIssuerStorage lattice.storage.ENSSubnameIssuer"
-    "SafeHarborAdopterStorage lattice.storage.SafeHarborAdopter"
-    "CommitRevealStorage lattice.storage.CommitReveal"
-    "SemaphoreStorage lattice.storage.Semaphore"
-    "PrivateVotingStorage lattice.storage.PrivateVoting"
-    "ShieldedPoolStorage lattice.storage.ShieldedPool"
-    "PythAdapterStorage lattice.storage.PythAdapter"
-    "API3AdapterStorage lattice.storage.API3Adapter"
-    "ChronicleAdapterStorage lattice.storage.ChronicleAdapter"
-    "DIAAdapterStorage lattice.storage.DIAAdapter"
-    "BandAdapterStorage lattice.storage.BandAdapter"
-    "TellorAdapterStorage lattice.storage.TellorAdapter"
-    "RedStoneAdapterStorage lattice.storage.RedStoneAdapter"
-    "CrosschainLinkStorage lattice.storage.CrosschainLink"
-    "BridgeERC20Storage lattice.storage.BridgeERC20"
-    "BridgeERC7802Storage lattice.storage.BridgeERC7802"
-    "AxelarGatewayAdapterStorage lattice.storage.AxelarGatewayAdapter"
-    "WormholeGatewayAdapterStorage lattice.storage.WormholeGatewayAdapter"
-    "ERC7786OpenBridgeStorage lattice.storage.ERC7786OpenBridge"
-    "CCIPGatewayAdapterStorage lattice.storage.CCIPGatewayAdapter"
-    "CCTPBridgeAdapterStorage lattice.storage.CCTPBridgeAdapter"
-    "AggregatorExecAdapterStorage lattice.storage.AggregatorExecAdapter"
-    "LayerZeroGatewayAdapterStorage lattice.storage.LayerZeroGatewayAdapter"
-    "L2ToL2CrossDomainMessengerGatewayAdapterStorage lattice.storage.L2ToL2CrossDomainMessengerGatewayAdapter"
-    "ZetaChainGatewayAdapterStorage lattice.storage.ZetaChainGatewayAdapter"
-    "L1ToL2CrossDomainMessengerGatewayAdapterStorage lattice.storage.L1ToL2CrossDomainMessengerGatewayAdapter"
-    "PythEntropyAdapterStorage lattice.storage.PythEntropyAdapter"
-    "GelatoVRFAdapterStorage lattice.storage.GelatoVRFAdapter"
-    "API3QRNGAdapterStorage lattice.storage.API3QRNGAdapter"
-    "GelatoAutomateAdapterStorage lattice.storage.GelatoAutomateAdapter"
-    "ChainlinkAutomationAdapterStorage lattice.storage.ChainlinkAutomationAdapter"
-    "ChainlinkCREAdapterStorage lattice.storage.ChainlinkCREAdapter"
-    "MarketplaceZoneStorage lattice.storage.MarketplaceZone"
-    "AccountSignerStorage lattice.storage.AccountSigner"
-    "ERC4337ValidationStorage lattice.storage.ERC4337Validation"
-    "SessionKeyStorage lattice.storage.SessionKey"
-    "ERC7579ModuleConfigStorage lattice.storage.ERC7579ModuleConfig"
-    "ERC6551AccountStorage lattice.storage.ERC6551Account"
-    "ERC6900ModuleManagerStorage lattice.storage.ERC6900ModuleManager"
-    "AcrossBridgeAdapterStorage lattice.storage.AcrossBridgeAdapter"
-    "StarknetGatewayAdapterStorage lattice.storage.StarknetGatewayAdapter"
-    "ChainRegistryStorage lattice.storage.ChainRegistry"
-    "ChainRecord lattice.storage.ChainRegistry"
-    "NativeIds lattice.storage.ChainRegistry"
-    "HyperlaneGatewayAdapterStorage lattice.storage.HyperlaneGatewayAdapter"
-    "StargateBridgeAdapterStorage lattice.storage.StargateBridgeAdapter"
-    "HyperbridgeGatewayAdapterStorage lattice.storage.HyperbridgeGatewayAdapter"
-    "GovernedVaultStorage lattice.storage.GovernedVault"
-    "HTSAdapterStorage lattice.storage.HTSAdapter"
-    "HSSAdapterStorage lattice.storage.HSSAdapter"
+# Structs to guard: EVERY `@custom:storage-location erc7201:<ns>` annotation in src/, paired with the
+# `struct <Name>` line that follows it. Deriving the list (instead of maintaining it by hand) makes the
+# guard complete by construction: a new module struct is checked automatically, and if it is missing from
+# StorageLayoutProbe.sol the check fails loudly with a ZERO-member-rows error below.
+GUARDED_STRUCTS=()
+while IFS= read -r entry; do GUARDED_STRUCTS+=("${entry}"); done < <(
+    grep -rn --include='*.sol' -A3 '@custom:storage-location erc7201:' src \
+        | awk '
+            match($0, /erc7201:[A-Za-z0-9._]+/) { ns = substr($0, RSTART + 8, RLENGTH - 8); next }
+            ns != "" && match($0, /-struct [A-Za-z0-9_]+/) {
+                print substr($0, RSTART + 8, RLENGTH - 8) " " ns; ns = ""
+            }' \
+        | sort
 )
+NAMESPACE_COUNT="$(grep -rhoE --include='*.sol' '@custom:storage-location erc7201:[A-Za-z0-9._]+' src | wc -l | tr -d ' ')"
+if [[ "${#GUARDED_STRUCTS[@]}" -ne "${NAMESPACE_COUNT}" ]]; then
+    echo "ERROR: found ${NAMESPACE_COUNT} erc7201 annotations in src/ but paired only ${#GUARDED_STRUCTS[@]} with a struct." >&2
+    echo "Each annotation must sit directly above its 'struct <Name> {' line." >&2
+    exit 2
+fi
 
 command -v forge >/dev/null 2>&1 || { echo "ERROR: forge not found on PATH" >&2; exit 2; }
 command -v jq    >/dev/null 2>&1 || { echo "ERROR: jq not found on PATH" >&2; exit 2; }
@@ -134,7 +89,31 @@ generate_layout() {
         exit 2
     fi
 
-    local entry name ns slot_root header expected_ns
+    # Members of struct <name>, one "slot offset label type" row each. Volatile numeric AST ids are
+    # stripped from composite type names so the baseline is recompile-stable. The match is anchored to
+    # REAL struct entries ("^t_struct(Name)"): an unanchored match also hits mapping/array type keys that
+    # EMBED the struct name, whose .members is null, and would silently emit an EMPTY section.
+    struct_members() {
+        echo "${raw}" | jq -r --arg n "$1" '
+            .types
+            | to_entries[]
+            | select(.key | test("^t_struct\\(" + $n + "\\)"))
+            | (.value.members // [])[]
+            | "\(.slot)\t\(.offset)\t\(.label)\t\(.type)"
+        ' | sed -E 's/\)[0-9]+/)/g' | sort -n -k1,1 -k2,2
+    }
+
+    # Sections are keyed by struct name, so two different structs sharing a name would merge their rows.
+    local clash
+    clash="$(echo "${raw}" | jq -r '.types | keys[] | capture("^t_struct\\((?<n>[A-Za-z0-9_]+)\\)(?<id>[0-9]+)") | "\(.n) \(.id)"' \
+        | sort -u | awk '{print $1}' | uniq -d)"
+    if [[ -n "${clash}" ]]; then
+        echo "ERROR: several distinct structs share a name, so their layouts can't be told apart: ${clash}" >&2
+        exit 2
+    fi
+
+    local entry name ns slot_root header members
+    local -a top_names=()
     for entry in "${GUARDED_STRUCTS[@]}"; do
         name="${entry%% *}"
         ns="${entry#* }"
@@ -144,26 +123,26 @@ generate_layout() {
         [[ -n "${slot_root}" ]] && header="${header} (slot ${slot_root})"
         echo "${header}"
 
-        # Pull the struct's members; strip volatile numeric AST ids from composite
-        # type names so the baseline is recompile-stable. The match is anchored to REAL struct
-        # entries ("^t_struct(Name)") — an unanchored match also hits mapping/array type keys
-        # that EMBED the struct name (e.g. t_mapping(...,t_struct(Name)...)) whose .members is
-        # null, aborting jq mid-stream and silently emitting an EMPTY (vacuous) section.
-        local members
-        members="$(echo "${raw}" | jq -r --arg n "${name}" '
-            .types
-            | to_entries[]
-            | select(.key | test("^t_struct\\(" + $n + "\\)"))
-            | (.value.members // [])[]
-            | "\(.slot)\t\(.offset)\t\(.label)\t\(.type)"
-        ' | sed -E 's/\)[0-9]+/)/g' | sort -n -k1,1 -k2,2)"
+        top_names+=("${name}")
+        members="$(struct_members "${name}")"
         # FAIL LOUD on an empty section: a guarded struct with zero member rows means the guard
-        # is vacuous (wrong name, missing probe mirror, or a filter regression like the above).
+        # is vacuous (missing from the probe, or a filter regression).
         if [[ -z "${members}" ]]; then
             echo "ERROR: guarded struct '${name}' produced ZERO member rows — vacuous guard." >&2
+            echo "Import ${name} into ${PROBE}.sol and declare it as an internal state variable." >&2
             exit 2
         fi
         echo "${members}"
+        echo ""
+    done
+
+    # Every other struct type in the probe layout is nested inside a guarded struct.
+    local nested
+    nested="$(echo "${raw}" | jq -r '.types | keys[] | select(startswith("t_struct(")) | capture("^t_struct\\((?<n>[A-Za-z0-9_]+)\\)").n' \
+        | sort -u | grep -vxF -f <(printf '%s\n' "${top_names[@]}") || true)"
+    for name in ${nested}; do
+        echo "### ${name} (nested)"
+        struct_members "${name}"
         echo ""
     done
 }
