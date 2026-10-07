@@ -136,6 +136,10 @@ contract AccessManager is IAccessManager {
         AccessManagerLib.setTargetClosed(target, closed);
     }
 
+    function updateAuthority(address target, address newAuthority) external virtual override {
+        AccessManagerLib.updateAuthority(target, newAuthority);
+    }
+
     function schedule(address target, bytes calldata data, uint48 when)
         external
         virtual
@@ -186,8 +190,9 @@ contract AccessManager is IAccessManager {
     ///      `setTargetAdminDelay(address,uint32)` 0xd22b5989
     ///      `setTargetClosed(address,bool)` 0x167bd395
     ///      `setTargetFunctionRole(address,bytes4[],uint64)` 0x08d6122d
+    ///      `updateAuthority(address,address)` 0x18ff183c
     function exportSelectors() external pure virtual returns (bytes memory selectors) {
         selectors =
-            hex"75b238fc3ca7c02ab7009613d6bb62c61cff79cd3078f1144136a33c530dd45612be87270b0a93bafc8610d1a5808e2f3adc277a4c1da1e26d5115bd25c471a0d1f856eeabd9bd2aa166aa89853551b8fe0776f5b7d2b162f801a698a64d95ce30cae18752962952d22b5989167bd39508d6122d";
+            hex"75b238fc3ca7c02ab7009613d6bb62c61cff79cd3078f1144136a33c530dd45612be87270b0a93bafc8610d1a5808e2f3adc277a4c1da1e26d5115bd25c471a0d1f856eeabd9bd2aa166aa89853551b8fe0776f5b7d2b162f801a698a64d95ce30cae18752962952d22b5989167bd39508d6122d18ff183c";
     }
 }
