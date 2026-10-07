@@ -6,18 +6,27 @@ The contracts are unaudited. The walkthrough uses local development assets.
 
 ## Start from a clean checkout
 
-Tested with Foundry **v1.8.1** (forge, cast, anvil), Git, Bash, jq, and Make.
-The example compiles with Solidity 0.8.36. All CI jobs use the shared Foundry v1.8.1 pin.
-Install the same release locally with `foundryup --install v1.8.1`.
+The `grant-m2` tag was tested with Foundry **v1.8.1** (forge, cast, anvil), Git, Bash, jq, and Make, and it
+also passes on v1.8.5. The example compiles with Solidity 0.8.36. Install the tag's release locally with
+`foundryup --install v1.8.1`.
 
 ```sh
 git clone --recurse-submodules --branch grant-m2 https://github.com/dadadave80/lattice.git
 cd lattice
 forge --version
 make sizes
-make test-v MATCH='GovernedVault(Upgrade)?Test'
+forge test --match-contract 'GovernedVault(Upgrade)?Test' -vvv
 make test-grant-runner
 ```
+
+Expected:
+- `make sizes` lists every contract with a positive runtime margin.
+- The `forge test` line reports `13 tests passed, 0 failed` across `GovernedVaultTest` (6) and
+  `GovernedVaultUpgradeTest` (7).
+- `make test-grant-runner` exits 0.
+
+Call `forge test` directly, as above. At the tag, `make test MATCH=<regex>` passes the pattern to the shell
+unquoted, so a regex containing parentheses fails with a shell syntax error.
 
 On an existing checkout, run `git submodule update --init --recursive` first. Run from the repository
 root: its remappings define `@lattice/=src/`, `@lattice-script/=script/`, `@lattice-test/=test/`,
@@ -59,7 +68,10 @@ is a Milestone 3 deliverable tracked in #177; it is not required to run this exa
 ## Initialize in one transaction
 
 Use `DeployGovernedVault.deployAtomic(params, factory, salt)` with the existing `LatticeFactory`.
-The factory creates the proxy and calls `Lattice.initialize` in **one transaction**. The factory binds
+The factory creates the proxy and calls `Lattice.initialize` in **one transaction**. This matters
+because `initialize` is first-caller-wins. A proxy that is deployed in one transaction and initialized in a
+later one can be front-run: anyone who sees the deployment can call `initialize` first with their own cut
+and take the diamond. The factory binds
 CREATE2 salts to the caller; reuse of an occupied caller/salt returns the existing deployment, so use a
 new salt for a different recipe. The example creates a fresh factory each run.
 
