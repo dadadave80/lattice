@@ -110,9 +110,9 @@ contract OracleAssetToken {
 
 /// @notice ERC-4626-style vault that uses a Chainlink feed to value its idle assets.
 ///
-/// @dev Architecture note: ERC4626Lib.totalAssets() is hardcoded to `asset.balanceOf(this)`
-///      and cannot be overridden in the library-based Diamond pattern (there is no virtual
-///      dispatch from library internal calls). This vault therefore implements its own
+/// @dev Architecture note: ERC4626Lib.totalAssets() is `asset.balanceOf(this)`; ERC4626Lib's share
+///      math reads whatever facet owns the diamond's `totalAssets()` selector, but that NAV is
+///      denominated in the asset, not oracle-priced. This vault therefore implements its own
 ///      share-pricing math on top of ChainlinkAdapter and ERC20Lib, demonstrating the
 ///      composition: oracle-priced assets drive deposit/withdraw share calculations.
 ///

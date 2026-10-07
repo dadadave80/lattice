@@ -22,8 +22,12 @@ import {ERC4626Lib} from "@lattice/tokens/ERC4626/libraries/ERC4626Lib.sol";
 ///        3. ERC4626Lib.__ERC4626_init(asset, decimalsOffset)
 ///        4. VaultCoreLib.__VaultCore_init()
 ///
-///      `totalAssets()` is overridden to include assets held by registered strategies
-///      so that ERC-4626 share pricing reflects the full vault balance.
+///      `totalAssets()` is overridden to include assets held by registered strategies. {ERC4626Lib} prices
+///      shares by self-staticcalling the diamond's `totalAssets()` selector, so the {ERC4626} converters,
+///      previews and the mutators here all price on this full NAV. Exits stay capped at idle assets
+///      (`maxWithdraw`/`maxRedeem`). If the strategy manager's NAV read fails, `totalAssets()` reverts and
+///      the vault fails closed until the failing strategy is removed (or the manager replaced; see
+///      {IVaultCore.VaultCoreStrategyNavUnavailable}).
 /// @custom:lattice-version 0.1.0
 /// @custom:lattice-source OpenZeppelin v5.1.0
 contract VaultCore {
@@ -33,6 +37,7 @@ contract VaultCore {
 
     /// @notice Returns total assets including strategy allocations.
     /// @dev Replaces the base {ERC4626} `totalAssets()` to include assets held by registered strategies.
+    ///      Reverts with {IVaultCore.VaultCoreStrategyNavUnavailable} if the strategy manager's read fails.
     function totalAssets() public view virtual returns (uint256) {
         return VaultCoreLib.totalAssets();
     }

@@ -199,9 +199,13 @@ contract ERC4626RoundTripInvariant is Test {
         assertLe(sharesBack, s, "convertToShares(convertToAssets(s)) > s");
     }
 
-    /// @notice totalAssets() must equal (or exceed, due to donations) the vault's asset balance.
+    /// @notice On an ERC-4626-only vault, totalAssets() (the NAV the converters read by self-staticcall) is
+    ///         exactly the vault's asset balance; donations raise both together.
     function invariant_TotalAssetsConsistent() public view {
         uint256 vaultBalance = asset.balanceOf(address(vault));
         assertEq(vault.totalAssets(), vaultBalance, "totalAssets != vault asset balance");
     }
+
+    // The idle-liquidity cap on exits is vacuous here (idle == NAV); it is fuzzed on a recipe VaultCore +
+    // StrategyManager diamond in VaultFullNavFuzzBase (test/integration/VaultFullNavPricingTest.t.sol).
 }

@@ -41,6 +41,20 @@ enum Rounding {
 /// @notice Library implementing the ERC-4626 Tokenized Vault Standard.
 /// @dev Mirrors OpenZeppelin v5 ERC4626 logic. All state lives in an ERC-7201 slot.
 ///      The vault IS an ERC-20 share token — callers must also initialize ERC20Lib.
+///
+///      NAV source: OZ prices shares through the virtual `totalAssets()`, but a library call cannot dispatch
+///      virtually. Every conversion, preview, `max*` and mutator therefore reads the NAV from the diamond's own
+///      `totalAssets()` selector through a self-staticcall. On a plain ERC-4626 diamond that selector is the
+///      {ERC4626} facet (this library's idle-only {totalAssets}); on a VaultCore diamond it is {VaultCore},
+///      which adds strategy-deployed funds. {totalAssets} here never makes that self-call, so it cannot recurse.
+///
+///      Liquidity: exits pay out of the vault's own balance only, so `maxWithdraw`/`maxRedeem` are capped at
+///      idle assets. If the NAV read fails (e.g. a strategy's balance read reverts), the vault fails closed:
+///      every `max*` returns 0, deposit/mint/withdraw/redeem revert with the matching `ERC4626ExceededMax*`
+///      error, and the converters and previews revert with the NAV read's error. On a VaultCore diamond
+///      `totalAssets()` itself reverts while the NAV is unreadable: the self-staticcall has no other way to
+///      signal an unknown NAV. Reverting `totalAssets()`, converters and previews deviate from ERC-4626's
+///      "MUST NOT revert" wording, which is preferred over pricing shares on a partial NAV.
 library ERC4626Lib {
     //*//////////////////////////////////////////////////////////////////////////
     //                              STORAGE ACCESS
@@ -116,39 +130,50 @@ library ERC4626Lib {
         return $._underlyingDecimals + $._decimalsOffset;
     }
 
-    /// @notice Returns total underlying assets held by the vault (default: balance of this contract).
+    /// @notice Returns the vault's idle assets: its own balance of the underlying.
+    /// @dev This is the {ERC4626} facet's `totalAssets()` and the liquidity cap on exits. It is NOT the
+    ///      pricing NAV on a diamond that replaces the `totalAssets()` selector (e.g. {VaultCore}); share math
+    ///      reads that selector instead (see the library NatSpec). It must never call the converters.
     function totalAssets() internal view returns (uint256) {
         return IERC20(erc4626Storage()._asset).balanceOf(address(this));
     }
 
-    /// @notice Returns shares equivalent to `assets` (floor rounding).
+    /// @notice Returns shares equivalent to `assets` at the diamond's NAV (floor rounding).
     function convertToShares(uint256 assets) internal view returns (uint256) {
         return _convertToShares(assets, Rounding.Floor);
     }
 
-    /// @notice Returns assets equivalent to `shares` (floor rounding).
+    /// @notice Returns assets equivalent to `shares` at the diamond's NAV (floor rounding).
     function convertToAssets(uint256 shares) internal view returns (uint256) {
         return _convertToAssets(shares, Rounding.Floor);
     }
 
-    /// @notice Returns the maximum depositible assets for `receiver` (unbounded by default).
-    function maxDeposit(address) internal pure returns (uint256) {
-        return type(uint256).max;
+    /// @notice Returns the maximum depositable assets for `receiver`: unbounded, or 0 while the NAV is unreadable.
+    function maxDeposit(address) internal view returns (uint256) {
+        (bool ok,) = _tryNav();
+        return ok ? type(uint256).max : 0;
     }
 
-    /// @notice Returns the maximum mintable shares for `receiver` (unbounded by default).
-    function maxMint(address) internal pure returns (uint256) {
-        return type(uint256).max;
+    /// @notice Returns the maximum mintable shares for `receiver`: unbounded, or 0 while the NAV is unreadable.
+    function maxMint(address) internal view returns (uint256) {
+        (bool ok,) = _tryNav();
+        return ok ? type(uint256).max : 0;
     }
 
-    /// @notice Returns the maximum withdrawable assets for `owner`.
+    /// @notice Returns the maximum withdrawable assets for `owner`: the NAV value of their shares, capped at
+    ///         idle assets (0 while the NAV is unreadable).
     function maxWithdraw(address owner) internal view returns (uint256) {
-        return _convertToAssets(ERC20Lib.balanceOf(owner), Rounding.Floor);
+        (bool ok, uint256 nav) = _tryNav();
+        if (!ok) return 0;
+        return _maxWithdraw(owner, ERC20Lib.totalSupply(), nav);
     }
 
-    /// @notice Returns the maximum redeemable shares for `owner`.
+    /// @notice Returns the maximum redeemable shares for `owner`: their balance, capped at the shares idle
+    ///         assets can pay out (0 while the NAV is unreadable).
     function maxRedeem(address owner) internal view returns (uint256) {
-        return ERC20Lib.balanceOf(owner);
+        (bool ok, uint256 nav) = _tryNav();
+        if (!ok) return 0;
+        return _maxRedeem(owner, ERC20Lib.totalSupply(), nav);
     }
 
     /// @notice Simulates shares minted for a `deposit` of `assets` (floor rounding).
@@ -175,43 +200,45 @@ library ERC4626Lib {
     //                          STATE-CHANGING FUNCTIONS
     //////////////////////////////////////////////////////////////////////////*//
 
+    // Each mutator reads the NAV once and applies the same checks and rounding as its `max*`/`preview*` pair.
+
     /// @notice Deposits `assets` and mints shares to `receiver`.
     function deposit(uint256 assets, address receiver) internal returns (uint256 shares) {
-        uint256 maxAssets = maxDeposit(receiver);
-        if (assets > maxAssets) {
-            revert IERC4626.ERC4626ExceededMaxDeposit(receiver, assets, maxAssets);
-        }
-        shares = previewDeposit(assets);
+        (bool ok, uint256 nav) = _tryNav();
+        if (!ok) revert IERC4626.ERC4626ExceededMaxDeposit(receiver, assets, 0);
+        shares = _convertToSharesFromTotals(assets, ERC20Lib.totalSupply(), nav, _decimalsOffset(), Rounding.Floor);
         _deposit(msg.sender, receiver, assets, shares);
     }
 
     /// @notice Mints exactly `shares` to `receiver`, pulling the required assets.
     function mint(uint256 shares, address receiver) internal returns (uint256 assets) {
-        uint256 maxShares = maxMint(receiver);
-        if (shares > maxShares) {
-            revert IERC4626.ERC4626ExceededMaxMint(receiver, shares, maxShares);
-        }
-        assets = previewMint(shares);
+        (bool ok, uint256 nav) = _tryNav();
+        if (!ok) revert IERC4626.ERC4626ExceededMaxMint(receiver, shares, 0);
+        assets = _convertToAssetsFromTotals(shares, ERC20Lib.totalSupply(), nav, _decimalsOffset(), Rounding.Ceil);
         _deposit(msg.sender, receiver, assets, shares);
     }
 
     /// @notice Withdraws `assets` from the vault, burning the required shares from `owner`.
     function withdraw(uint256 assets, address receiver, address owner) internal returns (uint256 shares) {
-        uint256 maxAssets = maxWithdraw(owner);
-        if (assets > maxAssets) {
+        (bool ok, uint256 nav) = _tryNav();
+        uint256 supply = ERC20Lib.totalSupply();
+        uint256 maxAssets = ok ? _maxWithdraw(owner, supply, nav) : 0;
+        if (!ok || assets > maxAssets) {
             revert IERC4626.ERC4626ExceededMaxWithdraw(owner, assets, maxAssets);
         }
-        shares = previewWithdraw(assets);
+        shares = _convertToSharesFromTotals(assets, supply, nav, _decimalsOffset(), Rounding.Ceil);
         _withdraw(msg.sender, receiver, owner, assets, shares);
     }
 
     /// @notice Redeems `shares` from `owner`, transferring assets to `receiver`.
     function redeem(uint256 shares, address receiver, address owner) internal returns (uint256 assets) {
-        uint256 maxShares = maxRedeem(owner);
-        if (shares > maxShares) {
+        (bool ok, uint256 nav) = _tryNav();
+        uint256 supply = ERC20Lib.totalSupply();
+        uint256 maxShares = ok ? _maxRedeem(owner, supply, nav) : 0;
+        if (!ok || shares > maxShares) {
             revert IERC4626.ERC4626ExceededMaxRedeem(owner, shares, maxShares);
         }
-        assets = previewRedeem(shares);
+        assets = _convertToAssetsFromTotals(shares, supply, nav, _decimalsOffset(), Rounding.Floor);
         _withdraw(msg.sender, receiver, owner, assets, shares);
     }
 
@@ -219,26 +246,83 @@ library ERC4626Lib {
     //                            INTERNAL HELPERS
     //////////////////////////////////////////////////////////////////////////*//
 
-    /// @dev Converts `assets` to shares using the given rounding direction.
-    ///      Formula: assets * (totalSupply + 10**offset) / (totalAssets + 1)
+    /// @dev Converts `assets` to shares at the diamond's NAV using the given rounding direction.
     function _convertToShares(uint256 assets, Rounding rounding) internal view returns (uint256) {
-        ERC4626Storage storage $ = erc4626Storage();
-        uint256 totalSupply_ = ERC20Lib.totalSupply();
-        uint256 totalAssets_ = totalAssets();
-        uint256 virtualShares = totalSupply_ + (10 ** uint256($._decimalsOffset));
-        uint256 virtualAssets = totalAssets_ + 1;
-        return mulDiv(assets, virtualShares, virtualAssets, rounding);
+        return _convertToSharesFromTotals(assets, ERC20Lib.totalSupply(), _nav(), _decimalsOffset(), rounding);
     }
 
-    /// @dev Converts `shares` to assets using the given rounding direction.
-    ///      Formula: shares * (totalAssets + 1) / (totalSupply + 10**offset)
+    /// @dev Converts `shares` to assets at the diamond's NAV using the given rounding direction.
     function _convertToAssets(uint256 shares, Rounding rounding) internal view returns (uint256) {
-        ERC4626Storage storage $ = erc4626Storage();
-        uint256 totalSupply_ = ERC20Lib.totalSupply();
-        uint256 totalAssets_ = totalAssets();
-        uint256 virtualShares = totalSupply_ + (10 ** uint256($._decimalsOffset));
-        uint256 virtualAssets = totalAssets_ + 1;
-        return mulDiv(shares, virtualAssets, virtualShares, rounding);
+        return _convertToAssetsFromTotals(shares, ERC20Lib.totalSupply(), _nav(), _decimalsOffset(), rounding);
+    }
+
+    /// @dev Converts `assets` to shares from explicit totals.
+    ///      Formula: assets * (totalSupply + 10**offset) / (totalAssets + 1)
+    function _convertToSharesFromTotals(
+        uint256 assets,
+        uint256 totalSupply_,
+        uint256 totalAssets_,
+        uint8 decimalsOffset_,
+        Rounding rounding
+    ) internal pure returns (uint256) {
+        return mulDiv(assets, totalSupply_ + 10 ** uint256(decimalsOffset_), totalAssets_ + 1, rounding);
+    }
+
+    /// @dev Converts `shares` to assets from explicit totals.
+    ///      Formula: shares * (totalAssets + 1) / (totalSupply + 10**offset)
+    function _convertToAssetsFromTotals(
+        uint256 shares,
+        uint256 totalSupply_,
+        uint256 totalAssets_,
+        uint8 decimalsOffset_,
+        Rounding rounding
+    ) internal pure returns (uint256) {
+        return mulDiv(shares, totalAssets_ + 1, totalSupply_ + 10 ** uint256(decimalsOffset_), rounding);
+    }
+
+    /// @dev `maxWithdraw` at a known NAV: the floor value of `owner`'s shares, capped at idle assets.
+    function _maxWithdraw(address owner, uint256 totalSupply_, uint256 nav) private view returns (uint256) {
+        uint256 owed =
+            _convertToAssetsFromTotals(ERC20Lib.balanceOf(owner), totalSupply_, nav, _decimalsOffset(), Rounding.Floor);
+        uint256 idle = totalAssets();
+        return owed < idle ? owed : idle;
+    }
+
+    /// @dev `maxRedeem` at a known NAV: `owner`'s balance, capped at the floor shares idle assets buy back.
+    ///      Floor then floor keeps `previewRedeem(maxRedeem)` within idle.
+    function _maxRedeem(address owner, uint256 totalSupply_, uint256 nav) private view returns (uint256) {
+        uint256 balance = ERC20Lib.balanceOf(owner);
+        uint256 idleShares =
+            _convertToSharesFromTotals(totalAssets(), totalSupply_, nav, _decimalsOffset(), Rounding.Floor);
+        return balance < idleShares ? balance : idleShares;
+    }
+
+    function _decimalsOffset() private view returns (uint8) {
+        return erc4626Storage()._decimalsOffset;
+    }
+
+    /// @dev Reads the NAV from the diamond's own `totalAssets()` selector, bubbling its revert on failure.
+    function _nav() private view returns (uint256) {
+        (bool ok, bytes memory data) = _navStaticcall();
+        if (!ok || data.length < 32) {
+            assembly ("memory-safe") {
+                revert(add(data, 0x20), mload(data))
+            }
+        }
+        return abi.decode(data, (uint256));
+    }
+
+    /// @dev Reads the NAV from the diamond's own `totalAssets()` selector; `ok` is false if the read failed.
+    function _tryNav() private view returns (bool ok, uint256 nav) {
+        bytes memory data;
+        (ok, data) = _navStaticcall();
+        if (!ok || data.length < 32) return (false, 0);
+        nav = abi.decode(data, (uint256));
+    }
+
+    /// @dev Self-staticcall to `totalAssets()`, which dispatches to whichever facet owns that selector.
+    function _navStaticcall() private view returns (bool ok, bytes memory data) {
+        (ok, data) = address(this).staticcall(abi.encodeWithSelector(IERC4626.totalAssets.selector));
     }
 
     /// @dev Transfers assets in, mints shares, emits Deposit.

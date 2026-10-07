@@ -20,6 +20,12 @@ interface IStrategyManager {
     /// @dev Emitted when a strategy is removed from the registry.
     event StrategyRemoved(address indexed strategy);
 
+    /// @dev Emitted (before {StrategyRemoved}) when `removeStrategy` drops a strategy whose
+    ///      `totalAssetsManaged()` read fails. Any funds it still holds leave the vault's NAV; if they are
+    ///      later returned to the vault, they accrue to whoever holds shares then, including depositors who
+    ///      entered after the removal.
+    event StrategyForceRemoved(address indexed strategy);
+
     /// @dev Emitted when a strategy's target allocation (in bps) is updated.
     event StrategyTargetUpdated(address indexed strategy, uint16 oldBps, uint16 newBps);
 
@@ -58,8 +64,14 @@ interface IStrategyManager {
     error StrategyManagerWithdrawShortfall(address strategy, uint256 requested, uint256 actual);
 
     /// @dev Reverts when attempting to remove a strategy that still holds vault assets.
-    ///      Use forceRemove (if provided) or recall assets first via rebalance().
+    ///      Recall assets first via rebalance() (set the target to 0, then rebalance). Only a strategy whose
+    ///      balance read fails is removed without this check (see {StrategyForceRemoved}).
     error StrategyManagerStrategyStillAllocated(address strategy, uint256 balance);
+
+    /// @dev Reverts when adding a strategy that already reports a balance. A new strategy must start empty so
+    ///      that adding it cannot step the vault's NAV up, e.g. re-adding a force-removed strategy that still
+    ///      holds the stranded funds, which would hand them to whoever deposited after the removal.
+    error StrategyManagerStrategyNotEmpty(address strategy, uint256 balance);
 
     /// @dev Reverts when adding a strategy would exceed the MAX_STRATEGIES cap.
     error StrategyManagerTooManyStrategies();
@@ -80,7 +92,8 @@ interface IStrategyManager {
     function getStrategyTarget(address strategy) external view returns (uint16 targetBps);
 
     /// @notice Returns the sum of `IStrategy.totalAssetsManaged()` across all registered strategies.
-    /// @dev Trust assumption: strategies are trusted to report accurate balances.
+    /// @dev Trust assumption: strategies are trusted to report accurate balances. Reverts if any strategy's
+    ///      read reverts or the sum overflows, which makes a VaultCore vault's `totalAssets()` revert (fail closed).
     function totalAllocated() external view returns (uint256);
 
     /// @notice Returns the current sum of all registered strategy target allocations in basis points.
@@ -95,11 +108,18 @@ interface IStrategyManager {
     function setVault(address _vault) external;
 
     /// @notice Registers a new strategy with a target allocation. Admin-only.
+    /// @dev Reverts with {StrategyManagerStrategyNotEmpty} if the strategy already reports a balance, and bubbles
+    ///      the revert if its `totalAssetsManaged()` read fails.
     /// @param strategy Address of the strategy to register.
     /// @param targetBps Target allocation in basis points (0–10 000).
     function addStrategy(address strategy, uint16 targetBps) external;
 
     /// @notice Removes a registered strategy. Admin-only.
+    /// @dev Reverts with {StrategyManagerStrategyStillAllocated} while the strategy reports a balance. A strategy
+    ///      whose `totalAssetsManaged()` read fails is force-removed instead, emitting {StrategyForceRemoved};
+    ///      any funds it still holds leave the vault's NAV and deposits reopen at the lower NAV. Returning
+    ///      those funds later moves their value to whoever holds shares then, including post-removal
+    ///      depositors, and the strategy cannot be re-added while it reports a balance.
     /// @param strategy Address of the strategy to remove.
     function removeStrategy(address strategy) external;
 
