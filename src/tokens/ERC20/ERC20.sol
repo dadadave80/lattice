@@ -39,6 +39,7 @@ contract ERC20 is IERC20 {
 
     /// @inheritdoc IERC20
     function transferFrom(address from, address to, uint256 value) public virtual returns (bool) {
+        // slither-disable-next-line arbitrary-send-erc20 ERC20Lib spends msg.sender's allowance first
         return ERC20Lib.transferFrom(from, to, value);
     }
 

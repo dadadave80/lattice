@@ -1,0 +1,6 @@
+{
+  "ERC20.approve": "53194",
+  "ERC20.mint": "58060",
+  "ERC20.transfer": "58321",
+  "ERC20.transferFrom": "54934"
+}

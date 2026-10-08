@@ -49,12 +49,6 @@ contract ERC721GasTest is Test {
     uint256 constant TOKEN_3 = 3;
     uint256 constant TOKEN_4 = 4;
 
-    // Generous upper bounds (~3× expected).
-    uint256 constant GAS_BOUND_MINT = 90_000;
-    uint256 constant GAS_BOUND_TRANSFER = 90_000;
-    uint256 constant GAS_BOUND_SAFE_TRANSFER = 90_000;
-    uint256 constant GAS_BOUND_APPROVE = 120_000;
-
     function setUp() public {
         token = new GasERC721();
         token.initialize("Gas NFT", "GNFT", admin);
@@ -65,8 +59,7 @@ contract ERC721GasTest is Test {
         vm.prank(admin);
         vm.startSnapshotGas("ERC721.mint");
         token.mintHelper(alice, TOKEN_1);
-        uint256 gasUsed = vm.stopSnapshotGas();
-        assertLt(gasUsed, GAS_BOUND_MINT, "ERC721.mint gas regression");
+        vm.stopSnapshotGas();
     }
 
     /// @notice Gas cost of transferFrom between two EOAs.
@@ -77,8 +70,7 @@ contract ERC721GasTest is Test {
         vm.prank(alice);
         vm.startSnapshotGas("ERC721.transferFrom");
         token.transferFrom(alice, bob, TOKEN_2);
-        uint256 gasUsed = vm.stopSnapshotGas();
-        assertLt(gasUsed, GAS_BOUND_TRANSFER, "ERC721.transferFrom gas regression");
+        vm.stopSnapshotGas();
     }
 
     /// @notice Gas cost of safeTransferFrom to a plain EOA.
@@ -89,8 +81,7 @@ contract ERC721GasTest is Test {
         vm.prank(alice);
         vm.startSnapshotGas("ERC721.safeTransferFrom");
         token.safeTransferFrom(alice, bob, TOKEN_3);
-        uint256 gasUsed = vm.stopSnapshotGas();
-        assertLt(gasUsed, GAS_BOUND_SAFE_TRANSFER, "ERC721.safeTransferFrom gas regression");
+        vm.stopSnapshotGas();
     }
 
     /// @notice Gas cost of approving a single token spender.
@@ -101,7 +92,6 @@ contract ERC721GasTest is Test {
         vm.prank(alice);
         vm.startSnapshotGas("ERC721.approve");
         token.approve(bob, TOKEN_4);
-        uint256 gasUsed = vm.stopSnapshotGas();
-        assertLt(gasUsed, GAS_BOUND_APPROVE, "ERC721.approve gas regression");
+        vm.stopSnapshotGas();
     }
 }

@@ -24,6 +24,7 @@ contract ERC20Pausable {
     /// @notice Moves `value` from `from` to `to`, reverting with {IPausable-EnforcedPause} while paused (replaces base).
     function transferFrom(address from, address to, uint256 value) public virtual returns (bool) {
         PausableLib.checkNotPaused();
+        // slither-disable-next-line arbitrary-send-erc20 ERC20Lib spends msg.sender's allowance first
         return ERC20Lib.transferFrom(from, to, value);
     }
 

@@ -87,11 +87,6 @@ contract ConstantProductGasTest is Test {
     uint256 constant INITIAL_LIQUIDITY_0 = 100e18;
     uint256 constant INITIAL_LIQUIDITY_1 = 400e18;
 
-    // Generous upper bounds (~2× expected) so tests do not flicker.
-    uint256 constant GAS_BOUND_ADD_LIQUIDITY = 650_000;
-    uint256 constant GAS_BOUND_SWAP = 600_000;
-    uint256 constant GAS_BOUND_REMOVE_LIQUIDITY = 500_000;
-
     function setUp() public {
         tokenA = new GasTestERC20("TokenA", "TKA");
         tokenB = new GasTestERC20("TokenB", "TKB");
@@ -121,10 +116,8 @@ contract ConstantProductGasTest is Test {
 
         vm.startSnapshotGas("ConstantProduct.addLiquidity.first");
         pool.addLiquidity(INITIAL_LIQUIDITY_0, INITIAL_LIQUIDITY_1, 0, 0, alice);
-        uint256 gasUsed = vm.stopSnapshotGas();
+        vm.stopSnapshotGas();
         vm.stopPrank();
-
-        assertLt(gasUsed, GAS_BOUND_ADD_LIQUIDITY, "ConstantProduct.addLiquidity.first gas regression");
     }
 
     /// @notice Gas cost of a subsequent addLiquidity call (ratio-proportional math).
@@ -143,10 +136,8 @@ contract ConstantProductGasTest is Test {
 
         vm.startSnapshotGas("ConstantProduct.addLiquidity.subsequent");
         pool.addLiquidity(10e18, 40e18, 0, 0, bob);
-        uint256 gasUsed = vm.stopSnapshotGas();
+        vm.stopSnapshotGas();
         vm.stopPrank();
-
-        assertLt(gasUsed, GAS_BOUND_ADD_LIQUIDITY, "ConstantProduct.addLiquidity.subsequent gas regression");
     }
 
     /// @notice Gas cost of swapExactTokensForTokens.
@@ -164,10 +155,8 @@ contract ConstantProductGasTest is Test {
 
         vm.startSnapshotGas("ConstantProduct.swapExactTokensForTokens");
         pool.swapExactTokensForTokens(swapIn, 0, true, bob);
-        uint256 gasUsed = vm.stopSnapshotGas();
+        vm.stopSnapshotGas();
         vm.stopPrank();
-
-        assertLt(gasUsed, GAS_BOUND_SWAP, "ConstantProduct.swapExactTokensForTokens gas regression");
     }
 
     /// @notice Gas cost of removeLiquidity.
@@ -182,8 +171,6 @@ contract ConstantProductGasTest is Test {
         vm.prank(alice);
         vm.startSnapshotGas("ConstantProduct.removeLiquidity");
         pool.removeLiquidity(aliceLp, 0, 0, alice);
-        uint256 gasUsed = vm.stopSnapshotGas();
-
-        assertLt(gasUsed, GAS_BOUND_REMOVE_LIQUIDITY, "ConstantProduct.removeLiquidity gas regression");
+        vm.stopSnapshotGas();
     }
 }

@@ -195,6 +195,7 @@ library ConstantProductLib {
         // `reserve <= balanceOf(pool)`. The reentrancy guard is engaged for the whole
         // call, so pulling before the state update cannot be exploited. From here on
         // `amount0` / `amount1` are the actually deposited (effective) amounts.
+        // slither-disable-next-line reentrancy-balance guarded; measures received deltas on purpose
         amount0 = _safeTransferFromReceived($._token0, caller, amount0);
         amount1 = _safeTransferFromReceived($._token1, caller, amount1);
 

@@ -35,6 +35,7 @@ contract ERC20Votes is IERC20Votes {
 
     /// @notice Transfers from, updating vote checkpoints alongside balances (replaces the base transferFrom).
     function transferFrom(address from, address to, uint256 value) public virtual returns (bool) {
+        // slither-disable-next-line arbitrary-send-erc20 ERC20VotesLib spends msg.sender's allowance first
         return ERC20VotesLib.transferFrom(from, to, value);
     }
 

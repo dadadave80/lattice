@@ -2,6 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {CCTPBridgeAdapterTestBase} from "@lattice-test/base/CCTPBridgeAdapterTestBase.sol";
+import {ArchiveFork} from "@lattice-test/helpers/ArchiveFork.sol";
 import {CCTPBridgeAdapter} from "@lattice/crosschain/circle/CCTPBridgeAdapter.sol";
 import {ICCTPBridgeAdapter} from "@lattice/interfaces/crosschain/ICCTPBridgeAdapter.sol";
 import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
@@ -68,7 +69,7 @@ contract CCTPBridgeAdapterTestnetFork is CCTPBridgeAdapterTestBase {
 
     function test_Fork_Sepolia_BurnTowardBaseSepolia() public {
         if (!_skipUnless("SEPOLIA_RPC_URL")) return;
-        vm.createSelectFork("sepolia", vm.envOr("SEPOLIA_FORK_BLOCK", SEPOLIA_FORK_BLOCK));
+        if (!ArchiveFork.select("sepolia", vm.envOr("SEPOLIA_FORK_BLOCK", SEPOLIA_FORK_BLOCK))) return;
 
         address diamond = _deployCCTPBridgeAdapter(admin, TOKEN_MESSENGER_V2, MESSAGE_TRANSMITTER_V2, USDC_SEPOLIA);
         CCTPBridgeAdapter adapter = CCTPBridgeAdapter(diamond);
@@ -111,7 +112,7 @@ contract CCTPBridgeAdapterTestnetFork is CCTPBridgeAdapterTestBase {
             vm.skip(true); // fixture not yet captured — see the file's TODO
             return;
         }
-        vm.createSelectFork("base-sepolia", vm.envOr("BASE_SEPOLIA_FORK_BLOCK", BASE_SEPOLIA_FORK_BLOCK));
+        if (!ArchiveFork.select("base-sepolia", vm.envOr("BASE_SEPOLIA_FORK_BLOCK", BASE_SEPOLIA_FORK_BLOCK))) return;
 
         address diamond = _deployCCTPBridgeAdapter(admin, TOKEN_MESSENGER_V2, MESSAGE_TRANSMITTER_V2, USDC_BASE_SEPOLIA);
         CCTPBridgeAdapter adapter = CCTPBridgeAdapter(diamond);
@@ -146,7 +147,7 @@ contract CCTPBridgeAdapterTestnetFork is CCTPBridgeAdapterTestBase {
             vm.skip(true);
             return;
         }
-        vm.createSelectFork("base-sepolia", vm.envOr("BASE_SEPOLIA_FORK_BLOCK", BASE_SEPOLIA_FORK_BLOCK));
+        if (!ArchiveFork.select("base-sepolia", vm.envOr("BASE_SEPOLIA_FORK_BLOCK", BASE_SEPOLIA_FORK_BLOCK))) return;
 
         address diamond = _deployCCTPBridgeAdapter(admin, TOKEN_MESSENGER_V2, MESSAGE_TRANSMITTER_V2, USDC_BASE_SEPOLIA);
         CCTPBridgeAdapter adapter = CCTPBridgeAdapter(diamond);
@@ -169,7 +170,7 @@ contract CCTPBridgeAdapterTestnetFork is CCTPBridgeAdapterTestBase {
 
     function test_Fork_Arc_DeployAndWire() public {
         if (!_skipUnless("ARC_TESTNET_RPC_URL")) return;
-        vm.createSelectFork("arc-testnet", vm.envOr("ARC_TESTNET_FORK_BLOCK", ARC_FORK_BLOCK));
+        if (!ArchiveFork.select("arc-testnet", vm.envOr("ARC_TESTNET_FORK_BLOCK", ARC_FORK_BLOCK))) return;
 
         // Proves the whole diamond recipe deploys on Circle Arc.
         address diamond = _deployCCTPBridgeAdapter(admin, TOKEN_MESSENGER_V2, MESSAGE_TRANSMITTER_V2, USDC_ARC);

@@ -161,6 +161,7 @@ library VestingWalletLib {
     ///      Uses a low-level call to support non-returning ERC20 tokens (e.g. USDT, BNB, OMG)
     ///      that omit the bool return value from transfer().
     function release(address token) internal {
+        // slither-disable-next-line reentrancy-balance released is recorded before the transfer (CEI)
         uint256 amount = releasable(token);
         vestingWalletStorage()._erc20Released[token] += amount;
         (bool ok, bytes memory ret) =
