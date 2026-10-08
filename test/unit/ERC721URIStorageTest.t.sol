@@ -111,7 +111,7 @@ contract ERC721URIStorageTest is ERC721URIStorageTestBase {
         helper.mint(alice, TOKEN_1);
         helper.setTokenURIRaw(TOKEN_1, "ipfs://Qm...");
 
-        helper.burn(TOKEN_1);
+        helper.burnRaw(TOKEN_1);
 
         vm.expectRevert(abi.encodeWithSelector(IERC721.ERC721NonexistentToken.selector, TOKEN_1));
         token.tokenURI(TOKEN_1);

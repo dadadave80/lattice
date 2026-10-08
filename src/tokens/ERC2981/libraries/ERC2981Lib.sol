@@ -37,7 +37,7 @@ struct ERC2981Storage {
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/common/ERC2981.sol)
 /// @notice Library implementing the ERC-2981 NFT Royalty Standard.
-/// @dev Mirrors OpenZeppelin v5 ERC2981 logic. All state lives in an ERC-7201 slot.
+/// @dev Mirrors OpenZeppelin v5.6.1 ERC2981 logic. All state lives in an ERC-7201 slot.
 library ERC2981Lib {
     //*//////////////////////////////////////////////////////////////////////////
     //                              STORAGE ACCESS

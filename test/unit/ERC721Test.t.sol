@@ -28,6 +28,18 @@ contract RevertingReceiver {
     }
 }
 
+/// @notice ERC721Receiver that records the `operator` and `from` it was called with.
+contract RecordingReceiver {
+    address public lastOperator;
+    address public lastFrom;
+
+    function onERC721Received(address operator, address from, uint256, bytes calldata) external returns (bytes4) {
+        lastOperator = operator;
+        lastFrom = from;
+        return this.onERC721Received.selector;
+    }
+}
+
 /// @title ERC721Test
 /// @notice Exercises the base ERC-721 facet through a REAL {Diamond} assembled by the ready-to-deploy
 ///         {DeployERC721} script (see {ERC721TestBase}) — every call below routes through the diamond's
@@ -85,8 +97,9 @@ contract ERC721Test is ERC721TestBase {
     function test_MintExistingTokenReverts() public {
         helper.mint(alice, TOKEN_1);
 
-        // Minting same tokenId again: _update returns alice (non-zero), _mint reverts with ERC721InvalidSender
-        vm.expectRevert(abi.encodeWithSelector(IERC721.ERC721InvalidSender.selector, alice));
+        // Minting an existing id reverts ERC721InvalidSender(address(0)), as OpenZeppelin v5.6.1 does (not the
+        // current owner).
+        vm.expectRevert(abi.encodeWithSelector(IERC721.ERC721InvalidSender.selector, address(0)));
         helper.mint(bob, TOKEN_1);
     }
 
@@ -197,6 +210,18 @@ contract ERC721Test is ERC721TestBase {
         token.setApprovalForAll(bob, true);
 
         assertTrue(token.isApprovedForAll(alice, bob));
+    }
+
+    /// @notice OpenZeppelin v5.6.1 `_setApprovalForAll` rejects a zero owner with `ERC721InvalidApprover(0)`.
+    function test_SetApprovalForAllZeroOwnerReverts() public {
+        vm.expectRevert(abi.encodeWithSelector(IERC721.ERC721InvalidApprover.selector, address(0)));
+        helper.setApprovalForAllRaw(address(0), bob, true);
+    }
+
+    /// @notice The zero-owner check runs before the operator check, as upstream orders them.
+    function test_SetApprovalForAllZeroOwnerAndOperatorRevertsOnOwner() public {
+        vm.expectRevert(abi.encodeWithSelector(IERC721.ERC721InvalidApprover.selector, address(0)));
+        helper.setApprovalForAllRaw(address(0), address(0), true);
     }
 
     function test_RevokeApprovalForAll() public {
@@ -329,6 +354,33 @@ contract ERC721Test is ERC721TestBase {
 
         vm.expectRevert(abi.encodeWithSelector(IERC721.ERC721IncorrectOwner.selector, bob, TOKEN_1, alice));
         helper.transfer(bob, charlie, TOKEN_1);
+    }
+
+    /// @notice `_transfer` from the zero address must not mint a nonexistent id (OpenZeppelin v5.6.1 checks existence).
+    function test_TransferHelper_NonexistentTokenReverts() public {
+        vm.expectRevert(abi.encodeWithSelector(IERC721.ERC721NonexistentToken.selector, 77));
+        helper.transfer(address(0), bob, 77);
+    }
+
+    /// @notice `_safeMint` reports the caller as `operator` to the receiver, as OpenZeppelin v5.6.1 does.
+    function test_SafeMintReportsCallerAsOperator() public {
+        RecordingReceiver receiver = new RecordingReceiver();
+
+        vm.prank(charlie);
+        helper.safeMint(address(receiver), TOKEN_1);
+        assertEq(receiver.lastOperator(), charlie, "operator is the caller");
+        assertEq(receiver.lastFrom(), address(0), "from is zero on mint");
+    }
+
+    /// @notice `_safeTransfer` reports the caller as `operator` to the receiver, as OpenZeppelin v5.6.1 does.
+    function test_SafeTransferHelperReportsCallerAsOperator() public {
+        RecordingReceiver receiver = new RecordingReceiver();
+        helper.mint(alice, TOKEN_1);
+
+        vm.prank(charlie);
+        helper.safeTransfer(alice, address(receiver), TOKEN_1);
+        assertEq(receiver.lastOperator(), charlie, "operator is the caller");
+        assertEq(receiver.lastFrom(), alice, "from is the previous owner");
     }
 
     function test_SafeTransferHelper_ToGoodReceiver() public {

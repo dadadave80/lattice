@@ -31,15 +31,21 @@ forge build && forge test --match-test test_EverySharedSelectorIsClassified -vv
 A selector with mixed relations takes the most restrictive class, and its note names the others. For example,
 `transferFrom` is an ERC-20 override seam and also an ERC-20/ERC-721 standard clash, so it is Incompatible.
 
-Today's 66 shared selectors: 18 Variant, 14 Override, 1 Identical, 18 One per diamond, 15 Incompatible.
+Today's 67 shared selectors: 18 Variant, 14 Override, 1 Identical, 18 One per diamond, 16 Incompatible.
 
 ## Scope and decisions
 
-- **Inventory facets only.** The test covers the 108 facets in `FacetInventory`. VestingWallet and
+- **Inventory facets only.** The test covers the 110 facets in `FacetInventory`. VestingWallet and
   ERC20Wrapper export no selectors yet ([#176](https://github.com/dadadave80/lattice/issues/176)), so they are
   not in the table. Checked by hand against the inventory: VestingWallet shares no selector, and ERC20Wrapper
-  shares only `decimals()` (`0x313ce567`) with ERC20 and ERC4626. Its `decimals()` replaces ERC20's to mirror
-  the underlying (Override), and it cannot share a diamond with an ERC4626 share token (Incompatible).
+  shares `decimals()` (`0x313ce567`) with ERC20 and ERC4626 and `underlying()` (`0x6f307dc3`) with
+  ERC721Wrapper. Its `decimals()` replaces ERC20's to mirror the underlying (Override), it cannot share a
+  diamond with an ERC4626 share token (Incompatible), and an ERC-20 wrapper and an ERC-721 wrapper cannot share
+  a diamond either (Incompatible).
+- **The ERC-721 receiver seam.** ERC721Wrapper serves `onERC721Received` (`0x150b7a02`) and accepts only its
+  underlying collection. UniswapV3Adapter, which is not in the inventory, serves the same selector to receive
+  position NFTs. The two are Incompatible: never cut both into one diamond.
+  [#201](https://github.com/dadadave80/lattice/issues/201) tracks declaring seams like this one.
 - **Lattice-chosen names are listed, not renamed.** `getConfig()`, `getForwarder()` and the GovernedSafeDiamondCut
   operation views clash because of names Lattice picked. Renaming them changes selectors, and renaming the
   GovernedSafe views also changes ERC-165 id `0xacb1aeb6` (coordinate with
@@ -79,6 +85,7 @@ Today's 66 shared selectors: 18 Variant, 14 Override, 1 Identical, 18 One per di
 | `0x3adda78e` | `getCutRecord(uint256)` | GovernedDiamondCut, GovernedSafeDiamondCut, SafeDiamondCut | Variant | cut-gate variants: cut one |
 | `0x3cb747bf` | `messenger()` | L1ToL2CrossDomainMessengerGatewayAdapter, L2ToL2CrossDomainMessengerGatewayAdapter | One per diamond | OP messenger gateways: one per diamond |
 | `0x402d267d` | `maxDeposit(address)` | ERC4626, VaultCore | Override | VaultCore's deposit-latch-aware cap replaces ERC4626's |
+| `0x42966c68` | `burn(uint256)` | ERC20Burnable, ERC721Burnable | Incompatible | ERC-20 vs ERC-721 (standard) |
 | `0x4487678f` | `freezeSelectors(bytes4[])` | GovernedDiamondCut, GovernedSafeDiamondCut, SafeDiamondCut | Variant | cut-gate variants: cut one |
 | `0x4bf5d7e9` | `CLOCK_MODE()` | GovernedVault, Governor, Votes | Override | GovernedVault owns it; Governor's version reads its token's clock(), here the diamond itself |
 | `0x584b153e` | `isOperationPending(bytes32)` | GovernedSafeDiamondCut, TimelockController | Incompatible | GovernedSafe cut views vs TimelockController (Lattice-chosen; 0xacb1aeb6) |

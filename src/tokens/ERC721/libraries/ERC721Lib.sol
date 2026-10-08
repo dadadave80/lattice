@@ -39,7 +39,7 @@ struct ERC721Storage {
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC721/ERC721.sol)
 /// @notice Library implementing the ERC-721 Non-Fungible Token standard.
-/// @dev Mirrors OpenZeppelin v5 ERC721 logic. All state lives in an ERC-7201 slot.
+/// @dev Mirrors OpenZeppelin v5.6.1 ERC721 logic. All state lives in an ERC-7201 slot.
 library ERC721Lib {
     //*//////////////////////////////////////////////////////////////////////////
     //                              STORAGE ACCESS
@@ -226,16 +226,18 @@ library ERC721Lib {
     }
 
     /// @notice Mints `tokenId` to `to`. Reverts if `to` is zero or token already exists.
+    /// @dev An existing id reverts {IERC721.ERC721InvalidSender} with `address(0)`, as OpenZeppelin does.
     function _mint(address to, uint256 tokenId) internal {
         if (to == address(0)) revert IERC721.ERC721InvalidReceiver(address(0));
         address previousOwner = _update(to, tokenId, address(0));
-        if (previousOwner != address(0)) revert IERC721.ERC721InvalidSender(previousOwner);
+        if (previousOwner != address(0)) revert IERC721.ERC721InvalidSender(address(0));
     }
 
     /// @notice Safely mints `tokenId` to `to`, calling receiver hook if `to` is a contract.
+    /// @dev The receiver sees `msg.sender` as `operator`, as OpenZeppelin does.
     function _safeMint(address to, uint256 tokenId, bytes memory data) internal {
         _mint(to, tokenId);
-        _checkOnERC721Received(address(0), address(0), to, tokenId, data);
+        _checkOnERC721Received(msg.sender, address(0), to, tokenId, data);
     }
 
     /// @notice Safely mints `tokenId` to `to` with empty data.
@@ -266,7 +268,10 @@ library ERC721Lib {
     }
 
     /// @notice Sets or unsets the approval of `operator` by `owner`.
+    /// @dev Reverts {IERC721.ERC721InvalidApprover} for a zero `owner` (added in OpenZeppelin v5.6), then
+    ///      {IERC721.ERC721InvalidOperator} for a zero `operator`.
     function _setApprovalForAll(address owner, address operator, bool approved) internal {
+        if (owner == address(0)) revert IERC721.ERC721InvalidApprover(address(0));
         if (operator == address(0)) revert IERC721.ERC721InvalidOperator(operator);
         erc721Storage()._operatorApprovals[owner][operator] = approved;
         emit IERC721.ApprovalForAll(owner, operator, approved);
@@ -282,18 +287,23 @@ library ERC721Lib {
     }
 
     /// @notice Transfers `tokenId` from `from` to `to` bypassing msg.sender authorization.
-    /// @dev For permissioned or signature-based transfer mechanisms. Validates previous owner.
+    /// @dev For permissioned or signature-based transfer mechanisms. Validates that the token exists, so a zero
+    ///      `from` cannot mint, and that `from` is its previous owner.
     function _transfer(address from, address to, uint256 tokenId) internal {
         if (to == address(0)) revert IERC721.ERC721InvalidReceiver(address(0));
         address previousOwner = _update(to, tokenId, address(0));
-        if (previousOwner != from) revert IERC721.ERC721IncorrectOwner(from, tokenId, previousOwner);
+        if (previousOwner == address(0)) {
+            revert IERC721.ERC721NonexistentToken(tokenId);
+        } else if (previousOwner != from) {
+            revert IERC721.ERC721IncorrectOwner(from, tokenId, previousOwner);
+        }
     }
 
     /// @notice Safely transfers `tokenId` from `from` to `to` with `data`, bypassing authorization.
-    /// @dev Calls receiver hook if `to` is a contract.
+    /// @dev Calls receiver hook if `to` is a contract; the receiver sees `msg.sender` as `operator`.
     function _safeTransfer(address from, address to, uint256 tokenId, bytes memory data) internal {
         _transfer(from, to, tokenId);
-        _checkOnERC721Received(address(0), from, to, tokenId, data);
+        _checkOnERC721Received(msg.sender, from, to, tokenId, data);
     }
 
     /// @notice Reverts if `tokenId` does not exist. Returns the owner.

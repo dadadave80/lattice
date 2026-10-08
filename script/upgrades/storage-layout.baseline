@@ -254,6 +254,9 @@
 ### ERC721URIStorageStorage @ erc7201:lattice.storage.ERC721URIStorage (slot 0xcad0a180da252dc6d7fda719c706c048d7fcfbea8301125fec9b8527feaa7700)
 0	0	_tokenURIs	t_mapping(t_uint256,t_string_storage)
 
+### ERC721WrapperStorage @ erc7201:lattice.storage.ERC721Wrapper (slot 0x434ed71ac956f35c738c07eaadcb4935b3686524cef619db6f8caec66db4f500)
+0	0	_underlying	t_address
+
 ### ERC7579ModuleConfigStorage @ erc7201:lattice.storage.ERC7579ModuleConfig (slot 0xf5855f8dc57bbb54955d6871575c862d7a11401119f5a873c91e7ac60628d800)
 0	0	_installed	t_mapping(t_uint256,t_mapping(t_address,t_bool))
 1	0	_hook	t_address
