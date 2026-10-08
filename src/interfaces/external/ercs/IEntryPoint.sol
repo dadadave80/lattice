@@ -2,7 +2,7 @@
 pragma solidity >=0.8.4;
 
 // Vendored minimal subset of the ERC-4337 EntryPoint (v0.7+) surface needed to submit and hash user
-// operations from tests/tooling. Re-authored to the standard ABI to avoid a GPL account-abstraction
+// operations from tests/tooling. Re-authored to the standard ABI rather than taking an account-abstraction
 // dependency. `PackedUserOperation` is reused from the vendored IAccount. Do NOT add an account-abstraction
 // dependency — extend this subset instead.
 
@@ -10,6 +10,9 @@ import {PackedUserOperation} from "@lattice/interfaces/external/ercs/IAccount.so
 
 /// @title IEntryPoint — minimal ERC-4337 EntryPoint surface (v0.7/v0.8/v0.9 share this ABI)
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Vendored minimal subset of eth-infinitism account-abstraction
+///         (https://github.com/eth-infinitism/account-abstraction/blob/develop/contracts/interfaces/IEntryPoint.sol).
+///         Upstream license: MIT.
 /// @notice The bundler/relayer-facing entrypoint that validates and executes user operations. Lattice
 ///         accounts trust ONE configured EntryPoint as the caller of `validateUserOp` (stored per account).
 interface IEntryPoint {

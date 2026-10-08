@@ -4,9 +4,11 @@ pragma solidity >=0.8.4;
 import {IERC3156FlashBorrower} from "@lattice/interfaces/external/ercs/IERC3156FlashBorrower.sol";
 
 /// @title IERC3156FlashLender
+/// @author Vendored minimal subset of OpenZeppelin Contracts
+///         (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/interfaces/IERC3156FlashLender.sol).
+///         Upstream license: MIT.
 /// @notice Interface of the ERC-3156 FlashLender, as defined in
 ///         https://eips.ethereum.org/EIPS/eip-3156[ERC-3156].
-/// @dev Vendored from OpenZeppelin (contracts/interfaces/IERC3156FlashLender.sol).
 interface IERC3156FlashLender {
     /// @notice The amount of currency available to be lent.
     /// @param token The loan currency.

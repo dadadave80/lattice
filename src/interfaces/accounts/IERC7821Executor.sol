@@ -3,6 +3,7 @@ pragma solidity >=0.8.4;
 
 /// @title IERC7821Executor
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from Solady (https://github.com/Vectorized/solady)
 /// @notice Error/event surface of the `ERC7821Executor` facet. The `execute` / `supportsExecutionMode`
 ///         entrypoints are on the vendored `IERC7821`.
 /// @dev Authorizes `execute` for: the account itself (`address(this)`), the configured ERC-4337 EntryPoint,

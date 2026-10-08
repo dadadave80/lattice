@@ -60,7 +60,8 @@ library Groth16VerifierLib {
 
     /// @notice Verifies a Groth16 proof. See {IGroth16Verifier.verifyProof}.
     /// @dev Returns false on any cryptographic invalidity / out-of-range value; reverts only on a
-    ///      key/input arity mismatch.
+    ///      key/input arity mismatch. `vk` is never authenticated, so the caller MUST pin it (see KEY
+    ///      PINNING on {IGroth16Verifier}).
     function verifyProof(
         IGroth16Verifier.VerifyingKey calldata vk,
         IGroth16Verifier.Proof calldata proof,

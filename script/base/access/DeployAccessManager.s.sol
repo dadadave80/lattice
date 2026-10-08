@@ -15,7 +15,10 @@ import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondC
 /// @notice Ready-to-deploy recipe for an AccessManager authority diamond: `ERC165Facet` + `AccessManager` +
 ///         {AccessManagerInit}. The AccessManager self-gates its admin surface on its own `ADMIN_ROLE` (no
 ///         AccessControl facet needed); `admin` receives that initial role. This diamond is both a standalone
-///         authority and the authority backing {DeployAccessManaged}.
+///         authority and the authority backing {DeployAccessManaged}. Keep it a separate diamond: cut next to
+///         other modules, `admin`'s ADMIN_ROLE is root over them, because `execute(address(this), ...)` reaches
+///         every facet as the diamond itself (issue #240). The ADMIN overload is safe only because the diamond
+///         holds no AccessControl role, so that path cannot reach `AccessControlDiamondCut`.
 /// @dev DEFAULT overload: Immutable by design — no cut facet is cut; deploy a new diamond to change
 ///      behavior. Use the ADMIN overload (`buildCuts(..., admin)` / `run(..., admin)`) for an upgradeable
 ///      deployment gated on `DEFAULT_ADMIN_ROLE`.
