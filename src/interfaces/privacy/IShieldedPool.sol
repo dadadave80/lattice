@@ -43,7 +43,7 @@ interface IShieldedPool {
 
     /// @dev Thrown when the pool id does not exist.
     error ShieldedPoolDoesNotExist();
-    /// @dev Thrown when creating a pool with a zero token, zero verifier, or zero denomination.
+    /// @dev Thrown when creating a pool with a token that has no code, a zero verifier, or a zero denomination.
     error ShieldedPoolInvalidConfig();
     /// @dev Thrown when the withdrawal root is not a known recent root of the pool.
     error ShieldedPoolUnknownRoot();
@@ -53,7 +53,7 @@ interface IShieldedPool {
     error ShieldedPoolFeeExceedsDenomination();
     /// @dev Thrown when the withdrawal proof does not verify.
     error ShieldedPoolInvalidProof();
-    /// @dev Thrown when an ERC-20 transfer / transferFrom fails.
+    /// @dev Thrown when an ERC-20 transfer / transferFrom reverts, returns false, or `token` has no code.
     /// @param token The token whose transfer failed.
     error ShieldedPoolTransferFailed(address token);
 

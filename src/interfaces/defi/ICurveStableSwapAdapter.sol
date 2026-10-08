@@ -22,6 +22,9 @@ interface ICurveStableSwapAdapter {
     /// @notice Emitted when the gauge is set or changed (address(0) == unstaked).
     event CurveGaugeSet(address indexed gauge);
 
+    /// @notice Emitted when the CRV reward token is set or cleared (address(0) == skip forwarding).
+    event CurveCrvTokenSet(address indexed token);
+
     /// @notice Emitted when the slippage tolerance (bps) is changed.
     event CurveSlippageSet(uint256 slippageBps);
 

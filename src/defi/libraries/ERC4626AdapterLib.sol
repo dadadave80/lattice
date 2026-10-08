@@ -168,9 +168,16 @@ library ERC4626AdapterLib {
     //                                  CONFIG
     //////////////////////////////////////////////////////////////////////////*//
 
+    /// @dev Rejects the asset and the target vault's share token: harvest forwards the side token's whole
+    ///      balance raw, so either would move the position itself to the reward recipient.
     function setSideRewardToken(address token) internal {
         AccessControlLib.checkRole(DEFAULT_ADMIN_ROLE);
-        erc4626AdapterStorage()._sideRewardToken = token; // address(0) clears
+        ERC4626AdapterStorage storage $ = erc4626AdapterStorage();
+        if (token != address(0) && (token == $._asset || token == $._targetVault)) {
+            revert IERC4626Adapter.ERC4626AdapterInvalidSideRewardToken(token);
+        }
+        $._sideRewardToken = token; // address(0) clears
+        emit IERC4626Adapter.SideRewardTokenSet(token);
     }
 
     function setRewardRecipient(address recipient) internal {

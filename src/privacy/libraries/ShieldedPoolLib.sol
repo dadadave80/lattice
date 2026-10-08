@@ -96,7 +96,8 @@ library ShieldedPoolLib {
     /// @notice Creates a fixed-denomination shielded pool. Gated on the default admin role.
     function createPool(address token, uint256 denomination, address verifier) internal returns (uint256 poolId) {
         AccessControlLib.checkRole(DEFAULT_ADMIN_ROLE);
-        if (token == address(0) || verifier == address(0) || denomination == 0) {
+        // A token with no code would accept deposits that move nothing; reject it up front.
+        if (token.code.length == 0 || verifier == address(0) || denomination == 0) {
             revert IShieldedPool.ShieldedPoolInvalidConfig();
         }
         ShieldedPoolStorage storage $ = shieldedPoolStorage();
@@ -192,18 +193,20 @@ library ShieldedPoolLib {
     //                            SAFE ERC-20 HELPERS
     //////////////////////////////////////////////////////////////////////////*//
 
-    /// @dev `transferFrom` tolerating non-standard (no-return) ERC-20s; reverts on explicit failure.
+    /// @dev `transferFrom` tolerating non-standard (no-return) ERC-20s; reverts on explicit failure, and on
+    ///      empty return data from an address with no code (matches OpenZeppelin SafeERC20).
     function _safeTransferFrom(address token, address from, address to, uint256 amount) private {
         (bool ok, bytes memory ret) = token.call(abi.encodeWithSelector(0x23b872dd, from, to, amount)); // transferFrom(address,address,uint256)
-        if (!ok || (ret.length != 0 && !abi.decode(ret, (bool)))) {
+        if (!ok || (ret.length == 0 ? token.code.length == 0 : !abi.decode(ret, (bool)))) {
             revert IShieldedPool.ShieldedPoolTransferFailed(token);
         }
     }
 
-    /// @dev `transfer` tolerating non-standard (no-return) ERC-20s; reverts on explicit failure.
+    /// @dev `transfer` tolerating non-standard (no-return) ERC-20s; reverts on explicit failure, and on
+    ///      empty return data from an address with no code (matches OpenZeppelin SafeERC20).
     function _safeTransfer(address token, address to, uint256 amount) private {
         (bool ok, bytes memory ret) = token.call(abi.encodeWithSelector(0xa9059cbb, to, amount)); // transfer(address,uint256)
-        if (!ok || (ret.length != 0 && !abi.decode(ret, (bool)))) {
+        if (!ok || (ret.length == 0 ? token.code.length == 0 : !abi.decode(ret, (bool)))) {
             revert IShieldedPool.ShieldedPoolTransferFailed(token);
         }
     }

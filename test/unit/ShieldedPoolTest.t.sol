@@ -256,6 +256,29 @@ contract ShieldedPoolTest is ShieldedPoolTestBase {
         pool.createPool(address(token), DENOM, address(0));
     }
 
+    /// @notice A token address with no code would accept deposits that move nothing, so `createPool` rejects it.
+    function test_CreatePoolNoCodeTokenReverts() public {
+        address noCode = address(0xDEAD);
+        assertEq(noCode.code.length, 0);
+        vm.expectRevert(IShieldedPool.ShieldedPoolInvalidConfig.selector);
+        pool.createPool(noCode, DENOM, address(verifier));
+    }
+
+    /// @notice A call to an address with no code returns success with empty data; the deposit pull must not
+    ///         count that as a transfer.
+    function test_DepositNoCodeTokenReverts() public {
+        vm.etch(address(token), hex"");
+        vm.expectRevert(abi.encodeWithSelector(IShieldedPool.ShieldedPoolTransferFailed.selector, address(token)));
+        pool.deposit(poolId, 1);
+    }
+
+    /// @notice The withdraw payout must not count a call to a token with no code as a transfer.
+    function test_WithdrawNoCodeTokenReverts() public {
+        vm.etch(address(token), hex"");
+        vm.expectRevert(abi.encodeWithSelector(IShieldedPool.ShieldedPoolTransferFailed.selector, address(token)));
+        _withdraw();
+    }
+
     function test_InterfaceIdMatchesConstant() public pure {
         assertEq(type(IShieldedPool).interfaceId, bytes4(0x8f5cc2c7), "IShieldedPool interfaceId moved");
     }

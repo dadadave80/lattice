@@ -166,6 +166,18 @@ contract VaultCoreTest is VaultCoreTestBase {
         vault.allocateToStrategy(strategy, 200e18);
     }
 
+    /// @notice allocateToStrategy reverts when the asset has no code (an empty-return call is not a transfer).
+    function test_AllocateToStrategy_NoCodeAsset_Reverts() public {
+        vm.prank(admin);
+        vault.setStrategyManager(manager);
+
+        vm.etch(underlyingAddr, hex"");
+
+        vm.prank(manager);
+        vm.expectRevert(abi.encodeWithSelector(IERC4626.SafeERC20FailedOperation.selector, underlyingAddr));
+        vault.allocateToStrategy(address(0x5678), 200e18);
+    }
+
     //*//////////////////////////////////////////////////////////////////////////
     //                      RECALL FROM STRATEGY TESTS
     //////////////////////////////////////////////////////////////////////////*//

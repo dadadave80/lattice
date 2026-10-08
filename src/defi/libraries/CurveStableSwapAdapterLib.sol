@@ -268,6 +268,7 @@ library CurveStableSwapAdapterLib {
     function setCrvToken(address token) internal {
         AccessControlLib.checkRole(DEFAULT_ADMIN_ROLE);
         curveStableSwapAdapterStorage()._crvToken = token; // address(0) clears (skip forwarding)
+        emit ICurveStableSwapAdapter.CurveCrvTokenSet(token);
     }
 
     function setSlippageBps(uint256 slippageBps_) internal {

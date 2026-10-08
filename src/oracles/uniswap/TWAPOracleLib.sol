@@ -123,7 +123,9 @@ library TWAPOracleLib {
 
         // Check that the stored history spans a usable, sufficient period.
         uint32 oldestTs = obs[0].timestamp;
-        uint32 oldestAge = newestTs - oldestTs; // safe: uint32 wraps correctly
+        // Checked: reverts if observation timestamps regress. After the 2106 uint32 rollover the
+        // freshness check above already fails closed.
+        uint32 oldestAge = newestTs - oldestTs;
         if (oldestAge == 0) {
             // Oldest and newest share a timestamp: zero usable span. Reverting here
             // with a clear error avoids the division-by-zero panic below.
@@ -154,8 +156,11 @@ library TWAPOracleLib {
         // timestamp wraparound) reverts cleanly instead of panicking (0x12).
         if (elapsed == 0) revert ITWAPOracle.TWAPElapsedZero(key);
 
-        price0Twap = (newest.price0Cumulative - base.price0Cumulative) / elapsed;
-        price1Twap = (newest.price1Cumulative - base.price1Cumulative) / elapsed;
+        // Uniswap V2 cumulatives are designed to overflow; the modular difference is the true delta.
+        unchecked {
+            price0Twap = (newest.price0Cumulative - base.price0Cumulative) / elapsed;
+            price1Twap = (newest.price1Cumulative - base.price1Cumulative) / elapsed;
+        }
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -163,7 +168,8 @@ library TWAPOracleLib {
     //////////////////////////////////////////////////////////////////////////*//
 
     /// @notice Registers a Uniswap V2 pair and records the initial observation.
-    /// @dev Caller must hold DEFAULT_ADMIN_ROLE.
+    /// @dev Caller must hold DEFAULT_ADMIN_ROLE. Re-registering an existing key discards its stored
+    ///      observations, so `consult` never mixes cumulatives from two different pairs.
     /// @param key  Arbitrary identifier for this pair.
     /// @param pair Address of the IUniswapV2Pair contract.
     function registerPair(bytes32 key, address pair) internal {
@@ -171,6 +177,7 @@ library TWAPOracleLib {
         require(pair != address(0));
         TWAPOracleStorage storage $ = twapOracleStorage();
         $._pairs[key] = pair;
+        delete $._observations[key];
         _appendObservation($, key, pair);
         emit ITWAPOracle.PairRegistered(key, pair);
     }

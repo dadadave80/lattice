@@ -104,7 +104,7 @@ struct ValidationDataView {
 // Module interfaces
 // ---------------------------------------------------------------------------------------------------------
 
-// ponytail: minimal IERC165 — no first-party interface exists in src/; inline rather than add a file only
+// Minimal IERC165: no first-party interface exists in src/, so it is inlined rather than added as a file only
 // IERC6900Module consumes. Extract to its own vendored file if a second consumer appears.
 interface IERC165 {
     function supportsInterface(bytes4 interfaceId) external view returns (bool);

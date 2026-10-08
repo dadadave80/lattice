@@ -29,7 +29,7 @@ interface IBridgeFungible {
     /// @notice The bridged token configured at init was the zero address.
     error BridgeZeroToken();
 
-    /// @notice An ERC-20 `transfer`/`transferFrom` failed (reverted or returned non-true).
+    /// @notice An ERC-20 `transfer`/`transferFrom` failed: it reverted, returned non-true, or `token` has no code.
     error BridgeTransferFailed(address token);
 
     /// @notice The inbound destination address was not a 20-byte EVM address.

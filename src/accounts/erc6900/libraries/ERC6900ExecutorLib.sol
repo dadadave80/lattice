@@ -240,7 +240,7 @@ library ERC6900ExecutorLib {
         uint256 n = hooks.length;
         for (uint256 i; i < n; ++i) {
             (address module, uint32 entityId) = hooks[i].moduleEntity().unpack();
-            // ponytail: per-hook authorization segmentation is deferred to the signature paths (#4/#5); runtime
+            // Per-hook authorization segmentation is deferred to the signature paths (#4/#5); runtime
             // pre-validation hooks receive empty authorization, as the reference's direct-call path does.
             try IERC6900ValidationHookModule(module)
                 .preRuntimeValidationHook(entityId, msg.sender, msg.value, data, "") {}
