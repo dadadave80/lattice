@@ -4,15 +4,28 @@ pragma solidity ^0.8.30;
 import {VotesLib} from "@lattice/governance/libraries/VotesLib.sol";
 import {IVotes} from "@lattice/interfaces/governance/IVotes.sol";
 import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
+import {ERC20VotesLib} from "@lattice/tokens/ERC20/libraries/ERC20VotesLib.sol";
 
 /// @title Votes
 /// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/governance/utils/Votes.sol)
 /// @notice Stateless Diamond facet implementing ERC-5805 delegation + ERC-6372 clock.
 /// @dev All logic lives in VotesLib. This contract is a pure delegator.
-///      When used standalone, voting units default to 0 (no token balance).
-///      Use ERC20Votes instead to combine ERC-20 balances with voting power.
+///      `delegate` and `delegateBySig` read the delegator's {ERC20Lib} balance at delegation time as its voting
+///      units. This facet never moves those units when tokens move, so an ERC-20 token recipe cuts {ERC20Votes},
+///      whose transfer, mint and burn paths do.
+///      Differences from OpenZeppelin v5.6.1:
+///      - The clock is `block.timestamp` and `CLOCK_MODE()` returns `mode=timestamp`; OpenZeppelin defaults to the
+///        block number.
+///      - Voting units are the {ERC20Lib} balance, not an overridable `_getVotingUnits`, and this facet does not
+///        move them when tokens move; OpenZeppelin's token extension does that in `_update`.
+///      - Voting-unit casts revert {IVotes.VotesOverflowedVotingUnits}, not the `SafeCast` downcast error, and
+///        `clock()` narrows with a plain `uint48` cast rather than `SafeCast`.
+///      - `getPastVotes`/`getPastTotalSupply` inline the future-timepoint check that OpenZeppelin v5.2 moved into
+///        `_validateTimepoint`; both revert {IVotes.ERC5805FutureLookup}.
+///      - Registers {IVotes} for ERC-165 in its init ({VotesLib.__Votes_init}); OpenZeppelin's Votes has no
+///        ERC-165.
 /// @custom:lattice-version 0.1.0
-/// @custom:lattice-source OpenZeppelin v5.1.0
+/// @custom:lattice-source OpenZeppelin v5.6.1
 contract Votes is IVotes {
     /// @inheritdoc IVotes
     function getVotes(address account) public view virtual returns (uint256) {
@@ -40,16 +53,13 @@ contract Votes is IVotes {
     }
 
     /// @inheritdoc IVotes
-    /// @dev WARNING (VOT-08): The base Votes facet passes 0 voting units. This means the nonce
-    ///      is consumed and DelegateChanged is emitted, but vote checkpoints are NOT updated.
-    ///      Token-bearing facets (e.g. ERC20Votes) MUST override this function to pass the
-    ///      signer's actual balance as voting units. Using this base implementation in a
-    ///      token context will silently leave voting power at zero after delegation.
+    /// @dev Delegates the signer's {ERC20Lib} balance through {ERC20VotesLib.delegateBySig}, the same path
+    ///      {ERC20Votes} takes.
     function delegateBySig(address delegatee, uint256 nonce, uint256 expiry, uint8 v, bytes32 r, bytes32 s)
         public
         virtual
     {
-        VotesLib.delegateBySig(delegatee, nonce, expiry, v, r, s, 0);
+        ERC20VotesLib.delegateBySig(delegatee, nonce, expiry, v, r, s);
     }
 
     /// @inheritdoc IVotes

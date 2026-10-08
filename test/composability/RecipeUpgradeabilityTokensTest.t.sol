@@ -9,6 +9,7 @@ import {DeployERC1155Burnable} from "@lattice-script/base/tokens/DeployERC1155Bu
 import {DeployERC1155Pausable} from "@lattice-script/base/tokens/DeployERC1155Pausable.s.sol";
 import {DeployERC1155Supply} from "@lattice-script/base/tokens/DeployERC1155Supply.s.sol";
 import {DeployERC1155URIStorage} from "@lattice-script/base/tokens/DeployERC1155URIStorage.s.sol";
+import {DeployERC1363} from "@lattice-script/base/tokens/DeployERC1363.s.sol";
 import {DeployERC20} from "@lattice-script/base/tokens/DeployERC20.s.sol";
 import {DeployERC20Burnable} from "@lattice-script/base/tokens/DeployERC20Burnable.s.sol";
 import {DeployERC20Capped} from "@lattice-script/base/tokens/DeployERC20Capped.s.sol";
@@ -175,6 +176,25 @@ contract RecipeUpgradeabilityTokensTest is RecipeGuards {
         _assertIntrospectable(d, 6);
         _assertBareEth(d, false);
         assertEq(ERC4626(d).asset(), address(asset), "module init: ERC4626 asset");
+        _assertAdminCanCut(d, ADMIN);
+    }
+
+    function test_Immutable_ERC1363() public {
+        (FacetCut[] memory cuts, address[] memory inits, bytes[] memory cds) =
+            new DeployERC1363().buildCuts("Tok", "TOK");
+        address d = _assembleMulti(cuts, inits, cds);
+        _assertIntrospectable(d, 4);
+        _assertBareEth(d, false);
+        _assertImmutableByDesign(d);
+    }
+
+    function test_Upgradeable_ERC1363() public {
+        (FacetCut[] memory cuts, address[] memory inits, bytes[] memory cds) =
+            new DeployERC1363().buildCuts("Tok", "TOK", ADMIN);
+        address d = _assembleMulti(cuts, inits, cds);
+        _assertIntrospectable(d, 6);
+        _assertBareEth(d, false);
+        assertEq(IERC20(d).name(), "Tok", "module init chain: ERC20 name");
         _assertAdminCanCut(d, ADMIN);
     }
 

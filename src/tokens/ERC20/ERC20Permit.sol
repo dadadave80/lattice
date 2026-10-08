@@ -15,8 +15,13 @@ import {NoncesLib} from "@lattice/utils/libraries/NoncesLib.sol";
 ///      in a Diamond. A token that also wants ERC-5267 `eip712Domain()` discovery cuts the standalone {EIP712}
 ///      facet as a COMPONENT via the blueprint (see `TokenBlueprintHelper._permitTokenBlueprint`); the EIP-712 and
 ///      nonce storage are seeded once in the token's initializer (`EIP712Lib.__EIP712_init`/`NoncesLib.__Nonces_init`).
+///      Differences from OpenZeppelin:
+///      - `permit` behaves identically.
+///      - `DOMAIN_SEPARATOR` stays `public view virtual`. OpenZeppelin v5.5 dropped `virtual` (it was already
+///        `external`); the ABI is the same.
+///      - Registers {IERC20Permit} for ERC-165 in its init; OpenZeppelin's extension has no ERC-165.
 /// @custom:lattice-version 0.1.0
-/// @custom:lattice-source OpenZeppelin v5.1.0
+/// @custom:lattice-source OpenZeppelin v5.6.1
 contract ERC20Permit is IERC20Permit {
     /// @inheritdoc IERC20Permit
     function permit(address owner, address spender, uint256 value, uint256 deadline, uint8 v, bytes32 r, bytes32 s)

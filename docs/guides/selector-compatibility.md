@@ -35,13 +35,18 @@ Today's 74 shared selectors: 18 Variant, 14 Override, 1 Identical, 22 One per di
 
 ## Scope and decisions
 
-- **Inventory facets only.** The test covers the 115 facets in `FacetInventory`. VestingWallet and
+- **Inventory facets only.** The test covers the 116 facets in `FacetInventory`. VestingWallet and
   ERC20Wrapper export no selectors yet ([#176](https://github.com/dadadave80/lattice/issues/176)), so they are
   not in the table. Checked by hand against the inventory: VestingWallet shares no selector, and ERC20Wrapper
   shares `decimals()` (`0x313ce567`) with ERC20 and ERC4626 and `underlying()` (`0x6f307dc3`) with
   ERC721Wrapper. Its `decimals()` replaces ERC20's to mirror the underlying (Override), it cannot share a
   diamond with an ERC4626 share token (Incompatible), and an ERC-20 wrapper and an ERC-721 wrapper cannot share
   a diamond either (Incompatible).
+- **ERC1363 shares no selector but is still exclusive.** Its six `*AndCall` selectors clash with nothing, so this
+  table cannot list it. It moves tokens through `ERC20Lib`, past the `transfer`/`transferFrom` that
+  ERC20Pausable, ERC20Votes and GovernedVault replace, so decision D25 on
+  [#234](https://github.com/dadadave80/lattice/issues/234) declares it mutually exclusive with all three.
+  [`CompositionHazardsTest`](../../test/composability/CompositionHazardsTest.t.sol) pins the bypass.
 - **The ERC-721 receiver seam.** ERC721Wrapper serves `onERC721Received` (`0x150b7a02`) and accepts only its
   underlying collection. UniswapV3Adapter, which is not in the inventory, serves the same selector to receive
   position NFTs. The two are Incompatible: never cut both into one diamond.
@@ -113,6 +118,7 @@ The movement selectors are `transfer` (`0xa9059cbb`) and `transferFrom` (`0x23b8
 | ERC20Votes | Movement-replacing | `transfer`, `transferFrom` (and Votes' `delegate`, `delegateBySig`) | ERC20Pausable; GovernedVault, except as `DeployGovernedVault` composes them; every direct mover |
 | GovernedVault | Combined facet | `transfer`, `transferFrom`, `deposit`, `mint`, `withdraw`, `redeem` | ERC20Pausable, ERC20Capped; every direct mover below except the ERC4626 and VaultCore paths it wraps |
 | ERC20Capped | Mint-gating | its internal `_mint` (no selector; exports only `cap()`) | Every direct minter below (ERC20FlashMint for the length of a loan). A facet that exposes the `_mint` is itself a direct mover for ERC20Pausable and ERC20Votes |
+| ERC1363 | Direct mover | `transferAndCall`, `transferFromAndCall` (both overloads) | ERC20Pausable, ERC20Votes, GovernedVault |
 | ERC20Burnable | Direct mover | `burn`, `burnFrom` | ERC20Pausable, ERC20Votes |
 | ERC20FlashMint | Direct mover | `flashLoan` (mints, then burns) | ERC20Pausable, ERC20Votes, ERC20Capped |
 | ERC20Crosschain | Direct mover | `crosschainTransfer` (burns), `processMessage` (mints) | ERC20Pausable, ERC20Votes, ERC20Capped |
@@ -130,6 +136,8 @@ The vote-aware `ERC20VotesLib._mint` is a direct minter for ERC20Capped too: it 
 - `test_PausableReplacingVotesDesyncsVotes` and `test_VotesReplacingPausableBypassesPause`: `Replace` is silent.
 - `test_BurnableNextToVotesDesyncsVotes` and `test_BurnableNextToPausableBurnsWhilePaused`: a direct mover
   bypasses the family.
+- `test_ERC1363BypassesPause` and `test_ERC1363BypassesVoteCheckpoints`: ERC1363 moves tokens past the pause
+  and the vote checkpoints.
 - `test_DirectMinterNextToCappedExceedsCap`: ERC7802 next to the capped recipe mints past the cap, while a
   composing mint over `_checkCap` still reverts.
 

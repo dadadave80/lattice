@@ -53,6 +53,7 @@ import {IPausable} from "@lattice/interfaces/security/IPausable.sol";
 import {IERC1155} from "@lattice/interfaces/tokens/IERC1155.sol";
 import {IERC1155Burnable} from "@lattice/interfaces/tokens/IERC1155Burnable.sol";
 import {IERC1155Supply} from "@lattice/interfaces/tokens/IERC1155Supply.sol";
+import {IERC1363, IERC1363Receiver} from "@lattice/interfaces/tokens/IERC1363.sol";
 import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
 import {IERC20Capped} from "@lattice/interfaces/tokens/IERC20Capped.sol";
 import {IERC4626} from "@lattice/interfaces/tokens/IERC4626.sol";
@@ -68,6 +69,8 @@ import {ERC1155} from "@lattice/tokens/ERC1155/ERC1155.sol";
 import {ERC1155Burnable} from "@lattice/tokens/ERC1155/ERC1155Burnable.sol";
 import {ERC1155Pausable} from "@lattice/tokens/ERC1155/ERC1155Pausable.sol";
 import {ERC1155Supply} from "@lattice/tokens/ERC1155/ERC1155Supply.sol";
+import {ERC1363} from "@lattice/tokens/ERC20/ERC1363.sol";
+import {ERC1363Init} from "@lattice/tokens/ERC20/ERC1363Init.sol";
 import {ERC20Burnable} from "@lattice/tokens/ERC20/ERC20Burnable.sol";
 import {ERC20Pausable} from "@lattice/tokens/ERC20/ERC20Pausable.sol";
 import {ERC20Votes} from "@lattice/tokens/ERC20/ERC20Votes.sol";
@@ -131,6 +134,13 @@ contract HazardAsset {
         balanceOf[from] -= amount;
         balanceOf[to] += amount;
         return true;
+    }
+}
+
+/// @dev ERC-1363 receiver that accepts every transfer, for the D25 movement-override tests.
+contract HazardERC1363Receiver is IERC1363Receiver {
+    function onTransferReceived(address, address, uint256, bytes calldata) external pure returns (bytes4) {
+        return IERC1363Receiver.onTransferReceived.selector;
     }
 }
 
@@ -677,6 +687,52 @@ contract CompositionHazardsTest is Test {
         assertEq(IERC721(token).balanceOf(alice), 0, "burned while paused");
     }
 
+    /// @notice D25: ERC1363 shares no selector with ERC20Pausable, so the cut succeeds, but `transferAndCall`
+    ///         moves tokens through ERC20Lib and never meets the pause. The pairing is declared mutually exclusive.
+    function test_ERC1363BypassesPause() public {
+        (FacetCut[] memory base, address[] memory inits, bytes[] memory datas) =
+            new DeployERC20Pausable().buildCuts("Token", "TKN", admin);
+        FacetCut[] memory cuts = _append(
+            _append(base, _add(address(new ERC1363()))),
+            _selectors(address(new TokenTestFacet()), TokenTestFacet.mint.selector)
+        );
+        address token = _deploy(cuts, _withERC1363Init(inits), _withERC1363InitData(datas));
+
+        TokenTestFacet(token).mint(alice, 100e18);
+        vm.prank(admin);
+        IPausable(token).pause();
+        vm.prank(alice);
+        vm.expectRevert(IPausable.EnforcedPause.selector);
+        IERC20(token).transfer(bob, 1);
+
+        address receiver = address(new HazardERC1363Receiver());
+        vm.prank(alice);
+        IERC1363(token).transferAndCall(receiver, 40e18);
+        assertEq(IERC20(token).balanceOf(receiver), 40e18, "transferAndCall moved tokens while paused");
+    }
+
+    /// @notice D25: next to ERC20Votes, `transferAndCall` moves the balance but not the voting units, so the
+    ///         sender keeps the votes of tokens she sent. The pairing is declared mutually exclusive.
+    function test_ERC1363BypassesVoteCheckpoints() public {
+        (FacetCut[] memory base, address[] memory inits, bytes[] memory datas) =
+            new DeployERC20Votes().buildCuts("Token", "TKN", admin);
+        FacetCut[] memory cuts = _append(
+            _append(base, _add(address(new ERC1363()))),
+            _selectors(address(new ERC20VotesTestFacet()), ERC20VotesTestFacet.mint.selector)
+        );
+        address token = _deploy(cuts, _withERC1363Init(inits), _withERC1363InitData(datas));
+
+        ERC20VotesTestFacet(token).mint(alice, 100e18);
+        vm.prank(alice);
+        IVotes(token).delegate(alice);
+
+        address receiver = address(new HazardERC1363Receiver());
+        vm.prank(alice);
+        IERC1363(token).transferAndCall(receiver, 40e18);
+        assertEq(IERC20(token).balanceOf(alice), 60e18);
+        assertEq(IVotes(token).getVotes(alice), 100e18, "alice keeps the votes of tokens she sent");
+    }
+
     //*//////////////////////////////////////////////////////////////////////////
     //              4. A CO-CUT ACCESSMANAGER IS ROOT (D11, #219, #240)
     //////////////////////////////////////////////////////////////////////////*//
@@ -921,6 +977,22 @@ contract CompositionHazardsTest is Test {
         assertFalse(IAccessControl(diamond).hasRole(UPGRADE_EXECUTOR_ROLE, amAdmin));
         assertTrue(IAccessControl(diamond).hasRole(UPGRADE_EXECUTOR_ROLE, diamond));
         return diamond;
+    }
+
+    function _withERC1363Init(address[] memory inits) internal returns (address[] memory out) {
+        out = new address[](inits.length + 1);
+        for (uint256 i; i < inits.length; ++i) {
+            out[i] = inits[i];
+        }
+        out[inits.length] = address(new ERC1363Init());
+    }
+
+    function _withERC1363InitData(bytes[] memory datas) internal pure returns (bytes[] memory out) {
+        out = new bytes[](datas.length + 1);
+        for (uint256 i; i < datas.length; ++i) {
+            out[i] = datas[i];
+        }
+        out[datas.length] = abi.encodeCall(ERC1363Init.init, ());
     }
 
     function _probeCut() internal returns (FacetCut[] memory cut, address probe) {

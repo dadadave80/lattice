@@ -45,6 +45,7 @@ import {
     ERC1155URISTORAGE_STORAGE_SLOT,
     ERC165_MAP_IERC1155URISTORAGE_SLOT
 } from "@lattice/tokens/ERC1155/libraries/ERC1155URIStorageLib.sol";
+import {ERC165_MAP_IERC1363_SLOT} from "@lattice/tokens/ERC20/libraries/ERC1363Lib.sol";
 import {ERC165_MAP_IERC20BURNABLE_SLOT} from "@lattice/tokens/ERC20/libraries/ERC20BurnableLib.sol";
 import {
     ERC165_MAP_IERC20CAPPED_SLOT,
@@ -453,6 +454,7 @@ import {IERC1155} from "@lattice/interfaces/tokens/IERC1155.sol";
 import {IERC1155Burnable} from "@lattice/interfaces/tokens/IERC1155Burnable.sol";
 import {IERC1155Supply} from "@lattice/interfaces/tokens/IERC1155Supply.sol";
 import {IERC1155URIStorage} from "@lattice/interfaces/tokens/IERC1155URIStorage.sol";
+import {IERC1363} from "@lattice/interfaces/tokens/IERC1363.sol";
 import {IERC20Burnable} from "@lattice/interfaces/tokens/IERC20Burnable.sol";
 import {IERC20Permit} from "@lattice/interfaces/tokens/IERC20Permit.sol";
 import {IERC721} from "@lattice/interfaces/tokens/IERC721.sol";
@@ -1393,6 +1395,16 @@ contract StorageSlotVerificationTest is Test {
             ERC165_MAP_IERC1155METADATAURI_SLOT,
             _erc165MapSlot(IERC1155_METADATA_URI_ID, ERC165_STORAGE_LOCATION),
             "ERC165 IERC1155MetadataURI map slot mismatch"
+        );
+    }
+
+    function test_Erc165MapIERC1363Slot() public pure {
+        bytes4 interfaceId = type(IERC1363).interfaceId;
+        assertEq(interfaceId, bytes4(0xb0202a11), "IERC1363 interfaceId comment is stale");
+        assertEq(
+            ERC165_MAP_IERC1363_SLOT,
+            _erc165MapSlot(interfaceId, ERC165_STORAGE_LOCATION),
+            "ERC165 IERC1363 map slot mismatch"
         );
     }
 
@@ -2378,7 +2390,7 @@ contract StorageSlotVerificationTest is Test {
     }
 
     function _allErc165MapSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](106);
+        slots = new bytes32[](107);
         uint256 i;
         // access
         slots[i++] = ERC165_MAP_IACCESSCONTROL_SLOT;
@@ -2398,6 +2410,7 @@ contract StorageSlotVerificationTest is Test {
         slots[i++] = ERC165_MAP_IERC1155_SLOT;
         slots[i++] = ERC165_MAP_IERC1155METADATAURI_SLOT;
         slots[i++] = ERC165_MAP_IERC1155BURNABLE_SLOT;
+        slots[i++] = ERC165_MAP_IERC1363_SLOT;
         slots[i++] = ERC165_MAP_IERC1155SUPPLY_SLOT;
         slots[i++] = ERC165_MAP_IERC1155URISTORAGE_SLOT;
         slots[i++] = ERC165_MAP_IERC2981_SLOT;

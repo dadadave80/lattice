@@ -6,7 +6,6 @@ import {Checkpoints} from "@lattice/utils/libraries/Checkpoints.sol";
 import {ECDSA} from "@lattice/utils/libraries/ECDSA.sol";
 import {EIP712Lib} from "@lattice/utils/libraries/EIP712Lib.sol";
 import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
-import {NoncesLib} from "@lattice/utils/libraries/NoncesLib.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
 //                                  STORAGE
@@ -136,25 +135,6 @@ library VotesLib {
     /// @dev Submodules pass their token balance as `votingUnits`.
     function delegate(address delegatee, uint256 votingUnits) internal {
         _delegate(msg.sender, delegatee, votingUnits);
-    }
-
-    /// @notice Delegates votes via an EIP-712 signature.
-    /// @param votingUnits The current voting weight of the signer (e.g. token balance).
-    ///                    Callers that know the signer's units (e.g. ERC20VotesLib) must pass
-    ///                    the correct balance; the base Votes facet passes 0.
-    function delegateBySig(
-        address delegatee,
-        uint256 nonce,
-        uint256 expiry,
-        uint8 v,
-        bytes32 r,
-        bytes32 s,
-        uint256 votingUnits
-    ) internal {
-        // Re-use the shared _recoverDelegationSigner to avoid logic duplication.
-        address signer = _recoverDelegationSigner(delegatee, nonce, expiry, v, r, s);
-        NoncesLib.useCheckedNonce(signer, nonce);
-        _delegate(signer, delegatee, votingUnits);
     }
 
     /// @notice Recovers the signer of a delegation EIP-712 signature and validates expiry.

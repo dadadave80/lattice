@@ -8,10 +8,12 @@ import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
 /// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/ERC20.sol)
 /// @notice Stateless Diamond facet for the ERC-20 token standard.
 /// @dev All logic lives in ERC20Lib. This contract is a pure delegator.
+///      Subclasses (Burnable, Capped, Permit) override `virtual` methods. {ERC20Lib} lists every difference from
+///      OpenZeppelin.
 ///      `transfer`/`transferFrom` are the movement selectors a movement-replacing extension (ERC20Pausable,
 ///      ERC20Votes, GovernedVault) replaces; only one of them per diamond (D25, #234).
 /// @custom:lattice-version 0.1.0
-/// @custom:lattice-source OpenZeppelin v5.1.0
+/// @custom:lattice-source OpenZeppelin v5.6.1
 contract ERC20 is IERC20 {
     /// @inheritdoc IERC20
     function totalSupply() public view virtual returns (uint256) {
