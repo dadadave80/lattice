@@ -4,6 +4,7 @@ pragma solidity ^0.8.30;
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {ERC1155TestBase} from "@lattice-test/base/ERC1155TestBase.sol";
 import {IERC1155} from "@lattice/interfaces/tokens/IERC1155.sol";
+import {stdError} from "forge-std/StdError.sol";
 
 /// @notice ERC1155 receiver that returns correct selectors.
 contract Good1155Receiver {
@@ -315,5 +316,33 @@ contract ERC1155Test is ERC1155TestBase {
         vm.expectRevert(Reverting1155Receiver.TransferBlocked.selector);
         vm.prank(alice);
         token.safeTransferFrom(alice, address(receiver), ID_1, 50, "");
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //          CHECKED RECEIVER CREDIT (OZ v5.6.1 `_update` arithmetic)
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice Crediting past `type(uint256).max` reverts with an arithmetic panic instead of wrapping the
+    ///         receiver's balance (OZ v5.6.1 credits `to` with checked arithmetic).
+    function test_MintOverflowReverts() public {
+        vm.startPrank(admin);
+        helper.mint(alice, ID_1, type(uint256).max, "");
+        vm.expectRevert(stdError.arithmeticError);
+        helper.mint(alice, ID_1, 1, "");
+        vm.stopPrank();
+        assertEq(token.balanceOf(alice, ID_1), type(uint256).max);
+    }
+
+    /// @notice Two holders whose balances of one id sum past `type(uint256).max` cannot wrap one another's
+    ///         balance by transfer.
+    function test_TransferOverflowReverts() public {
+        vm.startPrank(admin);
+        helper.mint(alice, ID_1, type(uint256).max, "");
+        helper.mint(bob, ID_1, 1, "");
+        vm.stopPrank();
+
+        vm.expectRevert(stdError.arithmeticError);
+        vm.prank(bob);
+        token.safeTransferFrom(bob, alice, ID_1, 1, "");
     }
 }

@@ -1,5 +1,5 @@
 {
-  "ERC1155.mintBatch": "155464",
-  "ERC1155.safeBatchTransferFrom": "151709",
+  "ERC1155.mintBatch": "155904",
+  "ERC1155.safeBatchTransferFrom": "152149",
   "ERC1155.setApprovalForAll": "52922"
 }

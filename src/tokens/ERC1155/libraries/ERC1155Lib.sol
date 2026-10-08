@@ -203,9 +203,7 @@ library ERC1155Lib {
             }
 
             if (to != address(0)) {
-                unchecked {
-                    $._balances[id][to] += value;
-                }
+                $._balances[id][to] += value;
             }
         }
 
