@@ -70,6 +70,10 @@ contract CCTPUSDCDemoProbe is CCTPUSDCDemo {
 /// blocks are pinned (overridable via <ALIAS>_FORK_BLOCK) so runs reproduce and the RPC cache hits;
 /// {CCTPUSDCDemo._demoStatus} itself forks at the LIVE tip (status is inherently current), and the deployed
 /// hub + dealt balances are carried across those forks with `vm.makePersistent`.
+///
+/// The Arc pin needs an archive Arc endpoint. A state-pruning Arc node answers `state at block #N is pruned`;
+/// before {ArchiveFork} probed state, that surfaced as the setUp `EVM error; database error` recorded on #232,
+/// not a contract revert. The whole suite passes against an archive Arc endpoint.
 contract CCTPUSDCDemoFork is Test {
     /// @notice Circle CCTP v2 `TokenMessengerV2` on every testnet (asserted allowance target after a burn).
     address internal constant TOKEN_MESSENGER_V2 = 0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA;

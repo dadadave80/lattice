@@ -45,14 +45,19 @@ contract MockGelatoAutomateForkContract is AccessControl, GelatoAutomateAdapter,
 ///
 /// Enabling fork tests:
 ///   export MAINNET_RPC_URL=<your-rpc-url>
-///   export GELATO_AUTOMATE=<gelato-automate-address>
-///   forge test --match-path "test/fork/*"
+///   forge test --match-path "test/fork/GelatoAutomateAdapterFork.t.sol"
 ///
-/// Without GELATO_AUTOMATE set, all tests in this contract are skipped. Live task
-/// creation requires Gelato infra and is out of scope here.
+/// Without MAINNET_RPC_URL set, all tests in this contract are skipped.
+/// GELATO_AUTOMATE overrides the canonical Automate address. Live task creation
+/// requires Gelato infra and is out of scope here.
 contract GelatoAutomateAdapterFork is Test {
     /// @notice Pinned mainnet block for deterministic results (December 2024).
     uint256 constant FORK_BLOCK = 21_500_000;
+
+    /// @notice Gelato Automate proxy on Ethereum mainnet (`version()` "7" at FORK_BLOCK).
+    address constant AUTOMATE = 0x2A6C106ae13B558BB9E2Ec64Bd2f1f7BEFF3A5E0;
+    /// @notice The Gelato diamond that Automate's `gelato()` reports at FORK_BLOCK.
+    address constant GELATO_DIAMOND = 0x3CACa7b48D0573D793d3b0279b5F0029180E83b6;
 
     /// @notice Placeholder dedicated msg.sender used for the config round-trip.
     address constant DEDICATED_MSG_SENDER = address(0xBEEF);
@@ -62,20 +67,28 @@ contract GelatoAutomateAdapterFork is Test {
     address gelatoAutomate;
 
     function setUp() public {
-        gelatoAutomate = vm.envOr("GELATO_AUTOMATE", address(0));
-        if (gelatoAutomate == address(0)) {
+        if (bytes(vm.envOr("MAINNET_RPC_URL", string(""))).length == 0) {
             vm.skip(true);
             return;
         }
+        gelatoAutomate = vm.envOr("GELATO_AUTOMATE", AUTOMATE);
         vm.createSelectFork("mainnet", FORK_BLOCK);
 
         adapter = new MockGelatoAutomateForkContract();
         adapter.initialize(admin);
     }
 
+    /// @notice The default address is the live Automate proxy, wired to the Gelato diamond.
+    function test_Fork_DefaultAutomateIsLive() public view {
+        (bool ok, bytes memory ret) = AUTOMATE.staticcall(abi.encodeWithSignature("gelato()"));
+        assertTrue(ok, "gelato() reverted");
+        assertEq(abi.decode(ret, (address)), GELATO_DIAMOND, "Automate reports another Gelato diamond");
+    }
+
     /// @notice Configure the adapter with the live Gelato Automate address and a
     ///         placeholder dedicated msg.sender, then assert getConfig round-trips.
     function test_Fork_ConfigRoundTrips() public {
+        assertGt(gelatoAutomate.code.length, 0, "no Automate code at the fork block");
         vm.prank(admin);
         adapter.setConfig(gelatoAutomate, DEDICATED_MSG_SENDER);
 

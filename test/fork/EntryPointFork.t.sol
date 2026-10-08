@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {ArchiveFork} from "@lattice-test/helpers/ArchiveFork.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {ERC4337Validation} from "@lattice/accounts/ERC4337Validation.sol";
@@ -92,9 +93,10 @@ contract EntryPointFork is Test {
             return;
         }
         vm.createSelectFork("mainnet", FORK_BLOCK);
-        // Defensive: skip rather than fail if this RPC's pinned block predates the v0.9 singleton.
+        // FORK_BLOCK postdates the v0.9 singleton, so missing code means a wrong pin or a bad RPC: skip locally,
+        // fail on the strict weekly lane.
         if (address(ENTRY_POINT).code.length == 0) {
-            vm.skip(true);
+            ArchiveFork.skipOrFail(ArchiveFork.strict(), "v0.9 EntryPoint has no code at FORK_BLOCK");
             return;
         }
 

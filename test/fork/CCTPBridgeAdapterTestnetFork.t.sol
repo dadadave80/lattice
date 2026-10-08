@@ -109,7 +109,7 @@ contract CCTPBridgeAdapterTestnetFork is CCTPBridgeAdapterTestBase {
             uint256 feeExecuted
         ) = _loadFixture();
         if (message.length == 0) {
-            vm.skip(true); // fixture not yet captured — see the file's TODO
+            ArchiveFork.skipOrFail(ArchiveFork.strict(), string.concat(FIXTURE, " has no captured message"));
             return;
         }
         if (!ArchiveFork.select("base-sepolia", vm.envOr("BASE_SEPOLIA_FORK_BLOCK", BASE_SEPOLIA_FORK_BLOCK))) return;
@@ -144,7 +144,7 @@ contract CCTPBridgeAdapterTestnetFork is CCTPBridgeAdapterTestBase {
         if (!_skipUnless("BASE_SEPOLIA_RPC_URL")) return;
         (bytes memory message, bytes memory attestation, address fixtureRecipient,,) = _loadFixture();
         if (message.length == 0) {
-            vm.skip(true);
+            ArchiveFork.skipOrFail(ArchiveFork.strict(), string.concat(FIXTURE, " has no captured message"));
             return;
         }
         if (!ArchiveFork.select("base-sepolia", vm.envOr("BASE_SEPOLIA_FORK_BLOCK", BASE_SEPOLIA_FORK_BLOCK))) return;
