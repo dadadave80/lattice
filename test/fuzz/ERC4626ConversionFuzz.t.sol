@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {FullMathReference} from "@lattice-test/helpers/FullMathReference.sol";
 import {ERC4626Lib, Rounding} from "@lattice/tokens/ERC4626/libraries/ERC4626Lib.sol";
 import {Test} from "forge-std/Test.sol";
 
@@ -110,5 +111,63 @@ contract ERC4626ConversionFuzz is Test {
         assets = bound(assets, 0, MAX);
         offset = uint8(bound(offset, 0, 18));
         assertEq(h.toShares(assets, 0, 0, offset, Rounding.Floor), assets * 10 ** offset, "virtual shares");
+    }
+
+    /// @notice Differential: over all of uint256 and at offsets 0, 6 and 18, both converters equal the EIP-4626
+    ///         virtual-offset formula evaluated by the independent 512-bit oracle, in both rounding directions —
+    ///         and revert exactly where it has no uint256 answer (a 512-bit overflow, or `totalSupply + 10**offset`
+    ///         / `totalAssets + 1` overflowing). Large operands drive ERC4626Lib's 512-bit `mulDiv` branch.
+    /// forge-config: default.fuzz.runs = 512
+    function testFuzz_ConvertersMatchEip4626Formula(
+        uint256 amount,
+        uint256 supply,
+        uint256 nav,
+        uint256 offsetIndex,
+        bool roundUp
+    ) public view {
+        uint8 offset = [0, 6, 18][offsetIndex % 3];
+        Rounding r = roundUp ? Rounding.Ceil : Rounding.Floor;
+
+        // shares = amount * (supply + 10**offset) / (nav + 1); assets = amount * (nav + 1) / (supply + 10**offset).
+        // A zero stands in for an overflowing virtual total; the oracle rejects a zero denominator, and the AND
+        // with `totalsFit` covers the numerator side.
+        bool totalsFit = supply <= type(uint256).max - 10 ** offset && nav < type(uint256).max;
+        uint256 virtualSupply = totalsFit ? supply + 10 ** offset : 0;
+        uint256 virtualAssets = totalsFit ? nav + 1 : 0;
+
+        _assertConverter(
+            abi.encodeCall(h.toShares, (amount, supply, nav, offset, r)),
+            totalsFit,
+            amount,
+            virtualSupply,
+            virtualAssets,
+            roundUp,
+            "toShares"
+        );
+        _assertConverter(
+            abi.encodeCall(h.toAssets, (amount, supply, nav, offset, r)),
+            totalsFit,
+            amount,
+            virtualAssets,
+            virtualSupply,
+            roundUp,
+            "toAssets"
+        );
+    }
+
+    /// @dev The converter call returns `amount * num / den` per the oracle, or reverts where it has no answer.
+    function _assertConverter(
+        bytes memory data,
+        bool totalsFit,
+        uint256 amount,
+        uint256 num,
+        uint256 den,
+        bool roundUp,
+        string memory label
+    ) internal view {
+        (bool okRef, uint256 expected) = FullMathReference.mulDiv(amount, num, den, roundUp);
+        (bool ok, bytes memory ret) = address(h).staticcall(data);
+        assertEq(ok, totalsFit && okRef, string.concat(label, ": revert domain"));
+        if (ok) assertEq(abi.decode(ret, (uint256)), expected, string.concat(label, ": result"));
     }
 }
