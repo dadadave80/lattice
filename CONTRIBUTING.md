@@ -181,5 +181,6 @@ fail silently when missed, so do every one.
 - [ ] **Recipe guard**: add `test_Upgradeable_<Module>` to the matching
       `test/composability/RecipeUpgradeability<Group>Test.t.sol`. Nothing enforces one guard per recipe, so
       only this list catches a missing one.
-- [ ] **Docs**: add the module to the README Modules table and the `src/` layout comment.
+- [ ] **Docs**: add the module to the README Modules table, backticked (`make readme-check` fails without
+      it), and the `src/` layout comment.
 - [ ] **Gates**: `make fmt` (it also sorts imports), then `make ci`.

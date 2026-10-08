@@ -115,6 +115,11 @@ license-check: ## License notices: SPDX on every .sol, license texts present, ex
 	./script/test-check-licenses.sh
 	./script/check-licenses.sh
 
+.PHONY: readme-check
+readme-check: ## README Modules catalog lists every src/ contract, and names only contracts that exist
+	./script/test-check-readme-catalog.sh
+	./script/check-readme-catalog.sh
+
 .PHONY: scripts-check
 scripts-check: ## Regression tests for the CI helper scripts (closing-keyword parser, fork-lane runner), and every fork suite in one scheduled lane
 	./script/test-closing-issues.sh
@@ -130,7 +135,7 @@ test-ci: ## Full test suite under the CI profile (snapshots/ is left to snapshot
 	FOUNDRY_PROFILE=ci FORGE_SNAPSHOT_EMIT=false forge test
 
 .PHONY: ci
-ci: fmt-check license-check scripts-check sizes via-ir storage-check test-ci snapshot-check ## All CI gates, locally, in CI order
+ci: fmt-check license-check scripts-check readme-check sizes via-ir storage-check test-ci snapshot-check ## All CI gates, locally, in CI order
 
 .PHONY: slither
 slither: ## Static analysis gate, as CI runs it (slither.config.json + triaged slither.db.json; fails on High)
