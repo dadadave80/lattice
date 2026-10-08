@@ -482,6 +482,9 @@
 8	0	_slippageBps	t_uint256
 9	0	_operator	t_address
 
+### VaultCoreRecoveryStorage @ erc7201:lattice.storage.VaultCoreRecovery (slot 0x47912b574bd5afb37a2207dcbb19ecd0a5ba9d0ace45a4775d2beed47d20cd00)
+0	0	_managerSwapLatched	t_bool
+
 ### VaultCoreStorage @ erc7201:lattice.storage.VaultCore (slot 0x391c4f0f82559e85ff01d307d4b19b40f088495abd453c84d7e0fa35497de600)
 0	0	_strategyManager	t_address
 

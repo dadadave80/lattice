@@ -14,6 +14,8 @@ import {TimelockController} from "@lattice/governance/TimelockController.sol";
 import {DiamondValidationLib} from "@lattice/governance/libraries/DiamondValidationLib.sol";
 import {UPGRADE_EXECUTOR_ROLE} from "@lattice/governance/libraries/GovernedDiamondCutLib.sol";
 import {IAccessControl} from "@lattice/interfaces/access/IAccessControl.sol";
+import {IVaultCore} from "@lattice/interfaces/defi/IVaultCore.sol";
+import {IVaultCoreRecovery} from "@lattice/interfaces/defi/IVaultCoreRecovery.sol";
 import {IENSReverseClaimer} from "@lattice/interfaces/ens/IENSReverseClaimer.sol";
 import {IReverseRegistrar} from "@lattice/interfaces/external/ens/IReverseRegistrar.sol";
 import {IVotes} from "@lattice/interfaces/governance/IVotes.sol";
@@ -179,6 +181,15 @@ contract GovernedVaultENSInitTest is Test {
         assertTrue(
             ERC165Facet(diamond).supportsInterface(type(IENSReverseClaimer).interfaceId),
             "IENSReverseClaimer registered"
+        );
+    }
+
+    /// @notice The ENS init registers the vault-side recovery interface next to IVaultCore (#305).
+    function test_SupportsIVaultCoreRecoveryInterface() public view {
+        assertTrue(ERC165Facet(diamond).supportsInterface(type(IVaultCore).interfaceId), "IVaultCore registered");
+        assertTrue(
+            ERC165Facet(diamond).supportsInterface(type(IVaultCoreRecovery).interfaceId),
+            "IVaultCoreRecovery registered"
         );
     }
 

@@ -150,7 +150,7 @@ library StrategyManagerLib {
     ///      Reverts if any strategy's read reverts (or the sum overflows); the vault then fails closed until
     ///      the admin force-removes a reverting strategy through `removeStrategy` (which latches deposits
     ///      closed until {clearDepositLatch}), or, as a last resort, the vault admin points
-    ///      `VaultCore.setStrategyManager` at a fresh manager.
+    ///      `VaultCore.setStrategyManager` at a fresh manager (which latches the vault's deposits, #305).
     function totalAllocated() internal view returns (uint256 total) {
         StrategyManagerStorage storage $ = strategyManagerStorage();
         uint256 len = $._strategies.length;
@@ -243,7 +243,9 @@ library StrategyManagerLib {
     ///      reports a balance.
     ///      A strategy that reports a well-formed but overflowing balance also freezes the vault, yet is not
     ///      a failed read here and cannot be force-removed; the last resort is `VaultCore.setStrategyManager`
-    ///      with a fresh manager, which drops all of this manager's strategies from the NAV.
+    ///      with a fresh manager, which drops all of this manager's strategies from the NAV and, since this
+    ///      manager still reports allocations (or cannot answer, when its own sum overflows), latches the
+    ///      vault's deposits until the vault admin clears them (`IVaultCoreRecovery`, #305).
     function _removeStrategy(address strategy) internal {
         StrategyManagerStorage storage $ = strategyManagerStorage();
 
@@ -289,8 +291,9 @@ library StrategyManagerLib {
         emit IStrategyManager.StrategyRemoved(strategy);
     }
 
-    /// @notice Clears the deposit latch a force removal set, reopening the vault's deposits. Admin-only
-    ///         (DEFAULT_ADMIN_ROLE, the role that gates {removeStrategy}).
+    /// @notice Clears the deposit latch a force removal set, reopening the vault's deposits unless the vault's
+    ///         own manager-swap latch (`IVaultCoreRecovery`) is also set. Admin-only (DEFAULT_ADMIN_ROLE, the
+    ///         role that gates {removeStrategy}).
     function clearDepositLatch() internal {
         AccessControlLib.checkRole(DEFAULT_ADMIN_ROLE);
         _clearDepositLatch();
