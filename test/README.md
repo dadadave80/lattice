@@ -26,6 +26,9 @@ Structured per the **Testing** and **Deployment** sections of the Cyfrin Solidit
 
 1. **Stateless fuzz** over hardcoded inputs for input-space coverage.
 2. **Invariant (stateful) fuzz** for O(1) properties that must always hold (`test/invariant/`).
+   `fail_on_revert = true`, so a reverting handler call fails the run: bound handler inputs to valid calls,
+   skip actions the target would reject, and assert expected reverts with `vm.expectRevert`. Each suite also
+   sets the inline `/// forge-config: default.invariant.fail-on-revert = true` key on its invariants.
 3. **Branching-tree technique (BTT)** for exhaustive, named coverage of revert paths and state-dependent
    branches. A `.tree` file lives **next to** the `.t.sol` it documents, named `<Subject><Function>.tree`.
    Each leaf maps to a named test; a `given` is a state-setup modifier, a `when` is a parameter branch, an
