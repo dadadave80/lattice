@@ -94,11 +94,11 @@ via-ir: ## IR-pipeline parity build (catches stack-too-deep / IR-only errors)
 	forge build --via-ir --skip test script
 
 .PHONY: storage-check
-storage-check: ## ERC-7201 append-only storage-layout guard
+storage-check: ## ERC-7201 storage-layout guard (every annotated struct vs the committed baseline)
 	./script/upgrades/check-storage-layout.sh
 
 .PHONY: storage-update
-storage-update: ## Regenerate the storage-layout baseline (review the diff — appends only!)
+storage-update: ## Regenerate the storage-layout baseline (review the diff: appends only for live namespaces; see CONTRIBUTING.md)
 	./script/upgrades/check-storage-layout.sh --update
 
 .PHONY: test-ci

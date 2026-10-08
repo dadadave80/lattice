@@ -323,6 +323,10 @@ runs with `FOUNDRY_PROFILE=ci` (`optimizer_runs = 1_000_000`, `via_ir = false`).
 local `forge test` does not guarantee CI passes if optimizer behavior diverges — run
 `FOUNDRY_PROFILE=ci forge build --sizes` before pushing if you touch hot paths.
 
+`make ci` runs CI's Solidity gates locally. Before opening a PR, read [CONTRIBUTING.md](CONTRIBUTING.md): it
+covers the `dev` base branch, commit conventions, and the
+[add-a-module checklist](CONTRIBUTING.md#adding-a-module).
+
 ## Layout
 
 ```
