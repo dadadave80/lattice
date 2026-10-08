@@ -76,12 +76,32 @@ issues.
 
 Lattice holds no funds and has not adopted the
 [SEAL Whitehat Safe Harbor agreement](https://github.com/security-alliance/safe-harbor).
-The `SafeHarborAdopter` facet lets a diamond adopt it, but each adopting
-deployment publishes and maintains its own agreement. The facet covers only the
-on-chain steps: creating the agreement and registering it. SEAL also asks the
-adopting protocol to publish a fact page, add the agreement's Exhibit D to its
-terms of service, and make the registry call from its decision-making
-authority; see SEAL's repository for the current steps.
+The [`SafeHarborAdopter`](src/governance/SafeHarborAdopter.sol) facet lets a
+diamond adopt it, but each adopting deployment publishes and maintains its own
+agreement. The facet covers only the on-chain half: creating and registering an
+agreement (`createAndAdopt`) or registering a pre-deployed one
+(`adoptSafeHarbor`). SEAL's
+[adoption procedure](https://github.com/security-alliance/safe-harbor/blob/78ba9237377a9622439cbab41a5336673cea1b92/README.md#protocol-adoption)
+ends with three steps. The adopting protocol does the first two off-chain;
+the facet makes the third:
+
+1. Publish an Agreement Fact Page with every detail of the adoption,
+   maintained off-chain for anyone to view.
+2. Add the agreement's Exhibit D (User Adoption Procedures), adapted, to the
+   terms of service.
+3. Make the registry call from the decision-making authority. That call is
+   the legally binding step. The diamond makes it through the facet and is
+   recorded as the adopter, so the call must come from the protocol's
+   governance: grant `SAFE_HARBOR_ADMIN_ROLE` only to it (for example its
+   Governor-controlled `TimelockController`), never to an operator key, and
+   keep `DEFAULT_ADMIN_ROLE`, which administers that role, with the same
+   authority. The agreement's owner (the `owner` argument of `createAndAdopt`,
+   or the owner of a pre-deployed agreement passed to `adoptSafeHarbor`) must
+   be that same authority too: after adoption the owner alone can change the
+   agreement's chains, accounts, asset-recovery addresses and bounty terms.
+
+The facet's NatSpec lists the same steps. Check SEAL's repository for changes
+before adopting.
 
 ## Known issues
 
