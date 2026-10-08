@@ -180,10 +180,12 @@ contract HederaProbeFacet {
 ///        `vm.rpc("eth_call", ...)`, which hands the call to the relay where the mirror node executes it.
 ///
 ///      FOUNDRY VERSION — run this through `script/config/hedera/forge-hedera.sh`, which pins Foundry 1.7.1.
-///      On 1.8.1 the fork backend asks for the sender's nonce as
+///      By default 1.8.x (1.8.1, 1.8.3 and 1.8.5 measured) asks for the sender's nonce as
 ///      `eth_getTransactionCount(addr, {"blockHash": .., ..})`, an EIP-1898 object Hedera's relay rejects
-///      (`-32602 Invalid parameter 1 ... [object Object]`); 1.7.1 sends `"latest"` and works, and this script
-///      ran against hedera-testnet on 2026-09-12 under it. Whether Foundry or the relay should change is open.
+///      (`-32602 Invalid parameter 1 ... [object Object]`); 1.7.1 sends `"latest"` for the first sender-nonce
+///      read and a block number for the fork-state reads, and works. This script ran against hedera-testnet
+///      on 2026-09-12 under it. 1.8.5's `--fork-state-by-number` also reaches the relay in simulation but is
+///      not yet verified for a broadcast (#227).
 ///
 ///      LIVE RESULTS 2026-09-12 (diamond 0x45634e329053336819550485FC3F4a41b259d781): probe 2 confirmed.
 ///      Probe 3's negative control turned out DEGENERATE — its `contractId(address(this))` supply key is
