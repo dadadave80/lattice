@@ -287,6 +287,7 @@ and a row here.
 | ChainlinkAutomationAdapter | `lattice.storage.ChainlinkAutomationAdapter` | `0x79ff96d501e28b99bca4f72c19ec619bce29c1cac16a5bcab62634e5e94dcb00` | `IChainlinkAutomationAdapter` | `0x97290114` | `0xda518c4395658f1bda3e69bd76a71c3cebddb4103a2ca4f795abdfcb18525c7c` |
 | ChainlinkCREAdapter | `lattice.storage.ChainlinkCREAdapter` | `0x38811f86f85f0447c0970d57466dc7a3c4187640f04a44e7622c183e45f90b00` | `IReceiver` (canonical CRE id) | `0x805f2132` | `0x441e497903b68a1fc13e526fe3469e615b027289cdd3d767c8ce4993ccc4bf83` |
 | TWAPOracle | `lattice.storage.TWAPOracle` | `0xc2bcc163613aea761b734a9692ad3548aab9088be29b53e03facf6a2a351df00` | `ITWAPOracle` | `0xd1baebe0` | `0x3edcb012a40cef5fed8aba3a5816c3233af9ecd91b8a1965a2b67b8940a0f49f` |
+| OracleGuard | `lattice.storage.OracleGuard` | `0xcb4d3b20d6a2c3be74f0770f2a6fab88f83473f0767b2765ccc6af180a66bc00` | `IOracleGuard` | `0x33a1a017` | `0x41da0c252d134ba14fd7bb076efcd912935e2490fdd095fda46ea7b4ab0cb258` |
 | HSSAdapter | `lattice.storage.HSSAdapter` | `0x12fa09b7b2cb13ace416911567e16cefd04261b5db45857ec33ecae7c1298700` | `IHSSAdapter` | `0xd07095cf` | `0x336d3eab18c157b0aa1696b6a9cef1943b53e0b1cdacf2490de1d33245c45247` |
 | HederaExchangeRateAdapter | — (stateless) | — | `IHederaExchangeRateAdapter` | `0x409e5cd5` | `0x63eb9226e864b43834b3b55a3188cdb0170b49fdd7f8a67c2a48bd7b9f6a8378` |
 | HederaPrngAdapter | — (stateless) | — | `IHederaPrngAdapter` | `0x8e848f42` | `0xe34a308c0f52419d136ed1b5d11f586cf680db1cc128f8b2678f2b24615706b7` |

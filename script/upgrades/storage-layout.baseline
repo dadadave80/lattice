@@ -375,6 +375,11 @@
 ### NoncesStorage @ erc7201:lattice.storage.Nonces (slot 0x2b93a5a8782d382c0f6890e7e2d77ba67ed77675c16cc334b45b931317d4de00)
 0	0	_nonces	t_mapping(t_address,t_uint256)
 
+### OracleGuardStorage @ erc7201:lattice.storage.OracleGuard (slot 0xcb4d3b20d6a2c3be74f0770f2a6fab88f83473f0767b2765ccc6af180a66bc00)
+0	0	_sequencerFeed	t_address
+0	20	_gracePeriod	t_uint48
+1	0	_feeds	t_mapping(t_bytes32,t_struct(GuardedFeed)_storage)
+
 ### PausableStorage @ erc7201:lattice.storage.Pausable (slot 0x1484a55ae2f6de193138ed7f3a9f9b3307c3701783002d2a375beb8271f96200)
 0	0	_paused	t_bool
 
@@ -609,6 +614,11 @@
 7	0	nullifiers	t_struct(Registry)_storage
 8	0	admin	t_address
 8	20	exists	t_bool
+
+### GuardedFeed (nested)
+0	0	oracle	t_address
+1	0	minAnswer	t_int256
+2	0	maxAnswer	t_int256
 
 ### Invariant (nested)
 0	0	target	t_address

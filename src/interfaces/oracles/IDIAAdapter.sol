@@ -14,6 +14,10 @@ pragma solidity >=0.8.4;
 ///      because Solidity excludes inherited functions from `type(I).interfaceId`, which would shift the
 ///      ERC-165 id.) The native `getValue(bytes32)` reader keeps this adapter's ERC-165 id distinct from
 ///      other adapters that share the `latestAnswer` selector.
+///
+///      The adapter does NOT check an L2 sequencer-uptime feed and does NOT bound the answer to a sane range.
+///      Integrators that need either check read through the opt-in {IOracleGuard} (`OracleGuard` facet)
+///      instead of calling `latestAnswer` directly.
 interface IDIAAdapter {
     // -------------------------------------------------------------------------
     //                                  Events
