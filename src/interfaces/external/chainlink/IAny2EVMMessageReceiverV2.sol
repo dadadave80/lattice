@@ -5,7 +5,7 @@ import {IAny2EVMMessageReceiver} from "@lattice/interfaces/external/chainlink/IA
 
 /// @title IAny2EVMMessageReceiverV2 (Chainlink CCIP) — vendored subset
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
-/// @author Vendored minimal subset of Chainlink CCIP's `IAny2EVMMessageReceiverV2` (https://github.com/smartcontractkit/chainlink-ccip).
+/// @author Vendored minimal subset of Chainlink CCIP's `IAny2EVMMessageReceiverV2` (https://github.com/smartcontractkit/chainlink-ccip). Upstream license: MIT.
 /// @notice CCV (Cross-Chain Verifier) extension of `IAny2EVMMessageReceiver` (interfaceId `0x9eabab2b`). On
 ///         CCV-enabled lanes the CCIP router queries `getCCVsAndFinalityConfig` to learn the verifiers a
 ///         receiver requires and the finality it accepts for inbound messages from a given source chain.

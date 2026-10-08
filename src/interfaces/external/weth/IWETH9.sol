@@ -4,7 +4,8 @@ pragma solidity >=0.8.4;
 import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
 
 /// @title IWETH9
-/// @author Modified from the canonical WETH9 (https://github.com/gnosis/canonical-weth/blob/master/contracts/WETH9.sol)
+/// @author Vendored minimal subset of the canonical WETH9 (https://github.com/gnosis/canonical-weth/blob/master/contracts/WETH9.sol).
+///         Upstream license: GPL-3.0-or-later.
 /// @notice Minimal vendored subset of Wrapped Ether (WETH9). The Lido adapter holds idle funds as
 ///         WETH (so the position fits the ERC-20 `IStrategy` ABI) and unwraps to native ETH only to
 ///         stake into Lido, re-wrapping the ETH it claims back from the withdrawal queue.

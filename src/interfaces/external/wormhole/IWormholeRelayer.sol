@@ -3,7 +3,7 @@ pragma solidity >=0.8.4;
 
 /// @title IWormholeRelayer / IWormholeReceiver
 /// @author Vendored minimal subset of the Wormhole Solidity SDK
-///         (https://github.com/wormhole-foundation/wormhole-solidity-sdk). Upstream is Apache-2.0.
+///         (https://github.com/wormhole-foundation/wormhole-solidity-sdk). Upstream license: Apache-2.0.
 ///         Only the methods the {WormholeGatewayAdapter} calls/implements are re-declared.
 ///         Vendored subset — do not add a wormhole-solidity-sdk dependency.
 /// @notice `IWormholeRelayer` is the standard relayer (send + quote); `IWormholeReceiver` is the callback

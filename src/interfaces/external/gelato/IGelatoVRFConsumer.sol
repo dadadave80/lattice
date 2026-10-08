@@ -2,7 +2,8 @@
 pragma solidity >=0.8.4;
 
 /// @title IGelatoVRFConsumer
-/// @author Modified from Gelato (https://github.com/gelatodigital/vrf-contracts/blob/main/contracts/IGelatoVRFConsumer.sol)
+/// @author Vendored minimal subset of Gelato (https://github.com/gelatodigital/vrf-contracts/blob/main/contracts/IGelatoVRFConsumer.sol).
+///         Upstream license: unknown (the linked upstream repository is not publicly reachable).
 /// @notice Callback interface for Gelato VRF (drand-backed) consumers.
 /// @dev Vendored — do not add a gelato dependency. The consumer emits `RequestedRandomness`; Gelato's
 ///      dedicated operator fulfils by calling `fulfillRandomness`. There is no on-chain fee

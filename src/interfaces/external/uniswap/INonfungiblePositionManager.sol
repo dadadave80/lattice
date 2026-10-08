@@ -2,8 +2,9 @@
 pragma solidity >=0.8.4;
 
 /// @title INonfungiblePositionManager
-/// @author Modified from Uniswap V3 Periphery
-///         (https://github.com/Uniswap/v3-periphery/blob/main/contracts/interfaces/INonfungiblePositionManager.sol)
+/// @author Vendored minimal subset of Uniswap V3 Periphery
+///         (https://github.com/Uniswap/v3-periphery/blob/main/contracts/interfaces/INonfungiblePositionManager.sol).
+///         Upstream license: GPL-2.0-or-later.
 /// @notice Minimal vendored subset of the Uniswap V3 NonfungiblePositionManager (NFPM): the ERC-721
 ///         that custodies concentrated-liquidity positions. The Lattice UniswapV3Adapter mints ONE
 ///         full-range position NFT and manages it through this surface.

@@ -2,7 +2,8 @@
 pragma solidity >=0.8.4;
 
 /// @title IUniswapV2Pair
-/// @author Modified from Uniswap V2 (https://github.com/Uniswap/v2-core/blob/master/contracts/interfaces/IUniswapV2Pair.sol)
+/// @author Vendored minimal subset of Uniswap V2 (https://github.com/Uniswap/v2-core/blob/master/contracts/interfaces/IUniswapV2Pair.sol).
+///         Upstream license: GPL-3.0 (repository license; the upstream file has no SPDX tag).
 /// @notice Minimal interface for Uniswap V2 pair contracts.
 /// @dev Vendored subset covering cumulative prices and reserves — do not add a
 ///      uniswap-v2-core dependency.

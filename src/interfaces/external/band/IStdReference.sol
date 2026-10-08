@@ -2,7 +2,8 @@
 pragma solidity >=0.8.4;
 
 /// @title IStdReference
-/// @author Modified from Band Protocol (https://github.com/bandprotocol/contract-tools/blob/master/spec/StdReference.sol)
+/// @author Vendored minimal subset of Band Protocol (https://github.com/bandprotocol/contract-tools/blob/master/spec/StdReference.sol).
+///         Upstream license: unknown (the linked upstream repository is not publicly reachable).
 /// @notice Minimal interface for the Band Protocol standard reference (StdReferenceProxy) oracle.
 /// @dev Vendored subset — do not add a Band contracts dependency. Band uses a SINGLE global reference
 ///      contract per chain; feeds are keyed by a `(base, quote)` symbol pair (e.g. `("ETH","USD")`).

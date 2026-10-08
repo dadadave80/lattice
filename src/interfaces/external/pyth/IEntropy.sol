@@ -2,7 +2,8 @@
 pragma solidity >=0.8.4;
 
 /// @title IEntropy
-/// @author Modified from Pyth (https://github.com/pyth-network/pyth-crosschain/blob/main/target_chains/ethereum/entropy_sdk/solidity/IEntropy.sol)
+/// @author Vendored minimal subset of Pyth (https://github.com/pyth-network/pyth-crosschain/blob/main/target_chains/ethereum/entropy_sdk/solidity/IEntropy.sol).
+///         Upstream license: Apache-2.0.
 /// @notice Minimal interface for the Pyth Entropy on-demand randomness contract (commit/reveal).
 /// @dev Vendored subset — do not add a pyth dependency. The Entropy contract fulfils a request by
 ///      calling `entropyCallback(uint64,address,bytes32)` back on the requester.

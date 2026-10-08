@@ -4,7 +4,7 @@ pragma solidity >=0.8.4;
 /// @title IERC7786 — ERC-7786 Cross-Chain Messaging Gateway interfaces
 /// @author Vendored verbatim from OpenZeppelin Contracts v5.6.1
 ///         (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/5fd1781b1454fd1ef8e722282f86f9293cacf256/contracts/interfaces/draft-IERC7786.sol).
-///         Upstream is MIT. Vendored subset — do not add an openzeppelin-contracts dependency.
+///         Upstream license: MIT. Vendored subset — do not add an openzeppelin-contracts dependency.
 /// @notice Source (`IERC7786GatewaySource`) and recipient (`IERC7786Recipient`) interfaces for the
 ///         ERC-7786 cross-chain messaging standard. See ERC-7786 for details.
 /// @dev Pinned to a commit, not a tag: these track the unfinalized ERC-7786 / ERC-7930 drafts and may

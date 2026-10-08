@@ -2,7 +2,8 @@
 pragma solidity >=0.8.4;
 
 /// @title IAaveOracle
-/// @author Modified from Aave v3 (https://github.com/aave/aave-v3-core/blob/master/contracts/interfaces/IPriceOracleGetter.sol)
+/// @author Vendored minimal subset of Aave v3 (https://github.com/aave/aave-v3-core/blob/master/contracts/interfaces/IPriceOracleGetter.sol).
+///         Upstream license: AGPL-3.0.
 /// @notice Minimal vendored subset of the Aave v3 price oracle (resolved from the
 ///         PoolAddressesProvider via `getPriceOracle()`).
 /// @dev `getAssetPrice` returns the asset price in the SAME base currency and precision that

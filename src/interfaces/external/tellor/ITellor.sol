@@ -2,7 +2,8 @@
 pragma solidity >=0.8.4;
 
 /// @title ITellor
-/// @author Modified from Tellor (https://github.com/tellor-io)
+/// @author Vendored minimal subset of Tellor (https://github.com/tellor-io).
+///         Upstream license: MIT.
 /// @notice Minimal interface for the Tellor oracle (TellorFlex).
 /// @dev Vendored subset — do not add a `usingtellor` dependency. Tellor is a dispute-based oracle:
 ///      reporters post data permissionlessly and bad values are removed by dispute. Best practice is to

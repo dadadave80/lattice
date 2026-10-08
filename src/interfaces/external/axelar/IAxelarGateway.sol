@@ -4,7 +4,7 @@ pragma solidity >=0.8.4;
 /// @title IAxelarGateway
 /// @author Vendored minimal subset of Axelar's GMP SDK
 ///         (https://github.com/axelarnetwork/axelar-gmp-sdk-solidity/blob/main/contracts/interfaces/IAxelarGateway.sol).
-///         Upstream is MIT. Only the two methods the {AxelarGatewayAdapter} calls are re-declared.
+///         Upstream license: MIT. Only the two methods the {AxelarGatewayAdapter} calls are re-declared.
 ///         Vendored subset — do not add an axelar-gmp-sdk dependency.
 /// @notice The Axelar gateway: `callContract` emits an outgoing GMP message; `validateContractCall` is
 ///         called by the destination executable to authorize an inbound approved call.

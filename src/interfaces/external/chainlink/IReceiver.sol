@@ -9,7 +9,8 @@ interface IERC165 {
 }
 
 /// @title IReceiver
-/// @author Modified from Chainlink CRE (https://docs.chain.link/samples/CRE/IReceiver.sol)
+/// @author Vendored minimal subset of Chainlink CRE (https://docs.chain.link/samples/CRE/IReceiver.sol).
+///         Upstream license: MIT.
 /// @notice Consumer interface for receiving Chainlink CRE (Chainlink Runtime Environment) workflow
 ///         reports. The `KeystoneForwarder` validates the DON's report signatures off-chain, then calls
 ///         `onReport` on the consumer.

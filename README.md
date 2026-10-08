@@ -21,7 +21,8 @@ consumed as a Forge dependency; there is no application or canonical deployment 
 > primitives. It has **not** been audited and carries no warranty. It has not received the
 > review that the upstream libraries it mirrors or composes with have. Do not deploy it to
 > mainnet with funds at risk without your own independent audit, especially modules that
-> custody assets, verify proofs, bridge messages, or authorize upgrades. Licensed under MIT.
+> custody assets, verify proofs, bridge messages, or authorize upgrades. Licensed under MIT, except
+> files whose SPDX header says otherwise; see [`LICENSES/`](LICENSES/) and [`lib/VENDORED.md`](lib/VENDORED.md).
 
 ## Modules
 
@@ -395,4 +396,7 @@ logic libraries for that area.
 
 ## License
 
-MIT
+MIT ([`LICENSE`](LICENSE)), except files whose SPDX header says otherwise. Some re-declared
+third-party interfaces under `src/interfaces/external/` are Apache-2.0; that text is in
+[`LICENSES/Apache-2.0.txt`](LICENSES/Apache-2.0.txt). [`lib/VENDORED.md`](lib/VENDORED.md) lists every
+vendored file, re-declared interface and ported module with its upstream and upstream license.

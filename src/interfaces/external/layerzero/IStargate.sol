@@ -5,7 +5,7 @@ import {MessagingFee, MessagingReceipt} from "@lattice/interfaces/external/layer
 
 /// @title IStargate (Stargate v2 pool / OFT send surface) — minimal ABI-equivalent interface
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
-/// @author Vendored minimal struct subset of LayerZero's `IOFT` (https://github.com/LayerZero-Labs/LayerZero-v2). Upstream is MIT.
+/// @author Vendored minimal struct subset of LayerZero's `IOFT` (https://github.com/LayerZero-Labs/LayerZero-v2). Upstream license: MIT.
 /// @author ABI-equivalent interface authored fresh from Stargate v2's public ABI (https://github.com/stargate-protocol/stargate-v2) — upstream sources are BUSL-1.1 and were NOT copied.
 /// @notice Minimal Stargate v2 surface the Lattice adapter dispatches through: the 3-tuple `sendToken`
 ///         (Stargate's OFT `send` variant that additionally returns the bus {Ticket}), the `quoteSend` fee
