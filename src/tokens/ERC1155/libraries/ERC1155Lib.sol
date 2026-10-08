@@ -15,7 +15,8 @@ bytes32 constant ERC1155_STORAGE_SLOT = 0xe39704fe713bf9d011ae08177a1e99cc7df74d
 /// `keccak256(abi.encode(uint256(keccak256("diamond.lib.storage.ERC165")) - 1)) & ~bytes32(uint256(0xff))`.
 bytes32 constant ERC1155_ERC165_STORAGE_LOCATION = 0x9ca7f3e2e2bfb15fdf072b85dde92837cddacee6cf2f6b38cd06c9457c1c4200;
 
-/// @dev 0xd9b67a26 is `type(IERC1155).interfaceId`.
+/// @dev 0xd9b67a26 is the canonical EIP-1155 id, NOT `type(IERC1155).interfaceId`: Lattice's {IERC1155} bundles
+///      the metadata URI extension, so its derived id is 0xd73f4e3a. ERC-165 callers query the canonical id.
 /// `keccak256(abi.encode(bytes4(0xd9b67a26), 0x9ca7f3e2e2bfb15fdf072b85dde92837cddacee6cf2f6b38cd06c9457c1c4200))`.
 bytes32 constant ERC165_MAP_IERC1155_SLOT = 0xa10754813726d67c8d4e4553f74a520d6623216a67c6c4a53860c47e2ccde594;
 

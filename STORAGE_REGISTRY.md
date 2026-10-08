@@ -68,9 +68,14 @@ and a row here.
   registry / frozen / emergency surfaces are plain facet functions sharing the same ERC-7201 slot.
 - Utility libraries that hold no own ERC-7201 storage slot (`EnumerableSet`, `TimelockLib`) and
   token-extension libraries that declare no `*_STORAGE_SLOT` (`ERC20Burnable`, `ERC20Permit`,
-  `ERC20Votes`, `ERC7802`) are intentionally **not** listed here. (`ERC20Permit`, `ERC20Votes`,
-  `ERC20Burnable`, and `ERC7802` do register ERC-165 ids but reuse the underlying `ERC20`/`Votes`/`Nonces`
-  storage, so they have no row of their own.)
+  `ERC20Votes`, `ERC7802`) are intentionally **not** listed here. (`ERC20Permit`, `ERC20Burnable`, and
+  `ERC7802` do register ERC-165 ids but reuse the underlying `ERC20`/`Nonces` storage, so they have no row of
+  their own; their map slots are still derived and checked for uniqueness in
+  `StorageSlotVerificationTest`. `ERC20Votes` registers **no** ERC-165 id: `IERC20Votes` declares only
+  errors, so its interfaceId is the meaningless `0x00000000`, and the voting surface is advertised as
+  `IVotes` by `Votes`.) The cut-alias constants (`GovernedDiamondCutLib`/`SafeDiamondCutLib`
+  `ERC165_MAP_ICUT_SLOT`, `ERC165_MAP_IACCESSCONTROLDIAMONDCUT_SLOT`) are asserted equal to diamond-lib's
+  `ERC165_MAP_ICUT_SLOT` instead of being listed as unique slots.
 - **ERC7802** is the crosschain-native ERC-20 extension (ERC-7802: `crosschainMint`/`crosschainBurn`,
   role-gated to `CROSSCHAIN_BRIDGE_ROLE`). It registers the **canonical** ERC-7802 id
   `type(IERC7802).interfaceId == 0x33331994` (the vendored `IERC7802` omits `IERC165` so the derived id

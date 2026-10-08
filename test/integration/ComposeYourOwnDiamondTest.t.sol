@@ -6,6 +6,7 @@ import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {IDiamondCut} from "@diamond/interfaces/IDiamondCut.sol";
 import {IDiamondLoupe} from "@diamond/interfaces/IDiamondLoupe.sol";
 import {DiamondLib, FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
+import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
 import {LatticeFactory} from "@lattice/LatticeFactory.sol";
 import {LatticeRegistry} from "@lattice/LatticeRegistry.sol";
@@ -44,6 +45,7 @@ contract CappedTokenInit {
     function init(CappedTokenParams calldata p) external {
         // 1. Authority first: the cut facet checks DEFAULT_ADMIN_ROLE on every later upgrade.
         AccessControlLib.__AccessControl_init(p.admin);
+        ERC165Lib.registerInterface(); // ERC-165 flag for IERC165 itself (0x01ffc9a7)
         DiamondLib.registerInterface(); // ERC-165 flags for the cut and loupe facets this recipe installs
         // 2. The token, then the cap that constrains it.
         ERC20Lib.__ERC20_init(p.name, p.symbol);
@@ -133,6 +135,8 @@ contract ComposeYourOwnDiamondTest is Test {
         assertTrue(IAccessControl(token).hasRole(DEFAULT_ADMIN_ROLE, admin), "admin holds the upgrade role");
         assertFalse(IAccessControl(token).hasRole(DEFAULT_ADMIN_ROLE, address(factory)), "the factory holds none");
         assertEq(IDiamondLoupe(token).facetAddresses().length, 7, "seven facets routed");
+        assertTrue(ERC165Facet(token).supportsInterface(0x01ffc9a7), "answers IERC165 (ERC-165 compliant)");
+        assertFalse(ERC165Facet(token).supportsInterface(0xffffffff), "rejects the ERC-165 invalid id");
     }
 
     function test_InitialSupplyAboveCapReverts() public {

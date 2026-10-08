@@ -2,6 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {DiamondLib} from "@diamond/libraries/DiamondLib.sol";
+import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {GovernedVaultLib} from "@lattice/defi/libraries/GovernedVaultLib.sol";
 import {VaultCoreLib} from "@lattice/defi/libraries/VaultCoreLib.sol";
@@ -11,7 +12,6 @@ import {TimelockControllerLib} from "@lattice/governance/libraries/TimelockContr
 import {VotesLib} from "@lattice/governance/libraries/VotesLib.sol";
 import {EmergencyStopLib} from "@lattice/security/libraries/EmergencyStopLib.sol";
 import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
-import {ERC20VotesLib} from "@lattice/tokens/ERC20/libraries/ERC20VotesLib.sol";
 import {ERC4626Lib} from "@lattice/tokens/ERC4626/libraries/ERC4626Lib.sol";
 import {EIP712Lib} from "@lattice/utils/libraries/EIP712Lib.sol";
 import {NoncesLib} from "@lattice/utils/libraries/NoncesLib.sol";
@@ -49,13 +49,14 @@ contract GovernedVaultInit {
 
         // 1b. Governed upgradeability — the anti-frozen-diamond wiring. EmergencyStop arms the guardian
         //     surface (no guardian is appointed at init; governance may appoint one by proposal), the
-        //     IDiamondCut + IDiamondLoupe ERC-165 flags match the facets the recipe actually cuts, and
-        //     UPGRADE_EXECUTOR_ROLE is granted to the diamond ONLY and pinned to administer ITSELF — so a
+        //     IERC165 + IDiamondCut + IDiamondLoupe ERC-165 flags match the facets the recipe actually cuts,
+        //     and UPGRADE_EXECUTOR_ROLE is granted to the diamond ONLY and pinned to administer ITSELF — so a
         //     passed + queued + timelock-executed shareholder proposal is the ONLY upgrade path (not even
         //     the DEFAULT_ADMIN_ROLE holder can mint an executor out-of-band). Selectors are deliberately
         //     NOT frozen at init (precedent: {GovernedDiamondCutInit}); the recommended first proposal
         //     freezes the loupe + cut + emergency selectors.
         EmergencyStopLib.__EmergencyStop_init();
+        ERC165Lib.registerInterface();
         DiamondLib.registerInterface();
         GovernedDiamondCutLib.__GovernedDiamondCut_init();
 
@@ -65,7 +66,6 @@ contract GovernedVaultInit {
         EIP712Lib.__EIP712_init(p.name, "1");
         NoncesLib.__Nonces_init();
         VotesLib.__Votes_init();
-        ERC20VotesLib.__ERC20Votes_init();
         VaultCoreLib.__VaultCore_init();
 
         // 3. Timelock: the diamond is the sole PROPOSER (so the Governor can queue) and its own admin; execution

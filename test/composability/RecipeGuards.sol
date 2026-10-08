@@ -57,11 +57,17 @@ abstract contract RecipeGuards is Test {
     }
 
     /// @notice The loupe answers on `diamond` with `expectedFacets` distinct facets, `supportsInterface` is
-    ///         routed, and the IDiamondLoupe ERC-165 flag is truthfully advertised.
+    ///         routed, the diamond is ERC-165 compliant (`0x01ffc9a7` true, `0xffffffff` false, the probe pair
+    ///         OZ `ERC165Checker.supportsERC165` checks), the IDiamondLoupe ERC-165 flag is truthfully
+    ///         advertised, and no init wrote the un-namespaced `keccak256(bytes32(0))` slot (#222).
     function _assertIntrospectable(address diamond, uint256 expectedFacets) internal view {
         assertEq(IDiamondLoupe(diamond).facetAddresses().length, expectedFacets, "facet count");
         assertTrue(IDiamondLoupe(diamond).facetAddress(0x01ffc9a7) != address(0), "supportsInterface not routed");
+        assertTrue(ERC165Facet(diamond).supportsInterface(0x01ffc9a7), "IERC165 flag missing");
+        assertFalse(ERC165Facet(diamond).supportsInterface(0xffffffff), "0xffffffff must be unsupported");
         assertTrue(ERC165Facet(diamond).supportsInterface(0x48e2b093), "IDiamondLoupe flag missing");
+        assertFalse(ERC165Facet(diamond).supportsInterface(0x00000000), "0x00000000 must be unsupported");
+        assertEq(vm.load(diamond, keccak256(abi.encode(bytes32(0)))), bytes32(0), "stray write to keccak256(0)");
     }
 
     /// @notice `admin` — and only `admin` — can `diamondCut` a live probe facet onto `diamond`, and the
