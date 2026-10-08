@@ -9,12 +9,12 @@ import {ERC4626Lib} from "@lattice/tokens/ERC4626/libraries/ERC4626Lib.sol";
 /// @notice Diamond facet extending ERC-4626 with strategy hooks for yield aggregation.
 /// @dev All logic lives in VaultCoreLib / ERC4626Lib. This contract is a pure delegator. It owns ONLY its own
 ///      selectors — the strategy surface (`strategyManager`/`idleAssets`/`allocatedAssets`/`setStrategyManager`/
-///      `allocateToStrategy`/`recallFromStrategy`) plus the mutators it REPLACES on the base {ERC4626}
-///      (`totalAssets` to include strategy allocations, and `deposit`/`mint`/`withdraw`/`redeem` behind the
-///      read-only-reentrancy guard, delegating the vault math to {ERC4626Lib} directly). It does NOT inherit the
-///      {ERC4626} facet — doing so would re-export the ERC-4626 + ERC-20 surfaces and collide with those
-///      standalone facets in a Diamond; {DeployVaultCore} composes {ERC20} + {ERC4626} + {VaultCore} over one
-///      shared storage layout.
+///      `allocateToStrategy`/`recallFromStrategy`) plus the selectors it REPLACES on the base {ERC4626}
+///      (`totalAssets` to include strategy allocations, `deposit`/`mint`/`withdraw`/`redeem` behind the
+///      read-only-reentrancy guard, and `maxDeposit`/`maxMint` to honor the deposit latch, delegating the vault
+///      math to {ERC4626Lib} directly). It does NOT inherit the {ERC4626} facet — doing so would re-export the
+///      ERC-4626 + ERC-20 surfaces and collide with those standalone facets in a Diamond; {DeployVaultCore}
+///      composes {ERC20} + {ERC4626} + {VaultCore} over one shared storage layout.
 ///
 ///      Initialization order in the consumer's Diamond initializer:
 ///        1. AccessControlLib.__AccessControl_init(admin)
@@ -27,7 +27,9 @@ import {ERC4626Lib} from "@lattice/tokens/ERC4626/libraries/ERC4626Lib.sol";
 ///      previews and the mutators here all price on this full NAV. Exits stay capped at idle assets
 ///      (`maxWithdraw`/`maxRedeem`). If the strategy manager's NAV read fails, `totalAssets()` reverts and
 ///      the vault fails closed until the failing strategy is removed (or the manager replaced; see
-///      {IVaultCore.VaultCoreStrategyNavUnavailable}).
+///      {IVaultCore.VaultCoreStrategyNavUnavailable}). That force removal latches deposits closed on the
+///      manager: `deposit`/`mint` revert with {IVaultCore.VaultCoreDepositsLatched} and `maxDeposit`/`maxMint`
+///      return 0 until the manager admin calls `clearDepositLatch`, while exits reopen capped at idle (#270).
 /// @custom:lattice-version 0.1.0
 /// @custom:lattice-source OpenZeppelin v5.1.0
 contract VaultCore {
@@ -61,6 +63,22 @@ contract VaultCore {
         return VaultCoreLib.allocatedAssets();
     }
 
+    /// @notice Returns the maximum depositable assets for `receiver`: 0 while deposits are latched closed or the
+    ///         NAV is unreadable, unbounded otherwise.
+    /// @dev Replaces the base {ERC4626} `maxDeposit` to honor the strategy manager's deposit latch.
+    function maxDeposit(address receiver) public view virtual returns (uint256) {
+        if (VaultCoreLib.depositsLatched()) return 0;
+        return ERC4626Lib.maxDeposit(receiver);
+    }
+
+    /// @notice Returns the maximum mintable shares for `receiver`: 0 while deposits are latched closed or the
+    ///         NAV is unreadable, unbounded otherwise.
+    /// @dev Replaces the base {ERC4626} `maxMint` to honor the strategy manager's deposit latch.
+    function maxMint(address receiver) public view virtual returns (uint256) {
+        if (VaultCoreLib.depositsLatched()) return 0;
+        return ERC4626Lib.maxMint(receiver);
+    }
+
     //*//////////////////////////////////////////////////////////////////////////
     //                          STATE-CHANGING FUNCTIONS
     //////////////////////////////////////////////////////////////////////////*//
@@ -88,15 +106,17 @@ contract VaultCore {
     // read-only-reentrancy window where a strategy callback re-enters the vault during rebalance().
     // These REPLACE the base {ERC4626} mutators, delegating the vault math to {ERC4626Lib} directly.
 
-    /// @notice Deposits `assets` for shares to `receiver` (rejected mid-rebalance).
+    /// @notice Deposits `assets` for shares to `receiver` (rejected mid-rebalance and while deposits are latched).
     function deposit(uint256 assets, address receiver) public virtual returns (uint256) {
         VaultCoreLib.requireManagerNotRebalancing();
+        VaultCoreLib.requireDepositsOpen();
         return ERC4626Lib.deposit(assets, receiver);
     }
 
-    /// @notice Mints exactly `shares` to `receiver` (rejected mid-rebalance).
+    /// @notice Mints exactly `shares` to `receiver` (rejected mid-rebalance and while deposits are latched).
     function mint(uint256 shares, address receiver) public virtual returns (uint256) {
         VaultCoreLib.requireManagerNotRebalancing();
+        VaultCoreLib.requireDepositsOpen();
         return ERC4626Lib.mint(shares, receiver);
     }
 
@@ -120,6 +140,8 @@ contract VaultCore {
     ///      `allocatedAssets()` 0x36cd2b11
     ///      `deposit(uint256,address)` 0x6e553f65
     ///      `idleAssets()` 0xe16b03a3
+    ///      `maxDeposit(address)` 0x402d267d
+    ///      `maxMint(address)` 0xc63d75b6
     ///      `mint(uint256,address)` 0x94bf804d
     ///      `recallFromStrategy(address,uint256)` 0x43ff28f3
     ///      `redeem(uint256,address,address)` 0xba087652
@@ -128,6 +150,7 @@ contract VaultCore {
     ///      `totalAssets()` 0x01e1d114
     ///      `withdraw(uint256,address,address)` 0xb460af94
     function exportSelectors() external pure virtual returns (bytes memory selectors) {
-        selectors = hex"5915e15d36cd2b116e553f65e16b03a394bf804d43ff28f3ba0876525c96664639b70e3801e1d114b460af94";
+        selectors =
+            hex"5915e15d36cd2b116e553f65e16b03a3402d267dc63d75b694bf804d43ff28f3ba0876525c96664639b70e3801e1d114b460af94";
     }
 }

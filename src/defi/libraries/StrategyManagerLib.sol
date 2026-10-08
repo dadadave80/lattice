@@ -4,6 +4,7 @@ pragma solidity ^0.8.30;
 import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
 import {IProtocolAdapter} from "@lattice/interfaces/defi/IProtocolAdapter.sol";
 import {IStrategyManager} from "@lattice/interfaces/defi/IStrategyManager.sol";
+import {IStrategyManagerRecovery} from "@lattice/interfaces/defi/IStrategyManagerRecovery.sol";
 import {IVaultCore} from "@lattice/interfaces/defi/IVaultCore.sol";
 import {IStrategy} from "@lattice/interfaces/external/yearn/IStrategy.sol";
 import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
@@ -28,6 +29,11 @@ bytes32 constant STRATEGY_MANAGER_ERC165_STORAGE_LOCATION =
 /// `keccak256(abi.encode(bytes4(0xcce4011b), 0x9ca7f3e2e2bfb15fdf072b85dde92837cddacee6cf2f6b38cd06c9457c1c4200))`.
 bytes32 constant ERC165_MAP_ISTRATEGYMANAGER_SLOT = 0x3d05027e9ebc1daac4235d8ac5fc59b9acea5ece08ff307b79ab5b69ad569930;
 
+/// @dev 0xd352d843 is `type(IStrategyManagerRecovery).interfaceId`.
+/// `keccak256(abi.encode(bytes4(0xd352d843), 0x9ca7f3e2e2bfb15fdf072b85dde92837cddacee6cf2f6b38cd06c9457c1c4200))`.
+bytes32 constant ERC165_MAP_ISTRATEGYMANAGERRECOVERY_SLOT =
+    0x59c693771151cd0d11eb26b1e9fd28dca5722cdc5fa2b4db3a12e7d9be8d4e2c;
+
 /// @dev Maximum number of strategies that can be registered simultaneously.
 /// Limits the iteration cost of totalAllocated() (read by every ERC-4626 conversion, preview,
 /// max* view and mutator via VaultCore.totalAssets()) and rebalance(), preventing gas-based DoS.
@@ -51,6 +57,8 @@ struct StrategyManagerStorage {
     /// @dev 1-based index into `_strategies` array. 0 means not registered.
     mapping(address strategy => uint256 strategyIndex) _strategyIndex;
     uint256 _totalTargetBps;
+    /// @dev Set by a force removal, cleared by the admin (#270). While set, the vault's deposits stay closed.
+    bool _depositsLatched;
 }
 
 /// @title StrategyManagerLib
@@ -91,17 +99,18 @@ library StrategyManagerLib {
     function __StrategyManager_init() internal {
         bytes32 s = InitializableLib.initializableSlot();
         InitializableLib.checkInitializing(s);
-        registerInterface();
+        registerInterfaces();
     }
 
     //*//////////////////////////////////////////////////////////////////////////
     //                           ERC-165 REGISTRATION
     //////////////////////////////////////////////////////////////////////////*//
 
-    /// @notice Registers support for the IStrategyManager interface via ERC-165.
-    function registerInterface() internal {
+    /// @notice Registers support for the IStrategyManager and IStrategyManagerRecovery interfaces via ERC-165.
+    function registerInterfaces() internal {
         assembly ("memory-safe") {
             sstore(ERC165_MAP_ISTRATEGYMANAGER_SLOT, true)
+            sstore(ERC165_MAP_ISTRATEGYMANAGERRECOVERY_SLOT, true)
         }
     }
 
@@ -129,13 +138,19 @@ library StrategyManagerLib {
         return strategyManagerStorage()._totalTargetBps;
     }
 
+    /// @notice Returns true while a force removal keeps the vault's deposits closed (see {clearDepositLatch}).
+    function depositsLatched() internal view returns (bool) {
+        return strategyManagerStorage()._depositsLatched;
+    }
+
     /// @notice Returns the sum of all strategies' self-reported managed balances.
     /// @dev Trust assumption: each registered strategy must accurately report
     ///      `totalAssetsManaged()`. A malicious strategy could inflate this value,
     ///      causing the vault to miscalculate share prices. Only add audited strategies.
     ///      Reverts if any strategy's read reverts (or the sum overflows); the vault then fails closed until
-    ///      the admin force-removes a reverting strategy through `removeStrategy`, or, as a last resort, the
-    ///      vault admin points `VaultCore.setStrategyManager` at a fresh manager.
+    ///      the admin force-removes a reverting strategy through `removeStrategy` (which latches deposits
+    ///      closed until {clearDepositLatch}), or, as a last resort, the vault admin points
+    ///      `VaultCore.setStrategyManager` at a fresh manager.
     function totalAllocated() internal view returns (uint256 total) {
         StrategyManagerStorage storage $ = strategyManagerStorage();
         uint256 len = $._strategies.length;
@@ -207,7 +222,8 @@ library StrategyManagerLib {
     }
 
     /// @notice Removes a registered strategy. Admin-only. Uses swap-and-pop.
-    /// @dev A strategy whose `totalAssetsManaged()` read fails is force-removed (see {_removeStrategy}).
+    /// @dev A strategy whose `totalAssetsManaged()` read fails is force-removed and latches deposits closed
+    ///      (see {_removeStrategy}).
     /// @param strategy Strategy address to remove.
     function removeStrategy(address strategy) internal {
         AccessControlLib.checkRole(DEFAULT_ADMIN_ROLE);
@@ -218,11 +234,13 @@ library StrategyManagerLib {
     ///      Force removal: a failing balance read makes {totalAllocated} revert, which makes the vault's
     ///      `totalAssets()` revert and freezes the vault (fail closed). To recover, a strategy whose read
     ///      reverts or returns malformed data is removed without the balance check and emits
-    ///      {IStrategyManager.StrategyForceRemoved}. Any funds it still holds leave the vault's NAV and
-    ///      deposits reopen at the lower NAV. Funds it later returns to the vault, by any path, accrue to
-    ///      whoever holds shares at that moment, including depositors who entered after the removal, so a
-    ///      recovery moves value from pre-removal holders to them. {_addStrategy} rejects re-adding it while
-    ///      it still reports a balance.
+    ///      {IStrategyManager.StrategyForceRemoved}. Any funds it still holds leave the vault's NAV, and funds
+    ///      it later returns to the vault, by any path, accrue to whoever holds shares at that moment. So that
+    ///      a depositor entering at the lower NAV cannot capture them (#270), the removal also latches deposits
+    ///      closed and emits {IStrategyManagerRecovery.DepositLatchSet}: exits reopen (capped at idle), entries
+    ///      stay closed until the admin calls {clearDepositLatch}. Funds returned after the latch is cleared
+    ///      accrue to whoever holds shares then. {_addStrategy} rejects re-adding the strategy while it still
+    ///      reports a balance.
     ///      A strategy that reports a well-formed but overflowing balance also freezes the vault, yet is not
     ///      a failed read here and cannot be force-removed; the last resort is `VaultCore.setStrategyManager`
     ///      with a fresh manager, which drops all of this manager's strategies from the NAV.
@@ -247,7 +265,9 @@ library StrategyManagerLib {
                 revert IStrategyManager.StrategyManagerStrategyStillAllocated(strategy, liveBalance);
             }
         } else {
+            $._depositsLatched = true;
             emit IStrategyManager.StrategyForceRemoved(strategy);
+            emit IStrategyManagerRecovery.DepositLatchSet(strategy);
         }
 
         uint256 arrIdx = idx - 1; // convert to 0-based
@@ -267,6 +287,21 @@ library StrategyManagerLib {
         delete $._targets[strategy];
 
         emit IStrategyManager.StrategyRemoved(strategy);
+    }
+
+    /// @notice Clears the deposit latch a force removal set, reopening the vault's deposits. Admin-only
+    ///         (DEFAULT_ADMIN_ROLE, the role that gates {removeStrategy}).
+    function clearDepositLatch() internal {
+        AccessControlLib.checkRole(DEFAULT_ADMIN_ROLE);
+        _clearDepositLatch();
+    }
+
+    /// @dev Inner logic for clearDepositLatch (no auth check).
+    function _clearDepositLatch() internal {
+        StrategyManagerStorage storage $ = strategyManagerStorage();
+        if (!$._depositsLatched) revert IStrategyManagerRecovery.StrategyManagerDepositLatchNotSet();
+        $._depositsLatched = false;
+        emit IStrategyManagerRecovery.DepositLatchCleared(msg.sender);
     }
 
     /// @notice Updates the target allocation for a registered strategy. Admin-only.

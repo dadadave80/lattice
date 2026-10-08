@@ -88,6 +88,14 @@ contract RVault is ERC20, ERC4626, VaultCore, Initializable {
         return VaultCore.mint(shares, receiver);
     }
 
+    function maxDeposit(address receiver) public view override(ERC4626, VaultCore) returns (uint256) {
+        return VaultCore.maxDeposit(receiver);
+    }
+
+    function maxMint(address receiver) public view override(ERC4626, VaultCore) returns (uint256) {
+        return VaultCore.maxMint(receiver);
+    }
+
     function withdraw(uint256 assets, address receiver, address owner)
         public
         override(ERC4626, VaultCore)
