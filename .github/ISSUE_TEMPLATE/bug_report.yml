@@ -1,0 +1,66 @@
+name: Bug report
+description: A module, recipe, script or tool behaves wrongly.
+title: "bug: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Security vulnerabilities do not belong here.** Report them privately through
+        [a security advisory](https://github.com/dadadave80/lattice/security/advisories/new), as
+        [SECURITY.md](https://github.com/dadadave80/lattice/blob/main/SECURITY.md) asks.
+  - type: input
+    id: module
+    attributes:
+      label: Module or component
+      description: The facet, library, recipe or script involved.
+      placeholder: VaultCore, script/base/security/DeployEmergencyStop.s.sol, make storage-check
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Lattice tag or commit
+      placeholder: v0.4.0 or dev @ ab77f50
+    validations:
+      required: true
+  - type: input
+    id: forge-version
+    attributes:
+      label: forge --version
+      placeholder: "forge Version: 1.x.y-stable"
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened
+      description: What you expected, and what happened instead. Include revert data or the error output.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Failing test or reproduction
+      description: >-
+        A failing Foundry test is best, ideally against a diamond built from the module's recipe.
+        Otherwise list the exact commands.
+      render: solidity
+    validations:
+      required: true
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Where it reproduces
+      options:
+        - Offline (forge test, no RPC)
+        - Fork test against a live network
+        - Deployed diamond on a live network
+        - Other (describe above)
+    validations:
+      required: true
+  - type: textarea
+    id: network
+    attributes:
+      label: Network details
+      description: For a fork or live network, the chain, block number and any contract addresses.
