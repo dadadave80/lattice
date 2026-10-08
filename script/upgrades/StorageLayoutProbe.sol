@@ -84,6 +84,7 @@ import {InvariantCheckerStorage} from "@lattice/security/libraries/InvariantChec
 import {PausableStorage} from "@lattice/security/libraries/PausableLib.sol";
 import {RateLimiterStorage} from "@lattice/security/libraries/RateLimiterLib.sol";
 import {ERC1155Storage} from "@lattice/tokens/ERC1155/libraries/ERC1155Lib.sol";
+import {ERC1155URIStorageStorage} from "@lattice/tokens/ERC1155/libraries/ERC1155URIStorageLib.sol";
 import {ERC20CappedStorage} from "@lattice/tokens/ERC20/libraries/ERC20CappedLib.sol";
 import {ERC20Storage} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
 import {ERC20WrapperStorage} from "@lattice/tokens/ERC20/libraries/ERC20WrapperLib.sol";
@@ -147,6 +148,7 @@ contract StorageLayoutProbe {
     ENSReverseClaimerStorage internal _eNSReverseClaimerStorage;
     ENSSubnameIssuerStorage internal _eNSSubnameIssuerStorage;
     ERC1155Storage internal _eRC1155Storage;
+    ERC1155URIStorageStorage internal _eRC1155URIStorageStorage;
     ERC20CappedStorage internal _eRC20CappedStorage;
     ERC20Storage internal _eRC20Storage;
     ERC20WrapperStorage internal _eRC20WrapperStorage;

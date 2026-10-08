@@ -190,6 +190,10 @@
 1	0	_operatorApprovals	t_mapping(t_address,t_mapping(t_address,t_bool))
 2	0	_uri	t_string_storage
 
+### ERC1155URIStorageStorage @ erc7201:lattice.storage.ERC1155URIStorage (slot 0x410b28ad7d410d71a721debe93a5796847f0aba6b82f9b5e65108eff17bfbc00)
+0	0	_baseURI	t_string_storage
+1	0	_tokenURIs	t_mapping(t_uint256,t_string_storage)
+
 ### ERC20CappedStorage @ erc7201:lattice.storage.ERC20Capped (slot 0xf3126bfe4af748db9eb069fa2ed04557107fb53a164b5206750073586b2bc900)
 0	0	_cap	t_uint256
 

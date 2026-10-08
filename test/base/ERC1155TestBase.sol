@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {MultiInit} from "@diamond/initializers/MultiInit.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {DeployERC1155} from "@lattice-script/base/tokens/DeployERC1155.s.sol";
 import {ERC1155TestFacet} from "@lattice-test/helpers/ERC1155TestFacet.sol";
@@ -22,7 +23,7 @@ abstract contract ERC1155TestBase is GetSelectors {
     DeployERC1155 internal deployer;
     address internal diamond; // the assembled ERC-1155 token diamond
     ERC1155 internal token; // typed handle on the diamond (standard ERC-1155 calls dispatch through it)
-    ERC1155TestFacet internal helper; // typed handle for test-only mint/mintBatch/burn
+    ERC1155TestFacet internal helper; // typed handle for test-only mint/mintBatch
 
     /// @notice Assembles the production ERC-1155 diamond + the test helper facet (+ any `extraCuts`).
     /// @param uri_ Token URI template.
@@ -47,6 +48,31 @@ abstract contract ERC1155TestBase is GetSelectors {
 
         Lattice d = new Lattice();
         d.initialize(cuts, init, initCalldata);
+        diamond_ = address(d);
+    }
+
+    /// @notice Assembles an extension recipe's cuts + the test helper facet, running every recipe initializer in
+    ///         one initializing window via {MultiInit} (the composition {BaseDeploy._assembleMulti} performs).
+    /// @param prodCuts The extension recipe's full cut set (from its `buildCuts`).
+    /// @param inits The recipe's initializers, in order. @param initCalldatas The matching calldata.
+    /// @return diamond_ The deployed token diamond.
+    function _deployWithHelper(FacetCut[] memory prodCuts, address[] memory inits, bytes[] memory initCalldatas)
+        internal
+        returns (address diamond_)
+    {
+        FacetCut[] memory cuts = new FacetCut[](prodCuts.length + 1);
+        for (uint256 i; i < prodCuts.length; ++i) {
+            cuts[i] = prodCuts[i];
+        }
+        cuts[prodCuts.length] = FacetCut({
+            facetAddress: address(new ERC1155TestFacet()),
+            action: FacetCutAction.Add,
+            functionSelectors: _getSelectors("ERC1155TestFacet")
+        });
+
+        MultiInit multiInit = new MultiInit();
+        Lattice d = new Lattice();
+        d.initialize(cuts, address(multiInit), abi.encodeCall(MultiInit.multiInit, (inits, initCalldatas)));
         diamond_ = address(d);
     }
 
