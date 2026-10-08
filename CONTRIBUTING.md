@@ -36,7 +36,7 @@ Non-negotiable rules:
 
 - `forge fmt` passes (CI runs `forge fmt --check`).
 - `forge test` is green, with tests covering new behavior.
-- `FOUNDRY_PROFILE=ci forge build --sizes --skip test script` if you touched hot
+- `FOUNDRY_PROFILE=ci forge build --locked --sizes --skip test script` if you touched hot
   paths (CI enforces the EIP-170 size limit on deployable facets).
 
 ## Security

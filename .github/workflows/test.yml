@@ -44,7 +44,7 @@ jobs:
     outputs:
       code: ${{ steps.diff.outputs.code }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -75,7 +75,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: recursive
           persist-credentials: false
@@ -95,13 +95,13 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: recursive
           persist-credentials: false
       - uses: ./.github/actions/foundry-setup
       - name: Cache forge build (src)
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             out
@@ -113,8 +113,10 @@ jobs:
       # exceed the limit and are never deployed; `--skip test script` excludes them. Tests are
       # still compiled by the `test` job, so compile errors there remain caught. On a cache hit
       # this is a near-instant no-op compile that still runs the size gate.
+      # --locked fails the build when a submodule gitlink drifts from foundry.lock; without it,
+      # forge (v1.8.5) builds against the checked-out submodule and passes silently.
       - name: Build src (--sizes)
-        run: forge build --sizes --skip test script
+        run: forge build --locked --sizes --skip test script
 
   # IR-pipeline parity is a SEPARATE compiler configuration (via_ir), so it cannot reuse the
   # legacy build cache -- it runs standalone, in parallel, and does not block `test`.
@@ -126,13 +128,13 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: recursive
           persist-credentials: false
       - uses: ./.github/actions/foundry-setup
       - name: Cache forge build (via_ir)
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             out
@@ -169,13 +171,13 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: recursive
           persist-credentials: false
       - uses: ./.github/actions/foundry-setup
       - name: Restore forge build cache
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             out
@@ -194,13 +196,13 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: recursive
           persist-credentials: false
       - uses: ./.github/actions/foundry-setup
       - name: Restore forge build cache
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             out
@@ -258,7 +260,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
           submodules: recursive

@@ -61,7 +61,7 @@ if older documentation conflicts with the development policy below, apply this p
 - Run applicable storage, interface/namespace, deployment-size, gas, and security checks. Use the
   repository's existing workflows and commands, including
   `script/upgrades/check-storage-layout.sh` and
-  `FOUNDRY_PROFILE=ci forge build --sizes --skip test script` where relevant.
+  `FOUNDRY_PROFILE=ci forge build --locked --sizes --skip test script` where relevant.
 - Document intentional storage incompatibility instead of bypassing a failing check. Baseline
   updates must correspond to reviewed source changes and the chosen deployment/upgrade strategy.
 - Report failures and environmental blockers accurately. A partial or filtered run is not a full
