@@ -16,7 +16,11 @@ import {DeployERC20Pausable} from "@lattice-script/base/tokens/DeployERC20Pausab
 import {DeployERC20Votes} from "@lattice-script/base/tokens/DeployERC20Votes.s.sol";
 import {DeployERC4626} from "@lattice-script/base/tokens/DeployERC4626.s.sol";
 import {DeployERC721} from "@lattice-script/base/tokens/DeployERC721.s.sol";
+import {DeployERC721Enumerable} from "@lattice-script/base/tokens/DeployERC721Enumerable.s.sol";
+import {DeployERC721Pausable} from "@lattice-script/base/tokens/DeployERC721Pausable.s.sol";
+import {DeployERC721Votes} from "@lattice-script/base/tokens/DeployERC721Votes.s.sol";
 import {ERC20VotesTestFacet} from "@lattice-test/helpers/ERC20VotesTestFacet.sol";
+import {ERC721TestFacet} from "@lattice-test/helpers/ERC721TestFacet.sol";
 import {TokenTestFacet} from "@lattice-test/helpers/TokenTestFacet.sol";
 import {Lattice} from "@lattice/Lattice.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
@@ -40,6 +44,10 @@ import {IVotes} from "@lattice/interfaces/governance/IVotes.sol";
 import {IPausable} from "@lattice/interfaces/security/IPausable.sol";
 import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
 import {IERC4626} from "@lattice/interfaces/tokens/IERC4626.sol";
+import {IERC721} from "@lattice/interfaces/tokens/IERC721.sol";
+import {IERC721Burnable} from "@lattice/interfaces/tokens/IERC721Burnable.sol";
+import {IERC721Enumerable} from "@lattice/interfaces/tokens/IERC721Enumerable.sol";
+import {IERC721Wrapper} from "@lattice/interfaces/tokens/IERC721Wrapper.sol";
 import {IVestingWallet} from "@lattice/interfaces/utils/IVestingWallet.sol";
 import {PythAdapter} from "@lattice/oracles/pyth/PythAdapter.sol";
 import {PythEntropyAdapter} from "@lattice/oracles/pyth/PythEntropyAdapter.sol";
@@ -48,6 +56,12 @@ import {ERC1155} from "@lattice/tokens/ERC1155/ERC1155.sol";
 import {ERC20Pausable} from "@lattice/tokens/ERC20/ERC20Pausable.sol";
 import {ERC20Votes} from "@lattice/tokens/ERC20/ERC20Votes.sol";
 import {ERC20VotesInit} from "@lattice/tokens/ERC20/ERC20VotesInit.sol";
+import {ERC721Burnable} from "@lattice/tokens/ERC721/ERC721Burnable.sol";
+import {ERC721Enumerable} from "@lattice/tokens/ERC721/ERC721Enumerable.sol";
+import {ERC721Pausable} from "@lattice/tokens/ERC721/ERC721Pausable.sol";
+import {ERC721Votes} from "@lattice/tokens/ERC721/ERC721Votes.sol";
+import {ERC721Wrapper} from "@lattice/tokens/ERC721/ERC721Wrapper.sol";
+import {ERC721WrapperInit} from "@lattice/tokens/ERC721/ERC721WrapperInit.sol";
 import {VestingWallet} from "@lattice/utils/VestingWallet.sol";
 import {InteroperableAddress} from "@lattice/utils/libraries/InteroperableAddress.sol";
 import {VestingWalletLib} from "@lattice/utils/libraries/VestingWalletLib.sol";
@@ -262,6 +276,170 @@ contract CompositionHazardsTest is Test {
         vm.prank(alice);
         IERC20(token).transfer(bob, 40e18);
         assertEq(IERC20(token).balanceOf(bob), 40e18, "the transfer went through while paused");
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //     3b. ERC-721 MOVEMENT OVERRIDES: ONE PER DIAMOND, NO BURNABLE/WRAPPER (D25)
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice D25: ERC721Pausable and ERC721Enumerable both own `transferFrom` and both `safeTransferFrom`
+    ///         overloads. Adding one next to the other reverts at cut time.
+    function test_ERC721PausableAddedToEnumerableRevertsAtCut() public {
+        (FacetCut[] memory base, address[] memory inits, bytes[] memory datas) =
+            new DeployERC721Enumerable().buildCuts("N", "S");
+        FacetCut[] memory cuts = _append(base, _add(address(new ERC721Pausable())));
+        (address init, bytes memory data) = _multi(inits, datas);
+        _expectCutClash(cuts, init, data, _firstClash(base, cuts[cuts.length - 1]));
+    }
+
+    /// @notice D25 (#236's Enumerable-with-Votes case): ERC721Votes and ERC721Enumerable both own the transfer
+    ///         selectors, so adding Votes' facet to an enumerable diamond reverts at cut time.
+    function test_ERC721VotesAddedToEnumerableRevertsAtCut() public {
+        (FacetCut[] memory base, address[] memory inits, bytes[] memory datas) =
+            new DeployERC721Enumerable().buildCuts("N", "S");
+        FacetCut[] memory cuts = _append(base, _add(address(new ERC721Votes())));
+        (address init, bytes memory data) = _multi(inits, datas);
+        bytes4 clash = _firstClash(base, cuts[cuts.length - 1]);
+        assertTrue(clash == 0x42842e0e || clash == 0xb88d4fde || clash == 0x23b872dd, "a transfer selector clashes");
+        _expectCutClash(cuts, init, data, clash);
+    }
+
+    /// @notice D25: a `Replace` is silent. ERC721Pausable replacing ERC721Enumerable's transfers builds fine, but
+    ///         transfers stop updating the lists: the receiver's list holds no real id.
+    function test_ERC721PausableReplacingEnumerableDesyncsLists() public {
+        (FacetCut[] memory base, address[] memory inits, bytes[] memory datas) =
+            new DeployERC721Enumerable().buildCuts("N", "S");
+        address pausableFacet = address(new ERC721Pausable());
+        FacetCut[] memory cuts = _append(
+            _append(base, _replace(pausableFacet)),
+            _selectors(address(new ERC721TestFacet()), ERC721TestFacet.enumerableMint.selector)
+        );
+        address token = _deploy(cuts, inits, datas);
+        assertEq(IDiamondLoupe(token).facetAddress(IERC721.transferFrom.selector), pausableFacet, "Pausable owns it");
+
+        ERC721TestFacet(token).enumerableMint(alice, 7);
+        vm.prank(alice);
+        IERC721(token).transferFrom(alice, bob, 7);
+
+        assertEq(IERC721(token).balanceOf(bob), 1);
+        assertEq(IERC721Enumerable(token).tokenOfOwnerByIndex(bob, 0), 0, "bob's list never recorded id 7");
+    }
+
+    /// @notice D25, the other order: ERC721Enumerable replacing ERC721Pausable's transfer builds fine, but the
+    ///         pause no longer gates transfers.
+    function test_ERC721EnumerableReplacingPausableBypassesPause() public {
+        (FacetCut[] memory base, address[] memory inits, bytes[] memory datas) =
+            new DeployERC721Pausable().buildCuts("N", "S", admin);
+        FacetCut memory enumerableCut =
+            _selectors(address(new ERC721Enumerable()), ERC721Enumerable.transferFrom.selector);
+        enumerableCut.action = FacetCutAction.Replace;
+        FacetCut[] memory cuts = _append(
+            _append(base, enumerableCut), _selectors(address(new ERC721TestFacet()), ERC721TestFacet.mint.selector)
+        );
+        address token = _deploy(cuts, inits, datas);
+
+        ERC721TestFacet(token).mint(alice, 7);
+        vm.prank(admin);
+        IPausable(token).pause();
+        vm.prank(alice);
+        IERC721(token).transferFrom(alice, bob, 7);
+        assertEq(IERC721(token).ownerOf(7), bob, "the transfer went through while paused");
+    }
+
+    /// @notice ERC721Burnable next to ERC721Enumerable shares no selector, so the cut succeeds, but `burn` goes
+    ///         through ERC721Lib: the burned id stays listed and `totalSupply` counts it.
+    function test_ERC721BurnableNextToEnumerableDesyncsSupply() public {
+        (FacetCut[] memory base, address[] memory inits, bytes[] memory datas) =
+            new DeployERC721Enumerable().buildCuts("N", "S");
+        FacetCut[] memory cuts = _append(
+            _append(base, _add(address(new ERC721Burnable()))),
+            _selectors(address(new ERC721TestFacet()), ERC721TestFacet.enumerableMint.selector)
+        );
+        address token = _deploy(cuts, inits, datas);
+
+        ERC721TestFacet(token).enumerableMint(alice, 7);
+        vm.prank(alice);
+        IERC721Burnable(token).burn(7);
+
+        vm.expectRevert(abi.encodeWithSelector(IERC721.ERC721NonexistentToken.selector, 7));
+        IERC721(token).ownerOf(7);
+        assertEq(IERC721Enumerable(token).totalSupply(), 1, "the burned id is still counted");
+        assertEq(IERC721Enumerable(token).tokenByIndex(0), 7, "the burned id is still listed");
+    }
+
+    /// @notice ERC721Burnable next to ERC721Votes: `burn` moves no voting unit, so delegated votes exceed the
+    ///         supply.
+    function test_ERC721BurnableNextToVotesLeavesVotesAboveSupply() public {
+        (FacetCut[] memory base, address[] memory inits, bytes[] memory datas) =
+            new DeployERC721Votes().buildCuts("N", "S");
+        FacetCut[] memory cuts = _append(
+            _append(base, _add(address(new ERC721Burnable()))),
+            _selectors(address(new ERC721TestFacet()), ERC721TestFacet.votesMint.selector)
+        );
+        address token = _deploy(cuts, inits, datas);
+
+        ERC721TestFacet(token).votesMint(alice, 1);
+        ERC721TestFacet(token).votesMint(alice, 2);
+        vm.prank(alice);
+        IVotes(token).delegate(alice);
+        vm.prank(alice);
+        IERC721Burnable(token).burn(1);
+
+        assertEq(IERC721(token).balanceOf(alice), 1);
+        assertEq(IVotes(token).getVotes(alice), 2, "the burned token still votes");
+    }
+
+    /// @notice ERC721Wrapper next to ERC721Enumerable: `depositFor` mints through ERC721Lib, so the wrapped id is
+    ///         owned but never listed.
+    function test_ERC721WrapperNextToEnumerableSkipsLists() public {
+        address underlying = _underlyingWithToken(alice, 7);
+        (FacetCut[] memory base, address[] memory inits, bytes[] memory datas) =
+            new DeployERC721Enumerable().buildCuts("N", "S");
+        (address[] memory allInits, bytes[] memory allDatas) = _withWrapperInit(inits, datas, underlying);
+        address token = _deploy(_append(base, _add(address(new ERC721Wrapper()))), allInits, allDatas);
+
+        _depositFor(underlying, token, alice, 7);
+
+        assertEq(IERC721(token).ownerOf(7), alice, "wrapped id minted");
+        assertEq(IERC721Enumerable(token).totalSupply(), 0, "but never listed");
+    }
+
+    /// @notice ERC721Wrapper next to ERC721Votes: `depositFor` mints through ERC721Lib, so the wrapped id carries
+    ///         no voting unit and the past supply stays zero.
+    function test_ERC721WrapperNextToVotesMintsNoUnits() public {
+        address underlying = _underlyingWithToken(alice, 7);
+        (FacetCut[] memory base, address[] memory inits, bytes[] memory datas) =
+            new DeployERC721Votes().buildCuts("N", "S");
+        (address[] memory allInits, bytes[] memory allDatas) = _withWrapperInit(inits, datas, underlying);
+        address token = _deploy(_append(base, _add(address(new ERC721Wrapper()))), allInits, allDatas);
+
+        vm.prank(alice);
+        IVotes(token).delegate(alice);
+        _depositFor(underlying, token, alice, 7);
+        vm.warp(block.timestamp + 1);
+
+        assertEq(IERC721(token).balanceOf(alice), 1, "wrapped id minted");
+        assertEq(IVotes(token).getVotes(alice), 0, "but it carries no vote");
+        assertEq(IVotes(token).getPastTotalSupply(block.timestamp - 1), 0, "nor any supply");
+    }
+
+    /// @notice ERC721Burnable next to ERC721Pausable: the pause gates only the three transfer selectors, so a burn
+    ///         still runs while paused (OpenZeppelin pauses burns).
+    function test_ERC721BurnableBurnsWhilePaused() public {
+        (FacetCut[] memory base, address[] memory inits, bytes[] memory datas) =
+            new DeployERC721Pausable().buildCuts("N", "S", admin);
+        FacetCut[] memory cuts = _append(
+            _append(base, _add(address(new ERC721Burnable()))),
+            _selectors(address(new ERC721TestFacet()), ERC721TestFacet.mint.selector)
+        );
+        address token = _deploy(cuts, inits, datas);
+
+        ERC721TestFacet(token).mint(alice, 7);
+        vm.prank(admin);
+        IPausable(token).pause();
+        vm.prank(alice);
+        IERC721Burnable(token).burn(7);
+        assertEq(IERC721(token).balanceOf(alice), 0, "burned while paused");
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -514,6 +692,41 @@ contract CompositionHazardsTest is Test {
         probe = address(new HazardProbeFacet());
         cut = new FacetCut[](1);
         cut[0] = _selectors(probe, HazardProbeFacet.hazardProbe.selector);
+    }
+
+    /// @dev A base ERC-721 diamond with `id` minted to `owner`, to serve as a wrapper's underlying collection.
+    function _underlyingWithToken(address owner, uint256 id) internal returns (address) {
+        (FacetCut[] memory cuts, address init, bytes memory data) = new DeployERC721().buildCuts("U", "U");
+        Lattice underlying = new Lattice();
+        underlying.initialize(
+            _append(cuts, _selectors(address(new ERC721TestFacet()), ERC721TestFacet.mint.selector)), init, data
+        );
+        ERC721TestFacet(address(underlying)).mint(owner, id);
+        return address(underlying);
+    }
+
+    /// @dev `inits`/`datas` followed by {ERC721WrapperInit} for `underlying`.
+    function _withWrapperInit(address[] memory inits, bytes[] memory datas, address underlying)
+        internal
+        returns (address[] memory allInits, bytes[] memory allDatas)
+    {
+        allInits = new address[](inits.length + 1);
+        allDatas = new bytes[](inits.length + 1);
+        for (uint256 i; i < inits.length; ++i) {
+            (allInits[i], allDatas[i]) = (inits[i], datas[i]);
+        }
+        allInits[inits.length] = address(new ERC721WrapperInit());
+        allDatas[inits.length] = abi.encodeCall(ERC721WrapperInit.init, (underlying));
+    }
+
+    /// @dev `owner` wraps underlying `id` into `wrapper`.
+    function _depositFor(address underlying, address wrapper, address owner, uint256 id) internal {
+        uint256[] memory ids = new uint256[](1);
+        ids[0] = id;
+        vm.startPrank(owner);
+        IERC721(underlying).approve(wrapper, id);
+        IERC721Wrapper(wrapper).depositFor(owner, ids);
+        vm.stopPrank();
     }
 
     function _deploy(FacetCut[] memory cuts, address[] memory inits, bytes[] memory datas) internal returns (address) {

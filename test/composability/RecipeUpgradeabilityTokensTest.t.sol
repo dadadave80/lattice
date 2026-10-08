@@ -20,8 +20,11 @@ import {DeployERC2981} from "@lattice-script/base/tokens/DeployERC2981.s.sol";
 import {DeployERC4626} from "@lattice-script/base/tokens/DeployERC4626.s.sol";
 import {DeployERC721} from "@lattice-script/base/tokens/DeployERC721.s.sol";
 import {DeployERC721Burnable} from "@lattice-script/base/tokens/DeployERC721Burnable.s.sol";
+import {DeployERC721Enumerable} from "@lattice-script/base/tokens/DeployERC721Enumerable.s.sol";
+import {DeployERC721Pausable} from "@lattice-script/base/tokens/DeployERC721Pausable.s.sol";
 import {DeployERC721Royalty} from "@lattice-script/base/tokens/DeployERC721Royalty.s.sol";
 import {DeployERC721URIStorage} from "@lattice-script/base/tokens/DeployERC721URIStorage.s.sol";
+import {DeployERC721Votes} from "@lattice-script/base/tokens/DeployERC721Votes.s.sol";
 import {DeployERC721Wrapper} from "@lattice-script/base/tokens/DeployERC721Wrapper.s.sol";
 import {DeployERC7802} from "@lattice-script/base/tokens/DeployERC7802.s.sol";
 import {DeployHTSAdapter} from "@lattice-script/base/tokens/DeployHTSAdapter.s.sol";
@@ -317,6 +320,54 @@ contract RecipeUpgradeabilityTokensTest is RecipeGuards {
         _assertIntrospectable(d, 6);
         _assertBareEth(d, false);
         assertEq(ERC721Wrapper(d).underlying(), address(asset), "module init: wrapper underlying");
+        _assertAdminCanCut(d, ADMIN);
+    }
+
+    function test_Upgradeable_ERC721Pausable() public {
+        (FacetCut[] memory cuts, address[] memory inits, bytes[] memory cds) =
+            new DeployERC721Pausable().buildCuts("Tok", "TOK", ADMIN);
+        address d = _assembleMulti(cuts, inits, cds);
+        _assertIntrospectable(d, 7);
+        _assertBareEth(d, false);
+        assertEq(ERC721(d).name(), "Tok", "module init chain: ERC721 name");
+        _assertAdminCanCut(d, ADMIN);
+    }
+
+    function test_Immutable_ERC721Enumerable() public {
+        (FacetCut[] memory cuts, address[] memory inits, bytes[] memory cds) =
+            new DeployERC721Enumerable().buildCuts("Tok", "TOK");
+        address d = _assembleMulti(cuts, inits, cds);
+        _assertIntrospectable(d, 4);
+        _assertBareEth(d, false);
+        _assertImmutableByDesign(d);
+    }
+
+    function test_Upgradeable_ERC721Enumerable() public {
+        (FacetCut[] memory cuts, address[] memory inits, bytes[] memory cds) =
+            new DeployERC721Enumerable().buildCuts("Tok", "TOK", ADMIN);
+        address d = _assembleMulti(cuts, inits, cds);
+        _assertIntrospectable(d, 6);
+        _assertBareEth(d, false);
+        assertEq(ERC721(d).name(), "Tok", "module init chain: ERC721 name");
+        _assertAdminCanCut(d, ADMIN);
+    }
+
+    function test_Immutable_ERC721Votes() public {
+        (FacetCut[] memory cuts, address[] memory inits, bytes[] memory cds) =
+            new DeployERC721Votes().buildCuts("Tok", "TOK");
+        address d = _assembleMulti(cuts, inits, cds);
+        _assertIntrospectable(d, 5);
+        _assertBareEth(d, false);
+        _assertImmutableByDesign(d);
+    }
+
+    function test_Upgradeable_ERC721Votes() public {
+        (FacetCut[] memory cuts, address[] memory inits, bytes[] memory cds) =
+            new DeployERC721Votes().buildCuts("Tok", "TOK", ADMIN);
+        address d = _assembleMulti(cuts, inits, cds);
+        _assertIntrospectable(d, 7);
+        _assertBareEth(d, false);
+        assertEq(ERC721(d).name(), "Tok", "module init chain: ERC721 name");
         _assertAdminCanCut(d, ADMIN);
     }
 
