@@ -3,6 +3,7 @@ pragma solidity ^0.8.30;
 
 import {DiamondLoupeFacet} from "@diamond/facets/DiamondLoupeFacet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
+import {OwnableLib} from "@diamond/libraries/OwnableLib.sol";
 import {AccountBlueprintHelper} from "@lattice-test/helpers/AccountBlueprintHelper.sol";
 import {Lattice} from "@lattice/Lattice.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
@@ -15,6 +16,7 @@ import {ERC7821Executor} from "@lattice/accounts/erc7579/ERC7821Executor.sol";
 import {PackedUserOperation} from "@lattice/interfaces/external/ercs/IAccount.sol";
 import {Call} from "@lattice/interfaces/external/ercs/IERC7821.sol";
 import {ECDSA} from "@lattice/utils/libraries/ECDSA.sol";
+import {InvalidInitialization} from "@lattice/utils/libraries/InitializableLib.sol";
 
 contract Target {
     uint256 public value;
@@ -43,6 +45,10 @@ contract Account7702Test is AccountBlueprintHelper {
 
     bytes32 constant BATCH_MODE = 0x0100000000000000000000000000000000000000000000000000000000000000;
     bytes4 constant MAGIC_1271 = 0x1626ba7e;
+    /// @dev Solady's default Initializable and Ownable slots, which InitializableLib and diamond-lib's
+    ///      OwnableLib reuse un-namespaced.
+    bytes32 constant SOLADY_INITIALIZABLE_SLOT = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffbf601132;
+    bytes32 constant SOLADY_OWNER_SLOT = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffff74873927;
 
     function setUp() public {
         (FacetCut[] memory cuts, AccountInit init) = _accountBlueprint(entryPoint);
@@ -143,6 +149,33 @@ contract Account7702Test is AccountBlueprintHelper {
             .initializeAuthorized(cuts, address(accountInit), data, abi.encodePacked(r, s, v));
         assertEq(AccountSigner(eoa).owner(), eoa, "authorized onboarding did not self-own");
         assertEq(DiamondLoupeFacet(eoa).facetAddresses().length, 9, "blueprint not wired");
+    }
+
+    /// @dev Delegates the EOA to the hardened delegate, signs the canonical `init7702` onboarding, and
+    ///      submits it expecting `err`.
+    function _expectAuthorizedOnboardRevert(bytes4 err) internal {
+        vm.signAndAttachDelegation(address(diamond7702), eoaPk);
+        FacetCut[] memory cuts = blueprint;
+        bytes memory data = abi.encodeCall(AccountInit.init7702, ());
+        bytes32 digest = Account7702Diamond(payable(eoa)).onboardingDigest(cuts, address(accountInit), data);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(eoaPk, digest);
+        vm.expectRevert(err);
+        Account7702Diamond(payable(eoa))
+            .initializeAuthorized(cuts, address(accountInit), data, abi.encodePacked(r, s, v));
+    }
+
+    /// @dev #247: an EOA previously delegated to a Solady-Initializable account keeps a non-zero init word
+    ///      (storage survives re-delegation), and the constructor-only exemption never applies to a
+    ///      delegated EOA, so Lattice onboarding reverts until that slot is cleared.
+    function test_Authorized7702_LeftoverSoladyInitSlotReverts() public {
+        vm.store(eoa, SOLADY_INITIALIZABLE_SLOT, bytes32(uint256(2))); // initialized, version 1
+        _expectAuthorizedOnboardRevert(InvalidInitialization.selector);
+    }
+
+    /// @dev #247: a leftover Solady-Ownable owner makes `AccountInit`'s `initializeOwner` revert.
+    function test_Authorized7702_LeftoverSoladyOwnerSlotReverts() public {
+        vm.store(eoa, SOLADY_OWNER_SLOT, bytes32(uint256(uint160(address(0xBEEF)))));
+        _expectAuthorizedOnboardRevert(OwnableLib.AlreadyInitialized.selector);
     }
 
     /// @dev A front-runner cannot forge the EOA's signature.

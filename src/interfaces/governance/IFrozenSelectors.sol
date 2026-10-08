@@ -32,8 +32,11 @@ interface IFrozenSelectors {
 
     /// @notice Permanently marks `selectors` as frozen: once frozen, a selector can never be the
     ///         target of a `Replace` or `Remove` in any future governed cut. Append-only — there is
-    ///         deliberately no unfreeze. Gated behind UPGRADE_EXECUTOR_ROLE (the same single-holder
-    ///         role that gates `diamondCut`), so only a timelock-relayed governance proposal can freeze.
+    ///         deliberately no unfreeze. Gated like the facet's cut: on GovernedDiamondCut, behind
+    ///         UPGRADE_EXECUTOR_ROLE (the single-holder role that gates `diamondCut`), so in its recipes
+    ///         only a timelock-relayed governance proposal can freeze (a co-cut self-call relay such as
+    ///         AccessManager `execute` would also reach it); on SafeDiamondCut and
+    ///         GovernedSafeDiamondCut, by the pinned Safe.
     /// @param selectors The function selectors to freeze. Already-frozen selectors are idempotent.
     function freezeSelectors(bytes4[] calldata selectors) external;
 

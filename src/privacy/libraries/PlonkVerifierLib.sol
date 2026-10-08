@@ -81,6 +81,8 @@ library PlonkVerifierLib {
     //////////////////////////////////////////////////////////////////////////*//
 
     /// @notice Verifies a PLONK proof. See {IPlonkVerifier.verifyProof}.
+    /// @dev The `vk` checks below are structural (domain size, on-curve points), not authentication: a
+    ///      malicious key passes them, so the caller MUST pin it (see KEY PINNING on {IPlonkVerifier}).
     function verifyProof(
         IPlonkVerifier.VerifyingKey calldata vk,
         IPlonkVerifier.Proof calldata proof,

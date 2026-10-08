@@ -10,6 +10,10 @@ import {VestingWalletLib} from "@lattice/utils/libraries/VestingWalletLib.sol";
 /// to the Ownable beneficiary.
 /// @dev Stateless delegator — all logic and storage live in VestingWalletLib.
 /// Consumers should deploy this as a facet within a Diamond proxy alongside OwnableFacet.
+/// CUSTODY: the vesting allocation is the diamond's WHOLE balance, `balanceOf(address(this)) + released`,
+/// and anyone may call `release`. Do not cut it next to a module that holds the same asset (an ERC-4626
+/// vault, BridgeERC20 or ShieldedPool escrow): once vesting ends, that module's funds go to the owner.
+/// One custodian per asset per diamond (issue #240).
 /// @custom:lattice-version 0.1.0
 /// @custom:lattice-source OpenZeppelin v5.1.0
 contract VestingWallet is IVestingWallet {

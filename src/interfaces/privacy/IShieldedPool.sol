@@ -5,6 +5,10 @@ pragma solidity >=0.8.4;
 /// @notice The verifier a shielded pool calls to check a withdrawal proof. A consumer deploys a Groth16
 ///         verifier for their audited withdraw circuit (whose 5 public signals are, in order,
 ///         `[root, nullifierHash, recipient, relayer, fee]`) and registers its address on the pool.
+/// @dev The implementation MUST pin its circuit's verifying key: whoever can choose the key can forge
+///      a withdrawal and drain the pool. Compile the key in (see `src/examples/privacy/`). A key in
+///      writable storage, or a Groth16 verifier whose code someone can replace, is only as trustworthy
+///      as whoever controls it.
 interface IShieldedWithdrawVerifier {
     /// @param a Groth16 proof point A.
     /// @param b Groth16 proof point B.
@@ -75,7 +79,7 @@ interface IShieldedPool {
     /// @notice Creates a fixed-denomination shielded pool. Gated on the default admin role.
     /// @param token The ERC-20 token escrowed.
     /// @param denomination The fixed deposit/withdraw amount.
-    /// @param verifier The withdraw-circuit verifier (see {IShieldedWithdrawVerifier}).
+    /// @param verifier The withdraw-circuit verifier; it MUST pin its key (see {IShieldedWithdrawVerifier}).
     /// @return poolId The new pool id (1-based).
     function createPool(address token, uint256 denomination, address verifier) external returns (uint256 poolId);
 

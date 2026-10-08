@@ -16,8 +16,9 @@ import {Script, console} from "forge-std/Script.sol";
 ///
 /// @dev WHY NO SDK: the OpenZeppelin Defender Solidity SDK (`Defender.proposeUpgrade`-style helpers in
 ///      `openzeppelin-foundry-upgrades`) is an OPTIONAL external dependency and is intentionally NOT
-///      vendored into Lattice (see `docs/upgrades/OZ_DEFENDER_AND_UPGRADES.md`). Defender consumes
-///      raw `(target, value, data)` for a custom proposal, so this calldata is sufficient on its own.
+///      vendored into Lattice. Defender consumes raw `(target, value, data)` for a custom proposal, so
+///      this calldata is sufficient on its own. `addSelector` also returns `(target, data)`; the
+///      `*At` entry points return `data`.
 ///
 /// The on-chain effect of executing the produced proposal is EXACTLY:
 ///   GovernedDiamondCut.diamondCut(cuts, init, initCalldata)
@@ -33,42 +34,57 @@ import {Script, console} from "forge-std/Script.sol";
 contract ProposeGovernedCut is Script {
     /// @notice Build the Defender payload for adding ONE selector, resolving the diamond's
     ///         deterministic CreateX CREATE3 address from `diamondEntropy` (broadcast by `msg.sender`).
-    /// @dev The address derivation matches {CreateXDeployer.predict} used by `UpgradeDiamond.s.sol`, so
-    ///      the target is identical on every chain the diamond was deployed to.
+    /// @dev The address derivation matches {CreateXDeployer.predict} used by `UpgradeDiamond.s.sol`. The
+    ///      guarded salt includes `block.chainid`, so the target differs per chain: run it on each chain.
     /// @param diamondEntropy 11 bytes identifying the diamond deployment (same entropy used to deploy it).
     /// @param newFacet The CreateX-deployed facet contract providing the new function.
     /// @param selector The function selector to add.
-    function addSelector(bytes11 diamondEntropy, address newFacet, bytes4 selector) external view {
+    /// @return target The predicted diamond address (the proposal TARGET).
+    /// @return data The `diamondCut` calldata.
+    function addSelector(bytes11 diamondEntropy, address newFacet, bytes4 selector)
+        external
+        view
+        returns (address target, bytes memory data)
+    {
         bytes32 salt = CreateXDeployer._guardedSalt(msg.sender, diamondEntropy);
-        address diamond = CreateXDeployer.predict(salt);
-        _logProposal(diamond, _singleCut(newFacet, selector, FacetCutAction.Add));
+        target = CreateXDeployer.predict(salt);
+        data = _logProposal(target, _singleCut(newFacet, selector, FacetCutAction.Add));
     }
 
     /// @notice Build the Defender payload for adding ONE selector against an explicit diamond address.
     /// @param diamond The governed diamond proxy (Defender proposal TARGET).
     /// @param newFacet The facet contract providing the new function.
     /// @param selector The function selector to add.
-    function addSelectorAt(address diamond, address newFacet, bytes4 selector) external pure {
-        _logProposal(diamond, _singleCut(newFacet, selector, FacetCutAction.Add));
+    /// @return data The `diamondCut` calldata.
+    function addSelectorAt(address diamond, address newFacet, bytes4 selector)
+        external
+        pure
+        returns (bytes memory data)
+    {
+        data = _logProposal(diamond, _singleCut(newFacet, selector, FacetCutAction.Add));
     }
 
     /// @notice Build the Defender payload for REPLACING one selector against an explicit diamond.
-    /// @dev A `Replace` is the cut a storage-layout compatibility check must precede (see the docs'
-    ///      pre-cut checklist): the new facet must keep every prior ERC-7201 struct field append-only.
+    /// @dev A `Replace` is the cut a storage-layout compatibility check must precede (`make storage-check`,
+    ///      CONTRIBUTING.md): the new facet must keep every prior ERC-7201 struct field append-only.
     /// @param diamond The governed diamond proxy (Defender proposal TARGET).
     /// @param newFacet The replacement facet contract.
     /// @param selector The function selector to replace.
-    function replaceSelectorAt(address diamond, address newFacet, bytes4 selector) external pure {
-        _logProposal(diamond, _singleCut(newFacet, selector, FacetCutAction.Replace));
+    /// @return data The `diamondCut` calldata.
+    function replaceSelectorAt(address diamond, address newFacet, bytes4 selector)
+        external
+        pure
+        returns (bytes memory data)
+    {
+        data = _logProposal(diamond, _singleCut(newFacet, selector, FacetCutAction.Replace));
     }
 
     /// @notice Logs the deterministic TARGET and the `diamondCut` CALLDATA for a no-init cut.
     /// @dev `_init`/`_calldata` are zeroed here (no post-cut delegatecall). For a cut that DOES carry a
     ///      reinitializer `_init`, encode it off-script and remember to run the reinitializer-monotonic
-    ///      pre-flight (`DiamondValidationLib.assertReinitializerMonotonic`) first — see the docs.
-    function _logProposal(address diamond, FacetCut[] memory cuts) private pure {
-        bytes memory cutCalldata =
-            abi.encodeWithSelector(IGovernedDiamondCut.diamondCut.selector, cuts, address(0), bytes(""));
+    ///      pre-flight (`DiamondValidationLib.assertReinitializerMonotonic`) first.
+    function _logProposal(address diamond, FacetCut[] memory cuts) private pure returns (bytes memory cutCalldata) {
+        cutCalldata = abi.encodeWithSelector(IGovernedDiamondCut.diamondCut.selector, cuts, address(0), bytes(""));
 
         console.log("=== OpenZeppelin Defender custom-proposal payload ===");
         console.log("Target (to):     ", diamond);

@@ -19,6 +19,14 @@ pragma solidity >=0.8.4;
 ///      first, then real — matching `snarkjs zkey export soliditycalldata` output for the proof's `b`
 ///      and the EIP-197 pairing input. When building a {VerifyingKey} from a snarkjs `vkey.json`, swap
 ///      each G2 pair: e.g. `beta.x = [vk_beta_2[0][1], vk_beta_2[0][0]]`.
+///
+///      KEY PINNING: the verifier does not authenticate `vk`; it checks the proof against whatever key
+///      it is given. Whoever generates a key can know its trapdoor and forge a proof for any input,
+///      so a consumer that forwards a caller-chosen key accepts every statement. Consumers MUST pin
+///      the key: compile it in as constants, or fix `keccak256(abi.encode(vk))` at deployment and
+///      check it on every call. A key in writable storage is only as trustworthy as whoever can
+///      write it, and the same holds for a verifier reached through a diamond whose cut authority
+///      can replace this facet. See `src/examples/privacy/` for both pinning patterns.
 interface IGroth16Verifier {
     /// @notice A Groth16 proof over BN254.
     /// @param a The G1 point A `(x, y)`.
@@ -51,7 +59,8 @@ interface IGroth16Verifier {
     /// @dev Returns `false` (does not revert) for an invalid proof, an out-of-range public input
     ///      (`>= SNARK_SCALAR_FIELD`), an off-curve / out-of-range proof point, or a failed pairing.
     ///      Reverts only on structural misuse (key/input arity mismatch).
-    /// @param vk The verifying key for the circuit.
+    /// @param vk The verifying key for the circuit. MUST be a key the consumer pins (see KEY PINNING
+    ///        above), never one taken from an untrusted caller.
     /// @param proof The Groth16 proof.
     /// @param input The public inputs, in the circuit's public-signal order.
     /// @return True iff the proof is valid for `vk` and `input`.
