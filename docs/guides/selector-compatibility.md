@@ -25,17 +25,17 @@ forge build && forge test --match-test test_EverySharedSelectorIsClassified -vv
 | Variant | Alternative implementations of one Lattice module: the cut gates, the AccessControl flavours, the account flavours | Cut exactly one |
 | Override | A documented seam: a recipe routes the selector to one facet over shared storage with `_cutExcept` or `Replace` | Follow the recipe's exclusion list |
 | Identical | The same function over the same storage | Cut one copy and `_cutExcept` the other |
-| One per diamond | Providers with one ABI and independent storage: price adapters, ERC-7786 gateways and handlers, VRF providers, and the ERC-20 movement overrides (decision D25 on [#234](https://github.com/dadadave80/lattice/issues/234)) | Use one per diamond, or a second diamond |
+| One per diamond | Providers with one ABI and independent storage: price adapters, ERC-7786 gateways and handlers, VRF providers, and the ERC-20 movement overrides and ERC-1155 burns (decision D25 on [#234](https://github.com/dadadave80/lattice/issues/234)) | Use one per diamond, or a second diamond |
 | Incompatible | The selector means different things in two standards, or under a name Lattice chose | Never in one diamond |
 
 A selector with mixed relations takes the most restrictive class, and its note names the others. For example,
 `transferFrom` is an ERC-20 override seam and also an ERC-20/ERC-721 standard clash, so it is Incompatible.
 
-Today's 67 shared selectors: 18 Variant, 14 Override, 1 Identical, 18 One per diamond, 16 Incompatible.
+Today's 72 shared selectors: 18 Variant, 16 Override, 1 Identical, 20 One per diamond, 17 Incompatible.
 
 ## Scope and decisions
 
-- **Inventory facets only.** The test covers the 110 facets in `FacetInventory`. VestingWallet and
+- **Inventory facets only.** The test covers the 112 facets in `FacetInventory`. VestingWallet and
   ERC20Wrapper export no selectors yet ([#176](https://github.com/dadadave80/lattice/issues/176)), so they are
   not in the table. Checked by hand against the inventory: VestingWallet shares no selector, and ERC20Wrapper
   shares `decimals()` (`0x313ce567`) with ERC20 and ERC4626 and `underlying()` (`0x6f307dc3`) with
@@ -66,6 +66,7 @@ Today's 67 shared selectors: 18 Variant, 14 Override, 1 Identical, 18 One per di
 | `0x116191b6` | `gateway()` | AxelarGatewayAdapter, ZetaChainGatewayAdapter | One per diamond | ERC-7786 gateways: one per diamond |
 | `0x13bc9f20` | `isOperationReady(bytes32)` | GovernedSafeDiamondCut, TimelockController | Incompatible | GovernedSafe cut views vs TimelockController (Lattice-chosen; 0xacb1aeb6) |
 | `0x1626ba7e` | `isValidSignature(bytes32,bytes)` | ERC1271Signature, ERC6900Signature | Variant | account flavours: cut one |
+| `0x18160ddd` | `totalSupply()` | ERC1155Supply, ERC20 | Incompatible | ERC-20 vs ERC-1155 supply (standard) |
 | `0x186f0354` | `safe()` | GovernedSafeDiamondCut, SafeDiamondCut | Variant | cut-gate variants: cut one |
 | `0x19822f7c` | `validateUserOp((address,uint256,bytes,bytes,bytes32,uint256,bytes32,bytes,bytes),bytes32,uint256)` | ERC4337Validation, ERC6900Validation | Variant | account flavours: cut one |
 | `0x1f931c1c` | `diamondCut((address,uint8,bytes4[])[],address,bytes)` | AccessControlDiamondCut, GovernedDiamondCut, SafeDiamondCut, DiamondCutFacet | Variant | cut-gate variants: cut one |
@@ -77,6 +78,7 @@ Today's 67 shared selectors: 18 Variant, 14 Override, 1 Identical, 18 One per di
 | `0x28dcc8d8` | `crosschainTransfer(bytes,uint256)` | BridgeERC20, BridgeERC7802, ERC20Crosschain | One per diamond | fungible bridges: one per diamond |
 | `0x2a589908` | `unregisterFeed(bytes32)` | API3Adapter, BandAdapter, ChainlinkAdapter, ChronicleAdapter, DIAAdapter, PythAdapter, RedStoneAdapter, TellorAdapter | One per diamond | price adapters: one per diamond |
 | `0x2ab0f529` | `isOperationDone(bytes32)` | GovernedSafeDiamondCut, TimelockController | Incompatible | GovernedSafe cut views vs TimelockController (Lattice-chosen; 0xacb1aeb6) |
+| `0x2eb2c2d6` | `safeBatchTransferFrom(address,address,uint256[],uint256[],bytes)` | ERC1155, ERC1155Pausable | Override | ERC1155Pausable's pause-gated transfer replaces ERC1155's (D25) |
 | `0x2f2ff15d` | `grantRole(bytes32,address)` | AccessControl, AccessControlEnumerable, AccessControlTimed | Variant | AccessControl flavours: cut one |
 | `0x313ce567` | `decimals()` | ERC20, ERC4626 | Override | ERC4626's share decimals replace ERC20's |
 | `0x35342750` | `previewCut((address,uint8,bytes4[])[])` | GovernedDiamondCut, GovernedSafeDiamondCut, SafeDiamondCut | Variant | cut-gate variants: cut one |
@@ -93,6 +95,7 @@ Today's 67 shared selectors: 18 Variant, 14 Override, 1 Identical, 18 One per di
 | `0x5c19a95c` | `delegate(address)` | ERC20Votes, Votes | Override | ERC20Votes' balance-aware delegation replaces Votes' |
 | `0x5db0cb94` | `setSafe(address)` | GovernedSafeDiamondCut, SafeDiamondCut | Variant | cut-gate variants: cut one |
 | `0x610683bc` | `receiveCrossChainMessage(bytes,bytes,bytes,uint256)` | L1ToL2CrossDomainMessengerGatewayAdapter, L2ToL2CrossDomainMessengerGatewayAdapter | One per diamond | OP messenger gateways: one per diamond |
+| `0x6b20c454` | `burnBatch(address,uint256[],uint256[])` | ERC1155Burnable, ERC1155Pausable, ERC1155Supply | One per diamond | plain, pause-gated and supply-tracking ERC-1155 burns: one per diamond (D25) |
 | `0x6e553f65` | `deposit(uint256,address)` | ERC4626, GovernedVault, VaultCore | Override | ERC4626 < VaultCore < GovernedVault checkpoint seam |
 | `0x70a08231` | `balanceOf(address)` | ERC20, ERC721 | Incompatible | ERC-20 vs ERC-721 (standard) |
 | `0x752bcf06` | `getRemoteGateway(uint256)` | CCIPGatewayAdapter, WormholeGatewayAdapter | One per diamond | ERC-7786 gateways: one per diamond |
@@ -123,4 +126,6 @@ Today's 67 shared selectors: 18 Variant, 14 Override, 1 Identical, 18 One per di
 | `0xdc680a0f` | `supportsAttribute(bytes4)` | AxelarGatewayAdapter, CCIPGatewayAdapter, ERC7786OpenBridge, HyperbridgeGatewayAdapter, HyperlaneGatewayAdapter, L1ToL2CrossDomainMessengerGatewayAdapter, L2ToL2CrossDomainMessengerGatewayAdapter, LayerZeroGatewayAdapter, WormholeGatewayAdapter, ZetaChainGatewayAdapter | One per diamond | ERC-7786 gateways: one per diamond |
 | `0xdd1e2651` | `getUserKey(uint256)` | ChainlinkVRF, GelatoVRFAdapter | One per diamond | VRF providers: one per diamond |
 | `0xe985e9c5` | `isApprovedForAll(address,address)` | ERC1155, ERC721 | Incompatible | ERC-721 vs ERC-1155 over separate storage (standard) |
+| `0xf242432a` | `safeTransferFrom(address,address,uint256,uint256,bytes)` | ERC1155, ERC1155Pausable | Override | ERC1155Pausable's pause-gated transfer replaces ERC1155's (D25) |
+| `0xf5298aca` | `burn(address,uint256,uint256)` | ERC1155Burnable, ERC1155Pausable, ERC1155Supply | One per diamond | plain, pause-gated and supply-tracking ERC-1155 burns: one per diamond (D25) |
 | `0xfc0c546a` | `token()` | BridgeERC20, BridgeERC7802, Governor | Incompatible | Governor's voting token vs the bridges' bridged token (one bridge per diamond) |
