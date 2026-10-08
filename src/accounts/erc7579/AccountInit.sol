@@ -47,6 +47,9 @@ contract AccountInit {
     ///      earlier tx and leaving the account uninitialized opens a window where anyone can initialize it with
     ///      a hostile blueprint. Integrators who cannot guarantee atomicity should delegate to
     ///      {Account7702Diamond} instead, whose signed onboarding closes that window on-chain.
+    ///      LEFTOVER STORAGE: the EOA's Solady-default Initializable and Ownable slots must be zero. A value
+    ///      left by an earlier Solady-based delegate makes either delegate's `initializer` revert, or makes
+    ///      `initializeOwner` revert `AlreadyInitialized` (details on {Account7702Diamond}).
     function init7702() external {
         _init(address(this));
     }

@@ -9,7 +9,8 @@
 #      parentheses) has no license text in the repo (MIT -> LICENSE, anything
 #      else -> LICENSES/<id>.txt);
 #   3. a file under src/interfaces/external/ uses the `@author Modified from` form, or
-#      (outside ercs/ and seal/, which keep older wording until #247) lacks the
+#      (outside ercs/ and seal/: IERC8153 is compiled into LatticeRegistry/LatticeFactory,
+#      whose unversioned salts pin its bytes, and four more lack the license note) lacks the
 #      `@author Vendored ...` / `@author ABI-equivalent interface authored fresh ...`
 #      line or the `Upstream license:` note (AGENTS.md "External-source attribution");
 #   4. a file under src/interfaces/external/ is missing from the third-party interface

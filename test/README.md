@@ -46,8 +46,11 @@ Production deploy logic lives in `script/`:
   A recipe is a collection of facets (modified or as-is) composed to work together; e.g.
   `script/base/defi/DeployGovernedVault.s.sol` cuts `VaultCore` + `ERC20Votes` + `Governor` +
   `TimelockController` + a thin reconciliation facet.
-- `script/config/` — one-action post-deploy configuration scripts (e.g. `EnableAurora`, `EnableRelay`).
+- `script/config/` — one-action post-deploy configuration scripts (e.g. `EnableAurora`, `EnableRelay`), the
+  demo-driver shell loops, the `keychain-auth.sh` keystore helper and the `hedera/` tooling.
 - `script/deploy/`, `script/governance/`, `script/lib/`, `script/upgrades/` (storage-layout guard).
+
+[`script/README.md`](../script/README.md) maps every `script/` folder to its entry points and Makefile targets.
 
 Tests must build the system through this shared code (via `Base.t.sol` or the blueprint helpers), never a
 divergent test-only assembly.

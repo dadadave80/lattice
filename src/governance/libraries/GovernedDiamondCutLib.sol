@@ -34,12 +34,17 @@ bytes32 constant GOVERNED_DIAMOND_CUT_ERC165_STORAGE_LOCATION =
 bytes32 constant ERC165_MAP_ICUT_SLOT = 0xa0f80413692945aab97c6ef0328381ebb94e4b17a84d11ebf6b61f73435b6d7e;
 
 /// @dev Role required to execute a governed cut. Granted ONLY to `address(this)` at init AND pinned to
-///      administer ITSELF (`__GovernedDiamondCut_init` calls `_setRoleAdmin(role, role)`), so the sole
-///      legitimate caller is a timelock relaying a passed governance proposal back into the diamond.
+///      administer ITSELF (`__GovernedDiamondCut_init` calls `_setRoleAdmin(role, role)`), so the
+///      intended caller is a timelock relaying a passed governance proposal back into the diamond.
 ///      Self-administration is essential: it removes `DEFAULT_ADMIN_ROLE` (0x00, the unset default) as
 ///      the role's admin, so a live `DEFAULT_ADMIN_ROLE` holder can NOT `grantRole` it to an attacker
-///      and skip the Governor/Timelock path. Only an existing holder — `address(this)`, via a passed
-///      proposal — can grant a new executor. `keccak256("UPGRADE_EXECUTOR_ROLE")`.
+///      and skip the Governor/Timelock path. Only an existing holder — `address(this)` — can grant a new
+///      executor. CO-CUT CAVEAT: the holder is the diamond itself, so ANY co-cut facet that lets an
+///      outsider make the diamond call itself also holds this role, with no vote and no delay. A co-cut
+///      AccessManager is one: its `ADMIN_ROLE` can `execute(address(this), diamondCut(...))` (#240).
+///      The vote-and-delay guarantee holds only if no such facet is cut, or if it answers to governance
+///      (see "Composition hazards" in docs/guides/compose-your-own-diamond.md).
+///      `keccak256("UPGRADE_EXECUTOR_ROLE")`.
 bytes32 constant UPGRADE_EXECUTOR_ROLE = keccak256("UPGRADE_EXECUTOR_ROLE");
 
 /// @dev Role required to fire the zero-delay, REMOVAL-ONLY emergency cut (`emergencyRemoveCut`). This
@@ -114,7 +119,9 @@ library GovernedDiamondCutLib {
     ///      `admin` EOA) `grantRole(UPGRADE_EXECUTOR_ROLE, attacker)` and then `diamondCut` directly,
     ///      bypassing the entire Governor + TimelockController + vote + delay path. With the role
     ///      self-administered, only an *existing* holder can grant it — and the only holder is
-    ///      `address(this)`, reachable solely via a timelock-relayed passed proposal. `_setRoleAdmin` is
+    ///      `address(this)`, which the recipe reaches only through a timelock-relayed passed proposal. A
+    ///      co-cut facet that relays outside calls back into the diamond (e.g. AccessManager `execute`)
+    ///      reaches it too; see the UPGRADE_EXECUTOR_ROLE caveat above. `_setRoleAdmin` is
     ///      the UNGATED setter (the gated `setRoleAdmin` would require the initializer to itself hold the
     ///      current admin role, which is not guaranteed during bootstrap). Must be called inside the
     ///      preInitializer/postInitializer window; AccessControl must already be initialized (the role
@@ -126,7 +133,8 @@ library GovernedDiamondCutLib {
         AccessControlLib._grantRole(UPGRADE_EXECUTOR_ROLE, address(this));
         // Pin UPGRADE_EXECUTOR_ROLE to administer itself so DEFAULT_ADMIN_ROLE can no longer
         // grant/revoke it (OZ AccessManager adminless pattern). Only an existing holder
-        // (i.e. address(this), via a passed governance proposal) can grant a new executor.
+        // (i.e. address(this): in the recipe a timelock-relayed passed proposal, or any co-cut
+        // self-call relay; see the role caveat above) can grant a new executor.
         AccessControlLib._setRoleAdmin(UPGRADE_EXECUTOR_ROLE, UPGRADE_EXECUTOR_ROLE);
     }
 
@@ -144,8 +152,9 @@ library GovernedDiamondCutLib {
     function diamondCut(FacetCut[] calldata _diamondCut, address _init, bytes calldata _calldata) internal {
         // 1) Outer guard: a guardian can halt ALL upgrades without a governance round.
         EmergencyStopLib.checkNotStopped();
-        // 2) Authority: only address(this) holds the role, so only a timelock-relayed governance
-        //    proposal can reach here. Reverts AccessControlUnauthorizedAccount(caller, role).
+        // 2) Authority: only address(this) holds the role, so in the recipe only a timelock-relayed
+        //    governance proposal reaches here (a co-cut self-call relay also does; see the role
+        //    caveat above). Reverts AccessControlUnauthorizedAccount(caller, role).
         AccessControlLib.checkRole(UPGRADE_EXECUTOR_ROLE);
 
         GovernedDiamondCutStorage storage $ = governedDiamondCutStorage();
@@ -289,8 +298,9 @@ library GovernedDiamondCutLib {
 
     /// @notice Permanently freezes `_selectors`: each becomes ineligible to be the target of a
     ///         `Replace`/`Remove` in any future governed cut. Gated behind UPGRADE_EXECUTOR_ROLE — the
-    ///         same single-holder role that gates `diamondCut` — so only a timelock-relayed governance
-    ///         proposal can freeze. Append-only: already-frozen selectors are idempotent no-ops, and
+    ///         same single-holder role that gates `diamondCut` — so freezing takes a timelock-relayed
+    ///         governance proposal (or whatever else can reach that role; see the caveat on
+    ///         UPGRADE_EXECUTOR_ROLE). Append-only: already-frozen selectors are idempotent no-ops, and
     ///         there is no unfreeze.
     /// @param _selectors The function selectors to freeze.
     function freezeSelectors(bytes4[] calldata _selectors) internal {

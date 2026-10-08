@@ -13,6 +13,9 @@ import {IERC7786MessageHandler} from "@lattice/interfaces/crosschain/IERC7786Mes
 ///         them on an inbound message. Registered as a handler on a co-mounted {CrosschainLink} facet.
 /// @dev Stateless delegator — logic/storage live in {BridgeERC20Lib}. `processMessage` is callable only via
 ///      the Diamond's own authenticated `receiveMessage` dispatch (it enforces `msg.sender == address(this)`).
+///      CUSTODY: locked tokens sit in the diamond's balance with no per-module ledger. A co-cut module that
+///      counts the diamond's whole balance of the same token (ERC-4626 `totalAssets`, VestingWallet `release`)
+///      treats the escrow as its own. One custodian per asset per diamond (issue #240).
 /// @custom:lattice-version 0.1.0
 /// @custom:lattice-source OpenZeppelin
 contract BridgeERC20 is IBridgeFungible, IERC7786MessageHandler {
