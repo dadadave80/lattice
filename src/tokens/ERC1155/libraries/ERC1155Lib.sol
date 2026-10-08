@@ -243,7 +243,9 @@ library ERC1155Lib {
     }
 
     /// @notice Updates balances, then runs the ERC-1155 receiver acceptance check when `to` is not the zero
-    ///         address. Every transfer, mint and burn path routes through here, as in OpenZeppelin v5.6.1.
+    ///         address. Every {ERC1155Lib} transfer, mint and burn path routes through here, as in OpenZeppelin
+    ///         v5.6.1 ({ERC1155PausableLib} too, after its pause check). {ERC1155SupplyLib} carries its own copy,
+    ///         which writes the supply counters between {_update} and the receiver check.
     /// @dev `batch` names the operation type and alone picks the receiver hook: a batch operation calls
     ///      `onERC1155BatchReceived` even with a single id, and a single operation calls `onERC1155Received`.
     ///      OpenZeppelin v5.6.1 also keeps a five-argument overload that infers `batch` from `ids.length != 1`

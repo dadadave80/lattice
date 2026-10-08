@@ -36,7 +36,8 @@ Structured per the **Testing** and **Deployment** sections of the Cyfrin Solidit
    `DeployAccessManager` diamond governing a `DeployAccessManaged` diamond, against a ghost model of Lattice's
    AccessManager semantics: OpenZeppelin v5.6.1 with the differences listed in `IAccessManager`'s `@dev`, such as
    the locked ADMIN_ROLE, the global nonce, a too-early `when` raised instead of refused, and Lattice error
-   shapes). They run 64 runs under `FOUNDRY_PROFILE=ci` (a contract-level
+   shapes), and `ERC1155SupplyInvariant` (a `DeployERC1155Supply` diamond under mints, burns and transfers,
+   against per-id supply, holder balances and a mint-minus-burn ledger). They run 64 runs under `FOUNDRY_PROFILE=ci` (a contract-level
    `/// forge-config: ci.invariant.runs = 64` key, since a function-level key does not reach invariants
    inherited from a base) and the full 256 locally. `make invariant-deep` runs every invariant suite at 1,000
    runs and depth 200 (`[profile.deep.invariant]`); it is not a CI gate.

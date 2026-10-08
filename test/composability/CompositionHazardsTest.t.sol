@@ -12,11 +12,16 @@ import {DeployGovernedDiamondCut} from "@lattice-script/base/governance/DeployGo
 import {DeployGovernedSafeDiamondCut} from "@lattice-script/base/governance/DeployGovernedSafeDiamondCut.s.sol";
 import {DeployChainlinkAdapter} from "@lattice-script/base/oracles/DeployChainlinkAdapter.s.sol";
 import {DeployChainlinkVRF} from "@lattice-script/base/oracles/DeployChainlinkVRF.s.sol";
+import {DeployERC1155Pausable} from "@lattice-script/base/tokens/DeployERC1155Pausable.s.sol";
+import {DeployERC1155Supply} from "@lattice-script/base/tokens/DeployERC1155Supply.s.sol";
 import {DeployERC20Capped} from "@lattice-script/base/tokens/DeployERC20Capped.s.sol";
 import {DeployERC20Pausable} from "@lattice-script/base/tokens/DeployERC20Pausable.s.sol";
 import {DeployERC20Votes} from "@lattice-script/base/tokens/DeployERC20Votes.s.sol";
 import {DeployERC4626} from "@lattice-script/base/tokens/DeployERC4626.s.sol";
 import {DeployERC721} from "@lattice-script/base/tokens/DeployERC721.s.sol";
+import {ERC1155PausableTestFacet} from "@lattice-test/helpers/ERC1155PausableTestFacet.sol";
+import {ERC1155SupplyTestFacet} from "@lattice-test/helpers/ERC1155SupplyTestFacet.sol";
+import {ERC1155TestFacet} from "@lattice-test/helpers/ERC1155TestFacet.sol";
 import {ERC20VotesTestFacet} from "@lattice-test/helpers/ERC20VotesTestFacet.sol";
 import {TokenTestFacet} from "@lattice-test/helpers/TokenTestFacet.sol";
 import {Lattice} from "@lattice/Lattice.sol";
@@ -41,6 +46,9 @@ import {IERC7802} from "@lattice/interfaces/external/ercs/IERC7802.sol";
 import {IERC8153} from "@lattice/interfaces/external/ercs/IERC8153.sol";
 import {IVotes} from "@lattice/interfaces/governance/IVotes.sol";
 import {IPausable} from "@lattice/interfaces/security/IPausable.sol";
+import {IERC1155} from "@lattice/interfaces/tokens/IERC1155.sol";
+import {IERC1155Burnable} from "@lattice/interfaces/tokens/IERC1155Burnable.sol";
+import {IERC1155Supply} from "@lattice/interfaces/tokens/IERC1155Supply.sol";
 import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
 import {IERC20Capped} from "@lattice/interfaces/tokens/IERC20Capped.sol";
 import {IERC4626} from "@lattice/interfaces/tokens/IERC4626.sol";
@@ -49,6 +57,9 @@ import {PythAdapter} from "@lattice/oracles/pyth/PythAdapter.sol";
 import {PythEntropyAdapter} from "@lattice/oracles/pyth/PythEntropyAdapter.sol";
 import {Pausable} from "@lattice/security/Pausable.sol";
 import {ERC1155} from "@lattice/tokens/ERC1155/ERC1155.sol";
+import {ERC1155Burnable} from "@lattice/tokens/ERC1155/ERC1155Burnable.sol";
+import {ERC1155Pausable} from "@lattice/tokens/ERC1155/ERC1155Pausable.sol";
+import {ERC1155Supply} from "@lattice/tokens/ERC1155/ERC1155Supply.sol";
 import {ERC20Burnable} from "@lattice/tokens/ERC20/ERC20Burnable.sol";
 import {ERC20Pausable} from "@lattice/tokens/ERC20/ERC20Pausable.sol";
 import {ERC20Votes} from "@lattice/tokens/ERC20/ERC20Votes.sol";
@@ -362,6 +373,130 @@ contract CompositionHazardsTest is Test {
         IERC7802(token).crosschainMint(alice, 5000e18);
         assertEq(IERC20(token).totalSupply(), 5000e18, "the crosschain mint went through");
         assertGt(IERC20(token).totalSupply(), IERC20Capped(token).cap(), "the supply exceeds the cap");
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //         3b. ERC-1155 BURN AND MINT PATHS ARE ONE PER DIAMOND (D25)
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice D25: ERC1155Supply and ERC1155Pausable both own `burn`/`burnBatch`. Adding Supply next to the
+    ///         Pausable recipe reverts on `burn` (`0xf5298aca`).
+    function test_ERC1155SupplyAddedToPausableRevertsAtCut() public {
+        (FacetCut[] memory base, address[] memory inits, bytes[] memory datas) =
+            new DeployERC1155Pausable().buildCuts("uri://", admin);
+        FacetCut[] memory cuts = _append(base, _add(address(new ERC1155Supply())));
+        assertEq(_firstClash(base, cuts[cuts.length - 1]), bytes4(0xf5298aca), "burn clashes first");
+        (address init, bytes memory data) = _multi(inits, datas);
+        _expectCutClash(cuts, init, data, 0xf5298aca);
+    }
+
+    /// @notice D25: ERC1155Supply's burns replacing ERC1155Pausable's build fine and track supply, but the pause no
+    ///         longer gates burns.
+    function test_ERC1155SupplyReplacingPausableBurnsBypassesPause() public {
+        (FacetCut[] memory base, address[] memory inits, bytes[] memory datas) =
+            new DeployERC1155Pausable().buildCuts("uri://", admin);
+        address supplyFacet = address(new ERC1155Supply());
+        FacetCut memory burns =
+            _selectors(supplyFacet, IERC1155Burnable.burn.selector, IERC1155Burnable.burnBatch.selector);
+        burns.action = FacetCutAction.Replace;
+        FacetCut[] memory cuts = _append(
+            _append(_append(base, _selectors(supplyFacet, bytes4(0x18160ddd), IERC1155Supply.exists.selector)), burns),
+            _selectors(address(new ERC1155SupplyTestFacet()), ERC1155SupplyTestFacet.mint.selector)
+        );
+        address token = _deploy(cuts, inits, datas);
+        assertEq(IDiamondLoupe(token).facetAddress(IERC1155Burnable.burn.selector), supplyFacet, "Supply owns burn");
+
+        ERC1155SupplyTestFacet(token).mint(alice, 1, 100, "");
+        vm.prank(admin);
+        IPausable(token).pause();
+
+        vm.prank(alice);
+        IERC1155Burnable(token).burn(alice, 1, 40);
+        assertEq(IERC1155(token).balanceOf(alice, 1), 60, "the burn went through while paused");
+        assertEq(IERC1155Supply(token).totalSupply(), 60);
+    }
+
+    /// @notice D25, the other order: ERC1155Pausable's burns replacing ERC1155Supply's build fine and honour the
+    ///         pause, but burns stop lowering the supply, so `totalSupply` exceeds the holders' balances.
+    function test_ERC1155PausableReplacingSupplyBurnsDesyncsSupply() public {
+        (FacetCut[] memory base, address[] memory inits, bytes[] memory datas) =
+            new DeployERC1155Supply().buildCuts("uri://", admin);
+        address pausableFacet = address(new ERC1155Pausable());
+        FacetCut[] memory cuts = _append(
+            _append(_append(base, _add(address(new Pausable()))), _replace(pausableFacet)),
+            _selectors(address(new ERC1155SupplyTestFacet()), ERC1155SupplyTestFacet.mint.selector)
+        );
+        address token = _deploy(cuts, inits, datas);
+        assertEq(IDiamondLoupe(token).facetAddress(IERC1155Burnable.burn.selector), pausableFacet, "Pausable owns burn");
+
+        ERC1155SupplyTestFacet(token).mint(alice, 1, 100, "");
+        vm.prank(alice);
+        IERC1155Burnable(token).burn(alice, 1, 40);
+        assertEq(IERC1155(token).balanceOf(alice, 1), 60);
+        assertEq(IERC1155Supply(token).totalSupply(1), 100, "the burn left the supply behind");
+
+        vm.prank(admin);
+        IPausable(token).pause();
+        vm.prank(alice);
+        vm.expectRevert(IPausable.EnforcedPause.selector);
+        IERC1155Burnable(token).burn(alice, 1, 1);
+    }
+
+    /// @notice D25: ERC1155Burnable's plain burns replacing ERC1155Pausable's build fine, but the pause no longer
+    ///         gates burns.
+    function test_ERC1155BurnableReplacingPausableBurnsBypassesPause() public {
+        (FacetCut[] memory base, address[] memory inits, bytes[] memory datas) =
+            new DeployERC1155Pausable().buildCuts("uri://", admin);
+        address burnableFacet = address(new ERC1155Burnable());
+        FacetCut[] memory cuts = _append(
+            _append(base, _replace(burnableFacet)),
+            _selectors(address(new ERC1155PausableTestFacet()), ERC1155PausableTestFacet.mint.selector)
+        );
+        address token = _deploy(cuts, inits, datas);
+        assertEq(IDiamondLoupe(token).facetAddress(IERC1155Burnable.burn.selector), burnableFacet, "Burnable owns burn");
+
+        ERC1155PausableTestFacet(token).mint(alice, 1, 100, "");
+        vm.prank(admin);
+        IPausable(token).pause();
+
+        vm.prank(alice);
+        IERC1155Burnable(token).burn(alice, 1, 40);
+        assertEq(IERC1155(token).balanceOf(alice, 1), 60, "the burn went through while paused");
+    }
+
+    /// @notice A mint facet that mints through the base {ERC1155Lib} ignores the pause: only
+    ///         {ERC1155PausableLib._mint} is gated.
+    function test_ERC1155BaseLibMintBypassesPause() public {
+        (FacetCut[] memory base, address[] memory inits, bytes[] memory datas) =
+            new DeployERC1155Pausable().buildCuts("uri://", admin);
+        address token = _deploy(
+            _append(base, _selectors(address(new ERC1155TestFacet()), ERC1155TestFacet.mint.selector)), inits, datas
+        );
+        vm.prank(admin);
+        IPausable(token).pause();
+
+        ERC1155TestFacet(token).mint(alice, 1, 100, "");
+        assertEq(IERC1155(token).balanceOf(alice, 1), 100, "the mint went through while paused");
+    }
+
+    /// @notice A mint facet that mints through the base {ERC1155Lib} leaves the supply behind, and a later
+    ///         supply-tracking burn wraps OpenZeppelin's unchecked subtraction. The same happens when
+    ///         ERC1155Supply is cut into a diamond that already holds balances.
+    function test_ERC1155BaseLibMintDesyncsSupplyAndBurnWraps() public {
+        (FacetCut[] memory base, address[] memory inits, bytes[] memory datas) =
+            new DeployERC1155Supply().buildCuts("uri://");
+        address token = _deploy(
+            _append(base, _selectors(address(new ERC1155TestFacet()), ERC1155TestFacet.mint.selector)), inits, datas
+        );
+
+        ERC1155TestFacet(token).mint(alice, 1, 10, "");
+        assertEq(IERC1155Supply(token).totalSupply(1), 0, "the base mint is not counted");
+
+        vm.prank(alice);
+        IERC1155Burnable(token).burn(alice, 1, 10);
+        assertEq(IERC1155Supply(token).totalSupply(1), type(uint256).max - 9, "the burn wrapped the id supply");
+        assertEq(IERC1155Supply(token).totalSupply(), type(uint256).max - 9, "the burn wrapped the total");
+        assertTrue(IERC1155Supply(token).exists(1), "a wrapped id reads as existing");
     }
 
     //*//////////////////////////////////////////////////////////////////////////
