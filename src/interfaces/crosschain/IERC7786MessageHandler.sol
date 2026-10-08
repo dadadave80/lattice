@@ -9,6 +9,10 @@ pragma solidity >=0.8.4;
 ///      gateway + source and de-duplicates `receiveId` BEFORE calling `processMessage`, so handlers may
 ///      assume the message is authentic and fresh. Handlers MUST revert on failure — a silent return
 ///      marks the message processed and non-retryable (ERC-7786 at-most-once delivery).
+///      ONE IN-DIAMOND HANDLER PER LINK DIAMOND: every handler facet (BridgeERC20, BridgeERC7802,
+///      ERC20Crosschain, CrosschainTimelockHandler) exports this same selector `0x902d5027`, so a second
+///      one reverts the cut. Register further tags to an external handler contract, or use a second
+///      diamond (issue #240).
 interface IERC7786MessageHandler {
     /// @notice Process a validated, de-duplicated cross-chain message.
     /// @param receiveId The gateway-assigned unique message id (already checked for replay by the facet).

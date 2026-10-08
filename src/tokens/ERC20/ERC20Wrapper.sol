@@ -9,6 +9,9 @@ import {ERC20WrapperLib} from "@lattice/tokens/ERC20/libraries/ERC20WrapperLib.s
 /// @notice Stateless Diamond facet — wraps an underlying ERC-20 1:1. Pure delegator to {ERC20WrapperLib}.
 /// @dev `recover()` is intentionally NOT exposed here: exposing it requires access control, so a deriving facet
 ///      adds it. `decimals()` overrides the base 18 to mirror the underlying.
+///      CUSTODY: the internal `recover` mints the diamond's WHOLE underlying balance above total supply, so a
+///      facet that exposes it also mints any other module's escrow of the underlying (an ERC-4626 vault,
+///      VestingWallet, BridgeERC20 or ShieldedPool). One custodian per asset per diamond (issue #240).
 /// @custom:lattice-version 0.1.0
 /// @custom:lattice-source OpenZeppelin v5.6.1
 contract ERC20Wrapper is IERC20Wrapper {
