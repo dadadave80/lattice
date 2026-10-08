@@ -204,6 +204,16 @@ original attack against the fixed code; run one with
   [`RecipeGuards`](test/composability/RecipeGuards.sol), run by
   `test_Upgradeable_ERC20Votes` in
   [`RecipeUpgradeabilityTokensTest`](test/composability/RecipeUpgradeabilityTokensTest.t.sol).
+- **Vault deposits after a strategy force-removal (unreleased).** A
+  force-removed strategy's funds leave the vault's NAV, so if they later
+  returned, depositors who entered at the lower NAV shared in them at the
+  expense of the existing holders
+  ([#270](https://github.com/dadadave80/lattice/issues/270)). Reproduce with
+  `test_ForceRemoval_DonationSandwich_DepositsLatched` in
+  [`VaultFullNavPricingTest`](test/integration/VaultFullNavPricingTest.t.sol).
+  A force removal now latches deposits closed until the manager admin calls
+  `clearDepositLatch()`; exits stay open. Replacing the manager is still
+  open; see below.
 
 ### Open
 
@@ -211,10 +221,15 @@ original attack against the fixed code; run one with
   deleted, expires unfired, or cannot be paid for at fire time holds its
   `jobId` until a diamond cut
   ([#226](https://github.com/dadadave80/lattice/issues/226)).
-- **Vault deposits after a strategy force-removal.** If a force-removed
-  strategy's funds later return, depositors who entered after the removal share
-  in them at the expense of earlier holders
-  ([#270](https://github.com/dadadave80/lattice/issues/270)).
+- **Vault deposits after a strategy-manager replacement.** The deposit latch
+  lives in the strategy manager, so `setStrategyManager` drops it: a fresh
+  manager starts unlatched, deposits reopen at the lower NAV, and depositors
+  who enter then share in any funds the old manager's strategies return later.
+  This applies both to the last-resort recovery from an overflowing strategy
+  and to a swap made while the old manager is latched
+  ([#270](https://github.com/dadadave80/lattice/issues/270)). Pinned by
+  `test_DepositLatch_ManagerSwapDropsLatch` in
+  [`VaultFullNavPricingTest`](test/integration/VaultFullNavPricingTest.t.sol).
 - **Strategy adapter liquidity.** Aave V3 and Compound V3 recalls revert when
   the market lacks cash, and the UniswapV3 adapter's token1 has no exit path to
   the vault ([#271](https://github.com/dadadave80/lattice/issues/271)).

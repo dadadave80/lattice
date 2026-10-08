@@ -3,6 +3,7 @@ pragma solidity ^0.8.30;
 
 import {StrategyManagerLib} from "@lattice/defi/libraries/StrategyManagerLib.sol";
 import {IStrategyManager} from "@lattice/interfaces/defi/IStrategyManager.sol";
+import {IStrategyManagerRecovery} from "@lattice/interfaces/defi/IStrategyManagerRecovery.sol";
 import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib.sol";
 
 /// @title StrategyManager
@@ -21,9 +22,12 @@ import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib
 ///      address, not any role — granting DEFAULT_ADMIN_ROLE is neither necessary nor sufficient.
 ///      Each Lattice protocol adapter must name this diamond as its operator (`setOperator`): `rebalance()`
 ///      recalls through the adapter's `withdraw` and deploys its idle through `deploy`, both operator-gated.
+///
+///      A force removal latches the vault's deposits closed until the admin calls `clearDepositLatch`
+///      ({IStrategyManagerRecovery}, a separate interface so IStrategyManager's ERC-165 id is unchanged).
 /// @custom:lattice-version 0.1.0
 /// @custom:lattice-source Yearn V3
-contract StrategyManager is IStrategyManager {
+contract StrategyManager is IStrategyManager, IStrategyManagerRecovery {
     //*//////////////////////////////////////////////////////////////////////////
     //                              VIEW FUNCTIONS
     //////////////////////////////////////////////////////////////////////////*//
@@ -61,6 +65,12 @@ contract StrategyManager is IStrategyManager {
         return ReentrancyGuardLib.reentrancyGuardEntered();
     }
 
+    /// @inheritdoc IStrategyManagerRecovery
+    /// @dev Consumed by VaultCore, which closes deposit/mint and reports `maxDeposit`/`maxMint` as 0 while set.
+    function depositsLatched() external view virtual override returns (bool) {
+        return StrategyManagerLib.depositsLatched();
+    }
+
     //*//////////////////////////////////////////////////////////////////////////
     //                          STATE-CHANGING FUNCTIONS
     //////////////////////////////////////////////////////////////////////////*//
@@ -78,6 +88,11 @@ contract StrategyManager is IStrategyManager {
     /// @inheritdoc IStrategyManager
     function removeStrategy(address strategy) external virtual override {
         StrategyManagerLib.removeStrategy(strategy);
+    }
+
+    /// @inheritdoc IStrategyManagerRecovery
+    function clearDepositLatch() external virtual override {
+        StrategyManagerLib.clearDepositLatch();
     }
 
     /// @inheritdoc IStrategyManager
@@ -100,6 +115,8 @@ contract StrategyManager is IStrategyManager {
     ///      `forge inspect StrategyManager methodIdentifiers` (alphabetical by signature); kept in exact parity by
     ///      ExportSelectorsParityTest. Chunks:
     ///      `addStrategy(address,uint16)` 0xd11f519c
+    ///      `clearDepositLatch()` 0x2d600e21
+    ///      `depositsLatched()` 0xfe32d662
     ///      `getStrategies()` 0xb49a60bb
     ///      `getStrategyTarget(address)` 0x89355a28
     ///      `harvest()` 0x4641257d
@@ -113,6 +130,6 @@ contract StrategyManager is IStrategyManager {
     ///      `vault()` 0xfbfa77cf
     function exportSelectors() external pure virtual returns (bytes memory selectors) {
         selectors =
-        hex"d11f519cb49a60bb89355a284641257d7d7c2a1cd2c725e0175188e86817031b45f7f2495e02d6028420bd02fbfa77cf";
+            hex"d11f519c2d600e21fe32d662b49a60bb89355a284641257d7d7c2a1cd2c725e0175188e86817031b45f7f2495e02d6028420bd02fbfa77cf";
     }
 }

@@ -8,6 +8,7 @@ import {StrategyManager} from "@lattice/defi/StrategyManager.sol";
 import {REBALANCE_SHORTFALL_TOLERANCE} from "@lattice/defi/libraries/StrategyManagerLib.sol";
 import {IProtocolAdapter} from "@lattice/interfaces/defi/IProtocolAdapter.sol";
 import {IStrategyManager} from "@lattice/interfaces/defi/IStrategyManager.sol";
+import {IStrategyManagerRecovery} from "@lattice/interfaces/defi/IStrategyManagerRecovery.sol";
 import {IVaultCore} from "@lattice/interfaces/defi/IVaultCore.sol";
 import {IERC4626} from "@lattice/interfaces/tokens/IERC4626.sol";
 import {Vm} from "forge-std/Vm.sol";
@@ -595,6 +596,7 @@ contract StrategyManagerTest is StrategyManagerTestBase {
         assertEq(mgr.totalTargetBps(), 2000, "bricked target released");
         assertEq(mgr.getStrategyTarget(address(bricked)), 0, "bricked target cleared");
         assertEq(mgr.totalAllocated(), 100e18, "totalAllocated readable again");
+        assertTrue(mgr.depositsLatched(), "force removal latches deposits");
     }
 
     /// @notice A strategy whose code is gone (empty return data) also bricks totalAllocated() and is
@@ -626,7 +628,9 @@ contract StrategyManagerTest is StrategyManagerTestBase {
         Vm.Log[] memory logs = vm.getRecordedLogs();
         for (uint256 i; i < logs.length; ++i) {
             assertTrue(logs[i].topics[0] != IStrategyManager.StrategyForceRemoved.selector, "not forced");
+            assertTrue(logs[i].topics[0] != IStrategyManagerRecovery.DepositLatchSet.selector, "not latched");
         }
+        assertFalse(mgr.depositsLatched(), "deposits stay open");
     }
 
     /// @notice Force removal stays admin-gated.
@@ -1098,6 +1102,11 @@ contract StrategyManagerTest is StrategyManagerTestBase {
     /// @notice StrategyManager registers its interface.
     function test_SupportsInterface_IStrategyManager() public view {
         assertTrue(ERC165Facet(diamond).supportsInterface(type(IStrategyManager).interfaceId));
+    }
+
+    /// @notice StrategyManager registers the deposit-latch recovery interface (#270).
+    function test_SupportsInterface_IStrategyManagerRecovery() public view {
+        assertTrue(ERC165Facet(diamond).supportsInterface(type(IStrategyManagerRecovery).interfaceId));
     }
 
     //*//////////////////////////////////////////////////////////////////////////
