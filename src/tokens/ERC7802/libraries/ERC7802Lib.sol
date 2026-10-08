@@ -25,6 +25,8 @@ bytes32 constant CROSSCHAIN_BRIDGE_ROLE = keccak256("CROSSCHAIN_BRIDGE_ROLE");
 /// @author Implements ERC-7802 (https://eips.ethereum.org/EIPS/eip-7802) over {ERC20Lib}.
 /// @notice ERC-7802 crosschain mint/burn extension for the Lattice ERC-20. Adds no own storage (reuses the
 ///         ERC20 balances + the shared AccessControl roles); gives a {BridgeERC7802} a native token to bridge.
+/// @dev Mints and burns call {ERC20Lib} directly: an ERC-20 movement-replacing extension (ERC20Pausable, ERC20Votes)
+///      does not see them, so the two are mutually exclusive (D25, #234).
 library ERC7802Lib {
     /// @notice Registers the IERC7802 ERC-165 interface. Must be called inside a pre/postInitializer block.
     function __ERC7802_init() internal {

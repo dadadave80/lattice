@@ -3,6 +3,7 @@ pragma solidity ^0.8.30;
 
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {ERC1155TestBase} from "@lattice-test/base/ERC1155TestBase.sol";
+import {Recording1155Receiver} from "@lattice-test/helpers/Recording1155Receiver.sol";
 import {IERC1155} from "@lattice/interfaces/tokens/IERC1155.sol";
 import {stdError} from "forge-std/StdError.sol";
 
@@ -50,32 +51,6 @@ contract Reverting1155Receiver {
         returns (bytes4)
     {
         revert TransferBlocked();
-    }
-}
-
-/// @notice ERC1155 receiver that accepts both hooks and records which one the token called last.
-contract Recording1155Receiver {
-    enum Hook {
-        None,
-        Single,
-        Batch
-    }
-
-    Hook public lastHook;
-    uint256 public batchIdsLength;
-
-    function onERC1155Received(address, address, uint256, uint256, bytes calldata) external returns (bytes4) {
-        lastHook = Hook.Single;
-        return this.onERC1155Received.selector;
-    }
-
-    function onERC1155BatchReceived(address, address, uint256[] calldata ids, uint256[] calldata, bytes calldata)
-        external
-        returns (bytes4)
-    {
-        lastHook = Hook.Batch;
-        batchIdsLength = ids.length;
-        return this.onERC1155BatchReceived.selector;
     }
 }
 

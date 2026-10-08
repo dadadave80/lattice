@@ -9,7 +9,11 @@ import {ERC1155BurnableLib} from "@lattice/tokens/ERC1155/libraries/ERC1155Burna
 /// @notice Stateless Diamond facet adding burn operations to ERC-1155: holders and their approved operators can
 ///         destroy tokens.
 /// @dev Owns ONLY its own selectors; the ERC-1155 base surface comes from a separately cut {ERC1155} facet, and
-///      {DeployERC1155Burnable} composes both. Pure delegator to {ERC1155BurnableLib}.
+///      {DeployERC1155Burnable} composes both. Pure delegator to {ERC1155BurnableLib}. Under decision D25(a) on #234
+///      this facet is MUTUALLY EXCLUSIVE with {ERC1155Supply} and {ERC1155Pausable}, which export the same
+///      `burn`/`burnBatch` selectors: cut exactly one of the three. Its burns go through {ERC1155Lib} directly, so on a
+///      diamond that tracks supply through {ERC1155SupplyLib} they would desync the supply counters, and on a pausable
+///      diamond they would ignore the pause.
 /// @custom:lattice-version 0.5.0
 /// @custom:lattice-source OpenZeppelin v5.6.1
 contract ERC1155Burnable is IERC1155Burnable {

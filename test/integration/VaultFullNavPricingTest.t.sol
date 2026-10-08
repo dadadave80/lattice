@@ -16,8 +16,11 @@ import {StrategyManager} from "@lattice/defi/StrategyManager.sol";
 import {IStrategyManager} from "@lattice/interfaces/defi/IStrategyManager.sol";
 import {IStrategyManagerRecovery} from "@lattice/interfaces/defi/IStrategyManagerRecovery.sol";
 import {IVaultCore} from "@lattice/interfaces/defi/IVaultCore.sol";
+import {IVaultCoreRecovery} from "@lattice/interfaces/defi/IVaultCoreRecovery.sol";
 import {IStrategy} from "@lattice/interfaces/external/yearn/IStrategy.sol";
 import {IERC4626} from "@lattice/interfaces/tokens/IERC4626.sol";
+import {stdError} from "forge-std/StdError.sol";
+import {Vm} from "forge-std/Vm.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
 //                                 FIXTURES
@@ -68,6 +71,61 @@ contract NavStrategy is IStrategy {
 contract LegacyManager {
     function totalAllocated() external pure returns (uint256) {
         return 0;
+    }
+
+    function reentrancyGuardEntered() external pure returns (bool) {
+        return false;
+    }
+}
+
+/// @notice A broken manager: `depositsLatched()` reads false but `totalAllocated()` burns all the gas it is given.
+contract GasBurnManager {
+    function depositsLatched() external pure returns (bool) {
+        return false;
+    }
+
+    function totalAllocated() external view returns (uint256 n) {
+        while (gasleft() > 0) {
+            ++n;
+        }
+    }
+
+    function reentrancyGuardEntered() external pure returns (bool) {
+        return false;
+    }
+}
+
+/// @notice A broken manager: `depositsLatched()` answers 4 zero bytes, short of a full word; `totalAllocated()`
+///         answers a clean 0.
+contract ShortLatchReadManager {
+    function depositsLatched() external pure returns (bool) {
+        assembly ("memory-safe") {
+            mstore(0x00, 0)
+            return(0x00, 0x04)
+        }
+    }
+
+    function totalAllocated() external pure returns (uint256) {
+        return 0;
+    }
+
+    function reentrancyGuardEntered() external pure returns (bool) {
+        return false;
+    }
+}
+
+/// @notice A broken manager: `depositsLatched()` answers a clean false; `totalAllocated()` answers 4 zero bytes,
+///         short of a full word.
+contract ShortAllocatedReadManager {
+    function depositsLatched() external pure returns (bool) {
+        return false;
+    }
+
+    function totalAllocated() external pure returns (uint256) {
+        assembly ("memory-safe") {
+            mstore(0x00, 0)
+            return(0x00, 0x04)
+        }
     }
 
     function reentrancyGuardEntered() external pure returns (bool) {
@@ -308,7 +366,9 @@ contract VaultFullNavPricingTest is VaultCoreTestBase, StrategyManagerTestBase {
     /// @notice A strategy reporting an overflowing balance freezes the vault (the sum panics), but its
     ///         well-formed read is not a failed read, so `removeStrategy` cannot force-remove it. The last-resort
     ///         recovery is the vault admin pointing `setStrategyManager` at a fresh manager; the stranded funds
-    ///         then leave the NAV.
+    ///         then leave the NAV. The old manager still reports allocations (its one-term sum is
+    ///         `type(uint256).max`; only the vault's `idle + allocated` panics), so the swap latches deposits on
+    ///         the vault (#305): exits reopen at once, entries once the vault admin clears the latch.
     function test_OverflowingStrategy_RecoveredBySetStrategyManager() public {
         strategy.report(type(uint256).max);
         assertEq(vault.maxDeposit(bob), 0, "frozen: maxDeposit");
@@ -321,14 +381,44 @@ contract VaultFullNavPricingTest is VaultCoreTestBase, StrategyManagerTestBase {
             )
         );
         mgr.removeStrategy(address(strategy));
+        assertFalse(mgr.depositsLatched(), "old manager never latched");
+        assertEq(mgr.totalAllocated(), type(uint256).max, "old manager still reports allocations");
 
         address freshMgr = _deployStrategyManager(admin);
+        vm.expectEmit(true, false, false, false, vaultAddr);
+        emit IVaultCoreRecovery.ManagerSwapLatchSet(diamond);
         vm.prank(admin);
         vault.setStrategyManager(freshMgr);
 
         assertEq(vault.totalAssets(), IDLE, "NAV = idle; stranded funds left it");
         assertEq(vault.maxRedeem(alice), IDLE * (DEPOSIT + 1) / (IDLE + 1), "exits reopen");
-        assertGt(vault.maxDeposit(bob), 0, "entries reopen");
+        _assertEntriesLatched(vaultAddr);
+
+        vm.prank(admin);
+        IVaultCoreRecovery(vaultAddr).clearManagerSwapLatch();
+        assertGt(vault.maxDeposit(bob), 0, "entries reopen once cleared");
+    }
+
+    /// @notice Two overflowing strategies make the old manager's own `totalAllocated()` sum panic. That failed read
+    ///         cannot block the last-resort swap, and it latches (#305).
+    function test_OverflowingStrategies_ManagerSumPanics_SwapLatches() public {
+        NavStrategy second = new NavStrategy(underlying);
+        vm.prank(admin);
+        mgr.addStrategy(address(second), 1_000);
+        strategy.report(type(uint256).max);
+        second.report(1);
+        vm.expectRevert(stdError.arithmeticError);
+        mgr.totalAllocated();
+
+        address freshMgr = _deployStrategyManager(admin);
+        vm.expectEmit(true, false, false, false, vaultAddr);
+        emit IVaultCoreRecovery.ManagerSwapLatchSet(diamond);
+        vm.prank(admin);
+        vault.setStrategyManager(freshMgr);
+
+        assertEq(vault.strategyManager(), freshMgr, "swap went through");
+        assertEq(vault.totalAssets(), IDLE, "NAV = idle; stranded funds left it");
+        _assertEntriesLatched(vaultAddr);
     }
 
     /// @notice #270 regression: the donation-capture sandwich after a force removal. Once the bricked strategy
@@ -449,21 +539,228 @@ contract VaultFullNavPricingTest is VaultCoreTestBase, StrategyManagerTestBase {
         mgr.clearDepositLatch();
     }
 
-    /// @notice Known open route (SECURITY.md): the latch lives in the manager, so the vault admin swapping in a
-    ///         fresh manager drops it without `clearDepositLatch`, and deposits reopen at the idle-only NAV.
-    function test_DepositLatch_ManagerSwapDropsLatch() public {
+    /// @dev Points the vault at a fresh recipe-built manager as the vault admin and returns it.
+    function _swapToFreshManager() internal returns (address freshMgr) {
+        freshMgr = _deployStrategyManager(admin);
+        vm.prank(admin);
+        vault.setStrategyManager(freshMgr);
+    }
+
+    /// @dev Recalls everything from the strategy so the configured manager reports nothing allocated.
+    function _drainStrategy() internal {
+        vm.prank(admin);
+        mgr.updateStrategyTarget(address(strategy), 0);
+        mgr.rebalance();
+        assertEq(mgr.totalAllocated(), 0, "drained");
+    }
+
+    /// @dev Asserts entries are latched closed with `holder` named in the revert, while exits stay open.
+    function _assertEntriesLatched(address holder) internal {
+        assertEq(vault.maxDeposit(bob), 0, "maxDeposit while latched");
+        assertEq(vault.maxMint(bob), 0, "maxMint while latched");
+        underlying.mint(bob, 1e18);
+        vm.startPrank(bob);
+        underlying.approve(vaultAddr, 1e18);
+        vm.expectRevert(abi.encodeWithSelector(IVaultCore.VaultCoreDepositsLatched.selector, holder));
+        vault.deposit(1e18, bob);
+        vm.expectRevert(abi.encodeWithSelector(IVaultCore.VaultCoreDepositsLatched.selector, holder));
+        vault.mint(1e18, bob);
+        vm.stopPrank();
+        assertGt(vault.maxWithdraw(alice), 0, "exits stay open");
+    }
+
+    /// @notice #305 regression: swapping out a latched manager carries the latch over to the vault. Deposits stay
+    ///         closed on the fresh manager until the vault admin clears it, so the force-removed strategy's funds,
+    ///         returned after the swap, stay with the holders from the time of the removal.
+    function test_DepositLatch_ManagerSwapCarriesLatch() public {
         strategy.brick();
         vm.prank(admin);
         mgr.removeStrategy(address(strategy));
         assertEq(vault.maxDeposit(bob), 0, "latched");
 
+        address freshMgr = _swapToFreshManager();
+        assertTrue(mgr.depositsLatched(), "old manager still latched");
+        assertFalse(StrategyManager(freshMgr).depositsLatched(), "fresh manager starts unlatched");
+        assertTrue(IVaultCoreRecovery(vaultAddr).managerSwapLatched(), "latch carried to the vault");
+        _assertEntriesLatched(vaultAddr);
+
+        // The stranded funds come back as a plain transfer and accrue to alice.
+        strategy.unbrick();
+        vm.prank(address(strategy));
+        underlying.transfer(vaultAddr, ALLOCATED);
+        assertEq(vault.convertToAssets(vault.balanceOf(alice)), DEPOSIT, "alice keeps the returned funds");
+
+        vm.prank(admin);
+        IVaultCoreRecovery(vaultAddr).clearManagerSwapLatch();
+        assertEq(vault.maxDeposit(bob), type(uint256).max, "entries reopen once cleared");
+        vm.prank(bob);
+        assertEq(vault.deposit(1e18, bob), 1e18, "bob priced on the full NAV");
+        assertEq(vault.convertToAssets(vault.balanceOf(alice)), DEPOSIT, "alice not diluted");
+    }
+
+    /// @notice A swap away from an unlatched manager whose strategies still hold funds strands those funds just
+    ///         as a force removal does, so it latches too.
+    function test_ManagerSwap_FundedManager_Latches() public {
+        assertFalse(mgr.depositsLatched(), "old manager unlatched");
+        assertEq(mgr.totalAllocated(), ALLOCATED, "old manager holds funds");
+
         address freshMgr = _deployStrategyManager(admin);
+        vm.expectEmit(true, false, false, false, vaultAddr);
+        emit IVaultCoreRecovery.ManagerSwapLatchSet(diamond);
+        vm.expectEmit(true, false, false, false, vaultAddr);
+        emit IVaultCore.StrategyManagerSet(freshMgr);
         vm.prank(admin);
         vault.setStrategyManager(freshMgr);
 
-        assertTrue(mgr.depositsLatched(), "old manager still latched");
-        assertEq(vault.maxDeposit(bob), type(uint256).max, "swap reopens entries");
-        assertApproxEqAbs(_deposit(bob, DEPOSIT), 2 * DEPOSIT, 2, "bob priced on idle only");
+        assertEq(vault.totalAssets(), IDLE, "stranded funds left the NAV");
+        _assertEntriesLatched(vaultAddr);
+    }
+
+    /// @notice Rotating out a manager that verifiably holds nothing and is unlatched latches nothing.
+    function test_ManagerSwap_EmptyManager_DoesNotLatch() public {
+        _drainStrategy();
+
+        vm.recordLogs();
+        _swapToFreshManager();
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        for (uint256 i; i < logs.length; ++i) {
+            assertTrue(logs[i].topics[0] != IVaultCoreRecovery.ManagerSwapLatchSet.selector, "no latch event");
+        }
+        assertFalse(IVaultCoreRecovery(vaultAddr).managerSwapLatched(), "not latched");
+        assertEq(vault.maxDeposit(bob), type(uint256).max, "maxDeposit open");
+        assertEq(_deposit(bob, 1e18), 1e18, "deposit open");
+    }
+
+    /// @notice The first `setStrategyManager` (no previous manager) and re-setting the same manager latch nothing.
+    function test_ManagerSwap_FirstSetAndSameManager_DoNotLatch() public {
+        assertFalse(IVaultCoreRecovery(vaultAddr).managerSwapLatched(), "first set did not latch");
+        vm.prank(admin);
+        vault.setStrategyManager(diamond);
+        assertFalse(IVaultCoreRecovery(vaultAddr).managerSwapLatched(), "same manager did not latch");
+        assertEq(vault.totalAssets(), DEPOSIT, "nothing left the NAV");
+    }
+
+    /// @notice An old manager whose latch read fails (no `depositsLatched()` selector) counts as latched: it
+    ///         cannot show that nothing is stranded.
+    function test_ManagerSwap_FailedLatchRead_Latches() public {
+        _drainStrategy();
+        LegacyManager legacy = new LegacyManager();
+        vm.prank(admin);
+        vault.setStrategyManager(address(legacy));
+        assertFalse(IVaultCoreRecovery(vaultAddr).managerSwapLatched(), "drained manager released cleanly");
+
+        _swapToFreshManager();
+        assertTrue(IVaultCoreRecovery(vaultAddr).managerSwapLatched(), "failed latch read latches");
+        _assertEntriesLatched(vaultAddr);
+    }
+
+    /// @notice An old manager whose `totalAllocated()` burns all its gas cannot block the swap; the failed read
+    ///         latches.
+    function test_ManagerSwap_GasBurningRead_DoesNotBlock() public {
+        _drainStrategy();
+        GasBurnManager burner = new GasBurnManager();
+        vm.prank(admin);
+        vault.setStrategyManager(address(burner));
+
+        address freshMgr = _deployStrategyManager(admin);
+        vm.prank(admin);
+        vault.setStrategyManager{gas: 5_000_000}(freshMgr);
+        assertEq(vault.strategyManager(), freshMgr, "swap went through");
+        assertTrue(IVaultCoreRecovery(vaultAddr).managerSwapLatched(), "failed read latches");
+    }
+
+    /// @notice A `depositsLatched()` answer shorter than a word reads as unlatched while that manager is
+    ///         configured, but a swap away from it latches: it cannot show that nothing is stranded.
+    function test_ManagerSwap_ShortLatchRead_Latches() public {
+        _drainStrategy();
+        ShortLatchReadManager shortMgr = new ShortLatchReadManager();
+        vm.prank(admin);
+        vault.setStrategyManager(address(shortMgr));
+        assertFalse(IVaultCoreRecovery(vaultAddr).managerSwapLatched(), "drained manager released cleanly");
+        assertEq(vault.maxDeposit(bob), type(uint256).max, "short latch read reads as unlatched");
+
+        _swapToFreshManager();
+        assertTrue(IVaultCoreRecovery(vaultAddr).managerSwapLatched(), "short latch read latches the swap");
+        _assertEntriesLatched(vaultAddr);
+    }
+
+    /// @notice A `totalAllocated()` answer shorter than a word latches a swap away from that manager.
+    function test_ManagerSwap_ShortAllocatedRead_Latches() public {
+        _drainStrategy();
+        ShortAllocatedReadManager shortMgr = new ShortAllocatedReadManager();
+        vm.prank(admin);
+        vault.setStrategyManager(address(shortMgr));
+        assertFalse(IVaultCoreRecovery(vaultAddr).managerSwapLatched(), "drained manager released cleanly");
+
+        _swapToFreshManager();
+        assertTrue(IVaultCoreRecovery(vaultAddr).managerSwapLatched(), "short allocation read latches the swap");
+        _assertEntriesLatched(vaultAddr);
+    }
+
+    /// @notice The vault latch survives later swaps, including one away from a manager that held nothing.
+    function test_ManagerSwapLatch_SurvivesLaterSwaps() public {
+        _swapToFreshManager(); // strands ALLOCATED: latched
+        _swapToFreshManager(); // the fresh manager held nothing
+        assertTrue(IVaultCoreRecovery(vaultAddr).managerSwapLatched(), "latch held across the second swap");
+        _assertEntriesLatched(vaultAddr);
+    }
+
+    /// @notice Deposits open only when both latches are clear: clearing the vault latch while the configured
+    ///         manager is itself latched keeps entries closed, now naming the manager.
+    function test_ManagerSwapLatch_AndManagerLatch_BothMustClear() public {
+        address freshMgr = _swapToFreshManager();
+        StrategyManager fresh = StrategyManager(freshMgr);
+        NavStrategy next = new NavStrategy(underlying);
+        vm.startPrank(admin);
+        fresh.setVault(vaultAddr);
+        fresh.addStrategy(address(next), 5_000);
+        vm.stopPrank();
+        next.brick();
+        vm.prank(admin);
+        fresh.removeStrategy(address(next)); // empty, but its read fails: the force removal latches the manager
+
+        _assertEntriesLatched(vaultAddr);
+        vm.prank(admin);
+        IVaultCoreRecovery(vaultAddr).clearManagerSwapLatch();
+        _assertEntriesLatched(freshMgr);
+
+        vm.prank(admin);
+        fresh.clearDepositLatch();
+        assertEq(vault.maxDeposit(bob), type(uint256).max, "both clear: entries reopen");
+    }
+
+    /// @notice Only the vault's DEFAULT_ADMIN_ROLE clears; the clear emits ManagerSwapLatchCleared.
+    function test_ManagerSwapLatch_Clear_AuthAndEvent() public {
+        _swapToFreshManager();
+
+        vm.prank(bob);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                bytes4(keccak256("AccessControlUnauthorizedAccount(address,bytes32)")), bob, bytes32(0)
+            )
+        );
+        IVaultCoreRecovery(vaultAddr).clearManagerSwapLatch();
+        assertTrue(IVaultCoreRecovery(vaultAddr).managerSwapLatched(), "still latched");
+
+        vm.expectEmit(true, false, false, false, vaultAddr);
+        emit IVaultCoreRecovery.ManagerSwapLatchCleared(admin);
+        vm.prank(admin);
+        IVaultCoreRecovery(vaultAddr).clearManagerSwapLatch();
+        assertFalse(IVaultCoreRecovery(vaultAddr).managerSwapLatched(), "cleared");
+        assertEq(vault.maxMint(bob), type(uint256).max, "maxMint reopens");
+    }
+
+    /// @notice Clearing an unset vault latch reverts.
+    function test_ManagerSwapLatch_ClearWhenNotSet_Reverts() public {
+        vm.prank(admin);
+        vm.expectRevert(IVaultCoreRecovery.VaultCoreManagerSwapLatchNotSet.selector);
+        IVaultCoreRecovery(vaultAddr).clearManagerSwapLatch();
+    }
+
+    /// @notice The vault diamond advertises the recovery interface next to IVaultCore.
+    function test_ManagerSwapLatch_SupportsInterface() public view {
+        assertTrue(ERC165Facet(vaultAddr).supportsInterface(type(IVaultCore).interfaceId), "IVaultCore");
+        assertTrue(ERC165Facet(vaultAddr).supportsInterface(type(IVaultCoreRecovery).interfaceId), "IVaultCoreRecovery");
     }
 
     /// @notice The manager diamond advertises the recovery interface next to IStrategyManager.
@@ -477,6 +774,7 @@ contract VaultFullNavPricingTest is VaultCoreTestBase, StrategyManagerTestBase {
 
     /// @notice A manager without the latch selector reads as unlatched: entries stay open.
     function test_DepositLatch_ManagerWithoutSelector_Unlatched() public {
+        _drainStrategy(); // so the swap itself strands nothing and latches nothing
         LegacyManager legacy = new LegacyManager();
         vm.prank(admin);
         vault.setStrategyManager(address(legacy));
@@ -730,6 +1028,45 @@ contract GovernedVaultFullNavPricingTest is GovernedVaultTestBase {
         mgr.clearDepositLatch();
         vm.prank(bob);
         assertEq(vault.deposit(DEPOSIT, bob), DEPOSIT, "bob priced on the full NAV");
+    }
+
+    /// @notice #305 on the governed recipe: a swap away from the latched manager (a passed proposal makes the
+    ///         call) carries the latch to the vault, and only the vault's own admin role (governance) clears it.
+    function test_Governed_ManagerSwap_CarriesLatch() public {
+        strategy.brick();
+        mgr.removeStrategy(address(strategy));
+
+        DeployStrategyManager mgrDeployer = new DeployStrategyManager();
+        (FacetCut[] memory cuts, address init, bytes memory initCalldata) = mgrDeployer.buildCuts(address(this));
+        Lattice fresh = new Lattice();
+        fresh.initialize(cuts, init, initCalldata);
+        vm.expectEmit(true, false, false, false, vaultAddr);
+        emit IVaultCoreRecovery.ManagerSwapLatchSet(address(mgr));
+        vm.prank(vaultAddr);
+        vault.setStrategyManager(address(fresh));
+
+        assertEq(vault.maxDeposit(bob), 0, "maxDeposit while latched");
+        assertEq(vault.maxMint(bob), 0, "maxMint while latched");
+        asset.mint(bob, DEPOSIT);
+        vm.startPrank(bob);
+        asset.approve(vaultAddr, DEPOSIT);
+        vm.expectRevert(abi.encodeWithSelector(IVaultCore.VaultCoreDepositsLatched.selector, vaultAddr));
+        vault.deposit(DEPOSIT, bob);
+        vm.expectRevert(abi.encodeWithSelector(IVaultCore.VaultCoreDepositsLatched.selector, vaultAddr));
+        vault.mint(DEPOSIT, bob);
+        vm.stopPrank();
+        assertEq(vault.maxWithdraw(alice), IDLE, "exits open, capped at idle");
+
+        vm.prank(vaultAddr);
+        IVaultCoreRecovery(vaultAddr).clearManagerSwapLatch();
+        vm.prank(bob);
+        assertGt(vault.deposit(DEPOSIT, bob), 0, "entries reopen once governance clears");
+    }
+
+    /// @notice The governed recipe advertises the recovery interface next to IVaultCore.
+    function test_Governed_ManagerSwapLatch_SupportsInterface() public view {
+        assertTrue(ERC165Facet(vaultAddr).supportsInterface(type(IVaultCore).interfaceId), "IVaultCore");
+        assertTrue(ERC165Facet(vaultAddr).supportsInterface(type(IVaultCoreRecovery).interfaceId), "IVaultCoreRecovery");
     }
 }
 

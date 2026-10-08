@@ -6,6 +6,8 @@ import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {TestnetAsset} from "@lattice-script/base/defi/DeployGovernedVaultENS.s.sol";
 import {DeployERC1155} from "@lattice-script/base/tokens/DeployERC1155.s.sol";
 import {DeployERC1155Burnable} from "@lattice-script/base/tokens/DeployERC1155Burnable.s.sol";
+import {DeployERC1155Pausable} from "@lattice-script/base/tokens/DeployERC1155Pausable.s.sol";
+import {DeployERC1155Supply} from "@lattice-script/base/tokens/DeployERC1155Supply.s.sol";
 import {DeployERC1155URIStorage} from "@lattice-script/base/tokens/DeployERC1155URIStorage.s.sol";
 import {DeployERC20} from "@lattice-script/base/tokens/DeployERC20.s.sol";
 import {DeployERC20Burnable} from "@lattice-script/base/tokens/DeployERC20Burnable.s.sol";
@@ -111,6 +113,35 @@ contract RecipeUpgradeabilityTokensTest is RecipeGuards {
     function test_Upgradeable_ERC1155Burnable() public {
         (FacetCut[] memory cuts, address[] memory inits, bytes[] memory cds) =
             new DeployERC1155Burnable().buildCuts("uri://", ADMIN);
+        address d = _assembleMulti(cuts, inits, cds);
+        _assertIntrospectable(d, 6);
+        _assertBareEth(d, false);
+        assertEq(ERC1155(d).uri(0), "uri://", "module init chain: ERC1155 uri");
+        _assertAdminCanCut(d, ADMIN);
+    }
+
+    function test_Upgradeable_ERC1155Pausable() public {
+        (FacetCut[] memory cuts, address[] memory inits, bytes[] memory cds) =
+            new DeployERC1155Pausable().buildCuts("uri://", ADMIN);
+        address d = _assembleMulti(cuts, inits, cds);
+        _assertIntrospectable(d, 7);
+        _assertBareEth(d, false);
+        assertEq(ERC1155(d).uri(0), "uri://", "module init chain: ERC1155 uri");
+        _assertAdminCanCut(d, ADMIN);
+    }
+
+    function test_Immutable_ERC1155Supply() public {
+        (FacetCut[] memory cuts, address[] memory inits, bytes[] memory cds) =
+            new DeployERC1155Supply().buildCuts("uri://");
+        address d = _assembleMulti(cuts, inits, cds);
+        _assertIntrospectable(d, 4);
+        _assertBareEth(d, false);
+        _assertImmutableByDesign(d);
+    }
+
+    function test_Upgradeable_ERC1155Supply() public {
+        (FacetCut[] memory cuts, address[] memory inits, bytes[] memory cds) =
+            new DeployERC1155Supply().buildCuts("uri://", ADMIN);
         address d = _assembleMulti(cuts, inits, cds);
         _assertIntrospectable(d, 6);
         _assertBareEth(d, false);

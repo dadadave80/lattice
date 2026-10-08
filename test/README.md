@@ -32,11 +32,12 @@ Structured per the **Testing** and **Deployment** sections of the Cyfrin Solidit
    invariants inherited from an abstract base, the global `[invariant] fail_on_revert = true` is what binds).
    Diamond-level suites drive recipe-built diamonds through a handler and check them against ghost state:
    `VaultDiamondInvariant` (the `DeployVaultCore` and `DeployGovernedVault` diamonds with a
-   `DeployStrategyManager` diamond and live strategies) and `AccessManagerDiamondInvariant` (a
+   `DeployStrategyManager` diamond, live strategies and swaps to fresh managers) and `AccessManagerDiamondInvariant` (a
    `DeployAccessManager` diamond governing a `DeployAccessManaged` diamond, against a ghost model of Lattice's
    AccessManager semantics: OpenZeppelin v5.6.1 with the differences listed in `IAccessManager`'s `@dev`, such as
    the locked ADMIN_ROLE, the global nonce, a too-early `when` raised instead of refused, and Lattice error
-   shapes), and `ERC721EnumerableInvariant` (a `DeployERC721Enumerable` diamond against a ghost set of live
+   shapes), and `ERC1155SupplyInvariant` (a `DeployERC1155Supply` diamond under mints, burns and transfers,
+   against per-id supply, holder balances and a mint-minus-burn ledger), and `ERC721EnumerableInvariant` (a `DeployERC721Enumerable` diamond against a ghost set of live
    ids). They run 64 runs under `FOUNDRY_PROFILE=ci` (a contract-level
    `/// forge-config: ci.invariant.runs = 64` key, since a function-level key does not reach invariants
    inherited from a base) and the full 256 locally. `make invariant-deep` runs every invariant suite at 1,000

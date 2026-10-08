@@ -44,7 +44,7 @@ import {GovernedVaultStorage} from "@lattice/defi/libraries/GovernedVaultLib.sol
 import {LidoAdapterStorage} from "@lattice/defi/libraries/LidoAdapterLib.sol";
 import {StrategyManagerStorage} from "@lattice/defi/libraries/StrategyManagerLib.sol";
 import {UniswapV3AdapterStorage} from "@lattice/defi/libraries/UniswapV3AdapterLib.sol";
-import {VaultCoreStorage} from "@lattice/defi/libraries/VaultCoreLib.sol";
+import {VaultCoreRecoveryStorage, VaultCoreStorage} from "@lattice/defi/libraries/VaultCoreLib.sol";
 import {ENSResolverStorage} from "@lattice/ens/libraries/ENSResolverLib.sol";
 import {ENSReverseClaimerStorage} from "@lattice/ens/libraries/ENSReverseClaimerLib.sol";
 import {ENSSubnameIssuerStorage} from "@lattice/ens/libraries/ENSSubnameIssuerLib.sol";
@@ -84,6 +84,7 @@ import {InvariantCheckerStorage} from "@lattice/security/libraries/InvariantChec
 import {PausableStorage} from "@lattice/security/libraries/PausableLib.sol";
 import {RateLimiterStorage} from "@lattice/security/libraries/RateLimiterLib.sol";
 import {ERC1155Storage} from "@lattice/tokens/ERC1155/libraries/ERC1155Lib.sol";
+import {ERC1155SupplyStorage} from "@lattice/tokens/ERC1155/libraries/ERC1155SupplyLib.sol";
 import {ERC1155URIStorageStorage} from "@lattice/tokens/ERC1155/libraries/ERC1155URIStorageLib.sol";
 import {ERC20CappedStorage} from "@lattice/tokens/ERC20/libraries/ERC20CappedLib.sol";
 import {ERC20Storage} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
@@ -149,6 +150,7 @@ contract StorageLayoutProbe {
     ENSReverseClaimerStorage internal _eNSReverseClaimerStorage;
     ENSSubnameIssuerStorage internal _eNSSubnameIssuerStorage;
     ERC1155Storage internal _eRC1155Storage;
+    ERC1155SupplyStorage internal _eRC1155SupplyStorage;
     ERC1155URIStorageStorage internal _eRC1155URIStorageStorage;
     ERC20CappedStorage internal _eRC20CappedStorage;
     ERC20Storage internal _eRC20Storage;
@@ -203,6 +205,7 @@ contract StorageLayoutProbe {
     TellorAdapterStorage internal _tellorAdapterStorage;
     TimelockControllerStorage internal _timelockControllerStorage;
     UniswapV3AdapterStorage internal _uniswapV3AdapterStorage;
+    VaultCoreRecoveryStorage internal _vaultCoreRecoveryStorage;
     VaultCoreStorage internal _vaultCoreStorage;
     VestingWalletStorage internal _vestingWalletStorage;
     VotesStorage internal _votesStorage;

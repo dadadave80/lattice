@@ -13,8 +13,10 @@ pragma solidity >=0.8.4;
 ///      admin clears the latch once the stranded funds are recovered or written off. Returned funds accrue to
 ///      whoever still holds shares when they return; a holder who exits while latched is priced on the
 ///      idle-only NAV and gives up their share of them.
-///      The latch lives in this manager, so the vault admin's `IVaultCore.setStrategyManager` drops it: a fresh
-///      manager starts unlatched and the vault reopens deposits at once.
+///      The latch lives in this manager, and a fresh manager starts unlatched. So that the vault admin's
+///      `IVaultCore.setStrategyManager` does not reopen deposits, the swap reads {depositsLatched} (and
+///      `totalAllocated()`) on the outgoing manager and, unless both report nothing stranded, latches the vault
+///      itself (`IVaultCoreRecovery`, cleared by the vault admin, #305).
 ///      Kept apart from {IStrategyManager} so that interface's ERC-165 id stays `0xcce4011b`.
 interface IStrategyManagerRecovery {
     //*//////////////////////////////////////////////////////////////////////////
@@ -25,7 +27,8 @@ interface IStrategyManagerRecovery {
     ///      Emitted on every force removal, including one made while the latch is already set.
     event DepositLatchSet(address indexed strategy);
 
-    /// @dev Emitted when `account` clears the deposit latch, reopening deposits.
+    /// @dev Emitted when `account` clears the deposit latch, reopening deposits unless the vault's own
+    ///      manager-swap latch (`IVaultCoreRecovery`) is also set.
     event DepositLatchCleared(address indexed account);
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -42,8 +45,9 @@ interface IStrategyManagerRecovery {
     /// @notice Returns true while a force removal keeps the vault's deposits closed.
     function depositsLatched() external view returns (bool);
 
-    /// @notice Clears the deposit latch, reopening the vault's deposits. Admin-only (DEFAULT_ADMIN_ROLE, the role
-    ///         that gates `removeStrategy`).
+    /// @notice Clears the deposit latch, reopening the vault's deposits unless the vault's own manager-swap latch
+    ///         (`IVaultCoreRecovery`) is also set. Admin-only (DEFAULT_ADMIN_ROLE, the role that gates
+    ///         `removeStrategy`).
     /// @dev Clear it once the force-removed strategy's funds are back in the vault or written off: deposits then
     ///      price on a NAV that no longer moves when those funds return. Reverts with
     ///      {StrategyManagerDepositLatchNotSet} if the latch is not set.
