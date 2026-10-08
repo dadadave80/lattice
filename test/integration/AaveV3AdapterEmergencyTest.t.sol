@@ -57,7 +57,7 @@ contract AaveV3AdapterEmergencyTest is Test {
         aToken = new MockAToken(asset);
         pool = new MockAaveV3Pool();
         pool.setAToken(asset, aToken);
-        asset.mint(address(pool), 1_000_000e6);
+        pool.addLiquidity(1_000_000e6);
 
         adapter = new MockGuardedAdapter();
         adapter.initialize(admin, address(pool), address(asset), vault, treasury, FEED_KEY, 1.05e18);

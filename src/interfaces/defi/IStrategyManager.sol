@@ -36,8 +36,9 @@ interface IStrategyManager {
     event Rebalanced();
 
     /// @dev Emitted when `rebalance()` recalls less than it requested from a strategy that still reports the
-    ///      undelivered part (an honest partial recall, e.g. a Lido buffer that is short). The strategy stays
-    ///      over its target until a later rebalance recalls the rest.
+    ///      undelivered part (an honest partial recall, e.g. a Lido buffer that is short, or an Aave or Compound
+    ///      market whose cash is borrowed out). The strategy stays over its target until a later rebalance
+    ///      recalls the rest.
     /// @param strategy The strategy recalled from.
     /// @param requested The amount requested.
     /// @param received The amount the vault actually received.

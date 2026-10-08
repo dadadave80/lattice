@@ -23,7 +23,7 @@ contract MulDivHarness {
 
 /// @title MulDivDifferentialFuzz
 /// @notice Differential tests for `Math.mulDiv` (OpenZeppelin v5.6), the one `mulDiv` in `src`: ERC-4626 share
-///         pricing (`ERC4626Lib`) and the Uniswap V3 position math (`UniswapV3FullRangeMath`, `UniswapV3AdapterLib`)
+///         pricing (`ERC4626Lib`) and the Uniswap V3 position math (`UniswapV3FullRangeMath`)
 ///         call it in place of their former OpenZeppelin v5.1 and Uniswap V3 `FullMath` copies (#246). It is checked
 ///         against {FullMathReference}, an independent 512-bit oracle. Every run checks, for every rounding mode:
 ///         - the revert domain: it reverts exactly when the exact quotient does not fit a uint256 or `d == 0`;

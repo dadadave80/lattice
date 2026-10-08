@@ -86,7 +86,7 @@ missing from this table.
 |------|----------|------------------|------|
 | `aave/IAaveOracle.sol` | aave/aave-v3-core `contracts/interfaces/IPriceOracleGetter.sol` | AGPL-3.0 | subset |
 | `aave/IAaveRewardsController.sol` | aave/aave-v3-periphery `contracts/rewards/interfaces/IRewardsController.sol` | AGPL-3.0 | subset |
-| `aave/IAaveV3Pool.sol` | aave/aave-v3-core `contracts/interfaces/IPool.sol` | AGPL-3.0 | subset |
+| `aave/IAaveV3Pool.sol` | aave/aave-v3-core `contracts/interfaces/IPool.sol`; `getVirtualUnderlyingBalance` from aave-dao/aave-v3-origin `src/contracts/interfaces/IPool.sol` | AGPL-3.0 | subset |
 | `aave/IAToken.sol` | aave/aave-v3-core `contracts/interfaces/IAToken.sol` | AGPL-3.0 | subset |
 | `aave/IPoolAddressesProvider.sol` | aave/aave-v3-core `contracts/interfaces/IPoolAddressesProvider.sol` | AGPL-3.0 | subset |
 | `across/AcrossMessageHandler.sol` | across-protocol/contracts `contracts/interfaces/SpokePoolMessageHandler.sol` | MIT | subset |

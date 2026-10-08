@@ -7,6 +7,7 @@ import {IMintableToken} from "@lattice-test/helpers/IMintableToken.sol";
 import {StrategyManager} from "@lattice/defi/StrategyManager.sol";
 import {IProtocolAdapter} from "@lattice/interfaces/defi/IProtocolAdapter.sol";
 import {IStrategyManager} from "@lattice/interfaces/defi/IStrategyManager.sol";
+import {IUniswapV3Adapter} from "@lattice/interfaces/defi/IUniswapV3Adapter.sol";
 import {IVaultCore} from "@lattice/interfaces/defi/IVaultCore.sol";
 import {IStrategy} from "@lattice/interfaces/external/yearn/IStrategy.sol";
 import {UniswapV3FullRangeMath} from "@lattice/utils/libraries/UniswapV3FullRangeMath.sol";
@@ -212,11 +213,90 @@ contract AaveStrategyLiquidityTest is StrategyLiquidityTestBase {
     ///         on top, lowering the target recalls the excess (idle first) without reverting.
     function test_Recall_AfterAccrual_WithIdle() public {
         aToken.mint(address(adapter), 7_777_777); // accrued interest
-        asset.mint(address(pool), 7_777_777);
+        pool.addLiquidity(7_777_777);
         asset.mint(address(adapter), 33_333_333); // undeployed idle
         _setTarget(address(adapter), 2_000);
         _rebalanceToTargetSpendingIdle(address(adapter), 2_000);
         assertEq(asset.balanceOf(address(adapter)), 0, "no idle left behind");
+    }
+
+    address internal borrower = address(0xB0B);
+
+    /// @dev A borrower takes `amount` of the reserve's cash (a utilisation spike).
+    function _borrowOut(uint256 amount) internal {
+        vm.prank(borrower);
+        pool.borrow(address(asset), amount, 2, 0, borrower);
+    }
+
+    /// @dev The borrower repays everything, refilling the reserve's cash.
+    function _repayAll() internal {
+        uint256 owed = pool.debt(borrower);
+        vm.startPrank(borrower);
+        asset.approve(address(pool), owed);
+        pool.repay(address(asset), owed, 2, borrower);
+        vm.stopPrank();
+    }
+
+    /// @notice #271: the reserve holds only 100 of the 300 a lower target recalls. The recall takes the available
+    ///         cash, rebalance completes as an honest partial recall, and the next rebalance finishes it once the
+    ///         cash is back.
+    function test_Recall_UtilisationSpike_IsPartial_ThenCompletes() public {
+        _borrowOut(400e6); // cash 500 → 100
+        _setTarget(address(adapter), 2_000);
+        uint256 nav = vault.totalAssets();
+
+        vm.expectEmit(true, false, false, true, diamond);
+        emit IStrategyManager.StrategyPartiallyRecalled(address(adapter), 300e6, 100e6);
+        mgr.rebalance();
+        assertEq(vault.totalAssets(), nav, "partial recall conserves NAV");
+        assertEq(vault.idleAssets(), 600e6, "recalled the available cash");
+        assertEq(adapter.totalAssetsManaged(), 400e6, "remainder still supplied");
+
+        _repayAll();
+        _rebalanceToTarget(address(adapter), 2_000);
+    }
+
+    /// @notice #271: with the reserve's cash fully borrowed the recall takes nothing, and rebalance still completes.
+    function test_Recall_NoCash_IsZeroPartial() public {
+        _borrowOut(500e6);
+        _setTarget(address(adapter), 2_000);
+
+        vm.expectEmit(true, false, false, true, diamond);
+        emit IStrategyManager.StrategyPartiallyRecalled(address(adapter), 300e6, 0);
+        mgr.rebalance();
+        assertEq(vault.totalAssets(), 1_000e6, "NAV unchanged");
+        assertEq(adapter.totalAssetsManaged(), 500e6, "position untouched");
+    }
+
+    /// @notice #271: the adapter's idle is spent first, then the position up to the reserve's cash.
+    function test_Recall_IdleThenShortCash() public {
+        asset.mint(address(adapter), 50e6); // undeployed idle
+        _borrowOut(400e6); // cash 500 → 100
+        _setTarget(address(adapter), 2_000);
+        uint256 nav = vault.totalAssets(); // 1_050e6
+        uint256 requested = adapter.totalAssetsManaged() - (nav * 2_000) / 10_000;
+
+        vm.expectEmit(true, false, false, true, diamond);
+        emit IStrategyManager.StrategyPartiallyRecalled(address(adapter), requested, 150e6);
+        mgr.rebalance();
+        assertEq(vault.totalAssets(), nav, "partial recall conserves NAV");
+        assertEq(asset.balanceOf(address(adapter)), 0, "idle spent first");
+        assertEq(aToken.balanceOf(address(adapter)), 400e6, "then the reserve's cash");
+    }
+
+    /// @notice #271 on Aave v3.1+: the Pool pays out only up to its virtual balance, which a direct transfer to the
+    ///         aToken does not raise. With the cash borrowed out and a donation on the aToken, the recall is capped
+    ///         at the virtual balance (zero) instead of asking for the donated amount and reverting.
+    function test_Recall_VirtualAccounting_DonationDoesNotLiftCap() public {
+        pool.enableVirtualAccounting();
+        _borrowOut(500e6);
+        asset.mint(address(aToken), 10e6); // donation: real cash 10, virtual balance 0
+        _setTarget(address(adapter), 2_000);
+
+        vm.expectEmit(true, false, false, true, diamond);
+        emit IStrategyManager.StrategyPartiallyRecalled(address(adapter), 300e6, 0);
+        mgr.rebalance();
+        assertEq(adapter.totalAssetsManaged(), 500e6, "position untouched");
     }
 }
 
@@ -253,6 +333,55 @@ contract CompoundStrategyLiquidityTest is StrategyLiquidityTestBase {
         _setTarget(address(adapter), 2_000);
         _rebalanceToTargetSpendingIdle(address(adapter), 2_000);
         assertEq(asset.balanceOf(address(adapter)), 0, "no idle left behind");
+    }
+
+    address internal borrower = address(0xB0B);
+
+    /// @notice #271: the market holds only 100 of the 300 a lower target recalls. The recall takes the available
+    ///         cash, rebalance completes as an honest partial recall, and the next rebalance finishes it once the
+    ///         cash is back.
+    function test_Recall_UtilisationSpike_IsPartial_ThenCompletes() public {
+        comet.borrow(borrower, 400e6); // cash 500 → 100
+        _setTarget(address(adapter), 2_000);
+        uint256 nav = vault.totalAssets();
+
+        vm.expectEmit(true, false, false, true, diamond);
+        emit IStrategyManager.StrategyPartiallyRecalled(address(adapter), 300e6, 100e6);
+        mgr.rebalance();
+        assertEq(vault.totalAssets(), nav, "partial recall conserves NAV");
+        assertEq(vault.idleAssets(), 600e6, "recalled the available cash");
+        assertEq(adapter.totalAssetsManaged(), 400e6, "remainder still supplied");
+
+        asset.mint(address(comet), 400e6); // the borrower repays
+        _rebalanceToTarget(address(adapter), 2_000);
+    }
+
+    /// @notice #271: with the market's cash fully borrowed the recall takes nothing, and rebalance still completes.
+    function test_Recall_NoCash_IsZeroPartial() public {
+        comet.borrow(borrower, 500e6);
+        _setTarget(address(adapter), 2_000);
+
+        vm.expectEmit(true, false, false, true, diamond);
+        emit IStrategyManager.StrategyPartiallyRecalled(address(adapter), 300e6, 0);
+        mgr.rebalance();
+        assertEq(vault.totalAssets(), 1_000e6, "NAV unchanged");
+        assertEq(adapter.totalAssetsManaged(), 500e6, "position untouched");
+    }
+
+    /// @notice #271: the adapter's idle is spent first, then the position up to the market's cash.
+    function test_Recall_IdleThenShortCash() public {
+        asset.mint(address(adapter), 50e6); // undeployed idle
+        comet.borrow(borrower, 400e6); // cash 500 → 100
+        _setTarget(address(adapter), 2_000);
+        uint256 nav = vault.totalAssets(); // 1_050e6
+        uint256 requested = adapter.totalAssetsManaged() - (nav * 2_000) / 10_000;
+
+        vm.expectEmit(true, false, false, true, diamond);
+        emit IStrategyManager.StrategyPartiallyRecalled(address(adapter), requested, 150e6);
+        mgr.rebalance();
+        assertEq(vault.totalAssets(), nav, "partial recall conserves NAV");
+        assertEq(asset.balanceOf(address(adapter)), 0, "idle spent first");
+        assertEq(comet.balanceOf(address(adapter)), 400e6, "then the market's cash");
     }
 }
 
@@ -319,8 +448,12 @@ contract LidoStrategyLiquidityTest is StrategyLiquidityTestBase {
 //                            UNISWAP V3 ADAPTER
 //////////////////////////////////////////////////////////////////////////*//
 
-/// @notice UniswapV3 frees token0 and token1 together; the recall sends token0 and keeps token1 (still in NAV)
-///         in the adapter, so rebalance completes at a non-integer TWAP price.
+/// @notice The swap-free UniswapV3 adapter's NAV is token0 only (#271): idle token0 plus the position's token0 leg
+///         at the TWAP. Keeper-funded token1 and the position's token1 leg are never NAV, because the vault can only
+///         ever receive token0. A recall pays from idle token0 and never unwinds the position (freeing its token0
+///         leg would strand the token1 leg), so rebalance completes as a partial recall and the admin's
+///         `emergencyWithdraw` is the only exit. A deploy priced at spot that would step NAV by more than
+///         `slippageBps` of the token0 it consumes is refused.
 contract UniswapV3StrategyLiquidityTest is StrategyLiquidityTestBase {
     MockERC20 internal token0;
     MockERC20 internal token1;
@@ -337,10 +470,7 @@ contract UniswapV3StrategyLiquidityTest is StrategyLiquidityTestBase {
         npm = new MockPositionManager(pool, token0, token1);
         _wire(address(token0));
 
-        adapter = new MockUniV3Adapter();
-        adapter.initialize(admin, address(npm), address(pool), vaultAddr, treasury, 1800, 100);
-        vm.prank(admin);
-        adapter.setOperator(diamond);
+        adapter = _newAdapter();
         _addStrategy(address(adapter), 5_000);
 
         _deposit(address(token0), 1_000e18);
@@ -350,11 +480,84 @@ contract UniswapV3StrategyLiquidityTest is StrategyLiquidityTestBase {
         assertEq(token0.balanceOf(address(adapter)), 500e18, "allocation idle until the keeper funds token1");
     }
 
+    function _newAdapter() internal returns (MockUniV3Adapter a) {
+        a = new MockUniV3Adapter();
+        a.initialize(admin, address(npm), address(pool), vaultAddr, treasury, 1800, 100);
+        vm.prank(admin);
+        a.setOperator(diamond);
+    }
+
     /// @dev token1 matching `amount0` at the TWAP price, plus 0.5% so token0 is the binding side.
     function _token1For(uint256 amount0) internal pure returns (uint256) {
-        uint160 sqrtP = UniswapV3FullRangeMath.getSqrtRatioAtTick(TWAP_TICK);
+        return _token1At(amount0, TWAP_TICK);
+    }
+
+    /// @dev token1 matching `amount0` at `tick`'s price, plus 0.5% so token0 is the binding side.
+    function _token1At(uint256 amount0, int24 tick) internal pure returns (uint256) {
+        uint160 sqrtP = UniswapV3FullRangeMath.getSqrtRatioAtTick(tick);
         uint256 a1 = Math.mulDiv(Math.mulDiv(amount0, sqrtP, 1 << 96), sqrtP, 1 << 96);
         return a1 + a1 / 200;
+    }
+
+    /// @dev Moves spot to `spotTick` (the TWAP stays at `TWAP_TICK`), funds `token1Amount` and runs the
+    ///      permissionless `rebalance()`, whose deploy pass deploys the adapter's 500e18 idle token0 at spot.
+    ///      Asserts the deploy was refused with {IUniswapV3Adapter.UniswapV3AdapterDeployOffTwap}, and that the
+    ///      vault's NAV and the adapter's balances did not move.
+    function _assertDeployRefusedAtSpot(int24 spotTick, uint256 token1Amount) internal {
+        npm.setPayAtSpot(true);
+        token1.mint(address(adapter), token1Amount);
+        pool.setSpotTick(spotTick);
+        uint256 nav = vault.totalAssets();
+
+        vm.recordLogs();
+        mgr.rebalance();
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        bool refused;
+        for (uint256 i; i < logs.length; ++i) {
+            if (logs[i].emitter == diamond && logs[i].topics[0] == IStrategyManager.StrategyDeployFailed.selector) {
+                bytes memory reason = abi.decode(logs[i].data, (bytes));
+                assertEq(bytes4(reason), IUniswapV3Adapter.UniswapV3AdapterDeployOffTwap.selector, "off-TWAP refusal");
+                refused = true;
+            }
+        }
+        assertTrue(refused, "deploy refused");
+        pool.setSpotTick(TWAP_TICK);
+        assertEq(vault.totalAssets(), nav, "NAV unmoved");
+        assertEq(token0.balanceOf(address(adapter)), 500e18, "token0 still idle, still counted");
+        assertEq(token1.balanceOf(address(adapter)), token1Amount, "token1 still idle");
+        assertEq(adapter.tokenId(), 0, "no position");
+    }
+
+    /// @dev Moves spot to `spotTick`, funds token1 matching the idle token0 at spot (so the mint's own floors
+    ///      pass) and rebalances. Asserts the deploy went through and stepped NAV by no more than `slippageBps`
+    ///      (1%) of the token0 it consumed.
+    function _assertDeployNavStepBoundedAtSpot(int24 spotTick) internal returns (int256 step) {
+        npm.setPayAtSpot(true);
+        token1.mint(address(adapter), _token1At(500e18, spotTick));
+        pool.setSpotTick(spotTick);
+        uint256 nav = vault.totalAssets();
+        uint256 idle0 = token0.balanceOf(address(adapter));
+        mgr.rebalance();
+        assertGt(adapter.tokenId(), 0, "deployed");
+        uint256 consumed = idle0 - token0.balanceOf(address(adapter));
+        step = int256(vault.totalAssets()) - int256(nav);
+        assertLe(_abs(step), (consumed * 100) / 10_000 + 2, "NAV step within slippageBps of the deploy");
+    }
+
+    function _abs(int256 x) internal pure returns (uint256) {
+        return uint256(x < 0 ? -x : x);
+    }
+
+    /// @dev The keeper funds the token1 leg for the idle allocation and the manager deploys it.
+    function _fundAndDeploy() internal {
+        token1.mint(address(adapter), _token1For(500e18));
+        vm.prank(diamond);
+        adapter.deploy();
+        assertLt(token0.balanceOf(address(adapter)), 1e18, "token0 deployed");
+    }
+
+    function _liquidity() internal view returns (uint128 liquidity) {
+        (,,, liquidity,,) = npm.pos(adapter.tokenId());
     }
 
     /// @notice #221 PoC (b) shape on UniswapV3: the target drops to 10% while the allocation is still idle; the
@@ -365,91 +568,117 @@ contract UniswapV3StrategyLiquidityTest is StrategyLiquidityTestBase {
         assertEq(vault.idleAssets(), 900e18, "400 recalled from idle token0");
     }
 
-    /// @notice #221: with the position deployed at a non-integer TWAP price, a recall frees token0 from the
-    ///         position, keeps the freed token1 in the adapter, and conserves the vault's NAV.
-    function test_DeployedPosition_NonIntegerTwap_RecallSucceeds() public {
-        token1.mint(address(adapter), _token1For(500e18)); // keeper funds the token1 leg
+    /// @notice #271: the keeper's token1 is not vault NAV, before or after the deploy that pairs it, so at spot ==
+    ///         TWAP funding and deploying never step the share price. Away from the TWAP a deploy steps NAV by the
+    ///         gap on the token0 it consumes, refused beyond `slippageBps` (the `test_Deploy_*Twap*` cases).
+    function test_KeeperToken1_NeverMovesNav() public {
+        uint256 nav = vault.totalAssets();
+        token1.mint(address(adapter), _token1For(500e18));
+        assertEq(vault.totalAssets(), nav, "keeper token1 is not NAV");
         vm.prank(diamond);
         adapter.deploy();
-        assertLt(token0.balanceOf(address(adapter)), 1e18, "token0 deployed");
-
-        // 40% of the ~1502.5 NAV leaves a ~401 recall, inside the position's ~500 token0 leg.
-        _setTarget(address(adapter), 4_000);
-        uint256 idleBefore = vault.idleAssets();
-        _rebalanceToTarget(address(adapter), 4_000);
-        assertGt(vault.idleAssets(), idleBefore, "token0 recalled");
-        assertEq(token1.balanceOf(vaultAddr), 0, "no token1 sent to the vault");
-        assertGt(token1.balanceOf(address(adapter)), 0, "freed token1 held in the adapter");
+        assertApproxEqAbs(vault.totalAssets(), nav, NAV_SLACK, "NAV flat across deploy");
     }
 
-    /// @notice #221: the position pays out at spot while NAV is TWAP-valued. A full-range position's TWAP-valued
-    ///         amounts are smallest at spot == TWAP, so a recall with spot pushed either way frees at least the
-    ///         TWAP value it removes: rebalance completes (partial or exact) and NAV does not drop.
-    function test_DeployedPosition_SpotAwayFromTwap_RecallNeverLosesValue() public {
-        token1.mint(address(adapter), _token1For(500e18));
-        vm.prank(diamond);
-        adapter.deploy();
+    /// @notice #271 review: a mint consumes token0 at spot while NAV counts the new token0 leg at the TWAP, so a
+    ///         deploy with spot above the TWAP would inflate NAV by the gap. An attacker moving spot about 2x up to
+    ///         match a keeper's over-funded token1 would turn the keeper's token1 into NAV (+20.7% here) inside
+    ///         the permissionless `rebalance()`. The deploy is refused instead, and NAV does not move.
+    function test_Deploy_SpotFarAboveTwap_Refused_NavFlat() public {
+        _assertDeployRefusedAtSpot(TWAP_TICK + 6931, 2 * _token1For(500e18));
+    }
+
+    /// @notice #271 review, the mirror case: spot about 2x below the TWAP with the keeper's token1 half-funded
+    ///         would deflate NAV (-14.6% here). The deploy is refused, and NAV does not move.
+    function test_Deploy_SpotFarBelowTwap_Refused_NavFlat() public {
+        _assertDeployRefusedAtSpot(TWAP_TICK - 6931, _token1For(500e18) / 2);
+    }
+
+    /// @notice #271 review: just past the bound (spot 250 ticks from the TWAP, a ~1.26% step on the deployed
+    ///         token0 against a 1% `slippageBps`), a deploy funded at spot passes the mint's own floors and is still
+    ///         refused.
+    function test_Deploy_JustBeyondSlippageOfTwap_Refused() public {
+        _assertDeployRefusedAtSpot(TWAP_TICK + 250, _token1At(500e18, TWAP_TICK + 250));
+    }
+
+    /// @notice #271 review: within the bound (spot 100 ticks above or below the TWAP) the deploy goes through,
+    ///         and NAV steps by the spot/TWAP gap on the deployed token0 (about 0.5% here), never more than
+    ///         `slippageBps` of it.
+    function test_Deploy_WithinSlippageOfTwap_NavStepBounded() public {
+        uint256 snap = vm.snapshotState();
+        assertGt(_assertDeployNavStepBoundedAtSpot(TWAP_TICK + 100), 0, "spot above the TWAP steps NAV up");
+        vm.revertToState(snap);
+        assertLt(_assertDeployNavStepBoundedAtSpot(TWAP_TICK - 100), 0, "spot below the TWAP steps NAV down");
+    }
+
+    /// @notice #271 with #281's value-loss check: a lower target on a deployed position recalls only the idle
+    ///         token0 (rounding dust here) and leaves the position whole, whether spot sits above, below or at the
+    ///         TWAP. The recall loses no value, so rebalance completes as a partial recall and sends no token1.
+    function test_DeployedPosition_RecallIsPartial_AtAnySpot() public {
+        _fundAndDeploy();
         npm.setPayAtSpot(true);
         token0.mint(address(npm), 1_000e18); // the mock pays spot amounts from its own balance
         token1.mint(address(npm), 1_000e18);
         _setTarget(address(adapter), 4_000);
+        uint128 liquidity = _liquidity();
 
-        int24[2] memory spots = [TWAP_TICK + 2_000, TWAP_TICK - 2_000];
+        int24[3] memory spots = [TWAP_TICK + 2_000, TWAP_TICK - 2_000, TWAP_TICK];
         uint256 snap = vm.snapshotState();
-        for (uint256 i; i < 2; ++i) {
+        for (uint256 i; i < 3; ++i) {
             vm.revertToState(snap);
             pool.setSpotTick(spots[i]);
-            uint256 navBefore = vault.totalAssets();
-            uint256 idleBefore = vault.idleAssets();
+            uint256 nav = vault.totalAssets();
+            uint256 requested = adapter.totalAssetsManaged() - (nav * 4_000) / 10_000;
+            uint256 dust0 = token0.balanceOf(address(adapter));
+
+            vm.expectEmit(true, false, false, true, diamond);
+            emit IStrategyManager.StrategyPartiallyRecalled(address(adapter), requested, dust0);
             mgr.rebalance();
-            assertGe(vault.totalAssets() + NAV_SLACK, navBefore, "recall at spot != TWAP loses no value");
-            assertGt(vault.idleAssets(), idleBefore, "token0 recalled");
+            assertEq(vault.totalAssets(), nav, "partial recall conserves NAV");
+            assertEq(_liquidity(), liquidity, "position untouched");
+            assertEq(token1.balanceOf(vaultAddr), 0, "no token1 sent to the vault");
         }
     }
 
-    /// @notice #221 exit path: rebalance alone recalls only the token0 leg of a swap-free LP. At target 0 the
-    ///         position is fully removed, the token1 stays idle in the adapter (still NAV), and every later
-    ///         rebalance is a zero partial recall, so `removeStrategy` refuses. The admin `emergencyWithdraw`
-    ///         realizes the token1 leg: it lands in the vault, which counts only token0, so NAV drops by its TWAP
-    ///         value, and the emptied strategy can then be removed.
-    function test_TargetZero_ExitNeedsAdminEmergencyWithdraw_ThenRemove() public {
-        token1.mint(address(adapter), _token1For(500e18));
-        vm.prank(diamond);
-        adapter.deploy();
+    /// @notice #271: token1 is not NAV, so an adapter that holds only token1 counts as empty and can be added
+    ///         without stepping the vault's NAV.
+    function test_AddStrategy_AcceptsAdapterHoldingOnlyToken1() public {
+        MockUniV3Adapter fresh = _newAdapter();
+        token1.mint(address(fresh), 10e18);
+        uint256 nav = vault.totalAssets();
+        _addStrategy(address(fresh), 1_000);
+        assertEq(vault.totalAssets(), nav, "NAV unchanged by the add");
+    }
+
+    /// @notice #271 exit path: rebalance cannot unwind a swap-free LP, so at target 0 it recalls the idle token0
+    ///         only and `removeStrategy` refuses the still-counted token0 leg. The admin's `emergencyWithdraw` exits
+    ///         the position: the vault receives the token0 leg, which NAV already counted, so NAV is conserved, and
+    ///         the token1 leg, which was never NAV (the vault has no sweep for it). The emptied strategy can then be
+    ///         removed.
+    function test_TargetZero_ExitViaAdminEmergencyWithdraw_ConservesNav() public {
+        _fundAndDeploy();
+        token1.mint(address(adapter), 7e18); // stray idle token1, also uncounted
 
         _setTarget(address(adapter), 0);
         uint256 nav = vault.totalAssets();
         mgr.rebalance();
-        assertApproxEqAbs(vault.totalAssets(), nav, NAV_SLACK, "full recall conserves NAV");
-        (,,, uint128 liquidity,,) = npm.pos(adapter.tokenId());
-        assertEq(liquidity, 0, "position fully removed");
-        assertEq(token0.balanceOf(address(adapter)), 0, "every token0 recalled");
-        uint256 idle1 = token1.balanceOf(address(adapter));
-        assertGt(idle1, 0, "token1 leg held in the adapter");
-        uint256 stranded = adapter.totalAssetsManaged();
-        assertGt(stranded, 0, "token1 still counted");
-
-        // Nothing token0 is left to recall: the next rebalance completes as a zero partial recall.
-        vm.expectEmit(true, false, false, true, diamond);
-        emit IStrategyManager.StrategyPartiallyRecalled(address(adapter), stranded, 0);
-        mgr.rebalance();
-        assertEq(adapter.totalAssetsManaged(), stranded, "token1 cannot leave through rebalance");
+        assertEq(vault.totalAssets(), nav, "partial recall conserves NAV");
+        uint256 leg0 = adapter.totalAssetsManaged();
+        assertGt(leg0, 0, "the position's token0 leg is still counted");
 
         vm.expectRevert(
             abi.encodeWithSelector(
-                IStrategyManager.StrategyManagerStrategyStillAllocated.selector, address(adapter), stranded
+                IStrategyManager.StrategyManagerStrategyStillAllocated.selector, address(adapter), leg0
             )
         );
         vm.prank(admin);
         mgr.removeStrategy(address(adapter));
 
-        // Admin realizes the token1 leg: it moves to the vault, outside NAV.
-        nav = vault.totalAssets();
         vm.prank(admin);
         adapter.emergencyWithdraw();
-        assertEq(token1.balanceOf(vaultAddr), idle1, "token1 sent to the vault");
+        assertApproxEqAbs(vault.totalAssets(), nav, NAV_SLACK, "emergency exit conserves NAV");
+        assertGt(token1.balanceOf(vaultAddr), 7e18, "token1 leg and stray token1 land in the vault, outside NAV");
         assertEq(adapter.totalAssetsManaged(), 0, "strategy emptied");
-        assertEq(vault.totalAssets(), nav - stranded, "NAV drops by the token1 TWAP value");
 
         vm.prank(admin);
         mgr.removeStrategy(address(adapter));

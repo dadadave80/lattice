@@ -291,13 +291,13 @@ library AaveV3AdapterLib {
 
     /// @notice Withdraws up to `amount` of the asset to `to`, returning the REAL amount.
     /// @dev Reentrancy-gated. Spends the adapter's undeployed idle first (it is counted in
-    ///      `totalAssetsManaged`), then calls `Pool.withdraw` for the remainder, capped at the aToken
-    ///      balance, and honestly reports the balance delta to `to`. The ask is NOT capped at the
-    ///      reserve's available cash: when the reserve is too utilized to pay it, `Pool.withdraw` reverts,
-    ///      and so does the calling `rebalance()` (the StrategyManager does not catch a reverting recall).
-    ///      A delivery short of `amount` (an aToken balance below the ask) is an honest partial recall,
-    ///      which the StrategyManager accepts; it reverts with `StrategyManagerWithdrawShortfall` only
-    ///      when value is lost.
+    ///      `totalAssetsManaged`), then calls `Pool.withdraw` for the remainder, capped at both the aToken
+    ///      balance and the reserve's available cash (see `_availableCash`), and honestly reports the
+    ///      balance delta to `to`. During a utilisation spike the recall therefore takes what the reserve
+    ///      can pay instead of reverting the calling `rebalance()` (#271); with no cash it skips the Pool.
+    ///      A delivery short of `amount` is an honest partial recall: the unpaid remainder is still
+    ///      supplied and counted, so the StrategyManager accepts it and a later rebalance finishes it. The
+    ///      manager reverts with `StrategyManagerWithdrawShortfall` only when value is lost.
     function withdraw(uint256 amount, address to) internal returns (uint256 withdrawn) {
         _checkOperator();
         ReentrancyGuardLib.nonReentrantBefore();
@@ -313,16 +313,40 @@ library AaveV3AdapterLib {
         uint256 beforeBal = IERC20(asset_).balanceOf(to);
         uint256 fromIdle = AdapterBaseLib.transferHonest(asset_, to, amount);
         if (fromIdle < amount) {
-            // Cap the remainder at the live aToken balance so we never ask for more than we hold.
-            uint256 rest = amount - fromIdle;
-            uint256 supplied = IAToken(aToken()).balanceOf(address(this));
-            uint256 ask = rest > supplied ? supplied : rest;
+            // Cap the remainder at the live aToken balance (never ask for more than we hold) and at the
+            // reserve's available cash (never ask for more than the Pool can pay).
+            IAaveV3Pool pool = _pool();
+            address aToken_ = pool.getReserveData(asset_).aTokenAddress;
+            uint256 ask = amount - fromIdle;
+            uint256 supplied = IAToken(aToken_).balanceOf(address(this));
+            if (ask > supplied) ask = supplied;
+            uint256 cash = _availableCash(pool, asset_, aToken_);
+            if (ask > cash) ask = cash;
             if (ask > 0) {
-                _pool().withdraw(asset_, ask, to);
+                pool.withdraw(asset_, ask, to);
             }
         }
         withdrawn = IERC20(asset_).balanceOf(to) - beforeBal;
         ReentrancyGuardLib.nonReentrantAfter();
+    }
+
+    /// @notice The reserve's cash available to withdraw: the underlying held by the aToken, which is where
+    ///         Aave keeps a reserve's liquidity (`Pool.withdraw` pays out through
+    ///         `IAToken.transferUnderlyingTo`).
+    /// @dev On Aave v3.1+ the Pool also debits the reserve's virtual balance and reverts when a withdrawal
+    ///      exceeds it. A direct transfer to the aToken lifts the raw balance but not the virtual one, so the
+    ///      cash is the lower of the two. A v3.0 Pool has no `getVirtualUnderlyingBalance`; the low-level
+    ///      staticcall treats a failed or short read as "no virtual balance" and uses the raw balance alone.
+    ///      A v3.1–v3.3 reserve with virtual accounting switched off (GHO, which cannot be supplied) reports
+    ///      zero, so this adapter must not be configured for one.
+    function _availableCash(IAaveV3Pool pool, address asset_, address aToken_) private view returns (uint256 cash) {
+        cash = IERC20(asset_).balanceOf(aToken_);
+        (bool ok, bytes memory ret) =
+            address(pool).staticcall(abi.encodeCall(IAaveV3Pool.getVirtualUnderlyingBalance, (asset_)));
+        if (ok && ret.length >= 32) {
+            uint256 virtualCash = abi.decode(ret, (uint256));
+            if (virtualCash < cash) cash = virtualCash;
+        }
     }
 
     //*//////////////////////////////////////////////////////////////////////////

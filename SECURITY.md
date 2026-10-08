@@ -144,6 +144,29 @@ original attack against the fixed code; run one with
     its LP at spot `get_virtual_price()`, which read-only reentrancy can skew.
     It is unsupported in 0.5.0; do not register it with a vault's
     StrategyManager.
+  - **Strategy adapter liquidity, v0.1.0 to v0.4.0.** Two follow-ups to #221
+    ([#271](https://github.com/dadadave80/lattice/issues/271)):
+    - Aave V3 and Compound V3 recalls asked for the whole remainder, so when
+      borrowers had taken the market's cash, `rebalance()` reverted. A recall
+      is now capped at the cash the market can pay: the aToken's underlying
+      balance (and, on Aave v3.1+, the reserve's virtual balance), or the
+      Comet's base balance. The rest is an honest partial recall. Reproduce
+      with `test_Recall_UtilisationSpike_IsPartial_ThenCompletes` in the Aave
+      and Compound suites of
+      [`StrategyLiquidityTest`](test/integration/StrategyLiquidityTest.t.sol).
+    - The swap-free UniswapV3 adapter counted token1 in its NAV at the TWAP,
+      although the vault can only ever receive token0, so the last redeemers
+      bore the token1 value when the admin's `emergencyWithdraw` moved it out.
+      NAV is now token0 only (idle token0 plus the position's token0 leg), and
+      a recall pays idle token0 without unwinding the position. Reproduce with
+      `test_TargetZero_ExitViaAdminEmergencyWithdraw_ConservesNav` in the same
+      file. The pool prices a deploy at spot while NAV counts the new token0
+      leg at the TWAP, so a deploy steps NAV by about
+      `deployed × (√(P_spot / P_twap) − 1)`, and `deploy` runs inside the
+      permissionless `rebalance()`. It now refuses any step beyond
+      `slippageBps` of the token0 it consumes; within that bound an attacker
+      who moves spot can still choose the step. Reproduce with the
+      `test_Deploy_*Twap*` tests in the same file.
 - **CCTP hooks, v0.2.0 to v0.4.0: hook skipped on plain relay.** The
   permissionless `CCTPBridgeAdapter.relayMessage` relayed a message carrying a
   Lattice hook envelope without running the hook. The USDC was minted and the
@@ -215,9 +238,16 @@ original attack against the fixed code; run one with
   strategy's funds later return, depositors who entered after the removal share
   in them at the expense of earlier holders
   ([#270](https://github.com/dadadave80/lattice/issues/270)).
-- **Strategy adapter liquidity.** Aave V3 and Compound V3 recalls revert when
-  the market lacks cash, and the UniswapV3 adapter's token1 has no exit path to
-  the vault ([#271](https://github.com/dadadave80/lattice/issues/271)).
+- **UniswapV3 adapter exit (accepted).** `rebalance()` can allocate into the
+  swap-free position but never recall from it, so capital allocated there
+  reaches redeemers only after the admin's `emergencyWithdraw`, the only exit;
+  size the target with that in mind. The exit has no slippage floor and the
+  pool pays it at spot, so NAV steps by about
+  `leg0 × (√(P_twap / P_spot) − 1)`: run it while spot sits near the TWAP. It
+  sends the token1 leg and any idle token1 to the vault, outside NAV, and
+  VaultCore has no sweep for a non-asset token, so that token1 stays in the
+  vault unless its admin cuts a sweep in
+  ([#271](https://github.com/dadadave80/lattice/issues/271)).
 - **Conflicting module inits.** A second EIP-712 or AccessControl init in the
   same diamond silently overwrites the domain or adds an admin
   ([#205](https://github.com/dadadave80/lattice/issues/205)).

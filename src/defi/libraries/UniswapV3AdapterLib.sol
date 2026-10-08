@@ -12,7 +12,6 @@ import {PausableLib} from "@lattice/security/libraries/PausableLib.sol";
 import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib.sol";
 import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 import {UniswapV3FullRangeMath} from "@lattice/utils/libraries/UniswapV3FullRangeMath.sol";
-import {Math} from "@lattice/utils/libraries/math/Math.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
 //                                  STORAGE
@@ -82,29 +81,47 @@ struct UniswapV3AdapterStorage {
 ///         adapter is **swap-free** — the keeper funds both token0 and token1; (3) the vault-facing
 ///         `asset` is **token0** and all NAV is denominated in token0.
 ///
+///         **NAV is token0 only (#271).** Being swap-free, the adapter can only ever hand the vault
+///         token0, and the vault counts only its asset. NAV is therefore idle token0 plus the position's
+///         token0 leg. token1 is never NAV, whether it sits idle in the adapter (keeper-funded, or left
+///         over from a deploy) or in the position's token1 leg. Counting it would put value in the share
+///         price that no redeemer can receive.
+///
 ///         **Valuation — TWAP, never spot (the central risk).** NAV reads the pool's TWAP via
 ///         `pool.observe(twapWindow)`, converts the arithmetic-mean tick to a sqrt price, and derives
-///         the position's `(amount0, amount1)` at that price (token1 valued back into token0). It
-///         **never** reads `slot0`: the spot tick is single-block manipulable (a flash swap can push
-///         it arbitrarily), and pricing vault shares off spot would let an attacker mint/redeem at a
-///         skewed NAV. The TWAP averages the tick over the whole window, so a one-block spike barely
-///         moves it. Uncollected fees are NOT counted in NAV (they are the yield distribution,
-///         forwarded raw on `harvest`).
+///         the position's token0 leg at that price. It **never** reads `slot0`: the spot tick is
+///         single-block manipulable (a flash swap can push it arbitrarily), and pricing vault shares off
+///         spot would let an attacker mint/redeem at a skewed NAV. The TWAP averages the tick over the
+///         whole window, so a one-block spike barely moves it. Uncollected fees are NOT counted in NAV
+///         (they are the yield distribution, forwarded raw on `harvest`).
 ///
-///         **Shortfall-honest withdraw.** `withdraw(amount, to)` is token0-denominated: the adapter
-///         spends idle token0 first, then removes enough liquidity to free the remaining token0 (sized
-///         via the TWAP price), collects to itself and sends token0 to `to`. The token1 the decrease
-///         frees stays idle in the adapter, still counted in NAV at the TWAP price. It returns the REAL
-///         token0 delta and never over-reports; a recall that frees less token0 than asked is a partial
-///         recall, which the StrategyManager accepts while no value is lost.
+///         **Deploys happen at spot, so the guard bounds them.** The pool prices a mint or increase at spot,
+///         while NAV counts the new token0 leg at the TWAP. A deploy therefore steps NAV by about
+///         `consumed0 × (√(P_spot / P_twap) − 1)`, and `deploy` runs inside the permissionless `rebalance()`,
+///         where anyone can move spot first. `deploy` refuses any step larger than `slippageBps` of the token0
+///         it consumed (`UniswapV3AdapterDeployOffTwap`); the StrategyManager then reports the failed deploy and
+///         the token0 stays idle and counted. Within the bound the step is real: an attacker choosing spot can
+///         move NAV by up to `slippageBps` of each deploy, so keep `slippageBps` tight.
 ///
-///         **Exit needs the admin.** Being swap-free, the adapter can hand the vault only token0. At a
-///         target of 0, `rebalance()` removes the whole position and recalls every token0, but the token1
-///         leg stays idle in the adapter, counted in NAV, and every later rebalance is a zero partial
-///         recall, so `removeStrategy` refuses the adapter. To retire it: set the target to 0 and
-///         rebalance, then the admin calls `emergencyWithdraw`, which sends the token1 to the vault.
-///         The vault counts only token0, so NAV drops by the token1's TWAP value at that step; then
-///         `removeStrategy`. Until then the vault's NAV includes token1 it cannot pay out.
+///         **Withdraw pays idle token0 only.** `withdraw(amount, to)` is token0-denominated and sends at
+///         most the adapter's idle token0; it never removes liquidity. A decrease pays out at spot while
+///         NAV counts the token0 leg at the TWAP, so with spot above the TWAP it frees less token0 than NAV
+///         drops by, and the StrategyManager's value-loss check reverts the whole `rebalance()`; anyone
+///         who can move spot could force that. Deciding from spot would make the recall manipulable, and
+///         the token1 a decrease frees would sit idle with nothing to pair it. It returns the REAL token0
+///         delta and never over-reports; anything beyond the idle token0 is an honest partial recall,
+///         which the StrategyManager accepts.
+///
+///         **Exit needs the admin.** `rebalance()` can allocate into the position but never recall from it,
+///         so capital allocated here reaches redeemers only after the admin's `emergencyWithdraw`; size the
+///         target with that in mind. At a target of 0 a rebalance recalls the idle token0, the position's
+///         token0 leg stays counted, and `removeStrategy` refuses the adapter. To retire it: set the target
+///         to 0 and rebalance, then the admin calls `emergencyWithdraw`, which removes the position and sends
+///         both tokens to the vault; then `removeStrategy`. The token0 replaces the token0 leg NAV already
+///         counted, but the pool pays it at spot, so NAV steps by about `leg0 × (√(P_twap / P_spot) − 1)`
+///         with no slippage floor: the admin should exit while spot sits near the TWAP (and through a private
+///         transaction where one is available). The token1 lands in the vault outside NAV, and VaultCore has
+///         no sweep for a non-asset token, so it stays there unless the vault's admin cuts one in.
 /// @dev All heavy math lives in `UniswapV3FullRangeMath` to keep the facet under the 24KB limit.
 library UniswapV3AdapterLib {
     //*//////////////////////////////////////////////////////////////////////////
@@ -288,42 +305,42 @@ library UniswapV3AdapterLib {
         }
     }
 
-    /// @notice Total assets managed, denominated in token0 = idle token0 + idle token1 + the LP position,
-    ///         token1 valued at the TWAP price. Uncollected fees are intentionally excluded (forwarded raw
-    ///         on harvest, not part of principal NAV).
-    /// @dev **Manipulation-resistance:** token1 and the position are valued from the TWAP sqrt price (see
+    /// @notice Total assets managed, in token0 = idle token0 + the position's token0 leg at the TWAP price.
+    ///         token1 is excluded, idle or in the position: the swap-free adapter can never hand it to the
+    ///         vault as token0 (see the library's "NAV is token0 only"). Uncollected fees are intentionally
+    ///         excluded too (forwarded raw on harvest, not part of principal NAV).
+    /// @dev **Manipulation-resistance:** the position's token0 leg is derived from the TWAP sqrt price (see
     ///      `_twapSqrtPriceX96`), NEVER `slot0`. The TWAP averages the tick over `twapWindow`, so a
     ///      flash-loan spike of the spot price within one block barely moves the reported NAV — an
     ///      attacker cannot mint/redeem vault shares against a skewed price. `view` (observe is a
     ///      view). The adapter's state-changing ops are all `nonReentrant`, and VaultCore blocks
     ///      share-price-sensitive vault entries while a rebalance is in flight.
-    /// @dev **Idle token1 (#221):** `withdraw` keeps the token1 a recall frees in the adapter (the vault only
-    ///      counts token0), so idle token1 is NAV until `deploy` re-adds it. Keeper-funded token1 therefore
-    ///      also counts from the moment it lands, and `addStrategy` rejects the adapter while it holds any.
-    ///      Idle token1 that no position can pair with stays counted until the admin's `emergencyWithdraw`
-    ///      moves it to the vault (see the library's "Exit needs the admin").
+    /// @dev **token1 (#271):** keeper-funded token1 does not move NAV when it lands. A `deploy` turns idle token0
+    ///      into the token0 leg, consumed at spot and counted at the TWAP, so it leaves NAV flat at spot == TWAP
+    ///      and otherwise steps it by the gap, which `deploy` caps at `slippageBps` of the token0 consumed (see
+    ///      the library's "Deploys happen at spot"). An adapter holding only token1 reports zero, so
+    ///      `addStrategy` accepts it. The token1 is recovered only by the admin's `emergencyWithdraw`, which sends
+    ///      it to the vault, outside NAV.
     function totalAssetsManaged() internal view returns (uint256) {
         UniswapV3AdapterStorage storage $ = uniswapV3AdapterStorage();
         uint256 idle0 = AdapterBaseLib.balanceOfSelf($._token0);
-        uint256 idle1 = AdapterBaseLib.balanceOfSelf($._token1);
         uint128 liquidity = _positionLiquidity($);
-        if (liquidity == 0 && idle1 == 0) return idle0;
-        (uint160 sqrtTwap, uint256 amount0, uint256 amount1) = _positionAmounts($, liquidity);
-        return UniswapV3FullRangeMath.valueInToken0(idle0 + amount0, idle1 + amount1, sqrtTwap);
+        if (liquidity == 0) return idle0;
+        return idle0 + _positionAmount0($, liquidity);
     }
 
-    /// @notice The TWAP sqrt price and the token amounts `liquidity` of the full-range position holds at it.
-    /// @dev Shared by `totalAssetsManaged` and `withdraw`'s sizing. The price source is the TWAP sqrt
-    ///      price (`_twapSqrtPriceX96`) — never `slot0`. Excludes uncollected fees.
-    function _positionAmounts(UniswapV3AdapterStorage storage $, uint128 liquidity)
+    /// @notice The token0 that `liquidity` of the full-range position holds at the TWAP price.
+    /// @dev The price source is the TWAP sqrt price (`_twapSqrtPriceX96`) — never `slot0`. Excludes
+    ///      uncollected fees.
+    function _positionAmount0(UniswapV3AdapterStorage storage $, uint128 liquidity)
         private
         view
-        returns (uint160 sqrtTwap, uint256 amount0, uint256 amount1)
+        returns (uint256 amount0)
     {
-        sqrtTwap = _twapSqrtPriceX96($);
         uint160 sqrtLower = UniswapV3FullRangeMath.getSqrtRatioAtTick($._tickLower);
         uint160 sqrtUpper = UniswapV3FullRangeMath.getSqrtRatioAtTick($._tickUpper);
-        (amount0, amount1) = UniswapV3FullRangeMath.getAmountsForLiquidity(sqrtTwap, sqrtLower, sqrtUpper, liquidity);
+        (amount0,) =
+            UniswapV3FullRangeMath.getAmountsForLiquidity(_twapSqrtPriceX96($), sqrtLower, sqrtUpper, liquidity);
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -369,7 +386,10 @@ library UniswapV3AdapterLib {
     /// @notice Adds the adapter's held token0 + token1 to a full-range position: `mint` the first
     ///         time, `increaseLiquidity` thereafter. Swap-free — consumes whatever the keeper funded.
     /// @dev Slippage floors `amount0Min`/`amount1Min` are the desired amounts haircut by `slippageBps`
-    ///      (Uniswap enforces them; a thin/imbalanced pool that would consume too little reverts).
+    ///      (Uniswap enforces them; a thin/imbalanced pool that would consume too little reverts). The floors
+    ///      check the keeper's funding ratio, not the price, so `_checkDeployAtTwap` also refuses a deploy whose
+    ///      new token0 leg, counted at the TWAP, differs from the token0 it consumed at spot by more than
+    ///      `slippageBps` (#271).
     ///      "deployed" is reported in token0 units (the amount0 actually consumed) for parity with the
     ///      single-asset adapters; token1 consumption is incidental to building the position.
     function deploy() internal returns (uint256 deployed) {
@@ -395,7 +415,9 @@ library UniswapV3AdapterLib {
 
         // Mint the first time, increase thereafter. Kept in helpers so each MintParams/IncreaseParams
         // struct gets a fresh stack frame (the via-ir-disabled CI profile is stack-tight otherwise).
-        uint256 amount0 = $._tokenId == 0 ? _mintPosition($, bal0, bal1) : _increasePosition($, bal0, bal1);
+        (uint128 added, uint256 amount0) =
+            $._tokenId == 0 ? _mintPosition($, bal0, bal1) : _increasePosition($, bal0, bal1);
+        _checkDeployAtTwap($, added, amount0);
 
         // Clear residual approvals (defensive; mint/increase usually consume the exact desired).
         AdapterBaseLib.forceApprove(t0, npm, 0);
@@ -410,7 +432,7 @@ library UniswapV3AdapterLib {
     ///      the token0 actually consumed. Slippage floors are the balances haircut by `slippageBps`.
     function _mintPosition(UniswapV3AdapterStorage storage $, uint256 bal0, uint256 bal1)
         private
-        returns (uint256 amount0)
+        returns (uint128, uint256)
     {
         uint256 bps = $._slippageBps;
         (uint256 newId, uint128 liquidity, uint256 a0,) = INonfungiblePositionManager($._positionManager)
@@ -431,16 +453,17 @@ library UniswapV3AdapterLib {
             );
         $._tokenId = newId;
         emit IUniswapV3Adapter.UniswapV3PositionMinted(newId, liquidity);
-        return a0;
+        return (liquidity, a0);
     }
 
-    /// @dev Adds `(bal0, bal1)` to the existing position; returns the token0 actually consumed.
+    /// @dev Adds `(bal0, bal1)` to the existing position; returns the liquidity added and the token0 actually
+    ///      consumed.
     function _increasePosition(UniswapV3AdapterStorage storage $, uint256 bal0, uint256 bal1)
         private
-        returns (uint256 amount0)
+        returns (uint128, uint256)
     {
         uint256 bps = $._slippageBps;
-        (, uint256 a0,) = INonfungiblePositionManager($._positionManager)
+        (uint128 liquidity, uint256 a0,) = INonfungiblePositionManager($._positionManager)
             .increaseLiquidity(
                 INonfungiblePositionManager.IncreaseLiquidityParams({
                     tokenId: $._tokenId,
@@ -451,25 +474,34 @@ library UniswapV3AdapterLib {
                     deadline: block.timestamp
                 })
             );
-        return a0;
+        return (liquidity, a0);
     }
 
-    /// @notice Recalls up to `amount` of token0 to `to`: idle token0 first, then liquidity sized to free the
-    ///         remainder. Shortfall-honest: the returned value is the REAL token0 sent to `to`, never
-    ///         over-reported.
-    /// @dev Sizing: at the TWAP price the position's token0 leg is `amount0` per its full liquidity, so we
-    ///      remove the fraction `remainder / amount0` of liquidity (all of it when the remainder exceeds the
-    ///      leg). The decrease frees token0 AND token1 in the pool's ratio; both are collected to the adapter
-    ///      and only token0 is sent. The freed token1 stays idle, where `totalAssetsManaged` still counts it
-    ///      at the TWAP price, so a recall moves NAV to the vault without dropping any (sending token1 to the
-    ///      vault would drop it from NAV: the vault counts only its asset).
-    ///      Spot away from the TWAP: the decrease pays out at spot, so the token0 it frees differs from the
-    ///      TWAP-sized figure. Spot below the TWAP frees more token0 (the surplus stays idle, counted); spot
-    ///      above frees less (a partial recall). The TWAP value freed is never lower than the TWAP value of
-    ///      the liquidity removed (a full-range position's TWAP-valued amounts are smallest at spot == TWAP),
-    ///      so moving spot cannot make a recall lose value, and the StrategyManager's loss check never trips
-    ///      on it. Once the position holds no token0, nothing more can be recalled: see the library's
-    ///      "Exit needs the admin".
+    /// @dev Refuses a deploy that would step NAV by more than `slippageBps` of the token0 it consumed (#271).
+    ///      The pool prices a mint or increase at spot, so it takes `consumed0` token0, while NAV counts the
+    ///      `added` liquidity's token0 leg at the TWAP. NAV therefore moves by the difference, about
+    ///      `consumed0 × (√(P_spot / P_twap) − 1)`, and anyone who can move spot inside the permissionless
+    ///      `rebalance()` could choose it. Reverting rolls the deploy back, and the StrategyManager reports the
+    ///      failure and leaves the token0 idle (and counted), so the worst case is a skipped deploy. Compares
+    ///      the two amounts the deploy produced and never reads `slot0`. The 2 wei allowance absorbs the
+    ///      pool rounding the consumed amount up and the TWAP leg rounding down, so `slippageBps == 0` still
+    ///      deploys at spot == TWAP.
+    function _checkDeployAtTwap(UniswapV3AdapterStorage storage $, uint128 added, uint256 consumed0) private view {
+        uint256 counted0 = _positionAmount0($, added);
+        uint256 gap = counted0 > consumed0 ? counted0 - consumed0 : consumed0 - counted0;
+        if (gap > (consumed0 * $._slippageBps) / UNISWAP_V3_BPS_DENOMINATOR + 2) {
+            revert IUniswapV3Adapter.UniswapV3AdapterDeployOffTwap(consumed0, counted0);
+        }
+    }
+
+    /// @notice Recalls up to `amount` of token0 to `to` from the adapter's idle token0. Shortfall-honest: the
+    ///         returned value is the REAL token0 sent to `to`, never over-reported.
+    /// @dev Never removes liquidity (#271): a decrease pays out at spot against a TWAP-counted token0 leg, so
+    ///      with spot above the TWAP the StrategyManager would see a value loss and revert the whole
+    ///      `rebalance()` (see the library's "Withdraw pays idle token0 only"). Asking for more than the idle
+    ///      token0 is therefore an honest partial recall: the unpaid part stays in the counted token0 leg. The
+    ///      position is unwound only by the admin's `emergencyWithdraw` (see the library's "Exit needs the
+    ///      admin").
     function withdraw(uint256 amount, address to) internal returns (uint256 withdrawn) {
         _checkOperator();
         ReentrancyGuardLib.nonReentrantBefore();
@@ -480,15 +512,7 @@ library UniswapV3AdapterLib {
             ReentrancyGuardLib.nonReentrantAfter();
             revert IProtocolAdapter.ProtocolAdapterInvalidRecipient(to);
         }
-        address t0 = $._token0;
-        uint256 idle0 = AdapterBaseLib.balanceOfSelf(t0);
-        if (amount > idle0) {
-            uint128 liquidity = _positionLiquidity($);
-            // Helper keeps the heavy sizing locals off this frame for the stack-tight CI profile.
-            uint128 liquidityToRemove = liquidity == 0 ? 0 : _liquidityToFree($, liquidity, amount - idle0);
-            if (liquidityToRemove > 0) _decreaseAndCollect($, liquidityToRemove);
-        }
-        withdrawn = AdapterBaseLib.transferHonest(t0, to, amount);
+        withdrawn = AdapterBaseLib.transferHonest($._token0, to, amount);
         ReentrancyGuardLib.nonReentrantAfter();
     }
 
@@ -497,7 +521,7 @@ library UniswapV3AdapterLib {
     /// @dev Collects with `tokensOwed*` maxima straight to the recipient. Graceful on a zero-fee position
     ///      (collect returns 0). Because principal (live liquidity) is never decreased here, a non-zero
     ///      collect can only be accrued fees — never principal — so it cannot drain the LP position. Idle
-    ///      token0/token1 in the adapter is NAV and is never forwarded.
+    ///      balances are never forwarded: idle token0 is NAV, and idle token1 waits for the next `deploy`.
     function harvest() internal {
         _checkOperator();
         ReentrancyGuardLib.nonReentrantBefore();
@@ -524,8 +548,11 @@ library UniswapV3AdapterLib {
     ///         vault. Admin-gated; runs even when paused/stopped (the emergency path).
     /// @dev No slippage floor (min == 0): an emergency prioritizes getting funds out. Both token0 and
     ///      token1 (principal + any accrued fees, indistinguishable once collected) go to the vault.
-    ///      This is also the only way the token1 leg leaves the adapter (see "Exit needs the admin"): the
-    ///      vault counts only token0, so its NAV drops by the token1's TWAP value here.
+    ///      This is the only way the position is unwound and the only way token1 leaves the adapter (see
+    ///      "Exit needs the admin"). The token0 replaces the token0 leg and idle token0 NAV already counted,
+    ///      but the decrease pays at spot, so the vault's NAV steps by about `leg0 × (√(P_twap / P_spot) − 1)`
+    ///      (plus any collected token0 fees), with no floor: call it while spot sits near the TWAP. The token1
+    ///      was never NAV and lands in the vault outside it.
     function emergencyWithdraw() internal returns (uint256 recovered) {
         AccessControlLib.checkRole(DEFAULT_ADMIN_ROLE);
         ReentrancyGuardLib.nonReentrantBefore();
@@ -552,25 +579,8 @@ library UniswapV3AdapterLib {
     //                                INTERNAL
     //////////////////////////////////////////////////////////////////////////*//
 
-    /// @dev Sizes how much liquidity to remove to free ~`amount` of token0, pro-rata over the position's
-    ///      token0 leg at the TWAP price. Caps at the whole `liquidity` when `amount` >= the leg; returns 0
-    ///      when the position holds no token0; rounds a tiny non-zero ask up to 1 so dust still frees
-    ///      something. Isolated in a helper to keep the heavy valuation locals off `withdraw`'s frame
-    ///      (stack-tight CI profile).
-    function _liquidityToFree(UniswapV3AdapterStorage storage $, uint128 liquidity, uint256 amount)
-        private
-        view
-        returns (uint128 liquidityToRemove)
-    {
-        (, uint256 amount0,) = _positionAmounts($, liquidity);
-        if (amount0 == 0) return 0;
-        if (amount >= amount0) return liquidity;
-        liquidityToRemove = uint128(Math.mulDiv(liquidity, amount, amount0));
-        if (liquidityToRemove == 0) liquidityToRemove = 1;
-    }
-
     /// @dev Decreases `liquidityToRemove` from the position and collects the freed token0 + token1 (plus
-    ///      any accrued fees) to the adapter.
+    ///      any accrued fees) to the adapter. Used only by `emergencyWithdraw`.
     function _decreaseAndCollect(UniswapV3AdapterStorage storage $, uint128 liquidityToRemove) private {
         address npm = $._positionManager;
         uint256 id = $._tokenId;
@@ -582,7 +592,7 @@ library UniswapV3AdapterLib {
                 })
             );
         // Collect the freed amounts to the adapter. This also collects any accrued fees, since they are
-        // owed-tokens too; they become idle NAV rather than being forwarded on the next harvest.
+        // owed-tokens too; the emergency exit sweeps them to the vault with the principal.
         INonfungiblePositionManager(npm)
             .collect(
                 INonfungiblePositionManager.CollectParams({

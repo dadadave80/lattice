@@ -17,7 +17,11 @@ import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib
 ///         two-token, NFT-wrapped concentrated-liquidity position that does not fit the single-asset
 ///         `IStrategy` surface cleanly. Compromises (all documented in `UniswapV3AdapterLib`):
 ///         full-range only (no active range management), swap-free (the keeper funds both tokens),
-///         `asset` == token0, and NAV valued from the pool **TWAP** (`observe`), never `slot0` spot.
+///         `asset` == token0, and NAV counts token0 only (idle token0 plus the position's token0 leg),
+///         valued from the pool **TWAP** (`observe`), never `slot0` spot. A deploy, priced by the pool at
+///         spot, is refused when it would step that NAV by more than `slippageBps` of the token0 it
+///         consumes. A recall pays idle token0 only; the admin's `emergencyWithdraw` is the sole exit
+///         from the position.
 ///         All logic lives in UniswapV3AdapterLib.
 /// @dev Provenance: Uniswap V3 core (https://github.com/Uniswap/v3-core) + periphery
 ///      NonfungiblePositionManager (https://github.com/Uniswap/v3-periphery). The facet implements

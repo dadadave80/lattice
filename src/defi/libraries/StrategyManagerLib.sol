@@ -390,9 +390,9 @@ library StrategyManagerLib {
     ///      when `released` exceeds `received` by more than {REBALANCE_SHORTFALL_TOLERANCE}: the recall lost
     ///      value (slippage, an exit fee, or a strategy writing off more than it paid), which a permissionless
     ///      caller must not be able to realize. A recall that delivers less than asked while the strategy
-    ///      still reports the remainder (the Lido buffer, a UniswapV3 rounding remainder) is an honest partial
-    ///      recall: it completes, emits {IStrategyManager.StrategyPartiallyRecalled}, and the strategy stays
-    ///      over target until a later rebalance.
+    ///      still reports the remainder (the Lido buffer, Aave/Compound short of cash, a UniswapV3 position) is
+    ///      an honest partial recall: it completes, emits {IStrategyManager.StrategyPartiallyRecalled}, and the
+    ///      strategy stays over target until a later rebalance.
     function _recall(address strategy, uint256 current, uint256 requested, address vaultAddr, address asset_) private {
         // slither-disable-next-line reentrancy-balance deliberate idle delta; rebalance() is guarded
         uint256 idleBefore = IERC20(asset_).balanceOf(vaultAddr);
