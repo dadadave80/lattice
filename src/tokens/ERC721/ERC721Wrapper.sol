@@ -14,6 +14,8 @@ import {ERC721WrapperLib} from "@lattice/tokens/ERC721/libraries/ERC721WrapperLi
 ///      a diamond (issue #201 tracks declaring such seams). This facet accepts safe transfers only from the
 ///      underlying collection and reverts for every other ERC-721.
 ///      CUSTODY: the diamond escrows the underlying ids. One custodian of a collection per diamond.
+///      It mints and burns through {ERC721Lib}, so it must not share a diamond with {ERC721Enumerable} or
+///      {ERC721Votes}, and {ERC721Pausable} does not pause it (D25).
 /// @custom:lattice-version 0.5.0
 /// @custom:lattice-source OpenZeppelin v5.6.1
 contract ERC721Wrapper is IERC721Wrapper, IERC721Receiver {

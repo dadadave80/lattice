@@ -70,7 +70,7 @@ and a row here.
   `GovernedSafeDiamondCutStorage`; `setMinDelay` keeps its selector, so the id and slot are unchanged.
 - Utility libraries that hold no own ERC-7201 storage slot (`EnumerableSet`, `TimelockLib`) and
   token-extension libraries that declare no `*_STORAGE_SLOT` (`ERC20Burnable`, `ERC20Permit`,
-  `ERC20Votes`, `ERC7802`, `ERC721Burnable`) are intentionally **not** listed here. `ERC1155Burnable` and
+  `ERC20Votes`, `ERC7802`, `ERC721Burnable`, `ERC721Votes`) are intentionally **not** listed here. `ERC1155Burnable` and
   `ERC1155Pausable` are newer and follow the stateless-row convention (as `HederaPrngAdapter` and
   `SuperchainETHBridgeAdapter` do), so each has a row in the Tokens table even though neither has a slot of its
   own. `ERC1155Pausable` also registers no ERC-165 id of its own: its recipe registers `IPausable` (the Pausable
@@ -81,7 +81,9 @@ and a row here.
   `burn(uint256)` selector, at map slot
   `0x9eb38abe883a9d9203f59f04d3952f6b497989121d4c2afe4ca6d5038b9dfc43`. `ERC20Votes` registers **no** ERC-165 id: `IERC20Votes` declares only
   errors, so its interfaceId is the meaningless `0x00000000`, and the voting surface is advertised as
-  `IVotes` by `Votes`.) The cut-alias constants (`GovernedDiamondCutLib`/`SafeDiamondCutLib`
+  `IVotes` by `Votes`. `ERC721Votes` likewise registers no id of its own: it moves units in the `Votes` storage,
+  and its init registers `IVotes`. `ERC721Pausable` has no library and reuses `Pausable`'s storage and
+  `IPausable` id.) The cut-alias constants (`GovernedDiamondCutLib`/`SafeDiamondCutLib`
   `ERC165_MAP_ICUT_SLOT`, `ERC165_MAP_IACCESSCONTROLDIAMONDCUT_SLOT`) are asserted equal to diamond-lib's
   `ERC165_MAP_ICUT_SLOT` instead of being listed as unique slots.
 - **ERC7802** is the crosschain-native ERC-20 extension (ERC-7802: `crosschainMint`/`crosschainBurn`,
@@ -234,6 +236,7 @@ and a row here.
 | ERC721 | `lattice.storage.ERC721` | `0xb57056eaff39f17dbb7656e3d0f4bee059cc8b05a6894f946db4b85f3b03e700` | `IERC721` (EIP-721) | `0x80ac58cd` | `0x741e8246930c2bfc93c4e7042569e8d7f42e535e31e366398006f597e42d38fb` |
 | ERC721 (metadata) | `lattice.storage.ERC721` | (shares ERC721 slot) | `IERC721Metadata` | `0x5b5e139f` | `0xdec0fb77ff71ebf00e30e78bd255149ae2525d6ff9925bff1ddd9a569813231d` |
 | ERC721URIStorage | `lattice.storage.ERC721URIStorage` | `0xcad0a180da252dc6d7fda719c706c048d7fcfbea8301125fec9b8527feaa7700` | ERC-4906 (MetadataUpdate) | `0x49064906` | `0xf6e2df7ae707ae7f293659ac6f748c7ba27a30d8639e53e763363aebc5fa8f65` |
+| ERC721Enumerable | `lattice.storage.ERC721Enumerable` | `0xf44b1a2ac6259907d34f22f5cc88909b4db34b47d9193d82fe8ed2889ec8e200` | `IERC721Enumerable` | `0x780e9d63` | `0x9fad85d457c138ef818380b4b39b6b747ee53391250a17c4834c66e238e37af4` |
 | ERC721Wrapper | `lattice.storage.ERC721Wrapper` | `0x434ed71ac956f35c738c07eaadcb4935b3686524cef619db6f8caec66db4f500` | `IERC721Wrapper` | `0xd9e5011d` | `0x77282127b26cc01e57f32ac10fe9c172e5d41d192d3e6e87d2e5c74c35c6f9e8` |
 | ERC1155 | `lattice.storage.ERC1155` | `0xe39704fe713bf9d011ae08177a1e99cc7df74d40063bba4426aeb9d10e274c00` | `IERC1155` (EIP-1155) | `0xd9b67a26` | `0xa10754813726d67c8d4e4553f74a520d6623216a67c6c4a53860c47e2ccde594` |
 | ERC1155 (metadata URI) | `lattice.storage.ERC1155` | (shares ERC1155 slot) | `IERC1155MetadataURI` | `0x0e89341c` | `0x16223e323116e54e339612437d2478d553a51948c039066bf3354fac71c5ef6c` |

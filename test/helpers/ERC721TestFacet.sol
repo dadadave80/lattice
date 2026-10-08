@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {ERC721EnumerableLib} from "@lattice/tokens/ERC721/libraries/ERC721EnumerableLib.sol";
 import {ERC721Lib} from "@lattice/tokens/ERC721/libraries/ERC721Lib.sol";
 import {ERC721URIStorageLib} from "@lattice/tokens/ERC721/libraries/ERC721URIStorageLib.sol";
+import {ERC721VotesLib} from "@lattice/tokens/ERC721/libraries/ERC721VotesLib.sol";
 import {ERC721WrapperLib} from "@lattice/tokens/ERC721/libraries/ERC721WrapperLib.sol";
 
 /// @title ERC721TestFacet
@@ -50,5 +52,55 @@ contract ERC721TestFacet {
     ///         needs access control. Only meaningful on a wrapper diamond.
     function recoverWrapped(address account, uint256 tokenId) external returns (uint256) {
         return ERC721WrapperLib.recover(account, tokenId);
+    }
+
+    /// @notice Mints through {ERC721EnumerableLib}, as an app mint facet on an enumerable diamond must.
+    function enumerableMint(address to, uint256 tokenId) external {
+        ERC721EnumerableLib._mint(to, tokenId);
+    }
+
+    /// @notice Safely mints through {ERC721EnumerableLib}.
+    function enumerableSafeMint(address to, uint256 tokenId) external {
+        ERC721EnumerableLib._safeMint(to, tokenId, "");
+    }
+
+    /// @notice Burns through {ERC721EnumerableLib} with no authorization check.
+    function enumerableBurn(uint256 tokenId) external {
+        ERC721EnumerableLib._burn(tokenId);
+    }
+
+    /// @notice Transfers through {ERC721EnumerableLib} with no authorization check.
+    function enumerableTransfer(address from, address to, uint256 tokenId) external {
+        ERC721EnumerableLib._transfer(from, to, tokenId);
+    }
+
+    /// @notice Safely transfers through {ERC721EnumerableLib} with no authorization check.
+    function enumerableSafeTransfer(address from, address to, uint256 tokenId) external {
+        ERC721EnumerableLib._safeTransfer(from, to, tokenId, "");
+    }
+
+    /// @notice Mints through {ERC721VotesLib}, as an app mint facet on a votes diamond must.
+    function votesMint(address to, uint256 tokenId) external {
+        ERC721VotesLib._mint(to, tokenId);
+    }
+
+    /// @notice Safely mints through {ERC721VotesLib}.
+    function votesSafeMint(address to, uint256 tokenId) external {
+        ERC721VotesLib._safeMint(to, tokenId, "");
+    }
+
+    /// @notice Burns through {ERC721VotesLib} with no authorization check.
+    function votesBurn(uint256 tokenId) external {
+        ERC721VotesLib._burn(tokenId);
+    }
+
+    /// @notice Transfers through {ERC721VotesLib} with no authorization check.
+    function votesTransfer(address from, address to, uint256 tokenId) external {
+        ERC721VotesLib._transfer(from, to, tokenId);
+    }
+
+    /// @notice Safely transfers through {ERC721VotesLib} with no authorization check.
+    function votesSafeTransfer(address from, address to, uint256 tokenId) external {
+        ERC721VotesLib._safeTransfer(from, to, tokenId, "");
     }
 }

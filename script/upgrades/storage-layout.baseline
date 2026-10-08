@@ -247,6 +247,12 @@
 1	0	_validations	t_mapping(t_userDefinedValueType(ModuleEntity),t_struct(ValidationStorage)_storage)
 2	0	_interfaceRefCount	t_mapping(t_bytes4,t_uint256)
 
+### ERC721EnumerableStorage @ erc7201:lattice.storage.ERC721Enumerable (slot 0xf44b1a2ac6259907d34f22f5cc88909b4db34b47d9193d82fe8ed2889ec8e200)
+0	0	_ownedTokens	t_mapping(t_address,t_mapping(t_uint256,t_uint256))
+1	0	_ownedTokensIndex	t_mapping(t_uint256,t_uint256)
+2	0	_allTokens	t_array(t_uint256)dyn_storage
+3	0	_allTokensIndex	t_mapping(t_uint256,t_uint256)
+
 ### ERC721Storage @ erc7201:lattice.storage.ERC721 (slot 0xb57056eaff39f17dbb7656e3d0f4bee059cc8b05a6894f946db4b85f3b03e700)
 0	0	_owners	t_mapping(t_uint256,t_address)
 1	0	_balances	t_mapping(t_address,t_uint256)
