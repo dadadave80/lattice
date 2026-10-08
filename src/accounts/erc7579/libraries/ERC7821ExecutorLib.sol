@@ -80,10 +80,12 @@ library ERC7821ExecutorLib {
             runCalls(calls);
         } else {
             // Session-key batch: bound spend by the actual balance decrease across the batch (which captures
-            // indirect spends), not just direct transfer calldata. Snapshot before, settle after.
+            // indirect spends), not just direct transfer calldata. Snapshot before, settle after, then clear any
+            // allowance the batch left on a capped token so nothing can be pulled after the measurement.
             (address[] memory tokens, uint256[] memory before) = SessionKeyLib.snapshotSpend(sessionKey);
             runCalls(calls);
             SessionKeyLib.settleSpend(sessionKey, tokens, before, calls);
+            SessionKeyLib.resetApprovals(sessionKey, calls);
         }
         ERC7579ModuleConfigLib.postExecutionHook(hook, hookData);
         emit IERC7821Executor.BatchExecuted(mode, calls.length);

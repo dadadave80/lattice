@@ -9,8 +9,9 @@ import {ISessionKey} from "@lattice/interfaces/accounts/ISessionKey.sol";
 /// @notice Session-key facet. An admin registers scoped, expiring secondary keys (a `(target, selector)`
 ///         allowlist + validity window); a registered key can then authorize batches through the
 ///         `ERC7821Executor` signed-`opData` path without holding the owner key.
-/// @dev Stateless delegator — logic/storage live in {SessionKeyLib}. v1 enforces expiry + the allowlist
-///      (with `ANY_*` wildcards); per-token spend limits are a planned follow-on.
+/// @dev Stateless delegator — logic/storage live in {SessionKeyLib}. Enforces expiry, the allowlist (with
+///      `ANY_*` wildcards) and per-token cumulative spend limits, with post-batch approval resets on capped
+///      tokens. Revoking a key drops its grants and limits.
 /// @custom:lattice-version 0.1.0
 contract SessionKey is ISessionKey {
     /// @inheritdoc ISessionKey

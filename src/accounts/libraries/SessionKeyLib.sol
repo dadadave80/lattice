@@ -14,8 +14,8 @@ import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 /// @dev `keccak256(abi.encode(uint256(keccak256("lattice.storage.SessionKey")) - 1)) & ~bytes32(uint256(0xff))`.
 bytes32 constant SESSION_KEY_STORAGE_SLOT = 0xd72f45b3818762a6cc49804ed52c577908badd7fff8bbd7849829b4fc764ae00;
 
-/// @dev Wildcard sentinels: a permission registered with `ANY_TARGET` matches any target; with `ANY_SELECTOR`,
-///      any selector.
+/// @dev Wildcard sentinels: a permission registered with `ANY_TARGET` matches any target except the account
+///      itself; with `ANY_SELECTOR`, any selector.
 address constant ANY_TARGET = 0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF;
 bytes4 constant ANY_SELECTOR = 0xffffffff;
 
@@ -25,6 +25,14 @@ address constant NATIVE_TOKEN = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
 /// @dev ERC-20 selectors used for direct-transfer spend accounting.
 bytes4 constant _ERC20_TRANSFER = 0xa9059cbb; // transfer(address,uint256)
 bytes4 constant _ERC20_TRANSFER_FROM = 0x23b872dd; // transferFrom(address,address,uint256)
+
+/// @dev Allowance-granting ERC-20 selectors. On a capped token they are reset to 0 after a session-key batch.
+bytes4 constant _ERC20_APPROVE = 0x095ea7b3; // approve(address,uint256)
+bytes4 constant _ERC20_INCREASE_ALLOWANCE = 0x39509351; // increaseAllowance(address,uint256)
+
+/// @dev Approval selectors a session key may not call over a token it has a cap on.
+bytes4 constant _PERMIT2_APPROVE = 0x87517c45; // Permit2 approve(address token,address,uint160,uint48)
+bytes4 constant _SET_APPROVAL_FOR_ALL = 0xa22cb465; // setApprovalForAll(address,bool)
 
 /// @dev Sentinel for a capped token whose balance cannot be read (non-contract / reverting / malformed
 ///      `balanceOf`). Balance-diff then defers to the calldata sum for that token instead of reverting and
@@ -49,13 +57,17 @@ struct SpendLimit {
 struct SessionKeyStorage {
     /// @notice Validity window per key. APPEND-ONLY.
     mapping(address key => SessionKeyData) _keys;
-    /// @notice Allowlist: `_allowed[key][keccak256(target, selector)]`. APPEND-ONLY.
+    /// @notice Allowlist: `_allowed[key][_permHash(target, selector, _epoch[key])]`; epoch 0 keeps the original
+    ///         `keccak256(abi.encode(target, selector))` hash. APPEND-ONLY.
     mapping(address key => mapping(bytes32 permHash => bool)) _allowed;
     /// @notice Per-token cumulative spend caps. APPEND-ONLY.
     mapping(address key => mapping(address token => SpendLimit)) _spend;
     /// @notice Distinct tokens with a configured cap per key, so a batch's actual balance decrease can be
     ///         settled against every capped token (balance-diff accounting). APPEND-ONLY.
     mapping(address key => address[]) _cappedTokens;
+    /// @notice Grant generation per key. {SessionKeyLib.revokeSessionKey} bumps it so the key's earlier
+    ///         `_allowed` entries stop matching. APPEND-ONLY.
+    mapping(address key => uint256) _epoch;
 }
 
 /// @title SessionKeyLib
@@ -72,6 +84,25 @@ struct SessionKeyStorage {
 ///      token reports balances; a net-zero round-trip (tokens out and back) is not a spend; a token whose
 ///      `balanceOf` reverts / is a non-contract falls back to calldata-only (never bricks the key); and a
 ///      rebasing/exotic `balanceOf` only makes the INDIRECT measurement approximate (direct stays exact).
+///
+///      `ANY_TARGET` never matches the account itself, so a wildcard key cannot self-call `execute` (whose inner
+///      batch would run as a direct call with none of this accounting) or reach admin entrypoints such as
+///      {setSpendLimit}. A self-call needs a grant that names the account as its target.
+///
+///      Balance-diff only sees one batch, so an allowance must not outlive it. After the batch,
+///      {resetApprovals} forces `approve(spender, 0)` for every `approve` / `increaseAllowance` the batch made
+///      on a capped token, then checks `allowance(account, spender) == 0`, reverting the batch if either step
+///      fails. Caps are ERC-20 / native shaped: an ERC-721 `approve(spender, tokenId)` shares the ERC-20 selector
+///      but has no `allowance`, so on a capped ERC-721 it fails closed. The approved amount itself is not charged:
+///      only what actually leaves the account counts. A key may not call Permit2's
+///      `approve(token, spender, amount, expiration)` or `setApprovalForAll` over a token it has a cap on
+///      ({ISessionKey.ApprovalNotPermitted}); uncapped tokens are unaffected. Other allowance-granting
+///      entrypoints (e.g. a token-specific `increaseApproval`) are not recognised, so grant capped keys
+///      narrowly.
+///
+///      Revoking a key bumps its grant epoch, which orphans every earlier `(target, selector)` grant, and
+///      deletes its spend caps and spent counters. A re-registered key starts with only the grants and caps
+///      set after the revoke.
 library SessionKeyLib {
     function sessionKeyStorage() internal pure returns (SessionKeyStorage storage $) {
         assembly {
@@ -100,18 +131,27 @@ library SessionKeyLib {
 
         SessionKeyStorage storage $ = sessionKeyStorage();
         $._keys[key] = SessionKeyData(validAfter, validUntil);
+        uint256 epoch = $._epoch[key];
         uint256 n = permissions.length;
         for (uint256 i; i < n; ++i) {
-            $._allowed[key][_permHash(permissions[i].target, permissions[i].selector)] = true;
+            $._allowed[key][_permHash(permissions[i].target, permissions[i].selector, epoch)] = true;
         }
         emit ISessionKey.SessionKeyRegistered(key, validAfter, validUntil, n);
     }
 
-    /// @notice Revokes a session key (clears its validity window). Existing permission entries are inert once
-    ///         the key is inactive.
+    /// @notice Revokes a session key: clears its validity window, bumps its grant epoch so every earlier
+    ///         `(target, selector)` grant stops matching, and deletes its spend caps and spent counters.
     function revokeSessionKey(address key) internal {
         AccessControlLib.checkRole(DEFAULT_ADMIN_ROLE);
-        delete sessionKeyStorage()._keys[key];
+        SessionKeyStorage storage $ = sessionKeyStorage();
+        delete $._keys[key];
+        ++$._epoch[key];
+        address[] storage capped = $._cappedTokens[key];
+        uint256 n = capped.length;
+        for (uint256 i; i < n; ++i) {
+            delete $._spend[key][capped[i]];
+        }
+        delete $._cappedTokens[key];
         emit ISessionKey.SessionKeyRevoked(key);
     }
 
@@ -141,10 +181,14 @@ library SessionKeyLib {
         return (d.validAfter, d.validUntil);
     }
 
+    /// @dev `ANY_TARGET` grants never match `address(this)`: self-calls need an exact-target grant.
     function isCallPermitted(address key, address target, bytes4 selector) internal view returns (bool) {
-        mapping(bytes32 => bool) storage a = sessionKeyStorage()._allowed[key];
-        return a[_permHash(target, selector)] || a[_permHash(ANY_TARGET, selector)]
-            || a[_permHash(target, ANY_SELECTOR)] || a[_permHash(ANY_TARGET, ANY_SELECTOR)];
+        SessionKeyStorage storage $ = sessionKeyStorage();
+        mapping(bytes32 => bool) storage a = $._allowed[key];
+        uint256 epoch = $._epoch[key];
+        if (a[_permHash(target, selector, epoch)] || a[_permHash(target, ANY_SELECTOR, epoch)]) return true;
+        if (target == address(this)) return false;
+        return a[_permHash(ANY_TARGET, selector, epoch)] || a[_permHash(ANY_TARGET, ANY_SELECTOR, epoch)];
     }
 
     function spendLimit(address key, address token) internal view returns (uint256 cap, uint256 spent) {
@@ -158,6 +202,8 @@ library SessionKeyLib {
 
     /// @notice Reverts unless `key` is active and every call in `calls` is permitted. Called by the executor
     ///         when a batch's signed-`opData` was produced by a session key rather than the owner.
+    /// @dev Also refuses a Permit2 `approve` or a `setApprovalForAll` over a token the key has a cap on
+    ///      ({ISessionKey.ApprovalNotPermitted}): neither allowance can be reset by {resetApprovals}.
     function authorizeBatch(address key, Call[] memory calls) internal {
         if (!isSessionKeyActive(key)) revert ISessionKey.SessionKeyNotActive(key);
         uint256 n = calls.length;
@@ -167,6 +213,7 @@ library SessionKeyLib {
             if (!isCallPermitted(key, c.target, selector)) {
                 revert ISessionKey.CallNotPermitted(key, c.target, selector);
             }
+            _checkApproval(key, c.target, selector, c.data);
             if (c.value != 0) _accrueSpend(key, NATIVE_TOKEN, c.value);
             (address token, uint256 amount) = _decodeErc20Spend(c.target, c.data);
             if (amount != 0) _accrueSpend(key, token, amount);
@@ -206,6 +253,37 @@ library SessionKeyLib {
         }
     }
 
+    /// @notice Forces `approve(spender, 0)` AFTER the batch for every `approve` / `increaseAllowance` in
+    ///         `calls` whose target is a token `key` has a cap on, so no allowance outlives the batch it was
+    ///         measured in. Reverts {ISessionKey.ApprovalResetFailed} (rolling back the whole batch) if a reset
+    ///         reverts, returns `false`, or leaves `allowance(account, spender)` unreadable or non-zero; an empty
+    ///         return (USDT-style) is accepted.
+    /// @dev Allowances on uncapped tokens are left standing. The approved amount is not charged against the
+    ///      cap: {settleSpend} already charges whatever was pulled within the batch. The `allowance` read makes
+    ///      a capped non-ERC-20 (e.g. an ERC-721, where the reset would be `approve(spender, tokenId 0)`) fail
+    ///      closed.
+    /// @param key The session key that authorized the batch.
+    /// @param calls The executed batch.
+    function resetApprovals(address key, Call[] memory calls) internal {
+        mapping(address => SpendLimit) storage limits = sessionKeyStorage()._spend[key];
+        uint256 n = calls.length;
+        for (uint256 i; i < n; ++i) {
+            Call memory c = calls[i];
+            bytes4 sel = _selector(c.data);
+            if ((sel != _ERC20_APPROVE && sel != _ERC20_INCREASE_ALLOWANCE) || c.data.length < 0x24) continue;
+            if (!limits[c.target].configured) continue;
+            address spender = _addressArg(c.data);
+            (bool ok, bytes memory ret) = c.target.call(abi.encodeWithSelector(_ERC20_APPROVE, spender, uint256(0)));
+            if (ok && (ret.length == 0 || (ret.length >= 32 && abi.decode(ret, (uint256)) == 1))) {
+                (ok, ret) = c.target.staticcall(abi.encodeCall(IERC20.allowance, (address(this), spender)));
+                ok = ok && ret.length >= 32 && abi.decode(ret, (uint256)) == 0;
+            } else {
+                ok = false;
+            }
+            if (!ok) revert ISessionKey.ApprovalResetFailed(c.target, spender);
+        }
+    }
+
     //*//////////////////////////////////////////////////////////////////////////
     //                                  INTERNAL
     //////////////////////////////////////////////////////////////////////////*//
@@ -222,7 +300,7 @@ library SessionKeyLib {
 
     /// @notice Decodes a direct ERC-20 spend of the account's own balance from a call: `transfer(to, amount)`
     ///         or `transferFrom(address(this), to, amount)`. Returns `amount == 0` for anything else (indirect
-    ///         spending is bounded by the allowlist, not here).
+    ///         spending is measured by {settleSpend}'s balance decrease, not here).
     function _decodeErc20Spend(address target, bytes memory data) private view returns (address token, uint256 amount) {
         bytes4 sel = _selector(data);
         if (sel == _ERC20_TRANSFER && data.length >= 0x44) {
@@ -267,8 +345,30 @@ library SessionKeyLib {
         }
     }
 
-    function _permHash(address target, bytes4 selector) private pure returns (bytes32) {
-        return keccak256(abi.encode(target, selector));
+    /// @notice Reverts {ISessionKey.ApprovalNotPermitted} for a Permit2 `approve` whose `token` argument, or a
+    ///         `setApprovalForAll` whose target, is a token `key` has a cap on.
+    function _checkApproval(address key, address target, bytes4 sel, bytes memory data) private view {
+        address token;
+        if (sel == _SET_APPROVAL_FOR_ALL) token = target;
+        else if (sel == _PERMIT2_APPROVE && data.length >= 0x24) token = _addressArg(data);
+        else return;
+        if (sessionKeyStorage()._spend[key][token].configured) {
+            revert ISessionKey.ApprovalNotPermitted(key, token, sel);
+        }
+    }
+
+    /// @dev The first ABI argument of `data` (after the selector), masked to an address.
+    function _addressArg(bytes memory data) private pure returns (address a) {
+        assembly {
+            a := and(mload(add(data, 0x24)), 0xffffffffffffffffffffffffffffffffffffffff)
+        }
+    }
+
+    /// @dev Grants are keyed by the key's epoch. Epoch 0 keeps the original `(target, selector)` hash, so grants
+    ///      made before epochs existed stay valid until the key's first revoke.
+    function _permHash(address target, bytes4 selector, uint256 epoch) private pure returns (bytes32) {
+        if (epoch == 0) return keccak256(abi.encode(target, selector));
+        return keccak256(abi.encode(target, selector, epoch));
     }
 
     /// @dev The call's selector is the first 4 bytes of its calldata; a value transfer (data < 4 bytes) is

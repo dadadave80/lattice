@@ -415,6 +415,7 @@
 1	0	_allowed	t_mapping(t_address,t_mapping(t_bytes32,t_bool))
 2	0	_spend	t_mapping(t_address,t_mapping(t_address,t_struct(SpendLimit)_storage))
 3	0	_cappedTokens	t_mapping(t_address,t_array(t_address)dyn_storage)
+4	0	_epoch	t_mapping(t_address,t_uint256)
 
 ### ShieldedPoolStorage @ erc7201:lattice.storage.ShieldedPool (slot 0xa961220e87963afb8adc0f7621a90ce1922bf3bb438109c43cc7dacbc8e06600)
 0	0	_pools	t_mapping(t_uint256,t_struct(ShieldedPool)_storage)
