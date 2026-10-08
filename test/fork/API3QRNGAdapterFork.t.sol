@@ -36,17 +36,18 @@ contract MockAPI3QRNGAdapterForkContract is AccessControl, API3QRNGAdapter, Init
 // ---------------------------------------------------------------------------
 
 /// @title API3QRNGAdapterFork
-/// @notice Fork tests that exercise API3QRNGAdapter against a real Airnode RRP
+/// @notice Fork tests that exercise API3QRNGAdapter against the real AirnodeRrpV0
 ///         contract on Ethereum mainnet.
 ///
 /// Enabling fork tests:
 ///   export MAINNET_RPC_URL=<your-rpc-url>
-///   export API3_AIRNODE_RRP=<airnode-rrp-address>
-///   forge test --match-path "test/fork/*"
+///   forge test --match-path "test/fork/API3QRNGAdapterFork.t.sol"
 ///
-/// Without API3_AIRNODE_RRP set, all tests in this contract are skipped. A live
-/// request needs a funded sponsorWallet, which is out of scope here — these
-/// tests cover the on-chain config round-trip only.
+/// Without MAINNET_RPC_URL set, all tests in this contract are skipped. The fork
+/// is pinned (API3_QRNG_FORK_BLOCK overrides it), and API3_AIRNODE_RRP overrides
+/// the canonical AirnodeRrpV0 address. A live request needs a funded
+/// sponsorWallet, which is out of scope here: these tests cover the on-chain
+/// config round-trip only.
 contract API3QRNGAdapterFork is Test {
     // -------------------------------------------------------------------------
     //                              State
@@ -57,6 +58,11 @@ contract API3QRNGAdapterFork is Test {
 
     address airnodeRrp;
 
+    /// @notice Pinned mainnet block (December 2024), shared with the other mainnet oracle suites.
+    uint256 constant DEFAULT_FORK_BLOCK = 21_500_000;
+    /// @notice API3's AirnodeRrpV0, deployed at the same address on every chain API3 supports.
+    address constant AIRNODE_RRP_V0 = 0xa0AD79D995DdeeB18a14eAef56A549A04e3Aa1Bd;
+
     address constant DUMMY_AIRNODE = address(0xA1);
     bytes32 constant DUMMY_ENDPOINT_ID = keccak256("QRNG_ENDPOINT");
     address constant DUMMY_SPONSOR_WALLET = address(0xB1);
@@ -66,12 +72,12 @@ contract API3QRNGAdapterFork is Test {
     // -------------------------------------------------------------------------
 
     function setUp() public {
-        airnodeRrp = vm.envOr("API3_AIRNODE_RRP", address(0));
-        if (airnodeRrp == address(0)) {
+        if (bytes(vm.envOr("MAINNET_RPC_URL", string(""))).length == 0) {
             vm.skip(true);
             return;
         }
-        vm.createSelectFork("mainnet");
+        airnodeRrp = vm.envOr("API3_AIRNODE_RRP", AIRNODE_RRP_V0);
+        vm.createSelectFork("mainnet", vm.envOr("API3_QRNG_FORK_BLOCK", DEFAULT_FORK_BLOCK));
 
         qrng = new MockAPI3QRNGAdapterForkContract();
         qrng.initialize(admin);
@@ -84,6 +90,7 @@ contract API3QRNGAdapterFork is Test {
     /// @notice Configure the adapter with the live Airnode RRP and dummy fields,
     ///         then verify the config round-trips through getConfig.
     function test_Fork_ConfigRoundTrip() public {
+        assertGt(airnodeRrp.code.length, 0, "no AirnodeRrp code at the fork block");
         IAPI3QRNGAdapter.QRNGConfig memory cfg = IAPI3QRNGAdapter.QRNGConfig({
             airnodeRrp: airnodeRrp,
             airnode: DUMMY_AIRNODE,

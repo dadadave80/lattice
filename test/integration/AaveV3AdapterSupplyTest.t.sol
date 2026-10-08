@@ -48,7 +48,8 @@ contract MockAsset {
     }
 }
 
-/// @notice Rebasing aToken: 1:1 with the supplied underlying. The mock Pool mints/burns it.
+/// @notice Rebasing aToken: 1:1 with the supplied underlying. The mock Pool mints/burns it. As in Aave, the aToken
+///         custodies the reserve's underlying (its available cash), and the Pool pays out through it.
 contract MockAToken {
     MockAsset public immutable underlying;
     mapping(address => uint256) public balanceOf;
@@ -65,6 +66,11 @@ contract MockAToken {
         balanceOf[from] -= a;
     }
 
+    /// @dev Aave's `IAToken.transferUnderlyingTo`: pays the reserve's cash out, reverting when it is short.
+    function transferUnderlyingTo(address to, uint256 a) external {
+        require(underlying.transfer(to, a), "cash");
+    }
+
     function scaledBalanceOf(address u) external view returns (uint256) {
         return balanceOf[u];
     }
@@ -79,14 +85,21 @@ contract MockAToken {
 //////////////////////////////////////////////////////////////////////////*//
 
 /// @notice Minimal Aave v3 Pool + AddressesProvider for supply/withdraw/borrow/repay/HF.
-///         Holds supplied underlying; mints/burns the mock aToken 1:1. Tracks per-user debt so
+///         Supplied underlying sits on the aToken, as in Aave, so a borrow drains the reserve's cash and a
+///         withdrawal larger than that cash reverts; mints/burns the mock aToken 1:1. Tracks per-user debt so
 ///         the leverage tests (Task 8) reuse it. Health factor and account data are computed
 ///         from a configurable price + liquidation threshold.
+///         Virtual accounting (Aave v3.1+) is off by default, so `getVirtualUnderlyingBalance` reverts as on a
+///         v3.0 Pool. Once enabled, the virtual balance tracks supplies, withdrawals, borrows and repays but not
+///         direct transfers to the aToken, and a withdrawal beyond it underflows, as in Aave.
 contract MockAaveV3Pool {
     MockAsset public asset;
     MockAToken public aToken;
 
     mapping(address => uint256) public debt; // underlying-denominated variable debt
+
+    bool public virtualAccounting;
+    uint256 public virtualBalance;
 
     // Account-data knobs (Task 8 sets these; supply-only tests leave price=1e8, lt=8000).
     uint256 public priceBase8 = 1e8; // asset price in base ccy (8 decimals) — $1
@@ -122,14 +135,40 @@ contract MockAaveV3Pool {
         return priceBase8;
     }
 
+    /// @dev Turns on v3.1+ virtual accounting, starting from the aToken's current cash.
+    function enableVirtualAccounting() external {
+        virtualAccounting = true;
+        virtualBalance = asset.balanceOf(address(aToken));
+    }
+
+    /// @dev Adds reserve cash the way a third-party supplier would (counted in the virtual balance).
+    function addLiquidity(uint256 amount) external {
+        asset.mint(address(aToken), amount);
+        _addCash(amount);
+    }
+
+    function _addCash(uint256 amount) private {
+        if (virtualAccounting) virtualBalance += amount;
+    }
+
+    function _takeCash(uint256 amount) private {
+        if (virtualAccounting) virtualBalance -= amount;
+    }
+
     // --- IAaveV3Pool ---
+    function getVirtualUnderlyingBalance(address) external view returns (uint128) {
+        require(virtualAccounting, "v3.0 pool");
+        return uint128(virtualBalance);
+    }
+
     function getReserveData(address) external view returns (IAaveV3Pool.ReserveData memory d) {
         d.aTokenAddress = address(aToken);
         d.variableDebtTokenAddress = address(0xDEB7);
     }
 
     function supply(address, uint256 amount, address onBehalfOf, uint16) external {
-        require(asset.transferFrom(msg.sender, address(this), amount), "pull");
+        require(asset.transferFrom(msg.sender, address(aToken), amount), "pull");
+        _addCash(amount);
         aToken.mint(onBehalfOf, amount);
     }
 
@@ -137,19 +176,22 @@ contract MockAaveV3Pool {
         uint256 bal = aToken.balanceOf(msg.sender);
         uint256 amt = amount > bal ? bal : amount;
         aToken.burn(msg.sender, amt);
-        require(asset.transfer(to, amt), "send");
+        _takeCash(amt);
+        aToken.transferUnderlyingTo(to, amt);
         return amt;
     }
 
     function borrow(address, uint256 amount, uint256, uint16, address onBehalfOf) external {
         debt[onBehalfOf] += amount;
-        require(asset.transfer(msg.sender, amount), "borrow-send");
+        _takeCash(amount);
+        aToken.transferUnderlyingTo(msg.sender, amount);
     }
 
     function repay(address, uint256 amount, uint256, address onBehalfOf) external returns (uint256) {
         uint256 d = debt[onBehalfOf];
         uint256 amt = amount > d ? d : amount;
-        require(asset.transferFrom(msg.sender, address(this), amt), "repay-pull");
+        require(asset.transferFrom(msg.sender, address(aToken), amt), "repay-pull");
+        _addCash(amt);
         debt[onBehalfOf] -= amt;
         return amt;
     }

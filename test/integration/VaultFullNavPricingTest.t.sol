@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {DeployStrategyManager} from "@lattice-script/base/defi/DeployStrategyManager.s.sol";
 import {DeployVaultCore} from "@lattice-script/base/defi/DeployVaultCore.s.sol";
@@ -13,6 +14,7 @@ import {Lattice} from "@lattice/Lattice.sol";
 import {GovernedVaultParams} from "@lattice/defi/GovernedVaultInit.sol";
 import {StrategyManager} from "@lattice/defi/StrategyManager.sol";
 import {IStrategyManager} from "@lattice/interfaces/defi/IStrategyManager.sol";
+import {IStrategyManagerRecovery} from "@lattice/interfaces/defi/IStrategyManagerRecovery.sol";
 import {IVaultCore} from "@lattice/interfaces/defi/IVaultCore.sol";
 import {IStrategy} from "@lattice/interfaces/external/yearn/IStrategy.sol";
 import {IERC4626} from "@lattice/interfaces/tokens/IERC4626.sol";
@@ -59,6 +61,17 @@ contract NavStrategy is IStrategy {
     function withdraw(uint256 amount, address to) external override returns (uint256) {
         token.transfer(to, amount);
         return amount;
+    }
+}
+
+/// @notice A strategy manager built before the deposit latch: it has no `depositsLatched()` selector.
+contract LegacyManager {
+    function totalAllocated() external pure returns (uint256) {
+        return 0;
+    }
+
+    function reentrancyGuardEntered() external pure returns (bool) {
+        return false;
     }
 }
 
@@ -234,7 +247,8 @@ contract VaultFullNavPricingTest is VaultCoreTestBase, StrategyManagerTestBase {
         vault.redeem(1, alice, alice);
     }
 
-    /// @notice The admin can force-remove a strategy whose NAV read reverts, restoring the vault.
+    /// @notice The admin can force-remove a strategy whose NAV read reverts, restoring the vault: exits reopen at
+    ///         once, entries once the admin clears the deposit latch the removal set.
     function test_RevertingStrategy_ForceRemovedRestoresVault() public {
         strategy.brick();
 
@@ -249,19 +263,25 @@ contract VaultFullNavPricingTest is VaultCoreTestBase, StrategyManagerTestBase {
         assertEq(mgr.totalTargetBps(), 0, "target released");
         assertEq(vault.totalAssets(), IDLE, "stranded funds leave the NAV");
         assertEq(vault.maxWithdraw(alice), IDLE, "exits reopen");
-        assertGt(vault.maxDeposit(bob), 0, "entries reopen");
+        assertEq(vault.maxDeposit(bob), 0, "entries latched");
+
+        vm.prank(admin);
+        mgr.clearDepositLatch();
+        assertGt(vault.maxDeposit(bob), 0, "entries reopen once cleared");
     }
 
     /// @notice A force-removed strategy cannot be re-added while it still holds the stranded funds: re-adding
     ///         would step the NAV back up and hand the stranded value to whoever deposited at the idle-only
-    ///         NAV after the removal (here bob gets ~2x shares per asset).
+    ///         NAV after the removal (here bob gets ~2x shares per asset once the admin clears the latch).
     function test_ForceRemovedStrategy_ReaddWhileHoldingFunds_Reverts() public {
         strategy.brick();
         vm.prank(admin);
         mgr.removeStrategy(address(strategy));
         assertEq(vault.totalAssets(), IDLE, "stranded funds left the NAV");
 
-        // The window this test documents: deposits reopen at the idle-only NAV.
+        // The window this test documents: once the latch is cleared, deposits price on the idle-only NAV.
+        vm.prank(admin);
+        mgr.clearDepositLatch();
         uint256 bobShares = _deposit(bob, DEPOSIT);
         assertApproxEqAbs(bobShares, 2 * DEPOSIT, 2, "bob priced on idle only");
 
@@ -309,6 +329,161 @@ contract VaultFullNavPricingTest is VaultCoreTestBase, StrategyManagerTestBase {
         assertEq(vault.totalAssets(), IDLE, "NAV = idle; stranded funds left it");
         assertEq(vault.maxRedeem(alice), IDLE * (DEPOSIT + 1) / (IDLE + 1), "exits reopen");
         assertGt(vault.maxDeposit(bob), 0, "entries reopen");
+    }
+
+    /// @notice #270 regression: the donation-capture sandwich after a force removal. Once the bricked strategy
+    ///         leaves the NAV, a depositor entering at the idle-only price would capture half of any funds the
+    ///         strategy later returns (bob ~2x shares per asset, then a 500 return). The latch keeps entries
+    ///         closed until the admin clears it, so the returned funds accrue to the holders who stayed.
+    function test_ForceRemoval_DonationSandwich_DepositsLatched() public {
+        strategy.brick();
+        vm.prank(admin);
+        mgr.removeStrategy(address(strategy));
+
+        // Step 1 of the sandwich: enter at the idle-only NAV. Refused while latched.
+        assertEq(vault.maxDeposit(bob), 0, "maxDeposit while latched");
+        assertEq(vault.maxMint(bob), 0, "maxMint while latched");
+        underlying.mint(bob, DEPOSIT);
+        vm.startPrank(bob);
+        underlying.approve(vaultAddr, DEPOSIT);
+        vm.expectRevert(abi.encodeWithSelector(IVaultCore.VaultCoreDepositsLatched.selector, diamond));
+        vault.deposit(DEPOSIT, bob);
+        vm.expectRevert(abi.encodeWithSelector(IVaultCore.VaultCoreDepositsLatched.selector, diamond));
+        vault.mint(DEPOSIT, bob);
+        vm.stopPrank();
+
+        // Step 2: the stranded funds come back as a plain transfer.
+        strategy.unbrick();
+        vm.prank(address(strategy));
+        underlying.transfer(vaultAddr, ALLOCATED);
+
+        assertEq(vault.balanceOf(bob), 0, "bob holds no shares");
+        assertEq(vault.totalAssets(), DEPOSIT, "the full NAV is back");
+        assertEq(vault.convertToAssets(vault.balanceOf(alice)), DEPOSIT, "alice keeps the returned funds");
+
+        // The admin clears the latch once recovery is done; bob now enters at the full NAV.
+        vm.prank(admin);
+        mgr.clearDepositLatch();
+        vm.prank(bob);
+        assertEq(vault.deposit(DEPOSIT, bob), DEPOSIT, "bob priced on the full NAV");
+        assertEq(vault.convertToAssets(vault.balanceOf(alice)), DEPOSIT, "alice not diluted");
+    }
+
+    /// @notice While latched, exits stay open (capped at idle); only entries are closed.
+    function test_DepositLatch_ExitsStayOpen() public {
+        strategy.brick();
+        vm.prank(admin);
+        mgr.removeStrategy(address(strategy));
+
+        assertEq(vault.maxWithdraw(alice), IDLE, "maxWithdraw = idle");
+        assertEq(vault.maxRedeem(alice), IDLE * (DEPOSIT + 1) / (IDLE + 1), "maxRedeem capped at idle");
+        vm.startPrank(alice);
+        vault.withdraw(100e18, alice, alice);
+        assertEq(underlying.balanceOf(alice), 100e18, "withdraw paid");
+        uint256 out = vault.redeem(vault.maxRedeem(alice), alice, alice);
+        vm.stopPrank();
+        assertGt(out, 0, "redeem paid");
+        assertLe(underlying.balanceOf(alice), IDLE, "exits never exceed idle");
+    }
+
+    /// @notice A force removal sets the latch and emits DepositLatchSet after StrategyForceRemoved.
+    function test_DepositLatch_SetByForceRemoval_Events() public {
+        assertFalse(mgr.depositsLatched(), "starts unlatched");
+        strategy.brick();
+
+        vm.expectEmit(true, false, false, false, diamond);
+        emit IStrategyManager.StrategyForceRemoved(address(strategy));
+        vm.expectEmit(true, false, false, false, diamond);
+        emit IStrategyManagerRecovery.DepositLatchSet(address(strategy));
+        vm.expectEmit(true, false, false, false, diamond);
+        emit IStrategyManager.StrategyRemoved(address(strategy));
+        vm.prank(admin);
+        mgr.removeStrategy(address(strategy));
+
+        assertTrue(mgr.depositsLatched(), "latched");
+    }
+
+    /// @notice A normal (empty-strategy) removal does not latch.
+    function test_DepositLatch_NotSetByNormalRemoval() public {
+        vm.prank(admin);
+        mgr.updateStrategyTarget(address(strategy), 0);
+        mgr.rebalance(); // recalls everything
+        vm.prank(admin);
+        mgr.removeStrategy(address(strategy));
+
+        assertFalse(mgr.depositsLatched(), "not latched");
+        assertEq(vault.maxDeposit(bob), type(uint256).max, "maxDeposit open");
+        assertEq(_deposit(bob, 1e18), 1e18, "deposit open");
+    }
+
+    /// @notice Only DEFAULT_ADMIN_ROLE clears; the clear emits DepositLatchCleared and reopens entries.
+    function test_DepositLatch_Clear_AuthAndEvent() public {
+        strategy.brick();
+        vm.prank(admin);
+        mgr.removeStrategy(address(strategy));
+
+        vm.prank(bob);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                bytes4(keccak256("AccessControlUnauthorizedAccount(address,bytes32)")), bob, bytes32(0)
+            )
+        );
+        mgr.clearDepositLatch();
+        assertTrue(mgr.depositsLatched(), "still latched");
+
+        vm.expectEmit(true, false, false, false, diamond);
+        emit IStrategyManagerRecovery.DepositLatchCleared(admin);
+        vm.prank(admin);
+        mgr.clearDepositLatch();
+
+        assertFalse(mgr.depositsLatched(), "cleared");
+        assertEq(vault.maxDeposit(bob), type(uint256).max, "maxDeposit reopens");
+        assertEq(vault.maxMint(bob), type(uint256).max, "maxMint reopens");
+        assertGt(_deposit(bob, 1e18), 0, "deposit reopens");
+    }
+
+    /// @notice Clearing an unset latch reverts.
+    function test_DepositLatch_ClearWhenNotSet_Reverts() public {
+        vm.prank(admin);
+        vm.expectRevert(IStrategyManagerRecovery.StrategyManagerDepositLatchNotSet.selector);
+        mgr.clearDepositLatch();
+    }
+
+    /// @notice Known open route (SECURITY.md): the latch lives in the manager, so the vault admin swapping in a
+    ///         fresh manager drops it without `clearDepositLatch`, and deposits reopen at the idle-only NAV.
+    function test_DepositLatch_ManagerSwapDropsLatch() public {
+        strategy.brick();
+        vm.prank(admin);
+        mgr.removeStrategy(address(strategy));
+        assertEq(vault.maxDeposit(bob), 0, "latched");
+
+        address freshMgr = _deployStrategyManager(admin);
+        vm.prank(admin);
+        vault.setStrategyManager(freshMgr);
+
+        assertTrue(mgr.depositsLatched(), "old manager still latched");
+        assertEq(vault.maxDeposit(bob), type(uint256).max, "swap reopens entries");
+        assertApproxEqAbs(_deposit(bob, DEPOSIT), 2 * DEPOSIT, 2, "bob priced on idle only");
+    }
+
+    /// @notice The manager diamond advertises the recovery interface next to IStrategyManager.
+    function test_DepositLatch_SupportsInterface() public view {
+        assertTrue(ERC165Facet(diamond).supportsInterface(type(IStrategyManager).interfaceId), "IStrategyManager");
+        assertTrue(
+            ERC165Facet(diamond).supportsInterface(type(IStrategyManagerRecovery).interfaceId),
+            "IStrategyManagerRecovery"
+        );
+    }
+
+    /// @notice A manager without the latch selector reads as unlatched: entries stay open.
+    function test_DepositLatch_ManagerWithoutSelector_Unlatched() public {
+        LegacyManager legacy = new LegacyManager();
+        vm.prank(admin);
+        vault.setStrategyManager(address(legacy));
+
+        assertEq(vault.maxDeposit(bob), type(uint256).max, "maxDeposit open");
+        assertEq(vault.maxMint(bob), type(uint256).max, "maxMint open");
+        assertGt(_deposit(bob, 1e18), 0, "deposit open");
     }
 
     /// @notice Force removal is admin-gated like a normal removal.
@@ -525,6 +700,36 @@ contract GovernedVaultFullNavPricingTest is GovernedVaultTestBase {
         vm.expectRevert(abi.encodeWithSelector(IERC4626.ERC4626ExceededMaxDeposit.selector, bob, 1e18, 0));
         vault.deposit(1e18, bob);
         vm.stopPrank();
+    }
+
+    /// @notice #270 on the governed recipe: its {GovernedVault} deposit/mint wrappers and the VaultCore-served
+    ///         `maxDeposit`/`maxMint` honor the latch, so the returned funds stay with the holders who stayed.
+    function test_Governed_ForceRemoval_DonationSandwich_DepositsLatched() public {
+        strategy.brick();
+        mgr.removeStrategy(address(strategy)); // this test contract is the manager admin
+        assertTrue(mgr.depositsLatched(), "latched");
+
+        assertEq(vault.maxDeposit(bob), 0, "maxDeposit while latched");
+        assertEq(vault.maxMint(bob), 0, "maxMint while latched");
+        assertEq(vault.maxWithdraw(alice), IDLE, "exits open, capped at idle");
+
+        asset.mint(bob, DEPOSIT);
+        vm.startPrank(bob);
+        asset.approve(vaultAddr, DEPOSIT);
+        vm.expectRevert(abi.encodeWithSelector(IVaultCore.VaultCoreDepositsLatched.selector, address(mgr)));
+        vault.deposit(DEPOSIT, bob);
+        vm.expectRevert(abi.encodeWithSelector(IVaultCore.VaultCoreDepositsLatched.selector, address(mgr)));
+        vault.mint(DEPOSIT, bob);
+        vm.stopPrank();
+
+        strategy.unbrick();
+        vm.prank(address(strategy));
+        asset.transfer(vaultAddr, DEPOSIT - IDLE);
+        assertEq(vault.convertToAssets(vault.balanceOf(alice)), DEPOSIT, "alice keeps the returned funds");
+
+        mgr.clearDepositLatch();
+        vm.prank(bob);
+        assertEq(vault.deposit(DEPOSIT, bob), DEPOSIT, "bob priced on the full NAV");
     }
 }
 

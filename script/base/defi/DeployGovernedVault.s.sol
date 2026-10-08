@@ -34,6 +34,7 @@ import {IVotes} from "@lattice/interfaces/governance/IVotes.sol";
 ///      - `decimals` — excluded from ERC20 (the ERC4626 share-offset variant wins).
 ///      - `transfer`/`transferFrom` — excluded from ERC20 and ERC20Votes (the checkpoint-seam versions win).
 ///      - `totalAssets` — excluded from ERC4626 (the VaultCore strategy-aware version wins).
+///      - `maxDeposit`/`maxMint` — excluded from ERC4626 (the VaultCore deposit-latch-aware versions win).
 ///      - `deposit`/`mint`/`withdraw`/`redeem` — excluded from ERC4626 and VaultCore (the checkpoint-seam
 ///        versions on {GovernedVault} win).
 ///      - `delegate`/`delegateBySig` — excluded from Votes (the balance-aware {ERC20Votes} versions win).
@@ -175,14 +176,17 @@ contract DeployGovernedVault is BaseDeploy {
         e[3] = bytes4(keccak256("transferFrom(address,address,uint256)"));
     }
 
-    /// @notice ERC-4626 clashes: strategy-aware `totalAssets` and the checkpoint-seam mint/burn flows.
+    /// @notice ERC-4626 clashes: strategy-aware `totalAssets`, deposit-latch-aware `maxDeposit`/`maxMint`, and the
+    ///         checkpoint-seam mint/burn flows.
     function _erc4626Exclusions() private pure returns (bytes4[] memory e) {
-        e = new bytes4[](5);
+        e = new bytes4[](7);
         e[0] = bytes4(keccak256("totalAssets()"));
         e[1] = bytes4(keccak256("deposit(uint256,address)"));
         e[2] = bytes4(keccak256("mint(uint256,address)"));
         e[3] = bytes4(keccak256("withdraw(uint256,address,address)"));
         e[4] = bytes4(keccak256("redeem(uint256,address,address)"));
+        e[5] = bytes4(keccak256("maxDeposit(address)"));
+        e[6] = bytes4(keccak256("maxMint(address)"));
     }
 
     /// @notice VaultCore clashes: the checkpoint-seam mint/burn flows win over the guarded variants.

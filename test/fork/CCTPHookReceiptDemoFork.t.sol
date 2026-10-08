@@ -45,7 +45,7 @@ contract CCTPHookReceiptDemoFork is Test {
         string memory json = vm.readFile(FIXTURE);
         bytes memory message = vm.parseJsonBytes(json, ".message");
         if (message.length == 0) {
-            vm.skip(true);
+            ArchiveFork.skipOrFail(ArchiveFork.strict(), string.concat(FIXTURE, " has no captured message"));
             return;
         }
 

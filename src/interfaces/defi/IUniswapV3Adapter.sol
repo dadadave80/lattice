@@ -15,25 +15,38 @@ pragma solidity >=0.8.4;
 ///         (`pool.observe` over `twapWindow`), NEVER from `slot0` spot — the spot tick is
 ///         single-block manipulable, so reading it for share pricing would let an attacker mint/burn
 ///         vault shares at a flash-loan-skewed price. The TWAP tick is converted to a sqrt price and
-///         the position's `(amount0, amount1)` are derived at that price, with token1 valued back
-///         into token0. Idle token0 and token1 held by the adapter count too. See
+///         the position's token0 leg is derived at that price.
+///
+///         **NAV is token0 only.** The vault can only ever receive token0, so NAV is idle token0 plus
+///         the position's token0 leg. token1 is never counted, whether idle in the adapter or in the
+///         position's token1 leg, so NAV never includes value a redeemer cannot receive. See
 ///         `UniswapV3AdapterLib.totalAssetsManaged`.
 ///
 ///         **Swap-free.** The adapter never swaps. The keeper supplies BOTH token0 and token1 to the
-///         adapter before `deploy`; the adapter only adds/removes liquidity. Accrued fees (token0 +
-///         token1) are routed RAW to `rewardRecipient` on `harvest`; idle balances never are.
+///         adapter before `deploy`; the adapter only adds/removes liquidity. The keeper's token1 never
+///         enters NAV. Accrued fees (token0 + token1) are routed RAW to `rewardRecipient` on `harvest`;
+///         idle balances never are.
 ///
-///         **Two-token withdraw caveat.** `IStrategy.withdraw(amount, to)` is denominated in token0.
-///         The adapter spends idle token0 first, then removes enough liquidity to free the remaining
-///         token0 (sized via the TWAP price) and sends **token0** to `to`. The freed **token1** stays
-///         idle in the adapter, still counted in NAV, until `deploy` re-adds it. It is
-///         **shortfall-honest**: it returns the REAL token0 delta and never over-reports; the
-///         StrategyManager accepts the resulting partial recall while no value is lost.
+///         **Deploy bound.** The pool prices a mint at spot while NAV counts the new token0 leg at the
+///         TWAP, so a deploy steps NAV by about `consumed0 × (√(P_spot / P_twap) − 1)`: flat only at
+///         spot == TWAP. `deploy` runs inside the permissionless `rebalance()`, so it refuses a step larger
+///         than `slippageBps` of the token0 consumed (`UniswapV3AdapterDeployOffTwap`). Within that bound
+///         an attacker who moves spot can still choose the step.
 ///
-///         **Exit.** `rebalance()` alone cannot take the strategy to zero: at a target of 0 it recalls
-///         every token0 but the token1 leg stays in the adapter, counted in NAV, and `removeStrategy`
-///         refuses. The admin's `emergencyWithdraw` sends that token1 to the vault, where it drops out
-///         of NAV (the vault counts only token0); the strategy can then be removed.
+///         **Withdraw pays idle token0 only.** `IStrategy.withdraw(amount, to)` is denominated in
+///         token0 and sends only the adapter's idle token0; it never removes liquidity (a decrease pays
+///         out at spot against the TWAP-counted leg, which the StrategyManager's value-loss check would
+///         reject whenever spot sits above the TWAP). It is **shortfall-honest**: it returns the REAL
+///         token0 delta and never over-reports; the StrategyManager accepts the partial recall.
+///
+///         **Exit.** `rebalance()` can allocate into the position but never recall from it, so capital
+///         allocated here reaches redeemers only after the admin's `emergencyWithdraw`. At a target of 0
+///         a rebalance recalls the idle token0, the token0 leg stays counted, and `removeStrategy`
+///         refuses. The admin's `emergencyWithdraw` removes the position and sends both tokens to the
+///         vault, and the strategy can then be removed. The token0 replaces the counted leg but is paid at
+///         spot with no floor, so NAV steps by about `leg0 × (√(P_twap / P_spot) − 1)`: exit while spot
+///         sits near the TWAP. The token1 lands in the vault outside NAV; VaultCore has no sweep for a
+///         non-asset token.
 interface IUniswapV3Adapter {
     /// @notice Emitted once at init with the core wiring.
     /// @param positionManager The Uniswap V3 NonfungiblePositionManager.
@@ -75,6 +88,13 @@ interface IUniswapV3Adapter {
     /// @notice The position manager's `positions()` call failed or returned short data.
     /// @param tokenId The adapter's position NFT id.
     error UniswapV3AdapterPositionsCallFailed(uint256 tokenId);
+
+    /// @notice A deploy consumed `consumed0` token0 at the pool's spot price, but the liquidity it added holds
+    ///         `counted0` token0 at the TWAP, and the gap exceeds `slippageBps` of `consumed0`. Spot is too far
+    ///         from the TWAP: deploying would step the vault's NAV by that gap.
+    /// @param consumed0 The token0 the mint or increase took from the adapter.
+    /// @param counted0 The token0 the added liquidity holds at the TWAP price, as NAV counts it.
+    error UniswapV3AdapterDeployOffTwap(uint256 consumed0, uint256 counted0);
 
     /// @notice Returns the Uniswap V3 NonfungiblePositionManager.
     function positionManager() external view returns (address);

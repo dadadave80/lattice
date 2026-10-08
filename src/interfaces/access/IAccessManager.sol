@@ -20,10 +20,10 @@ pragma solidity >=0.8.4;
 ///      and a `schedule` by a caller with immediate access reverts `AccessManagerNotScheduled`); `execute` does not
 ///      reject a target without code (OZ reverts `AddressEmptyCode`); `schedule` raises
 ///      a too-early `when` to the earliest allowed time instead of reverting; nonces come from one global counter;
-///      re-granting a member applies a new execution delay at once (OZ delays a decrease by the difference); and
-///      `expiration()`/`minSetback()` are not exposed (1 week and 5 days). In a diamond, `address(this)` also hosts
-///      the other facets, so a call `execute` makes to the diamond with a selector that is not one of this
-///      manager's admin functions is gated by the diamond's own target roles (see issue #240). Those default to
+///      `hasRole` reports an execution delay of 0 for an account whose grant is still waiting out the grant delay
+///      (OZ returns `(false, delay)`; membership and `canCall` are the same); and `expiration()`/`minSetback()` are
+///      not exposed (1 week and 5 days). In a diamond, `address(this)` also hosts the other facets, so a call
+///      `execute` makes to the diamond with a selector that is not one of this manager's admin functions is gated by the diamond's own target roles (see issue #240). Those default to
 ///      ADMIN_ROLE, and the call arrives with `msg.sender == address(this)`, so a co-cut ADMIN_ROLE holder acts as
 ///      the diamond itself on every other facet: it passes any gate that trusts the diamond as caller, such as
 ///      GovernedDiamondCut's UPGRADE_EXECUTOR_ROLE, the timelock's self-only setters and the ERC-7786 handlers.

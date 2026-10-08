@@ -31,7 +31,7 @@ forge build && forge test --match-test test_EverySharedSelectorIsClassified -vv
 A selector with mixed relations takes the most restrictive class, and its note names the others. For example,
 `transferFrom` is an ERC-20 override seam and also an ERC-20/ERC-721 standard clash, so it is Incompatible.
 
-Today's 63 shared selectors: 18 Variant, 11 Override, 1 Identical, 18 One per diamond, 15 Incompatible.
+Today's 65 shared selectors: 18 Variant, 13 Override, 1 Identical, 18 One per diamond, 15 Incompatible.
 
 ## Scope and decisions
 
@@ -77,6 +77,7 @@ Today's 63 shared selectors: 18 Variant, 11 Override, 1 Identical, 18 One per di
 | `0x36568abe` | `renounceRole(bytes32,address)` | AccessControl, AccessControlEnumerable, AccessControlTimed | Variant | AccessControl flavours: cut one |
 | `0x3adda78e` | `getCutRecord(uint256)` | GovernedDiamondCut, GovernedSafeDiamondCut, SafeDiamondCut | Variant | cut-gate variants: cut one |
 | `0x3cb747bf` | `messenger()` | L1ToL2CrossDomainMessengerGatewayAdapter, L2ToL2CrossDomainMessengerGatewayAdapter | One per diamond | OP messenger gateways: one per diamond |
+| `0x402d267d` | `maxDeposit(address)` | ERC4626, VaultCore | Override | VaultCore's deposit-latch-aware cap replaces ERC4626's |
 | `0x4487678f` | `freezeSelectors(bytes4[])` | GovernedDiamondCut, GovernedSafeDiamondCut, SafeDiamondCut | Variant | cut-gate variants: cut one |
 | `0x4bf5d7e9` | `CLOCK_MODE()` | GovernedVault, Governor, Votes | Override | GovernedVault owns it; Governor's version reads its token's clock(), here the diamond itself |
 | `0x584b153e` | `isOperationPending(bytes32)` | GovernedSafeDiamondCut, TimelockController | Incompatible | GovernedSafe cut views vs TimelockController (Lattice-chosen; 0xacb1aeb6) |
@@ -105,6 +106,7 @@ Today's 63 shared selectors: 18 Variant, 11 Override, 1 Identical, 18 One per di
 | `0xba087652` | `redeem(uint256,address,address)` | ERC4626, GovernedVault, VaultCore | Override | ERC4626 < VaultCore < GovernedVault checkpoint seam |
 | `0xc3cda520` | `delegateBySig(address,uint256,uint256,uint8,bytes32,bytes32)` | ERC20Votes, Votes | Override | ERC20Votes' balance-aware delegation replaces Votes' |
 | `0xc3f909d4` | `getConfig()` | API3QRNGAdapter, ChainlinkVRF, GelatoAutomateAdapter, PythEntropyAdapter | Incompatible | four different return types (Lattice-chosen) |
+| `0xc63d75b6` | `maxMint(address)` | ERC4626, VaultCore | Override | VaultCore's deposit-latch-aware cap replaces ERC4626's |
 | `0xc83542a6` | `emergencyRemoveCut((address,uint8,bytes4[])[])` | GovernedDiamondCut, GovernedSafeDiamondCut, SafeDiamondCut | Variant | cut-gate variants: cut one |
 | `0xc8d8e114` | `isSelectorFrozen(bytes4)` | GovernedDiamondCut, GovernedSafeDiamondCut, SafeDiamondCut | Variant | cut-gate variants: cut one |
 | `0xcdfe7f5c` | `sendMessage(bytes,bytes,bytes[])` | AxelarGatewayAdapter, CCIPGatewayAdapter, CrosschainLink, ERC7786OpenBridge, HyperbridgeGatewayAdapter, HyperlaneGatewayAdapter, L1ToL2CrossDomainMessengerGatewayAdapter, L2ToL2CrossDomainMessengerGatewayAdapter, LayerZeroGatewayAdapter, WormholeGatewayAdapter, ZetaChainGatewayAdapter | One per diamond | ERC-7786 senders: one per diamond |

@@ -46,6 +46,8 @@ struct VaultCoreStorage {
 ///      - `totalAssets()` is overridden to include both idle and allocated assets. {ERC4626Lib} prices
 ///        shares by self-staticcalling the diamond's `totalAssets()`, so conversions, previews and
 ///        mutators all use this full NAV, while `maxWithdraw`/`maxRedeem` stay capped at idle assets.
+///      - After a strategy force removal the manager latches deposits closed ({depositsLatched}): deposit/mint
+///        revert and `maxDeposit`/`maxMint` return 0 until the manager admin clears the latch (#270).
 library VaultCoreLib {
     //*//////////////////////////////////////////////////////////////////////////
     //                              STORAGE ACCESS
@@ -190,5 +192,25 @@ library VaultCoreLib {
         if (ok && data.length >= 32 && abi.decode(data, (bool))) {
             revert IVaultCore.VaultCoreManagerRebalancing();
         }
+    }
+
+    /// @notice Returns true while the configured strategy manager latches deposits closed.
+    /// @dev Reads the manager's `depositsLatched()` (`IStrategyManagerRecovery`), which a strategy force removal
+    ///      sets (#270). No manager, or a manager whose read fails or returns short data (one without the
+    ///      latch selector), counts as unlatched, mirroring {requireManagerNotRebalancing}. Any nonzero word
+    ///      counts as latched, so a malformed answer keeps deposits closed rather than reverting the views.
+    function depositsLatched() internal view returns (bool) {
+        address manager = vaultCoreStorage()._strategyManager;
+        if (manager == address(0)) return false;
+        (bool ok, bytes memory data) = manager.staticcall(abi.encodeWithSignature("depositsLatched()"));
+        return ok && data.length >= 32 && abi.decode(data, (uint256)) != 0;
+    }
+
+    /// @notice Reverts with {IVaultCore.VaultCoreDepositsLatched} while the strategy manager latches deposits.
+    /// @dev Called by the deposit/mint entry points. A force removal drops the strategy's funds from the NAV, so
+    ///      a depositor entering at the lower NAV would capture part of any funds that later return; the latch
+    ///      keeps entries closed until the manager admin clears it. Exits are not gated.
+    function requireDepositsOpen() internal view {
+        if (depositsLatched()) revert IVaultCore.VaultCoreDepositsLatched(vaultCoreStorage()._strategyManager);
     }
 }

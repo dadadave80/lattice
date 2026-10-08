@@ -76,12 +76,32 @@ issues.
 
 Lattice holds no funds and has not adopted the
 [SEAL Whitehat Safe Harbor agreement](https://github.com/security-alliance/safe-harbor).
-The `SafeHarborAdopter` facet lets a diamond adopt it, but each adopting
-deployment publishes and maintains its own agreement. The facet covers only the
-on-chain steps: creating the agreement and registering it. SEAL also asks the
-adopting protocol to publish a fact page, add the agreement's Exhibit D to its
-terms of service, and make the registry call from its decision-making
-authority; see SEAL's repository for the current steps.
+The [`SafeHarborAdopter`](src/governance/SafeHarborAdopter.sol) facet lets a
+diamond adopt it, but each adopting deployment publishes and maintains its own
+agreement. The facet covers only the on-chain half: creating and registering an
+agreement (`createAndAdopt`) or registering a pre-deployed one
+(`adoptSafeHarbor`). SEAL's
+[adoption procedure](https://github.com/security-alliance/safe-harbor/blob/78ba9237377a9622439cbab41a5336673cea1b92/README.md#protocol-adoption)
+ends with three steps. The adopting protocol does the first two off-chain;
+the facet makes the third:
+
+1. Publish an Agreement Fact Page with every detail of the adoption,
+   maintained off-chain for anyone to view.
+2. Add the agreement's Exhibit D (User Adoption Procedures), adapted, to the
+   terms of service.
+3. Make the registry call from the decision-making authority. That call is
+   the legally binding step. The diamond makes it through the facet and is
+   recorded as the adopter, so the call must come from the protocol's
+   governance: grant `SAFE_HARBOR_ADMIN_ROLE` only to it (for example its
+   Governor-controlled `TimelockController`), never to an operator key, and
+   keep `DEFAULT_ADMIN_ROLE`, which administers that role, with the same
+   authority. The agreement's owner (the `owner` argument of `createAndAdopt`,
+   or the owner of a pre-deployed agreement passed to `adoptSafeHarbor`) must
+   be that same authority too: after adoption the owner alone can change the
+   agreement's chains, accounts, asset-recovery addresses and bounty terms.
+
+The facet's NatSpec lists the same steps. Check SEAL's repository for changes
+before adopting.
 
 ## Known issues
 
@@ -144,6 +164,29 @@ original attack against the fixed code; run one with
     its LP at spot `get_virtual_price()`, which read-only reentrancy can skew.
     It is unsupported in 0.5.0; do not register it with a vault's
     StrategyManager.
+  - **Strategy adapter liquidity, v0.1.0 to v0.4.0.** Two follow-ups to #221
+    ([#271](https://github.com/dadadave80/lattice/issues/271)):
+    - Aave V3 and Compound V3 recalls asked for the whole remainder, so when
+      borrowers had taken the market's cash, `rebalance()` reverted. A recall
+      is now capped at the cash the market can pay: the aToken's underlying
+      balance (and, on Aave v3.1+, the reserve's virtual balance), or the
+      Comet's base balance. The rest is an honest partial recall. Reproduce
+      with `test_Recall_UtilisationSpike_IsPartial_ThenCompletes` in the Aave
+      and Compound suites of
+      [`StrategyLiquidityTest`](test/integration/StrategyLiquidityTest.t.sol).
+    - The swap-free UniswapV3 adapter counted token1 in its NAV at the TWAP,
+      although the vault can only ever receive token0, so the last redeemers
+      bore the token1 value when the admin's `emergencyWithdraw` moved it out.
+      NAV is now token0 only (idle token0 plus the position's token0 leg), and
+      a recall pays idle token0 without unwinding the position. Reproduce with
+      `test_TargetZero_ExitViaAdminEmergencyWithdraw_ConservesNav` in the same
+      file. The pool prices a deploy at spot while NAV counts the new token0
+      leg at the TWAP, so a deploy steps NAV by about
+      `deployed × (√(P_spot / P_twap) − 1)`, and `deploy` runs inside the
+      permissionless `rebalance()`. It now refuses any step beyond
+      `slippageBps` of the token0 it consumes; within that bound an attacker
+      who moves spot can still choose the step. Reproduce with the
+      `test_Deploy_*Twap*` tests in the same file.
 - **CCTP hooks, v0.2.0 to v0.4.0: hook skipped on plain relay.** The
   permissionless `CCTPBridgeAdapter.relayMessage` relayed a message carrying a
   Lattice hook envelope without running the hook. The USDC was minted and the
@@ -204,6 +247,16 @@ original attack against the fixed code; run one with
   [`RecipeGuards`](test/composability/RecipeGuards.sol), run by
   `test_Upgradeable_ERC20Votes` in
   [`RecipeUpgradeabilityTokensTest`](test/composability/RecipeUpgradeabilityTokensTest.t.sol).
+- **Vault deposits after a strategy force-removal (unreleased).** A
+  force-removed strategy's funds leave the vault's NAV, so if they later
+  returned, depositors who entered at the lower NAV shared in them at the
+  expense of the existing holders
+  ([#270](https://github.com/dadadave80/lattice/issues/270)). Reproduce with
+  `test_ForceRemoval_DonationSandwich_DepositsLatched` in
+  [`VaultFullNavPricingTest`](test/integration/VaultFullNavPricingTest.t.sol).
+  A force removal now latches deposits closed until the manager admin calls
+  `clearDepositLatch()`; exits stay open. Replacing the manager is still
+  open; see below.
 
 ### Open
 
@@ -211,13 +264,25 @@ original attack against the fixed code; run one with
   deleted, expires unfired, or cannot be paid for at fire time holds its
   `jobId` until a diamond cut
   ([#226](https://github.com/dadadave80/lattice/issues/226)).
-- **Vault deposits after a strategy force-removal.** If a force-removed
-  strategy's funds later return, depositors who entered after the removal share
-  in them at the expense of earlier holders
-  ([#270](https://github.com/dadadave80/lattice/issues/270)).
-- **Strategy adapter liquidity.** Aave V3 and Compound V3 recalls revert when
-  the market lacks cash, and the UniswapV3 adapter's token1 has no exit path to
-  the vault ([#271](https://github.com/dadadave80/lattice/issues/271)).
+- **Vault deposits after a strategy-manager replacement.** The deposit latch
+  lives in the strategy manager, so `setStrategyManager` drops it: a fresh
+  manager starts unlatched, deposits reopen at the lower NAV, and depositors
+  who enter then share in any funds the old manager's strategies return later.
+  This applies both to the last-resort recovery from an overflowing strategy
+  and to a swap made while the old manager is latched
+  ([#270](https://github.com/dadadave80/lattice/issues/270)). Pinned by
+  `test_DepositLatch_ManagerSwapDropsLatch` in
+  [`VaultFullNavPricingTest`](test/integration/VaultFullNavPricingTest.t.sol).
+- **UniswapV3 adapter exit (accepted).** `rebalance()` can allocate into the
+  swap-free position but never recall from it, so capital allocated there
+  reaches redeemers only after the admin's `emergencyWithdraw`, the only exit;
+  size the target with that in mind. The exit has no slippage floor and the
+  pool pays it at spot, so NAV steps by about
+  `leg0 × (√(P_twap / P_spot) − 1)`: run it while spot sits near the TWAP. It
+  sends the token1 leg and any idle token1 to the vault, outside NAV, and
+  VaultCore has no sweep for a non-asset token, so that token1 stays in the
+  vault unless its admin cuts a sweep in
+  ([#271](https://github.com/dadadave80/lattice/issues/271)).
 - **Conflicting module inits.** A second EIP-712 or AccessControl init in the
   same diamond silently overwrites the domain or adds an admin
   ([#205](https://github.com/dadadave80/lattice/issues/205)).

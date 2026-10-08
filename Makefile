@@ -121,8 +121,10 @@ readme-check: ## README Modules catalog lists every src/ contract, and names onl
 	./script/check-readme-catalog.sh
 
 .PHONY: scripts-check
-scripts-check: ## Regression tests for the CI helper scripts (closing-keyword parser behind close-linked-issues.yml)
+scripts-check: ## Regression tests for the CI helper scripts (closing-keyword parser, fork-lane runner), and every fork suite in one scheduled lane
 	./script/test-closing-issues.sh
+	./script/test-fork-lanes.sh
+	./script/fork-lanes.sh check
 
 .PHONY: storage-update
 storage-update: ## Regenerate the storage-layout baseline (review the diff: appends only for live namespaces; see CONTRIBUTING.md)

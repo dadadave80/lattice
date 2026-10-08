@@ -99,15 +99,15 @@ contract CCTPHookDemoFork is Test {
     /// @notice Replays a REAL captured Arc->Base hook transfer: `relayMessageWithHook` must credit the
     ///         beneficiary the minted amount, and a second relay must revert (the CCTP nonce is consumed). A hook
     ///         fixture only exists AFTER the operator's live run (a synthetic message cannot carry a real Iris
-    ///         attestation), so the fixture ships as a placeholder (empty `message`) and this test skips until it
-    ///         is filled — see test/fixtures/cctp/arc-to-base-hook-v2.json for the capture instructions.
+    ///         attestation); it is captured in test/fixtures/cctp/arc-to-base-hook-v2.json, which also says how to
+    ///         re-capture it. An emptied fixture skips, and fails under `FORK_REQUIRE_ARCHIVE=true`.
     function test_Fork_RelayWithHookCreditsVaultFromRealAttestation() public {
         if (_skipped()) return;
 
         string memory json = vm.readFile(FIXTURE);
         bytes memory message = vm.parseJsonBytes(json, ".message");
         if (message.length == 0) {
-            vm.skip(true); // placeholder fixture — not yet captured
+            ArchiveFork.skipOrFail(ArchiveFork.strict(), string.concat(FIXTURE, " has no captured message"));
             return;
         }
 

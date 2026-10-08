@@ -40,10 +40,12 @@ contract MockGelatoVRFAdapterForkContract is AccessControl, GelatoVRFAdapter, In
 ///
 /// Enabling fork tests:
 ///   export MAINNET_RPC_URL=<your-rpc-url>
-///   export GELATO_VRF_OPERATOR=<dedicated-operator-address>
-///   forge test --match-path "test/fork/*"
+///   forge test --match-path "test/fork/GelatoVRFAdapterFork.t.sol"
 ///
-/// Without GELATO_VRF_OPERATOR set, all tests in this contract are skipped.
+/// Without MAINNET_RPC_URL set, all tests in this contract are skipped. The
+/// operator is the consumer's Gelato dedicated msg.sender, so there is no single
+/// mainnet address: by default the test derives the admin's one from Gelato's
+/// live OpsProxyFactory at the pinned block. GELATO_VRF_OPERATOR overrides it.
 /// The live operator/round flow is off-chain, so this only verifies the
 /// on-chain configuration round-trip.
 contract GelatoVRFAdapterFork is Test {
@@ -53,6 +55,10 @@ contract GelatoVRFAdapterFork is Test {
 
     /// @notice Pinned mainnet block for deterministic results (December 2024).
     uint256 constant FORK_BLOCK = 21_500_000;
+
+    /// @notice Gelato's OpsProxyFactory on Ethereum mainnet: Automate
+    ///         (0x2A6C106ae13B558BB9E2Ec64Bd2f1f7BEFF3A5E0) → `taskModuleAddresses(PROXY)` → `opsProxyFactory()`.
+    address constant OPS_PROXY_FACTORY = 0x44bde1bccdD06119262f1fE441FBe7341EaaC185;
 
     // -------------------------------------------------------------------------
     //                              State
@@ -67,12 +73,12 @@ contract GelatoVRFAdapterFork is Test {
     // -------------------------------------------------------------------------
 
     function setUp() public {
-        operator = vm.envOr("GELATO_VRF_OPERATOR", address(0));
-        if (operator == address(0)) {
+        if (bytes(vm.envOr("MAINNET_RPC_URL", string(""))).length == 0) {
             vm.skip(true);
             return;
         }
         vm.createSelectFork("mainnet", FORK_BLOCK);
+        operator = vm.envOr("GELATO_VRF_OPERATOR", _dedicatedMsgSender(admin));
 
         adapter = new MockGelatoVRFAdapterForkContract();
         adapter.initialize(admin);
@@ -88,5 +94,15 @@ contract GelatoVRFAdapterFork is Test {
         adapter.setOperator(operator);
 
         assertEq(adapter.getOperator(), operator, "operator mismatch");
+    }
+
+    /// @dev `owner`'s Gelato dedicated msg.sender, read from the live OpsProxyFactory (`getProxyOf` returns the
+    ///      CREATE2 proxy address whether or not it is deployed yet).
+    function _dedicatedMsgSender(address owner) internal view returns (address proxy) {
+        (bool ok, bytes memory ret) =
+            OPS_PROXY_FACTORY.staticcall(abi.encodeWithSignature("getProxyOf(address)", owner));
+        assertTrue(ok, "getProxyOf reverted");
+        (proxy,) = abi.decode(ret, (address, bool));
+        assertTrue(proxy != address(0), "factory returned no proxy");
     }
 }

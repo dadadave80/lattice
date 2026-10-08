@@ -446,6 +446,7 @@
 2	0	_targets	t_mapping(t_address,t_uint16)
 3	0	_strategyIndex	t_mapping(t_address,t_uint256)
 4	0	_totalTargetBps	t_uint256
+5	0	_depositsLatched	t_bool
 
 ### TWAPOracleStorage @ erc7201:lattice.storage.TWAPOracle (slot 0xc2bcc163613aea761b734a9692ad3548aab9088be29b53e03facf6a2a351df00)
 0	0	_pairs	t_mapping(t_bytes32,t_address)
