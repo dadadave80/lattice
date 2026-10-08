@@ -34,6 +34,10 @@ if older documentation conflicts with the development policy below, apply this p
 - Use descriptive conventional branch names identifying the work, such as
   `feat/registry-factory-optimization`, `fix/storage-layout-validation`,
   `docs/project-instructions`, or `revert/ens-grant-merge`. Never use `codex/` or agent-name prefixes.
+- Commit subjects and PR titles follow Conventional Commits with the types in
+  `release-please-config.json` (`feat`, `fix`, `perf`, `refactor`, `docs`, `test`, `build`, `ci`,
+  `chore`). Mark a breaking change with `!` and a `BREAKING CHANGE:` footer stating what integrators
+  must change. Commits must be signed.
 - An implementation request authorizes local commits, pushing a feature branch, and opening a PR
   after the required validation. No additional permission is needed for those steps.
 - Merging PRs, promoting to `main`, publishing releases, and deploying contracts or sites require
@@ -58,6 +62,36 @@ if older documentation conflicts with the development policy below, apply this p
   an existing script's implementation language or introducing a new runtime dependency.
 - Reuse existing repository patterns and tools; prefer standard-library/native capabilities and
   minimal changes. Trace callers and fix the shared root cause rather than only one symptom.
+
+## Repository map and commands
+
+| Path | Contents |
+| --- | --- |
+| `src/interfaces/<area>/I<Module>.sol` | Module ABI, errors, events (`src/interfaces/external/` holds vendored third-party subsets) |
+| `src/<area>/libraries/<Module>Lib.sol` | Module logic, ERC-7201 storage, `registerInterface`, `__<Module>_init` |
+| `src/<area>/<Module>.sol`, `<Module>Init.sol` | Stateless facet with `exportSelectors()`; optional standalone init |
+| `script/base/<area>/Deploy<Module>.s.sol` | Deploy recipe (`buildCuts` + `run`), shared by deploys and tests |
+| `script/lib/FacetInventory.sol` | Release inventory; also drives `ExportSelectorsParityTest` |
+| `script/upgrades/` | Storage-layout guard, probe and baseline |
+| `test/` | Layout and conventions in [test/README.md](test/README.md) |
+
+Adding a module touches more than its three source files: follow the
+[add-a-module checklist](CONTRIBUTING.md#adding-a-module).
+
+| Command | Purpose |
+| --- | --- |
+| `make install` | Fetch submodules |
+| `make build` / `make test` | Compile / run tests (`MATCH=<Contract>` filters) |
+| `make test-path PATH_GLOB=...` | Run tests by path |
+| `make test-fork` | Fork suites (RPC-gated; unset lanes skip) |
+| `make fmt` / `make fmt-check` | Format / formatting gate |
+| `make sizes` | EIP-170 size gate under `FOUNDRY_PROFILE=ci` |
+| `make via-ir` | IR-pipeline parity build |
+| `make storage-check` / `make storage-update` | Verify / regenerate the storage-layout baseline |
+| `make test-ci` | Full suite under `FOUNDRY_PROFILE=ci` |
+| `make ci` | CI's Solidity gates in CI order (`fmt-check sizes via-ir storage-check test-ci`); CI also runs a via-ir size gate and Anvil deploy checks (`make check-atomic-deploy` needs `make anvil`) |
+| `make clean` | `forge clean`; run it before trusting gates after tools touched the tree |
+| `make help` | Every target, including deploy and demo targets |
 
 ## Validation and readiness
 
@@ -91,14 +125,17 @@ if older documentation conflicts with the development policy below, apply this p
 - For fresh pre-major deployments, necessary layout changes are permitted. State that a fresh
   deployment is required, update baselines and consumers, and do not present incompatible code as
   safe to apply to an existing deployment. This qualifies older unconditional append-only wording.
+- A namespace or interfaceId is frozen once it is live on any network, including a downstream
+  project's deployment. From then on its layout follows the upgrade rule above, and the fresh-deployment
+  exception no longer applies to it.
 - Retain existing external-source attribution and ERC-165 conventions below.
 
 ## Specification storage
 
 - Never store specifications, implementation/design plans, or planning Markdown in this repository
   or a worktree unless the user explicitly overrides that rule for the specific document.
-- Store such documents under `/Users/dadadave/.codex/specs/`, verify the destination is outside a
-  Git worktree, and return the absolute path. This requested `AGENTS.md` is project guidance.
+- Store such documents outside the repository (the maintainer uses `~/.codex/specs/`), verify the
+  destination is outside a Git worktree, and return the absolute path. This requested `AGENTS.md` is project guidance.
 
 ## External-source attribution (always)
 
