@@ -2,6 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {DiamondLib} from "@diamond/libraries/DiamondLib.sol";
+import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
 import {OwnableLib} from "@diamond/libraries/OwnableLib.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {ERC7821ExecutorLib} from "@lattice/accounts/erc7579/libraries/ERC7821ExecutorLib.sol";
@@ -54,7 +55,9 @@ contract AccountInit {
         // The account is its OWN Ownable owner: diamond-lib's DiamondCutFacet gates on this slot, so the
         // only upgrade path is a validated self-call (executor / EntryPoint) — never an external EOA.
         OwnableLib.initializeOwner(address(this));
-        // Advertise the cut + loupe interfaces the blueprint actually routes (IDiamondCut + IDiamondLoupe).
+        // Advertise ERC-165 itself plus the cut + loupe interfaces the blueprint actually routes (IERC165 +
+        // IDiamondCut + IDiamondLoupe).
+        ERC165Lib.registerInterface();
         DiamondLib.registerInterface();
         AccessControlLib.__AccessControl_init(address(this));
         AccountSignerLib.__AccountSigner_init(owner);

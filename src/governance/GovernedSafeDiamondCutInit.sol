@@ -2,6 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {DiamondLib} from "@diamond/libraries/DiamondLib.sol";
+import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {GovernedSafeDiamondCutLib} from "@lattice/governance/libraries/GovernedSafeDiamondCutLib.sol";
 import {EmergencyStopLib} from "@lattice/security/libraries/EmergencyStopLib.sol";
@@ -10,7 +11,7 @@ import {EmergencyStopLib} from "@lattice/security/libraries/EmergencyStopLib.sol
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice One-shot initializer for a Safe-gated, timelocked diamond-cut diamond — seeds AccessControl (so
 ///         guardian management + `emergencyResume` are `DEFAULT_ADMIN_ROLE`-gated), EmergencyStop, registers
-///         the IDiamondCut + IDiamondLoupe ERC-165 flags, and pins the Safe authority + minimum threshold +
+///         the IERC165 + IDiamondCut + IDiamondLoupe ERC-165 flags, and pins the Safe authority + minimum threshold +
 ///         minimum timelock delay (the module also self-registers its own IGovernedSafeDiamondCut ERC-165
 ///         id `0xacb1aeb6`). Delegatecalled by {Diamond.initialize} inside the initializing window (so it
 ///         must NOT open its own pre/postInitializer; each `__*_init` guard passes because the window is
@@ -27,6 +28,7 @@ contract GovernedSafeDiamondCutInit {
     function init(address admin, address safe, uint256 minThreshold, uint256 minDelay) external {
         AccessControlLib.__AccessControl_init(admin);
         EmergencyStopLib.__EmergencyStop_init();
+        ERC165Lib.registerInterface(); // ERC-165 flag for IERC165 (0x01ffc9a7)
         DiamondLib.registerInterface(); // ERC-165 flags for IDiamondCut (0x1f931c1c) + IDiamondLoupe
         GovernedSafeDiamondCutLib.__GovernedSafeDiamondCut_init(safe, minThreshold, minDelay);
     }

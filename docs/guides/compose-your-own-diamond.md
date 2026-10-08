@@ -229,6 +229,7 @@ The same four steps build any composition. A worked example, an admin-upgradeabl
 
    ```solidity
    AccessControlLib.__AccessControl_init(p.admin);           // authority first
+   ERC165Lib.registerInterface();                             // IERC165's own ERC-165 flag
    DiamondLib.registerInterface();                            // cut + loupe ERC-165 flags
    ERC20Lib.__ERC20_init(p.name, p.symbol);                   // the token
    ERC20CappedLib.__ERC20Capped_init(p.cap);                  // then its cap

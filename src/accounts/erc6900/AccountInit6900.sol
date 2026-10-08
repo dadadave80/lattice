@@ -40,7 +40,9 @@ contract AccountInit6900 {
         // admin `owner` drives) — never a raw external cut. Without this the cut facet was a decoy: the
         // owner slot stayed zero and `diamondCut` reverted `Unauthorized()` forever.
         OwnableLib.initializeOwner(address(this));
-        // Advertise the cut + loupe interfaces the blueprint actually routes (IDiamondCut + IDiamondLoupe).
+        // Advertise ERC-165 itself plus the cut + loupe interfaces the blueprint actually routes (IERC165 +
+        // IDiamondCut + IDiamondLoupe).
+        ERC165Lib.registerInterface();
         DiamondLib.registerInterface();
         AccessControlLib.__AccessControl_init(owner);
         EIP712Lib.__EIP712_init("Lattice Modular Account", "1");

@@ -2,6 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {DiamondLib} from "@diamond/libraries/DiamondLib.sol";
+import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {SafeDiamondCutLib} from "@lattice/governance/libraries/SafeDiamondCutLib.sol";
 import {EmergencyStopLib} from "@lattice/security/libraries/EmergencyStopLib.sol";
@@ -10,7 +11,7 @@ import {EmergencyStopLib} from "@lattice/security/libraries/EmergencyStopLib.sol
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice One-shot initializer for a Safe-gated diamond-cut diamond — seeds AccessControl (so guardian
 ///         management + `emergencyResume` are `DEFAULT_ADMIN_ROLE`-gated), EmergencyStop, registers the
-///         IDiamondCut + IDiamondLoupe ERC-165 flags, and pins the Safe authority + minimum threshold.
+///         IERC165 + IDiamondCut + IDiamondLoupe ERC-165 flags, and pins the Safe authority + minimum threshold.
 ///         Delegatecalled by {Diamond.initialize} inside the initializing window (so it must NOT open its
 ///         own pre/postInitializer; each `__*_init` guard passes because the window is already open).
 ///         Mirrors exactly what the old `MockSafeDiamond.initialize` did, minus the redundant
@@ -25,6 +26,7 @@ contract SafeDiamondCutInit {
     function init(address admin, address safe, uint256 minThreshold) external {
         AccessControlLib.__AccessControl_init(admin);
         EmergencyStopLib.__EmergencyStop_init();
+        ERC165Lib.registerInterface(); // ERC-165 flag for IERC165 (0x01ffc9a7)
         DiamondLib.registerInterface(); // ERC-165 flags for IDiamondCut (0x1f931c1c) + IDiamondLoupe
         SafeDiamondCutLib.__SafeDiamondCut_init(safe, minThreshold);
     }

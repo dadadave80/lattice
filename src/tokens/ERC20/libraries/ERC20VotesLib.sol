@@ -6,53 +6,17 @@ import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
 import {IERC20Votes} from "@lattice/interfaces/tokens/IERC20Votes.sol";
 import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
 import {Checkpoints} from "@lattice/utils/libraries/Checkpoints.sol";
-import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 import {NoncesLib} from "@lattice/utils/libraries/NoncesLib.sol";
-
-//*//////////////////////////////////////////////////////////////////////////
-//                                  STORAGE
-//////////////////////////////////////////////////////////////////////////*//
-
-/// @dev ERC-165 storage location (same across all Lattice modules).
-/// `keccak256(abi.encode(uint256(keccak256("diamond.lib.storage.ERC165")) - 1)) & ~bytes32(uint256(0xff))`.
-bytes32 constant ERC20VOTES_ERC165_STORAGE_LOCATION =
-    0x9ca7f3e2e2bfb15fdf072b85dde92837cddacee6cf2f6b38cd06c9457c1c4200;
-
-/// @dev IERC20Votes has only errors (no functions), so type(IERC20Votes).interfaceId == 0x00000000.
-/// `keccak256(abi.encode(bytes4(0x00000000), 0x9ca7f3e2e2bfb15fdf072b85dde92837cddacee6cf2f6b38cd06c9457c1c4200))`.
-bytes32 constant ERC165_MAP_IERC20VOTES_SLOT = 0x290decd9548b62a8d60345a988386fc84ba6bc95484008f6362f93160ef3e563;
 
 /// @title ERC20VotesLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/extensions/ERC20Votes.sol)
 /// @notice Library adding checkpoint-based voting power to ERC-20 tokens.
-/// @dev No own storage — uses ERC20 and Votes slots already present in Diamond storage.
+/// @dev No own storage — uses ERC20 and Votes slots already present in Diamond storage. No init and no
+///      ERC-165 registration either: {IERC20Votes} declares only errors, so its interfaceId is the meaningless
+///      0x00000000 (the voting surface is advertised as IVotes by {VotesLib}).
 ///      Max token supply is capped at type(uint208).max so checkpoint values never overflow.
 library ERC20VotesLib {
-    //*//////////////////////////////////////////////////////////////////////////
-    //                             INITIALIZATION
-    //////////////////////////////////////////////////////////////////////////*//
-
-    /// @notice Marks ERC20Votes as initialized and registers the interface.
-    /// @dev No own storage to initialize. ERC20, EIP712, Nonces, and Votes must be
-    ///      initialized separately in the same initializer block.
-    function __ERC20Votes_init() internal {
-        bytes32 s = InitializableLib.initializableSlot();
-        InitializableLib.checkInitializing(s);
-        registerInterface();
-    }
-
-    //*//////////////////////////////////////////////////////////////////////////
-    //                           ERC-165 REGISTRATION
-    //////////////////////////////////////////////////////////////////////////*//
-
-    /// @notice Registers support for the IERC20Votes interface via ERC-165.
-    function registerInterface() internal {
-        assembly ("memory-safe") {
-            sstore(ERC165_MAP_IERC20VOTES_SLOT, true)
-        }
-    }
-
     //*//////////////////////////////////////////////////////////////////////////
     //                              SUPPLY CAP
     //////////////////////////////////////////////////////////////////////////*//

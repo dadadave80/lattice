@@ -58,7 +58,6 @@ contract MockERC20VotesContract is ERC20, Votes, ERC20Votes, Initializable {
         EIP712Lib.__EIP712_init(name_, "1");
         NoncesLib.__Nonces_init();
         VotesLib.__Votes_init();
-        ERC20VotesLib.__ERC20Votes_init();
         AccessControlLib.__AccessControl_init(admin);
     }
 

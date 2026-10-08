@@ -15,7 +15,8 @@ bytes32 constant ERC721_STORAGE_SLOT = 0xb57056eaff39f17dbb7656e3d0f4bee059cc8b0
 /// `keccak256(abi.encode(uint256(keccak256("diamond.lib.storage.ERC165")) - 1)) & ~bytes32(uint256(0xff))`.
 bytes32 constant ERC721_ERC165_STORAGE_LOCATION = 0x9ca7f3e2e2bfb15fdf072b85dde92837cddacee6cf2f6b38cd06c9457c1c4200;
 
-/// @dev 0x80ac58cd is `type(IERC721).interfaceId`.
+/// @dev 0x80ac58cd is the canonical EIP-721 id, NOT `type(IERC721).interfaceId`: Lattice's {IERC721} bundles the
+///      metadata extension, so its derived id is 0xdbf24b52. ERC-165 callers query the canonical id.
 /// `keccak256(abi.encode(bytes4(0x80ac58cd), 0x9ca7f3e2e2bfb15fdf072b85dde92837cddacee6cf2f6b38cd06c9457c1c4200))`.
 bytes32 constant ERC165_MAP_IERC721_SLOT = 0x741e8246930c2bfc93c4e7042569e8d7f42e535e31e366398006f597e42d38fb;
 

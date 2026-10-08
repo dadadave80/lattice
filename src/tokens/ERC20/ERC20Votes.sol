@@ -21,7 +21,6 @@ import {Checkpoints} from "@lattice/utils/libraries/Checkpoints.sol";
 ///        - EIP712Lib.__EIP712_init(name, version)
 ///        - NoncesLib.__Nonces_init()
 ///        - VotesLib.__Votes_init()
-///        - ERC20VotesLib.__ERC20Votes_init()
 /// @custom:lattice-version 0.1.0
 /// @custom:lattice-source OpenZeppelin v5.1.0
 contract ERC20Votes is IERC20Votes {
