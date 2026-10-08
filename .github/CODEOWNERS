@@ -1,0 +1,4 @@
+# Requests the maintainer's review on PRs from other contributors; GitHub never requests an author's own
+# review. GitHub reads CODEOWNERS from a PR's base branch, so this applies to PRs into `dev` once it lands
+# there, and to PRs into `main` after the next promotion. Making the review required is a ruleset setting.
+* @dadadave80

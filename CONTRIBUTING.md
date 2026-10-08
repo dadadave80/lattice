@@ -35,6 +35,9 @@ recipe-built test setup.
   integrators must change: `fix(vaults)!: ...`. A changed interfaceId, ABI or storage layout counts.
 - **Sign your commits.** The branch rulesets require signed commits, so an unverified commit cannot land.
 - Keep each PR to one concern, and say in the description what changed, why, and how you validated it.
+  The [PR template](.github/pull_request_template.md) has the sections and the steps most often missed.
+- **Name each completed issue on its own `Closes #N` line in the PR body**, and use `Refs #N` for
+  partial work.
 
 ## Architecture in brief
 
