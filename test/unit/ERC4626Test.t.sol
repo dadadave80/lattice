@@ -62,6 +62,51 @@ contract MockNoReturnERC20 {
     }
 }
 
+/// @notice ERC-20 whose `transfer`/`transferFrom` can be switched to return `false` without reverting.
+contract MockFalseReturnERC20 {
+    uint8 public constant decimals = 18;
+    mapping(address => uint256) public balanceOf;
+    mapping(address => mapping(address => uint256)) public allowance;
+    bool public failTransfers;
+
+    function setFailTransfers(bool fail) external {
+        failTransfers = fail;
+    }
+
+    function mint(address to, uint256 amount) external {
+        balanceOf[to] += amount;
+    }
+
+    function approve(address spender, uint256 amount) external returns (bool) {
+        allowance[msg.sender][spender] = amount;
+        return true;
+    }
+
+    function transfer(address to, uint256 amount) external returns (bool) {
+        if (failTransfers) return false;
+        balanceOf[msg.sender] -= amount;
+        balanceOf[to] += amount;
+        return true;
+    }
+
+    function transferFrom(address from, address to, uint256 amount) external returns (bool) {
+        if (failTransfers) return false;
+        allowance[from][msg.sender] -= amount;
+        balanceOf[from] -= amount;
+        balanceOf[to] += amount;
+        return true;
+    }
+}
+
+/// @notice Asset stub that reports a fixed `decimals()`; only the vault's init reads it.
+contract MockDecimalsToken {
+    uint8 public immutable decimals;
+
+    constructor(uint8 decimals_) {
+        decimals = decimals_;
+    }
+}
+
 //*//////////////////////////////////////////////////////////////////////////
 //                                 TESTS
 //////////////////////////////////////////////////////////////////////////*//
@@ -673,5 +718,49 @@ contract ERC4626Test is ERC4626TestBase {
 
         // Should default to 18, not truncate 300 to 44 (300 mod 256 = 44)
         assertEq(weirdVault.decimals(), 18, "should default to 18 not truncate 300 to 44");
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //              #245: MUTATION PILOT REGRESSIONS (test/README.md)
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice Vault decimals are the asset's reported decimals plus the offset, not a default of 18.
+    function test_DecimalsUseAssetDecimalsPlusOffset() public {
+        address sixDecimals = address(new MockDecimalsToken(6));
+        assertEq(IERC4626(_deployVault(sixDecimals, "Six", "v6", 3)).decimals(), 9);
+    }
+
+    /// @notice A `transferFrom` that returns false is a failed deposit: no shares are minted.
+    function test_DepositWithFalseReturningTokenReverts() public {
+        MockFalseReturnERC20 token = new MockFalseReturnERC20();
+        IERC4626 v = IERC4626(_deployVault(address(token), "False", "vF", 0));
+        token.mint(alice, 100e18);
+        token.setFailTransfers(true);
+
+        vm.startPrank(alice);
+        token.approve(address(v), 100e18);
+        vm.expectRevert(abi.encodeWithSelector(IERC4626.SafeERC20FailedOperation.selector, address(token)));
+        v.deposit(100e18, alice);
+        vm.stopPrank();
+    }
+
+    /// @notice A `transfer` that returns false is a failed exit: the redeem reverts and the shares stay.
+    function test_RedeemWithFalseReturningTokenReverts() public {
+        MockFalseReturnERC20 token = new MockFalseReturnERC20();
+        IERC4626 v = IERC4626(_deployVault(address(token), "False", "vF", 0));
+        token.mint(alice, 100e18);
+
+        vm.startPrank(alice);
+        token.approve(address(v), 100e18);
+        uint256 shares = v.deposit(100e18, alice);
+        token.setFailTransfers(true);
+        vm.expectRevert(abi.encodeWithSelector(IERC4626.SafeERC20FailedOperation.selector, address(token)));
+        v.redeem(shares, alice, alice);
+        vm.stopPrank();
+    }
+
+    /// @notice An asset with no code answers `decimals()` with empty returndata: the vault defaults to 18.
+    function test_DecimalsCodelessAssetDefaultsTo18() public {
+        assertEq(IERC4626(_deployVault(address(0xDEAD), "Codeless", "vC", 0)).decimals(), 18);
     }
 }
