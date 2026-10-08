@@ -76,6 +76,10 @@ snapshot-check: snapshot ## Gas gate, as CI runs it: fail when snapshots/ differ
 		git --no-pager diff -- snapshots/; \
 		echo "Gas snapshots changed: review the diff (make snapshot regenerates them), then commit snapshots/."; exit 1; }
 
+.PHONY: invariant-deep
+invariant-deep: ## Deep invariant campaign over test/invariant (profile deep: 1,000 runs, depth 200; not a CI gate)
+	FOUNDRY_PROFILE=deep forge test --match-path 'test/invariant/*'
+
 .PHONY: mutation
 mutation: ## Local Gambit mutation pilot on ERC4626Lib, StrategyManagerLib, AccessManagerLib (needs gambit; not in CI; MUTANTS=/TARGETS= filter)
 	./script/mutation-test.sh

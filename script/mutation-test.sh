@@ -51,13 +51,13 @@ RUN=$OUT/${MUTANTS:+re}run
 match_set() {
     case "$1" in
         ERC4626Lib)
-            echo 'test/{unit/{ERC4626Test,VaultCoreTest,StrategyManagerTest,GovernedVaultENSInitTest,GovernedVaultUpgradeTest},fuzz/{ERC4626*,MulDivDifferentialFuzz},integration/{AaveV3AdapterVaultTest,AMMVaultTest,CompoundV3AdapterTest,ERC4626AdapterTest,GovernedVaultTest,StrategyLiquidityTest,Vault*},invariant/ERC4626RoundTripInvariant}.t.sol'
+            echo 'test/{unit/{ERC4626Test,VaultCoreTest,StrategyManagerTest,GovernedVaultENSInitTest,GovernedVaultUpgradeTest},fuzz/{ERC4626*,MulDivDifferentialFuzz},integration/{AaveV3AdapterVaultTest,AMMVaultTest,CompoundV3AdapterTest,ERC4626AdapterTest,GovernedVaultTest,StrategyLiquidityTest,Vault*},invariant/{ERC4626RoundTripInvariant,VaultDiamondInvariant}}.t.sol'
             ;;
         StrategyManagerLib)
-            echo 'test/{unit/{StrategyManagerTest,VaultCoreTest},fuzz/ERC4626PreviewDifferentialFuzz,integration/{AaveV3Adapter*,AdapterOperatorGuardTest,CompoundV3AdapterTest,CurveStableSwapAdapterTest,ERC4626AdapterTest,GovernedVaultTest,LidoAdapterTest,StrategyLiquidityTest,UniswapV3AdapterTest,Vault*},invariant/ERC4626RoundTripInvariant}.t.sol'
+            echo 'test/{unit/{StrategyManagerTest,VaultCoreTest},fuzz/ERC4626PreviewDifferentialFuzz,integration/{AaveV3Adapter*,AdapterOperatorGuardTest,CompoundV3AdapterTest,CurveStableSwapAdapterTest,ERC4626AdapterTest,GovernedVaultTest,LidoAdapterTest,StrategyLiquidityTest,UniswapV3AdapterTest,Vault*},invariant/{ERC4626RoundTripInvariant,VaultDiamondInvariant}}.t.sol'
             ;;
         AccessManagerLib)
-            echo 'test/unit/{AccessManagerTest,AccessManagerStandaloneTest,AccessManagedTest}.t.sol'
+            echo 'test/{unit/{AccessManagerTest,AccessManagerStandaloneTest,AccessManagedTest},invariant/AccessManagerDiamondInvariant}.t.sol'
             ;;
         *)
             echo "mutation: no test set for $1; add one to match_set()" >&2
