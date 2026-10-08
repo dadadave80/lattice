@@ -30,6 +30,10 @@ import {ERC4626Lib} from "@lattice/tokens/ERC4626/libraries/ERC4626Lib.sol";
 ///      {IVaultCore.VaultCoreStrategyNavUnavailable}). That force removal latches deposits closed on the
 ///      manager: `deposit`/`mint` revert with {IVaultCore.VaultCoreDepositsLatched} and `maxDeposit`/`maxMint`
 ///      return 0 until the manager admin calls `clearDepositLatch`, while exits reopen capped at idle (#270).
+///
+///      Hook model (D25, #234): the four mutators mint and burn shares through {ERC20Lib} directly, so they skip
+///      ERC20Pausable's pause, ERC20Votes' checkpoints and ERC20Capped's cap; VaultCore is mutually exclusive with
+///      those extensions. {DeployGovernedVault} routes the mutators to GovernedVault, which moves voting units.
 /// @custom:lattice-version 0.1.0
 /// @custom:lattice-source OpenZeppelin v5.1.0
 contract VaultCore {

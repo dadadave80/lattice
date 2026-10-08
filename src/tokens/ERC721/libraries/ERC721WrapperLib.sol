@@ -30,7 +30,7 @@ struct ERC721WrapperStorage {
 /// @dev OpenZeppelin keeps the underlying in an `immutable`; a diamond's facets are shared, so this stores it in the
 ///      ERC-7201 slot instead. The underlying is trusted, as upstream assumes: {depositFor} calls it before minting.
 ///      Mints and burns go straight through {ERC721Lib}, so an extension that observes movement by `Replace`-ing the
-///      base transfer selectors would not see them (issue #234).
+///      base transfer selectors would not see them, and the two are mutually exclusive (D25, #234).
 library ERC721WrapperLib {
     //*//////////////////////////////////////////////////////////////////////////
     //                              STORAGE ACCESS

@@ -50,6 +50,11 @@ struct ERC4626Storage {
 ///      `totalAssets()` itself reverts while the NAV is unreadable: the self-staticcall has no other way to
 ///      signal an unknown NAV. Reverting `totalAssets()`, converters and previews deviate from ERC-4626's
 ///      "MUST NOT revert" wording, which is preferred over pricing shares on a partial NAV.
+///
+///      Share mints and burns call {ERC20Lib} directly: an ERC-20 movement-replacing extension (ERC20Pausable,
+///      ERC20Votes) does not see them, and neither does ERC20Capped's cap, so they are mutually exclusive (D25,
+///      #234). VaultCore's `deposit`/`mint`/`withdraw`/`redeem` share this path. GovernedVault is the combined facet
+///      that wraps these mutators and moves voting units.
 library ERC4626Lib {
     //*//////////////////////////////////////////////////////////////////////////
     //                              STORAGE ACCESS

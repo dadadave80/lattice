@@ -31,6 +31,8 @@ bytes32 constant ERC3156_CALLBACK_SUCCESS = keccak256("ERC3156FlashBorrower.onFl
 ///      and burned at the end, or the whole call reverts. The fee is fixed at 0 and the fee receiver at
 ///      `address(0)` (fee burned) — Lattice keeps all logic in the library, so OZ's `virtual` fee overrides are
 ///      not available; a fee-charging variant would be a separate library/configuration.
+///      The flash mint and burn call {ERC20Lib} directly: an ERC-20 movement-replacing extension (ERC20Pausable,
+///      ERC20Votes) does not see them, so the two are mutually exclusive (D25, #234).
 library ERC20FlashMintLib {
     //*//////////////////////////////////////////////////////////////////////////
     //                             INITIALIZATION

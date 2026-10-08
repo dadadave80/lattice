@@ -34,6 +34,10 @@ struct ERC20Storage {
 /// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/ERC20.sol)
 /// @notice Library implementing the ERC-20 token standard.
 /// @dev Mirrors OpenZeppelin v5 ERC20 logic. All state lives in an ERC-7201 slot.
+///      Hook model (decision D25, #234): {_update} calls no extension hook. An extension that gates or observes
+///      movement (ERC20Pausable, ERC20Votes) replaces the public `transfer`/`transferFrom` selectors instead, and
+///      two such extensions are mutually exclusive. A caller of {_mint}/{_burn}/{_update} outside those selectors
+///      bypasses them. See docs/guides/selector-compatibility.md#token-extension-hook-model.
 library ERC20Lib {
     //*//////////////////////////////////////////////////////////////////////////
     //                              STORAGE ACCESS
@@ -149,7 +153,8 @@ library ERC20Lib {
     }
 
     /// @notice Actual state-change for all token movements; emits Transfer.
-    /// @dev This is the core function that submodules (Capped) hook into.
+    /// @dev Runs no extension hook (D25): unlike OpenZeppelin's `virtual _update`, it cannot be overridden, so a
+    ///      pause or vote checkpoint applies only on the facet selectors that wrap it.
     function _update(address from, address to, uint256 value) internal {
         ERC20Storage storage $ = erc20Storage();
 

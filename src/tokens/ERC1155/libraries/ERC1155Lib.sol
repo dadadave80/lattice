@@ -40,6 +40,11 @@ struct ERC1155Storage {
 /// @dev Mirrors OpenZeppelin v5.6.1 ERC1155 logic. All state lives in an ERC-7201 slot. Differences: no
 ///      `_setApprovalForAll(owner, ...)` variant (approval always uses `msg.sender`, so OZ's owner-zero check
 ///      cannot fire) and no five-argument `_updateWithAcceptanceCheck` overload.
+///      Hook model (decision D25, #234): {_update} calls no extension hook. An extension that gates or observes
+///      movement (Pausable, Supply) must replace the public `safeTransferFrom`/`safeBatchTransferFrom` selectors
+///      instead, and two such extensions are mutually exclusive. A caller of {_mint}/{_burn}/{_update} outside
+///      those selectors (ERC1155Burnable) bypasses them.
+///      See docs/guides/selector-compatibility.md#token-extension-hook-model.
 library ERC1155Lib {
     //*//////////////////////////////////////////////////////////////////////////
     //                              STORAGE ACCESS
@@ -178,6 +183,7 @@ library ERC1155Lib {
     }
 
     /// @notice Central state mutation. Validates array lengths, adjusts balances, emits events.
+    /// @dev Runs no extension hook (D25).
     function _update(address from, address to, uint256[] memory ids, uint256[] memory values) internal {
         if (ids.length != values.length) {
             revert IERC1155.ERC1155InvalidArrayLength(ids.length, values.length);
