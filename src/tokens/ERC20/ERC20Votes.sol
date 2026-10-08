@@ -21,8 +21,21 @@ import {Checkpoints} from "@lattice/utils/libraries/Checkpoints.sol";
 ///        - EIP712Lib.__EIP712_init(name, version)
 ///        - NoncesLib.__Nonces_init()
 ///        - VotesLib.__Votes_init()
+///
+///      Differences from OpenZeppelin v5.6.1:
+///      - OpenZeppelin moves voting units in `_update`, so every mint, burn and transfer moves votes. Here only
+///        this facet's `transfer`/`transferFrom` and {ERC20VotesLib._mint}/{ERC20VotesLib._burn} do. Movement
+///        through {ERC20Lib} from another facet (ERC20Burnable, ERC20FlashMint, ERC20Wrapper, ERC20Crosschain,
+///        ERC7802, ERC1363, ERC4626 outside GovernedVault) does not, so those are mutually exclusive with this
+///        facet (decision D25 on #234).
+///      - The `type(uint208).max` supply check runs only in {ERC20VotesLib._mint}.
+///      - The clock is `block.timestamp` ({Votes}), not the block number.
+///      - `numCheckpoints` narrows the length with a plain `uint32` cast rather than `SafeCast.toUint32`; 2^32
+///        checkpoints are unreachable.
+///      - {ERC20VotesInit} registers {IVotes} for ERC-165 (through {VotesLib.__Votes_init}); OpenZeppelin's
+///        extension has no ERC-165.
 /// @custom:lattice-version 0.1.0
-/// @custom:lattice-source OpenZeppelin v5.1.0
+/// @custom:lattice-source OpenZeppelin v5.6.1
 contract ERC20Votes is IERC20Votes {
     //*//////////////////////////////////////////////////////////////////////////
     //                        IERC20 — TRANSFER OVERRIDES

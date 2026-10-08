@@ -35,13 +35,18 @@ Today's 67 shared selectors: 18 Variant, 14 Override, 1 Identical, 18 One per di
 
 ## Scope and decisions
 
-- **Inventory facets only.** The test covers the 110 facets in `FacetInventory`. VestingWallet and
+- **Inventory facets only.** The test covers the 111 facets in `FacetInventory`. VestingWallet and
   ERC20Wrapper export no selectors yet ([#176](https://github.com/dadadave80/lattice/issues/176)), so they are
   not in the table. Checked by hand against the inventory: VestingWallet shares no selector, and ERC20Wrapper
   shares `decimals()` (`0x313ce567`) with ERC20 and ERC4626 and `underlying()` (`0x6f307dc3`) with
   ERC721Wrapper. Its `decimals()` replaces ERC20's to mirror the underlying (Override), it cannot share a
   diamond with an ERC4626 share token (Incompatible), and an ERC-20 wrapper and an ERC-721 wrapper cannot share
   a diamond either (Incompatible).
+- **ERC1363 shares no selector but is still exclusive.** Its six `*AndCall` selectors clash with nothing, so this
+  table cannot list it. It moves tokens through `ERC20Lib`, past the `transfer`/`transferFrom` that
+  ERC20Pausable, ERC20Votes and GovernedVault replace, so decision D25 on
+  [#234](https://github.com/dadadave80/lattice/issues/234) declares it mutually exclusive with all three.
+  [`CompositionHazardsTest`](../../test/composability/CompositionHazardsTest.t.sol) pins the bypass.
 - **The ERC-721 receiver seam.** ERC721Wrapper serves `onERC721Received` (`0x150b7a02`) and accepts only its
   underlying collection. UniswapV3Adapter, which is not in the inventory, serves the same selector to receive
   position NFTs. The two are Incompatible: never cut both into one diamond.

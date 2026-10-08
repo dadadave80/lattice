@@ -21,12 +21,18 @@ bytes32 constant ERC165_MAP_IERC20BURNABLE_SLOT = 0x20898a14bb56c69b48cb37845539
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/extensions/ERC20Burnable.sol)
 /// @notice Library implementing ERC-20 burn extensions. Adds no own storage.
-/// @dev Known limitation (IMP-1): OZ marks `_spendAllowance` as `virtual` to allow
-///      downstream extensions (e.g., Permit-based overrides) to intercept allowance
-///      consumption. Solidity libraries cannot declare `virtual` functions, so
-///      `burnFrom` is hardwired to `ERC20Lib._spendAllowance`. If permit-based
-///      allowance overriding is required in the future, an `_inner` delegate pattern
-///      or a hook in `ERC20Lib` will be needed to restore the override chain.
+/// @dev Ports OpenZeppelin v5.6.1 `ERC20Burnable`. Differences from OpenZeppelin:
+///      - Known limitation (IMP-1): OZ marks `_spendAllowance` as `virtual` to allow
+///        downstream extensions (e.g., Permit-based overrides) to intercept allowance
+///        consumption. Solidity libraries cannot declare `virtual` functions, so
+///        `burnFrom` is hardwired to `ERC20Lib._spendAllowance`. If permit-based
+///        allowance overriding is required in the future, an `_inner` delegate pattern
+///        or a hook in `ERC20Lib` will be needed to restore the override chain.
+///      - Burns call {ERC20Lib._burn} directly, so the ERC20Pausable and ERC20Votes overrides of
+///        `transfer`/`transferFrom` never see them: a burn goes through while paused and does not move votes
+///        (decision D25 on #234).
+///      - The caller is `msg.sender`, not `_msgSender()`.
+///      - Registers {IERC20Burnable} for ERC-165 in its init; OpenZeppelin's extension has no ERC-165.
 library ERC20BurnableLib {
     //*//////////////////////////////////////////////////////////////////////////
     //                             INITIALIZATION

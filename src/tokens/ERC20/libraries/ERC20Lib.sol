@@ -33,7 +33,22 @@ struct ERC20Storage {
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/ERC20.sol)
 /// @notice Library implementing the ERC-20 token standard.
-/// @dev Mirrors OpenZeppelin v5 ERC20 logic. All state lives in an ERC-7201 slot.
+/// @dev Mirrors OpenZeppelin v5.6.1 ERC20 logic. All state lives in an ERC-7201 slot. Differences from OpenZeppelin:
+///      - The caller is `msg.sender`, not `_msgSender()`; Lattice has no ERC-2771 context.
+///      - Nothing here is `virtual`. OpenZeppelin extensions override `_update`, `_approve` and `_spendAllowance`;
+///        a Lattice extension that changes movement replaces the facet's `transfer`/`transferFrom` instead
+///        (decision D25 on #234). Every other {ERC20Lib} caller (ERC20Burnable, ERC20FlashMint, ERC20Wrapper,
+///        ERC20Crosschain, ERC7802, ERC1363, ERC4626) skips that replacement, so those extensions are mutually
+///        exclusive with ERC20Pausable and ERC20Votes where they move tokens.
+///      - `_spendAllowance` reads the allowance from storage, not through an overridable `allowance()`. It keeps
+///        the `!= type(uint256).max` test that OpenZeppelin v5.2 rewrote as `<`: the two agree for every
+///        `uint256`, and `!=` measured 3 gas cheaper per `transferFrom`.
+///      - `decimals` is fixed at 18; a facet that needs another value replaces the `decimals()` selector
+///        (ERC4626, ERC20Wrapper).
+///      - `__ERC20_init` sets the name and symbol in the diamond's initializer, not a constructor.
+///      - OpenZeppelin's ERC20 has no ERC-165. {__ERC20_init} registers {IERC20}, whose id `0x942e8b22` also
+///        covers `name`, `symbol` and `decimals`, so it is not the bare ERC-20 id `0x36372b07`.
+///      - The ERC-6093 errors are declared on {IERC20} rather than `IERC20Errors`; their selectors are the same.
 library ERC20Lib {
     //*//////////////////////////////////////////////////////////////////////////
     //                              STORAGE ACCESS

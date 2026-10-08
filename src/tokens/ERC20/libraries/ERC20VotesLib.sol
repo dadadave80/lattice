@@ -101,11 +101,9 @@ library ERC20VotesLib {
     }
 
     /// @notice Delegates votes via an EIP-712 signature, using the signer's ERC-20 balance.
-    /// @dev Two-step: recover signer first (to read their balance), then delegate.
-    ///      Nonce is consumed directly via NoncesLib.useCheckedNonce, bypassing
-    ///      VotesLib.delegateBySig to allow reading the signer's balance before delegation.
-    ///      IMPORTANT (E2V-05): This nonce consumption mirrors VotesLib.delegateBySig's nonce
-    ///      logic and MUST be kept in sync if VotesLib.delegateBySig's nonce scheme changes.
+    /// @dev Two-step: recover the signer first ({VotesLib._recoverDelegationSigner}, which also checks expiry)
+    ///      to read their balance, then consume the nonce with {NoncesLib.useCheckedNonce} and delegate.
+    ///      Both {ERC20Votes} and the standalone {Votes} facet route `delegateBySig` here.
     function delegateBySig(address delegatee, uint256 nonce, uint256 expiry, uint8 v, bytes32 r, bytes32 s) internal {
         // Step 1: Recover the signer (validates expiry, but does NOT consume nonce yet).
         address signer = VotesLib._recoverDelegationSigner(delegatee, nonce, expiry, v, r, s);

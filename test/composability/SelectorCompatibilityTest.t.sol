@@ -30,7 +30,9 @@ import {Test, console} from "forge-std/Test.sol";
 ///      Inventory facets only: VestingWallet and ERC20Wrapper export no selectors yet (#176), so they are absent.
 ///      By hand: VestingWallet shares nothing; ERC20Wrapper shares only `decimals()` with ERC20 and ERC4626, and
 ///      `underlying()` with ERC721Wrapper (Incompatible). ERC721Wrapper's `onERC721Received` is also served by
-///      UniswapV3Adapter, which is not in the inventory (Incompatible: the receiver seam, #201).
+///      UniswapV3Adapter, which is not in the inventory (Incompatible: the receiver seam, #201). ERC1363 shares no
+///      selector, yet D25 makes it exclusive with ERC20Pausable, ERC20Votes and GovernedVault; that bypass is pinned
+///      by {CompositionHazardsTest}, not here.
 contract SelectorCompatibilityTest is Test {
     enum Class {
         Variant,
