@@ -2,6 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
+import {ArchiveFork} from "@lattice-test/helpers/ArchiveFork.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {IApi3Proxy} from "@lattice/interfaces/external/api3/IApi3Proxy.sol";
@@ -28,19 +29,30 @@ contract MockAPI3AdapterForkContract is AccessControl, API3Adapter, Initializabl
 }
 
 /// @title API3AdapterFork
-/// @notice Fork test against a real API3 dAPI reader proxy on Ethereum mainnet.
+/// @notice Fork test against API3's ETH/USD dAPI proxy on Ethereum mainnet.
 ///
 /// Enabling this test:
-///   export MAINNET_RPC_URL=<your-rpc-url>
-///   export API3_ETH_USD_PROXY=<dAPI reader proxy address from the API3 Market>
+///   export MAINNET_RPC_URL=<your-archive-rpc-url>
 ///   forge test --match-path "test/fork/API3AdapterFork.t.sol"
 ///
-/// The dAPI reader proxy is deployed per-dApp via the API3 Market factory rather than being a stable
-/// published constant, so the proxy address is supplied via the API3_ETH_USD_PROXY env var. The test is
-/// skipped unless both MAINNET_RPC_URL and API3_ETH_USD_PROXY are set.
+/// Without MAINNET_RPC_URL set, all tests here are skipped. The fork is pinned (API3_FORK_BLOCK overrides it),
+/// so it needs an archive endpoint. The default proxy is the ETH/USD `DapiProxy` that API3's ProxyFactory
+/// deploys deterministically from the dAPI name alone (no per-dApp metadata). API3_ETH_USD_PROXY overrides it,
+/// for example with a per-dApp `Api3ReaderProxyV1` from the API3 Market.
 contract API3AdapterFork is Test {
-    /// @notice A recent mainnet block; overridable via API3_FORK_BLOCK for a fresher dAPI value.
-    uint256 constant DEFAULT_FORK_BLOCK = 21_500_000;
+    /// @notice Pinned mainnet block (2026), shared with the EntryPoint suites. The ETH/USD dAPI is not yet
+    ///         initialized at the 21_500_000 pin of the other oracle suites: its proxy reverts
+    ///         "Data feed not initialized" until block 22_473_379.
+    uint256 constant DEFAULT_FORK_BLOCK = 25_000_000;
+
+    /// @notice API3 ProxyFactory on Ethereum mainnet:
+    ///         https://github.com/api3dao/airnode-protocol-v1/blob/4816d45e66e985ad2cc848695e52435467768e2f/deployments/ethereum/ProxyFactory.json
+    address constant PROXY_FACTORY = 0x9EB9798Dc1b602067DFe5A57c3bfc914B965acFD;
+    /// @notice API3's Api3ServerV1 on Ethereum mainnet, which every dAPI proxy reads (same deployments directory;
+    ///         also chain 1 of `deployments/addresses.json` in api3dao/contracts).
+    address constant API3_SERVER_V1 = 0x709944a48cAf83535e43471680fDA4905FB3920a;
+    /// @notice The ETH/USD DapiProxy: `PROXY_FACTORY.computeDapiProxyAddress(bytes32("ETH/USD"), "")`.
+    address constant ETH_USD_DAPI_PROXY = 0x009E9B1eec955E9Fe7FE64f80aE868e661cb4729;
 
     bytes32 constant KEY_ETH_USD = keccak256("ETH/USD");
 
@@ -49,16 +61,38 @@ contract API3AdapterFork is Test {
     address admin = address(0x1);
 
     function setUp() public {
-        string memory rpc = vm.envOr("MAINNET_RPC_URL", string(""));
-        proxy = vm.envOr("API3_ETH_USD_PROXY", address(0));
-        if (bytes(rpc).length == 0 || proxy == address(0)) {
+        if (bytes(vm.envOr("MAINNET_RPC_URL", string(""))).length == 0) {
             vm.skip(true);
             return;
         }
-        vm.createSelectFork("mainnet", vm.envOr("API3_FORK_BLOCK", DEFAULT_FORK_BLOCK));
+        proxy = vm.envOr("API3_ETH_USD_PROXY", ETH_USD_DAPI_PROXY);
+        if (!ArchiveFork.select("mainnet", vm.envOr("API3_FORK_BLOCK", DEFAULT_FORK_BLOCK))) return;
+        // The pin postdates the proxy, so missing code means a wrong address or pin: skip locally, fail on the
+        // strict weekly lane.
+        if (proxy.code.length == 0) {
+            ArchiveFork.skipOrFail(ArchiveFork.strict(), "API3 ETH/USD proxy has no code at the fork block");
+            return;
+        }
 
         adapter = new MockAPI3AdapterForkContract();
         adapter.initialize(admin);
+    }
+
+    /// @notice The default proxy is the one API3's ProxyFactory derives for "ETH/USD", and it reads Api3ServerV1.
+    function test_Fork_DefaultProxyIsFactoryEthUsdDapiProxy() public view {
+        (bool ok, bytes memory ret) = PROXY_FACTORY.staticcall(
+            abi.encodeWithSignature("computeDapiProxyAddress(bytes32,bytes)", bytes32("ETH/USD"), bytes(""))
+        );
+        assertTrue(ok, "computeDapiProxyAddress reverted");
+        assertEq(abi.decode(ret, (address)), ETH_USD_DAPI_PROXY, "factory derives another ETH/USD proxy");
+
+        (ok, ret) = ETH_USD_DAPI_PROXY.staticcall(abi.encodeWithSignature("dapiNameHash()"));
+        assertTrue(ok, "dapiNameHash() reverted");
+        assertEq(abi.decode(ret, (bytes32)), keccak256(abi.encodePacked(bytes32("ETH/USD"))), "not the ETH/USD dAPI");
+
+        (ok, ret) = ETH_USD_DAPI_PROXY.staticcall(abi.encodeWithSignature("api3ServerV1()"));
+        assertTrue(ok, "api3ServerV1() reverted");
+        assertEq(abi.decode(ret, (address)), API3_SERVER_V1, "proxy reads another Api3ServerV1");
     }
 
     /// @dev Registers ETH/USD with a staleness window covering the forked block's on-chain value age.

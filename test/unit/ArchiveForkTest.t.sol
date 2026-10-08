@@ -53,6 +53,18 @@ contract ArchiveForkTest is Test {
         assertTrue(harness.isPruned(bytes("missing trie node 9a3c (path ) state 0x3f1a is not available")));
     }
 
+    /// @notice publicnode, the `.env.example` MAINNET_RPC_URL default, answers a historical-state read without an
+    ///         API token with HTTP 403. The block is out of reach on that endpoint, as with a pruned node.
+    function test_IsPruned_PublicnodeArchiveRequiresToken() public view {
+        assertTrue(
+            harness.isPruned(
+                bytes(
+                    "vm.rpc: \"eth_getBalance\": HTTP error 403 with body: {\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32602,\"message\":\"Archive requests require a personal token. Get one at: https://www.allnodes.com/publicnode\"},\"id\":1}"
+                )
+            )
+        );
+    }
+
     /// @notice Errors that say nothing about pruned history still fail the test.
     function test_IsPruned_FalseForOtherErrors() public view {
         assertFalse(harness.isPruned(bytes("execution reverted")));

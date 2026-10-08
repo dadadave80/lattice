@@ -10,7 +10,8 @@ import {Vm} from "forge-std/Vm.sol";
 /// @dev Replay suites pin old blocks (a CCTP receive block minus one, a fixture's source block) that only an
 ///      archive endpoint keeps. Public endpoints drop history on a rolling window and answer with EIP-4444's
 ///      `pruned history unavailable` (code 4444), reth's `state at block #N is pruned`, or geth's
-///      `historical state … is not available`. Some prune block bodies, so `createSelectFork` fails; others
+///      `historical state … is not available`; publicnode keeps history but refuses it to keyless callers with
+///      `Archive requests require a personal token`. Some prune block bodies, so `createSelectFork` fails; others
 ///      prune state, so the fork opens and the first account read fails mid-test as `EVM error; database error`,
 ///      which no test can catch. The guard therefore probes state at the block before forking, then catches the
 ///      fork error. Only a pruned-history error skips; any other error still fails the test. Set
@@ -54,9 +55,11 @@ library ArchiveFork {
         VM.skip(true, reason);
     }
 
-    /// @notice True when an RPC error says the node no longer keeps the requested block or its state.
+    /// @notice True when an RPC error says the node no longer keeps, or will not serve, the requested block or its
+    ///         state.
     function isPruned(bytes memory err) internal pure returns (bool) {
-        return _contains(err, "pruned") || _contains(err, "historical state") || _contains(err, "missing trie node");
+        return _contains(err, "pruned") || _contains(err, "historical state") || _contains(err, "missing trie node")
+            || _contains(err, "Archive requests require");
     }
 
     /// @dev Skips on a pruned-history error (unless strict mode is on); re-raises anything else.
@@ -69,7 +72,7 @@ library ArchiveFork {
         VM.skip(
             true,
             string.concat(
-                rpcAlias, " RPC pruned block ", VM.toString(blockNumber), "; this pin needs an archive endpoint"
+                rpcAlias, " RPC does not serve block ", VM.toString(blockNumber), "; this pin needs an archive endpoint"
             )
         );
     }
