@@ -128,48 +128,89 @@ Use `make example-ens-grant-m2 RPC=<alias-or-URL> KEYSTORE=<name>` to deploy and
 Local Anvil uses `make example-ens-grant-m2 LOCAL=1`.
 Acceptance evidence is tracked in [grant progress](PROGRESS.md).
 
-Install as a Forge dependency:
+Install as a Forge dependency, pinned to a release tag. The steps below assume a git repository
+(`forge init` creates one). In a `--no-git` project, run `forge install --no-git
+dadadave80/lattice@<tag>` instead and skip the commit step and the `git describe` check below: Forge
+records no gitlink, so check the pin from `VERSION` in `lib/lattice/src/LatticeVersion.sol`. CI builds with
+Foundry v1.8.5 and Solidity 0.8.36, and these steps were checked on Forge v1.8.5.
 
+<!-- x-release-please-start-version -->
 ```sh
-forge install dadadave80/lattice
-git submodule update --init --recursive   # diamond-lib + forge-std submodules
+forge install dadadave80/lattice@v0.4.0
+git add lib/lattice .gitmodules foundry.lock && git commit -m "Install lattice"
 ```
+<!-- x-release-please-end -->
 
-Add the remappings (mirror of this repo's `remappings.txt` / `foundry.toml`):
+`forge install` checks out the tag and its nested `diamond-lib` and `forge-std` submodules. Commit the
+install straight away, as shown: some Forge releases stage the default branch's commit rather than the
+tag's, and a later `git submodule update` then moves `lib/lattice` off the tag. Check the pin with
+`git -C lib/lattice describe --tags --exact-match`. Install from a tag, never the default branch: `main`
+and `dev` can carry unreleased changes (see [Versioning and compatibility](#versioning-and-compatibility)).
+
+No remappings are needed: Forge reads `lib/lattice/remappings.txt` and derives `@lattice/` and
+`@diamond/` itself. If you keep your own `remappings.txt`, map both into the dependency:
 
 ```
 @lattice/=lib/lattice/src/
-@diamond/=lib/diamond-lib/src/
+@diamond/=lib/lattice/lib/diamond-lib/src/
 forge-std/=lib/forge-std/src/
 ```
 
-Because facets have no constructors, proxy state is set up through Lattice's vendored
-`Initializable` mixin over `InitializableLib` (both moved into Lattice at diamond-lib v0.3.0).
-Inherit the mixin and guard the init entrypoint with the `initializer` modifier — it wraps the body
-in `preInitializer()`/`postInitializer(slot)`, so nested constructor-initializers finalize exactly
-once. `reinitializer(version)` and `onlyInitializing` are available for upgrades and init-only
-helpers:
+Facets have no constructors, so a diamond's state is seeded by an init contract that
+`Lattice.initialize` delegatecalls once, inside its `initializer` window. Write it like the shipped
+`*Init.sol` contracts (for example [`AccessControlInit`](src/access/AccessControlInit.sol)): a plain
+`init` with **no** `initializer` modifier, calling each module's `__<Module>_init` in dependency order.
 
 ```solidity
-import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
-import {Initializable} from "@lattice/utils/Initializable.sol";
 
-contract MyAccessControlled is AccessControl, Initializable {
-    function initialize(address _admin) external initializer {
-        AccessControlLib.__AccessControl_init(_admin); // module init (gated by checkInitializing)
+contract MyAppInit {
+    function init(address admin) external {
+        AccessControlLib.__AccessControl_init(admin); // passes: initialize's window is open
+        // ...other module inits, in dependency order
     }
 }
 ```
 
-Note: init contracts delegatecalled during `diamondCut` (the `*Init.sol` pattern) carry NO guard of
-their own — they already run inside `Lattice.initialize`'s `initializer` scope, and a nested
-guard reverts outside a constructor context.
+The `*Init` contracts carry no guard of their own because they already run inside
+`Lattice.initialize`'s `initializer` scope; a nested guard reverts outside a constructor context. The
+vendored `Initializable` mixin also provides `reinitializer(version)` and `onlyInitializing` for
+upgrade-time init contracts.
+
+Deploy and initialize in **one transaction** through `LatticeFactory.deploy(entries, customCuts, init,
+initCalldata, salt)`. The recipe must cut the diamond loupe, or the factory reverts. Never deploy a
+Lattice proxy and call `initialize` in a separate transaction: `initialize` is first-caller-wins, so
+anyone who sees the deployment can initialize it first with their own cut and take the diamond. The
+[Compose your own Diamond](docs/guides/compose-your-own-diamond.md#initialize-in-one-transaction) guide
+walks through a full recipe with `deployAtomic`.
 
 When adding new modules, be deliberate about caller semantics. Some existing modules use
 `msg.sender` directly because they authenticate protocol callbacks, Safe calls, EntryPoint
 calls, or Diamond self-dispatch. If a module is intended to support forwarded calls, use the
 project's established caller-resolution pattern consistently through the library layer.
+
+## Versioning and compatibility
+
+Lattice follows [Semantic Versioning](https://semver.org/) with a stated 0.x policy. Release Please
+cuts each release from Conventional Commits, and before 1.0 a breaking change bumps the minor version.
+
+- **Frozen modules.** A module's ERC-7201 storage namespace and ERC-165 interfaceId are frozen once
+  the module is live on any network: a release deployment, a Lattice demo, or a known downstream
+  deployment. Later releases only append to its storage struct and keep its interfaceId. The CI
+  storage guard (`make storage-check`) enforces the layout part.
+- **Minor releases (0.x).** A minor release may break the ABI or storage layout **only** of modules
+  with no live deployment. Such changes are marked `!` in the commit title and listed as breaking in
+  the [changelog](CHANGELOG.md), which says when a fresh deployment is required.
+- **Patch releases.** A patch never changes a storage layout, a selector set or interfaceId, or the
+  `LatticeRegistry`/`LatticeFactory` bytecode, so the canonical singleton addresses do not move.
+  Release facet addresses are versioned by design: every release, patches included, publishes its
+  facets at new CREATE2 addresses, and an existing diamond keeps the facets it was cut with until it
+  is upgraded.
+- **Upgrading a deployment.** An upgrade of an existing diamond keeps its storage layout compatible
+  (append-only) or ships a tested migration.
+- **Supported versions.** Only the latest release receives fixes, which land on `dev` and ship in the
+  next release. This README and the guides on `dev` describe unreleased code; for a release, read
+  them at its tag.
 
 ## Live testnet deployment (Sepolia)
 
@@ -216,7 +257,8 @@ forge script script/base/defi/DeployGovernedVaultENS.s.sol --tc DeployGovernedVa
 Every `script/base/**` recipe creates and initializes its diamond in one transaction through
 `LatticeFactory`. (The Milestone 1 deployment above predates this and used two transactions.) By default a
 run first deploys its own `LatticeRegistry` + `LatticeFactory`. Set `LATTICE_FACTORY=<address>` to reuse a
-deployed factory, for example the release factory in `deployments/<chainid>/release-<version>.json`. Set
+deployed factory, such as a release factory (a committed per-chain release manifest is tracked in
+[#196](https://github.com/dadadave80/lattice/issues/196)). Set
 `LATTICE_SALT=<0x + 64 hex characters>` to choose addresses: diamond `i` of a run lands at
 `factory.predict(<broadcaster>, keccak256(abi.encode(LATTICE_SALT, i)))`. Re-running with a salt that is
 already used reverts before anything is broadcast.

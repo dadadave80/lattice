@@ -32,11 +32,15 @@ On an existing checkout, run `git submodule update --init --recursive` first. Ru
 root: its remappings define `@lattice/=src/`, `@lattice-script/=script/`, `@lattice-test/=test/`,
 `@diamond/=lib/diamond-lib/src/`, and `forge-std/=lib/forge-std/src/`.
 
-To consume as a dependency, use `forge install dadadave80/lattice`, then recursively initialize
-submodules. Use `@lattice/=lib/lattice/src/`, `@diamond/=lib/lattice/lib/diamond-lib/src/`, and
-`forge-std/=lib/lattice/lib/forge-std/src/`. If importing the supplied deployment scripts, also map
+To consume as a dependency, follow the [README install steps](../../README.md#install--usage): install
+a release tag with `forge install dadadave80/lattice@vX.Y.Z`, then commit it straight away with
+`git add lib/lattice .gitmodules foundry.lock && git commit`. `forge install` checks out the nested
+submodules itself; a `git submodule update` before that commit can move `lib/lattice` off the tag. No
+remappings are needed, because Forge derives them from `lib/lattice/remappings.txt`. If you keep your own,
+use `@lattice/=lib/lattice/src/`, `@diamond/=lib/lattice/lib/diamond-lib/src/`, and
+`forge-std/=lib/forge-std/src/`. If importing the supplied deployment scripts, also map
 `@lattice-script/=lib/lattice/script/` and `@lattice-test/=lib/lattice/test/` (BaseDeploy's legacy
-selector helper lives there). Pin the dependency commit rather than silently updating production recipes.
+selector helper lives there). Pin a release tag rather than silently updating production recipes.
 
 ## Pick modules and reconcile selectors
 
