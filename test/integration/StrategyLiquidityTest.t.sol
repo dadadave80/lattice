@@ -10,6 +10,7 @@ import {IStrategyManager} from "@lattice/interfaces/defi/IStrategyManager.sol";
 import {IVaultCore} from "@lattice/interfaces/defi/IVaultCore.sol";
 import {IStrategy} from "@lattice/interfaces/external/yearn/IStrategy.sol";
 import {UniswapV3FullRangeMath} from "@lattice/utils/libraries/UniswapV3FullRangeMath.sol";
+import {Math} from "@lattice/utils/libraries/math/Math.sol";
 import {Vm} from "forge-std/Vm.sol";
 
 import {MockAToken, MockAaveAdapter, MockAaveV3Pool, MockAsset} from "./AaveV3AdapterSupplyTest.t.sol";
@@ -352,8 +353,7 @@ contract UniswapV3StrategyLiquidityTest is StrategyLiquidityTestBase {
     /// @dev token1 matching `amount0` at the TWAP price, plus 0.5% so token0 is the binding side.
     function _token1For(uint256 amount0) internal pure returns (uint256) {
         uint160 sqrtP = UniswapV3FullRangeMath.getSqrtRatioAtTick(TWAP_TICK);
-        uint256 a1 =
-            UniswapV3FullRangeMath.mulDiv(UniswapV3FullRangeMath.mulDiv(amount0, sqrtP, 1 << 96), sqrtP, 1 << 96);
+        uint256 a1 = Math.mulDiv(Math.mulDiv(amount0, sqrtP, 1 << 96), sqrtP, 1 << 96);
         return a1 + a1 / 200;
     }
 

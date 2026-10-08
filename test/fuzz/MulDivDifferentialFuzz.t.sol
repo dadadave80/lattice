@@ -2,15 +2,12 @@
 pragma solidity ^0.8.30;
 
 import {FullMathReference} from "@lattice-test/helpers/FullMathReference.sol";
-import {IERC4626} from "@lattice/interfaces/tokens/IERC4626.sol";
-import {ERC4626Lib, Rounding} from "@lattice/tokens/ERC4626/libraries/ERC4626Lib.sol";
-import {UniswapV3FullRangeMath} from "@lattice/utils/libraries/UniswapV3FullRangeMath.sol";
 import {Math} from "@lattice/utils/libraries/math/Math.sol";
 import {Test} from "forge-std/Test.sol";
 
-/// @notice Exposes every `mulDiv` copy in `src` (and `Math.mul512`, which the Math copy builds on) as external calls,
-///         so a test can observe each copy's result or revert data.
-contract MulDivCopiesHarness {
+/// @notice Exposes `Math.mulDiv` (and `Math.mul512`, which it builds on) as external calls, so a test can observe
+///         its result or revert data.
+contract MulDivHarness {
     function mathMulDiv(uint256 x, uint256 y, uint256 d) external pure returns (uint256) {
         return Math.mulDiv(x, y, d);
     }
@@ -19,40 +16,30 @@ contract MulDivCopiesHarness {
         return Math.mulDiv(x, y, d, r);
     }
 
-    function erc4626MulDiv(uint256 x, uint256 y, uint256 d) external pure returns (uint256) {
-        return ERC4626Lib.mulDiv(x, y, d);
-    }
-
-    function erc4626MulDivRounding(uint256 x, uint256 y, uint256 d, Rounding r) external pure returns (uint256) {
-        return ERC4626Lib.mulDiv(x, y, d, r);
-    }
-
-    function uniswapV3MulDiv(uint256 x, uint256 y, uint256 d) external pure returns (uint256) {
-        return UniswapV3FullRangeMath.mulDiv(x, y, d);
-    }
-
     function mul512(uint256 a, uint256 b) external pure returns (uint256 high, uint256 low) {
         return Math.mul512(a, b);
     }
 }
 
 /// @title MulDivDifferentialFuzz
-/// @notice Differential tests for the three `mulDiv` copies in `src` — `Math.mulDiv` (OpenZeppelin v5.6),
-///         `ERC4626Lib.mulDiv` (OpenZeppelin v5.1 port, used for ERC-4626 share pricing) and
-///         `UniswapV3FullRangeMath.mulDiv` (Uniswap V3 `FullMath`) — against {FullMathReference}, an independent
-///         512-bit oracle. Every run checks, for every copy and every rounding mode:
-///         - the revert domain: a copy reverts exactly when the exact quotient does not fit a uint256 or `d == 0`;
+/// @notice Differential tests for `Math.mulDiv` (OpenZeppelin v5.6), the one `mulDiv` in `src`: ERC-4626 share
+///         pricing (`ERC4626Lib`) and the Uniswap V3 position math (`UniswapV3FullRangeMath`, `UniswapV3AdapterLib`)
+///         call it in place of their former OpenZeppelin v5.1 and Uniswap V3 `FullMath` copies (#246). It is checked
+///         against {FullMathReference}, an independent 512-bit oracle. Every run checks, for every rounding mode:
+///         - the revert domain: it reverts exactly when the exact quotient does not fit a uint256 or `d == 0`;
 ///         - the result: floor and ceil match the oracle, and `q * d + (x * y mod d) == x * y` in 512 bits;
-///         - the revert data each copy uses, so a consolidation (#246) sees exactly which errors change.
+///         - the revert data: `Panic(0x12)` for `d == 0`, otherwise `Panic(0x11)`. Of the removed copies, the
+///           ERC-4626 one differed only on its 512-bit path (`d <= high`, incl. 0), where it raised
+///           `IERC4626.MathOverflowedMulDiv()`; the Uniswap V3 port raised `Error("mulDiv:0")` / `Error("mulDiv:OF")`.
 ///         Inputs are shaped so each branch is driven on purpose: the `high == 0` fast path, the 512-bit success
 ///         path (`d > high`), the 512-bit overflow path (`d <= high`) and the ceil `+1` overflow at a `max` floor.
 contract MulDivDifferentialFuzz is Test {
     uint256 internal constant MAX = type(uint256).max;
 
-    MulDivCopiesHarness internal h;
+    MulDivHarness internal h;
 
     function setUp() public {
-        h = new MulDivCopiesHarness();
+        h = new MulDivHarness();
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -62,14 +49,14 @@ contract MulDivDifferentialFuzz is Test {
     /// @notice Unconstrained operands: almost every product needs 512 bits, so this mostly drives overflow reverts.
     /// forge-config: default.fuzz.runs = 512
     function testFuzz_MulDiv_RandomOperands(uint256 x, uint256 y, uint256 d) public view {
-        _assertAllCopies(x, y, d);
+        _assertMulDiv(x, y, d);
     }
 
     /// @notice 128-bit operands keep the product in 256 bits: the `high == 0` fast path, including `d == 0`.
     function testFuzz_MulDiv_FastPath(uint128 x, uint128 y, uint256 d) public view {
         (uint256 hi,) = FullMathReference.mul512(x, y);
         assertEq(hi, 0, "product fits 256 bits");
-        _assertAllCopies(x, y, d);
+        _assertMulDiv(x, y, d);
     }
 
     /// @notice A 512-bit product over a denominator above its high word: the full-precision success path.
@@ -81,7 +68,7 @@ contract MulDivDifferentialFuzz is Test {
 
         (bool ok,) = FullMathReference.mulDiv(x, y, d, false);
         assertTrue(ok, "quotient fits 256 bits");
-        _assertAllCopies(x, y, d);
+        _assertMulDiv(x, y, d);
     }
 
     /// @notice A 512-bit product with a small 512-bit-path operand pair, so the denominator spans every width.
@@ -91,10 +78,10 @@ contract MulDivDifferentialFuzz is Test {
         (uint256 hi,) = FullMathReference.mul512(x, y);
         vm.assume(hi != 0 && hi < uint256(1) << shift);
         d = bound(d, hi + 1, uint256(1) << shift);
-        _assertAllCopies(x, y, d);
+        _assertMulDiv(x, y, d);
     }
 
-    /// @notice A 512-bit product over a denominator at or below its high word (incl. 0): every copy must revert.
+    /// @notice A 512-bit product over a denominator at or below its high word (incl. 0): `mulDiv` must revert.
     function testFuzz_MulDiv_OverflowReverts(uint256 x, uint256 y, uint256 d) public view {
         (uint256 hi,) = FullMathReference.mul512(x, y);
         vm.assume(hi != 0);
@@ -102,7 +89,7 @@ contract MulDivDifferentialFuzz is Test {
 
         (bool ok,) = FullMathReference.mulDiv(x, y, d, false);
         assertFalse(ok, "quotient overflows");
-        _assertAllCopies(x, y, d);
+        _assertMulDiv(x, y, d);
     }
 
     /// @notice `x * y == q * d` exactly: floor and ceil agree, for any quotient and denominator.
@@ -110,7 +97,7 @@ contract MulDivDifferentialFuzz is Test {
         d = bound(d, 1, MAX);
         (bool ok, uint256 floor_) = FullMathReference.mulDiv(q, d, d, false);
         assertTrue(ok && floor_ == q, "exact quotient");
-        _assertAllCopies(q, d, d);
+        _assertMulDiv(q, d, d);
     }
 
     /// @notice Floor is exactly `type(uint256).max` with a non-zero remainder, so only the ceil `+1` overflows.
@@ -126,10 +113,10 @@ contract MulDivDifferentialFuzz is Test {
         (bool okCeil,) = FullMathReference.mulDiv(x, y, d, true);
         assertTrue(okFloor && floor_ == MAX, "floor is max");
         assertFalse(okCeil, "ceil overflows");
-        _assertAllCopies(x, y, d);
+        _assertMulDiv(x, y, d);
     }
 
-    /// @notice `Math.mul512` (the CRT 512-bit product every copy inlines) equals the limb-wise product.
+    /// @notice `Math.mul512` (the CRT 512-bit product `mulDiv` builds on) equals the limb-wise product.
     function testFuzz_Mul512MatchesLimbProduct(uint256 a, uint256 b) public view {
         (uint256 hi, uint256 lo) = FullMathReference.mul512(a, b);
         (uint256 high, uint256 low) = h.mul512(a, b);
@@ -168,7 +155,7 @@ contract MulDivDifferentialFuzz is Test {
             [MAX - 1, MAX - 1, MAX] // near-max quotient, odd denominator
         ];
         for (uint256 i; i < cases.length; ++i) {
-            _assertAllCopies(cases[i][0], cases[i][1], cases[i][2]);
+            _assertMulDiv(cases[i][0], cases[i][1], cases[i][2]);
         }
     }
 
@@ -176,58 +163,35 @@ contract MulDivDifferentialFuzz is Test {
     //                                 HELPERS
     //////////////////////////////////////////////////////////////////////////*//
 
-    /// @dev Compares every copy and rounding mode on `(x, y, d)` against the oracle, including revert data.
-    function _assertAllCopies(uint256 x, uint256 y, uint256 d) internal view {
+    /// @dev Compares every rounding mode on `(x, y, d)` against the oracle, including revert data.
+    function _assertMulDiv(uint256 x, uint256 y, uint256 d) internal view {
         (bool okFloor, uint256 floor_) = FullMathReference.mulDiv(x, y, d, false);
         (bool okCeil, uint256 ceil_) = FullMathReference.mulDiv(x, y, d, true);
-        (uint256 hi,) = FullMathReference.mul512(x, y);
         if (okFloor) _assertIdentity(x, y, d, floor_);
 
-        // Floor revert data. Math panics like checked arithmetic; ERC4626Lib panics only for `d == 0` on its
-        // 256-bit path; the Uniswap V3 port uses require strings.
-        bytes memory mathErr = _panic(d == 0 ? 0x12 : 0x11);
-        bytes memory erc4626Err = (d == 0 && hi == 0) ? _panic(0x12) : _erc4626Overflow();
-        bytes memory v3Err = (d == 0 && hi == 0) ? _error("mulDiv:0") : _error("mulDiv:OF");
+        // Floor revert data: Math panics like checked arithmetic, on both the 256-bit and the 512-bit path.
+        bytes memory err = _panic(d == 0 ? 0x12 : 0x11);
 
-        _assertCopy(abi.encodeCall(h.mathMulDiv, (x, y, d)), okFloor, floor_, mathErr, "Math");
-        _assertCopy(
-            abi.encodeCall(h.mathMulDivRounding, (x, y, d, Math.Rounding.Floor)), okFloor, floor_, mathErr, "Math.Floor"
+        _assertCall(abi.encodeCall(h.mathMulDiv, (x, y, d)), okFloor, floor_, err, "Math");
+        _assertCall(
+            abi.encodeCall(h.mathMulDivRounding, (x, y, d, Math.Rounding.Floor)), okFloor, floor_, err, "Math.Floor"
         );
-        _assertCopy(
-            abi.encodeCall(h.mathMulDivRounding, (x, y, d, Math.Rounding.Trunc)), okFloor, floor_, mathErr, "Math.Trunc"
+        _assertCall(
+            abi.encodeCall(h.mathMulDivRounding, (x, y, d, Math.Rounding.Trunc)), okFloor, floor_, err, "Math.Trunc"
         );
-        _assertCopy(abi.encodeCall(h.erc4626MulDiv, (x, y, d)), okFloor, floor_, erc4626Err, "ERC4626Lib");
-        _assertCopy(
-            abi.encodeCall(h.erc4626MulDivRounding, (x, y, d, Rounding.Floor)),
-            okFloor,
-            floor_,
-            erc4626Err,
-            "ERC4626Lib.Floor"
-        );
-        _assertCopy(abi.encodeCall(h.uniswapV3MulDiv, (x, y, d)), okFloor, floor_, v3Err, "UniswapV3FullRangeMath");
 
         // Ceil: a floor revert propagates unchanged; otherwise only the checked `+1` can overflow.
-        if (okFloor) {
-            mathErr = _panic(0x11);
-            erc4626Err = _panic(0x11);
-        }
-        _assertCopy(
-            abi.encodeCall(h.mathMulDivRounding, (x, y, d, Math.Rounding.Ceil)), okCeil, ceil_, mathErr, "Math.Ceil"
+        if (okFloor) err = _panic(0x11);
+        _assertCall(
+            abi.encodeCall(h.mathMulDivRounding, (x, y, d, Math.Rounding.Ceil)), okCeil, ceil_, err, "Math.Ceil"
         );
-        _assertCopy(
-            abi.encodeCall(h.mathMulDivRounding, (x, y, d, Math.Rounding.Expand)), okCeil, ceil_, mathErr, "Math.Expand"
-        );
-        _assertCopy(
-            abi.encodeCall(h.erc4626MulDivRounding, (x, y, d, Rounding.Ceil)),
-            okCeil,
-            ceil_,
-            erc4626Err,
-            "ERC4626Lib.Ceil"
+        _assertCall(
+            abi.encodeCall(h.mathMulDivRounding, (x, y, d, Math.Rounding.Expand)), okCeil, ceil_, err, "Math.Expand"
         );
     }
 
-    /// @dev Asserts one copy reverts exactly when the oracle does, then its result or its revert data.
-    function _assertCopy(
+    /// @dev Asserts one call reverts exactly when the oracle does, then its result or its revert data.
+    function _assertCall(
         bytes memory data,
         bool expectOk,
         uint256 expected,
@@ -254,13 +218,5 @@ contract MulDivDifferentialFuzz is Test {
 
     function _panic(uint256 code) internal pure returns (bytes memory) {
         return abi.encodeWithSignature("Panic(uint256)", code);
-    }
-
-    function _error(string memory reason) internal pure returns (bytes memory) {
-        return abi.encodeWithSignature("Error(string)", reason);
-    }
-
-    function _erc4626Overflow() internal pure returns (bytes memory) {
-        return abi.encodeWithSelector(IERC4626.MathOverflowedMulDiv.selector);
     }
 }

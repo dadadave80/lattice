@@ -32,7 +32,9 @@ interface IERC4626 is IERC20 {
     //                                  ERRORS
     //////////////////////////////////////////////////////////////////////////*//
 
-    /// @dev Emitted when mulDiv overflows (result exceeds uint256 or denominator is 0).
+    /// @dev Raised by ERC4626 facets released through 0.4.0 when the share-math quotient overflows uint256 (on
+    ///      mulDiv's 512-bit path). Kept so their reverts still decode; current builds use `Math.mulDiv`, which
+    ///      raises `Panic(0x11)` instead.
     error MathOverflowedMulDiv();
 
     /// @dev A token transfer failed (covers tokens that return false or do not return a bool).

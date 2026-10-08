@@ -12,6 +12,7 @@ import {PausableLib} from "@lattice/security/libraries/PausableLib.sol";
 import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib.sol";
 import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 import {UniswapV3FullRangeMath} from "@lattice/utils/libraries/UniswapV3FullRangeMath.sol";
+import {Math} from "@lattice/utils/libraries/math/Math.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
 //                                  STORAGE
@@ -564,7 +565,7 @@ library UniswapV3AdapterLib {
         (, uint256 amount0,) = _positionAmounts($, liquidity);
         if (amount0 == 0) return 0;
         if (amount >= amount0) return liquidity;
-        liquidityToRemove = uint128(UniswapV3FullRangeMath.mulDiv(liquidity, amount, amount0));
+        liquidityToRemove = uint128(Math.mulDiv(liquidity, amount, amount0));
         if (liquidityToRemove == 0) liquidityToRemove = 1;
     }
 
