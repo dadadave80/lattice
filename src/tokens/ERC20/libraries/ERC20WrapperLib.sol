@@ -35,6 +35,8 @@ struct ERC20WrapperStorage {
 /// @notice Library implementing 1:1 wrapping of an underlying ERC-20. All logic lives here; the facet delegates.
 /// @dev WARNING: an underlying that changes balances without an explicit transfer (rebasing / fee-on-transfer)
 ///      can desynchronise this wrapper's supply and its underlying balance; use {recover} to mint the surplus.
+///      Mints and burns call {ERC20Lib} directly: an ERC-20 movement-replacing extension (ERC20Pausable, ERC20Votes)
+///      does not see them, so the two are mutually exclusive (D25, #234).
 library ERC20WrapperLib {
     //*//////////////////////////////////////////////////////////////////////////
     //                              STORAGE ACCESS

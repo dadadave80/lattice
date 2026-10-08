@@ -37,6 +37,10 @@ import {ERC4626Lib} from "@lattice/tokens/ERC4626/libraries/ERC4626Lib.sol";
 ///      is latched, still reports allocations, or cannot answer. Deposits then stay closed on the new manager
 ///      until the vault admin calls `clearManagerSwapLatch` (#305; {IVaultCoreRecovery}, a separate interface so
 ///      IVaultCore's ERC-165 id is unchanged).
+///
+///      Hook model (D25, #234): the four mutators mint and burn shares through {ERC20Lib} directly, so they skip
+///      ERC20Pausable's pause, ERC20Votes' checkpoints and ERC20Capped's cap; VaultCore is mutually exclusive with
+///      those extensions. {DeployGovernedVault} routes the mutators to GovernedVault, which moves voting units.
 /// @custom:lattice-version 0.1.0
 /// @custom:lattice-source OpenZeppelin v5.1.0
 contract VaultCore is IVaultCoreRecovery {

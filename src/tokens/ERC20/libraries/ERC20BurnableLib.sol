@@ -27,6 +27,8 @@ bytes32 constant ERC165_MAP_IERC20BURNABLE_SLOT = 0x20898a14bb56c69b48cb37845539
 ///      `burnFrom` is hardwired to `ERC20Lib._spendAllowance`. If permit-based
 ///      allowance overriding is required in the future, an `_inner` delegate pattern
 ///      or a hook in `ERC20Lib` will be needed to restore the override chain.
+///      Burns call {ERC20Lib._burn} directly: an ERC-20 movement-replacing extension (ERC20Pausable, ERC20Votes) does
+///      not see them, so the two are mutually exclusive (D25, #234).
 library ERC20BurnableLib {
     //*//////////////////////////////////////////////////////////////////////////
     //                             INITIALIZATION

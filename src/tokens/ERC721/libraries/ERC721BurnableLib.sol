@@ -17,8 +17,8 @@ bytes32 constant ERC165_MAP_IERC721BURNABLE_SLOT = 0x9eb38abe883a9d9203f59f04d39
 /// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC721/extensions/ERC721Burnable.sol)
 /// @notice Library implementing the ERC-721 burn extension. Adds no own storage: it burns through {ERC721Lib}.
 /// @dev Burns call {ERC721Lib._update} directly. An extension that observes token movement by `Replace`-ing the
-///      base transfer selectors (an Enumerable, Pausable or Votes facet) would not see these burns; issue #234
-///      decides how such extensions hook movement.
+///      base transfer selectors (an Enumerable, Pausable or Votes facet) would not see these burns, so the two are
+///      mutually exclusive (D25, #234).
 library ERC721BurnableLib {
     //*//////////////////////////////////////////////////////////////////////////
     //                             INITIALIZATION

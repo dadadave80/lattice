@@ -30,6 +30,11 @@ struct ERC20CappedStorage {
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/extensions/ERC20Capped.sol)
 /// @notice Library implementing a capped total supply for ERC-20 tokens.
+/// @dev Hook model (D25, #234): {ERC20Lib._mint} runs no hook, so the cap holds only on a mint path that calls
+///      {_checkCap} first (the {ERC20Capped} facet's internal `_mint`). Every shipped direct minter (ERC7802,
+///      ERC20Crosschain, ERC20Wrapper, ERC4626, VaultCore, GovernedVault, {ERC20VotesLib._mint}, and
+///      ERC20FlashMint for the length of a loan) skips it and is mutually exclusive with a cap.
+///      See docs/guides/selector-compatibility.md#token-extension-hook-model.
 library ERC20CappedLib {
     //*//////////////////////////////////////////////////////////////////////////
     //                              STORAGE ACCESS

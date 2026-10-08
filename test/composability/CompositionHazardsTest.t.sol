@@ -12,6 +12,7 @@ import {DeployGovernedDiamondCut} from "@lattice-script/base/governance/DeployGo
 import {DeployGovernedSafeDiamondCut} from "@lattice-script/base/governance/DeployGovernedSafeDiamondCut.s.sol";
 import {DeployChainlinkAdapter} from "@lattice-script/base/oracles/DeployChainlinkAdapter.s.sol";
 import {DeployChainlinkVRF} from "@lattice-script/base/oracles/DeployChainlinkVRF.s.sol";
+import {DeployERC20Capped} from "@lattice-script/base/tokens/DeployERC20Capped.s.sol";
 import {DeployERC20Pausable} from "@lattice-script/base/tokens/DeployERC20Pausable.s.sol";
 import {DeployERC20Votes} from "@lattice-script/base/tokens/DeployERC20Votes.s.sol";
 import {DeployERC4626} from "@lattice-script/base/tokens/DeployERC4626.s.sol";
@@ -26,6 +27,7 @@ import {BridgeERC20} from "@lattice/crosschain/BridgeERC20.sol";
 import {BridgeERC20Init} from "@lattice/crosschain/BridgeERC20Init.sol";
 import {CrosschainLink} from "@lattice/crosschain/CrosschainLink.sol";
 import {CrosschainTimelockHandler} from "@lattice/crosschain/CrosschainTimelockHandler.sol";
+import {GovernedVault} from "@lattice/defi/GovernedVault.sol";
 import {GovernedDiamondCutInit} from "@lattice/governance/GovernedDiamondCutInit.sol";
 import {TimelockController} from "@lattice/governance/TimelockController.sol";
 import {Votes} from "@lattice/governance/Votes.sol";
@@ -35,19 +37,24 @@ import {IAccessManager} from "@lattice/interfaces/access/IAccessManager.sol";
 import {IBridgeFungible} from "@lattice/interfaces/crosschain/IBridgeFungible.sol";
 import {ICrosschainLink} from "@lattice/interfaces/crosschain/ICrosschainLink.sol";
 import {IERC7786GatewaySource} from "@lattice/interfaces/external/ercs/IERC7786.sol";
+import {IERC7802} from "@lattice/interfaces/external/ercs/IERC7802.sol";
 import {IERC8153} from "@lattice/interfaces/external/ercs/IERC8153.sol";
 import {IVotes} from "@lattice/interfaces/governance/IVotes.sol";
 import {IPausable} from "@lattice/interfaces/security/IPausable.sol";
 import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
+import {IERC20Capped} from "@lattice/interfaces/tokens/IERC20Capped.sol";
 import {IERC4626} from "@lattice/interfaces/tokens/IERC4626.sol";
 import {IVestingWallet} from "@lattice/interfaces/utils/IVestingWallet.sol";
 import {PythAdapter} from "@lattice/oracles/pyth/PythAdapter.sol";
 import {PythEntropyAdapter} from "@lattice/oracles/pyth/PythEntropyAdapter.sol";
 import {Pausable} from "@lattice/security/Pausable.sol";
 import {ERC1155} from "@lattice/tokens/ERC1155/ERC1155.sol";
+import {ERC20Burnable} from "@lattice/tokens/ERC20/ERC20Burnable.sol";
 import {ERC20Pausable} from "@lattice/tokens/ERC20/ERC20Pausable.sol";
 import {ERC20Votes} from "@lattice/tokens/ERC20/ERC20Votes.sol";
 import {ERC20VotesInit} from "@lattice/tokens/ERC20/ERC20VotesInit.sol";
+import {ERC7802} from "@lattice/tokens/ERC7802/ERC7802.sol";
+import {CROSSCHAIN_BRIDGE_ROLE} from "@lattice/tokens/ERC7802/libraries/ERC7802Lib.sol";
 import {VestingWallet} from "@lattice/utils/VestingWallet.sol";
 import {InteroperableAddress} from "@lattice/utils/libraries/InteroperableAddress.sol";
 import {VestingWalletLib} from "@lattice/utils/libraries/VestingWalletLib.sol";
@@ -185,8 +192,13 @@ contract CompositionHazardsTest is Test {
     }
 
     //*//////////////////////////////////////////////////////////////////////////
-    //            3. ERC-20 MOVEMENT OVERRIDES ARE ONE PER DIAMOND (D25)
+    //        3. ERC-20 MOVEMENT-REPLACING EXTENSIONS ARE MUTUALLY EXCLUSIVE (D25)
     //////////////////////////////////////////////////////////////////////////*//
+
+    // The hook model (docs/guides/selector-compatibility.md#token-extension-hook-model): base token libraries run
+    // no extension hook, an extension that gates or observes movement replaces the base movement selectors, two
+    // such extensions are mutually exclusive, and a facet that moves balances through the base library directly
+    // bypasses them. These tests pin each way a diamond can lose pause, vote or supply-cap accounting today.
 
     /// @notice D25: ERC20Pausable and ERC20Votes both own `transfer`/`transferFrom`. Adding one next to the other
     ///         reverts on `transfer` (`0xa9059cbb`).
@@ -262,6 +274,94 @@ contract CompositionHazardsTest is Test {
         vm.prank(alice);
         IERC20(token).transfer(bob, 40e18);
         assertEq(IERC20(token).balanceOf(bob), 40e18, "the transfer went through while paused");
+    }
+
+    /// @notice D25 declares the ERC-20 movement-replacing family: every facet that replaces the base movement
+    ///         selectors replaces BOTH `transfer` and `transferFrom`, so any two members collide on `Add` and
+    ///         only an explicit `Replace` can co-install them. A future member (an ERC-20 Supply or Enumerable
+    ///         style facet) joins this list and must keep the property.
+    function test_MovementReplacingFamilyClaimsTheTransferPair() public {
+        address[3] memory family =
+            [address(new ERC20Pausable()), address(new ERC20Votes()), address(new GovernedVault())];
+        for (uint256 i; i < family.length; ++i) {
+            bytes4[] memory sels = _add(family[i]).functionSelectors;
+            assertTrue(_contains(sels, IERC20.transfer.selector), "member replaces transfer");
+            assertTrue(_contains(sels, IERC20.transferFrom.selector), "member replaces transferFrom");
+        }
+    }
+
+    /// @notice D25 hook model: base libraries run no extension hook, so a facet that moves balances through
+    ///         {ERC20Lib} directly bypasses a movement-replacing extension. ERC20Burnable next to ERC20Votes shares
+    ///         no selector, so the cut succeeds with no signal, and burns leave the burner's votes in place:
+    ///         delegated votes exceed the supply. The two are mutually exclusive.
+    function test_BurnableNextToVotesDesyncsVotes() public {
+        (FacetCut[] memory base, address[] memory inits, bytes[] memory datas) =
+            new DeployERC20Votes().buildCuts("Token", "TKN", admin);
+        FacetCut[] memory cuts = _append(
+            _append(base, _add(address(new ERC20Burnable()))),
+            _selectors(address(new ERC20VotesTestFacet()), ERC20VotesTestFacet.mint.selector)
+        );
+        address token = _deploy(cuts, inits, datas);
+
+        ERC20VotesTestFacet(token).mint(alice, 100e18);
+        vm.prank(alice);
+        IVotes(token).delegate(alice);
+        vm.prank(alice);
+        ERC20Burnable(token).burn(40e18);
+
+        assertEq(IERC20(token).totalSupply(), 60e18, "the burn reduced the supply");
+        assertEq(IVotes(token).getVotes(alice), 100e18, "alice keeps the votes of the tokens she burned");
+        assertGt(IVotes(token).getVotes(alice), IERC20(token).totalSupply(), "votes exceed the supply");
+    }
+
+    /// @notice The same bypass for the pause: ERC20Pausable gates only the `transfer`/`transferFrom` it replaces,
+    ///         so ERC20Burnable cut next to it still burns while paused (OpenZeppelin's `_update` hook would
+    ///         revert). The two are mutually exclusive when a pause must also stop burns.
+    function test_BurnableNextToPausableBurnsWhilePaused() public {
+        (FacetCut[] memory base, address[] memory inits, bytes[] memory datas) =
+            new DeployERC20Pausable().buildCuts("Token", "TKN", admin);
+        FacetCut[] memory cuts = _append(
+            _append(base, _add(address(new ERC20Burnable()))),
+            _selectors(address(new TokenTestFacet()), TokenTestFacet.mint.selector)
+        );
+        address token = _deploy(cuts, inits, datas);
+
+        TokenTestFacet(token).mint(alice, 100e18);
+        vm.prank(admin);
+        IPausable(token).pause();
+        vm.prank(alice);
+        vm.expectRevert(IPausable.EnforcedPause.selector);
+        IERC20(token).transfer(bob, 1);
+
+        vm.prank(alice);
+        ERC20Burnable(token).burn(40e18);
+        assertEq(IERC20(token).totalSupply(), 60e18, "the burn went through while paused");
+    }
+
+    /// @notice D25 for a mint-gating extension: ERC20Capped checks its cap only inside the `_mint` a composing
+    ///         facet calls, and exports only `cap()`, so ERC7802 cut next to the capped recipe shares no selector.
+    ///         The composing mint still reverts past the cap, but `crosschainMint` calls {ERC20Lib._mint} directly
+    ///         and lifts the supply over it (OpenZeppelin's `_update` hook would revert). The two are mutually
+    ///         exclusive, as is every other shipped direct minter.
+    function test_DirectMinterNextToCappedExceedsCap() public {
+        address bridge = makeAddr("bridge");
+        (FacetCut[] memory base, address[] memory inits, bytes[] memory datas) =
+            new DeployERC20Capped().buildCuts("Token", "TKN", 1000e18, admin);
+        FacetCut[] memory cuts = _append(
+            _append(base, _add(address(new ERC7802()))),
+            _selectors(address(new TokenTestFacet()), TokenTestFacet.cappedMint.selector)
+        );
+        address token = _deploy(cuts, inits, datas);
+        vm.prank(admin);
+        IAccessControl(token).grantRole(CROSSCHAIN_BRIDGE_ROLE, bridge);
+
+        vm.expectRevert(abi.encodeWithSelector(IERC20Capped.ERC20ExceededCap.selector, 5000e18, 1000e18));
+        TokenTestFacet(token).cappedMint(alice, 5000e18);
+
+        vm.prank(bridge);
+        IERC7802(token).crosschainMint(alice, 5000e18);
+        assertEq(IERC20(token).totalSupply(), 5000e18, "the crosschain mint went through");
+        assertGt(IERC20(token).totalSupply(), IERC20Capped(token).cap(), "the supply exceeds the cap");
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -575,6 +675,13 @@ contract CompositionHazardsTest is Test {
         bytes4[] memory sels = new bytes4[](2);
         (sels[0], sels[1]) = (a, b);
         return FacetCut({facetAddress: facet, action: FacetCutAction.Add, functionSelectors: sels});
+    }
+
+    function _contains(bytes4[] memory sels, bytes4 sel) internal pure returns (bool) {
+        for (uint256 i; i < sels.length; ++i) {
+            if (sels[i] == sel) return true;
+        }
+        return false;
     }
 
     function _append(FacetCut[] memory cuts, FacetCut memory cut) internal pure returns (FacetCut[] memory out) {
