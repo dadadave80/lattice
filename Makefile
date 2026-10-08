@@ -76,6 +76,10 @@ snapshot-check: snapshot ## Gas gate, as CI runs it: fail when snapshots/ differ
 		git --no-pager diff -- snapshots/; \
 		echo "Gas snapshots changed: review the diff (make snapshot regenerates them), then commit snapshots/."; exit 1; }
 
+.PHONY: mutation
+mutation: ## Local Gambit mutation pilot on ERC4626Lib, StrategyManagerLib, AccessManagerLib (needs gambit; not in CI; MUTANTS=/TARGETS= filter)
+	./script/mutation-test.sh
+
 .PHONY: clean
 clean: ## Remove build artifacts (do this before trusting any gate after agents/tools touched the tree)
 	forge clean

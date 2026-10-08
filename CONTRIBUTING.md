@@ -104,6 +104,12 @@ blocks, so use archive endpoints (see `.env.example`); the `Scheduled` workflow 
 archive secrets. Say in the PR which lanes you ran. Behavior changes need regression tests through a real
 diamond built from the module's recipe.
 
+Optional, local only: `make mutation` runs the [Gambit](https://github.com/Certora/gambit) mutation pilot
+on `ERC4626Lib`, `StrategyManagerLib` and `AccessManagerLib` and reports which mutants the tests miss. It
+needs `gambit` on your `PATH`, is not part of `make ci` or any workflow, and takes about an hour on a
+laptop. See [test/README.md](test/README.md#mutation-testing-local-pilot) for how it works and the pilot
+results.
+
 ## Adding a module
 
 Work through this list in order. The example is EmergencyStop (`security` area). Several of these steps

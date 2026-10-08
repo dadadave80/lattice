@@ -1,11 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {AccessManagerTestBase} from "@lattice-test/base/AccessManagerTestBase.sol";
 import {Lattice} from "@lattice/Lattice.sol";
 import {AccessManager} from "@lattice/access/AccessManager.sol";
+import {AccessManagerInit} from "@lattice/access/AccessManagerInit.sol";
 import {IAccessManager} from "@lattice/interfaces/access/IAccessManager.sol";
+import {NotInitializing} from "@lattice/utils/libraries/InitializableLib.sol";
 import {Vm} from "forge-std/Vm.sol";
 
 contract CallSink {
@@ -1130,6 +1133,258 @@ contract AccessManagerTest is AccessManagerTestBase {
         Vm.Log[] memory logs = vm.getRecordedLogs();
         for (uint256 i; i < logs.length; ++i) {
             assertTrue(logs[i].topics[0] != sig, "OperationExecuted emitted without a consumed schedule");
+        }
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //              #245: MUTATION PILOT REGRESSIONS (test/README.md)
+    //////////////////////////////////////////////////////////////////////////*//
+
+    function test_SupportsInterface_IAccessManager() public view {
+        assertTrue(ERC165Facet(diamond).supportsInterface(type(IAccessManager).interfaceId));
+    }
+
+    /// @notice The init contract the recipe deploys only runs inside a diamond's initializing window.
+    function test_InitOutsideInitializingWindowReverts() public {
+        AccessManagerInit init = new AccessManagerInit();
+        vm.expectRevert(NotInitializing.selector);
+        init.init(alice);
+    }
+
+    function test_LockedRoles_RejectEveryRoleSetter() public {
+        vm.startPrank(admin);
+        vm.expectRevert(abi.encodeWithSelector(IAccessManager.AccessManagerLockedRole.selector, ADMIN_ROLE));
+        mgr.revokeRole(ADMIN_ROLE, admin);
+        vm.expectRevert(abi.encodeWithSelector(IAccessManager.AccessManagerLockedRole.selector, ADMIN_ROLE));
+        mgr.renounceRole(ADMIN_ROLE, admin);
+        vm.expectRevert(abi.encodeWithSelector(IAccessManager.AccessManagerLockedRole.selector, ADMIN_ROLE));
+        mgr.setRoleAdmin(ADMIN_ROLE, MINTER_ROLE);
+        vm.expectRevert(abi.encodeWithSelector(IAccessManager.AccessManagerLockedRole.selector, ADMIN_ROLE));
+        mgr.setRoleGuardian(ADMIN_ROLE, MINTER_ROLE);
+        vm.expectRevert(abi.encodeWithSelector(IAccessManager.AccessManagerLockedRole.selector, ADMIN_ROLE));
+        mgr.setGrantDelay(ADMIN_ROLE, 1 days);
+        vm.expectRevert(abi.encodeWithSelector(IAccessManager.AccessManagerLockedRole.selector, PUBLIC_ROLE));
+        mgr.labelRole(PUBLIC_ROLE, "PUBLIC");
+        vm.stopPrank();
+
+        (bool isMember,) = mgr.hasRole(ADMIN_ROLE, admin);
+        assertTrue(isMember, "admin kept ADMIN_ROLE");
+    }
+
+    function test_RoleSetters_NonAdminReverts() public {
+        bytes memory unauthorized =
+            abi.encodeWithSelector(IAccessManager.AccessManagerUnauthorizedAccount.selector, alice, ADMIN_ROLE);
+        vm.startPrank(alice);
+        vm.expectRevert(unauthorized);
+        mgr.setRoleAdmin(MINTER_ROLE, 2);
+        vm.expectRevert(unauthorized);
+        mgr.setRoleGuardian(MINTER_ROLE, 2);
+        vm.expectRevert(unauthorized);
+        mgr.setGrantDelay(MINTER_ROLE, 1 days);
+        vm.expectRevert(unauthorized);
+        mgr.labelRole(MINTER_ROLE, "MINTER");
+        vm.stopPrank();
+    }
+
+    /// @notice A pending grant-delay change that has not taken effect is replaced, measured from the delay in force.
+    function test_SetGrantDelay_ReplacesPendingChange() public {
+        vm.prank(admin);
+        mgr.setGrantDelay(MINTER_ROLE, 10 days);
+        vm.warp(block.timestamp + 1 days);
+
+        uint48 effectAt = uint48(block.timestamp + MIN_SETBACK);
+        vm.expectEmit(true, false, false, true, diamond);
+        emit IAccessManager.RoleGrantDelayChanged(MINTER_ROLE, 1 days, effectAt);
+        vm.prank(admin);
+        mgr.setGrantDelay(MINTER_ROLE, 1 days);
+
+        assertEq(mgr.getRoleGrantDelay(MINTER_ROLE), 0, "the 10-day change never landed");
+        vm.warp(effectAt);
+        assertEq(mgr.getRoleGrantDelay(MINTER_ROLE), 1 days);
+    }
+
+    /// @notice A decrease larger than MIN_SETBACK waits out the exact difference.
+    function test_SetGrantDelay_LargeDecreaseWaitsForTheDifference() public {
+        vm.prank(admin);
+        mgr.setGrantDelay(MINTER_ROLE, 30 days);
+        vm.warp(block.timestamp + MIN_SETBACK);
+        assertEq(mgr.getRoleGrantDelay(MINTER_ROLE), 30 days);
+
+        uint48 effectAt = uint48(block.timestamp + 29 days);
+        vm.expectEmit(true, false, false, true, diamond);
+        emit IAccessManager.RoleGrantDelayChanged(MINTER_ROLE, 1 days, effectAt);
+        vm.prank(admin);
+        mgr.setGrantDelay(MINTER_ROLE, 1 days);
+
+        vm.warp(effectAt - 1);
+        assertEq(mgr.getRoleGrantDelay(MINTER_ROLE), 30 days);
+        vm.warp(effectAt);
+        assertEq(mgr.getRoleGrantDelay(MINTER_ROLE), 1 days);
+    }
+
+    /// @notice Re-granting a member updates only the execution delay: `since` is kept and the event says so.
+    function test_GrantRole_RegrantUpdatesDelayKeepsSince() public {
+        uint48 since = uint48(block.timestamp);
+        vm.expectEmit(true, true, false, true, diamond);
+        emit IAccessManager.RoleGranted(MINTER_ROLE, alice, 0, since, true);
+        vm.prank(admin);
+        mgr.grantRole(MINTER_ROLE, alice, 0);
+
+        vm.warp(block.timestamp + 1 days);
+        vm.expectEmit(true, true, false, true, diamond);
+        emit IAccessManager.RoleGranted(MINTER_ROLE, alice, 2 days, since, false);
+        vm.prank(admin);
+        mgr.grantRole(MINTER_ROLE, alice, 2 days);
+
+        (uint48 since_, uint32 delay,,) = mgr.getAccess(MINTER_ROLE, alice);
+        assertEq(since_, since, "since kept");
+        assertEq(delay, 2 days, "delay updated");
+        assertEq(mgr.getRoleMemberCount(MINTER_ROLE), 1);
+    }
+
+    function test_GrantRole_RegrantSameDelayEmitsNothing() public {
+        vm.prank(admin);
+        mgr.grantRole(MINTER_ROLE, alice, 1 days);
+
+        vm.recordLogs();
+        vm.prank(admin);
+        mgr.grantRole(MINTER_ROLE, alice, 1 days);
+        _assertNoLog(IAccessManager.RoleGranted.selector);
+    }
+
+    function test_RevokeRole_NonMemberEmitsNothing() public {
+        vm.recordLogs();
+        vm.prank(admin);
+        mgr.revokeRole(MINTER_ROLE, alice);
+        _assertNoLog(IAccessManager.RoleRevoked.selector);
+    }
+
+    function test_RevokeRole_RemovesFromMemberSet() public {
+        vm.startPrank(admin);
+        mgr.grantRole(MINTER_ROLE, alice, 0);
+        mgr.grantRole(MINTER_ROLE, bob, 0);
+        mgr.revokeRole(MINTER_ROLE, alice);
+        vm.stopPrank();
+
+        address[] memory members = mgr.getRoleMembers(MINTER_ROLE);
+        assertEq(members.length, 1);
+        assertEq(members[0], bob);
+    }
+
+    function test_Schedule_TwiceRevertsAlreadyScheduled() public {
+        (CallSink sink, bytes memory data) = _delayedMinterSink();
+        vm.prank(alice);
+        (bytes32 opId,) = mgr.schedule(address(sink), data, 0);
+
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(IAccessManager.AccessManagerAlreadyScheduled.selector, opId));
+        mgr.schedule(address(sink), data, 0);
+    }
+
+    function test_Cancel_UnscheduledReverts() public {
+        (CallSink sink, bytes memory data) = _delayedMinterSink();
+        bytes32 opId = mgr.hashOperation(alice, address(sink), data);
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(IAccessManager.AccessManagerNotScheduled.selector, opId));
+        mgr.cancel(alice, address(sink), data);
+    }
+
+    /// @notice A cancelled operation is gone, not merely expired: executing it reverts NotScheduled.
+    function test_Cancel_ThenExecuteRevertsNotScheduled() public {
+        (CallSink sink, bytes memory data) = _delayedMinterSink();
+        vm.prank(alice);
+        (bytes32 opId,) = mgr.schedule(address(sink), data, 0);
+        vm.prank(alice);
+        mgr.cancel(alice, address(sink), data);
+
+        vm.warp(block.timestamp + 1 days);
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(IAccessManager.AccessManagerNotScheduled.selector, opId));
+        mgr.execute(address(sink), data);
+    }
+
+    /// @notice Nonces count up across operations, and cancel reports the cancelled operation's own nonce.
+    function test_Cancel_ReturnsAndEmitsTheOperationNonce() public {
+        (CallSink sink, bytes memory data) = _delayedMinterSink();
+        bytes memory data2 = abi.encodeCall(CallSink.ping, (43));
+        vm.startPrank(alice);
+        mgr.schedule(address(sink), data, 0);
+        (bytes32 opId2, uint32 nonce2) = mgr.schedule(address(sink), data2, 0);
+        assertEq(nonce2, 2);
+        assertEq(mgr.getNonce(opId2), 2);
+
+        vm.expectEmit(true, true, false, false, diamond);
+        emit IAccessManager.OperationCanceled(opId2, 2);
+        uint32 cancelled = mgr.cancel(alice, address(sink), data2);
+        vm.stopPrank();
+        assertEq(cancelled, 2);
+    }
+
+    function test_Execute_ReturnsTheConsumedOperationNonce() public {
+        (CallSink sink, bytes memory data) = _delayedMinterSink();
+        bytes memory data2 = abi.encodeCall(CallSink.ping, (43));
+        vm.startPrank(alice);
+        mgr.schedule(address(sink), data, 0);
+        (bytes32 opId2,) = mgr.schedule(address(sink), data2, 0);
+        vm.warp(block.timestamp + 1 days);
+
+        vm.expectEmit(true, true, false, false, diamond);
+        emit IAccessManager.OperationExecuted(opId2, 2);
+        uint32 nonce = mgr.execute(address(sink), data2);
+        vm.stopPrank();
+        assertEq(nonce, 2);
+    }
+
+    /// @notice Calldata too short for a selector is refused with the typed error, naming ADMIN_ROLE.
+    function test_Execute_SelfWithoutSelectorReverts() public {
+        vm.prank(admin);
+        vm.expectRevert(
+            abi.encodeWithSelector(IAccessManager.AccessManagerUnauthorizedAccount.selector, admin, ADMIN_ROLE)
+        );
+        mgr.execute(diamond, hex"");
+    }
+
+    /// @notice Closing the manager blocks its unrestricted selectors through `execute`, even for the admin.
+    function test_ClosedManager_BlocksUnrestrictedSelfCall() public {
+        vm.prank(admin);
+        mgr.setTargetClosed(diamond, true);
+
+        bytes memory data = abi.encodeCall(IAccessManager.getNonce, (bytes32(0)));
+        vm.prank(admin);
+        vm.expectRevert(
+            abi.encodeWithSelector(IAccessManager.AccessManagerUnauthorizedAccount.selector, admin, ADMIN_ROLE)
+        );
+        mgr.execute(diamond, data);
+    }
+
+    /// @notice An unauthorized self-`execute` of `grantRole` reports the granted role's admin, not ADMIN_ROLE.
+    function test_Execute_SelfGrantRoleReportsRoleAdmin() public {
+        uint64 SUPER_ROLE = 5;
+        vm.prank(admin);
+        mgr.setRoleAdmin(MINTER_ROLE, SUPER_ROLE);
+
+        bytes memory data = abi.encodeCall(IAccessManager.grantRole, (MINTER_ROLE, alice, 0));
+        vm.prank(bob);
+        vm.expectRevert(
+            abi.encodeWithSelector(IAccessManager.AccessManagerUnauthorizedAccount.selector, bob, SUPER_ROLE)
+        );
+        mgr.execute(diamond, data);
+    }
+
+    /// @dev A CallSink whose `ping` needs MINTER_ROLE, held by alice with a 1-day execution delay.
+    function _delayedMinterSink() internal returns (CallSink sink, bytes memory data) {
+        sink = new CallSink();
+        vm.startPrank(admin);
+        mgr.setTargetFunctionRole(address(sink), _selectors(CallSink.ping.selector), MINTER_ROLE);
+        mgr.grantRole(MINTER_ROLE, alice, 1 days);
+        vm.stopPrank();
+        data = abi.encodeCall(CallSink.ping, (42));
+    }
+
+    function _assertNoLog(bytes32 sig) internal {
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        for (uint256 i; i < logs.length; ++i) {
+            assertTrue(logs[i].topics[0] != sig, "unexpected event");
         }
     }
 }

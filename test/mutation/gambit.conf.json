@@ -1,0 +1,17 @@
+[
+    {
+        "filename": "../../src/tokens/ERC4626/libraries/ERC4626Lib.sol",
+        "sourceroot": "../..",
+        "solc_remappings": ["@lattice/=../../src/"]
+    },
+    {
+        "filename": "../../src/defi/libraries/StrategyManagerLib.sol",
+        "sourceroot": "../..",
+        "solc_remappings": ["@lattice/=../../src/"]
+    },
+    {
+        "filename": "../../src/access/libraries/AccessManagerLib.sol",
+        "sourceroot": "../..",
+        "solc_remappings": ["@lattice/=../../src/"]
+    }
+]
