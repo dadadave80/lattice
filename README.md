@@ -130,7 +130,8 @@ or interface: `Base64`, `Bytes`, `Calldata`, `Checkpoints`, `ECDSA`, `Enumerable
 module helpers such as `EIP712Lib`, `InitializableLib`, `MulticallLib`, `NoncesLib`, and `VestingWalletLib`.
 
 `src/examples/` holds demo contracts that are not library modules: `CCTPHookVault` and
-`CCTPHookReceipt`, used by the [CCTP demos](#live-deployments-and-demos).
+`CCTPHookReceipt`, used by the [CCTP demos](#live-deployments-and-demos), and the pinned-verification-key
+patterns `PinnedWithdrawVerifier` and `HashPinnedGroth16Verifier`.
 
 `src/interfaces/external/` vendors minimal third-party ABIs used by adapters and standards
 integrations, grouped per vendor (`circle/`, `chainlink/`, `layerzero/`, …; pure ERC/EIP standard
@@ -333,7 +334,7 @@ src/
 ├── crosschain/         # per-vendor adapter folders (circle/, layerzero/, …), each self-contained (facet+Init+Lib); generic modules at root, shared libs in libraries/
 ├── defi/               # Aave, Compound, Curve, Lido, Uniswap V3, ERC4626 adapters, AggregatorExec, GovernedVault, WETHUnwrapper
 ├── ens/                # ENS resolver, reverse claimer, subname issuer
-├── examples/           # demo contracts, not library modules: crosschain/ CCTPHookVault, CCTPHookReceipt (+ its renderer library)
+├── examples/           # demo contracts, not library modules: crosschain/ CCTPHookVault, CCTPHookReceipt (+ its renderer library); privacy/ pinned-VK verifiers
 ├── governance/         # Governor, timelock, admin/governed/Safe diamond cuts, Safe Harbor adoption
 ├── oracles/            # per-vendor adapter folders (chainlink/, pyth/, redstone/, …, uniswap/ TWAP), each self-contained (facet+Init+Lib); OracleGuard (facet+Init) at root, its lib in libraries/
 ├── privacy/            # Commit-reveal, stealth address standards, Groth16/PLONK, Semaphore, shielded pool
