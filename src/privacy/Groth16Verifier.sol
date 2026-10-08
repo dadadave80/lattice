@@ -11,7 +11,8 @@ import {Groth16VerifierLib} from "@lattice/privacy/libraries/Groth16VerifierLib.
 ///         a parameter, so one deployment verifies proofs for any circuit — the primitive the ZK
 ///         privacy modules plug their circuit's key into.
 /// @dev All logic lives in {Groth16VerifierLib}. Pure verification (view): no state beyond the ERC-165
-///      registration written at init.
+///      registration written at init. The facet does not authenticate the key it is given: consumers
+///      MUST pin it (see KEY PINNING on {IGroth16Verifier}).
 /// @custom:lattice-version 0.1.0
 /// @custom:lattice-source Generalized from the snarkjs (iden3) Groth16 verifier template (GPL-3.0),
 ///         reimplemented under MIT with the key as a parameter; pairing math is the standard BN254 check.
