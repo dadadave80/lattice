@@ -38,6 +38,9 @@ if older documentation conflicts with the development policy below, apply this p
   `release-please-config.json` (`feat`, `fix`, `perf`, `refactor`, `docs`, `test`, `build`, `ci`,
   `chore`). Mark a breaking change with `!` and a `BREAKING CHANGE:` footer stating what integrators
   must change. Commits must be signed.
+- Name each issue a PR completes on its own `Closes #N` line in the PR body (`Refs #N` for partial
+  work). GitHub ignores closing keywords in PRs into `dev`, so
+  `.github/workflows/close-linked-issues.yml` closes those issues when the PR merges.
 - An implementation request authorizes local commits, pushing a feature branch, and opening a PR
   after the required validation. No additional permission is needed for those steps.
 - Merging PRs, promoting to `main`, publishing releases, and deploying contracts or sites require
