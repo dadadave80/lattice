@@ -49,8 +49,20 @@ interface IVaultCore is IERC4626 {
     ///      strategy whose read reverts (see {IStrategyManager-removeStrategy}); if none can be removed (e.g. a
     ///      well-formed balance that overflows the sum), the vault admin calls `setStrategyManager` with a
     ///      fresh manager. Either way the affected strategies' funds leave the NAV, and returning them later
-    ///      moves their value to whoever holds shares at that moment.
+    ///      moves their value to whoever holds shares at that moment. A force removal therefore latches
+    ///      deposits closed ({VaultCoreDepositsLatched}) until the manager admin clears the latch, so no new
+    ///      depositor shares in returned funds; they accrue to whoever still holds shares when they return (a
+    ///      holder who exits while latched is priced on the idle-only NAV). The `setStrategyManager` route sets
+    ///      no latch: the fresh manager starts unlatched and deposits reopen at once, so funds the old
+    ///      manager's strategies return later still move value to post-switch depositors.
     error VaultCoreStrategyNavUnavailable(address manager);
+
+    /// @dev Reverts from `deposit`/`mint` while the configured strategy manager reports `depositsLatched()`
+    ///      (`IStrategyManagerRecovery`), set by a strategy force removal. `maxDeposit`/`maxMint` return 0 over
+    ///      the same window; withdrawals and redemptions stay open, capped at idle. Cleared by the manager
+    ///      admin's `clearDepositLatch()`. The vault admin's `setStrategyManager` also drops it: the latch lives
+    ///      in the manager, and a fresh manager starts unlatched, so deposits reopen at once.
+    error VaultCoreDepositsLatched(address manager);
 
     //*//////////////////////////////////////////////////////////////////////////
     //                              VIEW FUNCTIONS

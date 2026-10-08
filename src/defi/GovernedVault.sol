@@ -73,16 +73,19 @@ contract GovernedVault is IGovernedVault {
     //                    VAULT MUTATORS — VOTE-CHECKPOINT SEAM
     //////////////////////////////////////////////////////////////////////////*//
 
-    /// @notice Deposit assets for shares, then post the mint's voting-unit delta (strategy-rebalance guarded).
+    /// @notice Deposit assets for shares, then post the mint's voting-unit delta (strategy-rebalance guarded,
+    ///         closed while the strategy manager latches deposits).
     function deposit(uint256 assets, address receiver) external returns (uint256 shares) {
         VaultCoreLib.requireManagerNotRebalancing();
+        VaultCoreLib.requireDepositsOpen();
         shares = ERC4626Lib.deposit(assets, receiver);
         VotesLib._transferVotingUnits(address(0), receiver, shares);
     }
 
-    /// @notice Mint exact shares for assets, then post the voting-unit delta.
+    /// @notice Mint exact shares for assets, then post the voting-unit delta (closed while deposits are latched).
     function mint(uint256 shares, address receiver) external returns (uint256 assets) {
         VaultCoreLib.requireManagerNotRebalancing();
+        VaultCoreLib.requireDepositsOpen();
         assets = ERC4626Lib.mint(shares, receiver);
         VotesLib._transferVotingUnits(address(0), receiver, shares);
     }

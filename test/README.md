@@ -116,18 +116,31 @@ Equivalent mutants (ids from the run above; `gambit_out/mutants.log` maps an id 
 | 524 | `AccessManagerLib` `canCall` | `roleId == PUBLIC_ROLE` → `false` | `hasRole(PUBLIC_ROLE, …)` returns `(true, 0)`, which leads to the same `(true, 0)`. |
 | 565–568 | `AccessManagerLib` `setGrantDelay` | drop or alter the zeroing of `pendingGrantDelay` / `grantDelayEffectAt` | Both fields are overwritten a few lines later in the same call. |
 | 606–609 | `AccessManagerLib` `setTargetAdminDelay` | the same for `pendingAdminDelay` / `adminDelayEffectAt` | The same reason. |
-| 687, 688 | `AccessManagerLib` `_effectiveDelay` | pending-delay branch → never / reversed comparison | Nothing writes `Delay.pendingValue` or `Delay.effectAt`, so `effectAt` is always 0 (see the note below). |
-| 696, 710 | `AccessManagerLib` `_grantRoleInternal` | `emitEvent` → `true` | Every caller passes `emitEvent = true`. |
 | 729 | `AccessManagerLib` `_canCallExtended` | `data.length < 4` → `false` | With under 4 bytes of calldata, `execute` and `schedule` both revert on the same `data[0:4]` slice either way. |
 | 764, 765 | `AccessManagerLib` `_writeSchedule` | drop or alter the clearing of an expired `readyAt` | The slot is overwritten with the new `readyAt` a few lines later. |
 
-Two observations from the triage. Neither changes `src/`:
+Two observations from the triage:
 
-- `AccessManagerLib` never writes `Delay.pendingValue` or `Delay.effectAt`. Re-granting a member with a
-  lower execution delay takes effect at once. OpenZeppelin's `AccessManager` instead applies
-  `withUpdate(newDelay, 0)`, so a decrease waits out the difference. For example, after
-  `grantRole(r, a, 7 days)` and then `grantRole(r, a, 0)`, `a` can call `r`'s functions with no delay at once.
+- `AccessManagerLib` never wrote `Delay.pendingValue` or `Delay.effectAt`, so re-granting a member with a
+  lower execution delay took effect at once, and the run counted 687 and 688 (the pending-delay branch of
+  `_effectiveDelay`) as equivalent. #287 ports OpenZeppelin's `withUpdate(newDelay, 0)`: a decrease now
+  waits out the difference, and the "#287" tests in `test/unit/AccessManagerTest.t.sol` kill both mutants
+  (see below). #287 also dropped `_grantRoleInternal`'s `emitEvent` flag, so the equivalent mutants 696 and
+  710 (`emitEvent` → `true`) no longer exist. That leaves 12 of the run's 16 `AccessManagerLib` equivalents.
 - `execute` and `schedule` with under 4 bytes of calldata to a target other than the manager revert with a
   calldata-slice error, not `AccessManagerUnauthorizedAccount`.
+
+Mutant ids are positions in `gambit_out/mutants.log`, so they move whenever a target file changes, and
+`MUTANTS=` ids are only valid against the mutants generated from the current sources. Find a mutant again by
+its line and edit. The #287 check:
+
+| Source | Pending-branch mutants (never / reversed comparison) | Result |
+| --- | --- | --- |
+| dev before #287 (ERC4626Lib already shrunk by the `mulDiv` consolidation) | 558, 559 | both survive |
+| #287 | 535, 536 | both killed |
+
+On the #287 source, all 76 mutants in the changed functions (`getAccess`, `setGrantDelay`,
+`setTargetAdminDelay`, `_effectiveDelay`, `_updateEffectAt`, `_grantRoleInternal`) were run. 68 are killed.
+The 8 survivors are the setter-zeroing equivalents listed above.
 
 The pilot stays out of CI, as decided for #245. The kill rates above are the input for revisiting that.

@@ -196,6 +196,7 @@ import {
 } from "@lattice/defi/libraries/ERC4626AdapterLib.sol";
 import {ERC165_MAP_ILIDOADAPTER_SLOT, LIDO_ADAPTER_STORAGE_SLOT} from "@lattice/defi/libraries/LidoAdapterLib.sol";
 import {
+    ERC165_MAP_ISTRATEGYMANAGERRECOVERY_SLOT,
     ERC165_MAP_ISTRATEGYMANAGER_SLOT,
     STRATEGY_MANAGER_STORAGE_SLOT
 } from "@lattice/defi/libraries/StrategyManagerLib.sol";
@@ -349,6 +350,7 @@ import {IERC4626Adapter} from "@lattice/interfaces/defi/IERC4626Adapter.sol";
 import {ILidoAdapter} from "@lattice/interfaces/defi/ILidoAdapter.sol";
 import {IProtocolAdapter} from "@lattice/interfaces/defi/IProtocolAdapter.sol";
 import {IStrategyManager} from "@lattice/interfaces/defi/IStrategyManager.sol";
+import {IStrategyManagerRecovery} from "@lattice/interfaces/defi/IStrategyManagerRecovery.sol";
 import {IUniswapV3Adapter} from "@lattice/interfaces/defi/IUniswapV3Adapter.sol";
 import {IVaultCore} from "@lattice/interfaces/defi/IVaultCore.sol";
 import {IENSResolver} from "@lattice/interfaces/ens/IENSResolver.sol";
@@ -1393,6 +1395,18 @@ contract StorageSlotVerificationTest is Test {
         );
     }
 
+    function test_Erc165MapIStrategyManagerRecoverySlot() public pure {
+        // The deposit latch lives in its own interface so IStrategyManager's id stays 0xcce4011b (#270).
+        assertEq(type(IStrategyManager).interfaceId, bytes4(0xcce4011b), "IStrategyManager interfaceId moved");
+        bytes4 interfaceId = type(IStrategyManagerRecovery).interfaceId;
+        assertEq(interfaceId, bytes4(0xd352d843), "IStrategyManagerRecovery interfaceId comment is stale");
+        assertEq(
+            ERC165_MAP_ISTRATEGYMANAGERRECOVERY_SLOT,
+            _erc165MapSlot(interfaceId, ERC165_STORAGE_LOCATION),
+            "ERC165 IStrategyManagerRecovery map slot mismatch"
+        );
+    }
+
     function test_Erc165MapIProtocolAdapterSlot() public pure {
         // Pin the interfaceId: the operator surface (setOperator/operator) is deliberately in the
         // separate IAdapterOperator interface so this id stays 0x8f7783e6 and the shared map slot
@@ -2217,7 +2231,7 @@ contract StorageSlotVerificationTest is Test {
     }
 
     function _allErc165MapSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](98);
+        slots = new bytes32[](99);
         uint256 i;
         // access
         slots[i++] = ERC165_MAP_IACCESSCONTROL_SLOT;
@@ -2253,6 +2267,7 @@ contract StorageSlotVerificationTest is Test {
         // defi
         slots[i++] = ERC165_MAP_IVAULTCORE_SLOT;
         slots[i++] = ERC165_MAP_ISTRATEGYMANAGER_SLOT;
+        slots[i++] = ERC165_MAP_ISTRATEGYMANAGERRECOVERY_SLOT;
         slots[i++] = ERC165_MAP_IPROTOCOLADAPTER_SLOT;
         slots[i++] = ERC165_MAP_IAAVEV3ADAPTER_SLOT;
         // CompoundV3Adapter reuses the shared ERC165_MAP_IPROTOCOLADAPTER_SLOT (already counted

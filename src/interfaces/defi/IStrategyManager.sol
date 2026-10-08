@@ -22,8 +22,9 @@ interface IStrategyManager {
 
     /// @dev Emitted (before {StrategyRemoved}) when `removeStrategy` drops a strategy whose
     ///      `totalAssetsManaged()` read fails. Any funds it still holds leave the vault's NAV; if they are
-    ///      later returned to the vault, they accrue to whoever holds shares then, including depositors who
-    ///      entered after the removal.
+    ///      later returned to the vault, they accrue to whoever holds shares then. The removal also latches the
+    ///      vault's deposits closed (`IStrategyManagerRecovery.DepositLatchSet` follows this event) until the
+    ///      admin calls `clearDepositLatch`, so no one can enter at the lower NAV and capture those funds.
     event StrategyForceRemoved(address indexed strategy);
 
     /// @dev Emitted when a strategy's target allocation (in bps) is updated.
@@ -135,9 +136,12 @@ interface IStrategyManager {
     /// @notice Removes a registered strategy. Admin-only.
     /// @dev Reverts with {StrategyManagerStrategyStillAllocated} while the strategy reports a balance. A strategy
     ///      whose `totalAssetsManaged()` read fails is force-removed instead, emitting {StrategyForceRemoved};
-    ///      any funds it still holds leave the vault's NAV and deposits reopen at the lower NAV. Returning
-    ///      those funds later moves their value to whoever holds shares then, including post-removal
-    ///      depositors, and the strategy cannot be re-added while it reports a balance.
+    ///      any funds it still holds leave the vault's NAV. The force removal latches the vault's deposits
+    ///      closed (`IStrategyManagerRecovery`): exits reopen, capped at idle, while deposit/mint stay closed
+    ///      until the admin calls `clearDepositLatch`, so no new depositor shares in funds the strategy returns
+    ///      in the meantime. Those funds accrue to whoever still holds shares when they return; a holder who
+    ///      exits while latched is priced on the idle-only NAV and gives up their share of the stranded funds.
+    ///      The strategy cannot be re-added while it reports a balance.
     /// @param strategy Address of the strategy to remove.
     function removeStrategy(address strategy) external;
 

@@ -50,7 +50,8 @@ DiamondLoupeFacet, EmergencyStop, GovernedDiamondCut, and Receive.
 
 The `buildCuts` function reads each facet's `exportSelectors()` and uses `_cutExcept` for deliberate
 overlaps. `GovernedVault` reconciles transfers and deposit/mint/withdraw/redeem so voting checkpoints
-follow share balances. ERC4626 owns share decimals; VaultCore owns strategy-aware `totalAssets`;
+follow share balances. ERC4626 owns share decimals; VaultCore owns strategy-aware `totalAssets` and the
+deposit-latch-aware `maxDeposit`/`maxMint` (exclude both from ERC4626 or Replace them);
 ERC20Votes owns balance-aware delegation; GovernedVault owns the shared name, clock, and ballot nonce
 reconciliation. Read the recipe's exclusion lists before swapping a facet. Never register the same
 selector twice or replace the vote-aware transfer seam with a plain ERC20 transfer.
