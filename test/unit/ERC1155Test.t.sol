@@ -53,10 +53,36 @@ contract Reverting1155Receiver {
     }
 }
 
+/// @notice ERC1155 receiver that accepts both hooks and records which one the token called last.
+contract Recording1155Receiver {
+    enum Hook {
+        None,
+        Single,
+        Batch
+    }
+
+    Hook public lastHook;
+    uint256 public batchIdsLength;
+
+    function onERC1155Received(address, address, uint256, uint256, bytes calldata) external returns (bytes4) {
+        lastHook = Hook.Single;
+        return this.onERC1155Received.selector;
+    }
+
+    function onERC1155BatchReceived(address, address, uint256[] calldata ids, uint256[] calldata, bytes calldata)
+        external
+        returns (bytes4)
+    {
+        lastHook = Hook.Batch;
+        batchIdsLength = ids.length;
+        return this.onERC1155BatchReceived.selector;
+    }
+}
+
 /// @title ERC1155Test
 /// @notice Exercises the base ERC-1155 facet through a REAL {Diamond} assembled by the ready-to-deploy
 ///         {DeployERC1155} script (see {ERC1155TestBase}) — every call below routes through the diamond's
-///         `delegatecall` dispatch, not a flattened inheritance mock. `mint`/`mintBatch`/`burn` come from the
+///         `delegatecall` dispatch, not a flattened inheritance mock. `mint`/`mintBatch` come from the
 ///         test-only {ERC1155TestFacet} (`helper`); `supportsInterface` from the cut-in `ERC165Facet`. Mint
 ///         calls are pranked from `admin` to preserve the `operator == admin` event assertions.
 contract ERC1155Test is ERC1155TestBase {
@@ -316,6 +342,64 @@ contract ERC1155Test is ERC1155TestBase {
         vm.expectRevert(Reverting1155Receiver.TransferBlocked.selector);
         vm.prank(alice);
         token.safeTransferFrom(alice, address(receiver), ID_1, 50, "");
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //     RECEIVER HOOK SELECTION: the operation type picks the hook (#237)
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice A one-element `safeBatchTransferFrom` is still a batch operation: it calls
+    ///         `onERC1155BatchReceived`, not `onERC1155Received`. Pins OZ v5.6.1's explicit `batch` flag on
+    ///         `_updateWithAcceptanceCheck`, which every transfer, mint and burn path now routes through; an
+    ///         `ids.length == 1` dispatch would call the single hook here.
+    function test_OneElementSafeBatchTransferCallsBatchHook() public {
+        Recording1155Receiver receiver = new Recording1155Receiver();
+        vm.prank(admin);
+        helper.mint(alice, ID_1, 100, "");
+
+        uint256[] memory ids = new uint256[](1);
+        ids[0] = ID_1;
+        uint256[] memory values = new uint256[](1);
+        values[0] = 40;
+
+        vm.prank(alice);
+        token.safeBatchTransferFrom(alice, address(receiver), ids, values, "");
+
+        assertEq(uint8(receiver.lastHook()), uint8(Recording1155Receiver.Hook.Batch), "batch hook expected");
+        assertEq(receiver.batchIdsLength(), 1);
+        assertEq(token.balanceOf(address(receiver), ID_1), 40);
+    }
+
+    /// @notice A one-element `_mintBatch` also calls the batch hook.
+    function test_OneElementMintBatchCallsBatchHook() public {
+        Recording1155Receiver receiver = new Recording1155Receiver();
+        uint256[] memory ids = new uint256[](1);
+        ids[0] = ID_2;
+        uint256[] memory values = new uint256[](1);
+        values[0] = 7;
+
+        vm.prank(admin);
+        helper.mintBatch(address(receiver), ids, values, "");
+
+        assertEq(uint8(receiver.lastHook()), uint8(Recording1155Receiver.Hook.Batch), "batch hook expected");
+        assertEq(token.balanceOf(address(receiver), ID_2), 7);
+    }
+
+    /// @notice Single operations call the single hook.
+    function test_SafeTransferFromAndMintCallSingleHook() public {
+        Recording1155Receiver minted = new Recording1155Receiver();
+        vm.prank(admin);
+        helper.mint(address(minted), ID_1, 5, "");
+        assertEq(uint8(minted.lastHook()), uint8(Recording1155Receiver.Hook.Single), "mint: single hook expected");
+
+        Recording1155Receiver transferred = new Recording1155Receiver();
+        vm.prank(admin);
+        helper.mint(alice, ID_1, 10, "");
+        vm.prank(alice);
+        token.safeTransferFrom(alice, address(transferred), ID_1, 10, "");
+        assertEq(
+            uint8(transferred.lastHook()), uint8(Recording1155Receiver.Hook.Single), "transfer: single hook expected"
+        );
     }
 
     //*//////////////////////////////////////////////////////////////////////////

@@ -31,11 +31,11 @@ forge build && forge test --match-test test_EverySharedSelectorIsClassified -vv
 A selector with mixed relations takes the most restrictive class, and its note names the others. For example,
 `transferFrom` is an ERC-20 override seam and also an ERC-20/ERC-721 standard clash, so it is Incompatible.
 
-Today's 65 shared selectors: 18 Variant, 13 Override, 1 Identical, 18 One per diamond, 15 Incompatible.
+Today's 66 shared selectors: 18 Variant, 14 Override, 1 Identical, 18 One per diamond, 15 Incompatible.
 
 ## Scope and decisions
 
-- **Inventory facets only.** The test covers the 106 facets in `FacetInventory`. VestingWallet and
+- **Inventory facets only.** The test covers the 108 facets in `FacetInventory`. VestingWallet and
   ERC20Wrapper export no selectors yet ([#176](https://github.com/dadadave80/lattice/issues/176)), so they are
   not in the table. Checked by hand against the inventory: VestingWallet shares no selector, and ERC20Wrapper
   shares only `decimals()` (`0x313ce567`) with ERC20 and ERC4626. Its `decimals()` replaces ERC20's to mirror
@@ -56,6 +56,7 @@ Today's 65 shared selectors: 18 Variant, 13 Override, 1 Identical, 18 One per di
 | `0x0746a956` | `verifyInterfaceRegistered(bytes4)` | GovernedDiamondCut, GovernedSafeDiamondCut, SafeDiamondCut | Variant | cut-gate variants: cut one |
 | `0x084d4783` | `latestAnswer(bytes32)` | API3Adapter, BandAdapter, ChainlinkAdapter, ChronicleAdapter, DIAAdapter, PythAdapter, RedStoneAdapter, TellorAdapter | One per diamond | price adapters: one per diamond |
 | `0x095ea7b3` | `approve(address,uint256)` | ERC20, ERC721 | Incompatible | ERC-20 vs ERC-721 (standard) |
+| `0x0e89341c` | `uri(uint256)` | ERC1155, ERC1155URIStorage | Override | ERC1155URIStorage's per-token URI replaces ERC1155's template |
 | `0x116191b6` | `gateway()` | AxelarGatewayAdapter, ZetaChainGatewayAdapter | One per diamond | ERC-7786 gateways: one per diamond |
 | `0x13bc9f20` | `isOperationReady(bytes32)` | GovernedSafeDiamondCut, TimelockController | Incompatible | GovernedSafe cut views vs TimelockController (Lattice-chosen; 0xacb1aeb6) |
 | `0x1626ba7e` | `isValidSignature(bytes32,bytes)` | ERC1271Signature, ERC6900Signature | Variant | account flavours: cut one |
