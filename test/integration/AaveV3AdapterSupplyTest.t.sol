@@ -289,6 +289,35 @@ contract AaveV3AdapterSupplyTest is Test {
         assertEq(asset.balanceOf(vault), 200e6, "vault got available");
     }
 
+    /// @notice #221: a recall spends the adapter's undeployed idle before withdrawing from Aave.
+    function test_Withdraw_SpendsIdleBeforePosition() public {
+        asset.mint(address(adapter), 1_000e6);
+        adapter.deploy();
+        asset.mint(address(adapter), 300e6); // allocated, not yet deployed
+
+        uint256 got = adapter.withdraw(200e6, vault);
+        assertEq(got, 200e6, "paid from idle");
+        assertEq(asset.balanceOf(vault), 200e6, "vault received");
+        assertEq(aToken.balanceOf(address(adapter)), 1_000e6, "position untouched");
+        assertEq(asset.balanceOf(address(adapter)), 100e6, "idle spent first");
+    }
+
+    /// @notice #221: a recall larger than idle drains idle, then withdraws the remainder from Aave; with only
+    ///         undeployed idle it is paid in full from idle.
+    function test_Withdraw_IdleThenPosition() public {
+        asset.mint(address(adapter), 400e6); // never deployed
+        assertEq(adapter.withdraw(300e6, vault), 300e6, "idle-only recall paid in full");
+
+        asset.mint(address(adapter), 1_000e6);
+        adapter.deploy(); // supplies the remaining 100 idle + 1000
+        asset.mint(address(adapter), 50e6);
+        uint256 got = adapter.withdraw(170_123_457, vault);
+        assertEq(got, 170_123_457, "idle + position");
+        assertEq(asset.balanceOf(vault), 470_123_457, "vault received both recalls");
+        assertEq(asset.balanceOf(address(adapter)), 0, "idle drained");
+        assertEq(adapter.totalAssetsManaged(), 1_150e6 - 170_123_457, "NAV down by exactly what was sent");
+    }
+
     function test_HealthFactor_MaxWhenNoDebt() public {
         asset.mint(address(adapter), 100e6);
         adapter.deploy();

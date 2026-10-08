@@ -5,6 +5,8 @@ import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {StrategyManagerTestBase} from "@lattice-test/base/StrategyManagerTestBase.sol";
 import {DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
 import {StrategyManager} from "@lattice/defi/StrategyManager.sol";
+import {REBALANCE_SHORTFALL_TOLERANCE} from "@lattice/defi/libraries/StrategyManagerLib.sol";
+import {IProtocolAdapter} from "@lattice/interfaces/defi/IProtocolAdapter.sol";
 import {IStrategyManager} from "@lattice/interfaces/defi/IStrategyManager.sol";
 import {IVaultCore} from "@lattice/interfaces/defi/IVaultCore.sol";
 import {IERC4626} from "@lattice/interfaces/tokens/IERC4626.sol";
@@ -154,16 +156,21 @@ contract RevertingStrategy {
 //////////////////////////////////////////////////////////////////////////*//
 
 /// @notice Strategy that only delivers a fraction of the requested withdrawal amount.
-/// @dev Used to verify that rebalance() reverts on underdelivery (H-3).
+/// @dev Lossy mode writes off the full request while delivering only the fraction (slippage, an exit fee or a
+///      lying strategy): rebalance() must revert (H-3). Honest mode writes off only what it delivered, like the
+///      Lido buffer: a partial recall that rebalance() accepts (#221).
 contract PartialWithdrawStrategy {
     MockToken public token;
     uint256 public managedBalance;
     /// @dev Fraction of the requested amount to actually deliver (0–100).
     uint8 public deliveryPct;
+    /// @dev Whether the undelivered part of the request is also written off.
+    bool public lossy;
 
-    constructor(MockToken _token, uint8 _deliveryPct) {
+    constructor(MockToken _token, uint8 _deliveryPct, bool _lossy) {
         token = _token;
         deliveryPct = _deliveryPct;
+        lossy = _lossy;
     }
 
     function asset() external view returns (address) {
@@ -181,8 +188,113 @@ contract PartialWithdrawStrategy {
     function withdraw(uint256 amount, address to) external returns (uint256) {
         uint256 actual = (amount * deliveryPct) / 100;
         if (actual > 0) token.transfer(to, actual);
-        managedBalance -= actual;
+        managedBalance -= lossy ? amount : actual;
         return actual;
+    }
+}
+
+/// @notice Strategy that writes off the full request but delivers `lossWei` less (rounding-sized loss).
+/// @dev Pins the boundary of the manager's fixed shortfall tolerance (#221).
+contract WeiLossStrategy {
+    MockToken public token;
+    uint256 public managedBalance;
+    uint256 public lossWei;
+
+    constructor(MockToken _token, uint256 _lossWei) {
+        token = _token;
+        lossWei = _lossWei;
+    }
+
+    function asset() external view returns (address) {
+        return address(token);
+    }
+
+    function setManagedBalance(uint256 amount) external {
+        managedBalance = amount;
+    }
+
+    function totalAssetsManaged() external view returns (uint256) {
+        return managedBalance;
+    }
+
+    function withdraw(uint256 amount, address to) external returns (uint256) {
+        token.transfer(to, amount - lossWei);
+        managedBalance -= amount;
+        return amount - lossWei;
+    }
+}
+
+/// @notice Strategy that writes off and delivers `extraWei` more than requested, so a recall ends just under target.
+/// @dev Used to verify that pass 2 does not hand a recall's rounding remainder straight back (#221).
+contract OverDeliverStrategy {
+    MockToken public token;
+    uint256 public managedBalance;
+    uint256 public extraWei;
+
+    constructor(MockToken _token, uint256 _extraWei) {
+        token = _token;
+        extraWei = _extraWei;
+    }
+
+    function asset() external view returns (address) {
+        return address(token);
+    }
+
+    function setManagedBalance(uint256 amount) external {
+        managedBalance = amount;
+    }
+
+    function totalAssetsManaged() external view returns (uint256) {
+        return managedBalance;
+    }
+
+    function withdraw(uint256 amount, address to) external returns (uint256) {
+        token.transfer(to, amount + extraWei);
+        managedBalance -= amount + extraWei;
+        return amount + extraWei;
+    }
+}
+
+/// @notice Protocol-adapter-shaped strategy: advertises IProtocolAdapter via ERC-165 and exposes `deploy()`,
+///         which moves its idle token balance into a notional position.
+/// @dev Used to verify that rebalance() deploys an adapter's idle and survives a failing deploy (#221).
+contract DeployableStrategy {
+    MockToken public token;
+    uint256 public deployed;
+    uint256 public deployCalls;
+    bool public deployReverts;
+
+    constructor(MockToken _token) {
+        token = _token;
+    }
+
+    function setDeployReverts(bool reverts) external {
+        deployReverts = reverts;
+    }
+
+    function supportsInterface(bytes4 id) external pure returns (bool) {
+        return id == type(IProtocolAdapter).interfaceId || id == 0x01ffc9a7;
+    }
+
+    function asset() external view returns (address) {
+        return address(token);
+    }
+
+    function totalAssetsManaged() external view returns (uint256) {
+        return token.balanceOf(address(this)) + deployed;
+    }
+
+    function deploy() external returns (uint256 amount) {
+        if (deployReverts) revert IProtocolAdapter.ProtocolAdapterPaused();
+        ++deployCalls;
+        amount = token.balanceOf(address(this));
+        deployed += amount;
+        token.transfer(address(0xdead), amount); // the "protocol" now holds it
+    }
+
+    function withdraw(uint256 amount, address to) external returns (uint256) {
+        token.transfer(to, amount);
+        return amount;
     }
 }
 
@@ -717,13 +829,14 @@ contract StrategyManagerTest is StrategyManagerTestBase {
         mgr.rebalance();
     }
 
-    /// @notice rebalance reverts when a strategy underdelivers on withdraw (H-3).
+    /// @notice rebalance reverts when a strategy underdelivers on withdraw (H-3): it writes off the 200 requested
+    ///         but delivers 100, far beyond the fixed shortfall tolerance.
     function test_Rebalance_StrategyWithdrawShortfall_Reverts() public {
         vm.prank(admin);
         mgr.setVault(address(mockVault));
 
         // Deploy a strategy that only delivers 50% of the requested amount.
-        PartialWithdrawStrategy partialStrat = new PartialWithdrawStrategy(token, 50);
+        PartialWithdrawStrategy partialStrat = new PartialWithdrawStrategy(token, 50, true);
 
         vm.prank(admin);
         mgr.addStrategy(address(partialStrat), 5000); // 50% target
@@ -733,13 +846,177 @@ contract StrategyManagerTest is StrategyManagerTestBase {
         partialStrat.setManagedBalance(700e18);
         token.mint(address(partialStrat), 700e18);
 
-        // Expected: requested = 200e18, actual = 100e18 → revert with shortfall.
+        // Expected: released = 200e18, received = 100e18 → revert with shortfall.
         vm.expectRevert(
             abi.encodeWithSelector(
                 IStrategyManager.StrategyManagerWithdrawShortfall.selector, address(partialStrat), 200e18, 100e18
             )
         );
         mgr.rebalance();
+    }
+
+    /// @dev Registers `strategy` at a 50% target, over-allocated at 700 of a 1000 NAV.
+    function _overAllocate(address strategy) internal {
+        vm.prank(admin);
+        mgr.setVault(address(mockVault));
+        vm.prank(admin);
+        mgr.addStrategy(strategy, 5000);
+        mockVault.setTotalAssets(1000e18);
+        token.mint(strategy, 700e18);
+    }
+
+    /// @notice #221: a recall that loses at most the fixed tolerance (rounding) completes.
+    function test_Rebalance_ShortfallAtTolerance_Succeeds() public {
+        WeiLossStrategy s = new WeiLossStrategy(token, REBALANCE_SHORTFALL_TOLERANCE);
+        _overAllocate(address(s));
+        s.setManagedBalance(700e18);
+
+        mgr.rebalance();
+        assertEq(token.balanceOf(address(mockVault)), 200e18 - REBALANCE_SHORTFALL_TOLERANCE, "vault received");
+        assertEq(s.managedBalance(), 500e18, "strategy at target");
+    }
+
+    /// @notice #221: one wei of loss past the fixed tolerance still reverts (H-3 kept).
+    function test_Rebalance_ShortfallAboveTolerance_Reverts() public {
+        WeiLossStrategy s = new WeiLossStrategy(token, REBALANCE_SHORTFALL_TOLERANCE + 1);
+        _overAllocate(address(s));
+        s.setManagedBalance(700e18);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IStrategyManager.StrategyManagerWithdrawShortfall.selector,
+                address(s),
+                200e18,
+                200e18 - REBALANCE_SHORTFALL_TOLERANCE - 1
+            )
+        );
+        mgr.rebalance();
+    }
+
+    /// @notice #221: an honest partial recall (the strategy still reports what it could not deliver, as the
+    ///         Lido buffer does) completes and is reported, instead of bricking every rebalance.
+    function test_Rebalance_HonestPartialRecall_Completes() public {
+        PartialWithdrawStrategy s = new PartialWithdrawStrategy(token, 50, false);
+        _overAllocate(address(s));
+        s.setManagedBalance(700e18);
+
+        vm.expectEmit(true, false, false, true, address(mgr));
+        emit IStrategyManager.StrategyPartiallyRecalled(address(s), 200e18, 100e18);
+        mgr.rebalance();
+
+        assertEq(token.balanceOf(address(mockVault)), 100e18, "vault received the partial recall");
+        assertEq(s.managedBalance(), 600e18, "the rest stays reported in the strategy");
+    }
+
+    /// @notice #221 value-loss semantics: a recall that delivers nothing while the strategy still reports its whole
+    ///         balance lost no value, so it completes as a zero partial recall (the Lido buffer when empty, a
+    ///         UniswapV3 position with no token0 left). Only a drop in reported balance beyond what the vault
+    ///         received reverts; a strategy that lies about its balance is outside the trust model.
+    function test_Rebalance_ZeroDelivery_BalanceUnchanged_IsPartialRecall() public {
+        PartialWithdrawStrategy s = new PartialWithdrawStrategy(token, 0, false);
+        _overAllocate(address(s));
+        s.setManagedBalance(700e18);
+
+        vm.expectEmit(true, false, false, true, address(mgr));
+        emit IStrategyManager.StrategyPartiallyRecalled(address(s), 200e18, 0);
+        mgr.rebalance();
+
+        assertEq(token.balanceOf(address(mockVault)), 0, "nothing received");
+        assertEq(s.managedBalance(), 700e18, "balance still reported");
+    }
+
+    /// @notice #221: a strategy recalled in pass 1 that ends a wei under target is not topped up by pass 2, which
+    ///         would hand the recall's rounding remainder straight back.
+    function test_Rebalance_RecalledStrategy_NotToppedUpInPass2() public {
+        OverDeliverStrategy s = new OverDeliverStrategy(token, 1);
+        _overAllocate(address(s));
+        token.mint(address(s), 1);
+        s.setManagedBalance(700e18);
+
+        mgr.rebalance();
+
+        assertEq(s.managedBalance(), 500e18 - 1, "recall ends a wei under target");
+        assertEq(token.balanceOf(address(mockVault)), 200e18 + 1, "pass 2 allocates nothing back");
+        assertEq(token.balanceOf(address(s)), 500e18, "strategy holds only what the recall left");
+    }
+
+    /// @notice #221: pass 2 allocates from the vault's actual idle, not the `vaultTotal` snapshot, so a partial
+    ///         recall cannot make an allocation overdraw the vault.
+    function test_Rebalance_PartialRecall_AllocatesFromActualIdle() public {
+        PartialWithdrawStrategy over = new PartialWithdrawStrategy(token, 50, false);
+        vm.prank(admin);
+        mgr.setVault(address(mockVault));
+        vm.startPrank(admin);
+        mgr.addStrategy(address(over), 4000); // target 400
+        mgr.addStrategy(address(strategyA), 6000); // target 600
+        vm.stopPrank();
+
+        // NAV 1000 = 200 vault idle + 800 in `over`. `over` can only return half of its 400 excess.
+        mockVault.setTotalAssets(1000e18);
+        token.mint(address(mockVault), 200e18);
+        token.mint(address(over), 800e18);
+        over.setManagedBalance(800e18);
+
+        mgr.rebalance();
+
+        assertEq(token.balanceOf(address(strategyA)), 400e18, "allocation capped at the 400 actually idle");
+        assertEq(token.balanceOf(address(mockVault)), 0, "vault idle fully allocated, never overdrawn");
+    }
+
+    /// @notice #221: rebalance deploys a protocol adapter's idle after allocating to it.
+    function test_Rebalance_DeploysAdapterIdle() public {
+        DeployableStrategy s = new DeployableStrategy(token);
+        vm.prank(admin);
+        mgr.setVault(address(mockVault));
+        vm.prank(admin);
+        mgr.addStrategy(address(s), 5000);
+        token.mint(address(mockVault), 1000e18);
+        mockVault.setTotalAssets(1000e18);
+
+        mgr.rebalance();
+
+        assertEq(s.deployCalls(), 1, "deployed once");
+        assertEq(s.deployed(), 500e18, "the allocation was deployed");
+        assertEq(token.balanceOf(address(s)), 0, "no idle left in the adapter");
+        assertEq(s.totalAssetsManaged(), 500e18, "NAV unchanged by the deploy");
+    }
+
+    /// @notice #221: a failing adapter deploy (e.g. paused protocol) is reported and never bricks rebalance.
+    function test_Rebalance_FailingDeploy_DoesNotRevert() public {
+        DeployableStrategy s = new DeployableStrategy(token);
+        s.setDeployReverts(true);
+        vm.prank(admin);
+        mgr.setVault(address(mockVault));
+        vm.prank(admin);
+        mgr.addStrategy(address(s), 5000);
+        token.mint(address(mockVault), 1000e18);
+        mockVault.setTotalAssets(1000e18);
+
+        vm.expectEmit(true, false, false, true, address(mgr));
+        emit IStrategyManager.StrategyDeployFailed(
+            address(s), abi.encodeWithSelector(IProtocolAdapter.ProtocolAdapterPaused.selector)
+        );
+        mgr.rebalance();
+
+        assertEq(token.balanceOf(address(s)), 500e18, "allocation stays idle (and counted) in the adapter");
+    }
+
+    /// @notice #221: a strategy that does not advertise IProtocolAdapter is never sent `deploy()`.
+    function test_Rebalance_PlainStrategy_NotDeployed() public {
+        vm.prank(admin);
+        mgr.setVault(address(mockVault));
+        vm.prank(admin);
+        mgr.addStrategy(address(strategyA), 5000);
+        token.mint(address(mockVault), 1000e18);
+        mockVault.setTotalAssets(1000e18);
+
+        vm.recordLogs();
+        mgr.rebalance();
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        for (uint256 i; i < logs.length; ++i) {
+            assertTrue(logs[i].topics[0] != IStrategyManager.StrategyDeployFailed.selector, "no deploy attempted");
+        }
+        assertEq(token.balanceOf(address(strategyA)), 500e18, "allocated");
     }
 
     //*//////////////////////////////////////////////////////////////////////////

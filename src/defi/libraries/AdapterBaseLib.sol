@@ -60,8 +60,9 @@ library AdapterBaseLib {
     /// @notice Transfers up to `amount` of `token` to `to`, capped at the adapter's balance,
     ///         and returns the real amount transferred.
     /// @dev Shortfall-honest: when the adapter holds less than requested (e.g. after a partial
-    ///      liquidation), it sends what it has and reports that. The StrategyManager turns an
-    ///      under-delivery into `StrategyManagerWithdrawShortfall` upstream.
+    ///      liquidation), it sends what it has and reports that. The StrategyManager accepts an honest
+    ///      partial recall and reverts with `StrategyManagerWithdrawShortfall` only when the strategy's
+    ///      reported balance drops by more than it delivered.
     function transferHonest(address token, address to, uint256 amount) internal returns (uint256 sent) {
         uint256 bal = IERC20(token).balanceOf(address(this));
         sent = amount > bal ? bal : amount;
