@@ -44,7 +44,7 @@ import {GovernedVaultStorage} from "@lattice/defi/libraries/GovernedVaultLib.sol
 import {LidoAdapterStorage} from "@lattice/defi/libraries/LidoAdapterLib.sol";
 import {StrategyManagerStorage} from "@lattice/defi/libraries/StrategyManagerLib.sol";
 import {UniswapV3AdapterStorage} from "@lattice/defi/libraries/UniswapV3AdapterLib.sol";
-import {VaultCoreStorage} from "@lattice/defi/libraries/VaultCoreLib.sol";
+import {VaultCoreRecoveryStorage, VaultCoreStorage} from "@lattice/defi/libraries/VaultCoreLib.sol";
 import {ENSResolverStorage} from "@lattice/ens/libraries/ENSResolverLib.sol";
 import {ENSReverseClaimerStorage} from "@lattice/ens/libraries/ENSReverseClaimerLib.sol";
 import {ENSSubnameIssuerStorage} from "@lattice/ens/libraries/ENSSubnameIssuerLib.sol";
@@ -201,6 +201,7 @@ contract StorageLayoutProbe {
     TellorAdapterStorage internal _tellorAdapterStorage;
     TimelockControllerStorage internal _timelockControllerStorage;
     UniswapV3AdapterStorage internal _uniswapV3AdapterStorage;
+    VaultCoreRecoveryStorage internal _vaultCoreRecoveryStorage;
     VaultCoreStorage internal _vaultCoreStorage;
     VestingWalletStorage internal _vestingWalletStorage;
     VotesStorage internal _votesStorage;

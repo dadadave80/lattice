@@ -32,7 +32,7 @@ Structured per the **Testing** and **Deployment** sections of the Cyfrin Solidit
    invariants inherited from an abstract base, the global `[invariant] fail_on_revert = true` is what binds).
    Diamond-level suites drive recipe-built diamonds through a handler and check them against ghost state:
    `VaultDiamondInvariant` (the `DeployVaultCore` and `DeployGovernedVault` diamonds with a
-   `DeployStrategyManager` diamond and live strategies) and `AccessManagerDiamondInvariant` (a
+   `DeployStrategyManager` diamond, live strategies and swaps to fresh managers) and `AccessManagerDiamondInvariant` (a
    `DeployAccessManager` diamond governing a `DeployAccessManaged` diamond, against a ghost model of Lattice's
    AccessManager semantics: OpenZeppelin v5.6.1 with the differences listed in `IAccessManager`'s `@dev`, such as
    the locked ADMIN_ROLE, the global nonce, a too-early `when` raised instead of refused, and Lattice error
