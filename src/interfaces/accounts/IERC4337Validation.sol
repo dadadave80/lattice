@@ -3,6 +3,7 @@ pragma solidity >=0.8.4;
 
 /// @title IERC4337Validation
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from eth-infinitism account-abstraction (https://github.com/eth-infinitism/account-abstraction)
 /// @notice Admin/read surface of the `ERC4337Validation` facet. `validateUserOp` itself is on the vendored
 ///         `IAccount` (ERC-4337). This is the Diamond-local config: which EntryPoint is trusted.
 /// @dev The EntryPoint is stored, never hardcoded, so the canonical version (v0.7/v0.8/v0.9) is a deploy

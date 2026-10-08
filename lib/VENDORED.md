@@ -72,8 +72,9 @@ otherwise; the marker is also shown where the Lattice tag differs from an Apache
 header names the upstream with `@author Vendored minimal subset of <Source> (<link>).` plus an
 `Upstream license: <id>.` note. The BUSL-1.1 re-declarations (`compound/`, and `layerzero/IStargate.sol`
 for its Stargate surface) instead say `@author ABI-equivalent interface authored fresh from <Source>'s
-public ABI (<link>).`, because no upstream text was copied. The `ercs/` and `seal/` headers keep their
-older wording until #247.
+public ABI (<link>).`, because no upstream text was copied. Under `ercs/` and `seal/`, `IERC8153.sol`
+keeps its older header because the LatticeRegistry and LatticeFactory bytecode pins it, and `IAccount.sol`,
+`IERC1271.sol`, `IERC7786Attributes.sol` and `ISafeHarborRegistry.sol` still lack the license note.
 
 "Upstream license" is the SPDX tag of the upstream file the header links to, read from that file at
 the upstream default branch in October 2026. "(repo)" means the upstream file has no SPDX tag and the
@@ -98,10 +99,8 @@ missing from this table.
 | `chainlink/IAggregatorV3.sol` | smartcontractkit/chainlink-evm `contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol` | MIT | subset |
 | `chainlink/IAny2EVMMessageReceiver.sol` | smartcontractkit/chainlink-ccip `chains/evm/contracts/interfaces/IAny2EVMMessageReceiver.sol` | MIT | subset |
 | `chainlink/IAny2EVMMessageReceiverV2.sol` | smartcontractkit/chainlink-ccip `chains/evm/contracts/interfaces/IAny2EVMMessageReceiverV2.sol` | MIT | subset |
-| `chainlink/IAutomationCompatible.sol` | smartcontractkit/chainlink-evm `contracts/src/v0.8/automation/interfaces/AutomationCompatibleInterface.sol` | unknown (file no longer at that path) | subset |
 | `chainlink/IReceiver.sol` | Chainlink CRE docs sample `https://docs.chain.link/samples/CRE/IReceiver.sol` | MIT | subset |
 | `chainlink/IRouterClient.sol` | smartcontractkit/chainlink-ccip `chains/evm/contracts/interfaces/IRouterClient.sol` | MIT | subset |
-| `chainlink/IVRFConsumer.sol` | smartcontractkit/chainlink-evm `contracts/src/v0.8/vrf/interfaces/IVRFMigratableConsumerV2Plus.sol` | MIT | subset |
 | `chainlink/IVRFCoordinatorV2Plus.sol` | smartcontractkit/chainlink-evm `contracts/src/v0.8/vrf/interfaces/IVRFCoordinatorV2Plus.sol` | MIT | subset |
 | `chronicle/IChronicle.sol` | chronicleprotocol/chronicle-std `src/IChronicle.sol` | MIT | subset |
 | `circle/IReceiverV2.sol` | circlefin/evm-cctp-contracts `src/v2/MessageTransmitterV2.sol` | Apache-2.0 | subset (Lattice SPDX: Apache-2.0) |

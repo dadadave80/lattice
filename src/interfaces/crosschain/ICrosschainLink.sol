@@ -11,6 +11,8 @@ pragma solidity >=0.8.4;
 /// @dev The receive entrypoint `receiveMessage` is declared by `IERC7786Recipient`; the facet implements
 ///      both. Chains and counterparts are ERC-7930 binary interoperable addresses: a `chain` is a
 ///      "chain-only" interoperable address (empty address), a `counterpart` is a full one (chain + address).
+///      Every handler is called as `processMessage` (`0x902d5027`), so a diamond can host only ONE handler
+///      facet; any other tag must route to an external handler contract or to a second diamond (issue #240).
 interface ICrosschainLink {
     // -------------------------------------------------------------------------
     //                                  Events

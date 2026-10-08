@@ -76,6 +76,7 @@ if older documentation conflicts with the development policy below, apply this p
 | `script/base/<area>/Deploy<Module>.s.sol` | Deploy recipe (`buildCuts` + `run`), shared by deploys and tests |
 | `script/lib/FacetInventory.sol` | Release inventory; also drives `ExportSelectorsParityTest` |
 | `script/upgrades/` | Storage-layout guard, probe and baseline |
+| `script/README.md` | Map of every `script/` folder, its entry points and Makefile targets |
 | `test/` | Layout and conventions in [test/README.md](test/README.md) |
 
 Adding a module touches more than its three source files: follow the
@@ -161,7 +162,8 @@ author line):
   still followed by the `Upstream license:` note (precedents: `IStargate`, `IComet`).
   Add a row for the file to the third-party interface table in `lib/VENDORED.md`. `make license-check`
   rejects `@author Modified from` there, requires one of the two `@author` forms plus the
-  `Upstream license:` note (except under `ercs/` and `seal/` until #247), and requires the table row.
+  `Upstream license:` note (except under `ercs/` and `seal/`, where `IERC8153` is pinned by the registry and
+  factory bytecode and four files still lack the note), and requires the table row.
 - Every `.sol` file starts with an SPDX line; every id in its expression other than MIT needs its text at
   `LICENSES/<id>.txt`.
 - OZ-ported modules may use `/// @author Adapted for EIP-2535 from OpenZeppelin ... (<link>[, commit <sha>])`.

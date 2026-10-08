@@ -72,7 +72,7 @@ struct ERC6900ModuleManagerStorage {
 ///         /exec hooks). Backs the `ERC6900ModuleManager` config facet and (via the read helpers) the
 ///         `IERC6900AccountView` loupe.
 /// @dev Re-implemented FRESH from the ERC-6900 reference semantics (erc6900/reference-implementation @ 65892c2;
-///      reference is GPL — not a dependency). Lattice-native deviations: ERC-7201 namespaced storage (not the
+///      reference is MIT — not a dependency). Lattice-native deviations: ERC-7201 namespaced storage (not the
 ///      reference's plain-keccak slot); a Diamond facet-map shadow check in place of the reference's static
 ///      `KnownSelectorsLib.isNativeFunction` list (`diamondCut` is the sole selector authority); and the
 ///      account-or-admin `_authorizeConfig` model shared with the ERC-7579 flavor. Module callbacks are

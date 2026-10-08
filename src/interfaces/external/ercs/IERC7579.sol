@@ -14,6 +14,9 @@ uint256 constant MODULE_TYPE_EXECUTOR = 2;
 uint256 constant MODULE_TYPE_FALLBACK = 3;
 uint256 constant MODULE_TYPE_HOOK = 4;
 
+/// @author Vendored minimal subset of OpenZeppelin Contracts
+///         (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/interfaces/draft-IERC7579.sol).
+///         Upstream license: MIT.
 /// @dev Base interface every ERC-7579 module implements (an executor module is just this).
 interface IERC7579Module {
     function onInstall(bytes calldata data) external;
