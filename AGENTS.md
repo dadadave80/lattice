@@ -96,7 +96,7 @@ Adding a module touches more than its three source files: follow the
 | `make via-ir` | IR-pipeline parity build |
 | `make storage-check` / `make storage-update` | Verify / regenerate the storage-layout baseline |
 | `make test-ci` | Full suite under `FOUNDRY_PROFILE=ci` |
-| `make ci` | CI's Solidity gates in CI order (`fmt-check license-check sizes via-ir storage-check test-ci snapshot-check`); CI also runs a via-ir size gate, Slither (`make slither`) and Anvil deploy checks (`make check-atomic-deploy` needs `make anvil`) |
+| `make ci` | CI's Solidity gates in CI order (`fmt-check license-check scripts-check readme-check sizes via-ir storage-check test-ci snapshot-check`); CI also runs a via-ir size gate, Slither (`make slither`) and Anvil deploy checks (`make check-atomic-deploy` needs `make anvil`) |
 | `make clean` | `forge clean`; run it before trusting gates after tools touched the tree |
 | `make help` | Every target, including deploy and demo targets |
 
