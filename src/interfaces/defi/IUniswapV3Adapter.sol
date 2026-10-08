@@ -72,6 +72,10 @@ interface IUniswapV3Adapter {
     /// @notice The pool reported a non-positive tick spacing (cannot align a full-range position).
     error UniswapV3AdapterBadTickSpacing(int24 tickSpacing);
 
+    /// @notice The position manager's `positions()` call failed or returned short data.
+    /// @param tokenId The adapter's position NFT id.
+    error UniswapV3AdapterPositionsCallFailed(uint256 tokenId);
+
     /// @notice Returns the Uniswap V3 NonfungiblePositionManager.
     function positionManager() external view returns (address);
 

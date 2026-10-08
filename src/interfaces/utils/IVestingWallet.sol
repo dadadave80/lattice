@@ -18,6 +18,9 @@ interface IVestingWallet {
     /// @param token The token whose transfer failed.
     error VestingWalletTransferFailed(address token);
 
+    /// @notice ETH transfer to the beneficiary failed.
+    error VestingWalletEtherTransferFailed();
+
     /// @notice Returns the start timestamp of the vesting schedule.
     /// @return The Unix timestamp at which vesting begins.
     function start() external view returns (uint256);

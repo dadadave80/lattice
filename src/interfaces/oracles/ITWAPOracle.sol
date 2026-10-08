@@ -34,6 +34,9 @@ interface ITWAPOracle {
     //                                  Errors
     // -------------------------------------------------------------------------
 
+    /// @notice `registerPair` was called with the zero address as the pair.
+    error TWAPZeroPair();
+
     /// @notice No pair is registered under the given key.
     error TWAPPairNotRegistered(bytes32 key);
 

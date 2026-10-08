@@ -481,6 +481,23 @@ contract UniswapV3AdapterTest is Test {
         assertEq(adapter.totalAssetsManaged(), nav + 123e18, "idle token0 counted at par");
     }
 
+    function test_TotalAssets_RevertsWhenPositionsCallFails() public {
+        _fund(1_000e18, 1_000e18);
+        adapter.deploy();
+        uint256 id = adapter.tokenId();
+        bytes memory call = abi.encodeWithSelector(INonfungiblePositionManager.positions.selector, id);
+        bytes memory err = abi.encodeWithSelector(IUniswapV3Adapter.UniswapV3AdapterPositionsCallFailed.selector, id);
+
+        vm.mockCallRevert(address(npm), call, bytes(""));
+        vm.expectRevert(err);
+        adapter.totalAssetsManaged();
+
+        vm.clearMockedCalls();
+        vm.mockCall(address(npm), call, abi.encode(uint256(1)));
+        vm.expectRevert(err);
+        adapter.totalAssetsManaged();
+    }
+
     function test_TotalAssets_ZeroWhenNoPosition() public view {
         assertEq(adapter.totalAssetsManaged(), 0, "no position, no idle -> zero NAV");
     }

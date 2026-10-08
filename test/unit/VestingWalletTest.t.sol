@@ -251,6 +251,14 @@ contract VestingWalletTest is Test {
         assertEq(beneficiary.balance - before, DEPOSIT);
     }
 
+    function test_Release_RevertsWhenBeneficiaryRejectsEth() public {
+        // TestToken has no receive or fallback, so the ETH send to it fails.
+        wallet.transferOwnerHelper(address(token));
+        vm.warp(START + DURATION);
+        vm.expectRevert(IVestingWallet.VestingWalletEtherTransferFailed.selector);
+        wallet.release();
+    }
+
     //*//////////////////////////////////////////////////////////////////////////
     //                         RELEASE ERC20 TESTS
     //////////////////////////////////////////////////////////////////////////*//

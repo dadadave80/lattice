@@ -280,7 +280,7 @@ library UniswapV3AdapterLib {
         address npm = $._positionManager;
         (bool ok, bytes memory ret) =
             npm.staticcall(abi.encodeWithSelector(INonfungiblePositionManager.positions.selector, id));
-        require(ok && ret.length >= 256, "positions");
+        if (!ok || ret.length < 256) revert IUniswapV3Adapter.UniswapV3AdapterPositionsCallFailed(id);
         assembly ("memory-safe") {
             // ret layout: [0]=length, then 12 abi words; liquidity is word index 7 (offset 0xe0 + 0x20).
             liquidity := mload(add(ret, 0x100))

@@ -82,6 +82,13 @@ contract TWAPOracleTest is TWAPOracleTestBase {
         oracle.registerPair(KEY_ETH_USD, address(pair));
     }
 
+    /// @notice Registering the zero address as a pair reverts.
+    function test_RegisterPairRevertsForZeroPair() public {
+        vm.prank(admin);
+        vm.expectRevert(ITWAPOracle.TWAPZeroPair.selector);
+        oracle.registerPair(KEY_ETH_USD, address(0));
+    }
+
     /// @notice Admin can register a pair and it records an initial observation.
     function test_RegisterPairByAdmin() public {
         vm.prank(admin);
