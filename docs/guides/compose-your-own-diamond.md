@@ -184,8 +184,8 @@ ENS ties the milestones together. The Milestone 1 vault is ENS-named, and so is 
 `LatticeFactory` (`factory.lattice.studio.eth`), both through the ENSReverseClaimer facet. The ENS variant
 of this example is the same composition plus that one facet: `DeployGovernedVaultENS.buildCutsWithENS`
 adds ENSReverseClaimer and a combined initializer that replays the base init sequence. Send those cuts
-through `LatticeFactory.deploy` for atomic creation. The root README's “Live testnet deployment” section and
-`PROGRESS.md` record the verified Milestone 1 vault and its name.
+through `LatticeFactory.deploy` for atomic creation. `PROGRESS.md` records the verified Milestone 1 vault
+and its ENS name; the root README's “Live deployments and demos” section has the reproduce command.
 
 On `dev` and `main` after the `grant-m2` tag, `buildCutsWithENS` also runs the namespace preflight over
 `storageNamespacesWithENS()`, which is the base list plus `lattice.storage.ENSReverseClaimer`. At the tag,

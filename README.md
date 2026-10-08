@@ -4,6 +4,8 @@
 
 # Lattice
 
+[![CI](https://github.com/dadadave80/lattice/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/dadadave80/lattice/actions/workflows/test.yml)
+
 Lattice is a Solidity library of modular contract modules built on top of the
 [`diamond-lib`](https://github.com/dadadave80/diamond-lib) EIP-2535 Diamond Standard
 framework. Most modules ship as a **stateless facet + a library with ERC-7201 namespaced
@@ -24,28 +26,112 @@ consumed as a Forge dependency; there is no application or canonical deployment 
 > custody assets, verify proofs, bridge messages, or authorize upgrades. Licensed under MIT, except
 > files whose SPDX header says otherwise; see [`LICENSES/`](LICENSES/) and [`lib/VENDORED.md`](lib/VENDORED.md).
 
+## Install / usage
+
+Install as a Forge dependency, pinned to a release tag. The steps below assume a git repository
+(`forge init` creates one). In a `--no-git` project, run `forge install --no-git
+dadadave80/lattice@<tag>` instead and skip the commit step and the `git describe` check below: Forge
+records no gitlink, so check the pin from `VERSION` in `lib/lattice/src/LatticeVersion.sol`. CI builds with
+Foundry v1.8.5 and Solidity 0.8.36, and these steps were checked on Forge v1.8.5.
+
+<!-- x-release-please-start-version -->
+```sh
+forge install dadadave80/lattice@v0.4.0
+git add lib/lattice .gitmodules foundry.lock && git commit -m "Install lattice"
+```
+<!-- x-release-please-end -->
+
+`forge install` checks out the tag and its nested `diamond-lib` and `forge-std` submodules. Commit the
+install straight away, as shown: some Forge releases stage the default branch's commit rather than the
+tag's, and a later `git submodule update` then moves `lib/lattice` off the tag. Check the pin with
+`git -C lib/lattice describe --tags --exact-match`. Install from a tag, never the default branch: `main`
+and `dev` can carry unreleased changes (see [Versioning and compatibility](#versioning-and-compatibility)).
+
+No remappings are needed: Forge reads `lib/lattice/remappings.txt` and derives `@lattice/` and
+`@diamond/` itself. If you keep your own `remappings.txt`, map both into the dependency:
+
+```
+@lattice/=lib/lattice/src/
+@diamond/=lib/lattice/lib/diamond-lib/src/
+forge-std/=lib/forge-std/src/
+```
+
+Facets have no constructors, so a diamond's state is seeded by an init contract that
+`Lattice.initialize` delegatecalls once, inside its `initializer` window. Write it like the shipped
+`*Init.sol` contracts (for example [`AccessControlInit`](src/access/AccessControlInit.sol)): a plain
+`init` with **no** `initializer` modifier, calling each module's `__<Module>_init` in dependency order.
+
+```solidity
+import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
+
+contract MyAppInit {
+    function init(address admin) external {
+        AccessControlLib.__AccessControl_init(admin); // passes: initialize's window is open
+        // ...other module inits, in dependency order
+    }
+}
+```
+
+The `*Init` contracts carry no guard of their own because they already run inside
+`Lattice.initialize`'s `initializer` scope; a nested guard reverts outside a constructor context. The
+vendored `Initializable` mixin also provides `reinitializer(version)` and `onlyInitializing` for
+upgrade-time init contracts.
+
+Deploy and initialize in **one transaction** through `LatticeFactory.deploy(entries, customCuts, init,
+initCalldata, salt)`. The recipe must cut the diamond loupe, or the factory reverts. Never deploy a
+Lattice proxy and call `initialize` in a separate transaction: `initialize` is first-caller-wins, so
+anyone who sees the deployment can initialize it first with their own cut and take the diamond. The
+[Compose your own Diamond](docs/guides/compose-your-own-diamond.md#initialize-in-one-transaction) guide
+walks through a full recipe with `deployAtomic`.
+
+Every `script/base/**` recipe creates and initializes its diamond in one transaction through
+`LatticeFactory`. By default a run first deploys its own `LatticeRegistry` + `LatticeFactory`. Set
+`LATTICE_FACTORY=<address>` to reuse a deployed factory, such as a release factory (a committed per-chain
+release manifest is tracked in [#196](https://github.com/dadadave80/lattice/issues/196)). Set
+`LATTICE_SALT=<0x + 64 hex characters>` to choose addresses: diamond `i` of a run lands at
+`factory.predict(<broadcaster>, keccak256(abi.encode(LATTICE_SALT, i)))`. Re-running with a salt that is
+already used reverts before anything is broadcast.
+
+**Worked example: governance-upgradeable diamond (runs in CI).** The
+[example](examples/governance-upgradeable-diamond/README.md) composes an ERC-4626 vault diamond that can
+only be upgraded by a proposal passed through its own Governor and TimelockController, and the
+[Compose your own Diamond](docs/guides/compose-your-own-diamond.md) guide explains each step of that
+composition. Deploy and run it with `make example-ens-grant-m2 RPC=<alias-or-URL> KEYSTORE=<name>`, or on
+local Anvil with `make example-ens-grant-m2 LOCAL=1`. Grant milestone evidence is in
+[PROGRESS.md](PROGRESS.md).
+
+When adding new modules, be deliberate about caller semantics. Some existing modules use
+`msg.sender` directly because they authenticate protocol callbacks, Safe calls, EntryPoint
+calls, or Diamond self-dispatch. If a module is intended to support forwarded calls, use the
+project's established caller-resolution pattern consistently through the library layer.
+
 ## Modules
 
 | Area | Modules |
 |------|---------|
+| Core (`src/` root) | `Lattice` (the diamond proxy; its `initialize` is first-caller-wins, so create and initialize it in one transaction), `LatticeFactory` (stateless CREATE2 factory that deploys and initializes a diamond atomically; a repeat `deploy` with the same sender and salt returns the existing diamond and ignores the new recipe, so use one salt per recipe), `LatticeRegistry` (deploy-once, non-upgradeable facet registry; its curated `(name, version)` catalog is append-only and owner-governed), `LatticeVersion` (internal version constants only; a public `VERSION()` getter would collide as soon as two facets exposed it), `Receive` (cut under the zero selector so the diamond accepts bare ETH, which it rejects otherwise; even with it, `.transfer()`/`.send()` cannot pay a diamond, so senders use `call{value: ...}("")`) |
 | `access/` | `AccessControl`, `AccessControlEnumerable`, `AccessControlTimed`, `AccessManager` (+ `AccessManaged`, `AccessManagerStandalone`), `Ownable` (re-exports diamond-lib's `OwnableFacet`) |
-| `accounts/` | Diamond smart-account building blocks — two modular-account flavors ([see below](#smart-account-flavors-erc-7579-and-erc-6900)), each in its own subfolder. **`accounts/erc7579/`:** `AccountDiamond`, `Account7702Diamond`, `AccountFactory`, `AccountInit`, `AccountSigner`, `ERC7821Executor`, `ERC7579ModuleConfig`. **`accounts/erc6900/`:** `ModularAccount6900`, `AccountFactory6900`, `AccountInit6900`, `ERC6900ModuleManager`, `ERC6900Executor`, `ERC6900Validation`, `ERC6900Signature`, `ERC6900AccountView` (+ reference modules `modules/SingleSignerValidation`, `modules/SpendingLimit`). **Shared base + standalone account types (`accounts/`):** `ERC4337Validation`, `ERC1271Signature` (the ERC-4337/1271 base both flavors build on), plus the single-facet standalone types `ERC6551Account` (token-bound) and `SessionKey`. **`accounts/hedera/`:** `HASSignatureVerifier` (HIP-632 `isAuthorizedRaw`, backing `SignerType.HederaAccount`) |
+| `accounts/` | Diamond smart-account building blocks — two modular-account flavors ([see below](#smart-account-flavors-erc-7579-and-erc-6900)), each in its own subfolder. **`accounts/erc7579/`:** `AccountDiamond`, `Account7702Diamond`, `AccountFactory`, `AccountInit`, `AccountSigner`, `ERC7821Executor`, `ERC7579ModuleConfig`. **`accounts/erc6900/`:** `ModularAccount6900`, `AccountFactory6900`, `AccountInit6900`, `ERC6900ModuleManager`, `ERC6900Executor`, `ERC6900Validation`, `ERC6900Signature`, `ERC6900AccountView` (+ reference modules under `modules/`: `SingleSignerValidation`, `SpendingLimit`). **Shared base + standalone account types (`accounts/`):** `ERC4337Validation`, `ERC1271Signature` (the ERC-4337/1271 base both flavors build on), plus the single-facet standalone types `ERC6551Account` (token-bound) and `SessionKey`. **`accounts/hedera/`:** `HASSignatureVerifier` (HIP-632 `isAuthorizedRaw`, backing `SignerType.HederaAccount`) |
 | `amm/` | `ConstantProduct` |
-| `crosschain/` | **Message gateways:** `CCIPGatewayAdapter`, `AxelarGatewayAdapter`, `WormholeGatewayAdapter`, `LayerZeroGatewayAdapter`, `HyperlaneGatewayAdapter`, `ZetaChainGatewayAdapter` (hub-routed), `HyperbridgeGatewayAdapter` (proof-verified), `L2ToL2`/`L1ToL2CrossDomainMessengerGatewayAdapter` (OP). **Token rails:** `CCTPBridgeAdapter` (burn/mint), `AcrossBridgeAdapter` (intent), `StargateBridgeAdapter` (pooled), `BridgeERC20`, `BridgeERC7802`, `SuperchainETHBridgeAdapter`. **Non-EVM:** `StarknetGatewayAdapter` (felt252, L1↔L2). **Composition:** `ERC7786OpenBridge` (M-of-N), `CrosschainLink`, `ChainRegistry` (one-action fan-out), `CrosschainTimelockHandler`. See [`CROSSCHAIN.md`](CROSSCHAIN.md) for the adapter-shape reference + off-chain dependency matrix |
+| `crosschain/` | **Message gateways:** `CCIPGatewayAdapter`, `AxelarGatewayAdapter`, `WormholeGatewayAdapter`, `LayerZeroGatewayAdapter`, `HyperlaneGatewayAdapter`, `ZetaChainGatewayAdapter` (hub-routed), `HyperbridgeGatewayAdapter` (proof-verified), `L2ToL2CrossDomainMessengerGatewayAdapter` and `L1ToL2CrossDomainMessengerGatewayAdapter` (OP). **Token rails:** `CCTPBridgeAdapter` (burn/mint), `CCTPHookExecutor` (CCTP v2 hook execution on relay), `AcrossBridgeAdapter` (intent), `StargateBridgeAdapter` (pooled), `BridgeERC20`, `BridgeERC7802`, `SuperchainETHBridgeAdapter`. **Non-EVM:** `StarknetGatewayAdapter` (felt252, L1↔L2). **Composition:** `ERC7786OpenBridge` (M-of-N), `CrosschainLink`, `ChainRegistry` (one-action fan-out), `CrosschainTimelockHandler`. See [`CROSSCHAIN.md`](CROSSCHAIN.md) for the adapter-shape reference + off-chain dependency matrix |
 | `defi/` | `AaveV3Adapter`, `AggregatorExecAdapter`, `CompoundV3Adapter`, `CurveStableSwapAdapter` (**unsupported in 0.5.0**: its spot `get_virtual_price()` NAV is exposed to read-only reentrancy, so do not register it with a vault's `StrategyManager`), `ERC4626Adapter`, `GovernedVault`, `LidoAdapter`, `StrategyManager`, `UniswapV3Adapter` (swap-free: `rebalance()` recalls only token0, so retiring it needs the admin's `emergencyWithdraw`, which moves the token1 leg out of NAV, before `removeStrategy`), `VaultCore`, `WETHUnwrapper` |
 | `ens/` | `ENSResolver`, `ENSReverseClaimer`, `ENSSubnameIssuer` |
-| `governance/` | `Governor` (+ `GovernorStandalone`), `TimelockController` (+ `TimelockControllerStandalone`), `Votes`, `GovernedDiamondCut`, `SafeDiamondCut`, `GovernedSafeDiamondCut`, `SafeHarborAdopter` |
+| `governance/` | `Governor` (+ `GovernorStandalone`), `TimelockController` (+ `TimelockControllerStandalone`), `Votes`, `AccessControlDiamondCut`, `GovernedDiamondCut`, `SafeDiamondCut`, `GovernedSafeDiamondCut`, `SafeHarborAdopter` |
 | `oracles/` | `API3Adapter`, `API3QRNGAdapter`, `BandAdapter`, `ChainlinkAdapter`, `ChainlinkAutomationAdapter`, `ChainlinkCREAdapter`, `ChainlinkVRF`, `ChronicleAdapter`, `DIAAdapter`, `GelatoAutomateAdapter`, `GelatoVRFAdapter`, `HSSAdapter`, `HederaExchangeRateAdapter`, `HederaPrngAdapter`, `PythAdapter`, `PythEntropyAdapter`, `RedStoneAdapter`, `TWAPOracle`, `TellorAdapter`. **Guard:** `OracleGuard` (opt-in L2 sequencer-uptime check and per-key answer bounds over any price adapter) |
 | `privacy/` | `CommitReveal`, `ERC5564Announcer`, `ERC6538Registry`, `Groth16Verifier`, `PlonkVerifier`, `PrivateVoting`, `Semaphore`, `ShieldedPool` |
 | `security/` | `Pausable`, `ReentrancyGuard`, `RateLimiter`, `CircuitBreaker`, `EmergencyStop`, `InvariantChecker` |
-| `tokens/` | One subfolder per standard (base + extensions flat inside, `<std>/libraries/` for logic). **`tokens/ERC20/`:** `ERC20` (+ `Burnable`, `Capped`, `Crosschain`, `Permit`, `Votes`). **`tokens/ERC721/`:** `ERC721` (+ `URIStorage`). **`tokens/ERC1155/`**, **`tokens/ERC2981/`**, **`tokens/ERC4626/`**, **`tokens/ERC7802/`**. **`tokens/hedera/`:** `HTSAdapter` (the diamond as a Hedera Token Service account). `MarketplaceZone` sits at the `tokens/` root (a Seaport zone enforcing the issuer's own token policy, not a token standard) |
-| `utils/` | `EIP712`, `Multicall`, `Nonces`, `VestingWallet` (+ `VestingWalletStandalone`) |
+| `tokens/` | One subfolder per standard (base + extensions flat inside, `<std>/libraries/` for logic). **`tokens/ERC20/`:** `ERC20` plus the extensions `ERC20Burnable`, `ERC20Capped`, `ERC20Crosschain`, `ERC20FlashMint`, `ERC20Pausable`, `ERC20Permit`, `ERC20Votes`, `ERC20Wrapper`. **`tokens/ERC721/`:** `ERC721`, `ERC721URIStorage`. **`tokens/ERC1155/`:** `ERC1155`. **`tokens/ERC2981/`:** `ERC2981`. **`tokens/ERC4626/`:** `ERC4626`. **`tokens/ERC7802/`:** `ERC7802`. **`tokens/hedera/`:** `HTSAdapter` (the diamond as a Hedera Token Service account). `MarketplaceZone` sits at the `tokens/` root (a Seaport zone enforcing the issuer's own token policy, not a token standard) |
+| `utils/` | `EIP712`, `Initializable` (modifier mixin over `InitializableLib`), `Multicall`, `Nonces`, `VestingWallet` (+ `VestingWalletStandalone`) |
 
 **Utility libraries** (`src/utils/libraries/`) — pure logic with no own storage, facet,
 or interface: `Base64`, `Bytes`, `Calldata`, `Checkpoints`, `ECDSA`, `EnumerableSet`,
-`InterestRate`, `InteroperableAddress`, `P256`, `Panic`, `ShortStrings`,
+`InterestRate`, `InteroperableAddress`, `math/Math`, `math/SafeCast`, `P256`, `Panic`, `ShortStrings`,
 `SignatureChecker`, `Strings`, `TimelockLib`, `UniswapV3FullRangeMath`, `WebAuthn`, plus
-module helpers such as `EIP712Lib`, `MulticallLib`, `NoncesLib`, and `VestingWalletLib`.
+module helpers such as `EIP712Lib`, `InitializableLib`, `MulticallLib`, `NoncesLib`, and `VestingWalletLib`.
+
+`src/examples/` holds demo contracts that are not library modules: `CCTPHookVault` and
+`CCTPHookReceipt`, used by the [CCTP demos](#live-deployments-and-demos), and the pinned-verification-key
+patterns `PinnedWithdrawVerifier` and `HashPinnedGroth16Verifier`.
 
 `src/interfaces/external/` vendors minimal third-party ABIs used by adapters and standards
 integrations, grouped per vendor (`circle/`, `chainlink/`, `layerzero/`, …; pure ERC/EIP standard
@@ -121,75 +207,6 @@ storage struct they operate on. A few contracts are standalone rather than facet
 standard or deployment model requires it, for example `AccountFactory`, `GovernorStandalone`,
 `TimelockControllerStandalone`, `AccessManagerStandalone`, and `VestingWalletStandalone`.
 
-## Install / usage
-
-For ENS grant Milestone 2, see [Compose your own Diamond](docs/guides/compose-your-own-diamond.md)
-and the [RPC governance example](examples/governance-upgradeable-diamond/README.md).
-Use `make example-ens-grant-m2 RPC=<alias-or-URL> KEYSTORE=<name>` to deploy and run the full governance example.
-Local Anvil uses `make example-ens-grant-m2 LOCAL=1`.
-Acceptance evidence is tracked in [grant progress](PROGRESS.md).
-
-Install as a Forge dependency, pinned to a release tag. The steps below assume a git repository
-(`forge init` creates one). In a `--no-git` project, run `forge install --no-git
-dadadave80/lattice@<tag>` instead and skip the commit step and the `git describe` check below: Forge
-records no gitlink, so check the pin from `VERSION` in `lib/lattice/src/LatticeVersion.sol`. CI builds with
-Foundry v1.8.5 and Solidity 0.8.36, and these steps were checked on Forge v1.8.5.
-
-<!-- x-release-please-start-version -->
-```sh
-forge install dadadave80/lattice@v0.4.0
-git add lib/lattice .gitmodules foundry.lock && git commit -m "Install lattice"
-```
-<!-- x-release-please-end -->
-
-`forge install` checks out the tag and its nested `diamond-lib` and `forge-std` submodules. Commit the
-install straight away, as shown: some Forge releases stage the default branch's commit rather than the
-tag's, and a later `git submodule update` then moves `lib/lattice` off the tag. Check the pin with
-`git -C lib/lattice describe --tags --exact-match`. Install from a tag, never the default branch: `main`
-and `dev` can carry unreleased changes (see [Versioning and compatibility](#versioning-and-compatibility)).
-
-No remappings are needed: Forge reads `lib/lattice/remappings.txt` and derives `@lattice/` and
-`@diamond/` itself. If you keep your own `remappings.txt`, map both into the dependency:
-
-```
-@lattice/=lib/lattice/src/
-@diamond/=lib/lattice/lib/diamond-lib/src/
-forge-std/=lib/forge-std/src/
-```
-
-Facets have no constructors, so a diamond's state is seeded by an init contract that
-`Lattice.initialize` delegatecalls once, inside its `initializer` window. Write it like the shipped
-`*Init.sol` contracts (for example [`AccessControlInit`](src/access/AccessControlInit.sol)): a plain
-`init` with **no** `initializer` modifier, calling each module's `__<Module>_init` in dependency order.
-
-```solidity
-import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
-
-contract MyAppInit {
-    function init(address admin) external {
-        AccessControlLib.__AccessControl_init(admin); // passes: initialize's window is open
-        // ...other module inits, in dependency order
-    }
-}
-```
-
-The `*Init` contracts carry no guard of their own because they already run inside
-`Lattice.initialize`'s `initializer` scope; a nested guard reverts outside a constructor context. The
-vendored `Initializable` mixin also provides `reinitializer(version)` and `onlyInitializing` for
-upgrade-time init contracts.
-
-Deploy and initialize in **one transaction** through `LatticeFactory.deploy(entries, customCuts, init,
-initCalldata, salt)`. The recipe must cut the diamond loupe, or the factory reverts. Never deploy a
-Lattice proxy and call `initialize` in a separate transaction: `initialize` is first-caller-wins, so
-anyone who sees the deployment can initialize it first with their own cut and take the diamond. The
-[Compose your own Diamond](docs/guides/compose-your-own-diamond.md#initialize-in-one-transaction) guide
-walks through a full recipe with `deployAtomic`.
-
-When adding new modules, be deliberate about caller semantics. Some existing modules use
-`msg.sender` directly because they authenticate protocol callbacks, Safe calls, EntryPoint
-calls, or Diamond self-dispatch. If a module is intended to support forwarded calls, use the
-project's established caller-resolution pattern consistently through the library layer.
-
 ## Versioning and compatibility
 
 Lattice follows [Semantic Versioning](https://semver.org/) with a stated 0.x policy. Release Please
@@ -213,39 +230,20 @@ cuts each release from Conventional Commits, and before 1.0 a breaking change bu
   next release. This README and the guides on `dev` describe unreleased code; for a release, read
   them at its tag.
 
-## Live testnet deployment (Sepolia)
+## Live deployments and demos
 
-A reference deployment of the self-governed, ENS-named ERC-4626 vault recipe
-([`DeployGovernedVaultENS`](script/base/defi/DeployGovernedVaultENS.s.sol)) — one diamond hosting the
-share token, vault, vote checkpoints, Governor, TimelockController, EmergencyStop, and a governed
-upgrade path, with **no external admin**: the diamond administers itself, so a passed, timelock-executed
-shareholder proposal is the only way to upgrade or reconfigure it.
+<a name="live-testnet-deployment-sepolia"></a>
+<a name="live-cross-chain-usdc-demos-circle-cctp-v2--arc-testnet"></a>
 
-| | |
-|---|---|
-| Diamond (vault) | [`0x7a498c34A8Dc3B6502889C21218Da0F8696b7bb6`](https://sepolia.etherscan.io/address/0x7a498c34a8dc3b6502889c21218da0f8696b7bb6#code) |
-| Primary ENS name | [`milestone1vault.lattice.studio.eth`](https://sepolia.app.ens.domains/milestone1vault.lattice.studio.eth) (forward + reverse) |
-| Underlying asset | [`TestnetAsset`](https://sepolia.etherscan.io/address/0x9383f665dff7529f6c28e732ec4136d332fa43c9#code) (open faucet: `mint(address,uint256)`) |
+These testnet deployments exercise the recipes end to end. Their addresses, verified sources and
+transactions are recorded in [PROGRESS.md](PROGRESS.md).
 
-All 14 facets are source-verified on Etherscan:
-[ERC165Facet](https://sepolia.etherscan.io/address/0xddd97e17031bfb32c3428f13a44eb0449bf4ac62#code) ·
-[AccessControl](https://sepolia.etherscan.io/address/0xf45d5e8bc4ad61059434983edab44963ccd0570d#code) ·
-[TimelockController](https://sepolia.etherscan.io/address/0x894507f901ffe88fb9ff7ebe8edaecb2b959da10#code) ·
-[ERC20](https://sepolia.etherscan.io/address/0x58e1f0d2ad3d94011c765adf0508dd588e3a7397#code) ·
-[ERC4626](https://sepolia.etherscan.io/address/0xcc2b1ff44ac9bd105448c3346c571f8cc6ad1c04#code) ·
-[VaultCore](https://sepolia.etherscan.io/address/0xecf68bd66e8457ceeee826bb5ab8040d36d2056f#code) ·
-[Votes](https://sepolia.etherscan.io/address/0x3e698cce280af053bf6bf3f61edfe4f75e2d77fe#code) ·
-[ERC20Votes](https://sepolia.etherscan.io/address/0x6db23df1319b12b2f8f36e78ccc409a6acbab56d#code) ·
-[Governor](https://sepolia.etherscan.io/address/0x50c36f0eaeec1e3fa6d5f4212067aaa9c9e0b938#code) ·
-[GovernedVault](https://sepolia.etherscan.io/address/0x27bcd5beff0594ff3abf4f27eeeb176f5f6d442b#code) ·
-[DiamondLoupeFacet](https://sepolia.etherscan.io/address/0x983c1f18254af7f0c998a6f24699f17c5d1d2ab1#code) ·
-[EmergencyStop](https://sepolia.etherscan.io/address/0xce342fdcade10e9571b8e249faa1f043cd0dd7e5#code) ·
-[GovernedDiamondCut](https://sepolia.etherscan.io/address/0xc4eb702847dac1f636cee9c06dc125f132f49183#code) ·
-[ENSReverseClaimer](https://sepolia.etherscan.io/address/0x91dfa8a2ee39ba605cb1633e46c8598d1649cc38#code) ·
-(init: [GovernedVaultENSInit](https://sepolia.etherscan.io/address/0x58147df75c453c269ade1b18270505c1b5dc91d0#code))
-
-Reproduce against any fresh testnet in one command (asset `0x0` auto-deploys a faucet asset; the diamond
-claims its ENS reverse record at init):
+**Self-governed ENS vault (Sepolia).**
+[`DeployGovernedVaultENS`](script/base/defi/DeployGovernedVaultENS.s.sol) deploys one diamond hosting the
+share token, vault, vote checkpoints, Governor, TimelockController, EmergencyStop, and a governed upgrade
+path, with **no external admin**: the diamond administers itself, so a passed, timelock-executed
+shareholder proposal is the only way to upgrade or reconfigure it. Reproduce it against any fresh testnet
+in one command (asset `0x0` auto-deploys a faucet asset; the diamond claims its ENS reverse record at init):
 
 ```sh
 forge script script/base/defi/DeployGovernedVaultENS.s.sol --tc DeployGovernedVaultENS \
@@ -255,100 +253,51 @@ forge script script/base/defi/DeployGovernedVaultENS.s.sol --tc DeployGovernedVa
   --verify --etherscan-api-key "$ETHERSCAN_API_KEY"
 ```
 
-Every `script/base/**` recipe creates and initializes its diamond in one transaction through
-`LatticeFactory`. (The Milestone 1 deployment above predates this and used two transactions.) By default a
-run first deploys its own `LatticeRegistry` + `LatticeFactory`. Set `LATTICE_FACTORY=<address>` to reuse a
-deployed factory, such as a release factory (a committed per-chain release manifest is tracked in
-[#196](https://github.com/dadadave80/lattice/issues/196)). Set
-`LATTICE_SALT=<0x + 64 hex characters>` to choose addresses: diamond `i` of a run lands at
-`factory.predict(<broadcaster>, keccak256(abi.encode(LATTICE_SALT, i)))`. Re-running with a salt that is
-already used reverts before anything is broadcast.
+`make demo-governance KEYSTORE=<name> ARGS='<vault> <ens-name> <actor>'`
+([`script/config/governance-demo-loop.sh`](script/config/governance-demo-loop.sh)) then drives a
+shareholder proposal through the vault's own Governor and TimelockController: deposit → propose → vote →
+timelock queue → execute. `<actor>` must be the signer's address. The
+[Milestone 1 evidence](PROGRESS.md#milestone-1--reference-deployment-) links the live vault, its 14 verified
+facets, and the executed proposal.
 
-The broadcast run log for this deployment is committed at
-[`broadcast/DeployGovernedVaultENS.s.sol/11155111/run-latest.json`](broadcast/DeployGovernedVaultENS.s.sol/11155111/run-latest.json).
+**Cross-chain USDC (Circle CCTP v2, Arc testnet as the source chain).** Lattice diamonds on Arc burn USDC
+toward Ethereum Sepolia and Base Sepolia; Arc's sub-second finality means Iris attests in seconds. The
+hook and round-trip demos run against the live contracts by default, so all you need is a funded signer:
+Arc testnet USDC (the asset AND Arc's gas token, from https://faucet.circle.com) plus a little Base
+Sepolia ETH for relay gas.
 
-After deployment the diamond **governed itself on-chain**: a shareholder proposal — deposit → propose →
-vote → timelock queue → execute — froze the loupe/cut selector set and reasserted the ENS name through the
-diamond's own Governor + TimelockController, with every step cranked by
-[`script/config/governance-demo-loop.sh`](script/config/governance-demo-loop.sh). Execution proof:
-[`ProposalExecuted` tx](https://sepolia.etherscan.io/tx/0xfba2c57a3063883b43edb905fabcbe508c3ff9d3f0447d2d58fa2739c832df64)
-(run log: [`governanceDemo-latest.json`](broadcast/DeployGovernedVaultENS.s.sol/11155111/governanceDemo-latest.json)).
-
-## Live cross-chain USDC demos (Circle CCTP v2 · Arc testnet)
-
-Three live demos drive real USDC through Lattice diamonds with Circle's CCTP v2, with **Arc testnet
-as the source chain** — Arc's sub-second finality means Iris attests in seconds, not minutes:
-
-- **Arc-hub transfer** (`make demo-cctp`): one hub diamond on Arc burns USDC toward BOTH
-  destinations (Ethereum Sepolia + Base Sepolia); each attested message is relayed and minted on the
-  destination. One command per run: setup → burn → attest → relay → verify, unattended.
-- **Hook showcase** (`make demo-cctp-hook`): programmable USDC. A burn on Arc carries the Lattice
-  hook envelope (`HOOK_MAGIC ‖ vault ‖ beneficiary`); relaying on Base Sepolia through the
-  destination diamond's `relayMessageWithHook` mints to a [`CCTPHookVault`](src/examples/crosschain/CCTPHookVault.sol)
-  **and**, in the same tx, the diamond's `CCTPHookExecutor` credits the beneficiary — one attested
-  message both moves funds and executes logic.
-- **Position-style receipt NFT** (`make demo-cctp-receipt`): USDC is minted directly to the Base
-  recipient while the same attested relay mints a fully on-chain [`CCTPHookReceipt`](src/examples/crosschain/CCTPHookReceipt.sol)
-  showing the net amount, CCTP source domain, source contract, original recipient, route, and delivery
-  time. The transferable NFT is immutable proof of delivery — it never custodies, controls, or redeems
-  the USDC.
-- **Round trip** (`make demo-cctp-roundtrip`): USDC moves Arc → Base **and back**, through Lattice
-  diamonds on both ends of both legs. Outbound attests in seconds (Arc finality); the return leg
-  attests after Base Sepolia's L1 finality (~13–19 min on the free tier — the run journal makes
-  Ctrl-C safe, re-run to resume). The return mint into Arc is `cast`-sent through the hub's
-  `relayMessage`: the Arc node executes the native-USDC precompile that local simulation cannot.
-
-| | |
-|---|---|
-| Arc source hub (transfer demo) | [`0xfc937CD3d175b890fF668f95fdED5CB4D9247d68`](https://testnet.arcscan.app/address/0xfc937CD3d175b890fF668f95fdED5CB4D9247d68) |
-| Mint tx — Ethereum Sepolia | [`0xff2326…39aea`](https://sepolia.etherscan.io/tx/0xff2326eb12dfd5b56e553e43f660e0c0cc8bba01dbc215b12109bf05c8039aea) |
-| Mint tx — Base Sepolia | [`0xf72700…736d3`](https://base-sepolia.blockscout.com/tx/0xf7270031cb59c1ff0c85fc0147768a623b69a7d2a3c12faa4b1d4ded9fc736d3) |
-| Hook demo — Arc hub diamond | [`0x6ca99B6179eAc891E3aCD4008b610fcE66F63E2d`](https://testnet.arcscan.app/address/0x6ca99B6179eAc891E3aCD4008b610fcE66F63E2d) |
-| Hook demo — Base destination diamond | [`0x957259C5AEAa521c9DcFaEb6692C25ae53F349f1`](https://base-sepolia.blockscout.com/address/0x957259C5AEAa521c9DcFaEb6692C25ae53F349f1) |
-| Auto-credit vault (`CCTPHookVault`) | [`0xe8e10843Ab41B2c359D02eA091b6772C43b05b1f`](https://base-sepolia.blockscout.com/address/0xe8e10843Ab41B2c359D02eA091b6772C43b05b1f) |
-| Burn-with-hook tx (Arc) | [`0xc9ba15…a77a4`](https://testnet.arcscan.app/tx/0xc9ba159c51f027ab336d56b054a5947be02f8d2ba398ffd304ffbbaf0e5a77a4) |
-| Relay tx — mint **+** hook, one tx (Base) | [`0x7f82f3…b5d00`](https://base-sepolia.blockscout.com/tx/0x7f82f3c2128bf6026b340cbb1265ca5d5182de076d55d35a2223114ce09b5d00) — emits `Credited(0x11Cf…eC00, 1000000, 26, hub)` |
-| Real-attestation replay test | [`test/fork/CCTPHookDemoFork.t.sol`](test/fork/CCTPHookDemoFork.t.sol) replays the captured [fixture](test/fixtures/cctp/arc-to-base-hook-v2.json) through the live Base diamond on a pinned fork |
-| Receipt NFT (`CCTPHookReceipt`) | [`0x6De791…71a65`](https://base-sepolia.blockscout.com/address/0x6De7919B31b5FCBC771baD221B7A305F43871a65) |
-| Receipt demo burn (Arc) | [`0x7a923b…c6f07`](https://testnet.arcscan.app/tx/0x7a923bb854ea4e172cbb452d16cf5c1ff75765189c73f3e36d45ed65bf8c6f07) |
-| Receipt relay — direct USDC + NFT (Base) | [`0xbdcd52…5a8a7`](https://base-sepolia.blockscout.com/tx/0xbdcd52bb632dd2f2d031da3ba55ac421ad73b0cf3cf3f679047cfa51d5e5a8a7) — grant-video run; mints 5 USDC and receipt #4 to `0xDAda…C751` |
-| Receipt real-attestation replay | [`test/fork/CCTPHookReceiptDemoFork.t.sol`](test/fork/CCTPHookReceiptDemoFork.t.sol) replays the captured [receipt fixture](test/fixtures/cctp/arc-to-base-receipt-v2.json) |
-| Broadcast evidence | [`broadcast/multi/`](broadcast/multi) (setups) · [`broadcast/CCTPHookDemo.s.sol/84532/`](broadcast/CCTPHookDemo.s.sol/84532) (hook relay) · [`broadcast/CCTPUSDCDemo.s.sol/`](broadcast/CCTPUSDCDemo.s.sol) (transfer relays) |
-
-All demo contracts are Sourcify-verified (`exact_match`) on both chains.
-
-**Anyone can run the hook demo** — deployment is separate from the demo, and by default it runs
-against the live contracts above, so all you need is a funded signer: Arc testnet USDC (the asset
-AND Arc's gas token, from https://faucet.circle.com) plus a little Base Sepolia ETH for relay gas
-(any Base Sepolia faucet):
+- `make demo-cctp`: one hub diamond on Arc burns USDC toward both destinations, and each attested message
+  is relayed and minted there (setup → burn → attest → relay → verify, unattended).
+- `make demo-cctp-hook`: programmable USDC. The burn carries the Lattice hook envelope
+  (`HOOK_MAGIC ‖ vault ‖ beneficiary`). Relaying it through the Base diamond's `relayMessageWithHook` mints
+  to a [`CCTPHookVault`](src/examples/crosschain/CCTPHookVault.sol) **and**, in the same transaction, the
+  diamond's `CCTPHookExecutor` credits the beneficiary.
+- `make demo-cctp-receipt`: the relay mints USDC straight to the Base recipient and a fully on-chain
+  [`CCTPHookReceipt`](src/examples/crosschain/CCTPHookReceipt.sol) NFT as proof of delivery. The NFT never
+  custodies, controls, or redeems the USDC, and its `source contract` field is Circle's attested message
+  sender (normally the Arc hub diamond), not the user's wallet. Deploy the NFT once with
+  `make deploy-cctp-receipt` against the existing Base diamond, or set `DEMO_RECEIPT=<address>` to reuse the
+  live receipt contract listed in PROGRESS.md.
+- `make demo-cctp-roundtrip`: USDC moves Arc → Base **and back** through Lattice diamonds on both ends. The
+  return leg attests after Base Sepolia's L1 finality (~13–19 min on the free tier); the run journal makes
+  Ctrl-C safe, so re-run to resume. The return mint into Arc is `cast`-sent through the hub's `relayMessage`
+  because local simulation (revm) cannot run Arc's native-USDC precompile, so that relay transaction is not
+  in the `broadcast/` logs.
 
 ```sh
 make demo-cctp-hook PRIVATE_KEY=0x<testnet-key>   # or KEYSTORE=<foundry-keystore-name>
-```
-
-The receipt demo is intentionally separate from the vault demo. Deploy its NFT once against the existing
-Base destination diamond, then run it directly or choose **Receipt NFT** inside `make demo`:
-
-```sh
 make deploy-cctp-receipt PRIVATE_KEY=0x<testnet-key>
 make demo-cctp-receipt PRIVATE_KEY=0x<testnet-key>
+make demo                                         # interactive: choose the demo, direction, amount and auth
 ```
 
-`CCTPHookReceipt` renders its JSON and SVG entirely on-chain. Its `source contract` field is Circle's
-attested CCTP message sender (normally the Arc hub diamond), not an asserted source-user wallet. The live
-deployment and first receipt relay are linked in the evidence table above.
-
-To deploy your **own** stack instead (once — ONE deployment serves ALL the demos: the Arc hub is
-registered for Ethereum Sepolia and Base Sepolia, `make demo-cctp` adopts it as its transfer hub,
-`make demo-cctp-hook` gets its hub + diamond + vault, and the Base diamond carries the Arc return
-registration `make demo-cctp-roundtrip` burns back through):
-
-```sh
-make deploy-cctp PRIVATE_KEY=0x<testnet-key>
-```
-
-See the [Makefile](Makefile) demos section for the full auth matrix (`KEYSTORE=` / `PRIVATE_KEY=` /
-raw `FORGE_AUTH=`).
+To deploy your **own** stack instead, run `make deploy-cctp PRIVATE_KEY=0x<testnet-key>` once: one
+deployment serves the transfer, hook and round-trip demos, and `make deploy-cctp-receipt` adds the receipt
+NFT to it. See the [Makefile](Makefile) demos section for the full auth matrix
+(`KEYSTORE=` / `PRIVATE_KEY=` / raw `FORGE_AUTH=`).
+[`test/fork/CCTPHookDemoFork.t.sol`](test/fork/CCTPHookDemoFork.t.sol) replays a captured attestation
+through the live Base diamond on a pinned fork. The [Circle Arc evidence](PROGRESS.md#circle-arc-grant-2026-cohort-2--application-evidence)
+lists every live contract and transaction.
 
 ## Build & test
 
@@ -374,25 +323,35 @@ covers the `dev` base branch, commit conventions, and the
 
 ```
 src/
-├── access/        # AccessControl(+Enumerable,+Timed), AccessManager(+Managed,+Standalone), Ownable (diamond-lib re-export)
-├── accounts/      # Diamond smart accounts — erc7579/ & erc6900/ flavor subfolders + shared (ERC-4337/1271/6551, session keys)
-├── amm/           # ConstantProduct
-├── crosschain/    # per-vendor adapter folders (circle/, layerzero/, …), each self-contained (facet+Init+Lib); generic modules at root, shared libs in libraries/
-├── defi/          # Aave, Compound, Curve, Lido, Uniswap V3, ERC4626 adapters, AggregatorExec, GovernedVault, WETHUnwrapper
-├── ens/           # ENS resolver, reverse claimer, subname issuer
-├── governance/    # Governor, timelock, governed/Safe diamond cuts, Safe Harbor adoption
-├── oracles/       # per-vendor adapter folders (chainlink/, pyth/, redstone/, …, uniswap/ TWAP), each self-contained (facet+Init+Lib); OracleGuard (facet+Init) at root, its lib in libraries/
-├── privacy/       # Commit-reveal, stealth address standards, Groth16/PLONK, Semaphore, shielded pool
-├── security/      # Pausable, ReentrancyGuard, RateLimiter, CircuitBreaker, EmergencyStop, InvariantChecker
-├── tokens/        # per-standard subfolders ERC20/ ERC721/ ERC1155/ ERC2981/ ERC4626/ ERC7802/ (base+extensions); MarketplaceZone at root
-├── utils/         # EIP712, Multicall, Nonces, VestingWallet(+Standalone)
-│   └── libraries/ # Crypto, encoding, strings, checkpoints, math, multicall/nonces/vesting helpers
-└── interfaces/    # I<Module>.sol mirrored into per-<area> subfolders
-    └── external/  # vendored third-party ABIs, one folder per vendor (circle/, chainlink/, …, ercs/)
+├── Lattice.sol         # the diamond proxy: created and initialized in one transaction through LatticeFactory
+├── LatticeFactory.sol  # stateless CREATE2 factory: deploys and initializes a diamond from registry cuts
+├── LatticeRegistry.sol # deploy-once, non-upgradeable registry of canonical facets
+├── LatticeVersion.sol  # library version constants (internal only, no selector)
+├── Receive.sol         # bare-ETH facet, cut under the zero selector
+├── access/             # AccessControl(+Enumerable,+Timed), AccessManager(+Managed,+Standalone), Ownable (diamond-lib re-export)
+├── accounts/           # Diamond smart accounts — erc7579/ & erc6900/ flavor subfolders + shared (ERC-4337/1271/6551, session keys); hedera/ HIP-632 signature verifier
+├── amm/                # ConstantProduct
+├── crosschain/         # per-vendor adapter folders (circle/, layerzero/, …), each self-contained (facet+Init+Lib); generic modules at root, shared libs in libraries/
+├── defi/               # Aave, Compound, Curve, Lido, Uniswap V3, ERC4626 adapters, AggregatorExec, GovernedVault, WETHUnwrapper
+├── ens/                # ENS resolver, reverse claimer, subname issuer
+├── examples/           # demo contracts, not library modules: crosschain/ CCTPHookVault, CCTPHookReceipt (+ its renderer library); privacy/ pinned-VK verifiers
+├── governance/         # Governor, timelock, admin/governed/Safe diamond cuts, Safe Harbor adoption
+├── oracles/            # per-vendor adapter folders (chainlink/, pyth/, redstone/, …, uniswap/ TWAP), each self-contained (facet+Init+Lib); OracleGuard (facet+Init) at root, its lib in libraries/
+├── privacy/            # Commit-reveal, stealth address standards, Groth16/PLONK, Semaphore, shielded pool
+├── security/           # Pausable, ReentrancyGuard, RateLimiter, CircuitBreaker, EmergencyStop, InvariantChecker
+├── tokens/             # per-standard subfolders ERC20/ ERC721/ ERC1155/ ERC2981/ ERC4626/ ERC7802/ (base+extensions); hedera/ HTSAdapter; MarketplaceZone at root
+├── utils/              # EIP712, Multicall, Nonces, VestingWallet(+Standalone)
+│   └── libraries/      # Crypto, encoding, strings, checkpoints, initializable, multicall/nonces/vesting helpers; math/ (Math, SafeCast)
+└── interfaces/         # I<Module>.sol mirrored into per-<area> subfolders
+    └── external/       # vendored third-party ABIs, one folder per vendor (circle/, chainlink/, …, ercs/)
 ```
 
 Each `<area>/` also contains a `libraries/` subfolder holding the `<Module>Lib.sol`
 logic libraries for that area.
+
+## Roadmap
+
+Planned work is grouped on the [milestones page](https://github.com/dadadave80/lattice/milestones).
 
 ## License
 
