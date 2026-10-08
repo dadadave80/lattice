@@ -5,6 +5,7 @@ import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {ERC4626Adapter} from "@lattice/defi/ERC4626Adapter.sol";
 import {ERC4626AdapterLib} from "@lattice/defi/libraries/ERC4626AdapterLib.sol";
+import {IERC4626Adapter} from "@lattice/interfaces/defi/IERC4626Adapter.sol";
 import {IProtocolAdapter} from "@lattice/interfaces/defi/IProtocolAdapter.sol";
 import {Initializable} from "@lattice/utils/Initializable.sol";
 import {Test} from "forge-std/Test.sol";
@@ -253,6 +254,36 @@ contract ERC4626AdapterTest is Test {
         side.mint(address(adapter), 33e18); // a side token landed on the adapter
         adapter.harvest();
         assertEq(side.balanceOf(treasury), 33e18, "side reward forwarded raw");
+    }
+
+    function test_SetSideRewardToken_EmitsEvent() public {
+        MockSideReward side = new MockSideReward();
+        vm.expectEmit(true, false, false, true, address(adapter));
+        emit IERC4626Adapter.SideRewardTokenSet(address(side));
+        vm.prank(admin);
+        adapter.setSideRewardToken(address(side));
+        assertEq(adapter.sideRewardToken(), address(side));
+
+        vm.expectEmit(true, false, false, true, address(adapter));
+        emit IERC4626Adapter.SideRewardTokenSet(address(0));
+        vm.prank(admin);
+        adapter.setSideRewardToken(address(0));
+        assertEq(adapter.sideRewardToken(), address(0));
+    }
+
+    /// @notice harvest forwards the side token's whole balance raw, so it must never be the position itself
+    ///         (the target vault's shares) or the idle asset.
+    function test_SetSideRewardToken_RejectsAssetAndTargetVault() public {
+        vm.startPrank(admin);
+        vm.expectRevert(
+            abi.encodeWithSelector(IERC4626Adapter.ERC4626AdapterInvalidSideRewardToken.selector, address(asset))
+        );
+        adapter.setSideRewardToken(address(asset));
+        vm.expectRevert(
+            abi.encodeWithSelector(IERC4626Adapter.ERC4626AdapterInvalidSideRewardToken.selector, address(target))
+        );
+        adapter.setSideRewardToken(address(target));
+        vm.stopPrank();
     }
 
     function test_Harvest_NoSideTokenIsNoOp() public {

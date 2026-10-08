@@ -504,6 +504,20 @@ contract CurveStableSwapAdapterTest is Test {
         assertEq(adapter.gauge(), address(gauge));
     }
 
+    function test_SetCrvToken_EmitsEvent() public {
+        vm.expectEmit(true, false, false, true, address(adapter));
+        emit ICurveStableSwapAdapter.CurveCrvTokenSet(address(crv));
+        vm.prank(admin);
+        adapter.setCrvToken(address(crv));
+        assertEq(adapter.crvToken(), address(crv));
+
+        vm.expectEmit(true, false, false, true, address(adapter));
+        emit ICurveStableSwapAdapter.CurveCrvTokenSet(address(0));
+        vm.prank(admin);
+        adapter.setCrvToken(address(0));
+        assertEq(adapter.crvToken(), address(0));
+    }
+
     function test_SetSlippage_OnlyAdmin_AndBounded() public {
         vm.prank(admin);
         adapter.setSlippageBps(250);

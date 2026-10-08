@@ -24,7 +24,7 @@ bytes32 constant ERC165_MAP_ISUPERCHAINETHBRIDGEADAPTER_SLOT =
 ///      no trusted-remote registry, and no admin surface (nothing to gate). The only init effect is registering
 ///      the {ISuperchainETHBridgeAdapter} ERC-165 id. No reentrancy guard: the adapter holds no ETH/state, the
 ///      call target is a trusted immutable predeploy, and it is outbound-only (the predeploy never calls back
-///      into this diamond). ponytail: guardless because there is no reentrancy surface to guard.
+///      into this diamond), so there is no reentrancy surface to guard.
 library SuperchainETHBridgeAdapterLib {
     /// @notice Registers the {ISuperchainETHBridgeAdapter} ERC-165 id. Called inside the initializing window.
     function __SuperchainETHBridgeAdapter_init() internal {

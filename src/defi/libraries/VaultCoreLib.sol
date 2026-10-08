@@ -144,11 +144,12 @@ library VaultCoreLib {
     /// @notice Transfers idle assets to a strategy. Only callable by the strategy manager.
     /// @param strategy Destination strategy address.
     /// @param amount Amount of underlying asset to transfer.
+    /// @dev Empty return data counts as success only when the asset has code (matches OpenZeppelin SafeERC20).
     function allocateToStrategy(address strategy, uint256 amount) internal {
         _checkManager();
         address asset = ERC4626Lib.asset();
         (bool ok, bytes memory ret) = asset.call(abi.encodeWithSelector(IERC20.transfer.selector, strategy, amount));
-        if (!ok || (ret.length > 0 && !abi.decode(ret, (bool)))) {
+        if (!ok || (ret.length == 0 ? asset.code.length == 0 : !abi.decode(ret, (bool)))) {
             revert IERC4626.SafeERC20FailedOperation(asset);
         }
         emit IVaultCore.AssetsAllocated(strategy, amount);

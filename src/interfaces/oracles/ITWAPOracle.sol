@@ -107,7 +107,8 @@ interface ITWAPOracle {
 
     /// @notice Registers a Uniswap V2 pair under the given key and records an
     ///         initial observation.
-    /// @dev Caller must hold `DEFAULT_ADMIN_ROLE`.
+    /// @dev Caller must hold `DEFAULT_ADMIN_ROLE`. Re-registering an existing key
+    ///      discards its stored observations and starts a fresh history.
     /// @param key  Arbitrary identifier for this pair.
     /// @param pair Address of the IUniswapV2Pair contract.
     function registerPair(bytes32 key, address pair) external;
