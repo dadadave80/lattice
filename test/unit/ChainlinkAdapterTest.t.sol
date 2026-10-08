@@ -222,6 +222,29 @@ contract ChainlinkAdapterTest is ChainlinkAdapterTestBase {
         adapter.latestAnswer(KEY_ETH_USD);
     }
 
+    /// @notice A feed with more than 18 decimals whose answer scales down to zero reverts instead of returning 0.
+    function test_HighDecimalAnswerTruncatingToZeroReverts() public {
+        MockAggregator feed20 = new MockAggregator(20);
+        feed20.setRoundData(ROUND_ID, 99, block.timestamp - 10, block.timestamp - 5, ROUND_ID);
+        vm.prank(admin);
+        adapter.registerFeed(KEY_ETH_USD, address(feed20), MAX_STALENESS);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(IChainlinkAdapter.ChainlinkInvalidAnswer.selector, KEY_ETH_USD, int256(99))
+        );
+        adapter.latestAnswer(KEY_ETH_USD);
+    }
+
+    /// @notice A feed with more than 18 decimals still scales a representable answer down to WAD.
+    function test_HighDecimalAnswerScalesDown() public {
+        MockAggregator feed20 = new MockAggregator(20);
+        feed20.setRoundData(ROUND_ID, 3000e20, block.timestamp - 10, block.timestamp - 5, ROUND_ID);
+        vm.prank(admin);
+        adapter.registerFeed(KEY_ETH_USD, address(feed20), MAX_STALENESS);
+
+        assertEq(adapter.latestAnswer(KEY_ETH_USD), 3000e18);
+    }
+
     //*//////////////////////////////////////////////////////////////////////////
     //                          INCOMPLETE ROUND TESTS
     //////////////////////////////////////////////////////////////////////////*//

@@ -247,6 +247,7 @@ import {
     ERC165_MAP_IGELATOVRFADAPTER_SLOT,
     GELATO_VRF_ADAPTER_STORAGE_SLOT
 } from "@lattice/oracles/gelato/GelatoVRFAdapterLib.sol";
+import {ERC165_MAP_IORACLEGUARD_SLOT, ORACLE_GUARD_STORAGE_SLOT} from "@lattice/oracles/libraries/OracleGuardLib.sol";
 import {ERC165_MAP_IPYTHADAPTER_SLOT, PYTH_ADAPTER_STORAGE_SLOT} from "@lattice/oracles/pyth/PythAdapterLib.sol";
 import {
     ERC165_MAP_IPYTHENTROPYADAPTER_SLOT,
@@ -376,6 +377,7 @@ import {IGelatoVRFAdapter} from "@lattice/interfaces/oracles/IGelatoVRFAdapter.s
 import {IHSSAdapter} from "@lattice/interfaces/oracles/IHSSAdapter.sol";
 import {IHederaExchangeRateAdapter} from "@lattice/interfaces/oracles/IHederaExchangeRateAdapter.sol";
 import {IHederaPrngAdapter} from "@lattice/interfaces/oracles/IHederaPrngAdapter.sol";
+import {IOracleGuard} from "@lattice/interfaces/oracles/IOracleGuard.sol";
 import {IPythAdapter} from "@lattice/interfaces/oracles/IPythAdapter.sol";
 import {IPythEntropyAdapter} from "@lattice/interfaces/oracles/IPythEntropyAdapter.sol";
 import {IRedStoneAdapter} from "@lattice/interfaces/oracles/IRedStoneAdapter.sol";
@@ -790,6 +792,12 @@ contract StorageSlotVerificationTest is Test {
     function test_TWAPOracleStorageSlot() public pure {
         assertEq(
             TWAP_ORACLE_STORAGE_SLOT, _erc7201Slot("lattice.storage.TWAPOracle"), "TWAPOracle storage slot mismatch"
+        );
+    }
+
+    function test_OracleGuardStorageSlot() public pure {
+        assertEq(
+            ORACLE_GUARD_STORAGE_SLOT, _erc7201Slot("lattice.storage.OracleGuard"), "OracleGuard storage slot mismatch"
         );
     }
 
@@ -1649,6 +1657,14 @@ contract StorageSlotVerificationTest is Test {
         );
     }
 
+    function test_Erc165MapIOracleGuardSlot() public pure {
+        assertEq(
+            ERC165_MAP_IORACLEGUARD_SLOT,
+            _erc165MapSlot(type(IOracleGuard).interfaceId, ERC165_STORAGE_LOCATION),
+            "ERC165 IOracleGuard map slot mismatch"
+        );
+    }
+
     function test_Erc165MapICrosschainLinkSlot() public pure {
         bytes4 interfaceId = type(ICrosschainLink).interfaceId;
         assertEq(interfaceId, bytes4(0xe1805ff8), "ICrosschainLink interfaceId comment is stale");
@@ -2091,7 +2107,7 @@ contract StorageSlotVerificationTest is Test {
     // ======================== Slot inventories ========================
 
     function _allStorageSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](89);
+        slots = new bytes32[](90);
         uint256 i;
         // access
         slots[i++] = ACCESS_CONTROL_STORAGE_SLOT;
@@ -2144,6 +2160,7 @@ contract StorageSlotVerificationTest is Test {
         slots[i++] = CHAINLINK_AUTOMATION_ADAPTER_STORAGE_SLOT;
         slots[i++] = CHAINLINK_CRE_ADAPTER_STORAGE_SLOT;
         slots[i++] = TWAP_ORACLE_STORAGE_SLOT;
+        slots[i++] = ORACLE_GUARD_STORAGE_SLOT;
         // crosschain
         slots[i++] = CROSSCHAIN_LINK_STORAGE_SLOT;
         slots[i++] = BRIDGE_ERC20_STORAGE_SLOT;
@@ -2200,7 +2217,7 @@ contract StorageSlotVerificationTest is Test {
     }
 
     function _allErc165MapSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](97);
+        slots = new bytes32[](98);
         uint256 i;
         // access
         slots[i++] = ERC165_MAP_IACCESSCONTROL_SLOT;
@@ -2272,6 +2289,7 @@ contract StorageSlotVerificationTest is Test {
         slots[i++] = ERC165_MAP_ICHAINLINKAUTOMATIONADAPTER_SLOT;
         slots[i++] = ERC165_MAP_IRECEIVER_SLOT;
         slots[i++] = ERC165_MAP_ITWAPORACLE_SLOT;
+        slots[i++] = ERC165_MAP_IORACLEGUARD_SLOT;
         // crosschain (both bridges share the IBridgeFungible interface → one map slot; the four gateways
         // share the IERC7786GatewaySource slot; CCIP additionally registers IAny2EVMMessageReceiver (V1,
         // required for delivery) and IAny2EVMMessageReceiverV2 (CCV lanes) → two extra unique map slots)

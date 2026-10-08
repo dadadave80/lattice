@@ -12,6 +12,9 @@ pragma solidity >=0.8.4;
 ///      read through this interface declares a `latestAnswer(bytes32)->int256` with the SAME selector
 ///      DIRECTLY (not by inheriting this interface): Solidity excludes inherited functions from
 ///      `type(I).interfaceId`, so inheriting would shift the adapter's ERC-165 id.
+///
+///      No adapter checks an L2 sequencer-uptime feed or bounds its answer. The opt-in {IOracleGuard}
+///      (`OracleGuard` facet) adds both checks over any adapter that implements this read.
 interface IPriceOracleReader {
     /// @notice Returns the latest price for `key`, normalized to 18 decimals (WAD).
     /// @param key The feed identifier (chosen by the administrator).

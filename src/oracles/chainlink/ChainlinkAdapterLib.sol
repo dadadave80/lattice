@@ -110,6 +110,8 @@ library ChainlinkAdapterLib {
     }
 
     /// @notice Returns the latest price normalised to 18 decimal places (WAD).
+    /// @dev Reverts `ChainlinkInvalidAnswer` with the raw answer when a feed with more than 18 decimals
+    ///      reports a price that scales down to zero.
     /// @param key The feed identifier.
     /// @return answerWad The price scaled to 1e18.
     function latestAnswer(bytes32 key) internal view returns (int256 answerWad) {
@@ -119,6 +121,7 @@ library ChainlinkAdapterLib {
             answerWad = answer * int256(10 ** uint256(18 - decimals_));
         } else if (decimals_ > 18) {
             answerWad = answer / int256(10 ** uint256(decimals_ - 18));
+            if (answerWad == 0) revert IChainlinkAdapter.ChainlinkInvalidAnswer(key, answer);
         } else {
             answerWad = answer;
         }

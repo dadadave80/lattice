@@ -67,6 +67,7 @@ import {DIAAdapterStorage} from "@lattice/oracles/dia/DIAAdapterLib.sol";
 import {GelatoAutomateAdapterStorage} from "@lattice/oracles/gelato/GelatoAutomateAdapterLib.sol";
 import {GelatoVRFAdapterStorage} from "@lattice/oracles/gelato/GelatoVRFAdapterLib.sol";
 import {HSSAdapterStorage} from "@lattice/oracles/hedera/HSSAdapterLib.sol";
+import {OracleGuardStorage} from "@lattice/oracles/libraries/OracleGuardLib.sol";
 import {PythAdapterStorage} from "@lattice/oracles/pyth/PythAdapterLib.sol";
 import {PythEntropyAdapterStorage} from "@lattice/oracles/pyth/PythEntropyAdapterLib.sol";
 import {RedStoneAdapterStorage} from "@lattice/oracles/redstone/RedStoneAdapterLib.sol";
@@ -177,6 +178,7 @@ contract StorageLayoutProbe {
     LidoAdapterStorage internal _lidoAdapterStorage;
     MarketplaceZoneStorage internal _marketplaceZoneStorage;
     NoncesStorage internal _noncesStorage;
+    OracleGuardStorage internal _oracleGuardStorage;
     PausableStorage internal _pausableStorage;
     PrivateVotingStorage internal _privateVotingStorage;
     PythAdapterStorage internal _pythAdapterStorage;

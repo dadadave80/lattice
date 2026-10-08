@@ -13,11 +13,11 @@ pragma solidity ^0.8.30;
 ///      artifact contract names exactly: the registry key is `keccak256("lattice.<name>")` and the facet
 ///      deploy salt is `keccak256("lattice.<name>.<version>")`, so renaming an entry re-derives BOTH.
 library FacetInventory {
-    /// @notice The 105 release facets (101 Lattice + 4 diamond-lib core) as (contract name, `"<file>:<Name>"` deploy path) pairs.
+    /// @notice The 106 release facets (102 Lattice + 4 diamond-lib core) as (contract name, `"<file>:<Name>"` deploy path) pairs.
     /// @return names The facet contract names (registry name = `"lattice." ++ name`).
     /// @return paths The matching `vm.getCode`/`deployCode` artifact paths, index-aligned with `names`.
     function inventory() internal pure returns (string[] memory names, string[] memory paths) {
-        string[105] memory n = [
+        string[106] memory n = [
             "AcrossBridgeAdapter",
             "AxelarGatewayAdapter",
             "BridgeERC20",
@@ -52,6 +52,7 @@ library FacetInventory {
             "HederaExchangeRateAdapter",
             "HederaPrngAdapter",
             "HSSAdapter",
+            "OracleGuard",
             "PythAdapter",
             "PythEntropyAdapter",
             "RedStoneAdapter",
@@ -127,7 +128,7 @@ library FacetInventory {
             "ERC165Facet",
             "OwnableFacet"
         ];
-        string[105] memory p = [
+        string[106] memory p = [
             "src/crosschain/across/AcrossBridgeAdapter.sol:AcrossBridgeAdapter",
             "src/crosschain/axelar/AxelarGatewayAdapter.sol:AxelarGatewayAdapter",
             "src/crosschain/BridgeERC20.sol:BridgeERC20",
@@ -162,6 +163,7 @@ library FacetInventory {
             "src/oracles/hedera/HederaExchangeRateAdapter.sol:HederaExchangeRateAdapter",
             "src/oracles/hedera/HederaPrngAdapter.sol:HederaPrngAdapter",
             "src/oracles/hedera/HSSAdapter.sol:HSSAdapter",
+            "src/oracles/OracleGuard.sol:OracleGuard",
             "src/oracles/pyth/PythAdapter.sol:PythAdapter",
             "src/oracles/pyth/PythEntropyAdapter.sol:PythEntropyAdapter",
             "src/oracles/redstone/RedStoneAdapter.sol:RedStoneAdapter",
@@ -236,9 +238,9 @@ library FacetInventory {
             "ERC165Facet.sol:ERC165Facet",
             "OwnableFacet.sol:OwnableFacet"
         ];
-        names = new string[](105);
-        paths = new string[](105);
-        for (uint256 i; i < 105; ++i) {
+        names = new string[](106);
+        paths = new string[](106);
+        for (uint256 i; i < 106; ++i) {
             names[i] = n[i];
             paths[i] = p[i];
         }
