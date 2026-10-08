@@ -2,9 +2,11 @@
 pragma solidity >=0.8.4;
 
 /// @title IERC3156FlashBorrower
+/// @author Vendored minimal subset of OpenZeppelin Contracts
+///         (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/interfaces/IERC3156FlashBorrower.sol).
+///         Upstream license: MIT.
 /// @notice Interface of the ERC-3156 FlashBorrower, as defined in
 ///         https://eips.ethereum.org/EIPS/eip-3156[ERC-3156].
-/// @dev Vendored from OpenZeppelin (contracts/interfaces/IERC3156FlashBorrower.sol).
 interface IERC3156FlashBorrower {
     /// @notice Receive a flash loan.
     /// @param initiator The initiator of the loan.

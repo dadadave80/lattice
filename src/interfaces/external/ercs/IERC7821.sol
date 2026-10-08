@@ -2,8 +2,10 @@
 pragma solidity >=0.8.4;
 
 /// @title IERC7821 — Minimal batch executor
-/// @author Re-authored to the ERC-7821 standard ABI (reference: Vectorized/solady `src/accounts/ERC7821.sol`,
-///         MIT; OpenZeppelin `draft-ERC7821`). Vendored subset — do not add an external dependency.
+/// @author Vendored minimal subset of Solady
+///         (https://github.com/Vectorized/solady/blob/main/src/accounts/ERC7821.sol).
+///         Upstream license: MIT. Re-authored to the ERC-7821 standard ABI (see also OpenZeppelin
+///         `draft-ERC7821`). Vendored subset — do not add an external dependency.
 /// @notice ERC-7821 single entrypoint for executing a batch of calls. The `mode` selects the encoding of
 ///         `executionData`; capability is discovered via {supportsExecutionMode} (ERC-7821 defines NO ERC-165
 ///         interface id).
