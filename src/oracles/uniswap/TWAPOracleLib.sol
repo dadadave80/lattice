@@ -174,7 +174,7 @@ library TWAPOracleLib {
     /// @param pair Address of the IUniswapV2Pair contract.
     function registerPair(bytes32 key, address pair) internal {
         AccessControlLib.checkRole(DEFAULT_ADMIN_ROLE);
-        require(pair != address(0));
+        if (pair == address(0)) revert ITWAPOracle.TWAPZeroPair();
         TWAPOracleStorage storage $ = twapOracleStorage();
         $._pairs[key] = pair;
         delete $._observations[key];

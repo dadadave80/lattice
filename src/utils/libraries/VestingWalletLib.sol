@@ -151,7 +151,7 @@ library VestingWalletLib {
         uint256 amount = releasable();
         vestingWalletStorage()._released += amount;
         (bool ok,) = OwnableLib.owner().call{value: amount}("");
-        require(ok, "VestingWallet: ETH transfer failed");
+        if (!ok) revert IVestingWallet.VestingWalletEtherTransferFailed();
         emit IVestingWallet.EtherReleased(amount);
     }
 

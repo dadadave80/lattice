@@ -59,10 +59,14 @@ interface IPlonkVerifier {
     /// @dev Thrown when the number of public inputs is zero or does not match the circuit.
     error PlonkInvalidInputs();
 
+    /// @dev Thrown when an ecMul (0x07), ecAdd (0x06) or modexp (0x05) precompile call fails.
+    /// @param precompile The address of the failing precompile.
+    error PlonkPrecompileFailed(address precompile);
+
     /// @notice Verifies a PLONK proof against `vk` for the given public `input`.
     /// @dev Returns `false` (does not revert) for an invalid proof, an out-of-range public input
     ///      (`>= SNARK_SCALAR_FIELD`), an off-curve / out-of-range proof point, or a failed pairing.
-    ///      Reverts only on structural misuse (empty input).
+    ///      Reverts on structural misuse (empty input) or a failed ecMul/ecAdd/modexp precompile call.
     /// @param vk The verifying key for the circuit.
     /// @param proof The PLONK proof.
     /// @param input The public inputs, in the circuit's public-signal order.
