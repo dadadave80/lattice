@@ -31,3 +31,24 @@ As a solo-maintained project, responses are best-effort. Please allow reasonable
 time for a fix before public disclosure (90 days is a good default). Reporters
 who follow coordinated disclosure will be credited unless they prefer to remain
 anonymous.
+
+## Known issues in released versions
+
+- **AccessManager / AccessManaged, v0.2.0 to v0.4.0: fail-open.** Do not use
+  these releases to gate anything.
+  - `AccessManager.execute` set a persistent "consuming" flag on the managed
+    target, and `restrictedCheck` let every caller through while it was set.
+    Migrating a target with `execute(target, setAuthority(x))` left the flag
+    set for good, and a restricted function that called out could be re-entered
+    by anyone during an `execute`
+    ([#215](https://github.com/dadadave80/lattice/issues/215)).
+  - The manager did not enforce a target's admin delay on
+    `setTargetFunctionRole` or `setTargetClosed`, nor a role admin's execution
+    delay on `grantRole`/`revokeRole`
+    ([#219](https://github.com/dadadave80/lattice/issues/219)).
+
+  Both are fixed in the next release, which follows OpenZeppelin v5 semantics.
+  The fix changes the ERC-165 interface IDs: `IAccessManager` goes from
+  `0x8fc52f86` to `0x03fde054` and `IAccessManaged` from `0xe5b444fd` to
+  `0x4a531f33`. Deployed diamonds keep the vulnerable facets until they cut in
+  the new ones.

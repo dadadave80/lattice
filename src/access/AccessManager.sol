@@ -157,6 +157,10 @@ contract AccessManager is IAccessManager {
         return AccessManagerLib.cancel(caller, target, data);
     }
 
+    function consumeScheduledOp(address caller, bytes calldata data) external virtual override {
+        AccessManagerLib.consumeScheduledOp(caller, data);
+    }
+
     /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
     /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
     ///      `forge inspect AccessManager methodIdentifiers` (alphabetical by signature); kept in exact parity by
@@ -165,6 +169,7 @@ contract AccessManager is IAccessManager {
     ///      `PUBLIC_ROLE()` 0x3ca7c02a
     ///      `canCall(address,address,bytes4)` 0xb7009613
     ///      `cancel(address,address,bytes)` 0xd6bb62c6
+    ///      `consumeScheduledOp(address,bytes)` 0x94c7d7ee
     ///      `execute(address,bytes)` 0x1cff79cd
     ///      `getAccess(uint64,address)` 0x3078f114
     ///      `getNonce(bytes32)` 0x4136a33c
@@ -193,6 +198,6 @@ contract AccessManager is IAccessManager {
     ///      `updateAuthority(address,address)` 0x18ff183c
     function exportSelectors() external pure virtual returns (bytes memory selectors) {
         selectors =
-            hex"75b238fc3ca7c02ab7009613d6bb62c61cff79cd3078f1144136a33c530dd45612be87270b0a93bafc8610d1a5808e2f3adc277a4c1da1e26d5115bd25c471a0d1f856eeabd9bd2aa166aa89853551b8fe0776f5b7d2b162f801a698a64d95ce30cae18752962952d22b5989167bd39508d6122d18ff183c";
+            hex"75b238fc3ca7c02ab7009613d6bb62c694c7d7ee1cff79cd3078f1144136a33c530dd45612be87270b0a93bafc8610d1a5808e2f3adc277a4c1da1e26d5115bd25c471a0d1f856eeabd9bd2aa166aa89853551b8fe0776f5b7d2b162f801a698a64d95ce30cae18752962952d22b5989167bd39508d6122d18ff183c";
     }
 }

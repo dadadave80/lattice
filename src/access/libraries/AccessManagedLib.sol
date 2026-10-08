@@ -65,24 +65,27 @@ library AccessManagedLib {
     }
 
     /// @notice Returns {IS_CONSUMING_SCHEDULED_OP_SELECTOR} while `_consumingScheduledOp` is set, else `0`.
-    /// @dev OZ semantics: the flag is set only while a delayed direct call consumes its scheduled operation on
-    ///      the authority, so the authority can confirm the request came from this target. Nothing sets it until
-    ///      the authority exposes `consumeScheduledOp` (issue #219); it never bypasses {restrictedCheck}.
+    /// @dev OZ semantics: {restrictedCheck} sets the flag only around its `consumeScheduledOp` call on the
+    ///      authority, so the authority can confirm the request came from this target. It never bypasses the gate.
     function isConsumingScheduledOp() internal view returns (bytes4) {
         return accessManagedStorage()._consumingScheduledOp ? IS_CONSUMING_SCHEDULED_OP_SELECTOR : bytes4(0);
     }
 
-    /// @notice Library-call gate. Reverts unless the authority lets `msg.sender` call `msg.sig` on this contract
-    ///         immediately. Calls the manager makes from `execute` pass because the authority accepts itself as
-    ///         caller for the (target, selector) it is executing; there is no target-side bypass.
-    function restrictedCheck() internal view {
+    /// @notice Library-call gate (OZ `_checkCanCall`). Passes when the authority lets `msg.sender` call `msg.sig` on
+    ///         this contract immediately. Calls the manager makes from `execute` pass because the authority accepts
+    ///         itself as caller for the (target, selector) it is executing. A caller with an execution delay passes
+    ///         only by consuming its matured schedule of this exact call (`msg.data`) on the authority; otherwise
+    ///         the authority's revert ({IAccessManager-AccessManagerNotScheduled}, `NotReady` or `Expired`)
+    ///         bubbles up. A caller with no access reverts {IAccessManaged-AccessManagedUnauthorized}.
+    function restrictedCheck() internal {
         address caller = msg.sender;
-        (bool immediate, uint32 delay) =
-            IAccessManager(accessManagedStorage()._authority).canCall(caller, address(this), msg.sig);
-        if (immediate && delay == 0) return;
-        if (delay > 0) {
-            revert IAccessManaged.AccessManagedRequiredDelay(caller, delay);
-        }
-        revert IAccessManaged.AccessManagedUnauthorized(caller);
+        AccessManagedStorage storage $ = accessManagedStorage();
+        IAccessManager authority_ = IAccessManager($._authority);
+        (bool immediate, uint32 delay) = authority_.canCall(caller, address(this), msg.sig);
+        if (immediate) return;
+        if (delay == 0) revert IAccessManaged.AccessManagedUnauthorized(caller);
+        $._consumingScheduledOp = true;
+        authority_.consumeScheduledOp(caller, msg.data);
+        $._consumingScheduledOp = false;
     }
 }

@@ -16,7 +16,7 @@ interface IAccessManagedTestHook {
 ///         full authority round-trip through the REAL diamond dispatch — never shipped.
 contract AccessManagedTestFacet {
     /// @notice Reverts with `AccessManagedUnauthorized` unless the caller is authorized by the authority.
-    function restrictedFn() external view {
+    function restrictedFn() external {
         AccessManagedLib.restrictedCheck();
     }
 
