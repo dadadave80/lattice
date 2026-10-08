@@ -65,7 +65,9 @@ and a row here.
   scheduling surface is a genuinely **new** interface, `IGovernedSafeDiamondCut` (`0xacb1aeb6`), which mints
   its **own** ERC-165 map slot (`0xe71618ea5c7977b34866901ace6d6c6585c16253798f12024e30133e7fb7b675`). It
   therefore adds one ERC-7201 storage slot and one new ERC-165 map slot. Its shared Safe-authority /
-  registry / frozen / emergency surfaces are plain facet functions sharing the same ERC-7201 slot.
+  registry / frozen / emergency surfaces are plain facet functions sharing the same ERC-7201 slot. The
+  pending min-delay fields (`_pendingMinDelay`, `_minDelayEffectAt`) are APPENDED to
+  `GovernedSafeDiamondCutStorage`; `setMinDelay` keeps its selector, so the id and slot are unchanged.
 - Utility libraries that hold no own ERC-7201 storage slot (`EnumerableSet`, `TimelockLib`) and
   token-extension libraries that declare no `*_STORAGE_SLOT` (`ERC20Burnable`, `ERC20Permit`,
   `ERC20Votes`, `ERC7802`) are intentionally **not** listed here. (`ERC20Permit`, `ERC20Votes`,

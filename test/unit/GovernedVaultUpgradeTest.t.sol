@@ -17,6 +17,7 @@ import {DiamondValidationLib} from "@lattice/governance/libraries/DiamondValidat
 import {UPGRADE_EXECUTOR_ROLE} from "@lattice/governance/libraries/GovernedDiamondCutLib.sol";
 import {TimelockControllerLib} from "@lattice/governance/libraries/TimelockControllerLib.sol";
 import {IAccessControl} from "@lattice/interfaces/access/IAccessControl.sol";
+import {IEmergencyCut} from "@lattice/interfaces/governance/IEmergencyCut.sol";
 import {IFrozenSelectors} from "@lattice/interfaces/governance/IFrozenSelectors.sol";
 import {IGovernedDiamondCut} from "@lattice/interfaces/governance/IGovernedDiamondCut.sol";
 import {IGovernor} from "@lattice/interfaces/governance/IGovernor.sol";
@@ -298,6 +299,102 @@ contract GovernedVaultUpgradeTest is GovernedVaultTestBase {
         for (uint256 i; i < frozen.length; ++i) {
             assertTrue(IFrozenSelectors(vault).isSelectorFrozen(frozen[i]), "selector not frozen");
         }
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                         EMERGENCY GUARDIAN BOUNDS
+    //////////////////////////////////////////////////////////////////////////*//
+
+    address internal guardian = address(0x6044D1A11);
+
+    /// @dev Appoints `guardian` the way governance would: the vault holds DEFAULT_ADMIN_ROLE.
+    function _appointGuardian() internal {
+        vm.prank(vault);
+        IEmergencyStop(vault).addGuardian(guardian);
+    }
+
+    function _removeCut(bytes4 sel) internal pure returns (FacetCut[] memory cuts) {
+        bytes4[] memory sels = new bytes4[](1);
+        sels[0] = sel;
+        cuts = new FacetCut[](1);
+        cuts[0] = FacetCut({facetAddress: address(0), action: FacetCutAction.Remove, functionSelectors: sels});
+    }
+
+    /// @notice #218 regression: with nothing frozen, a guardian still cannot remove `diamondCut`.
+    function test_GuardianCannotRemoveDiamondCut() public {
+        _appointGuardian();
+        assertEq(IFrozenSelectors(vault).frozenSelectors().length, 0, "nothing frozen at init");
+        vm.prank(guardian);
+        vm.expectRevert(
+            abi.encodeWithSelector(IEmergencyCut.EmergencyCutEntrypointProtected.selector, bytes4(0x1f931c1c))
+        );
+        IEmergencyCut(vault).emergencyRemoveCut(_removeCut(0x1f931c1c));
+        assertTrue(IDiamondLoupe(vault).facetAddress(0x1f931c1c) != address(0), "diamondCut must stay bound");
+    }
+
+    /// @notice Documents the liveness trust: before the recommended freeze, a guardian CAN remove an
+    ///         unfrozen Governor execution selector (the NatSpec on {GovernedDiamondCutLib} and
+    ///         {DeployGovernedVault.recommendedFreezeSelectors} states this).
+    function test_GuardianTrustedForLivenessUntilFrozen() public {
+        _appointGuardian();
+        vm.prank(guardian);
+        IEmergencyCut(vault).emergencyRemoveCut(_removeCut(IGovernor.execute.selector));
+        assertEq(IDiamondLoupe(vault).facetAddress(IGovernor.execute.selector), address(0), "unfrozen: removable");
+    }
+
+    /// @notice #218 regression: after governance freezes the recommended list, a guardian cannot remove
+    ///         any Governor or Timelock execution selector, and governance can still upgrade.
+    function test_RecommendedFreezeBoundsGuardian() public {
+        _armAlice();
+        bytes4[] memory frozen = deployer.recommendedFreezeSelectors();
+        _govern(abi.encodeCall(IFrozenSelectors.freezeSelectors, (frozen)), "freeze: recommended list");
+        _appointGuardian();
+
+        for (uint256 i; i < frozen.length; ++i) {
+            assertTrue(IDiamondLoupe(vault).facetAddress(frozen[i]) != address(0), "recommended selector unbound");
+            bytes memory reason = frozen[i] == bytes4(0x1f931c1c)
+                ? abi.encodeWithSelector(IEmergencyCut.EmergencyCutEntrypointProtected.selector, frozen[i])
+                : abi.encodeWithSelector(IFrozenSelectors.FrozenSelectorProtected.selector, frozen[i]);
+            vm.prank(guardian);
+            vm.expectRevert(reason);
+            IEmergencyCut(vault).emergencyRemoveCut(_removeCut(frozen[i]));
+        }
+
+        FacetCut[] memory cuts = _probeCuts();
+        _govern(abi.encodeCall(IGovernedDiamondCut.diamondCut, (cuts, address(0), "")), "upgrade after freeze");
+        assertEq(VaultUpgradeProbeFacet(vault).vaultProbePing(), 42, "governance must still upgrade");
+    }
+
+    /// @notice #218 regression (recipe-built vault): after the recommended freeze, a guardian that trips
+    ///         the stop cannot then remove `emergencyResume` (or the guardian-revocation selectors), so a
+    ///         governance proposal resumes the vault and the next one upgrades it.
+    function test_GuardianStopCannotStrandUpgradePath() public {
+        _armAlice();
+        _govern(
+            abi.encodeCall(IFrozenSelectors.freezeSelectors, (deployer.recommendedFreezeSelectors())),
+            "freeze: recommended list"
+        );
+        _appointGuardian();
+        vm.prank(guardian);
+        IEmergencyStop(vault).emergencyStop("incident");
+
+        bytes4[3] memory recovery = [
+            IEmergencyStop.emergencyResume.selector,
+            IEmergencyStop.removeGuardian.selector,
+            IAccessControl.revokeRole.selector
+        ];
+        for (uint256 i; i < recovery.length; ++i) {
+            vm.prank(guardian);
+            vm.expectRevert(abi.encodeWithSelector(IEmergencyCut.EmergencyCutEntrypointProtected.selector, recovery[i]));
+            IEmergencyCut(vault).emergencyRemoveCut(_removeCut(recovery[i]));
+            assertTrue(IDiamondLoupe(vault).facetAddress(recovery[i]) != address(0), "recovery selector unbound");
+        }
+
+        _govern(abi.encodeCall(IEmergencyStop.emergencyResume, ()), "resume");
+        assertFalse(IEmergencyStop(vault).isStopped(), "governance must resume");
+        FacetCut[] memory cuts = _probeCuts();
+        _govern(abi.encodeCall(IGovernedDiamondCut.diamondCut, (cuts, address(0), "")), "upgrade after resume");
+        assertEq(VaultUpgradeProbeFacet(vault).vaultProbePing(), 42, "governance must still upgrade");
     }
 }
 

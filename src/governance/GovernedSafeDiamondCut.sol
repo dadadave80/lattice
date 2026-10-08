@@ -87,8 +87,10 @@ contract GovernedSafeDiamondCut is
         return GovernedSafeDiamondCutLib.minDelay();
     }
 
-    /// @notice Sets the minimum timelock delay (seconds). Self-administered: callable only by the
-    ///         pinned Safe. Affects operations scheduled after the change.
+    /// @notice Requests a new minimum timelock delay (seconds). Self-administered: callable only by the
+    ///         pinned Safe. The change takes effect `max(current, new)` seconds later, so a lowered delay
+    ///         waits out the delay it replaces, and applies to operations scheduled from then on. Emits
+    ///         {MinDelayChangeScheduled}.
     /// @param _newDelay The new minimum delay (seconds).
     function setMinDelay(uint256 _newDelay) external virtual {
         GovernedSafeDiamondCutLib.setMinDelay(_newDelay);

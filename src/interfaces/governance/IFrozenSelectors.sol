@@ -8,8 +8,9 @@ import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 /// @notice Protection layer for the {GovernedDiamondCut} facet: a governance-curated, append-only set
 ///         of "frozen" function selectors that can never be `Replace`d or `Remove`d by a subsequent
 ///         governed cut, plus a pre-flight simulator and an ERC-165 verification helper for upgrade
-///         workflows. Freezing the loupe selectors or the cut selector itself makes a diamond unable
-///         to brick its own introspection/upgrade path through a (mistaken or malicious) cut.
+///         workflows. Freezing prevents the executor from accidentally replacing or removing a frozen
+///         selector, and bounds `emergencyRemoveCut`. It does not constrain `_init` or added facets:
+///         the defence against a hostile proposal is the delay and cancel.
 /// @dev This interface is intentionally SEPARATE from {IGovernedDiamondCut}: that interface exposes
 ///      only `diamondCut`, so `type(IGovernedDiamondCut).interfaceId == 0x1f931c1c` (identical to
 ///      `IDiamondCut`), which is load-bearing — the governed facet must occupy the canonical cut

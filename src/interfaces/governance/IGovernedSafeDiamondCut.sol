@@ -36,16 +36,21 @@ interface IGovernedSafeDiamondCut {
     /// @param id The operation id that was cancelled.
     event CutCancelled(bytes32 indexed id);
 
-    /// @dev Emitted when the minimum timelock delay is changed (self-administered, by the pinned Safe).
-    /// @param oldDelay The previous minimum delay (seconds).
-    /// @param newDelay The new minimum delay (seconds).
-    event MinDelayChanged(uint256 oldDelay, uint256 newDelay);
+    /// @dev Emitted when the pinned Safe requests a minimum-delay change. The new delay does not apply
+    ///      until `effectAt`, which is `max(oldDelay, newDelay)` seconds after the request, so lowering
+    ///      the delay always waits out the delay it replaces.
+    /// @param oldDelay The minimum delay (seconds) in force when the change was requested.
+    /// @param newDelay The requested minimum delay (seconds).
+    /// @param effectAt The timestamp from which `newDelay` applies to newly scheduled cuts.
+    event MinDelayChangeScheduled(uint256 oldDelay, uint256 newDelay, uint256 effectAt);
 
-    /// @dev Thrown when scheduling an operation id that is already scheduled (pending or matured).
+    /// @dev Thrown when scheduling an operation id that is already scheduled (pending or matured) or
+    ///      was already executed. Re-running an executed cut takes a new salt.
     /// @param id The duplicate operation id.
     error CutAlreadyScheduled(bytes32 id);
 
-    /// @dev Thrown when executing or cancelling an operation id that is not currently scheduled.
+    /// @dev Thrown when executing or cancelling an operation id that is not currently scheduled: never
+    ///      scheduled, cancelled, or already executed.
     /// @param id The unknown operation id.
     error CutNotScheduled(bytes32 id);
 
@@ -55,7 +60,8 @@ interface IGovernedSafeDiamondCut {
     error CutNotReady(bytes32 id, uint256 eta);
 
     /// @notice Schedules a cut for later execution. Gated to the pinned Safe and rejected while
-    ///         emergency-stopped. Reverts {CutAlreadyScheduled} if the id is already pending.
+    ///         emergency-stopped. Reverts {CutAlreadyScheduled} if the id is already scheduled or was
+    ///         executed.
     /// @param _diamondCut The facet addresses, cut actions, and function selectors.
     /// @param _init The address delegatecalled after the cut (address(0) to skip).
     /// @param _calldata The calldata passed to `_init`.
@@ -66,8 +72,9 @@ interface IGovernedSafeDiamondCut {
         returns (bytes32 id);
 
     /// @notice Executes a previously-scheduled, matured cut. Gated to the pinned Safe and rejected while
-    ///         emergency-stopped. Reverts {CutNotScheduled} if unknown, {CutNotReady} if before `eta`,
-    ///         and the shared frozen-selector guard if a Replace/Remove touches a frozen selector. The
+    ///         emergency-stopped. Reverts {CutNotScheduled} if unknown, cancelled or already executed,
+    ///         {CutNotReady} if before `eta`, and the shared frozen-selector guard if a Replace/Remove
+    ///         touches a frozen selector. The
     ///         arguments must match those passed to `scheduleCut` exactly (they re-derive the id).
     /// @param _diamondCut The facet addresses, cut actions, and function selectors.
     /// @param _init The address delegatecalled after the cut (address(0) to skip).
@@ -77,28 +84,29 @@ interface IGovernedSafeDiamondCut {
         external
         payable;
 
-    /// @notice Cancels a still-pending operation. Gated to the pinned Safe. Reverts {CutNotScheduled}
-    ///         if the id is not currently scheduled.
+    /// @notice Cancels a scheduled, not-yet-executed operation. Gated to the pinned Safe. Reverts
+    ///         {CutNotScheduled} if the id is not currently scheduled (including an executed id).
     /// @param _id The operation id to cancel.
     function cancelCut(bytes32 _id) external;
 
-    /// @notice Returns the ready timestamp (`eta`) of an operation, or 0 if it is not scheduled.
+    /// @notice Returns the ready timestamp (`eta`) of an operation.
     /// @param _id The operation id to query.
-    /// @return The `eta`, or 0 if unknown/cancelled/executed.
+    /// @return The `eta`; 0 if never scheduled or cancelled; 1 once executed.
     function getTimestamp(bytes32 _id) external view returns (uint256);
 
     /// @notice Returns whether `_id` is scheduled but not yet matured (eta in the future).
     /// @param _id The operation id to query.
     function isOperationPending(bytes32 _id) external view returns (bool);
 
-    /// @notice Returns whether `_id` is scheduled and matured (eta reached, ready to execute).
+    /// @notice Returns whether `_id` is scheduled and matured (eta reached, not yet executed).
     /// @param _id The operation id to query.
     function isOperationReady(bytes32 _id) external view returns (bool);
 
-    /// @notice Returns whether `_id` has already been executed (and thereby cleared).
+    /// @notice Returns whether `_id` has been executed. False for never-scheduled and cancelled ids.
     /// @param _id The operation id to query.
     function isOperationDone(bytes32 _id) external view returns (bool);
 
-    /// @notice Returns the minimum timelock delay (seconds) enforced between schedule and execute.
+    /// @notice Returns the minimum timelock delay (seconds) enforced between schedule and execute for
+    ///         operations scheduled now. A requested change shows here only once it takes effect.
     function minDelay() external view returns (uint256);
 }

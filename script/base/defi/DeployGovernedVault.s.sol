@@ -1,12 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {IDiamondLoupe} from "@diamond/interfaces/IDiamondLoupe.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
 import {LatticeFactory} from "@lattice/LatticeFactory.sol";
 import {GovernedVaultInit, GovernedVaultParams} from "@lattice/defi/GovernedVaultInit.sol";
 import {DiamondValidationLib} from "@lattice/governance/libraries/DiamondValidationLib.sol";
 import {RecipeEntry} from "@lattice/interfaces/ILatticeFactory.sol";
+import {IEmergencyCut} from "@lattice/interfaces/governance/IEmergencyCut.sol";
+import {IGovernedDiamondCut} from "@lattice/interfaces/governance/IGovernedDiamondCut.sol";
+import {IGovernor} from "@lattice/interfaces/governance/IGovernor.sol";
+import {ITimelockController} from "@lattice/interfaces/governance/ITimelockController.sol";
+import {IVotes} from "@lattice/interfaces/governance/IVotes.sol";
 
 /// @title DeployGovernedVault
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
@@ -43,6 +49,51 @@ contract DeployGovernedVault is BaseDeploy {
         cuts = _buildBaseCuts();
         init = address(new GovernedVaultInit());
         initCalldata = abi.encodeCall(GovernedVaultInit.init, (p));
+    }
+
+    /// @notice The recommended `freezeSelectors` payload for a deployed vault's first governance proposal: the
+    ///         loupe, the cut and emergency entrypoints, and every selector the Governor -> Timelock ->
+    ///         `diamondCut` path calls back into the diamond.
+    /// @dev Nothing is frozen at init, and an `EMERGENCY_GUARDIAN_ROLE` holder can `emergencyRemoveCut`
+    ///      any unfrozen selector except `diamondCut` itself and the stop-recovery selectors
+    ///      (`emergencyResume`, `removeGuardian`, `revokeRole`), which the cut library refuses outright
+    ///      and so are not listed here. Until this list is frozen the guardian is therefore TRUSTED for
+    ///      governance liveness: removing, say, Governor `execute` or Timelock `executeBatch` leaves
+    ///      `diamondCut` bound but unreachable. Freezing closes that Governor -> Timelock -> `diamondCut`
+    ///      path, so a proposal can still resume a stopped vault and upgrade it, at a cost: a
+    ///      frozen selector can never be `Replace`d or `Remove`d again, even by governance, so a bug in a
+    ///      frozen function can only be worked around by adding a new selector. `delegate` and the
+    ///      share-token movers stay unfrozen; holders who have already delegated can still vote.
+    /// @return selectors The 23 selectors to freeze.
+    function recommendedFreezeSelectors() public pure returns (bytes4[] memory selectors) {
+        selectors = new bytes4[](23);
+        // Introspection, the upgrade entrypoint and the emergency path.
+        selectors[0] = IDiamondLoupe.facets.selector;
+        selectors[1] = IDiamondLoupe.facetFunctionSelectors.selector;
+        selectors[2] = IDiamondLoupe.facetAddresses.selector;
+        selectors[3] = IDiamondLoupe.facetAddress.selector;
+        selectors[4] = IGovernedDiamondCut.diamondCut.selector;
+        selectors[5] = IEmergencyCut.emergencyRemoveCut.selector;
+        // Governor entrypoints: propose -> vote -> queue -> execute.
+        selectors[6] = IGovernor.propose.selector;
+        selectors[7] = IGovernor.castVote.selector;
+        selectors[8] = IGovernor.castVoteWithReason.selector;
+        selectors[9] = IGovernor.castVoteWithReasonAndParams.selector;
+        selectors[10] = IGovernor.castVoteBySig.selector;
+        selectors[11] = IGovernor.queue.selector;
+        selectors[12] = IGovernor.execute.selector;
+        // Timelock functions the Governor calls on the diamond (its own timelock).
+        selectors[13] = ITimelockController.scheduleBatch.selector;
+        selectors[14] = ITimelockController.executeBatch.selector;
+        selectors[15] = ITimelockController.hashOperationBatch.selector;
+        selectors[16] = ITimelockController.getMinDelay.selector;
+        selectors[17] = ITimelockController.isOperationPending.selector;
+        selectors[18] = ITimelockController.isOperationDone.selector;
+        // Vote-token reads the Governor makes on the diamond (its own vote token).
+        selectors[19] = IVotes.clock.selector;
+        selectors[20] = IVotes.CLOCK_MODE.selector;
+        selectors[21] = IVotes.getPastVotes.selector;
+        selectors[22] = IVotes.getPastTotalSupply.selector;
     }
 
     /// @notice Unique storage owners, including dependencies shared across facets.

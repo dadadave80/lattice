@@ -95,12 +95,21 @@ through `LatticeFactory` in one transaction; `deployAtomic` additionally lets yo
 | Shareholder | Deposit, delegate, propose, and vote subject to snapshot/threshold/quorum |
 | Anyone | Execute a successful queued proposal once its delay expires |
 | Deployer / factory | No permanent upgrade authority over the initialized vault |
-| Guardian | None appointed initially; governance may appoint one for emergency controls |
+| Guardian | None appointed initially; governance may appoint one for emergency controls. Trusted for governance liveness (see below) |
 
 Open execution does not authorize arbitrary calldata: the timelock authenticates the queued operation.
 Only the diamond's timelock self-call reaches the upgrade executor role. Voting uses the timestamp
 clock; voting delay/period and timelock delay are expressed in seconds. The example uses 60, 600,
 and 300 seconds respectively, a zero proposal threshold and 4% quorum. These are demo settings.
+
+A guardian's `emergencyRemoveCut` can only remove selectors. It can never remove `diamondCut` itself,
+the selectors needed to recover from an emergency stop (`emergencyResume`, `removeGuardian`,
+`revokeRole`), or a frozen selector. Nothing is frozen at init, so a guardian can still remove an
+unfrozen Governor or Timelock function a proposal needs, leaving `diamondCut` unreachable. Treat the
+guardian as trusted for governance liveness, or have the first proposal freeze
+`DeployGovernedVault.recommendedFreezeSelectors()`. With that path frozen, a guardian that trips the
+stop can only delay: a proposal resumes the vault and the next one upgrades it.
+Freezing is permanent: governance can never replace or remove a frozen selector afterwards.
 
 ## Deploy and upgrade through Make
 

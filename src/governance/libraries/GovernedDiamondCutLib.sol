@@ -49,11 +49,18 @@ bytes32 constant UPGRADE_EXECUTOR_ROLE = keccak256("UPGRADE_EXECUTOR_ROLE");
 ///      `keccak256("EMERGENCY_GUARDIAN_ROLE") == 0x93a9ea60add98726fcd12f31bd91d98faf4378bac52abb4f48e807756ced77a1`
 ///      (verify: `cast keccak "EMERGENCY_GUARDIAN_ROLE"`). It is intentionally DISTINCT from
 ///      `UPGRADE_EXECUTOR_ROLE`: a guardian can ONLY remove code (never add/replace — those still
-///      require a full governance round) and can never remove a frozen selector. Consumers/tests import
-///      the constant from `EmergencyStopLib`. NOTE: unlike `UPGRADE_EXECUTOR_ROLE`, this role is
-///      intentionally left admin-managed (its admin stays `DEFAULT_ADMIN_ROLE`) BY DESIGN — it is a
-///      trusted, removal-only-bounded role that the admin must be able to grant/rotate; pinning it is
-///      out of scope (and undesirable) here.
+///      require a full governance round), can never remove `diamondCut` itself or the admin's
+///      stop-recovery selectors (`emergencyResume`, `removeGuardian`, `revokeRole`; see
+///      `EmergencyStopLib.isRecoverySelector`), and can never remove a frozen selector. Consumers/tests
+///      import the constant from `EmergencyStopLib`.
+///      TRUST: nothing is frozen at init, so a guardian can remove any OTHER unfrozen selector,
+///      including the Governor/Timelock functions a proposal travels through (`propose`, `castVote*`,
+///      `queue`, `execute`, `scheduleBatch`, `executeBatch`, ...). `diamondCut` then stays bound but
+///      unreachable, so the guardian is TRUSTED for governance liveness until governance freezes that
+///      path (recommended list: `DeployGovernedVault.recommendedFreezeSelectors`). Removal of the
+///      recovery selectors is refused outright, so a guardian that trips the stop cannot also keep
+///      governance from resuming once that path is frozen. The admin can also appoint itself guardian. This role is intentionally left admin-managed (its admin stays
+///      `DEFAULT_ADMIN_ROLE`) BY DESIGN so the admin can grant/rotate it; pinning it is out of scope.
 
 /// @notice ERC-7201 namespaced storage for the GovernedDiamondCut module.
 /// @dev Authority itself lives in AccessControl + EmergencyStop storage; this slot holds the
@@ -144,8 +151,9 @@ library GovernedDiamondCutLib {
         GovernedDiamondCutStorage storage $ = governedDiamondCutStorage();
 
         // 3) Protection: reject any Replace/Remove that targets a frozen selector BEFORE applying the
-        //    cut. This prevents a (mistaken or malicious) cut from removing/replacing load-bearing
-        //    selectors (e.g. the loupe or the cut path itself). Add actions are unaffected.
+        //    cut. This stops an executor MISTAKE from removing/replacing load-bearing selectors (e.g. the
+        //    loupe or the cut path itself). It does not stop a hostile proposal, which can still Add
+        //    facets or run arbitrary `_init` code; the defence there is the vote, delay and cancel.
         _enforceNotFrozen($, _diamondCut);
 
         // 4) Apply the cut via diamond-lib (untouched core). If it reverts (e.g. selector clash),
@@ -180,8 +188,12 @@ library GovernedDiamondCutLib {
     ///         or buggy facet's selectors WITHOUT a governance round — and, by design, even while the
     ///         normal cut path is halted by EmergencyStop. Deliberately constrained so a rogue guardian
     ///         can only AMPUTATE code (every entry must be `Remove`), never add or replace it (that
-    ///         still requires `diamondCut` under full governance), and can never remove a frozen
-    ///         load-bearing selector (the loupe or the cut path itself).
+    ///         still requires `diamondCut` under full governance), can never remove `diamondCut` itself
+    ///         or a stop-recovery selector (even when unfrozen), and can never remove a frozen selector.
+    ///         It CAN remove any other
+    ///         unfrozen selector, including the Governor/Timelock path that reaches `diamondCut`, so the
+    ///         guardian is trusted for governance liveness until that path is frozen (see the
+    ///         EMERGENCY_GUARDIAN_ROLE note above).
     /// @dev Guard ordering and rationale:
     ///      1) Authority FIRST: only an EMERGENCY_GUARDIAN_ROLE holder may proceed.
     ///      2) NO `EmergencyStopLib.checkNotStopped()` — INTENTIONAL. This is the panic button; it MUST
@@ -191,8 +203,10 @@ library GovernedDiamondCutLib {
     ///      3) Removal-only: every FacetCut action must be `Remove`; an `Add`/`Replace` reverts
     ///         {IEmergencyCut.EmergencyCutMustBeRemoveOnly} with the offending action. diamond-lib
     ///         additionally enforces `facetAddress == address(0)` for `Remove`.
-    ///      4) Frozen protection: reuses {_enforceNotFrozen} so a guardian cannot rip out a frozen
-    ///         selector (reverts {IFrozenSelectors.FrozenSelectorProtected}).
+    ///      4) Entrypoint + frozen protection: `diamondCut` and the stop-recovery selectors
+    ///         ({EmergencyStopLib.isRecoverySelector}) revert {IEmergencyCut.EmergencyCutEntrypointProtected}
+    ///         even with an empty frozen set, and a frozen selector reverts
+    ///         {IFrozenSelectors.FrozenSelectorProtected}.
     ///      5) NO init delegatecall: applied as `DiamondLib.diamondCut(cuts, address(0), "")`. A pure
     ///         removal has nothing to initialize, and forbidding init denies a rogue guardian any
     ///         arbitrary-delegatecall vector.
@@ -209,7 +223,7 @@ library GovernedDiamondCutLib {
 
         GovernedDiamondCutStorage storage $ = governedDiamondCutStorage();
 
-        // 2) Removal-only + 3) frozen protection, fused in a single pass over the cuts so we also
+        // 2) Removal-only + 3) entrypoint and frozen protection, fused in a single pass over the cuts so we also
         //    accumulate the total selector count for the audit event.
         uint256 cutsLength = _cuts.length;
         uint256 selectorCount;
@@ -223,9 +237,17 @@ library GovernedDiamondCutLib {
             bytes4[] calldata selectors = _cuts[i].functionSelectors;
             uint256 selectorsLength = selectors.length;
             for (uint256 j; j < selectorsLength; ++j) {
+                bytes4 selector = selectors[j];
+                // The upgrade entrypoint and the admin's stop-recovery selectors are refused even when
+                // unfrozen, so governance can always resume and restore whatever a guardian removes.
+                if (
+                    selector == IGovernedDiamondCut.diamondCut.selector || EmergencyStopLib.isRecoverySelector(selector)
+                ) {
+                    revert IEmergencyCut.EmergencyCutEntrypointProtected(selector);
+                }
                 // A guardian must NOT be able to remove a frozen, load-bearing selector.
-                if (frozen.contains(selectors[j])) {
-                    revert IFrozenSelectors.FrozenSelectorProtected(selectors[j]);
+                if (frozen.contains(selector)) {
+                    revert IFrozenSelectors.FrozenSelectorProtected(selector);
                 }
             }
             unchecked {

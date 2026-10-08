@@ -289,6 +289,8 @@
 3	0	_cutCount	t_uint256
 4	0	_cutRegistry	t_mapping(t_uint256,t_struct(CutRecord)_storage)
 5	0	_frozenSelectors	t_struct(Bytes4Set)_storage
+7	0	_pendingMinDelay	t_uint256
+8	0	_minDelayEffectAt	t_uint256
 
 ### GovernedVaultStorage @ erc7201:lattice.storage.GovernedVault (slot 0xce91473269200f209353d1f9f84b7900d57f30b14d017212fb8c61b25320cc00)
 0	0	_ballotNonces	t_mapping(t_address,t_uint256)
