@@ -175,6 +175,13 @@ depth = 128
 # vm.expectRevert.
 fail_on_revert = true
 
+# Deep invariant campaign (`make invariant-deep`), not a CI gate. The ci profile runs the diamond-level
+# invariant suites at 64 runs through a contract-level inline key.
+[profile.deep.invariant]
+runs = 1000
+depth = 200
+fail_on_revert = true
+
 [fmt]
 sort_imports = true
 # Vendored-verbatim audited crypto (Solady) — keep byte-exact, do not reformat. Re-sync from upstream.
