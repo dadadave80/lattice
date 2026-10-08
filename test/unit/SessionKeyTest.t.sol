@@ -195,6 +195,16 @@ contract SessionKeyTest is Test {
         acct.authorize(key, _transferCall(tok, dest, 50));
     }
 
+    /// @notice `ANY_TARGET` never matches the account itself; only an exact `(account, selector)` grant does.
+    function test_Permission_AnyTarget_ExcludesSelf() public {
+        _register(key, 0, until, _perm(ANY_TARGET, ANY_SELECTOR));
+        assertFalse(acct.isCallPermitted(key, address(acct), selector), "wildcard matched self");
+        _register(key, 0, until, _perm(ANY_TARGET, selector));
+        assertFalse(acct.isCallPermitted(key, address(acct), selector), "any-target matched self");
+        _register(key, 0, until, _perm(address(acct), selector));
+        assertTrue(acct.isCallPermitted(key, address(acct), selector), "exact self grant denied");
+    }
+
     function test_Spend_UnconfiguredIsUncapped() public {
         _register(key, 0, until, _perm(tok, 0xa9059cbb));
         acct.authorize(key, _transferCall(tok, dest, 1e30)); // no limit set → no revert
