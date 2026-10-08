@@ -59,6 +59,36 @@ contract ReentrantTarget {
     }
 }
 
+/// @notice #219 probe: a managed target whose `setAuthority` is reached through the manager's self-`execute` of
+///         `updateAuthority`. It records what the manager reports for itself as caller while that call is in flight.
+contract AuthorityProbeTarget {
+    address public authority;
+    bool public selfImmediateInFlight; // canCall(manager, manager, updateAuthority) during the execute
+    bool public selfImmediateOther; // canCall(manager, manager, setTargetClosed) during the execute
+
+    constructor(address authority_) {
+        authority = authority_;
+    }
+
+    function setAuthority(address newAuthority) external {
+        IAccessManager manager = IAccessManager(msg.sender);
+        (selfImmediateInFlight,) = manager.canCall(msg.sender, msg.sender, IAccessManager.updateAuthority.selector);
+        (selfImmediateOther,) = manager.canCall(msg.sender, msg.sender, IAccessManager.setTargetClosed.selector);
+        authority = newAuthority;
+    }
+}
+
+/// @notice #219: a contract that is not consuming a scheduled operation (it reports `0`).
+contract NonConsumingTarget {
+    function isConsumingScheduledOp() external pure returns (bytes4) {
+        return bytes4(0);
+    }
+
+    function consume(IAccessManager manager, address caller, bytes calldata data) external {
+        manager.consumeScheduledOp(caller, data);
+    }
+}
+
 /// @title AccessManagerTest
 /// @notice Exercises the AccessManager authority facet through a REAL {Diamond} assembled by the ready-to-deploy
 ///         {DeployAccessManager} script (see {AccessManagerTestBase}) — every authority call (roles, targets,
@@ -563,26 +593,40 @@ contract AccessManagerTest is AccessManagerTestBase {
         assertFalse(rt.reentered(), "CEI violated: reentrant execute succeeded");
     }
 
-    /// @notice M-5 regression: setGrantDelay with no change is a no-op and emits no event.
-    function test_SetGrantDelaySameValueIsNoop() public {
+    /// @notice OZ `Time.Delay.withUpdate` parity (#219, replaces the M-5 no-op): re-setting the current grant delay
+    ///         still records a change taking effect MIN_SETBACK away, and the effective value never moves.
+    function test_SetGrantDelaySameValueAppliesMinSetback() public {
         vm.prank(admin);
         mgr.setGrantDelay(MINTER_ROLE, 1 days);
         vm.warp(block.timestamp + 1 weeks); // let delay take effect
         assertEq(mgr.getRoleGrantDelay(MINTER_ROLE), 1 days);
 
-        // Set same delay — should be a no-op
-        vm.recordLogs();
+        uint48 effectAt = uint48(block.timestamp + 5 days);
+        vm.expectEmit(true, false, false, true, diamond);
+        emit IAccessManager.RoleGrantDelayChanged(MINTER_ROLE, 1 days, effectAt);
         vm.prank(admin);
         mgr.setGrantDelay(MINTER_ROLE, 1 days);
 
-        // No RoleGrantDelayChanged event should be emitted
-        bytes32 sig = keccak256("RoleGrantDelayChanged(uint64,uint32,uint48)");
-        Vm.Log[] memory logs = vm.getRecordedLogs();
-        bool found = false;
-        for (uint256 i; i < logs.length; ++i) {
-            if (logs[i].topics[0] == sig) found = true;
-        }
-        assertFalse(found, "RoleGrantDelayChanged should not be emitted for no-op");
+        assertEq(mgr.getRoleGrantDelay(MINTER_ROLE), 1 days);
+        vm.warp(effectAt);
+        assertEq(mgr.getRoleGrantDelay(MINTER_ROLE), 1 days);
+    }
+
+    /// @notice #219: re-setting the delay in force replaces a pending decrease, as in OZ, so the decrease never lands.
+    function test_SetGrantDelaySameValueCancelsPendingDecrease() public {
+        vm.prank(admin);
+        mgr.setGrantDelay(MINTER_ROLE, 10 days);
+        vm.warp(block.timestamp + 5 days);
+        assertEq(mgr.getRoleGrantDelay(MINTER_ROLE), 10 days);
+
+        // 10 days -> 1 day waits out the 9-day difference.
+        vm.prank(admin);
+        mgr.setGrantDelay(MINTER_ROLE, 1 days);
+        vm.prank(admin);
+        mgr.setGrantDelay(MINTER_ROLE, 10 days);
+
+        vm.warp(block.timestamp + 9 days + 1);
+        assertEq(mgr.getRoleGrantDelay(MINTER_ROLE), 10 days, "pending decrease was cancelled");
     }
 
     /// @notice TimelockLib.reschedule M-3 regression: reschedule with 0 must revert.
@@ -605,5 +649,487 @@ contract AccessManagerTest is AccessManagerTestBase {
         // AccessManager does not expose reschedule; TimelockLib tested directly in TimelockLibTest
         // This test documents the gap — the unit coverage lives in TimelockLibTest.t.sol.
         // See test_RescheduleZeroReadyAtReverts in TimelockLibTest.
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                    #219: TARGET ADMIN DELAY (SETTER)
+    //////////////////////////////////////////////////////////////////////////*//
+
+    uint32 constant MIN_SETBACK = 5 days;
+    address constant TARGET = address(0xBEEF);
+
+    /// @notice Sets `target`'s admin delay to `delay` and waits until it is in force.
+    function _setAdminDelayInForce(address target, uint32 delay) internal {
+        vm.prank(admin);
+        mgr.setTargetAdminDelay(target, delay);
+        vm.warp(block.timestamp + (delay > MIN_SETBACK ? delay : MIN_SETBACK));
+        assertEq(mgr.getTargetAdminDelay(target), delay);
+    }
+
+    function test_SetTargetAdminDelay_IncreaseTakesEffectAfterMinSetback() public {
+        uint48 effectAt = uint48(block.timestamp + MIN_SETBACK);
+        vm.expectEmit(true, false, false, true, diamond);
+        emit IAccessManager.TargetAdminDelayUpdated(TARGET, 3 days, effectAt);
+        vm.prank(admin);
+        mgr.setTargetAdminDelay(TARGET, 3 days);
+
+        assertEq(mgr.getTargetAdminDelay(TARGET), 0);
+        vm.warp(effectAt - 1);
+        assertEq(mgr.getTargetAdminDelay(TARGET), 0);
+        vm.warp(effectAt);
+        assertEq(mgr.getTargetAdminDelay(TARGET), 3 days);
+    }
+
+    function test_SetTargetAdminDelay_LargeDecreaseWaitsForTheDifference() public {
+        _setAdminDelayInForce(TARGET, 10 days);
+
+        // 10 days -> 1 day: the 9-day difference exceeds MIN_SETBACK, so it sets the wait.
+        uint48 effectAt = uint48(block.timestamp + 9 days);
+        vm.expectEmit(true, false, false, true, diamond);
+        emit IAccessManager.TargetAdminDelayUpdated(TARGET, 1 days, effectAt);
+        vm.prank(admin);
+        mgr.setTargetAdminDelay(TARGET, 1 days);
+
+        vm.warp(effectAt - 1);
+        assertEq(mgr.getTargetAdminDelay(TARGET), 10 days);
+        vm.warp(effectAt);
+        assertEq(mgr.getTargetAdminDelay(TARGET), 1 days);
+    }
+
+    function test_SetTargetAdminDelay_SmallDecreaseWaitsMinSetback() public {
+        _setAdminDelayInForce(TARGET, 3 days);
+
+        // 3 days -> 1 day: the 2-day difference is below MIN_SETBACK, so MIN_SETBACK applies.
+        uint48 effectAt = uint48(block.timestamp + MIN_SETBACK);
+        vm.expectEmit(true, false, false, true, diamond);
+        emit IAccessManager.TargetAdminDelayUpdated(TARGET, 1 days, effectAt);
+        vm.prank(admin);
+        mgr.setTargetAdminDelay(TARGET, 1 days);
+
+        vm.warp(effectAt - 1);
+        assertEq(mgr.getTargetAdminDelay(TARGET), 3 days);
+        vm.warp(effectAt);
+        assertEq(mgr.getTargetAdminDelay(TARGET), 1 days);
+    }
+
+    /// @notice OZ `Time.Delay.withUpdate` parity: re-setting the current value still reports an effect time
+    ///         MIN_SETBACK away, and the effective value never changes.
+    function test_SetTargetAdminDelay_EqualValueAppliesMinSetback() public {
+        _setAdminDelayInForce(TARGET, 2 days);
+
+        uint48 effectAt = uint48(block.timestamp + MIN_SETBACK);
+        vm.expectEmit(true, false, false, true, diamond);
+        emit IAccessManager.TargetAdminDelayUpdated(TARGET, 2 days, effectAt);
+        vm.prank(admin);
+        mgr.setTargetAdminDelay(TARGET, 2 days);
+
+        assertEq(mgr.getTargetAdminDelay(TARGET), 2 days);
+        vm.warp(effectAt);
+        assertEq(mgr.getTargetAdminDelay(TARGET), 2 days);
+    }
+
+    /// @notice A pending change that has not taken effect is replaced, measured from the delay still in force.
+    function test_SetTargetAdminDelay_ReplacesPendingChange() public {
+        vm.prank(admin);
+        mgr.setTargetAdminDelay(TARGET, 3 days);
+        vm.warp(block.timestamp + 1 days);
+
+        uint48 effectAt = uint48(block.timestamp + MIN_SETBACK);
+        vm.prank(admin);
+        mgr.setTargetAdminDelay(TARGET, 4 days);
+
+        vm.warp(effectAt - 1);
+        assertEq(mgr.getTargetAdminDelay(TARGET), 0);
+        vm.warp(effectAt);
+        assertEq(mgr.getTargetAdminDelay(TARGET), 4 days);
+    }
+
+    function test_SetTargetAdminDelay_NonAdminReverts() public {
+        vm.prank(alice);
+        vm.expectRevert(
+            abi.encodeWithSelector(IAccessManager.AccessManagerUnauthorizedAccount.selector, alice, ADMIN_ROLE)
+        );
+        mgr.setTargetAdminDelay(TARGET, 1 days);
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                  #219: TARGET ADMIN DELAY (ENFORCEMENT)
+    //////////////////////////////////////////////////////////////////////////*//
+
+    function _selectors(bytes4 sel) internal pure returns (bytes4[] memory selectors) {
+        selectors = new bytes4[](1);
+        selectors[0] = sel;
+    }
+
+    function test_AdminDelay_ImmediateSetTargetFunctionRoleReverts() public {
+        _setAdminDelayInForce(TARGET, 2 days);
+
+        bytes memory data =
+            abi.encodeCall(IAccessManager.setTargetFunctionRole, (TARGET, _selectors(0x12345678), PUBLIC_ROLE));
+        bytes32 opId = mgr.hashOperation(admin, diamond, data);
+
+        vm.prank(admin);
+        vm.expectRevert(abi.encodeWithSelector(IAccessManager.AccessManagerNotScheduled.selector, opId));
+        mgr.setTargetFunctionRole(TARGET, _selectors(0x12345678), PUBLIC_ROLE);
+        assertEq(mgr.getTargetFunctionRole(TARGET, 0x12345678), ADMIN_ROLE);
+    }
+
+    function test_AdminDelay_ImmediateSetTargetClosedReverts() public {
+        _setAdminDelayInForce(TARGET, 2 days);
+
+        bytes32 opId = mgr.hashOperation(admin, diamond, abi.encodeCall(IAccessManager.setTargetClosed, (TARGET, true)));
+        vm.prank(admin);
+        vm.expectRevert(abi.encodeWithSelector(IAccessManager.AccessManagerNotScheduled.selector, opId));
+        mgr.setTargetClosed(TARGET, true);
+        assertFalse(mgr.isTargetClosed(TARGET));
+    }
+
+    function test_AdminDelay_ImmediateUpdateAuthorityReverts() public {
+        AuthorityProbeTarget probe = new AuthorityProbeTarget(diamond);
+        _setAdminDelayInForce(address(probe), 2 days);
+
+        bytes memory data = abi.encodeCall(IAccessManager.updateAuthority, (address(probe), address(0x1234)));
+        bytes32 opId = mgr.hashOperation(admin, diamond, data);
+        vm.prank(admin);
+        vm.expectRevert(abi.encodeWithSelector(IAccessManager.AccessManagerNotScheduled.selector, opId));
+        mgr.updateAuthority(address(probe), address(0x1234));
+        assertEq(probe.authority(), diamond);
+    }
+
+    /// @notice The scheduled call fails before the delay and succeeds through `execute(address(this), ...)` after it.
+    function test_AdminDelay_ScheduledSetTargetClosedRunsThroughExecute() public {
+        _setAdminDelayInForce(TARGET, 2 days);
+        bytes memory data = abi.encodeCall(IAccessManager.setTargetClosed, (TARGET, true));
+
+        vm.prank(admin);
+        (bytes32 opId,) = mgr.schedule(diamond, data, 0);
+        assertEq(opId, mgr.hashOperation(admin, diamond, data));
+        assertEq(mgr.getSchedule(opId), block.timestamp + 2 days);
+
+        vm.warp(block.timestamp + 2 days - 1);
+        vm.prank(admin);
+        vm.expectRevert(abi.encodeWithSelector(IAccessManager.AccessManagerNotReady.selector, opId));
+        mgr.execute(diamond, data);
+
+        vm.warp(block.timestamp + 1);
+        vm.prank(admin);
+        mgr.execute(diamond, data);
+        assertTrue(mgr.isTargetClosed(TARGET));
+        assertEq(mgr.getSchedule(opId), 0, "schedule consumed");
+
+        vm.prank(admin);
+        vm.expectRevert(abi.encodeWithSelector(IAccessManager.AccessManagerNotScheduled.selector, opId));
+        mgr.execute(diamond, data);
+    }
+
+    /// @notice The scheduled call can also be made directly once ready: the admin check consumes the schedule.
+    function test_AdminDelay_ScheduledSetTargetFunctionRoleRunsDirectly() public {
+        _setAdminDelayInForce(TARGET, 2 days);
+        bytes memory data =
+            abi.encodeCall(IAccessManager.setTargetFunctionRole, (TARGET, _selectors(0x12345678), MINTER_ROLE));
+
+        vm.prank(admin);
+        (bytes32 opId, uint32 nonce) = mgr.schedule(diamond, data, 0);
+
+        vm.prank(admin);
+        vm.expectRevert(abi.encodeWithSelector(IAccessManager.AccessManagerNotReady.selector, opId));
+        mgr.setTargetFunctionRole(TARGET, _selectors(0x12345678), MINTER_ROLE);
+
+        vm.warp(block.timestamp + 2 days);
+        vm.expectEmit(true, true, false, false, diamond);
+        emit IAccessManager.OperationExecuted(opId, nonce);
+        vm.prank(admin);
+        mgr.setTargetFunctionRole(TARGET, _selectors(0x12345678), MINTER_ROLE);
+        assertEq(mgr.getTargetFunctionRole(TARGET, 0x12345678), MINTER_ROLE);
+        assertEq(mgr.getSchedule(opId), 0, "schedule consumed");
+
+        vm.prank(admin);
+        vm.expectRevert(abi.encodeWithSelector(IAccessManager.AccessManagerNotScheduled.selector, opId));
+        mgr.setTargetFunctionRole(TARGET, _selectors(0x12345678), MINTER_ROLE);
+    }
+
+    /// @notice A target with admin delay 0 keeps immediate admin control, and there is nothing to schedule.
+    function test_AdminDelay_ZeroDelayStaysImmediate() public {
+        vm.prank(admin);
+        mgr.setTargetClosed(TARGET, true);
+        assertTrue(mgr.isTargetClosed(TARGET));
+
+        bytes memory data = abi.encodeCall(IAccessManager.setTargetClosed, (TARGET, false));
+        bytes32 opId = mgr.hashOperation(admin, diamond, data);
+        vm.prank(admin);
+        vm.expectRevert(abi.encodeWithSelector(IAccessManager.AccessManagerNotScheduled.selector, opId));
+        mgr.schedule(diamond, data, 0);
+
+        // ... and the self-execute path runs it immediately.
+        vm.prank(admin);
+        mgr.execute(diamond, data);
+        assertFalse(mgr.isTargetClosed(TARGET));
+    }
+
+    /// @notice The delay binds only the target it was set on, and only the target-scoped admin functions.
+    function test_AdminDelay_ScopedToTargetAndTargetFunctions() public {
+        _setAdminDelayInForce(TARGET, 2 days);
+
+        vm.startPrank(admin);
+        mgr.setTargetClosed(address(0xCAFE), true);
+        mgr.setTargetAdminDelay(TARGET, 3 days);
+        mgr.setRoleGuardian(MINTER_ROLE, 7);
+        mgr.grantRole(MINTER_ROLE, alice, 0);
+        vm.stopPrank();
+        assertTrue(mgr.isTargetClosed(address(0xCAFE)));
+        assertEq(mgr.getRoleGuardian(MINTER_ROLE), 7);
+    }
+
+    /// @notice OZ parity: `execute` consumes an available schedule even when no delay is enforced any more.
+    function test_AdminDelay_ExecuteConsumesScheduleAfterDelayDropsToZero() public {
+        _setAdminDelayInForce(TARGET, 1 days);
+        bytes memory data = abi.encodeCall(IAccessManager.setTargetClosed, (TARGET, true));
+        vm.prank(admin);
+        (bytes32 opId,) = mgr.schedule(diamond, data, 0);
+
+        vm.prank(admin);
+        mgr.setTargetAdminDelay(TARGET, 0);
+        vm.warp(block.timestamp + MIN_SETBACK);
+        assertEq(mgr.getTargetAdminDelay(TARGET), 0);
+        assertGt(mgr.getSchedule(opId), 0);
+
+        vm.prank(admin);
+        mgr.execute(diamond, data);
+        assertTrue(mgr.isTargetClosed(TARGET));
+        assertEq(mgr.getSchedule(opId), 0, "schedule consumed");
+    }
+
+    /// @notice During a self-`execute`, the manager accepts itself as caller only for the selector it is executing.
+    function test_SelfExecute_AcceptsManagerOnlyForExecutedSelector() public {
+        AuthorityProbeTarget probe = new AuthorityProbeTarget(diamond);
+        _setAdminDelayInForce(address(probe), 1 days);
+
+        bytes memory data = abi.encodeCall(IAccessManager.updateAuthority, (address(probe), address(0x1234)));
+        vm.prank(admin);
+        mgr.schedule(diamond, data, 0);
+        vm.warp(block.timestamp + 1 days);
+        vm.prank(admin);
+        mgr.execute(diamond, data);
+
+        assertEq(probe.authority(), address(0x1234));
+        assertTrue(probe.selfImmediateInFlight(), "manager accepted for the in-flight selector");
+        assertFalse(probe.selfImmediateOther(), "manager accepted for another selector");
+
+        (bool immediate,) = mgr.canCall(diamond, diamond, IAccessManager.updateAuthority.selector);
+        assertFalse(immediate, "manager still accepted after execute");
+    }
+
+    /// @notice OZ `_canCallSelf`: closing the manager itself does not lock its admin-restricted functions.
+    function test_ClosedManagerKeepsAdminFunctions() public {
+        vm.prank(admin);
+        mgr.setTargetClosed(diamond, true);
+        assertTrue(mgr.isTargetClosed(diamond));
+
+        vm.prank(admin);
+        mgr.setTargetClosed(diamond, false);
+        assertFalse(mgr.isTargetClosed(diamond));
+    }
+
+    /// @notice Outside `execute`, the manager cannot call its own admin functions.
+    function test_SelfCallOutsideExecuteReverts() public {
+        vm.prank(diamond);
+        vm.expectRevert(
+            abi.encodeWithSelector(IAccessManager.AccessManagerUnauthorizedAccount.selector, diamond, ADMIN_ROLE)
+        );
+        mgr.setTargetClosed(TARGET, true);
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                      #219: ROLE ADMIN EXECUTION DELAY
+    //////////////////////////////////////////////////////////////////////////*//
+
+    uint64 constant SUPER_ROLE = 2;
+
+    /// @notice Makes `alice` the admin of MINTER_ROLE through SUPER_ROLE, with `delay` as her execution delay.
+    function _setUpRoleAdmin(uint32 delay) internal {
+        vm.startPrank(admin);
+        mgr.setRoleAdmin(MINTER_ROLE, SUPER_ROLE);
+        mgr.grantRole(SUPER_ROLE, alice, delay);
+        vm.stopPrank();
+    }
+
+    function test_RoleAdminDelay_ImmediateGrantRoleReverts() public {
+        _setUpRoleAdmin(1 days);
+
+        bytes memory data = abi.encodeCall(IAccessManager.grantRole, (MINTER_ROLE, bob, 0));
+        bytes32 opId = mgr.hashOperation(alice, diamond, data);
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(IAccessManager.AccessManagerNotScheduled.selector, opId));
+        mgr.grantRole(MINTER_ROLE, bob, 0);
+        (bool isMember,) = mgr.hasRole(MINTER_ROLE, bob);
+        assertFalse(isMember);
+    }
+
+    function test_RoleAdminDelay_ScheduledGrantRoleRunsThroughExecute() public {
+        _setUpRoleAdmin(1 days);
+
+        bytes memory data = abi.encodeCall(IAccessManager.grantRole, (MINTER_ROLE, bob, 0));
+        vm.prank(alice);
+        (bytes32 opId,) = mgr.schedule(diamond, data, 0);
+
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(IAccessManager.AccessManagerNotReady.selector, opId));
+        mgr.execute(diamond, data);
+
+        vm.warp(block.timestamp + 1 days);
+        vm.prank(alice);
+        mgr.execute(diamond, data);
+        (bool isMember,) = mgr.hasRole(MINTER_ROLE, bob);
+        assertTrue(isMember);
+        assertEq(mgr.getSchedule(opId), 0, "schedule consumed");
+    }
+
+    function test_RoleAdminDelay_ScheduledRevokeRoleRunsDirectly() public {
+        vm.prank(admin);
+        mgr.grantRole(MINTER_ROLE, bob, 0);
+        _setUpRoleAdmin(1 days);
+
+        bytes memory data = abi.encodeCall(IAccessManager.revokeRole, (MINTER_ROLE, bob));
+        bytes32 opId = mgr.hashOperation(alice, diamond, data);
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(IAccessManager.AccessManagerNotScheduled.selector, opId));
+        mgr.revokeRole(MINTER_ROLE, bob);
+
+        vm.prank(alice);
+        mgr.schedule(diamond, data, 0);
+        vm.warp(block.timestamp + 1 days);
+        vm.prank(alice);
+        mgr.revokeRole(MINTER_ROLE, bob);
+        (bool isMember,) = mgr.hasRole(MINTER_ROLE, bob);
+        assertFalse(isMember);
+        assertEq(mgr.getSchedule(opId), 0, "schedule consumed");
+    }
+
+    function test_RoleAdminWithoutDelay_GrantsImmediately() public {
+        _setUpRoleAdmin(0);
+
+        vm.prank(alice);
+        mgr.grantRole(MINTER_ROLE, bob, 0);
+        (bool isMember,) = mgr.hasRole(MINTER_ROLE, bob);
+        assertTrue(isMember);
+    }
+
+    /// @notice A delayed role admin's schedule covers only the roles it administers.
+    function test_RoleAdminDelay_CannotScheduleForOtherRoles() public {
+        _setUpRoleAdmin(1 days);
+
+        bytes memory data = abi.encodeCall(IAccessManager.grantRole, (uint64(3), bob, 0));
+        vm.prank(alice);
+        vm.expectRevert(
+            abi.encodeWithSelector(IAccessManager.AccessManagerUnauthorizedAccount.selector, alice, ADMIN_ROLE)
+        );
+        mgr.schedule(diamond, data, 0);
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                        #219: consumeScheduledOp
+    //////////////////////////////////////////////////////////////////////////*//
+
+    function test_ConsumeScheduledOp_RevertsUnlessTargetIsConsuming() public {
+        NonConsumingTarget t = new NonConsumingTarget();
+        vm.expectRevert(abi.encodeWithSelector(IAccessManager.AccessManagerUnauthorizedConsume.selector, address(t)));
+        t.consume(IAccessManager(diamond), alice, hex"12345678");
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                    #219: EXPIRATION (OZ `_isExpired` PARITY)
+    //////////////////////////////////////////////////////////////////////////*//
+
+    uint32 constant EXPIRATION = 1 weeks;
+
+    /// @notice Schedules `setTargetClosed(TARGET, true)` against a 1-day admin delay; returns its id and readyAt.
+    function _scheduleDelayedClose() internal returns (bytes memory data, bytes32 opId, uint48 readyAt) {
+        _setAdminDelayInForce(TARGET, 1 days);
+        data = abi.encodeCall(IAccessManager.setTargetClosed, (TARGET, true));
+        vm.prank(admin);
+        (opId,) = mgr.schedule(diamond, data, 0);
+        readyAt = mgr.getSchedule(opId);
+    }
+
+    function test_Expiry_DirectAdminCallRevertsExpired() public {
+        (, bytes32 opId, uint48 readyAt) = _scheduleDelayedClose();
+        vm.warp(uint256(readyAt) + EXPIRATION + 1 days);
+        vm.prank(admin);
+        vm.expectRevert(abi.encodeWithSelector(IAccessManager.AccessManagerExpired.selector, opId));
+        mgr.setTargetClosed(TARGET, true);
+        assertFalse(mgr.isTargetClosed(TARGET));
+    }
+
+    function test_Expiry_ExecuteRevertsExpired() public {
+        (bytes memory data, bytes32 opId, uint48 readyAt) = _scheduleDelayedClose();
+        vm.warp(uint256(readyAt) + EXPIRATION + 1 days);
+        vm.prank(admin);
+        vm.expectRevert(abi.encodeWithSelector(IAccessManager.AccessManagerExpired.selector, opId));
+        mgr.execute(diamond, data);
+        assertFalse(mgr.isTargetClosed(TARGET));
+    }
+
+    /// @notice OZ `_isExpired` is `readyAt + expiration <= now`: the operation is expired at exactly that second.
+    function test_Expiry_ExpiredAtExactBoundary() public {
+        (bytes memory data, bytes32 opId, uint48 readyAt) = _scheduleDelayedClose();
+        vm.warp(uint256(readyAt) + EXPIRATION);
+        assertEq(mgr.getSchedule(opId), 0, "getSchedule reports expired");
+
+        vm.prank(admin);
+        vm.expectRevert(abi.encodeWithSelector(IAccessManager.AccessManagerExpired.selector, opId));
+        mgr.setTargetClosed(TARGET, true);
+
+        vm.prank(admin);
+        vm.expectRevert(abi.encodeWithSelector(IAccessManager.AccessManagerExpired.selector, opId));
+        mgr.execute(diamond, data);
+
+        // An expired operation may be scheduled again at the same second.
+        vm.prank(admin);
+        (bytes32 again,) = mgr.schedule(diamond, data, 0);
+        assertEq(again, opId);
+        assertEq(mgr.getSchedule(opId), block.timestamp + 1 days);
+    }
+
+    function test_Expiry_ValidOneSecondBeforeBoundary() public {
+        (, bytes32 opId, uint48 readyAt) = _scheduleDelayedClose();
+        vm.warp(uint256(readyAt) + EXPIRATION - 1);
+        assertEq(mgr.getSchedule(opId), readyAt);
+
+        vm.prank(admin);
+        mgr.setTargetClosed(TARGET, true);
+        assertTrue(mgr.isTargetClosed(TARGET));
+        assertEq(mgr.getSchedule(opId), 0, "schedule consumed");
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                #219: IMMEDIATE EXECUTE (OZ `execute` PARITY)
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice With nothing scheduled, `execute` consumes nothing: it emits no `OperationExecuted` and returns 0,
+    ///         even when the operation id kept a nonce from an earlier consumed schedule.
+    function test_Execute_ImmediateEmitsNoOperationExecutedAndReturnsZero() public {
+        (bytes memory data, bytes32 opId,) = _scheduleDelayedClose();
+        vm.warp(block.timestamp + 1 days);
+        vm.prank(admin);
+        uint32 consumedNonce = mgr.execute(diamond, data);
+        assertGt(consumedNonce, 0);
+        assertEq(mgr.getNonce(opId), consumedNonce);
+
+        // Drop the admin delay so the same call becomes immediate.
+        vm.prank(admin);
+        mgr.setTargetAdminDelay(TARGET, 0);
+        vm.warp(block.timestamp + MIN_SETBACK);
+        assertEq(mgr.getTargetAdminDelay(TARGET), 0);
+
+        vm.recordLogs();
+        vm.prank(admin);
+        uint32 nonce = mgr.execute(diamond, data);
+        assertEq(nonce, 0, "nothing consumed");
+
+        bytes32 sig = IAccessManager.OperationExecuted.selector;
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        for (uint256 i; i < logs.length; ++i) {
+            assertTrue(logs[i].topics[0] != sig, "OperationExecuted emitted without a consumed schedule");
+        }
     }
 }

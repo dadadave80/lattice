@@ -144,8 +144,8 @@ contract AccessManagedTest is AccessManagedTestBase {
         managedHelper.restrictedFn();
     }
 
-    /// @notice T-1 / H-1 regression: a caller with an execution delay gets
-    ///         AccessManagedRequiredDelay when calling directly (without schedule+execute).
+    /// @notice T-1 / H-1 regression: a caller with an execution delay cannot call directly without a matured
+    ///         schedule: the target asks the authority to consume one, and there is none (#219, OZ semantics).
     function test_RestrictedFnWithDelayRevertsDirectly() public {
         bytes4[] memory selectors = new bytes4[](1);
         selectors[0] = managedHelper.restrictedFn.selector;
@@ -155,11 +155,148 @@ contract AccessManagedTest is AccessManagedTestBase {
         vm.prank(admin);
         mgr.grantRole(CALLER_ROLE, alice, uint32(1 days)); // execution delay
 
+        bytes32 opId = mgr.hashOperation(alice, diamond, abi.encodeCall(AccessManagedTestFacet.restrictedFn, ()));
         vm.prank(alice);
-        vm.expectRevert(
-            abi.encodeWithSelector(IAccessManaged.AccessManagedRequiredDelay.selector, alice, uint32(1 days))
-        );
+        vm.expectRevert(abi.encodeWithSelector(IAccessManager.AccessManagerNotScheduled.selector, opId));
         managedHelper.restrictedFn();
+    }
+
+    /// @notice #219: a delayed caller may schedule the call and then make it directly once ready. The target sets
+    ///         its consuming flag around `consumeScheduledOp`, the authority checks it, and the schedule is spent.
+    function test_RestrictedFnWithDelayDirectCallConsumesSchedule() public {
+        bytes4[] memory selectors = new bytes4[](1);
+        selectors[0] = managedHelper.restrictedFn.selector;
+
+        vm.prank(admin);
+        mgr.setTargetFunctionRole(diamond, selectors, CALLER_ROLE);
+        vm.prank(admin);
+        mgr.grantRole(CALLER_ROLE, alice, uint32(1 days));
+
+        bytes memory data = abi.encodeCall(AccessManagedTestFacet.restrictedFn, ());
+        vm.prank(alice);
+        (bytes32 opId, uint32 nonce) = mgr.schedule(diamond, data, 0);
+
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(IAccessManager.AccessManagerNotReady.selector, opId));
+        managedHelper.restrictedFn();
+
+        vm.warp(block.timestamp + 1 days);
+        vm.expectEmit(true, true, false, false, authority);
+        emit IAccessManager.OperationExecuted(opId, nonce);
+        vm.prank(alice);
+        managedHelper.restrictedFn();
+
+        assertEq(mgr.getSchedule(opId), 0, "schedule consumed");
+        assertEq(managed.isConsumingScheduledOp(), bytes4(0), "flag cleared after the call");
+
+        // Spent: a second direct call has nothing to consume.
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(IAccessManager.AccessManagerNotScheduled.selector, opId));
+        managedHelper.restrictedFn();
+    }
+
+    /// @notice #219: a target can consume only operations scheduled against itself, and only while consuming.
+    function test_ConsumeScheduledOpOutsideRestrictedCheckReverts() public {
+        vm.prank(diamond);
+        vm.expectRevert(abi.encodeWithSelector(IAccessManager.AccessManagerUnauthorizedConsume.selector, diamond));
+        mgr.consumeScheduledOp(alice, abi.encodeCall(AccessManagedTestFacet.restrictedFn, ()));
+    }
+
+    /// @notice #219: a delayed direct call whose schedule has expired reverts with the authority's
+    ///         `AccessManagerExpired`, bubbled up through `consumeScheduledOp`.
+    function test_RestrictedFnWithDelayDirectCallRevertsWhenExpired() public {
+        bytes4[] memory selectors = new bytes4[](1);
+        selectors[0] = managedHelper.restrictedFn.selector;
+        vm.prank(admin);
+        mgr.setTargetFunctionRole(diamond, selectors, CALLER_ROLE);
+        vm.prank(admin);
+        mgr.grantRole(CALLER_ROLE, alice, uint32(1 days));
+
+        vm.prank(alice);
+        (bytes32 opId,) = mgr.schedule(diamond, abi.encodeCall(AccessManagedTestFacet.restrictedFn, ()), 0);
+        uint48 readyAt = mgr.getSchedule(opId);
+
+        vm.warp(uint256(readyAt) + 1 weeks);
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(IAccessManager.AccessManagerExpired.selector, opId));
+        managedHelper.restrictedFn();
+        assertEq(managed.isConsumingScheduledOp(), bytes4(0));
+    }
+
+    /// @notice #219: `updateAuthority` carries the managed target's admin delay. On its own this is no exit window:
+    ///         see {test_ExecuteSetAuthority_BypassesAdminDelayWhileSelectorIsAdminRole}.
+    function test_UpdateAuthorityRespectsTargetAdminDelay() public {
+        address newAuthority = _deployAuthority(admin);
+        vm.prank(admin);
+        mgr.setTargetAdminDelay(diamond, 1 days);
+        vm.warp(block.timestamp + 5 days);
+
+        bytes memory data = abi.encodeCall(IAccessManager.updateAuthority, (diamond, newAuthority));
+        bytes32 opId = mgr.hashOperation(admin, authority, data);
+        vm.prank(admin);
+        vm.expectRevert(abi.encodeWithSelector(IAccessManager.AccessManagerNotScheduled.selector, opId));
+        mgr.updateAuthority(diamond, newAuthority);
+
+        vm.prank(admin);
+        mgr.schedule(authority, data, 0);
+        vm.warp(block.timestamp + 1 days);
+        vm.prank(admin);
+        mgr.execute(authority, data);
+        assertEq(managed.authority(), newAuthority);
+    }
+
+    /// @notice #219 characterization (OZ v5.1.0 parity): while the target's `setAuthority` selector keeps the default
+    ///         ADMIN_ROLE, an admin migrates it at once with `execute(target, setAuthority(x))`. That call is gated by
+    ///         the target's function roles, not by the admin restriction on `updateAuthority`, so the admin delay
+    ///         does not apply to it.
+    function test_ExecuteSetAuthority_BypassesAdminDelayWhileSelectorIsAdminRole() public {
+        address newAuthority = _deployAuthority(admin);
+        vm.prank(admin);
+        mgr.setTargetAdminDelay(diamond, 7 days);
+        vm.warp(block.timestamp + 7 days);
+        assertEq(mgr.getTargetAdminDelay(diamond), 7 days);
+
+        vm.prank(admin);
+        mgr.execute(diamond, abi.encodeCall(IAccessManaged.setAuthority, (newAuthority)));
+        assertEq(managed.authority(), newAuthority);
+    }
+
+    /// @notice #219: mapping the target's `setAuthority` to a role nobody holds closes the `execute` route, leaves
+    ///         `updateAuthority` (with its admin delay) as the only migration path, and undoing the mapping is itself
+    ///         held back by the admin delay.
+    function test_ExecuteSetAuthority_BlockedOnceSelectorMappedToUnheldRole() public {
+        uint64 noOne = 99;
+        address newAuthority = _deployAuthority(admin);
+        bytes4[] memory selectors = new bytes4[](1);
+        selectors[0] = IAccessManaged.setAuthority.selector;
+        vm.prank(admin);
+        mgr.setTargetFunctionRole(diamond, selectors, noOne);
+        vm.prank(admin);
+        mgr.setTargetAdminDelay(diamond, 7 days);
+        vm.warp(block.timestamp + 7 days);
+
+        bytes memory setAuthorityCall = abi.encodeCall(IAccessManaged.setAuthority, (newAuthority));
+        vm.prank(admin);
+        vm.expectRevert(abi.encodeWithSelector(IAccessManager.AccessManagerUnauthorizedAccount.selector, admin, noOne));
+        mgr.execute(diamond, setAuthorityCall);
+
+        // Remapping the selector back is a target-configuration change, so it waits out the admin delay too.
+        bytes32 remapId = mgr.hashOperation(
+            admin, authority, abi.encodeCall(IAccessManager.setTargetFunctionRole, (diamond, selectors, uint64(0)))
+        );
+        vm.prank(admin);
+        vm.expectRevert(abi.encodeWithSelector(IAccessManager.AccessManagerNotScheduled.selector, remapId));
+        mgr.setTargetFunctionRole(diamond, selectors, 0);
+        assertEq(mgr.getTargetFunctionRole(diamond, IAccessManaged.setAuthority.selector), noOne);
+
+        // The delayed `updateAuthority` still migrates the target.
+        bytes memory update = abi.encodeCall(IAccessManager.updateAuthority, (diamond, newAuthority));
+        vm.prank(admin);
+        mgr.schedule(authority, update, 0);
+        vm.warp(block.timestamp + 7 days);
+        vm.prank(admin);
+        mgr.execute(authority, update);
+        assertEq(managed.authority(), newAuthority);
     }
 
     /// @notice T-1 / H-1 regression: a caller with an execution delay can succeed through
