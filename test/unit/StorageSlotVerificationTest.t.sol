@@ -59,6 +59,10 @@ import {
     ERC165_MAP_ERC4906_SLOT,
     ERC721URISTORAGE_STORAGE_SLOT
 } from "@lattice/tokens/ERC721/libraries/ERC721URIStorageLib.sol";
+import {
+    ERC165_MAP_IERC721WRAPPER_SLOT,
+    ERC721WRAPPER_STORAGE_SLOT
+} from "@lattice/tokens/ERC721/libraries/ERC721WrapperLib.sol";
 
 // governance
 import {
@@ -403,6 +407,7 @@ import {IERC20Capped} from "@lattice/interfaces/tokens/IERC20Capped.sol";
 import {IERC20Wrapper} from "@lattice/interfaces/tokens/IERC20Wrapper.sol";
 import {IERC2981} from "@lattice/interfaces/tokens/IERC2981.sol";
 import {IERC4626} from "@lattice/interfaces/tokens/IERC4626.sol";
+import {IERC721Wrapper} from "@lattice/interfaces/tokens/IERC721Wrapper.sol";
 import {IHTSAdapter} from "@lattice/interfaces/tokens/IHTSAdapter.sol";
 import {IEIP712} from "@lattice/interfaces/utils/IEIP712.sol";
 import {INonces} from "@lattice/interfaces/utils/INonces.sol";
@@ -428,6 +433,8 @@ import {IERC1155} from "@lattice/interfaces/tokens/IERC1155.sol";
 import {IERC20Burnable} from "@lattice/interfaces/tokens/IERC20Burnable.sol";
 import {IERC20Permit} from "@lattice/interfaces/tokens/IERC20Permit.sol";
 import {IERC721} from "@lattice/interfaces/tokens/IERC721.sol";
+import {IERC721Burnable} from "@lattice/interfaces/tokens/IERC721Burnable.sol";
+import {ERC165_MAP_IERC721BURNABLE_SLOT} from "@lattice/tokens/ERC721/libraries/ERC721BurnableLib.sol";
 import {ERC165_MAP_IERC7802_SLOT} from "@lattice/tokens/ERC7802/libraries/ERC7802Lib.sol";
 
 /// @title StorageSlotVerificationTest
@@ -1210,6 +1217,34 @@ contract StorageSlotVerificationTest is Test {
             ERC165_MAP_IERC20WRAPPER_SLOT,
             _erc165MapSlot(type(IERC20Wrapper).interfaceId, ERC165_STORAGE_LOCATION),
             "ERC165 IERC20Wrapper map slot mismatch"
+        );
+    }
+
+    function test_ERC721WrapperStorageSlot() public pure {
+        assertEq(
+            ERC721WRAPPER_STORAGE_SLOT,
+            _erc7201Slot("lattice.storage.ERC721Wrapper"),
+            "ERC721Wrapper storage slot mismatch"
+        );
+    }
+
+    function test_Erc165MapIERC721WrapperSlot() public pure {
+        bytes4 interfaceId = type(IERC721Wrapper).interfaceId;
+        assertEq(interfaceId, bytes4(0xd9e5011d), "IERC721Wrapper interfaceId comment is stale");
+        assertEq(
+            ERC165_MAP_IERC721WRAPPER_SLOT,
+            _erc165MapSlot(interfaceId, ERC165_STORAGE_LOCATION),
+            "ERC165 IERC721Wrapper map slot mismatch"
+        );
+    }
+
+    function test_Erc165MapIERC721BurnableSlot() public pure {
+        bytes4 interfaceId = type(IERC721Burnable).interfaceId;
+        assertEq(interfaceId, bytes4(0x42966c68), "IERC721Burnable interfaceId comment is stale");
+        assertEq(
+            ERC165_MAP_IERC721BURNABLE_SLOT,
+            _erc165MapSlot(interfaceId, ERC165_STORAGE_LOCATION),
+            "ERC165 IERC721Burnable map slot mismatch"
         );
     }
 
@@ -2121,7 +2156,7 @@ contract StorageSlotVerificationTest is Test {
     // ======================== Slot inventories ========================
 
     function _allStorageSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](90);
+        slots = new bytes32[](91);
         uint256 i;
         // access
         slots[i++] = ACCESS_CONTROL_STORAGE_SLOT;
@@ -2135,6 +2170,7 @@ contract StorageSlotVerificationTest is Test {
         slots[i++] = ERC20WRAPPER_STORAGE_SLOT;
         slots[i++] = ERC721_STORAGE_SLOT;
         slots[i++] = ERC721URISTORAGE_STORAGE_SLOT;
+        slots[i++] = ERC721WRAPPER_STORAGE_SLOT;
         slots[i++] = ERC1155_STORAGE_SLOT;
         slots[i++] = ERC2981_STORAGE_SLOT;
         slots[i++] = ERC4626_STORAGE_SLOT;
@@ -2231,7 +2267,7 @@ contract StorageSlotVerificationTest is Test {
     }
 
     function _allErc165MapSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](99);
+        slots = new bytes32[](101);
         uint256 i;
         // access
         slots[i++] = ERC165_MAP_IACCESSCONTROL_SLOT;
@@ -2245,6 +2281,8 @@ contract StorageSlotVerificationTest is Test {
         slots[i++] = ERC165_MAP_IERC721_SLOT;
         slots[i++] = ERC165_MAP_IERC721METADATA_SLOT;
         slots[i++] = ERC165_MAP_ERC4906_SLOT;
+        slots[i++] = ERC165_MAP_IERC721BURNABLE_SLOT;
+        slots[i++] = ERC165_MAP_IERC721WRAPPER_SLOT;
         slots[i++] = ERC165_MAP_IERC1155_SLOT;
         slots[i++] = ERC165_MAP_IERC1155METADATAURI_SLOT;
         slots[i++] = ERC165_MAP_IERC2981_SLOT;

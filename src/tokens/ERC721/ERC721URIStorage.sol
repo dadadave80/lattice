@@ -14,7 +14,7 @@ import {ERC721URIStorageLib} from "@lattice/tokens/ERC721/libraries/ERC721URISto
 ///      surface comes from a separately-cut {ERC721} facet; {DeployERC721URIStorage} composes both. The EIP-4906
 ///      metadata-update events are emitted by {ERC721URIStorageLib}. Pure delegator pattern.
 /// @custom:lattice-version 0.1.0
-/// @custom:lattice-source OpenZeppelin v5.1.0
+/// @custom:lattice-source OpenZeppelin v5.6.1
 contract ERC721URIStorage {
     /// @notice Returns the URI for `tokenId`.
     /// @dev Replaces the base {ERC721} `tokenURI` to use per-token URI storage.
