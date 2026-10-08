@@ -15,6 +15,23 @@ import {ISafeHarborAdopter} from "@lattice/interfaces/governance/ISafeHarborAdop
 ///      managed through the diamond's AccessControl module; the registry + factory are supplied at init
 ///      and rotated per chain. VERIFY the deployed SEAL addresses + AgreementDetails ABI for your chain
 ///      before mainnet use.
+///
+///      This facet covers only the on-chain half of adoption: creating and registering an agreement
+///      ({createAndAdopt}) or registering a pre-deployed one ({adoptSafeHarbor}). SEAL's adoption procedure
+///      has three final steps (https://github.com/security-alliance/safe-harbor/blob/78ba9237377a9622439cbab41a5336673cea1b92/README.md#protocol-adoption).
+///      The adopting protocol does the first two off-chain; this facet makes the third:
+///      1. Publish an Agreement Fact Page with every detail of the adoption, maintained off-chain for anyone
+///         to view.
+///      2. Add the agreement's Exhibit D (User Adoption Procedures), adapted, to its terms of service.
+///      3. Make the registry call from its decision-making authority. That call is the legally binding
+///         step. The diamond makes it through this facet and is recorded as the adopter, so the call must
+///         come from the protocol's governance: grant `SAFE_HARBOR_ADMIN_ROLE` only to it (for example its
+///         Governor-controlled TimelockController), never to an operator key, and keep `DEFAULT_ADMIN_ROLE`,
+///         which administers that role, with the same authority. The agreement's owner (the `owner`
+///         argument of {createAndAdopt}, or the owner of a pre-deployed agreement passed to
+///         {adoptSafeHarbor}) must be that same authority too: after adoption the owner alone can change
+///         the agreement's chains, accounts, asset-recovery addresses and bounty terms.
+///      Lattice itself has not adopted Safe Harbor; see the Safe Harbor section of SECURITY.md.
 /// @custom:lattice-version 0.1.0
 /// @custom:lattice-source Lattice original
 contract SafeHarborAdopter is ISafeHarborAdopter {
