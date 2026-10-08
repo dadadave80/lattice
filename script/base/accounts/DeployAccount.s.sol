@@ -24,7 +24,8 @@ import {ERC7821Executor} from "@lattice/accounts/erc7579/ERC7821Executor.sol";
 ///         self-report their selectors via {BaseDeploy}'s ERC-8153 address cut (`exportSelectors()`, no FFI);
 ///         the diamond-lib core facets keep the `forge inspect` string cut.
 /// @dev {AccountFactory} takes the blueprint as a constructor arg — it deliberately does NOT hardcode the
-///      facet set — so this script is where the account's canonical facet list actually lives.
+///      facet set — so this script is where the account's canonical facet list actually lives. {Receive} is
+///      in the set because an account is funded with plain ETH sends (gas prefund, call value).
 contract DeployAccount is BaseDeploy {
     /// @notice Builds the canonical account facet cuts + initializer. No broadcast, no proxy deploy — the
     ///         reusable primitive both {run} and the test blueprint helper consume.

@@ -43,29 +43,39 @@ contract RecipeUpgradeabilityCoreTest is RecipeGuards {
 
     function test_Introspectable_Account() public {
         (FacetCut[] memory cuts, AccountInit init) = new DeployAccount().buildCuts(entryPoint);
-        _assertIntrospectable(_assemble(cuts, address(init), abi.encodeCall(AccountInit.init, (address(this)))), 9);
+        address d = _assemble(cuts, address(init), abi.encodeCall(AccountInit.init, (address(this))));
+        _assertIntrospectable(d, 9);
+        _assertBareEth(d, true);
     }
 
     function test_Introspectable_Account6900() public {
         (FacetCut[] memory cuts, AccountInit6900 init) = new DeployAccount6900().buildCuts(entryPoint);
-        _assertIntrospectable(_assemble(cuts, address(init), abi.encodeCall(AccountInit6900.init, (address(this)))), 10);
+        address d = _assemble(cuts, address(init), abi.encodeCall(AccountInit6900.init, (address(this))));
+        _assertIntrospectable(d, 10);
+        _assertBareEth(d, true);
     }
 
     function test_Introspectable_GovernedDiamondCut() public {
         (FacetCut[] memory cuts, address init, bytes memory cd) = new DeployGovernedDiamondCut().buildCuts(ADMIN);
-        _assertIntrospectable(_assemble(cuts, init, cd), 6);
+        address d = _assemble(cuts, init, cd);
+        _assertIntrospectable(d, 5);
+        _assertBareEth(d, false);
     }
 
     function test_Introspectable_SafeDiamondCut() public {
         (FacetCut[] memory cuts, address init, bytes memory cd) =
             new DeploySafeDiamondCut().buildCuts(ADMIN, _mockSafe(), 1);
-        _assertIntrospectable(_assemble(cuts, init, cd), 6);
+        address d = _assemble(cuts, init, cd);
+        _assertIntrospectable(d, 5);
+        _assertBareEth(d, false);
     }
 
     function test_Introspectable_GovernedSafeDiamondCut() public {
         (FacetCut[] memory cuts, address init, bytes memory cd) =
             new DeployGovernedSafeDiamondCut().buildCuts(ADMIN, _mockSafe(), 1, 300);
-        _assertIntrospectable(_assemble(cuts, init, cd), 6);
+        address d = _assemble(cuts, init, cd);
+        _assertIntrospectable(d, 5);
+        _assertBareEth(d, false);
     }
 
     function _vaultParams() internal returns (GovernedVaultParams memory p) {
@@ -81,7 +91,9 @@ contract RecipeUpgradeabilityCoreTest is RecipeGuards {
     function test_Introspectable_GovernedVault() public {
         vm.warp(1_000_000);
         (FacetCut[] memory cuts, address init, bytes memory cd) = new DeployGovernedVault().buildCuts(_vaultParams());
-        _assertIntrospectable(_assemble(cuts, init, cd), 14);
+        address d = _assemble(cuts, init, cd);
+        _assertIntrospectable(d, 14);
+        _assertBareEth(d, true);
     }
 
     function test_Introspectable_GovernedVaultENS() public {
@@ -91,6 +103,8 @@ contract RecipeUpgradeabilityCoreTest is RecipeGuards {
         p.reverseRegistrar = address(new GuardReverseRegistrar());
         p.ensName = "guard.lattice.eth";
         (FacetCut[] memory cuts, address init, bytes memory cd) = new DeployGovernedVaultENS().buildCutsWithENS(p);
-        _assertIntrospectable(_assemble(cuts, init, cd), 15);
+        address d = _assemble(cuts, init, cd);
+        _assertIntrospectable(d, 15);
+        _assertBareEth(d, true);
     }
 }

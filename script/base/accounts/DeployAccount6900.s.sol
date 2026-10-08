@@ -21,7 +21,8 @@ import {ERC6900Validation} from "@lattice/accounts/erc6900/ERC6900Validation.sol
 ///         of truth shared by production deploys and the {AccountFactory6900} test blueprint. The shared
 ///         Diamond core (cut/loupe/erc165/access) plus the five 6900 facets (module manager, executor,
 ///         userOp validation, signature, account view) replace the ERC-7579 stack. Companion to
-///         {DeployAccount}; see it for the broadcast-free {buildCuts} vs broadcasting {run} split.
+///         {DeployAccount}; see it for the broadcast-free {buildCuts} vs broadcasting {run} split. Like it,
+///         the set includes {Receive}: an account is funded with plain ETH sends.
 contract DeployAccount6900 is BaseDeploy {
     /// @notice Builds the canonical ERC-6900 account facet cuts + initializer (no broadcast, no proxy deploy).
     /// @param entryPoint_ The EntryPoint the account's {AccountInit6900} seeds.
