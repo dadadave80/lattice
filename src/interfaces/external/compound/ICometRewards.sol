@@ -2,8 +2,10 @@
 pragma solidity >=0.8.4;
 
 /// @title ICometRewards
-/// @author Modified from Compound v3 (https://github.com/compound-finance/comet/blob/main/contracts/CometRewards.sol)
-/// @notice Minimal vendored subset: claim COMP rewards accrued in a Comet market.
+/// @author ABI-equivalent interface authored fresh from Compound v3's public ABI
+///         (https://github.com/compound-finance/comet/blob/main/contracts/CometRewards.sol).
+///         Upstream license: BUSL-1.1 (not copied). Only the selectors the adapter calls are declared.
+/// @notice Minimal ABI-equivalent interface: claim COMP rewards accrued in a Comet market.
 interface ICometRewards {
     /// @notice Claims all accrued rewards for `src` in `comet`, sending them to `to`.
     function claimTo(address comet, address src, address to, bool shouldAccrue) external;

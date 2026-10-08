@@ -3,7 +3,7 @@ pragma solidity ^0.8.30;
 
 /// @title IStarknetMessaging
 /// @author Vendored minimal subset of Starknet's `IStarknetMessaging` (https://github.com/starkware-libs/cairo-lang).
-///         Upstream is Apache-2.0.
+///         Upstream license: Apache-2.0.
 /// @notice The L1-side Starknet core messaging surface an L1 <-> L2 connector needs: fee-escrowed L1 -> L2
 ///         sends, pull-based L2 -> L1 consumes, and the two-step sender-only L1 -> L2 cancellation flow.
 /// @dev Semantics (per the upstream `StarknetMessaging` implementation):

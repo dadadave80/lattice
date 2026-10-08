@@ -107,7 +107,16 @@ author line):
 - The facet, its `*Lib`, AND its first-party interface each carry the line (precedent: `BandAdapter`,
   `BandAdapterLib`, `IBandAdapter`).
 - Files under `src/interfaces/external/` use the vendored style instead:
-  `/// @author Vendored minimal subset of <SourceName> (<link>).` (+ upstream license note when known).
+  `/// @author Vendored minimal subset of <SourceName> (<link>).` followed by
+  `///         Upstream license: <SPDX id>.` (the upstream file's own tag; `unknown` if it cannot be found).
+  An interface re-declared from a BUSL-1.1 (or other non-copyable) upstream without copying its text
+  says `/// @author ABI-equivalent interface authored fresh from <Source>'s public ABI (<link>).` instead,
+  still followed by the `Upstream license:` note (precedents: `IStargate`, `IComet`).
+  Add a row for the file to the third-party interface table in `lib/VENDORED.md`. `make license-check`
+  rejects `@author Modified from` there, requires one of the two `@author` forms plus the
+  `Upstream license:` note (except under `ercs/` and `seal/` until #247), and requires the table row.
+- Every `.sol` file starts with an SPDX line; every id in its expression other than MIT needs its text at
+  `LICENSES/<id>.txt`.
 - OZ-ported modules may use `/// @author Adapted for EIP-2535 from OpenZeppelin ... (<link>[, commit <sha>])`.
 - Every attribution line must contain a link. Use a file-precise `blob/master` link only when certain the
   upstream path exists; a repo-root link is the accepted fallback. Never fabricate a source or deep path.

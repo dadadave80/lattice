@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 /// @title AcrossMessageHandler
-/// @author Vendored minimal subset of Across's `AcrossMessageHandler` (https://github.com/across-protocol/contracts). Upstream is MIT.
+/// @author Vendored minimal subset of Across's `AcrossMessageHandler` (https://github.com/across-protocol/contracts). Upstream license: MIT.
 /// @notice Implemented by any contract that expects to receive messages from the Across v3 SpokePool: when a
 ///         deposit carries a non-empty `message`, the SpokePool calls `handleV3AcrossMessage` on the RECIPIENT
 ///         at fill time. Fills are relayer-pushed and optimistic — NOT yet UMA-finalized when this hook runs.

@@ -97,6 +97,11 @@ via-ir: ## IR-pipeline parity build (catches stack-too-deep / IR-only errors)
 storage-check: ## ERC-7201 append-only storage-layout guard
 	./script/upgrades/check-storage-layout.sh
 
+.PHONY: license-check
+license-check: ## License notices: SPDX on every .sol, license texts present, external interfaces attributed + listed in lib/VENDORED.md
+	./script/test-check-licenses.sh
+	./script/check-licenses.sh
+
 .PHONY: storage-update
 storage-update: ## Regenerate the storage-layout baseline (review the diff — appends only!)
 	./script/upgrades/check-storage-layout.sh --update
@@ -106,7 +111,7 @@ test-ci: ## Full test suite under the CI profile
 	FOUNDRY_PROFILE=ci forge test
 
 .PHONY: ci
-ci: fmt-check sizes via-ir storage-check test-ci ## All CI gates, locally, in CI order
+ci: fmt-check license-check sizes via-ir storage-check test-ci ## All CI gates, locally, in CI order
 
 .PHONY: slither
 slither: ## Static analysis (advisory, mirrors CI's slither job; needs slither installed)

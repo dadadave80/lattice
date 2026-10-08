@@ -2,7 +2,8 @@
 pragma solidity >=0.8.4;
 
 /// @title IGelatoAutomate
-/// @author Modified from Gelato (https://github.com/gelatodigital/automate/blob/master/contracts/interfaces/IAutomate.sol)
+/// @author Vendored minimal subset of Gelato (https://github.com/gelatodigital/automate/blob/master/contracts/interfaces/IAutomate.sol).
+///         Upstream license: MIT.
 /// @notice Minimal interface for the Gelato Automate (Web3 Functions / keeper) task manager.
 /// @dev Vendored subset — do not add a gelato dependency. Gelato executes a created task through a
 ///      task-creator-specific **dedicated msg.sender** (the Automate proxy); every exec entrypoint

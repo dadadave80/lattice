@@ -3,7 +3,7 @@ pragma solidity >=0.8.4;
 
 /// @title IETHRegistrarController
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
-/// @author Vendored minimal subset of ENS's `ETHRegistrarController` / `IETHRegistrarController` (https://github.com/ensdomains/ens-contracts). Upstream is MIT.
+/// @author Vendored minimal subset of ENS's `ETHRegistrarController` / `IETHRegistrarController` (https://github.com/ensdomains/ens-contracts). Upstream license: MIT.
 /// @notice Minimal vendored interface for the LIVE ENS .eth registrar controller generation (the
 ///         Namechain-era "premigration" controller, live-authorized on the Sepolia BaseRegistrar at
 ///         `0xdf60C561Ca35AD3C89D24BbA854654b1c3477078` — verified from its on-chain verified ABI and a

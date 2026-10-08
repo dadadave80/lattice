@@ -2,7 +2,8 @@
 pragma solidity >=0.8.4;
 
 /// @title ICurveGauge
-/// @author Modified from Curve LiquidityGauge (https://github.com/curvefi/curve-dao-contracts/blob/master/contracts/gauges/LiquidityGaugeV5.vy)
+/// @author Vendored minimal subset of Curve LiquidityGauge (https://github.com/curvefi/curve-dao-contracts/blob/master/contracts/gauges/LiquidityGaugeV5.vy).
+///         Upstream license: MIT.
 /// @notice Minimal vendored subset of a Curve liquidity gauge used to stake LP tokens for CRV (and
 ///         optional extra) rewards. Optional: the adapter runs unstaked (gauge == address(0)) or
 ///         stakes its LP here. Only the selectors the adapter calls are declared.

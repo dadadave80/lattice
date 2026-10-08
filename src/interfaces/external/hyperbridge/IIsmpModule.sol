@@ -5,7 +5,7 @@ import {IncomingPostRequest, PostRequest} from "@lattice/interfaces/external/hyp
 
 /// @title IIsmpModule
 /// @author Vendored minimal subset of Hyperbridge's ismp-solidity
-///         (https://github.com/polytope-labs/ismp-solidity). Upstream is Apache-2.0.
+///         (https://github.com/polytope-labs/ismp-solidity). Upstream license: Apache-2.0.
 /// @notice The six callbacks the local Hyperbridge `IsmpHost` invokes on a registered ISMP module. The
 ///         {HyperbridgeGatewayAdapter} implements ALL SIX (the host is the only authorized caller): `onAccept`
 ///         (inbound delivery) and `onPostRequestTimeout` (native timeout notification) are live paths; the

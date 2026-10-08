@@ -2,7 +2,8 @@
 pragma solidity >=0.8.4;
 
 /// @title IApi3Proxy
-/// @author Modified from API3 (https://github.com/api3dao/contracts)
+/// @author Vendored minimal subset of API3 (https://github.com/api3dao/contracts).
+///         Upstream license: MIT.
 /// @notice Minimal interface for an API3 dAPI reader proxy.
 /// @dev Vendored subset — do not add an api3 contracts dependency. A dAPI is read through a
 ///      per-feed proxy contract; `value` is reported with 18 decimals (WAD) and `timestamp` is

@@ -2,7 +2,8 @@
 pragma solidity >=0.8.4;
 
 /// @title IAaveV3Pool
-/// @author Modified from Aave v3 (https://github.com/aave/aave-v3-core/blob/master/contracts/interfaces/IPool.sol)
+/// @author Vendored minimal subset of Aave v3 (https://github.com/aave/aave-v3-core/blob/master/contracts/interfaces/IPool.sol).
+///         Upstream license: AGPL-3.0.
 /// @notice Minimal vendored subset of the Aave v3 Pool used by the Lattice Aave adapter:
 ///         supply/withdraw (supply leg), borrow/repay/setUserEMode (leverage leg), plus the
 ///         account-data and reserve-data reads needed for health and aToken resolution.

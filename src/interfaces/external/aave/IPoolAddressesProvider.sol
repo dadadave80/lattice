@@ -2,7 +2,8 @@
 pragma solidity >=0.8.4;
 
 /// @title IPoolAddressesProvider
-/// @author Modified from Aave v3 (https://github.com/aave/aave-v3-core/blob/master/contracts/interfaces/IPoolAddressesProvider.sol)
+/// @author Vendored minimal subset of Aave v3 (https://github.com/aave/aave-v3-core/blob/master/contracts/interfaces/IPoolAddressesProvider.sol).
+///         Upstream license: AGPL-3.0.
 /// @notice Minimal vendored subset: resolves the current Pool proxy address.
 /// @dev Adapters re-resolve `getPool()` on every state-changing call so an Aave proxy upgrade
 ///      is picked up automatically and approvals are always granted to the live Pool.
