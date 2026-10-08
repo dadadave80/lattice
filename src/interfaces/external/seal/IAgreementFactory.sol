@@ -60,6 +60,8 @@ struct AgreementDetails {
 
 /// @title IAgreementFactory
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Vendored minimal subset of SEAL Safe Harbor's registry contracts
+///         (https://github.com/security-alliance/safe-harbor). Upstream license: MIT.
 /// @notice Minimal vendored interface for the SEAL Safe Harbor `AgreementFactory` (registry v3.0.0),
 ///         used by {SafeHarborAdopter} to deploy an `Agreement` holding the protocol's terms.
 /// @dev The factory CREATE2-deploys an `Agreement` (Ownable, mutable) owned by `owner`. The deployed

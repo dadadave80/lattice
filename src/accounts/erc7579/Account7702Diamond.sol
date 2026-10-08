@@ -17,6 +17,14 @@ import {ECDSA} from "@lattice/utils/libraries/ECDSA.sol";
 /// @dev A front-runner cannot forge the EOA's signature, so cannot substitute a hostile blueprint; replaying
 ///      the EOA's own signed onboarding only reproduces the intended state (`init7702` sets owner = the EOA).
 ///      The residual is at most a failed first UserOp + retry, never account hijacking.
+///      LEFTOVER STORAGE (EIP-7702 keeps storage across re-delegation): module state is ERC-7201
+///      namespaced, but the `initializer` flag and diamond-lib's owner word sit in Solady's default
+///      Initializable (`0xff…bf601132`) and Ownable (`0xff…74873927`) slots. An EOA earlier delegated to a
+///      Solady-based account that left either slot non-zero cannot onboard: {initializeAuthorized} reverts
+///      `InvalidInitialization` (the constructor-only exemption needs empty code, and a delegated EOA has
+///      the delegation designator) or `AlreadyInitialized` (from `AccountInit`'s `initializeOwner`). Clear
+///      both slots first, via a delegate that zeroes them. Lattice's values likewise remain for the next
+///      delegate. Namespacing these slots is deferred to a coordinated 1.0 change (#247).
 contract Account7702Diamond is AccountDiamond {
     /// @notice The provided onboarding signature did not recover to this account (the delegating EOA).
     error UnauthorizedOnboarding();
