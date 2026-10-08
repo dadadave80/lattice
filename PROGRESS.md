@@ -14,14 +14,19 @@ which then executed a full governance lifecycle against itself.
 | Evidence | Link |
 |---|---|
 | Deploy script (commit permalink) | [`script/base/defi/DeployGovernedVaultENS.s.sol`](https://github.com/dadadave80/lattice/blob/d1af01a91199e7f13de1600bd8af194850c2a3be/script/base/defi/DeployGovernedVaultENS.s.sol) |
-| Verified diamond (Sepolia) | [`0x7a498c34A8Dc3B6502889C21218Da0F8696b7bb6`](https://sepolia.etherscan.io/address/0x7a498c34a8dc3b6502889c21218da0f8696b7bb6#code) — all 14 facets verified, full list in the [README deployment section](README.md#live-testnet-deployment-sepolia) |
+| Verified diamond (Sepolia) | [`0x7a498c34A8Dc3B6502889C21218Da0F8696b7bb6`](https://sepolia.etherscan.io/address/0x7a498c34a8dc3b6502889c21218da0f8696b7bb6#code) — all 14 facets verified (next row) |
+| Verified facets (Etherscan) | [ERC165Facet](https://sepolia.etherscan.io/address/0xddd97e17031bfb32c3428f13a44eb0449bf4ac62#code) · [AccessControl](https://sepolia.etherscan.io/address/0xf45d5e8bc4ad61059434983edab44963ccd0570d#code) · [TimelockController](https://sepolia.etherscan.io/address/0x894507f901ffe88fb9ff7ebe8edaecb2b959da10#code) · [ERC20](https://sepolia.etherscan.io/address/0x58e1f0d2ad3d94011c765adf0508dd588e3a7397#code) · [ERC4626](https://sepolia.etherscan.io/address/0xcc2b1ff44ac9bd105448c3346c571f8cc6ad1c04#code) · [VaultCore](https://sepolia.etherscan.io/address/0xecf68bd66e8457ceeee826bb5ab8040d36d2056f#code) · [Votes](https://sepolia.etherscan.io/address/0x3e698cce280af053bf6bf3f61edfe4f75e2d77fe#code) · [ERC20Votes](https://sepolia.etherscan.io/address/0x6db23df1319b12b2f8f36e78ccc409a6acbab56d#code) · [Governor](https://sepolia.etherscan.io/address/0x50c36f0eaeec1e3fa6d5f4212067aaa9c9e0b938#code) · [GovernedVault](https://sepolia.etherscan.io/address/0x27bcd5beff0594ff3abf4f27eeeb176f5f6d442b#code) · [DiamondLoupeFacet](https://sepolia.etherscan.io/address/0x983c1f18254af7f0c998a6f24699f17c5d1d2ab1#code) · [EmergencyStop](https://sepolia.etherscan.io/address/0xce342fdcade10e9571b8e249faa1f043cd0dd7e5#code) · [GovernedDiamondCut](https://sepolia.etherscan.io/address/0xc4eb702847dac1f636cee9c06dc125f132f49183#code) · [ENSReverseClaimer](https://sepolia.etherscan.io/address/0x91dfa8a2ee39ba605cb1633e46c8598d1649cc38#code) · (init: [GovernedVaultENSInit](https://sepolia.etherscan.io/address/0x58147df75c453c269ade1b18270505c1b5dc91d0#code)) |
+| Underlying asset | [`TestnetAsset`](https://sepolia.etherscan.io/address/0x9383f665dff7529f6c28e732ec4136d332fa43c9#code) (open faucet: `mint(address,uint256)`) |
 | Primary ENS name (forward + reverse) | [`milestone1vault.lattice.studio.eth`](https://sepolia.app.ens.domains/milestone1vault.lattice.studio.eth) |
 | Governance lifecycle executed on-chain | [`ProposalExecuted` tx `0xfba2c5…df64`](https://sepolia.etherscan.io/tx/0xfba2c57a3063883b43edb905fabcbe508c3ff9d3f0447d2d58fa2739c832df64) — proposal froze the loupe/cut selectors and reasserted the ENS name via the diamond's own Governor + TimelockController |
 | Deploy broadcast log | [`broadcast/DeployGovernedVaultENS.s.sol/11155111/run-latest.json`](broadcast/DeployGovernedVaultENS.s.sol/11155111/run-latest.json) |
 | Governance-demo broadcast log | [`broadcast/DeployGovernedVaultENS.s.sol/11155111/governanceDemo-latest.json`](broadcast/DeployGovernedVaultENS.s.sol/11155111/governanceDemo-latest.json) |
 | ENS registration broadcast log | [`broadcast/RegisterEnsName.s.sol/11155111/register-latest.json`](broadcast/RegisterEnsName.s.sol/11155111/register-latest.json) |
-| One-command reproduce | [README deployment section](README.md#live-testnet-deployment-sepolia) |
+| One-command reproduce | [README live deployments section](README.md#live-deployments-and-demos) |
 | Community files | [`LICENSE`](LICENSE) · [`SECURITY.md`](SECURITY.md) · [`CONTRIBUTING.md`](CONTRIBUTING.md) |
+
+This deployment predates the one-transaction `LatticeFactory` rule: it created and initialized the diamond
+in two transactions. Every `script/base/**` recipe now deploys through the factory.
 
 Tag: `grant-m1` — created on `main` when this evidence is promoted from `dev`.
 
@@ -89,5 +94,13 @@ source chain, in both a plain multi-destination transfer and a programmable-USDC
 | Auto-credit vault | [`0xe8e10843Ab41B2c359D02eA091b6772C43b05b1f`](https://base-sepolia.blockscout.com/address/0xe8e10843Ab41B2c359D02eA091b6772C43b05b1f) |
 | Programmable-USDC delivery, one tx | burn [`0xc9ba15…a77a4`](https://testnet.arcscan.app/tx/0xc9ba159c51f027ab336d56b054a5947be02f8d2ba398ffd304ffbbaf0e5a77a4) → relay [`0x7f82f3…b5d00`](https://base-sepolia.blockscout.com/tx/0x7f82f3c2128bf6026b340cbb1265ca5d5182de076d55d35a2223114ce09b5d00) minted to the vault **and** emitted `Credited(0x11Cf…eC00, 1000000, 26, hub)` |
 | Real-attestation replay (reproducible) | [`test/fork/CCTPHookDemoFork.t.sol`](test/fork/CCTPHookDemoFork.t.sol) replays the captured [Iris fixture](test/fixtures/cctp/arc-to-base-hook-v2.json) through the live Base diamond on a pinned fork — credits exactly 1 USDC, second relay reverts (nonce consumed) |
+| Receipt NFT (`CCTPHookReceipt`) | [`0x6De791…71a65`](https://base-sepolia.blockscout.com/address/0x6De7919B31b5FCBC771baD221B7A305F43871a65) |
+| Receipt demo burn (Arc) | [`0x7a923b…c6f07`](https://testnet.arcscan.app/tx/0x7a923bb854ea4e172cbb452d16cf5c1ff75765189c73f3e36d45ed65bf8c6f07) |
+| Receipt relay — direct USDC + NFT (Base) | [`0xbdcd52…5a8a7`](https://base-sepolia.blockscout.com/tx/0xbdcd52bb632dd2f2d031da3ba55ac421ad73b0cf3cf3f679047cfa51d5e5a8a7) — grant-video run; mints 5 USDC and receipt #4 to `0xDAda…C751` |
+| Receipt real-attestation replay | [`test/fork/CCTPHookReceiptDemoFork.t.sol`](test/fork/CCTPHookReceiptDemoFork.t.sol) replays the captured [receipt fixture](test/fixtures/cctp/arc-to-base-receipt-v2.json) |
 | Broadcast evidence | [`broadcast/multi/`](broadcast/multi) (multichain setups) · [`broadcast/CCTPHookDemo.s.sol/84532/`](broadcast/CCTPHookDemo.s.sol/84532) (hook relay) · [`broadcast/CCTPUSDCDemo.s.sol/`](broadcast/CCTPUSDCDemo.s.sol) (transfer relays) |
-| One-command reproduce | `make demo-cctp` · `make demo-cctp-hook KEYSTORE=<name>` — see the [README demo section](README.md#live-cross-chain-usdc-demos-circle-cctp-v2--arc-testnet) |
+| One-command reproduce | `make demo-cctp` · `make demo-cctp-hook KEYSTORE=<name>` · `make demo-cctp-receipt KEYSTORE=<name>` — see the [README demo section](README.md#live-deployments-and-demos) |
+
+All demo contracts are Sourcify-verified (`exact_match`) on both chains. The hook, receipt and round-trip
+demo scripts default to the hook demo's Arc hub and Base diamond above (`CANON_*` in
+`script/config/cctp-*.sh`); keep this table and those defaults in step.
