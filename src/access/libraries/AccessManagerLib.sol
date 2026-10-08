@@ -84,7 +84,7 @@ library AccessManagerLib {
     function __AccessManager_init(address initialAdmin) internal {
         InitializableLib.checkInitializing(InitializableLib.initializableSlot());
         if (initialAdmin == address(0)) revert IAccessManager.AccessManagerInvalidInitialAdmin();
-        _grantRoleInternal(ADMIN_ROLE, initialAdmin, 0, true);
+        _grantRoleInternal(ADMIN_ROLE, initialAdmin, 0);
         registerInterface();
     }
 
@@ -109,13 +109,17 @@ library AccessManagerLib {
         executionDelay = isMember ? _effectiveDelay(a.delay) : 0;
     }
 
+    /// @dev OZ `Time.Delay.getFull`: a pending execution delay already in force is reported as the current one,
+    ///      with nothing pending.
     function getAccess(uint64 roleId, address account)
         internal
         view
         returns (uint48 since, uint32 currentDelay, uint32 pendingDelay, uint48 effect)
     {
         Access storage a = accessManagerStorage()._access[roleId][account];
-        return (a.since, a.delay.value, a.delay.pendingValue, a.delay.effectAt);
+        Delay memory d = a.delay;
+        if (d.effectAt != 0 && block.timestamp >= d.effectAt) return (a.since, d.pendingValue, 0, 0);
+        return (a.since, d.value, d.pendingValue, d.effectAt);
     }
 
     function getRoleAdmin(uint64 roleId) internal view returns (uint64) {
@@ -203,7 +207,7 @@ library AccessManagerLib {
         if (roleId == ADMIN_ROLE || roleId == PUBLIC_ROLE) {
             revert IAccessManager.AccessManagerLockedRole(roleId);
         }
-        _grantRoleInternal(roleId, account, executionDelay, true);
+        _grantRoleInternal(roleId, account, executionDelay);
     }
 
     function revokeRole(uint64 roleId, address account) internal {
@@ -254,11 +258,8 @@ library AccessManagerLib {
             r.pendingGrantDelay = 0;
             r.grantDelayEffectAt = 0;
         }
-        // OZ `Time.Delay.withUpdate`, as in {setTargetAdminDelay}: the new value replaces any pending one, so
-        // re-setting the delay in force cancels a pending change.
-        uint32 currentDelay = r.grantDelay;
-        uint32 diff = currentDelay > newDelay ? currentDelay - newDelay : 0;
-        uint48 effectAt = uint48(block.timestamp + (diff > MIN_SETBACK ? diff : MIN_SETBACK));
+        // The new value replaces any pending one, so re-setting the delay in force cancels a pending change.
+        uint48 effectAt = _updateEffectAt(r.grantDelay, newDelay, MIN_SETBACK);
         r.pendingGrantDelay = newDelay;
         r.grantDelayEffectAt = effectAt;
         emit IAccessManager.RoleGrantDelayChanged(roleId, newDelay, effectAt);
@@ -290,11 +291,8 @@ library AccessManagerLib {
             t.pendingAdminDelay = 0;
             t.adminDelayEffectAt = 0;
         }
-        // OZ `Time.Delay.withUpdate`: a decrease waits out the difference, and every change (an equal value
-        // included) waits at least MIN_SETBACK.
-        uint32 currentDelay = t.adminDelay;
-        uint32 diff = currentDelay > newDelay ? currentDelay - newDelay : 0;
-        uint48 effectAt = uint48(block.timestamp + (diff > MIN_SETBACK ? diff : MIN_SETBACK));
+        // Every change, an equal value included, waits at least MIN_SETBACK.
+        uint48 effectAt = _updateEffectAt(t.adminDelay, newDelay, MIN_SETBACK);
         t.pendingAdminDelay = newDelay;
         t.adminDelayEffectAt = effectAt;
         emit IAccessManager.TargetAdminDelayUpdated(target, newDelay, effectAt);
@@ -428,26 +426,33 @@ library AccessManagerLib {
         return d.value;
     }
 
-    function _grantRoleInternal(uint64 roleId, address account, uint32 executionDelay, bool emitEvent) private {
+    /// @dev OZ `Time.Delay.withUpdate`'s effect time: a change from `currentDelay` to `newDelay` waits out the
+    ///      decrease (`currentDelay - newDelay`, nothing for an increase), and at least `minSetback`.
+    function _updateEffectAt(uint32 currentDelay, uint32 newDelay, uint32 minSetback) private view returns (uint48) {
+        uint32 diff = currentDelay > newDelay ? currentDelay - newDelay : 0;
+        return uint48(block.timestamp + (diff > minSetback ? diff : minSetback));
+    }
+
+    /// @dev OZ `_grantRole`. A new member joins after the role's grant delay, and the event's `since` is that time.
+    ///      An existing member keeps `since` and gets `delay.withUpdate(executionDelay, 0)`: an increase applies at
+    ///      once, a decrease after the difference, and the event's `since` is when the new delay takes effect.
+    ///      The new value replaces any pending one, measured from the delay in force.
+    function _grantRoleInternal(uint64 roleId, address account, uint32 executionDelay) private {
         AccessManagerStorage storage $ = accessManagerStorage();
         Access storage a = $._access[roleId][account];
         bool isNewMember = a.since == 0;
+        uint48 since;
         if (isNewMember) {
-            uint48 since = uint48(block.timestamp) + uint48(getRoleGrantDelay(roleId));
+            since = uint48(block.timestamp) + uint48(getRoleGrantDelay(roleId));
             a.since = since;
             a.delay.value = executionDelay;
             $._roleMembers[roleId].add(account);
-            if (emitEvent) {
-                emit IAccessManager.RoleGranted(roleId, account, executionDelay, since, true);
-            }
         } else {
-            if (a.delay.value != executionDelay) {
-                a.delay.value = executionDelay;
-                if (emitEvent) {
-                    emit IAccessManager.RoleGranted(roleId, account, executionDelay, a.since, false);
-                }
-            }
+            uint32 currentDelay = _effectiveDelay(a.delay);
+            since = _updateEffectAt(currentDelay, executionDelay, 0);
+            a.delay = Delay({value: currentDelay, pendingValue: executionDelay, effectAt: since});
         }
+        emit IAccessManager.RoleGranted(roleId, account, executionDelay, since, isNewMember);
     }
 
     function _revokeRoleInternal(uint64 roleId, address account) private {

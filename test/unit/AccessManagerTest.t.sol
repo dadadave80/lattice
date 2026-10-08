@@ -160,6 +160,28 @@ contract AccessManagerTest is AccessManagerTestBase {
         assertTrue(isMember);
     }
 
+    /// @dev Pins the documented difference from OZ: before the grant delay has passed, `hasRole` reports
+    ///      `(false, 0)` where OZ reports `(false, delay)`; `getAccess` still shows the stored delay.
+    function test_HasRoleReportsZeroDelayWhileGrantPending() public {
+        vm.prank(admin);
+        mgr.setGrantDelay(MINTER_ROLE, 1 days);
+        vm.warp(block.timestamp + 1 weeks);
+
+        vm.prank(admin);
+        mgr.grantRole(MINTER_ROLE, alice, 3 days);
+
+        (bool isMember, uint32 execDelay) = mgr.hasRole(MINTER_ROLE, alice);
+        assertFalse(isMember);
+        assertEq(execDelay, 0);
+        (, uint32 currentDelay,,) = mgr.getAccess(MINTER_ROLE, alice);
+        assertEq(currentDelay, 3 days);
+
+        vm.warp(block.timestamp + 1 days);
+        (isMember, execDelay) = mgr.hasRole(MINTER_ROLE, alice);
+        assertTrue(isMember);
+        assertEq(execDelay, 3 days);
+    }
+
     function test_RevokeRoleClearsMembership() public {
         vm.prank(admin);
         mgr.grantRole(MINTER_ROLE, alice, 0);
@@ -1222,7 +1244,8 @@ contract AccessManagerTest is AccessManagerTestBase {
         assertEq(mgr.getRoleGrantDelay(MINTER_ROLE), 1 days);
     }
 
-    /// @notice Re-granting a member updates only the execution delay: `since` is kept and the event says so.
+    /// @notice Re-granting a member updates only the execution delay: `since` is kept, and the event's `since` is
+    ///         when the new delay takes effect (now, for an increase), as in OZ.
     function test_GrantRole_RegrantUpdatesDelayKeepsSince() public {
         uint48 since = uint48(block.timestamp);
         vm.expectEmit(true, true, false, true, diamond);
@@ -1232,7 +1255,7 @@ contract AccessManagerTest is AccessManagerTestBase {
 
         vm.warp(block.timestamp + 1 days);
         vm.expectEmit(true, true, false, true, diamond);
-        emit IAccessManager.RoleGranted(MINTER_ROLE, alice, 2 days, since, false);
+        emit IAccessManager.RoleGranted(MINTER_ROLE, alice, 2 days, uint48(block.timestamp), false);
         vm.prank(admin);
         mgr.grantRole(MINTER_ROLE, alice, 2 days);
 
@@ -1242,14 +1265,17 @@ contract AccessManagerTest is AccessManagerTestBase {
         assertEq(mgr.getRoleMemberCount(MINTER_ROLE), 1);
     }
 
-    function test_GrantRole_RegrantSameDelayEmitsNothing() public {
+    /// @notice OZ `_grantRole` emits {RoleGranted} for every grant to an existing member, an unchanged delay included.
+    function test_GrantRole_RegrantSameDelayEmitsRoleGranted() public {
         vm.prank(admin);
         mgr.grantRole(MINTER_ROLE, alice, 1 days);
+        vm.warp(block.timestamp + 1 hours);
 
-        vm.recordLogs();
+        vm.expectEmit(true, true, false, true, diamond);
+        emit IAccessManager.RoleGranted(MINTER_ROLE, alice, 1 days, uint48(block.timestamp), false);
         vm.prank(admin);
         mgr.grantRole(MINTER_ROLE, alice, 1 days);
-        _assertNoLog(IAccessManager.RoleGranted.selector);
+        _assertAccess(alice, 1 days, 0, 0);
     }
 
     function test_RevokeRole_NonMemberEmitsNothing() public {
@@ -1369,6 +1395,174 @@ contract AccessManagerTest is AccessManagerTestBase {
             abi.encodeWithSelector(IAccessManager.AccessManagerUnauthorizedAccount.selector, bob, SUPER_ROLE)
         );
         mgr.execute(diamond, data);
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //          #287: RE-GRANT EXECUTION DELAY (OZ `withUpdate(delay, 0)`)
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice Re-granting a lower execution delay waits out the difference: the old delay binds until `effectAt`.
+    function test_GrantRole_RegrantDecreaseWaitsOutTheDifference() public {
+        vm.prank(admin);
+        mgr.grantRole(MINTER_ROLE, alice, 7 days);
+        uint48 since = uint48(block.timestamp);
+        vm.warp(block.timestamp + 1 days);
+
+        uint48 effectAt = uint48(block.timestamp + 5 days);
+        vm.expectEmit(true, true, false, true, diamond);
+        emit IAccessManager.RoleGranted(MINTER_ROLE, alice, 2 days, effectAt, false);
+        vm.prank(admin);
+        mgr.grantRole(MINTER_ROLE, alice, 2 days);
+
+        (uint48 since_, uint32 current, uint32 pending, uint48 effect) = mgr.getAccess(MINTER_ROLE, alice);
+        assertEq(since_, since, "since kept");
+        assertEq(current, 7 days, "old delay still current");
+        assertEq(pending, 2 days, "new delay pending");
+        assertEq(effect, effectAt, "effect time");
+
+        vm.warp(effectAt - 1);
+        (, uint32 delay) = mgr.hasRole(MINTER_ROLE, alice);
+        assertEq(delay, 7 days, "old delay binds until effectAt");
+
+        vm.warp(effectAt);
+        (, delay) = mgr.hasRole(MINTER_ROLE, alice);
+        assertEq(delay, 2 days, "new delay from effectAt");
+        _assertAccess(alice, 2 days, 0, 0);
+    }
+
+    /// @notice Re-granting a higher execution delay takes effect at once.
+    function test_GrantRole_RegrantIncreaseIsImmediate() public {
+        vm.prank(admin);
+        mgr.grantRole(MINTER_ROLE, alice, 1 days);
+        vm.warp(block.timestamp + 1 days);
+
+        vm.expectEmit(true, true, false, true, diamond);
+        emit IAccessManager.RoleGranted(MINTER_ROLE, alice, 3 days, uint48(block.timestamp), false);
+        vm.prank(admin);
+        mgr.grantRole(MINTER_ROLE, alice, 3 days);
+
+        (, uint32 delay) = mgr.hasRole(MINTER_ROLE, alice);
+        assertEq(delay, 3 days);
+        _assertAccess(alice, 3 days, 0, 0);
+    }
+
+    /// @notice A re-grant replaces a pending decrease, measured from the delay still in force; re-granting that
+    ///         delay cancels the pending one.
+    function test_GrantRole_RegrantReplacesPendingDecrease() public {
+        vm.startPrank(admin);
+        mgr.grantRole(MINTER_ROLE, alice, 10 days);
+        mgr.grantRole(MINTER_ROLE, alice, 2 days); // pending: 2 days, in force 8 days from now
+        uint48 firstEffect = uint48(block.timestamp + 8 days);
+        vm.warp(block.timestamp + 1 days);
+
+        uint48 effectAt = uint48(block.timestamp + 5 days);
+        vm.expectEmit(true, true, false, true, diamond);
+        emit IAccessManager.RoleGranted(MINTER_ROLE, alice, 5 days, effectAt, false);
+        mgr.grantRole(MINTER_ROLE, alice, 5 days);
+        _assertAccess(alice, 10 days, 5 days, effectAt);
+
+        vm.warp(effectAt);
+        (, uint32 delay) = mgr.hasRole(MINTER_ROLE, alice);
+        assertEq(delay, 5 days);
+        vm.warp(firstEffect);
+        (, delay) = mgr.hasRole(MINTER_ROLE, alice);
+        assertEq(delay, 5 days, "the replaced 2-day delay never lands");
+
+        // A new pending decrease, then a re-grant of the delay in force: nothing stays pending.
+        mgr.grantRole(MINTER_ROLE, alice, 1 days);
+        _assertAccess(alice, 5 days, 1 days, uint48(block.timestamp + 4 days));
+        mgr.grantRole(MINTER_ROLE, alice, 5 days);
+        vm.stopPrank();
+        _assertAccess(alice, 5 days, 0, 0);
+        vm.warp(block.timestamp + 4 days);
+        (, delay) = mgr.hasRole(MINTER_ROLE, alice);
+        assertEq(delay, 5 days, "the cancelled decrease never lands");
+    }
+
+    /// @notice Revoking drops a pending decrease with the rest of the access: a later grant starts fresh.
+    function test_GrantRole_RevokeClearsPendingDecrease() public {
+        vm.startPrank(admin);
+        mgr.grantRole(MINTER_ROLE, alice, 7 days);
+        mgr.grantRole(MINTER_ROLE, alice, 0);
+        mgr.revokeRole(MINTER_ROLE, alice);
+        (uint48 since, uint32 current, uint32 pending, uint48 effect) = mgr.getAccess(MINTER_ROLE, alice);
+        assertEq(since + current + pending + effect, 0);
+
+        mgr.grantRole(MINTER_ROLE, alice, 3 days);
+        vm.stopPrank();
+        _assertAccess(alice, 3 days, 0, 0);
+    }
+
+    /// @notice `canCall`, `schedule` and `execute` keep enforcing the old delay until a decrease is in force.
+    function test_GrantRole_PendingDecreaseBindsCanCallAndExecute() public {
+        CallSink sink = new CallSink();
+        vm.startPrank(admin);
+        mgr.setTargetFunctionRole(address(sink), _selectors(CallSink.ping.selector), MINTER_ROLE);
+        mgr.grantRole(MINTER_ROLE, alice, 2 days);
+        mgr.grantRole(MINTER_ROLE, alice, 0);
+        vm.stopPrank();
+        uint48 effectAt = uint48(block.timestamp + 2 days);
+        bytes memory data = abi.encodeCall(CallSink.ping, (42));
+        bytes32 opId = mgr.hashOperation(alice, address(sink), data);
+        bytes memory scheduled = abi.encodeCall(CallSink.ping, (43));
+
+        (bool immediate, uint32 delay) = mgr.canCall(alice, address(sink), CallSink.ping.selector);
+        assertFalse(immediate);
+        assertEq(delay, 2 days, "old delay binds");
+
+        vm.startPrank(alice);
+        (bytes32 scheduledId, uint32 nonce) = mgr.schedule(address(sink), scheduled, 0);
+        assertEq(mgr.getSchedule(scheduledId), effectAt, "scheduled under the old delay");
+
+        vm.warp(effectAt - 1);
+        (immediate, delay) = mgr.canCall(alice, address(sink), CallSink.ping.selector);
+        assertFalse(immediate);
+        assertEq(delay, 2 days);
+        vm.expectRevert(abi.encodeWithSelector(IAccessManager.AccessManagerNotScheduled.selector, opId));
+        mgr.execute(address(sink), data);
+
+        vm.warp(effectAt);
+        (immediate, delay) = mgr.canCall(alice, address(sink), CallSink.ping.selector);
+        assertTrue(immediate);
+        assertEq(delay, 0);
+        assertEq(mgr.execute(address(sink), data), 0, "immediate: nothing to consume");
+        assertEq(mgr.execute(address(sink), scheduled), nonce, "the matured schedule is still spent");
+        vm.stopPrank();
+        assertEq(mgr.getSchedule(scheduledId), 0);
+    }
+
+    /// @notice The re-grant follows OZ `Time.Delay.withUpdate(newDelay, 0)` for any old delay, new delay and gap.
+    function testFuzz_GrantRole_RegrantMatchesWithUpdate(uint32 oldDelay, uint32 newDelay, uint32 gap) public {
+        vm.prank(admin);
+        mgr.grantRole(MINTER_ROLE, alice, oldDelay);
+        vm.warp(block.timestamp + gap);
+
+        uint48 effectAt = uint48(block.timestamp + (oldDelay > newDelay ? oldDelay - newDelay : 0));
+        vm.expectEmit(true, true, false, true, diamond);
+        emit IAccessManager.RoleGranted(MINTER_ROLE, alice, newDelay, effectAt, false);
+        vm.prank(admin);
+        mgr.grantRole(MINTER_ROLE, alice, newDelay);
+
+        (, uint32 delay) = mgr.hasRole(MINTER_ROLE, alice);
+        if (effectAt > block.timestamp) {
+            _assertAccess(alice, oldDelay, newDelay, effectAt);
+            assertEq(delay, oldDelay);
+            vm.warp(effectAt - 1);
+            (, delay) = mgr.hasRole(MINTER_ROLE, alice);
+            assertEq(delay, oldDelay);
+            vm.warp(effectAt);
+            (, delay) = mgr.hasRole(MINTER_ROLE, alice);
+        }
+        assertEq(delay, newDelay);
+        _assertAccess(alice, newDelay, 0, 0);
+    }
+
+    /// @dev Asserts `account`'s MINTER_ROLE delay fields as `getAccess` reports them now.
+    function _assertAccess(address account, uint32 current, uint32 pending, uint48 effect) internal view {
+        (, uint32 current_, uint32 pending_, uint48 effect_) = mgr.getAccess(MINTER_ROLE, account);
+        assertEq(current_, current, "current delay");
+        assertEq(pending_, pending, "pending delay");
+        assertEq(effect_, effect, "effect time");
     }
 
     /// @dev A CallSink whose `ping` needs MINTER_ROLE, held by alice with a 1-day execution delay.

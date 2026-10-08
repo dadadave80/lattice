@@ -17,7 +17,7 @@
     "check": "msg-value-in-nonpayable",
     "impact": "High",
     "id": "1ff7aae1c27dc3a3a8197f3aeb5a75860b762d86dc14589b28cc7a89b99ea97f",
-    "description": "AccessManagerLib.execute(address,bytes) (src/access/libraries/AccessManagerLib.sol#326-358) uses msg.value but is not reachable from any payable function\n",
+    "description": "AccessManagerLib.execute(address,bytes) (src/access/libraries/AccessManagerLib.sol#324-356) uses msg.value but is not reachable from any payable function\n",
     "reason": "False positive: internal library function. Every src caller reaches it only from payable entry points (AccessManager.execute); the detector does not follow facet-to-library calls."
   },
   {
