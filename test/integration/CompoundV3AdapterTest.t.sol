@@ -161,6 +161,42 @@ contract CompoundV3AdapterTest is Test {
         assertEq(got, 200e6, "capped at supplied");
     }
 
+    /// @notice #221: a recall spends the adapter's undeployed idle before withdrawing from Comet.
+    function test_Withdraw_SpendsIdleBeforePosition() public {
+        asset.mint(address(adapter), 1_000e6);
+        adapter.deploy();
+        asset.mint(address(adapter), 300e6); // allocated, not yet deployed
+
+        uint256 got = adapter.withdraw(200e6, vault);
+        assertEq(got, 200e6, "paid from idle");
+        assertEq(asset.balanceOf(vault), 200e6, "vault received");
+        assertEq(comet.balanceOf(address(adapter)), 1_000e6, "position untouched");
+        assertEq(asset.balanceOf(address(adapter)), 100e6, "idle spent first");
+    }
+
+    /// @notice #221: a recall larger than idle drains idle, then withdraws the remainder from Comet, after
+    ///         interest left the position at a non-round balance.
+    function test_Withdraw_IdleThenPosition_AfterAccrual() public {
+        asset.mint(address(adapter), 1_000e6);
+        adapter.deploy();
+        comet.accrueYield(address(adapter), 33_333_333);
+        asset.mint(address(adapter), 50e6);
+
+        uint256 nav = adapter.totalAssetsManaged();
+        uint256 got = adapter.withdraw(170_123_457, vault);
+        assertEq(got, 170_123_457, "idle + position");
+        assertEq(asset.balanceOf(vault), 170_123_457, "vault received");
+        assertEq(asset.balanceOf(address(adapter)), 0, "idle drained");
+        assertEq(adapter.totalAssetsManaged(), nav - 170_123_457, "NAV down by exactly what was sent");
+    }
+
+    /// @notice #221: with only undeployed idle (nothing supplied) the recall is paid in full from idle.
+    function test_Withdraw_UndeployedIdleOnly() public {
+        asset.mint(address(adapter), 500e6);
+        assertEq(adapter.withdraw(400e6, vault), 400e6, "paid from idle");
+        assertEq(asset.balanceOf(vault), 400e6, "vault received");
+    }
+
     function test_Harvest_ForwardsCompRaw() public {
         asset.mint(address(adapter), 1_000e6);
         adapter.deploy();
@@ -291,8 +327,10 @@ contract CompoundV3AdapterVaultNavTest is Test {
         uint256 navBefore = vault.totalAssets();
         assertEq(navBefore, DEPOSIT, "NAV == deposit at rest");
 
-        // Allocate: vault idle -> adapter idle (bare transfer, NO supply to Comet).
-        mgr.rebalance();
+        // Allocate: vault idle -> adapter idle (bare transfer, NO supply to Comet). Made directly as the
+        // manager: `rebalance()` now deploys right after allocating (#221), which would close the window.
+        vm.prank(address(mgr));
+        vault.allocateToStrategy(address(adapter), DEPOSIT);
         assertEq(asset.balanceOf(address(adapter)), DEPOSIT, "funds idle in adapter, not supplied");
         assertEq(comet.balanceOf(address(adapter)), 0, "nothing supplied to Comet yet");
         assertEq(adapter.totalAssetsManaged(), DEPOSIT, "adapter counts its idle");

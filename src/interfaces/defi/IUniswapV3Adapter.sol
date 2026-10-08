@@ -16,19 +16,24 @@ pragma solidity >=0.8.4;
 ///         single-block manipulable, so reading it for share pricing would let an attacker mint/burn
 ///         vault shares at a flash-loan-skewed price. The TWAP tick is converted to a sqrt price and
 ///         the position's `(amount0, amount1)` are derived at that price, with token1 valued back
-///         into token0. See `UniswapV3AdapterLib.totalAssetsManaged`.
+///         into token0. Idle token0 and token1 held by the adapter count too. See
+///         `UniswapV3AdapterLib.totalAssetsManaged`.
 ///
 ///         **Swap-free.** The adapter never swaps. The keeper supplies BOTH token0 and token1 to the
 ///         adapter before `deploy`; the adapter only adds/removes liquidity. Accrued fees (token0 +
-///         token1) and any leftover token1 from a withdraw are routed RAW to `rewardRecipient`.
+///         token1) are routed RAW to `rewardRecipient` on `harvest`; idle balances never are.
 ///
 ///         **Two-token withdraw caveat.** `IStrategy.withdraw(amount, to)` is denominated in token0.
-///         The adapter removes enough liquidity to free ~`amount` of token0-equivalent (sized via the
-///         TWAP price), then sends the freed **token0** to `to` and routes the freed **token1** to
-///         `to` as well. It is **shortfall-honest**: it returns the REAL token0 delta and never
-///         over-reports. A single decreaseLiquidity frees token0 and token1 in the pool's current
-///         ratio, so the token0 actually freed can be less than `amount`; the StrategyManager's
-///         upstream shortfall check absorbs the remainder.
+///         The adapter spends idle token0 first, then removes enough liquidity to free the remaining
+///         token0 (sized via the TWAP price) and sends **token0** to `to`. The freed **token1** stays
+///         idle in the adapter, still counted in NAV, until `deploy` re-adds it. It is
+///         **shortfall-honest**: it returns the REAL token0 delta and never over-reports; the
+///         StrategyManager accepts the resulting partial recall while no value is lost.
+///
+///         **Exit.** `rebalance()` alone cannot take the strategy to zero: at a target of 0 it recalls
+///         every token0 but the token1 leg stays in the adapter, counted in NAV, and `removeStrategy`
+///         refuses. The admin's `emergencyWithdraw` sends that token1 to the vault, where it drops out
+///         of NAV (the vault counts only token0); the strategy can then be removed.
 interface IUniswapV3Adapter {
     /// @notice Emitted once at init with the core wiring.
     /// @param positionManager The Uniswap V3 NonfungiblePositionManager.

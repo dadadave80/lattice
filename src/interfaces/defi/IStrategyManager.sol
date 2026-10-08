@@ -35,6 +35,21 @@ interface IStrategyManager {
     /// @dev Emitted after a rebalance operation completes.
     event Rebalanced();
 
+    /// @dev Emitted when `rebalance()` recalls less than it requested from a strategy that still reports the
+    ///      undelivered part (an honest partial recall, e.g. a Lido buffer that is short). The strategy stays
+    ///      over its target until a later rebalance recalls the rest.
+    /// @param strategy The strategy recalled from.
+    /// @param requested The amount requested.
+    /// @param received The amount the vault actually received.
+    event StrategyPartiallyRecalled(address indexed strategy, uint256 requested, uint256 received);
+
+    /// @dev Emitted when `rebalance()` calls a protocol adapter's `deploy()` to put its idle to work and the
+    ///      call reverts (e.g. the adapter or its protocol is paused). The idle stays in the adapter, still
+    ///      counted in its NAV, and the rebalance completes.
+    /// @param strategy The adapter whose deploy failed.
+    /// @param reason The revert data.
+    event StrategyDeployFailed(address indexed strategy, bytes reason);
+
     //*//////////////////////////////////////////////////////////////////////////
     //                                  ERRORS
     //////////////////////////////////////////////////////////////////////////*//
@@ -57,11 +72,13 @@ interface IStrategyManager {
     /// @dev Reverts when a strategy's underlying asset does not match the vault's asset.
     error StrategyManagerAssetMismatch(address strategy);
 
-    /// @dev Reverts when a strategy delivers fewer assets than requested during rebalance.
+    /// @dev Reverts when a rebalance recall loses value: the strategy's reported balance drops by more than the
+    ///      vault actually received, beyond a fixed rounding tolerance (slippage, an exit fee, or a strategy
+    ///      that writes off more than it pays). An honest partial recall does not revert.
     /// @param strategy The strategy that underdelivered.
-    /// @param requested The amount requested from the strategy.
-    /// @param actual The amount the strategy actually transferred.
-    error StrategyManagerWithdrawShortfall(address strategy, uint256 requested, uint256 actual);
+    /// @param released The drop in the strategy's reported balance across the recall.
+    /// @param received The amount the vault actually received.
+    error StrategyManagerWithdrawShortfall(address strategy, uint256 released, uint256 received);
 
     /// @dev Reverts when attempting to remove a strategy that still holds vault assets.
     ///      Recall assets first via rebalance() (set the target to 0, then rebalance). Only a strategy whose
@@ -133,6 +150,10 @@ interface IStrategyManager {
     function harvest() external;
 
     /// @notice Rebalances the vault's asset distribution to match strategy target allocations.
-    /// @dev Pushes or recalls assets to/from strategies. Anyone can call.
+    /// @dev Pushes or recalls assets to/from strategies, then calls `deploy()` on each strategy that advertises
+    ///      `IProtocolAdapter` and holds idle asset. Anyone can call. A recall that loses value beyond a fixed
+    ///      rounding tolerance reverts with {StrategyManagerWithdrawShortfall}; an honest partial recall emits
+    ///      {StrategyPartiallyRecalled}; a failing deploy emits {StrategyDeployFailed}. Allocations are capped
+    ///      at the vault's actual idle balance.
     function rebalance() external;
 }

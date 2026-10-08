@@ -19,6 +19,8 @@ import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib
 ///      `IVaultCore.setStrategyManager(address(this))` before calling `rebalance()`.
 ///      `allocateToStrategy` is guarded by `_checkManager()` which checks the caller
 ///      address, not any role — granting DEFAULT_ADMIN_ROLE is neither necessary nor sufficient.
+///      Each Lattice protocol adapter must name this diamond as its operator (`setOperator`): `rebalance()`
+///      recalls through the adapter's `withdraw` and deploys its idle through `deploy`, both operator-gated.
 /// @custom:lattice-version 0.1.0
 /// @custom:lattice-source Yearn V3
 contract StrategyManager is IStrategyManager {

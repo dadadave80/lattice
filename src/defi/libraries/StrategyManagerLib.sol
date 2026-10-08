@@ -2,9 +2,11 @@
 pragma solidity ^0.8.30;
 
 import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
+import {IProtocolAdapter} from "@lattice/interfaces/defi/IProtocolAdapter.sol";
 import {IStrategyManager} from "@lattice/interfaces/defi/IStrategyManager.sol";
 import {IVaultCore} from "@lattice/interfaces/defi/IVaultCore.sol";
 import {IStrategy} from "@lattice/interfaces/external/yearn/IStrategy.sol";
+import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
 import {IERC4626} from "@lattice/interfaces/tokens/IERC4626.sol";
 import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib.sol";
 import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
@@ -30,6 +32,15 @@ bytes32 constant ERC165_MAP_ISTRATEGYMANAGER_SLOT = 0x3d05027e9ebc1daac4235d8ac5
 /// Limits the iteration cost of totalAllocated() (read by every ERC-4626 conversion, preview,
 /// max* view and mutator via VaultCore.totalAssets()) and rebalance(), preventing gas-based DoS.
 uint256 constant MAX_STRATEGIES = 20;
+
+/// @dev Largest value loss, in the asset's smallest unit, that `rebalance()` accepts on one strategy recall: the
+///      drop in the strategy's reported balance may exceed what the vault received by at most this much. Sized
+///      for share/index rounding (a few wei); anything larger is a real loss and reverts with
+///      {IStrategyManager.StrategyManagerWithdrawShortfall}. Fixed by design: not configurable, no storage.
+uint256 constant REBALANCE_SHORTFALL_TOLERANCE = 10;
+
+/// @dev `IERC165.supportsInterface(bytes4)`, probed before `rebalance()` calls an adapter's `deploy()`.
+bytes4 constant ERC165_SUPPORTS_INTERFACE_SELECTOR = 0x01ffc9a7;
 
 /// @notice Storage struct for StrategyManager module.
 /// @custom:storage-location erc7201:lattice.storage.StrategyManager
@@ -57,7 +68,8 @@ struct StrategyManagerStorage {
 ///        for off-chain indexers without moving any funds.
 ///      - `rebalance()` drives assets to/from strategies to match target allocations.
 ///        It calls `IVaultCore.allocateToStrategy` (vault pushes excess) and
-///        `IStrategy.withdraw` (strategy pushes back to vault) as needed.
+///        `IStrategy.withdraw` (strategy pushes back to vault) as needed, then
+///        `IProtocolAdapter.deploy` so an adapter's idle does not stay undeployed.
 library StrategyManagerLib {
     //*//////////////////////////////////////////////////////////////////////////
     //                              STORAGE ACCESS
@@ -293,12 +305,15 @@ library StrategyManagerLib {
     ///      Pass 1 — process all over-allocated strategies (withdrawals back to vault) first.
     ///      Pass 2 — process all under-allocated strategies (allocations from vault) second.
     ///      This guarantees the vault holds maximum idle balance before any allocation is
-    ///      attempted, regardless of strategy registration order.
+    ///      attempted, regardless of strategy registration order. A final pass then deploys each
+    ///      protocol adapter's idle (#221).
     ///
     ///      For each strategy in pass 1:
-    ///      - If current > target: calls IStrategy.withdraw, reverts on underdelivery.
+    ///      - If current > target: calls IStrategy.withdraw and checks the recall (see {_recall}).
     ///      For each strategy in pass 2:
-    ///      - If current < target: calls IVaultCore.allocateToStrategy.
+    ///      - If current < target: calls IVaultCore.allocateToStrategy, capped at the vault's actual idle.
+    ///      For each strategy in the deploy pass:
+    ///      - If it holds idle asset and advertises IProtocolAdapter: calls its `deploy()` (see {_deployIdle}).
     ///
     ///      Anyone can call. Protected against reentrancy (M-2): the guard is held for the whole
     ///      rebalance, and VaultCore rejects deposit/mint/withdraw/redeem while it is held
@@ -309,8 +324,12 @@ library StrategyManagerLib {
     ///      this is correct: a donation is NAV that belongs to share holders and is simply deployed
     ///      per the configured allocation. Funds only move to pre-vetted strategies (trust model:
     ///      add audited strategies only), and share-price manipulation from donations is bounded by
-    ///      ERC-4626's virtual-shares offset. AUM is conserved across idle<->strategy moves, so the
-    ///      single `vaultTotal` snapshot stays valid across both passes.
+    ///      ERC-4626's virtual-shares offset. AUM is conserved across idle<->strategy moves (pass 1
+    ///      rejects any recall that loses more than {REBALANCE_SHORTFALL_TOLERANCE}), so the single
+    ///      `vaultTotal` snapshot stays valid for sizing targets. An honest partial recall leaves the
+    ///      vault with less idle than the snapshot implies, so pass 2 allocates from the idle it
+    ///      actually holds and, when that runs out, later strategies in registration order wait for the
+    ///      next rebalance.
     function rebalance() internal {
         ReentrancyGuardLib.nonReentrantBefore();
         _rebalance();
@@ -323,35 +342,84 @@ library StrategyManagerLib {
         address vaultAddr = $._vault;
         if (vaultAddr == address(0)) revert IStrategyManager.StrategyManagerVaultNotSet();
 
+        address asset_ = IERC4626(vaultAddr).asset();
         uint256 vaultTotal = IERC4626(vaultAddr).totalAssets();
         uint256 len = $._strategies.length;
 
-        // Pass 1: withdraw excess from over-allocated strategies.
+        // Pass 1: withdraw excess from over-allocated strategies. Bit i of `recalled` marks strategy i
+        // (len <= MAX_STRATEGIES) so pass 2 does not hand a recall's rounding remainder straight back.
+        uint256 recalled;
         for (uint256 i; i < len; ++i) {
             address strategy = $._strategies[i];
             uint256 current = IStrategy(strategy).totalAssetsManaged();
             uint256 target = (vaultTotal * $._targets[strategy]) / 10_000;
 
             if (current > target) {
-                uint256 requested = current - target;
-                uint256 withdrawn = IStrategy(strategy).withdraw(requested, vaultAddr);
-                if (withdrawn < requested) {
-                    revert IStrategyManager.StrategyManagerWithdrawShortfall(strategy, requested, withdrawn);
-                }
+                _recall(strategy, current, current - target, vaultAddr, asset_);
+                recalled |= 1 << i;
             }
         }
 
-        // Pass 2: allocate deficit to under-allocated strategies.
-        for (uint256 i; i < len; ++i) {
+        // Pass 2: allocate deficit to under-allocated strategies, from the idle the vault actually holds.
+        uint256 idle = IERC20(asset_).balanceOf(vaultAddr);
+        for (uint256 i; i < len && idle > 0; ++i) {
+            if (recalled & (1 << i) != 0) continue;
             address strategy = $._strategies[i];
             uint256 current = IStrategy(strategy).totalAssetsManaged();
             uint256 target = (vaultTotal * $._targets[strategy]) / 10_000;
 
             if (current < target) {
-                IVaultCore(vaultAddr).allocateToStrategy(strategy, target - current);
+                uint256 amount = target - current;
+                if (amount > idle) amount = idle;
+                IVaultCore(vaultAddr).allocateToStrategy(strategy, amount);
+                idle -= amount;
             }
         }
 
+        // Deploy pass: put each protocol adapter's idle to work.
+        for (uint256 i; i < len; ++i) {
+            _deployIdle($._strategies[i], asset_);
+        }
+
         emit IStrategyManager.Rebalanced();
+    }
+
+    /// @dev Recalls `requested` from `strategy` (which reported `current`) and checks it by value, not by the
+    ///      amount asked (H-3, #221). `received` is the vault's actual idle delta and `released` the drop in
+    ///      the strategy's reported balance. Reverts with {IStrategyManager.StrategyManagerWithdrawShortfall}
+    ///      when `released` exceeds `received` by more than {REBALANCE_SHORTFALL_TOLERANCE}: the recall lost
+    ///      value (slippage, an exit fee, or a strategy writing off more than it paid), which a permissionless
+    ///      caller must not be able to realize. A recall that delivers less than asked while the strategy
+    ///      still reports the remainder (the Lido buffer, a UniswapV3 rounding remainder) is an honest partial
+    ///      recall: it completes, emits {IStrategyManager.StrategyPartiallyRecalled}, and the strategy stays
+    ///      over target until a later rebalance.
+    function _recall(address strategy, uint256 current, uint256 requested, address vaultAddr, address asset_) private {
+        uint256 idleBefore = IERC20(asset_).balanceOf(vaultAddr);
+        IStrategy(strategy).withdraw(requested, vaultAddr);
+        uint256 received = IERC20(asset_).balanceOf(vaultAddr) - idleBefore;
+        uint256 remaining = IStrategy(strategy).totalAssetsManaged();
+        uint256 released = current > remaining ? current - remaining : 0;
+        if (released > received + REBALANCE_SHORTFALL_TOLERANCE) {
+            revert IStrategyManager.StrategyManagerWithdrawShortfall(strategy, released, received);
+        }
+        if (received + REBALANCE_SHORTFALL_TOLERANCE < requested) {
+            emit IStrategyManager.StrategyPartiallyRecalled(strategy, requested, received);
+        }
+    }
+
+    /// @dev Calls `deploy()` on `strategy` when it holds idle `asset_` and advertises
+    ///      {IProtocolAdapter} through ERC-165, so allocations do not sit idle in the adapter (#221; the
+    ///      adapters only accept `deploy` from their operator, this manager). Plain {IStrategy}s are skipped.
+    ///      A reverting deploy (paused adapter or protocol, a supply cap, an operator not yet wired) is caught
+    ///      and reported with {IStrategyManager.StrategyDeployFailed}: the idle stays in the adapter, counted
+    ///      in its NAV, and never blocks the rebalance.
+    function _deployIdle(address strategy, address asset_) private {
+        if (IERC20(asset_).balanceOf(strategy) == 0) return;
+        (bool ok, bytes memory ret) = strategy.staticcall(
+            abi.encodeWithSelector(ERC165_SUPPORTS_INTERFACE_SELECTOR, type(IProtocolAdapter).interfaceId)
+        );
+        if (!ok || ret.length < 32 || abi.decode(ret, (uint256)) != 1) return;
+        (ok, ret) = strategy.call(abi.encodeWithSelector(IProtocolAdapter.deploy.selector));
+        if (!ok) emit IStrategyManager.StrategyDeployFailed(strategy, ret);
     }
 }

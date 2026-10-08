@@ -214,6 +214,12 @@ library ERC4626AdapterLib {
         ReentrancyGuardLib.nonReentrantAfter();
     }
 
+    /// @notice Recalls `amount` of the asset to the vault, spending undeployed idle before the position.
+    /// @dev Idle first: `totalAssetsManaged` counts idle, so a recall that only unwound the position would
+    ///      under-deliver whenever funds sit undeployed. The remainder is withdrawn by assets through
+    ///      `withdraw`, which rounds shares up and delivers the exact amount at any price per share (a
+    ///      `convertToShares` + `redeem` pair floors twice). Above `maxWithdraw` every redeemable share is
+    ///      redeemed instead, and the return value reports what was actually sent.
     function withdraw(uint256 amount, address to) internal returns (uint256 withdrawn) {
         _checkOperator();
         ReentrancyGuardLib.nonReentrantBefore();
@@ -224,15 +230,19 @@ library ERC4626AdapterLib {
             ReentrancyGuardLib.nonReentrantAfter();
             revert IProtocolAdapter.ProtocolAdapterInvalidRecipient(to);
         }
-        IERC4626 t = IERC4626($._targetVault);
-        // Shares needed for `amount` assets, capped at our share balance and the vault's maxRedeem.
-        uint256 ourShares = t.balanceOf(address(this));
-        uint256 wantShares = t.convertToShares(amount);
-        uint256 redeemable = t.maxRedeem(address(this));
-        uint256 shares = wantShares > ourShares ? ourShares : wantShares;
-        if (shares > redeemable) shares = redeemable;
-        if (shares > 0) {
-            withdrawn = t.redeem(shares, to, address(this));
+        withdrawn = AdapterBaseLib.transferHonest($._asset, to, amount);
+        if (withdrawn < amount) {
+            uint256 remaining = amount - withdrawn;
+            IERC4626 t = IERC4626($._targetVault);
+            if (remaining <= t.maxWithdraw(address(this))) {
+                t.withdraw(remaining, to, address(this));
+                withdrawn += remaining;
+            } else {
+                uint256 shares = t.balanceOf(address(this));
+                uint256 redeemable = t.maxRedeem(address(this));
+                if (shares > redeemable) shares = redeemable;
+                if (shares > 0) withdrawn += t.redeem(shares, to, address(this));
+            }
         }
         ReentrancyGuardLib.nonReentrantAfter();
     }
@@ -251,18 +261,22 @@ library ERC4626AdapterLib {
         ReentrancyGuardLib.nonReentrantAfter();
     }
 
+    /// @notice Redeems every redeemable share to the vault and sweeps the adapter's idle asset with it.
     function emergencyWithdraw() internal returns (uint256 recovered) {
         AccessControlLib.checkRole(DEFAULT_ADMIN_ROLE);
         ReentrancyGuardLib.nonReentrantBefore();
         ERC4626AdapterStorage storage $ = erc4626AdapterStorage();
+        address asset_ = $._asset;
+        address vault_ = $._vault;
         IERC4626 t = IERC4626($._targetVault);
         uint256 shares = t.balanceOf(address(this));
         uint256 redeemable = t.maxRedeem(address(this));
         if (shares > redeemable) shares = redeemable;
         if (shares > 0) {
-            recovered = t.redeem(shares, $._vault, address(this));
+            recovered = t.redeem(shares, vault_, address(this));
         }
-        emit IProtocolAdapter.EmergencyWithdrawn($._asset, $._vault, recovered);
+        recovered += AdapterBaseLib.transferHonest(asset_, vault_, AdapterBaseLib.balanceOfSelf(asset_));
+        emit IProtocolAdapter.EmergencyWithdrawn(asset_, vault_, recovered);
         ReentrancyGuardLib.nonReentrantAfter();
     }
 }

@@ -366,6 +366,35 @@ contract CurveStableSwapAdapterTest is Test {
         assertEq(asset.balanceOf(vault), got, "vault balance equals reported");
     }
 
+    /// @notice #221: a recall spends the adapter's undeployed idle before burning LP.
+    function test_Withdraw_SpendsIdleBeforePosition() public {
+        asset.mint(address(adapter), 1_000e6);
+        adapter.deploy();
+        asset.mint(address(adapter), 300e6); // allocated, not yet deployed
+
+        uint256 got = adapter.withdraw(200e6, vault);
+        assertEq(got, 200e6, "paid from idle");
+        assertEq(asset.balanceOf(vault), 200e6, "vault received");
+        assertEq(lp.balanceOf(address(adapter)), 1_000e6, "LP untouched");
+        assertEq(asset.balanceOf(address(adapter)), 100e6, "idle spent first");
+    }
+
+    /// @notice #221: a recall larger than idle drains idle, then burns LP for the remainder; with only
+    ///         undeployed idle it is paid in full from idle.
+    function test_Withdraw_IdleThenPosition() public {
+        asset.mint(address(adapter), 400e6); // never deployed
+        assertEq(adapter.withdraw(300e6, vault), 300e6, "idle-only recall paid in full");
+
+        asset.mint(address(adapter), 900e6);
+        adapter.deploy(); // 100 leftover idle + 900
+        asset.mint(address(adapter), 50e6);
+        uint256 got = adapter.withdraw(250e6, vault);
+        assertEq(got, 250e6, "idle + LP");
+        assertEq(asset.balanceOf(vault), 550e6, "vault received both recalls");
+        assertEq(asset.balanceOf(address(adapter)), 0, "idle drained");
+        assertEq(lp.balanceOf(address(adapter)), 800e6, "LP burned only for the remainder");
+    }
+
     function test_Withdraw_RevertsZeroRecipient() public {
         asset.mint(address(adapter), 1_000e6);
         adapter.deploy();

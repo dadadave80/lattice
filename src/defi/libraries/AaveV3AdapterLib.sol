@@ -200,8 +200,9 @@ library AaveV3AdapterLib {
     }
 
     /// @notice True when the adapter is paused or emergency-stopped. `deploy()` checks this so a
-    ///         paused adapter cannot brick the manager's `rebalance()` (it reverts, the manager's
-    ///         pass-2 allocation having already pushed the bare transfer — funds sit idle, safe).
+    ///         paused adapter cannot brick the manager's `rebalance()` (it reverts, the manager catches
+    ///         it and emits `StrategyDeployFailed`, and the pass-2 allocation's bare transfer stays idle
+    ///         here, counted in NAV — safe).
     function isPaused() internal view returns (bool) {
         return PausableLib.paused() || EmergencyStopLib.isStopped();
     }
@@ -288,11 +289,15 @@ library AaveV3AdapterLib {
         ReentrancyGuardLib.nonReentrantAfter();
     }
 
-    /// @notice Withdraws up to `amount` of the asset from Aave to `to`, returning the REAL amount.
-    /// @dev Reentrancy-gated. Calls `Pool.withdraw` (which itself caps at available collateral),
-    ///      then honestly reports the balance delta to `to`. Allows shortfall (partial
-    ///      liquidation / insufficient liquidity) — the StrategyManager raises
-    ///      `StrategyManagerWithdrawShortfall` upstream if under-delivered.
+    /// @notice Withdraws up to `amount` of the asset to `to`, returning the REAL amount.
+    /// @dev Reentrancy-gated. Spends the adapter's undeployed idle first (it is counted in
+    ///      `totalAssetsManaged`), then calls `Pool.withdraw` for the remainder, capped at the aToken
+    ///      balance, and honestly reports the balance delta to `to`. The ask is NOT capped at the
+    ///      reserve's available cash: when the reserve is too utilized to pay it, `Pool.withdraw` reverts,
+    ///      and so does the calling `rebalance()` (the StrategyManager does not catch a reverting recall).
+    ///      A delivery short of `amount` (an aToken balance below the ask) is an honest partial recall,
+    ///      which the StrategyManager accepts; it reverts with `StrategyManagerWithdrawShortfall` only
+    ///      when value is lost.
     function withdraw(uint256 amount, address to) internal returns (uint256 withdrawn) {
         _checkOperator();
         ReentrancyGuardLib.nonReentrantBefore();
@@ -306,11 +311,15 @@ library AaveV3AdapterLib {
         address asset_ = $._asset;
         // Aave sends the underlying directly to `to`; capture `to`'s delta to report honestly.
         uint256 beforeBal = IERC20(asset_).balanceOf(to);
-        // Cap the request at the live aToken balance so we never ask for more than we hold.
-        uint256 supplied = IAToken(aToken()).balanceOf(address(this));
-        uint256 ask = amount > supplied ? supplied : amount;
-        if (ask > 0) {
-            _pool().withdraw(asset_, ask, to);
+        uint256 fromIdle = AdapterBaseLib.transferHonest(asset_, to, amount);
+        if (fromIdle < amount) {
+            // Cap the remainder at the live aToken balance so we never ask for more than we hold.
+            uint256 rest = amount - fromIdle;
+            uint256 supplied = IAToken(aToken()).balanceOf(address(this));
+            uint256 ask = rest > supplied ? supplied : rest;
+            if (ask > 0) {
+                _pool().withdraw(asset_, ask, to);
+            }
         }
         withdrawn = IERC20(asset_).balanceOf(to) - beforeBal;
         ReentrancyGuardLib.nonReentrantAfter();
@@ -326,10 +335,13 @@ library AaveV3AdapterLib {
     ///
     ///      **Idle leg (NAV-gap fix):** in BOTH branches we add the adapter's idle underlying
     ///      balance. `IVaultCore.allocateToStrategy` pushes vault funds here with a bare ERC-20
-    ///      transfer that does NOT call `deploy()`, so between allocate and the keeper's `deploy()`
-    ///      the funds sit idle in the adapter. Counting that idle keeps the vault's share price flat
-    ///      across the allocate→deploy window (otherwise NAV would understate by the idle amount,
-    ///      letting a depositor mint cheap shares and redeem after `deploy()` re-materializes it).
+    ///      transfer that does NOT call `deploy()`. Inside `rebalance()` the StrategyManager calls
+    ///      `deploy()` in the same transaction (#221), so the funds sit idle in the adapter only when
+    ///      that deploy fails (paused adapter or pool, supply cap) or when the vault allocates outside
+    ///      a rebalance, until the next rebalance or operator `deploy()`. Counting that idle keeps the
+    ///      vault's share price flat across the allocate→deploy window (otherwise NAV would understate
+    ///      by the idle amount, letting a depositor mint cheap shares and redeem after `deploy()`
+    ///      re-materializes it).
     ///      No double-count: the idle is in NEITHER the vault's idle (it was transferred out) NOR the
     ///      aToken/net-equity position, and after `deploy()` idle→~0 while the position grows by the
     ///      same amount — so the sum is invariant across deploy. Unencumbered idle underlying is

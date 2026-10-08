@@ -20,10 +20,13 @@ import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib
 /// @dev Provenance: Curve StableSwap (https://github.com/curvefi/curve-contract) +
 ///      Curve LiquidityGauge (https://github.com/curvefi/curve-dao-contracts).
 ///
-///      WARNING: do not register this adapter with a vault's StrategyManager until #221 lands. A VaultCore
+///      UNSUPPORTED in 0.5.0: do not register this adapter with a vault's StrategyManager. A VaultCore
 ///      vault prices ERC-4626 shares on its full NAV, which includes this adapter's spot
 ///      `get_virtual_price()` valuation. That value can be skewed by read-only reentrancy from a pool
-///      callback that runs no Lattice code, so it is unsafe as a share-pricing source.
+///      callback that runs no Lattice code, so it is unsafe as a share-pricing source. Nothing in this
+///      release probes the pool for that reentrancy (#221), and `addStrategy` does not reject the adapter:
+///      keeping it out of a vault is the integrator's responsibility. Its single-coin exit fee also makes a
+///      rebalance recall lose value, which the StrategyManager rejects beyond its fixed rounding tolerance.
 /// @custom:lattice-version 0.1.0
 /// @custom:lattice-source Lattice original
 contract CurveStableSwapAdapter is IStrategy, IProtocolAdapter, IAdapterOperator, ICurveStableSwapAdapter {

@@ -216,6 +216,11 @@ library CompoundV3AdapterLib {
         ReentrancyGuardLib.nonReentrantAfter();
     }
 
+    /// @notice Recalls up to `amount` of the base asset to `to`, spending undeployed idle before the Comet
+    ///         position, and returns the real amount sent.
+    /// @dev The Comet ask is capped at the adapter's supplied balance, NOT at the Comet's available cash:
+    ///      when the market is too utilized to pay it, `Comet.withdraw` reverts, and so does the calling
+    ///      `rebalance()` (the StrategyManager does not catch a reverting recall).
     function withdraw(uint256 amount, address to) internal returns (uint256 withdrawn) {
         _checkOperator();
         ReentrancyGuardLib.nonReentrantBefore();
@@ -227,11 +232,16 @@ library CompoundV3AdapterLib {
             revert IProtocolAdapter.ProtocolAdapterInvalidRecipient(to);
         }
         address asset_ = $._asset;
-        // Comet withdraws to the caller (this adapter); cap at our supplied balance, then forward.
-        uint256 supplied = IComet($._comet).balanceOf(address(this));
-        uint256 ask = amount > supplied ? supplied : amount;
-        if (ask > 0) IComet($._comet).withdraw(asset_, ask);
-        withdrawn = AdapterBaseLib.transferHonest(asset_, to, ask);
+        // Idle first (it is counted in NAV); Comet withdraws the remainder to this adapter, capped at our
+        // supplied balance, and the whole amount is then forwarded.
+        uint256 idle = AdapterBaseLib.balanceOfSelf(asset_);
+        if (amount > idle) {
+            uint256 rest = amount - idle;
+            uint256 supplied = IComet($._comet).balanceOf(address(this));
+            uint256 ask = rest > supplied ? supplied : rest;
+            if (ask > 0) IComet($._comet).withdraw(asset_, ask);
+        }
+        withdrawn = AdapterBaseLib.transferHonest(asset_, to, amount);
         ReentrancyGuardLib.nonReentrantAfter();
     }
 
