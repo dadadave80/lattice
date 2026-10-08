@@ -3,10 +3,10 @@ pragma solidity ^0.8.30;
 
 /// @title FullMathReference
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
-/// @notice Test-only oracle for 512-bit `x * y / d`, written to share nothing with the `src` `mulDiv` ports: the
+/// @notice Test-only oracle for 512-bit `x * y / d`, written to share nothing with `Math.mulDiv` in `src`: the
 ///         product is built from 128-bit limbs in checked arithmetic (no `mulmod` CRT trick), and the quotient comes
 ///         from bit-by-bit long division over all 512 bits (no modular inverse). The overflow verdict is read off the
-///         full 512-bit quotient, so it does not reuse the ports' `high < d` shortcut either. Slow by design.
+///         full 512-bit quotient, so it does not reuse the `high < d` shortcut either. Slow by design.
 library FullMathReference {
     uint256 internal constant MASK128 = type(uint128).max;
 

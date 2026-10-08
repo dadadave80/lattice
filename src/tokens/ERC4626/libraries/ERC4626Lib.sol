@@ -5,6 +5,7 @@ import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
 import {IERC4626} from "@lattice/interfaces/tokens/IERC4626.sol";
 import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
 import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
+import {Math} from "@lattice/utils/libraries/math/Math.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
 //                                  STORAGE
@@ -27,12 +28,6 @@ struct ERC4626Storage {
     address _asset;
     uint8 _underlyingDecimals;
     uint8 _decimalsOffset;
-}
-
-/// @notice Rounding direction for mulDiv calculations.
-enum Rounding {
-    Floor,
-    Ceil
 }
 
 /// @title ERC4626Lib
@@ -140,12 +135,12 @@ library ERC4626Lib {
 
     /// @notice Returns shares equivalent to `assets` at the diamond's NAV (floor rounding).
     function convertToShares(uint256 assets) internal view returns (uint256) {
-        return _convertToShares(assets, Rounding.Floor);
+        return _convertToShares(assets, Math.Rounding.Floor);
     }
 
     /// @notice Returns assets equivalent to `shares` at the diamond's NAV (floor rounding).
     function convertToAssets(uint256 shares) internal view returns (uint256) {
-        return _convertToAssets(shares, Rounding.Floor);
+        return _convertToAssets(shares, Math.Rounding.Floor);
     }
 
     /// @notice Returns the maximum depositable assets for `receiver`: unbounded, or 0 while the NAV is unreadable.
@@ -178,22 +173,22 @@ library ERC4626Lib {
 
     /// @notice Simulates shares minted for a `deposit` of `assets` (floor rounding).
     function previewDeposit(uint256 assets) internal view returns (uint256) {
-        return _convertToShares(assets, Rounding.Floor);
+        return _convertToShares(assets, Math.Rounding.Floor);
     }
 
     /// @notice Simulates assets required to `mint` exactly `shares` (ceiling rounding).
     function previewMint(uint256 shares) internal view returns (uint256) {
-        return _convertToAssets(shares, Rounding.Ceil);
+        return _convertToAssets(shares, Math.Rounding.Ceil);
     }
 
     /// @notice Simulates shares burned for a `withdraw` of `assets` (ceiling rounding).
     function previewWithdraw(uint256 assets) internal view returns (uint256) {
-        return _convertToShares(assets, Rounding.Ceil);
+        return _convertToShares(assets, Math.Rounding.Ceil);
     }
 
     /// @notice Simulates assets returned for redeeming `shares` (floor rounding).
     function previewRedeem(uint256 shares) internal view returns (uint256) {
-        return _convertToAssets(shares, Rounding.Floor);
+        return _convertToAssets(shares, Math.Rounding.Floor);
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -206,7 +201,7 @@ library ERC4626Lib {
     function deposit(uint256 assets, address receiver) internal returns (uint256 shares) {
         (bool ok, uint256 nav) = _tryNav();
         if (!ok) revert IERC4626.ERC4626ExceededMaxDeposit(receiver, assets, 0);
-        shares = _convertToSharesFromTotals(assets, ERC20Lib.totalSupply(), nav, _decimalsOffset(), Rounding.Floor);
+        shares = _convertToSharesFromTotals(assets, ERC20Lib.totalSupply(), nav, _decimalsOffset(), Math.Rounding.Floor);
         _deposit(msg.sender, receiver, assets, shares);
     }
 
@@ -214,7 +209,7 @@ library ERC4626Lib {
     function mint(uint256 shares, address receiver) internal returns (uint256 assets) {
         (bool ok, uint256 nav) = _tryNav();
         if (!ok) revert IERC4626.ERC4626ExceededMaxMint(receiver, shares, 0);
-        assets = _convertToAssetsFromTotals(shares, ERC20Lib.totalSupply(), nav, _decimalsOffset(), Rounding.Ceil);
+        assets = _convertToAssetsFromTotals(shares, ERC20Lib.totalSupply(), nav, _decimalsOffset(), Math.Rounding.Ceil);
         _deposit(msg.sender, receiver, assets, shares);
     }
 
@@ -226,7 +221,7 @@ library ERC4626Lib {
         if (!ok || assets > maxAssets) {
             revert IERC4626.ERC4626ExceededMaxWithdraw(owner, assets, maxAssets);
         }
-        shares = _convertToSharesFromTotals(assets, supply, nav, _decimalsOffset(), Rounding.Ceil);
+        shares = _convertToSharesFromTotals(assets, supply, nav, _decimalsOffset(), Math.Rounding.Ceil);
         _withdraw(msg.sender, receiver, owner, assets, shares);
     }
 
@@ -238,7 +233,7 @@ library ERC4626Lib {
         if (!ok || shares > maxShares) {
             revert IERC4626.ERC4626ExceededMaxRedeem(owner, shares, maxShares);
         }
-        assets = _convertToAssetsFromTotals(shares, supply, nav, _decimalsOffset(), Rounding.Floor);
+        assets = _convertToAssetsFromTotals(shares, supply, nav, _decimalsOffset(), Math.Rounding.Floor);
         _withdraw(msg.sender, receiver, owner, assets, shares);
     }
 
@@ -247,12 +242,12 @@ library ERC4626Lib {
     //////////////////////////////////////////////////////////////////////////*//
 
     /// @dev Converts `assets` to shares at the diamond's NAV using the given rounding direction.
-    function _convertToShares(uint256 assets, Rounding rounding) internal view returns (uint256) {
+    function _convertToShares(uint256 assets, Math.Rounding rounding) internal view returns (uint256) {
         return _convertToSharesFromTotals(assets, ERC20Lib.totalSupply(), _nav(), _decimalsOffset(), rounding);
     }
 
     /// @dev Converts `shares` to assets at the diamond's NAV using the given rounding direction.
-    function _convertToAssets(uint256 shares, Rounding rounding) internal view returns (uint256) {
+    function _convertToAssets(uint256 shares, Math.Rounding rounding) internal view returns (uint256) {
         return _convertToAssetsFromTotals(shares, ERC20Lib.totalSupply(), _nav(), _decimalsOffset(), rounding);
     }
 
@@ -263,9 +258,9 @@ library ERC4626Lib {
         uint256 totalSupply_,
         uint256 totalAssets_,
         uint8 decimalsOffset_,
-        Rounding rounding
+        Math.Rounding rounding
     ) internal pure returns (uint256) {
-        return mulDiv(assets, totalSupply_ + 10 ** uint256(decimalsOffset_), totalAssets_ + 1, rounding);
+        return _mulDiv(assets, totalSupply_ + 10 ** uint256(decimalsOffset_), totalAssets_ + 1, rounding);
     }
 
     /// @dev Converts `shares` to assets from explicit totals.
@@ -275,15 +270,16 @@ library ERC4626Lib {
         uint256 totalSupply_,
         uint256 totalAssets_,
         uint8 decimalsOffset_,
-        Rounding rounding
+        Math.Rounding rounding
     ) internal pure returns (uint256) {
-        return mulDiv(shares, totalAssets_ + 1, totalSupply_ + 10 ** uint256(decimalsOffset_), rounding);
+        return _mulDiv(shares, totalAssets_ + 1, totalSupply_ + 10 ** uint256(decimalsOffset_), rounding);
     }
 
     /// @dev `maxWithdraw` at a known NAV: the floor value of `owner`'s shares, capped at idle assets.
     function _maxWithdraw(address owner, uint256 totalSupply_, uint256 nav) private view returns (uint256) {
-        uint256 owed =
-            _convertToAssetsFromTotals(ERC20Lib.balanceOf(owner), totalSupply_, nav, _decimalsOffset(), Rounding.Floor);
+        uint256 owed = _convertToAssetsFromTotals(
+            ERC20Lib.balanceOf(owner), totalSupply_, nav, _decimalsOffset(), Math.Rounding.Floor
+        );
         uint256 idle = totalAssets();
         return owed < idle ? owed : idle;
     }
@@ -293,8 +289,17 @@ library ERC4626Lib {
     function _maxRedeem(address owner, uint256 totalSupply_, uint256 nav) private view returns (uint256) {
         uint256 balance = ERC20Lib.balanceOf(owner);
         uint256 idleShares =
-            _convertToSharesFromTotals(totalAssets(), totalSupply_, nav, _decimalsOffset(), Rounding.Floor);
+            _convertToSharesFromTotals(totalAssets(), totalSupply_, nav, _decimalsOffset(), Math.Rounding.Floor);
         return balance < idleShares ? balance : idleShares;
+    }
+
+    /// @dev `Math.mulDiv` in the given rounding direction. The round-up step is applied here rather than through
+    ///      Math's rounding overload, which costs markedly more gas on these hot paths. As in
+    ///      `Math.unsignedRoundsUp`, the odd modes (`Ceil`, `Expand`) round up; the checked increment panics if the
+    ///      floor is already `type(uint256).max`.
+    function _mulDiv(uint256 x, uint256 y, uint256 d, Math.Rounding rounding) private pure returns (uint256 result) {
+        result = Math.mulDiv(x, y, d);
+        if ((uint8(rounding) & 1) == 1 && mulmod(x, y, d) > 0) ++result;
     }
 
     function _decimalsOffset() private view returns (uint8) {
@@ -369,100 +374,6 @@ library ERC4626Lib {
         if (!ok || (ret.length == 0 ? token.code.length == 0 : !abi.decode(ret, (bool)))) {
             revert IERC4626.SafeERC20FailedOperation(token);
         }
-    }
-
-    // Ported from OpenZeppelin Math.mulDiv v5.1.0
-    /// @dev Calculates x * y / denominator with full 512-bit precision (Remco Bloemen algorithm).
-    ///      Reverts with MathOverflowedMulDiv if the result overflows a uint256 or the denominator is 0.
-    function mulDiv(uint256 x, uint256 y, uint256 denominator) internal pure returns (uint256 result) {
-        unchecked {
-            // 512-bit multiply [prod1 prod0] = x * y. Compute the product mod 2²⁵⁶ and mod 2²⁵⁶ - 1, then use
-            // the Chinese Remainder Theorem to reconstruct the 512 bit result. The result is stored in two 256
-            // variables such that product = prod1 * 2²⁵⁶ + prod0.
-            uint256 prod0 = x * y; // Least significant 256 bits of the product
-            uint256 prod1; // Most significant 256 bits of the product
-            assembly {
-                let mm := mulmod(x, y, not(0))
-                prod1 := sub(sub(mm, prod0), lt(mm, prod0))
-            }
-
-            // Handle non-overflow cases, 256 by 256 division.
-            if (prod1 == 0) {
-                // Solidity will revert if denominator == 0, unlike the div opcode on its own.
-                // The surrounding unchecked block does not change this fact.
-                // See https://docs.soliditylang.org/en/latest/control-structures.html#checked-or-unchecked-arithmetic.
-                return prod0 / denominator;
-            }
-
-            // Make sure the result is less than 2²⁵⁶. Also prevents denominator == 0.
-            if (denominator <= prod1) {
-                revert IERC4626.MathOverflowedMulDiv();
-            }
-
-            ///////////////////////////////////////////////
-            // 512 by 256 division.
-            ///////////////////////////////////////////////
-
-            // Make division exact by subtracting the remainder from [prod1 prod0].
-            uint256 remainder;
-            assembly {
-                // Compute remainder using mulmod.
-                remainder := mulmod(x, y, denominator)
-
-                // Subtract 256 bit number from 512 bit number.
-                prod1 := sub(prod1, gt(remainder, prod0))
-                prod0 := sub(prod0, remainder)
-            }
-
-            // Factor powers of two out of denominator and compute largest power of two divisor of denominator.
-            // Always >= 1. See https://cs.stackexchange.com/q/138556/92363.
-
-            uint256 twos = denominator & (0 - denominator);
-            assembly {
-                // Divide denominator by twos.
-                denominator := div(denominator, twos)
-
-                // Divide [prod1 prod0] by twos.
-                prod0 := div(prod0, twos)
-
-                // Flip twos such that it is 2²⁵⁶ / twos. If twos is zero, then it becomes one.
-                twos := add(div(sub(0, twos), twos), 1)
-            }
-
-            // Shift in bits from prod1 into prod0.
-            prod0 |= prod1 * twos;
-
-            // Invert denominator mod 2²⁵⁶. Now that denominator is an odd number, it has an inverse modulo 2²⁵⁶ such
-            // that denominator * inv ≡ 1 mod 2²⁵⁶. Compute the inverse by starting with a seed that is correct for
-            // four bits. That is, denominator * inv ≡ 1 mod 2⁴.
-            // slither-disable-next-line incorrect-exp XOR is intended: the 4-bit Newton-Raphson seed
-            uint256 inverse = (3 * denominator) ^ 2;
-
-            // Use the Newton-Raphson iteration to improve the precision. Thanks to Hensel's lifting lemma, this also
-            // works in modular arithmetic, doubling the correct bits in each step.
-            inverse *= 2 - denominator * inverse; // inverse mod 2⁸
-            inverse *= 2 - denominator * inverse; // inverse mod 2¹⁶
-            inverse *= 2 - denominator * inverse; // inverse mod 2³²
-            inverse *= 2 - denominator * inverse; // inverse mod 2⁶⁴
-            inverse *= 2 - denominator * inverse; // inverse mod 2¹²⁸
-            inverse *= 2 - denominator * inverse; // inverse mod 2²⁵⁶
-
-            // Because the division is now exact we can divide by multiplying with the modular inverse of denominator.
-            // This will give us the correct result modulo 2²⁵⁶. Since the preconditions guarantee that the outcome is
-            // less than 2²⁵⁶, this is the final result. We don't need to compute the high bits of the result and prod1
-            // is no longer required.
-            result = prod0 * inverse;
-            return result;
-        }
-    }
-
-    /// @dev Calculates x * y / denominator with full precision, following the selected rounding direction.
-    function mulDiv(uint256 x, uint256 y, uint256 denominator, Rounding rounding) internal pure returns (uint256) {
-        uint256 result = mulDiv(x, y, denominator);
-        if (rounding == Rounding.Ceil && mulmod(x, y, denominator) > 0) {
-            result += 1;
-        }
-        return result;
     }
 }
 
