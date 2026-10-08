@@ -18,41 +18,51 @@ env:
   FOUNDRY_PROFILE: ci
 
 jobs:
-  # Every lane runs in one job: some suites span several chains (CCTPUSDCDemoFork forks Arc, then Sepolia or
-  # Base Sepolia). Suites whose own protocol-address variables (GELATO_*, API3_*, …) are unset still skip.
+  # One lane per RPC group, so a missing or failing endpoint fails only its own lane. script/fork-lanes.sh assigns
+  # every suite to a lane (`make scripts-check` fails on an unassigned suite, or on a suite that reads an RPC its
+  # lane lacks); suites that span chains share the cctp-testnet lane. The Hedera suites are a manual opt-in.
   fork:
-    name: Fork tests
+    name: Fork tests (${{ matrix.lane }})
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 60
     permissions:
       contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        lane:
+          - mainnet
+          - sepolia
+          - base-sepolia
+          - cctp-testnet
+    env:
+      LANE: ${{ matrix.lane }}
     steps:
-      # A lane without its secret would skip every suite and still pass, so a missing secret fails the run.
-      - name: Require archive RPC secrets
-        env:
-          MAINNET_RPC_URL: ${{ secrets.MAINNET_RPC_URL }}
-          SEPOLIA_RPC_URL: ${{ secrets.SEPOLIA_RPC_URL }}
-          BASE_SEPOLIA_RPC_URL: ${{ secrets.BASE_SEPOLIA_RPC_URL }}
-          ARC_TESTNET_RPC_URL: ${{ secrets.ARC_TESTNET_RPC_URL }}
-        run: |
-          set -euo pipefail
-          missing=()
-          for name in MAINNET_RPC_URL SEPOLIA_RPC_URL BASE_SEPOLIA_RPC_URL ARC_TESTNET_RPC_URL; do
-            if [ -z "${!name}" ]; then missing+=("$name"); fi
-          done
-          if [ "${#missing[@]}" -gt 0 ]; then
-            echo "::error::Missing repository secrets: ${missing[*]} (archive-capable RPC URLs; see .env.example)."
-            exit 1
-          fi
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event_name == 'schedule' && 'dev' || github.ref }}
           submodules: recursive
           persist-credentials: false
+      # A lane without its secret would skip every suite and still pass, so a missing secret (or a matrix lane
+      # the script does not define) fails the lane.
+      - name: Require the lane's archive RPC secrets
+        env:
+          MAINNET_RPC_URL: ${{ secrets.MAINNET_RPC_URL }}
+          SEPOLIA_RPC_URL: ${{ secrets.SEPOLIA_RPC_URL }}
+          BASE_SEPOLIA_RPC_URL: ${{ secrets.BASE_SEPOLIA_RPC_URL }}
+          ARC_TESTNET_RPC_URL: ${{ secrets.ARC_TESTNET_RPC_URL }}
+        run: ./script/fork-lanes.sh require "$LANE"
+      # Each lane keeps its own RPC cache. With the toolchain's default key (job id + sha) all four lanes share one
+      # key, so only the first lane to finish saves its chains and the others start cold the next week.
       - uses: ./.github/actions/foundry-setup
-      # FORK_REQUIRE_ARCHIVE makes a pruned pinned block fail instead of skip (test/helpers/ArchiveFork.sol).
-      # A fixed fuzz seed lets the toolchain's RPC cache serve fuzzed fork tests.
-      - name: Run fork suites
+        with:
+          cache-key: fork-${{ matrix.lane }}-${{ github.sha }}
+          cache-restore-keys: fork-${{ matrix.lane }}-
+      # FORK_REQUIRE_ARCHIVE turns the skips that could hide a regression into failures: a pruned pinned block, an
+      # emptied CCTP fixture, a pin without the v0.9 EntryPoint (test/helpers/ArchiveFork.sol). A fixed fuzz seed
+      # lets the lane's RPC cache serve fuzzed fork tests. A run whose log shows an RPC error reruns the whole lane
+      # once (not `forge test --rerun`, which skips a suite whose setUp failed).
+      - name: Run the lane's fork suites
         env:
           MAINNET_RPC_URL: ${{ secrets.MAINNET_RPC_URL }}
           SEPOLIA_RPC_URL: ${{ secrets.SEPOLIA_RPC_URL }}
@@ -60,7 +70,7 @@ jobs:
           ARC_TESTNET_RPC_URL: ${{ secrets.ARC_TESTNET_RPC_URL }}
           FORK_REQUIRE_ARCHIVE: "true"
           FOUNDRY_FUZZ_SEED: "0x1a77ce"
-        run: forge test --match-path 'test/fork/*' --summary
+        run: ./script/fork-lanes.sh run "$LANE"
 
   coverage:
     name: Coverage

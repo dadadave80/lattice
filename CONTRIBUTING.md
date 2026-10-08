@@ -101,7 +101,8 @@ CI also runs checks that `make ci` leaves out:
 
 Fork suites (`test/fork/`) need RPC URLs and skip their lanes cleanly without them. They pin historical
 blocks, so use archive endpoints (see `.env.example`); the `Scheduled` workflow runs them weekly against
-archive secrets. Say in the PR which lanes you ran. Behavior changes need regression tests through a real
+archive secrets. Add a new fork suite to its lane in `script/fork-lanes.sh`, or `make scripts-check`
+fails; `./script/fork-lanes.sh run <lane>` runs one lane the way the workflow does. Say in the PR which lanes you ran. Behavior changes need regression tests through a real
 diamond built from the module's recipe.
 
 Optional, local only: `make mutation` runs the [Gambit](https://github.com/Certora/gambit) mutation pilot
