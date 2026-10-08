@@ -108,11 +108,6 @@ contract GovernanceGasTest is Test {
     uint256 constant TIMELOCK_DELAY = 2 days;
     uint256 constant MIN_DELAY = 2 days;
 
-    // Generous upper bounds (~3× expected).
-    uint256 constant GAS_BOUND_CAST_VOTE = 200_000;
-    uint256 constant GAS_BOUND_CHECK_ROLE = 30_000;
-    uint256 constant GAS_BOUND_SCHEDULE = 200_000;
-
     function setUp() public {
         // Deploy governance token.
         token = new GovGasERC20Votes();
@@ -187,9 +182,7 @@ contract GovernanceGasTest is Test {
         vm.prank(alice);
         vm.startSnapshotGas("Governor.castVote");
         governor.castVote(proposalId, uint8(IGovernor.VoteType.For));
-        uint256 gasUsed = vm.stopSnapshotGas();
-
-        assertLt(gasUsed, GAS_BOUND_CAST_VOTE, "Governor.castVote gas regression");
+        vm.stopSnapshotGas();
     }
 
     /// @notice Gas cost of checkRole for a member (the cheap/happy path).
@@ -199,9 +192,7 @@ contract GovernanceGasTest is Test {
         vm.prank(alice);
         vm.startSnapshotGas("AccessControl.checkRole.member");
         accessControl.checkRoleExposed(voterRole);
-        uint256 gasUsed = vm.stopSnapshotGas();
-
-        assertLt(gasUsed, GAS_BOUND_CHECK_ROLE, "AccessControl.checkRole.member gas regression");
+        vm.stopSnapshotGas();
     }
 
     /// @notice Gas cost of a single TimelockController schedule call.
@@ -214,8 +205,6 @@ contract GovernanceGasTest is Test {
 
         vm.startSnapshotGas("TimelockController.schedule");
         timelock.schedule(address(govTarget), 0, data, bytes32(0), bytes32(0), MIN_DELAY);
-        uint256 gasUsed = vm.stopSnapshotGas();
-
-        assertLt(gasUsed, GAS_BOUND_SCHEDULE, "TimelockController.schedule gas regression");
+        vm.stopSnapshotGas();
     }
 }

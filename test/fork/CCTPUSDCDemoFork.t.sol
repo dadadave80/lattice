@@ -4,6 +4,7 @@ pragma solidity ^0.8.30;
 import {IDiamondLoupe} from "@diamond/interfaces/IDiamondLoupe.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {CCTPUSDCDemo} from "@lattice-script/base/crosschain/CCTPUSDCDemo.s.sol";
+import {ArchiveFork} from "@lattice-test/helpers/ArchiveFork.sol";
 import {IBridgeFungible} from "@lattice/interfaces/crosschain/IBridgeFungible.sol";
 import {ICCTPBridgeAdapter} from "@lattice/interfaces/crosschain/ICCTPBridgeAdapter.sol";
 import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
@@ -93,7 +94,7 @@ contract CCTPUSDCDemoFork is Test {
             vm.skip(true);
             return;
         }
-        _forkArc();
+        if (!_forkArc()) return;
         probe = new CCTPUSDCDemoProbe();
         actor = address(probe);
         // Tests, unlike scripts, do NOT auto-persist helpers across forks — the probe must survive re-forking.
@@ -104,16 +105,17 @@ contract CCTPUSDCDemoFork is Test {
     //                                 HELPERS
     //////////////////////////////////////////////////////////////////////////*//
 
-    function _forkArc() internal {
-        vm.createSelectFork("arc-testnet", vm.envOr("ARC_TESTNET_FORK_BLOCK", DEFAULT_ARC_TESTNET_FORK_BLOCK));
+    /// @dev False (the test is skipped) when the RPC pruned the pinned block; see {ArchiveFork}.
+    function _forkArc() internal returns (bool) {
+        return ArchiveFork.select("arc-testnet", vm.envOr("ARC_TESTNET_FORK_BLOCK", DEFAULT_ARC_TESTNET_FORK_BLOCK));
     }
 
-    function _forkDest(CCTPUSDCDemo.Dest memory d) internal {
+    /// @dev False (the test is skipped) when the RPC pruned the pinned block; see {ArchiveFork}.
+    function _forkDest(CCTPUSDCDemo.Dest memory d) internal returns (bool) {
         if (keccak256(bytes(d.key)) == keccak256("base")) {
-            vm.createSelectFork(d.rpcAlias, vm.envOr("BASE_SEPOLIA_FORK_BLOCK", DEFAULT_BASE_SEPOLIA_FORK_BLOCK));
-        } else {
-            vm.createSelectFork(d.rpcAlias, vm.envOr("SEPOLIA_FORK_BLOCK", DEFAULT_SEPOLIA_FORK_BLOCK));
+            return ArchiveFork.select(d.rpcAlias, vm.envOr("BASE_SEPOLIA_FORK_BLOCK", DEFAULT_BASE_SEPOLIA_FORK_BLOCK));
         }
+        return ArchiveFork.select(d.rpcAlias, vm.envOr("SEPOLIA_FORK_BLOCK", DEFAULT_SEPOLIA_FORK_BLOCK));
     }
 
     /// @dev True (and does not skip) when `envKey` is set; otherwise marks the test skipped and returns false.
@@ -255,7 +257,7 @@ contract CCTPUSDCDemoFork is Test {
         assertEq(done, 0, "not done");
 
         // Assemble the hub on Arc (NOT funded yet); carry it across the live-tip status forks.
-        _forkArc();
+        if (!_forkArc()) return;
         address hub = probe.setupHub(actor, 0, 2000);
         _persist(hub);
         vm.makePersistent(ARC_USDC);
@@ -271,7 +273,7 @@ contract CCTPUSDCDemoFork is Test {
         assertEq(srcBal, 0, "source unfunded");
 
         // Fund the source natively on Arc (the persistent actor carries the balance across the status re-forks).
-        _forkArc();
+        if (!_forkArc()) return;
         vm.deal(actor, AMOUNT * 1e12);
 
         // Funded, not yet burned -> READY-TO-BURN, srcBal == AMOUNT.
@@ -290,7 +292,7 @@ contract CCTPUSDCDemoFork is Test {
         // Simulate the destination mint -> DELIVERED. Destination USDC is a normal ERC-20 (stdstore deal works);
         // relay gas is ETH, never netted from the credit, so DELIVERED is simply dstBal >= baseline + AMOUNT
         // (free standard burn: srcMaxFee 0). Persist the token so the deal survives the live-tip status re-fork.
-        _forkDest(d);
+        if (!_forkDest(d)) return;
         vm.makePersistent(d.usdc);
         deal(d.usdc, actor, AMOUNT);
 

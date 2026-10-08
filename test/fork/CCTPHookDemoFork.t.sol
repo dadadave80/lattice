@@ -2,6 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {CCTPHookDemo} from "@lattice-script/base/crosschain/CCTPHookDemo.s.sol";
+import {ArchiveFork} from "@lattice-test/helpers/ArchiveFork.sol";
 import {CCTPHookVault} from "@lattice/examples/crosschain/CCTPHookVault.sol";
 import {ICCTPBridgeAdapter} from "@lattice/interfaces/crosschain/ICCTPBridgeAdapter.sol";
 import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
@@ -44,7 +45,7 @@ contract CCTPHookDemoFork is Test {
     ///         the diamond's own {CCTPHookExecutor}.
     function test_Fork_HookDemoAssemblesDestDiamondAndVault() public {
         if (_skipped()) return;
-        vm.createSelectFork("base-sepolia", vm.envOr("BASE_SEPOLIA_FORK_BLOCK", BASE_SEPOLIA_FORK_BLOCK));
+        if (!ArchiveFork.select("base-sepolia", vm.envOr("BASE_SEPOLIA_FORK_BLOCK", BASE_SEPOLIA_FORK_BLOCK))) return;
 
         (address diamond, address vault) = demo._setupHookDest(address(this));
 
@@ -63,7 +64,7 @@ contract CCTPHookDemoFork is Test {
     ///         driven by anyone (the demo cast-sends it through the Arc hub's `relayMessage`).
     function test_Fork_SetupWithReturnRegistersArcOnDestDiamond() public {
         if (_skipped()) return;
-        vm.createSelectFork("base-sepolia", vm.envOr("BASE_SEPOLIA_FORK_BLOCK", BASE_SEPOLIA_FORK_BLOCK));
+        if (!ArchiveFork.select("base-sepolia", vm.envOr("BASE_SEPOLIA_FORK_BLOCK", BASE_SEPOLIA_FORK_BLOCK))) return;
 
         (address diamond, address vault) = demo._setupHookDestWithReturn(address(demo), 0, 2000);
 
@@ -80,7 +81,9 @@ contract CCTPHookDemoFork is Test {
     ///         `TokenMessengerV2` toward Arc — the balance leaves the caller entirely (burn-and-mint).
     function test_Fork_ReturnBurnBurnsBaseUsdcTowardArc() public {
         if (_skipped()) return;
-        vm.createSelectFork("base-sepolia", vm.envOr("BASE_SEPOLIA_RETURN_FORK_BLOCK", RETURN_LEG_FORK_BLOCK));
+        if (!ArchiveFork.select("base-sepolia", vm.envOr("BASE_SEPOLIA_RETURN_FORK_BLOCK", RETURN_LEG_FORK_BLOCK))) {
+            return;
+        }
 
         (address diamond,) = demo._setupHookDestWithReturn(address(demo), 0, 2000);
         deal(BASE_USDC, address(demo), 1_000_000);
@@ -115,7 +118,7 @@ contract CCTPHookDemoFork is Test {
         uint256 amount = vm.parseJsonUint(json, ".amount");
         uint256 receiveBlock = vm.parseJsonUint(json, ".receiveBlock");
 
-        vm.createSelectFork("base-sepolia", receiveBlock - 1);
+        if (!ArchiveFork.select("base-sepolia", receiveBlock - 1)) return;
 
         uint256 creditBefore = CCTPHookVault(vault).creditOf(beneficiary);
         ICCTPBridgeAdapter(diamond).relayMessageWithHook(message, attestation);

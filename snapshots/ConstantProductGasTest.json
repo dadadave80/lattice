@@ -1,0 +1,6 @@
+{
+  "ConstantProduct.addLiquidity.first": "235140",
+  "ConstantProduct.addLiquidity.subsequent": "103691",
+  "ConstantProduct.removeLiquidity": "76387",
+  "ConstantProduct.swapExactTokensForTokens": "75032"
+}

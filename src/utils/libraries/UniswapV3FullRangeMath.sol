@@ -120,6 +120,7 @@ library UniswapV3FullRangeMath {
             prod0 |= prod1 * twos;
 
             // Invert denominator mod 2**256 via Newton-Raphson (4 bits → 256 bits in 6 doublings).
+            // slither-disable-next-line incorrect-exp XOR is intended: the 4-bit Newton-Raphson seed
             uint256 inv = (3 * denominator) ^ 2;
             inv *= 2 - denominator * inv; // mod 2**8
             inv *= 2 - denominator * inv; // mod 2**16

@@ -257,6 +257,7 @@ library Math {
             // Invert denominator mod 2²⁵⁶. Now that denominator is an odd number, it has an inverse modulo 2²⁵⁶ such
             // that denominator * inv ≡ 1 mod 2²⁵⁶. Compute the inverse by starting with a seed that is correct for
             // four bits. That is, denominator * inv ≡ 1 mod 2⁴.
+            // slither-disable-next-line incorrect-exp XOR is intended: the 4-bit Newton-Raphson seed
             uint256 inverse = (3 * denominator) ^ 2;
 
             // Use the Newton-Raphson iteration to improve the precision. Thanks to Hensel's lifting lemma, this also

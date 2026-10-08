@@ -46,11 +46,6 @@ contract ERC1155GasTest is Test {
     address alice = address(0x1);
     address bob = address(0x2);
 
-    // Generous upper bounds (~3× expected).
-    uint256 constant GAS_BOUND_MINT_BATCH = 200_000;
-    uint256 constant GAS_BOUND_BATCH_TRANSFER = 300_000;
-    uint256 constant GAS_BOUND_SET_APPROVAL = 60_000;
-
     function setUp() public {
         token = new GasERC1155();
         token.initialize("https://token.uri/{id}", admin);
@@ -68,8 +63,7 @@ contract ERC1155GasTest is Test {
         vm.prank(admin);
         vm.startSnapshotGas("ERC1155.mintBatch");
         token.mintBatchHelper(alice, ids, amounts, "");
-        uint256 gasUsed = vm.stopSnapshotGas();
-        assertLt(gasUsed, GAS_BOUND_MINT_BATCH, "ERC1155.mintBatch gas regression");
+        vm.stopSnapshotGas();
     }
 
     /// @notice Gas cost of safeBatchTransferFrom with 5 tokens between EOAs.
@@ -87,8 +81,7 @@ contract ERC1155GasTest is Test {
         vm.prank(alice);
         vm.startSnapshotGas("ERC1155.safeBatchTransferFrom");
         token.safeBatchTransferFrom(alice, bob, ids, amounts, "");
-        uint256 gasUsed = vm.stopSnapshotGas();
-        assertLt(gasUsed, GAS_BOUND_BATCH_TRANSFER, "ERC1155.safeBatchTransferFrom gas regression");
+        vm.stopSnapshotGas();
     }
 
     /// @notice Gas cost of setApprovalForAll.
@@ -96,7 +89,6 @@ contract ERC1155GasTest is Test {
         vm.prank(alice);
         vm.startSnapshotGas("ERC1155.setApprovalForAll");
         token.setApprovalForAll(bob, true);
-        uint256 gasUsed = vm.stopSnapshotGas();
-        assertLt(gasUsed, GAS_BOUND_SET_APPROVAL, "ERC1155.setApprovalForAll gas regression");
+        vm.stopSnapshotGas();
     }
 }

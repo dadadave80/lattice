@@ -64,8 +64,17 @@ test-fork: ## Run the fork suites (env-gated: SEPOLIA/BASE_SEPOLIA/ARC_TESTNET/M
 	forge test --match-path 'test/fork/*'
 
 .PHONY: snapshot
-snapshot: ## Regenerate gas snapshots
-	forge snapshot
+snapshot: ## Regenerate the committed gas snapshots (snapshots/*.json) from test/gas under the CI profile
+	@! grep -rlE 'snapshotGas|SnapshotGas|snapshotValue' test src script --exclude-dir=gas || { \
+		echo "Gas snapshots are recorded only in test/gas/: move these into a test/gas suite."; exit 1; }
+	rm -rf snapshots
+	FOUNDRY_PROFILE=ci forge test --match-path 'test/gas/*'
+
+.PHONY: snapshot-check
+snapshot-check: snapshot ## Gas gate, as CI runs it: fail when snapshots/ differs from the committed (or staged) files
+	@git diff --quiet -- snapshots/ && test -z "$$(git ls-files --others -- snapshots/)" || { git status --short -- snapshots/; \
+		git --no-pager diff -- snapshots/; \
+		echo "Gas snapshots changed: review the diff (make snapshot regenerates them), then commit snapshots/."; exit 1; }
 
 .PHONY: clean
 clean: ## Remove build artifacts (do this before trusting any gate after agents/tools touched the tree)
@@ -107,16 +116,23 @@ storage-update: ## Regenerate the storage-layout baseline (review the diff: appe
 	./script/upgrades/check-storage-layout.sh --update
 
 .PHONY: test-ci
-test-ci: ## Full test suite under the CI profile
-	FOUNDRY_PROFILE=ci forge test
+test-ci: ## Full test suite under the CI profile (snapshots/ is left to snapshot-check, as in CI)
+	FOUNDRY_PROFILE=ci FORGE_SNAPSHOT_EMIT=false forge test
 
 .PHONY: ci
-ci: fmt-check license-check sizes via-ir storage-check test-ci ## All CI gates, locally, in CI order
+ci: fmt-check license-check sizes via-ir storage-check test-ci snapshot-check ## All CI gates, locally, in CI order
 
 .PHONY: slither
-slither: ## Static analysis (advisory, mirrors CI's slither job; needs slither installed)
-	@command -v slither >/dev/null 2>&1 || { echo "slither not installed (pip install slither-analyzer)"; exit 1; }
-	slither .
+slither: ## Static analysis gate, as CI runs it (slither.config.json + triaged slither.db.json; fails on High)
+	@command -v slither >/dev/null 2>&1 || { echo "slither not installed (pipx install slither-analyzer==0.11.6)"; exit 1; }
+	./script/slither-db.py --check
+	FOUNDRY_PROFILE=ci slither . --fail-high
+
+.PHONY: slither-triage
+slither-triage: ## Accept new Slither results one by one into slither.db.json, then normalize it (each entry needs a reason)
+	@command -v slither >/dev/null 2>&1 || { echo "slither not installed (pipx install slither-analyzer==0.11.6)"; exit 1; }
+	FOUNDRY_PROFILE=ci slither . --triage-mode
+	./script/slither-db.py
 
 # -------------------------------------------------------------- docs & coverage
 
@@ -129,8 +145,9 @@ doc-serve: ## Build and serve the docs locally (http://localhost:4000)
 	forge doc --serve --port 4000
 
 .PHONY: coverage
-coverage: ## Coverage summary (slow; add --ir-minimum via ARGS if a suite hits stack-too-deep)
-	forge coverage --report summary $(ARGS)
+coverage: ## Coverage summary for src/, fork suites excluded (add --ir-minimum via ARGS if a suite hits stack-too-deep)
+	FORGE_SNAPSHOT_EMIT=false forge coverage --report summary --no-match-path 'test/fork/*' \
+		--no-match-coverage '(test|script)/' $(ARGS)
 
 # --------------------------------------------------------------------- local node
 # `deploy-local` signs with the well-known Anvil key (ANVIL_KEY) against the local

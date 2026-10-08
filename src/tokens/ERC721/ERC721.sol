@@ -58,6 +58,7 @@ contract ERC721 is IERC721 {
 
     /// @inheritdoc IERC721
     function transferFrom(address from, address to, uint256 tokenId) public virtual {
+        // slither-disable-next-line arbitrary-send-erc20 ERC721Lib checks owner/approval first
         ERC721Lib.transferFrom(from, to, tokenId);
     }
 

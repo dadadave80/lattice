@@ -394,6 +394,7 @@ library StrategyManagerLib {
     ///      recall: it completes, emits {IStrategyManager.StrategyPartiallyRecalled}, and the strategy stays
     ///      over target until a later rebalance.
     function _recall(address strategy, uint256 current, uint256 requested, address vaultAddr, address asset_) private {
+        // slither-disable-next-line reentrancy-balance deliberate idle delta; rebalance() is guarded
         uint256 idleBefore = IERC20(asset_).balanceOf(vaultAddr);
         IStrategy(strategy).withdraw(requested, vaultAddr);
         uint256 received = IERC20(asset_).balanceOf(vaultAddr) - idleBefore;

@@ -81,17 +81,25 @@ Run `make ci`. It runs CI's Solidity gates, in CI's order:
 | `make via-ir` | IR-pipeline build |
 | `make storage-check` | ERC-7201 storage-layout baseline |
 | `make test-ci` | full test suite under `FOUNDRY_PROFILE=ci` |
+| `make snapshot-check` | gas snapshots in `snapshots/` match the committed files (`make snapshot` regenerates them) |
 
 CI also runs checks that `make ci` leaves out:
 
 - a size gate under via-ir (`make via-ir` only compiles);
+- Slither (`make slither`), which fails on any High result that is not suppressed or triaged. Confirm a
+  new one is a false positive first. Suppress a statement-level result with
+  `// slither-disable-next-line <detector> <reason>` directly above the flagged line: a triaged id embeds
+  that line's numbers, so it would resurface whenever the file shifts. Triage function-level results, and
+  results in files that must stay byte-exact, with `make slither-triage`, then give each new
+  `slither.db.json` entry a one-line `reason`;
 - Anvil deploy checks: `make test-grant-runner`, `make example-ens-grant-m2 LOCAL=1` and
   `make check-atomic-deploy`. The last one fails if any file in `script/` calls `new Lattice` or a
   separate `initialize`. To run them, start `make anvil` in one shell, then run them in another.
 
-Fork suites (`test/fork/`) need RPC URLs and skip their lanes cleanly without them. Say in the PR which
-lanes you ran. Behavior changes need regression tests through a real diamond built from the module's
-recipe.
+Fork suites (`test/fork/`) need RPC URLs and skip their lanes cleanly without them. They pin historical
+blocks, so use archive endpoints (see `.env.example`); the `Scheduled` workflow runs them weekly against
+archive secrets. Say in the PR which lanes you ran. Behavior changes need regression tests through a real
+diamond built from the module's recipe.
 
 ## Adding a module
 

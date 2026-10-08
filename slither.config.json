@@ -1,0 +1,6 @@
+{
+  "filter_paths": "(test/|script/)",
+  "exclude_informational": true,
+  "exclude_dependencies": true,
+  "detectors_to_exclude": "naming-convention,assembly,solc-version,pragma,too-many-digits,low-level-calls,missing-inheritance,cyclomatic-complexity,unindexed-event-address"
+}

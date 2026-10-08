@@ -67,6 +67,7 @@ library BridgeFungibleLib {
     /// @notice Pulls EXACTLY `amount` of `token` from `from` into this contract; reverts if the measured
     ///         balance delta differs (rejects fee-on-transfer tokens, which would break the 1:1 invariant).
     function pullExact(address token, address from, uint256 amount) internal {
+        // slither-disable-next-line reentrancy-balance deliberate balance delta that rejects fee-on-transfer tokens
         uint256 balanceBefore = IERC20(token).balanceOf(address(this));
         _call(token, abi.encodeWithSelector(IERC20.transferFrom.selector, from, address(this), amount));
         uint256 received = IERC20(token).balanceOf(address(this)) - balanceBefore;
