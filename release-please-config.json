@@ -10,7 +10,7 @@
       "include-component-in-tag": false,
       "draft": false,
       "prerelease": false,
-      "extra-files": ["src/LatticeVersion.sol"]
+      "extra-files": ["src/LatticeVersion.sol", "README.md"]
     }
   },
   "changelog-sections": [

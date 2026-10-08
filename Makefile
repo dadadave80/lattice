@@ -87,7 +87,7 @@ fmt-check: ## Formatting gate (what CI runs)
 
 .PHONY: sizes
 sizes: ## EIP-170 size gate under the CI profile (skips test/script)
-	FOUNDRY_PROFILE=ci forge build --sizes --skip test script
+	FOUNDRY_PROFILE=ci forge build --locked --sizes --skip test script
 
 .PHONY: via-ir
 via-ir: ## IR-pipeline parity build (catches stack-too-deep / IR-only errors)
