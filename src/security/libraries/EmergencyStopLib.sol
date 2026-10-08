@@ -126,6 +126,19 @@ library EmergencyStopLib {
         }
     }
 
+    /// @notice Returns whether `selector` is one the admin needs to recover from a stop: `emergencyResume`,
+    ///         `removeGuardian` or `IAccessControl.revokeRole`.
+    /// @dev The removal-only emergency cuts refuse these. Every governed cut path calls {checkNotStopped}
+    ///      and re-adding a removed selector takes a cut, so a guardian that trips the stop and then
+    ///      removes `emergencyResume` would stop the diamond forever, and one that removes both
+    ///      revocation paths could re-stop after every resume.
+    /// @param selector The function selector to classify.
+    /// @return bool True if `selector` is part of the admin's stop-recovery path.
+    function isRecoverySelector(bytes4 selector) internal pure returns (bool) {
+        return selector == IEmergencyStop.emergencyResume.selector || selector == IEmergencyStop.removeGuardian.selector
+            || selector == IAccessControl.revokeRole.selector;
+    }
+
     /// @notice Reverts with `EmergencyStopActive` if the emergency stop is active.
     /// @dev Consumer modules call this to gate protected operations.
     function checkNotStopped() internal view {

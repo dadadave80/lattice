@@ -14,6 +14,7 @@ import {ISafeAuthority} from "@lattice/interfaces/governance/ISafeAuthority.sol"
 import {IUpgradeRegistry} from "@lattice/interfaces/governance/IUpgradeRegistry.sol";
 import {IEmergencyStop} from "@lattice/interfaces/security/IEmergencyStop.sol";
 import {EMERGENCY_GUARDIAN_ROLE} from "@lattice/security/libraries/EmergencyStopLib.sol";
+import {stdError} from "forge-std/StdError.sol";
 
 /// @notice A trivial facet whose selector we Add via a scheduled cut, to prove the cut applied.
 contract DummyFacet {
@@ -221,8 +222,8 @@ contract GovernedSafeDiamondCutTest is GovernedSafeDiamondCutTestBase {
         cut.executeCut(cuts, address(0), "", SALT);
 
         assertEq(loupe.facetAddress(DummyFacet.ping.selector), address(dummy), "ping selector must be bound");
-        // Operation cleared: not pending, not ready, done.
-        assertEq(cut.getTimestamp(id), 0, "eta must be cleared after execute");
+        // Operation marked done: not pending, not ready, done.
+        assertEq(cut.getTimestamp(id), 1, "executed id must hold the DONE marker");
         assertFalse(cut.isOperationPending(id));
         assertFalse(cut.isOperationReady(id));
         assertTrue(cut.isOperationDone(id), "operation must report done after execute");
@@ -364,12 +365,21 @@ contract GovernedSafeDiamondCutTest is GovernedSafeDiamondCutTestBase {
     //                       SET MIN DELAY / SAFE ROTATION
     //////////////////////////////////////////////////////////////////////////*//
 
+    /// @notice Raising the delay is scheduled: it applies after max(old, new) = the new delay, and until
+    ///         then new schedules still use the old delay.
     function test_SetMinDelay() public {
+        uint256 effectAt = block.timestamp + 5 days;
         vm.expectEmit(false, false, false, true, address(diamond));
-        emit IGovernedSafeDiamondCut.MinDelayChanged(MIN_DELAY, 5 days);
+        emit IGovernedSafeDiamondCut.MinDelayChangeScheduled(MIN_DELAY, 5 days, effectAt);
         vm.prank(address(safe));
         cut.setMinDelay(5 days);
-        assertEq(cut.minDelay(), 5 days, "minDelay must update");
+        assertEq(cut.minDelay(), MIN_DELAY, "a delay change must not apply immediately");
+
+        vm.warp(effectAt - 1);
+        assertEq(cut.minDelay(), MIN_DELAY, "old delay holds until effectAt");
+
+        vm.warp(effectAt);
+        assertEq(cut.minDelay(), 5 days, "new delay applies at effectAt");
 
         // New schedule uses the new delay.
         FacetCut[] memory cuts = _addPingCut();
@@ -377,6 +387,105 @@ contract GovernedSafeDiamondCutTest is GovernedSafeDiamondCutTestBase {
         vm.prank(address(safe));
         cut.scheduleCut(cuts, address(0), "", SALT);
         assertEq(cut.getTimestamp(id), block.timestamp + 5 days, "new schedule must use new delay");
+    }
+
+    /// @notice #218 regression: the Safe cannot zero the delay and push a cut through in one transaction.
+    ///         `setMinDelay(0)` only pends, so a cut scheduled in the same block still waits the old delay.
+    function test_SetMinDelayZero_CannotScheduleAndExecuteInOneBlock() public {
+        FacetCut[] memory cuts = _addPingCut();
+        bytes32 id = _opId(cuts, address(0), "", SALT);
+
+        vm.startPrank(address(safe));
+        cut.setMinDelay(0);
+        cut.scheduleCut(cuts, address(0), "", SALT);
+        vm.expectRevert(
+            abi.encodeWithSelector(IGovernedSafeDiamondCut.CutNotReady.selector, id, block.timestamp + MIN_DELAY)
+        );
+        cut.executeCut(cuts, address(0), "", SALT);
+        vm.stopPrank();
+
+        assertEq(loupe.facetAddress(DummyFacet.ping.selector), address(0), "no cut may apply without the delay");
+    }
+
+    /// @notice A lowered delay applies only once the old delay has elapsed since the request.
+    function test_LoweredDelayAppliesAfterOldDelay() public {
+        uint256 requestedAt = block.timestamp;
+        vm.prank(address(safe));
+        cut.setMinDelay(1 hours);
+
+        vm.warp(requestedAt + MIN_DELAY - 1);
+        assertEq(cut.minDelay(), MIN_DELAY, "old delay must hold for the full old delay");
+        FacetCut[] memory cuts = _addPingCut();
+        bytes32 early = _opId(cuts, address(0), "", SALT);
+        vm.prank(address(safe));
+        cut.scheduleCut(cuts, address(0), "", SALT);
+        assertEq(cut.getTimestamp(early), block.timestamp + MIN_DELAY, "pre-effect schedule uses old delay");
+
+        vm.warp(requestedAt + MIN_DELAY);
+        assertEq(cut.minDelay(), 1 hours, "lowered delay applies once the old delay has elapsed");
+        bytes32 salt2 = bytes32(uint256(0xBEEF));
+        bytes32 late = _opId(cuts, address(0), "", salt2);
+        vm.prank(address(safe));
+        cut.scheduleCut(cuts, address(0), "", salt2);
+        assertEq(cut.getTimestamp(late), block.timestamp + 1 hours, "post-effect schedule uses new delay");
+    }
+
+    /// @notice A second request replaces the pending one and measures its wait from the delay then in
+    ///         force; re-requesting the current delay withdraws a pending decrease.
+    function test_SetMinDelayReplacesPendingChange() public {
+        uint256 t0 = block.timestamp;
+        vm.prank(address(safe));
+        cut.setMinDelay(0);
+
+        vm.warp(t0 + 1 days);
+        vm.prank(address(safe));
+        cut.setMinDelay(MIN_DELAY); // withdraw the pending decrease
+
+        vm.warp(t0 + MIN_DELAY + 1);
+        assertEq(cut.minDelay(), MIN_DELAY, "withdrawn decrease must never apply");
+
+        // A matured change is folded in before the next request measures its wait from it.
+        vm.prank(address(safe));
+        cut.setMinDelay(1 hours);
+        vm.warp(block.timestamp + MIN_DELAY);
+        assertEq(cut.minDelay(), 1 hours, "matured decrease applies");
+        vm.prank(address(safe));
+        cut.setMinDelay(4 hours);
+        vm.warp(block.timestamp + 4 hours - 1);
+        assertEq(cut.minDelay(), 1 hours, "increase waits max(1h, 4h)");
+        vm.warp(block.timestamp + 1);
+        assertEq(cut.minDelay(), 4 hours, "increase applies after the new delay");
+    }
+
+    /// @notice #218 regression: a delay near `type(uint256).max` can never wrap `eta` into the past and
+    ///         yield an immediately ready operation.
+    function test_NearMaxDelay_NeverImmediatelyReady() public {
+        (FacetCut[] memory recipe, address init, bytes memory cd) =
+            deployer.buildCuts(admin, address(safe), MIN_THRESHOLD, type(uint256).max);
+        Lattice d = new Lattice();
+        d.initialize(recipe, init, cd);
+        GovernedSafeDiamondCut huge = GovernedSafeDiamondCut(address(d));
+
+        FacetCut[] memory cuts = _addPingCut();
+        vm.prank(address(safe));
+        vm.expectRevert(stdError.arithmeticError);
+        huge.scheduleCut(cuts, address(0), "", SALT);
+
+        // Lowering it can never take effect either: the request would mature only after the huge delay.
+        vm.prank(address(safe));
+        vm.expectRevert(stdError.arithmeticError);
+        huge.setMinDelay(0);
+    }
+
+    /// @notice Fuzz: whatever delay the Safe requests, a cut scheduled in the same block is never ready.
+    function testFuzz_SetMinDelayNeverReadiesInSameBlock(uint256 newDelay) public {
+        FacetCut[] memory cuts = _addPingCut();
+        bytes32 id = _opId(cuts, address(0), "", SALT);
+        vm.startPrank(address(safe));
+        try cut.setMinDelay(newDelay) {} catch {}
+        cut.scheduleCut(cuts, address(0), "", SALT);
+        vm.stopPrank();
+        assertFalse(cut.isOperationReady(id), "a delay change must never make a fresh cut ready");
     }
 
     function test_SetMinDelayUnauthorizedReverts() public {
@@ -483,5 +592,150 @@ contract GovernedSafeDiamondCutTest is GovernedSafeDiamondCutTestBase {
         vm.prank(admin);
         cut.emergencyRemoveCut(cuts);
         assertEq(loupe.facetAddress(DummyFacet.ping.selector), address(0), "emergency removal must work during a stop");
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                              OPERATION STATE
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice #218 regression: a never-scheduled id is not done.
+    function test_IsOperationDone_FalseForUnknownId() public view {
+        bytes32 id = bytes32(uint256(0xDEAD));
+        assertFalse(cut.isOperationDone(id), "a never-scheduled id must not read as done");
+        assertEq(cut.getTimestamp(id), 0);
+    }
+
+    /// @notice #218 regression: a cancelled id is not done.
+    function test_IsOperationDone_FalseAfterCancel() public {
+        FacetCut[] memory cuts = _addPingCut();
+        vm.prank(address(safe));
+        bytes32 id = cut.scheduleCut(cuts, address(0), "", SALT);
+        vm.prank(address(safe));
+        cut.cancelCut(id);
+        assertFalse(cut.isOperationDone(id), "a cancelled id must not read as done");
+    }
+
+    /// @notice An executed id is done and neither pending nor ready.
+    function test_ExecutedIdIsDoneNotReady() public {
+        _bindPingViaTimelock();
+        bytes32 id = _opId(_addPingCut(), address(0), "", SALT);
+        assertTrue(cut.isOperationDone(id), "executed id must read as done");
+        assertFalse(cut.isOperationReady(id), "executed id must not read as ready");
+        assertFalse(cut.isOperationPending(id), "executed id must not read as pending");
+        vm.warp(block.timestamp + 365 days);
+        assertTrue(cut.isOperationDone(id), "done is permanent");
+        assertFalse(cut.isOperationReady(id), "done never turns ready");
+    }
+
+    /// @notice #218 regression: an executed id cannot be executed, rescheduled or cancelled; the same cut
+    ///         under a new salt schedules normally.
+    function test_ExecutedIdCannotReplay() public {
+        _bindPingViaTimelock();
+        FacetCut[] memory cuts = _addPingCut();
+        bytes32 id = _opId(cuts, address(0), "", SALT);
+
+        vm.startPrank(address(safe));
+        vm.expectRevert(abi.encodeWithSelector(IGovernedSafeDiamondCut.CutNotScheduled.selector, id));
+        cut.executeCut(cuts, address(0), "", SALT);
+
+        vm.expectRevert(abi.encodeWithSelector(IGovernedSafeDiamondCut.CutAlreadyScheduled.selector, id));
+        cut.scheduleCut(cuts, address(0), "", SALT);
+
+        vm.expectRevert(abi.encodeWithSelector(IGovernedSafeDiamondCut.CutNotScheduled.selector, id));
+        cut.cancelCut(id);
+
+        bytes32 salt2 = bytes32(uint256(0xBEEF));
+        bytes32 id2 = cut.scheduleCut(cuts, address(0), "", salt2);
+        vm.stopPrank();
+        assertTrue(cut.isOperationPending(id2), "same cut under a new salt must schedule");
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                     EMERGENCY CUT: ENTRYPOINT PROTECTION
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice #218 regression: with an empty frozen set, a guardian still cannot remove `scheduleCut`
+    ///         or `executeCut`, alone or inside a batch with an ordinary removal.
+    function test_EmergencyRemove_RefusesCutEntrypoints() public {
+        _bindPingViaTimelock();
+        assertEq(cut.frozenSelectors().length, 0, "frozen set must be empty");
+        vm.prank(admin);
+        es.addGuardian(guardian);
+
+        bytes4[2] memory entrypoints =
+            [GovernedSafeDiamondCut.scheduleCut.selector, GovernedSafeDiamondCut.executeCut.selector];
+        for (uint256 i; i < entrypoints.length; ++i) {
+            vm.prank(guardian);
+            vm.expectRevert(
+                abi.encodeWithSelector(IEmergencyCut.EmergencyCutEntrypointProtected.selector, entrypoints[i])
+            );
+            cut.emergencyRemoveCut(_removeCut(entrypoints[i]));
+
+            FacetCut[] memory batch = new FacetCut[](2);
+            batch[0] = _removeCut(DummyFacet.ping.selector)[0];
+            batch[1] = _removeCut(entrypoints[i])[0];
+            vm.prank(guardian);
+            vm.expectRevert(
+                abi.encodeWithSelector(IEmergencyCut.EmergencyCutEntrypointProtected.selector, entrypoints[i])
+            );
+            cut.emergencyRemoveCut(batch);
+            assertTrue(loupe.facetAddress(entrypoints[i]) != address(0), "entrypoint must stay bound");
+        }
+        assertEq(loupe.facetAddress(DummyFacet.ping.selector), address(dummy), "reverted batch applies nothing");
+    }
+
+    /// @notice The guardian may still remove other module selectors (e.g. `cancelCut`), and the Safe can
+    ///         still `Replace` the cut facet through the timelock afterwards.
+    function test_EmergencyRemove_SafeCanStillReplaceCutFacet() public {
+        vm.prank(admin);
+        es.addGuardian(guardian);
+        vm.prank(guardian);
+        cut.emergencyRemoveCut(_removeCut(GovernedSafeDiamondCut.cancelCut.selector));
+        assertEq(loupe.facetAddress(GovernedSafeDiamondCut.cancelCut.selector), address(0), "ordinary removal works");
+
+        GovernedSafeDiamondCut next = new GovernedSafeDiamondCut();
+        bytes4[] memory sels = new bytes4[](2);
+        sels[0] = GovernedSafeDiamondCut.scheduleCut.selector;
+        sels[1] = GovernedSafeDiamondCut.executeCut.selector;
+        FacetCut[] memory cuts = new FacetCut[](1);
+        cuts[0] = FacetCut({facetAddress: address(next), action: FacetCutAction.Replace, functionSelectors: sels});
+        bytes32 id = _opId(cuts, address(0), "", SALT);
+        vm.prank(address(safe));
+        cut.scheduleCut(cuts, address(0), "", SALT);
+        vm.warp(cut.getTimestamp(id));
+        vm.prank(address(safe));
+        cut.executeCut(cuts, address(0), "", SALT);
+        assertEq(loupe.facetAddress(sels[0]), address(next), "scheduleCut must be replaced");
+        assertEq(loupe.facetAddress(sels[1]), address(next), "executeCut must be replaced");
+    }
+
+    /// @notice #218 regression: a guardian that trips the stop cannot then remove the selectors the admin
+    ///         needs to recover from it (`emergencyResume`, `removeGuardian`, `revokeRole`), which would
+    ///         leave `scheduleCut`/`executeCut` bound but stopped forever. The admin revokes the guardian,
+    ///         resumes, and the Safe schedules and executes again.
+    function test_EmergencyRemove_RefusesStopRecoverySelectors() public {
+        vm.prank(admin);
+        es.addGuardian(guardian);
+        vm.prank(guardian);
+        es.emergencyStop("incident");
+
+        bytes4[3] memory recovery = [
+            IEmergencyStop.emergencyResume.selector,
+            IEmergencyStop.removeGuardian.selector,
+            IAccessControl.revokeRole.selector
+        ];
+        for (uint256 i; i < recovery.length; ++i) {
+            vm.prank(guardian);
+            vm.expectRevert(abi.encodeWithSelector(IEmergencyCut.EmergencyCutEntrypointProtected.selector, recovery[i]));
+            cut.emergencyRemoveCut(_removeCut(recovery[i]));
+            assertTrue(loupe.facetAddress(recovery[i]) != address(0), "recovery selector must stay bound");
+        }
+
+        vm.startPrank(admin);
+        es.removeGuardian(guardian);
+        es.emergencyResume();
+        vm.stopPrank();
+        _bindPingViaTimelock();
+        assertEq(loupe.facetAddress(DummyFacet.ping.selector), address(dummy), "the Safe must cut again after recovery");
     }
 }

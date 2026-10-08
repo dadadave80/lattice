@@ -53,8 +53,11 @@ contract GovernedVaultInit {
         //     and UPGRADE_EXECUTOR_ROLE is granted to the diamond ONLY and pinned to administer ITSELF — so a
         //     passed + queued + timelock-executed shareholder proposal is the ONLY upgrade path (not even
         //     the DEFAULT_ADMIN_ROLE holder can mint an executor out-of-band). Selectors are deliberately
-        //     NOT frozen at init (precedent: {GovernedDiamondCutInit}); the recommended first proposal
-        //     freezes the loupe + cut + emergency selectors.
+        //     NOT frozen at init (precedent: {GovernedDiamondCutInit}), so a guardian, once governance
+        //     appoints one, is trusted for governance liveness: it can remove any unfrozen selector except
+        //     `diamondCut` and the stop-recovery selectors. The recommended first proposal freezes
+        //     `DeployGovernedVault.recommendedFreezeSelectors()` (loupe, cut, emergency and the
+        //     Governor/Timelock execution path).
         EmergencyStopLib.__EmergencyStop_init();
         ERC165Lib.registerInterface();
         DiamondLib.registerInterface();
