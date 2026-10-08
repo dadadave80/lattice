@@ -15,6 +15,7 @@ import {IAccessControl} from "@lattice/interfaces/access/IAccessControl.sol";
 import {IStrategyManager} from "@lattice/interfaces/defi/IStrategyManager.sol";
 import {IStrategyManagerRecovery} from "@lattice/interfaces/defi/IStrategyManagerRecovery.sol";
 import {IVaultCore} from "@lattice/interfaces/defi/IVaultCore.sol";
+import {IVaultCoreRecovery} from "@lattice/interfaces/defi/IVaultCoreRecovery.sol";
 import {IStrategy} from "@lattice/interfaces/external/yearn/IStrategy.sol";
 import {IVotes} from "@lattice/interfaces/governance/IVotes.sol";
 import {IERC4626} from "@lattice/interfaces/tokens/IERC4626.sol";
@@ -125,20 +126,26 @@ contract InvStrategy is IStrategy {
 //                                  HANDLER
 //////////////////////////////////////////////////////////////////////////*//
 
-/// @notice Drives a recipe-built vault diamond and its recipe-built StrategyManager diamond through deposits,
+/// @notice Drives a recipe-built vault diamond and its recipe-built StrategyManager diamonds through deposits,
 ///         mints, exits, share transfers, strategy yield and loss, rebalances, target changes, strategy adds and
-///         removals, force removals (which latch deposits) and latch clears.
+///         removals, force removals (which latch deposits on the manager), manager swaps (which latch deposits on
+///         the vault when they may strand funds) and both latch clears.
 /// @dev Revert-free under `fail_on_revert`: every action is bounded to a valid call, or arms the exact revert it
 ///      expects. A strategy is bricked and force-removed in the same action, so no call ever ends with a bricked
 ///      strategy registered (that would make `totalAssets()` revert in every invariant). The ghost NAV moves only
 ///      by what each action is expected to add or remove, independently of the vault's own accounting.
-///      Excluded on purpose: `setStrategyManager` (a manager swap drops the latch and the old manager's strategies
-///      from the NAV by design; the open route is #305).
+///      A swap only ever moves to a fresh spare manager, never back to an old one (whose strategies would step
+///      the NAV back up); the old manager's strategies are then stranded like force-removed ones (#305).
 contract VaultHandler is Test {
     IVaultCore public immutable vault;
-    StrategyManager public immutable mgr;
+    StrategyManager public mgr;
     InvVaultAsset public immutable asset;
     address public immutable mgrAdmin;
+    address public immutable vaultAdmin;
+
+    /// @notice Fresh managers, already pointed at the vault, that `swapManager` moves to in order.
+    StrategyManager[] internal _spareManagers;
+    uint256 public swaps;
 
     uint256 internal constant MAX_AMOUNT = 1e24;
     uint256 internal constant MAX_REGISTERED = 4;
@@ -155,13 +162,25 @@ contract VaultHandler is Test {
     uint256 public ghostNav;
     uint256 public ghostSharesMinted;
     uint256 public ghostSharesBurned;
+    /// @notice The configured manager's own latch (set by a force removal).
     bool public ghostLatched;
+    /// @notice The vault's manager-swap latch (set by a swap that may strand funds).
+    bool public ghostVaultLatched;
 
-    constructor(IVaultCore vault_, StrategyManager mgr_, InvVaultAsset asset_, address mgrAdmin_) {
+    constructor(
+        IVaultCore vault_,
+        StrategyManager mgr_,
+        InvVaultAsset asset_,
+        address mgrAdmin_,
+        address vaultAdmin_,
+        StrategyManager[] memory spares
+    ) {
         vault = vault_;
         mgr = mgr_;
         asset = asset_;
         mgrAdmin = mgrAdmin_;
+        vaultAdmin = vaultAdmin_;
+        _spareManagers = spares;
         _actors[0] = address(0xA11CE);
         _actors[1] = address(0xB0B);
         _actors[2] = address(0xCA201);
@@ -177,6 +196,12 @@ contract VaultHandler is Test {
 
     function _actor(uint256 seed) internal view returns (address) {
         return _actors[seed % _actors.length];
+    }
+
+    /// @dev The contract named by `VaultCoreDepositsLatched` while entries are latched: the vault for its own
+    ///      manager-swap latch (checked first), else the configured manager.
+    function _latchHolder() internal view returns (address) {
+        return ghostVaultLatched ? address(vault) : address(mgr);
     }
 
     /// @dev A registered strategy picked by `seed`, or address(0) when none is registered.
@@ -228,9 +253,9 @@ contract VaultHandler is Test {
         vm.prank(a);
         asset.approve(address(vault), assets);
 
-        if (ghostLatched) {
+        if (ghostLatched || ghostVaultLatched) {
             assertEq(vault.maxDeposit(a), 0, "maxDeposit open while latched");
-            vm.expectRevert(abi.encodeWithSelector(IVaultCore.VaultCoreDepositsLatched.selector, address(mgr)));
+            vm.expectRevert(abi.encodeWithSelector(IVaultCore.VaultCoreDepositsLatched.selector, _latchHolder()));
             vm.prank(a);
             vault.deposit(assets, a);
             return;
@@ -250,9 +275,9 @@ contract VaultHandler is Test {
         address a = _actor(actorSeed);
         shares = bound(shares, 1, MAX_AMOUNT);
 
-        if (ghostLatched) {
+        if (ghostLatched || ghostVaultLatched) {
             assertEq(vault.maxMint(a), 0, "maxMint open while latched");
-            vm.expectRevert(abi.encodeWithSelector(IVaultCore.VaultCoreDepositsLatched.selector, address(mgr)));
+            vm.expectRevert(abi.encodeWithSelector(IVaultCore.VaultCoreDepositsLatched.selector, _latchHolder()));
             vm.prank(a);
             vault.mint(shares, a);
             return;
@@ -523,6 +548,60 @@ contract VaultHandler is Test {
         mgr.clearDepositLatch();
         ghostLatched = false;
     }
+
+    /// @notice The vault admin swaps to the next fresh manager (#305). The old manager's registered strategies
+    ///         leave the NAV with their funds, stranded until they return. The swap must latch the vault exactly
+    ///         when the old manager was latched or still reported allocations; the latch then outlives the swap
+    ///         and the fresh manager starts unlatched. On even seeds the manager admin first clears the old
+    ///         manager's latch, so a swap away from an unlatched manager holding nothing (a clean rotation) happens
+    ///         too.
+    function swapManager(uint256 seed) external {
+        if (swaps >= _spareManagers.length) return;
+        StrategyManager old = mgr;
+        StrategyManager next = _spareManagers[swaps++];
+
+        address[] memory s = old.getStrategies();
+        uint256 allocated;
+        for (uint256 i; i < s.length; ++i) {
+            uint256 balance = InvStrategy(s[i]).totalAssetsManaged();
+            allocated += balance;
+            if (balance > 0) stranded[s[i]] = true;
+        }
+        uint256 navBefore = vault.totalAssets();
+        bool expectLatch = (seed % 2 == 0 ? false : ghostLatched) || allocated > 0;
+        if (seed % 2 == 0 && ghostLatched) {
+            vm.prank(mgrAdmin);
+            old.clearDepositLatch();
+        }
+
+        vm.prank(vaultAdmin);
+        vault.setStrategyManager(address(next));
+        mgr = next;
+
+        assertEq(vault.totalAssets(), navBefore - allocated, "swap moved NAV beyond the stranded funds");
+        ghostNav -= allocated;
+        ghostLatched = false;
+        ghostVaultLatched = ghostVaultLatched || expectLatch;
+        assertEq(IVaultCoreRecovery(address(vault)).managerSwapLatched(), ghostVaultLatched, "swap latch vs ghost");
+    }
+
+    /// @notice Clears the vault's manager-swap latch. Odd seeds call from an actor and must be refused; clearing an
+    ///         unset latch reverts.
+    function clearManagerSwapLatch(uint256 callerSeed) external {
+        if (callerSeed % 2 == 1) {
+            address caller = _actor(callerSeed);
+            vm.expectRevert(
+                abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, caller, bytes32(0))
+            );
+            vm.prank(caller);
+            IVaultCoreRecovery(address(vault)).clearManagerSwapLatch();
+            return;
+        }
+        if (!ghostVaultLatched) vm.expectRevert(IVaultCoreRecovery.VaultCoreManagerSwapLatchNotSet.selector);
+        vm.prank(vaultAdmin);
+        IVaultCoreRecovery(address(vault)).clearManagerSwapLatch();
+        ghostVaultLatched = false;
+    }
 }
 
 //*//////////////////////////////////////////////////////////////////////////
@@ -536,8 +615,9 @@ contract VaultHandler is Test {
 ///         - assets are conserved across the vault, the strategies (registered or stranded), actors and losses;
 ///         - shares are conserved and never worth more than the NAV (no free shares);
 ///         - exits are capped at idle liquidity;
-///         - the deposit latch (#300) is set only by a force removal, cleared only by the admin, and while set
-///           closes `maxDeposit`/`maxMint`;
+///         - the manager's deposit latch (#300) is set only by a force removal and cleared only by the manager
+///           admin; the vault's manager-swap latch (#305) is set by exactly the swaps that may strand funds and
+///           cleared only by the vault admin; while either is set, `maxDeposit`/`maxMint` are closed;
 ///         - targets stay within 100%, and over-allocations, re-adding a still-funded stranded strategy and a
 ///           rebalance recall losing more than the shortfall tolerance are refused (asserted in the handler).
 abstract contract VaultDiamondInvariantBase is StrategyManagerTestBase {
@@ -546,29 +626,40 @@ abstract contract VaultDiamondInvariantBase is StrategyManagerTestBase {
     VaultHandler internal handler;
 
     address internal constant MGR_ADMIN = address(0xAD);
+    uint256 internal constant SPARE_MANAGERS = 3;
 
     /// @dev Deploys the vault diamond over `asset_` through its recipe.
     function _deployVaultDiamond(address asset_) internal virtual returns (address);
 
-    /// @dev Points the vault at `manager` as the vault's own admin.
-    function _setStrategyManager(address manager) internal virtual;
+    /// @dev The account holding the vault's DEFAULT_ADMIN_ROLE.
+    function _vaultAdmin() internal view virtual returns (address);
+
+    /// @dev Deploys a recipe-built manager administered by MGR_ADMIN and points it at the vault.
+    function _newManager() internal returns (StrategyManager m) {
+        m = StrategyManager(_deployStrategyManager(MGR_ADMIN));
+        vm.prank(MGR_ADMIN);
+        m.setVault(address(vault));
+    }
 
     function setUp() public virtual {
         vm.warp(1_000_000);
         asset = new InvVaultAsset();
         vault = IVaultCore(_deployVaultDiamond(address(asset)));
 
-        diamond = _deployStrategyManager(MGR_ADMIN);
-        mgr = StrategyManager(diamond);
-        vm.prank(MGR_ADMIN);
-        mgr.setVault(address(vault));
-        _setStrategyManager(diamond);
+        mgr = _newManager();
+        diamond = address(mgr);
+        vm.prank(_vaultAdmin());
+        vault.setStrategyManager(diamond);
 
-        handler = new VaultHandler(vault, mgr, asset, MGR_ADMIN);
+        StrategyManager[] memory spares = new StrategyManager[](SPARE_MANAGERS);
+        for (uint256 i; i < SPARE_MANAGERS; ++i) {
+            spares[i] = _newManager();
+        }
+        handler = new VaultHandler(vault, mgr, asset, MGR_ADMIN, _vaultAdmin(), spares);
         handler.addInitialStrategy(4_000);
         handler.addInitialStrategy(3_000);
 
-        bytes4[] memory selectors = new bytes4[](17);
+        bytes4[] memory selectors = new bytes4[](19);
         selectors[0] = VaultHandler.deposit.selector;
         selectors[1] = VaultHandler.mint.selector;
         selectors[2] = VaultHandler.withdraw.selector;
@@ -587,6 +678,8 @@ abstract contract VaultDiamondInvariantBase is StrategyManagerTestBase {
         selectors[15] = VaultHandler.clearDepositLatch.selector;
         // Weighted twice so the latch is set a minority of the time and entries mostly take the value path.
         selectors[16] = VaultHandler.clearDepositLatch.selector;
+        selectors[17] = VaultHandler.swapManager.selector;
+        selectors[18] = VaultHandler.clearManagerSwapLatch.selector;
         targetSelector(FuzzSelector({addr: address(handler), selectors: selectors}));
         targetContract(address(handler));
     }
@@ -596,7 +689,7 @@ abstract contract VaultDiamondInvariantBase is StrategyManagerTestBase {
     /// forge-config: default.invariant.fail-on-revert = true
     function invariant_NavIsIdlePlusAllocated() public view {
         uint256 idle = vault.idleAssets();
-        address[] memory s = mgr.getStrategies();
+        address[] memory s = handler.mgr().getStrategies();
         uint256 allocated;
         for (uint256 i; i < s.length; ++i) {
             allocated += IStrategy(s[i]).totalAssetsManaged();
@@ -658,28 +751,35 @@ abstract contract VaultDiamondInvariantBase is StrategyManagerTestBase {
         }
     }
 
-    /// @notice The latch matches the ghost (set only by a force removal, cleared only by the admin); while set,
-    ///         entries report 0, otherwise they are unbounded. `totalTargetBps` is the sum of the targets and stays
-    ///         within 100% (the handler also asks for over-allocations and asserts they are refused). The rebalance
-    ///         loss bound is enforced inside the handler: a rebalance either moves the NAV by exactly the predicted
-    ///         recall haircuts, each within the shortfall tolerance, or reverts with the shortfall.
+    /// @notice Both latches match their ghosts: the configured manager's (set only by a force removal, cleared only
+    ///         by the manager admin) and the vault's manager-swap latch (set only by a swap that may strand funds,
+    ///         cleared only by the vault admin). While either is set, entries report 0, otherwise they are
+    ///         unbounded. `totalTargetBps` is the sum of the targets and stays within 100% (the handler also asks
+    ///         for over-allocations and asserts they are refused). The rebalance loss bound is enforced inside the
+    ///         handler: a rebalance either moves the NAV by exactly the predicted recall haircuts, each within the
+    ///         shortfall tolerance, or reverts with the shortfall.
     /// forge-config: default.invariant.fail-on-revert = true
     function invariant_LatchAndRebalanceBounds() public view {
+        StrategyManager m = handler.mgr();
         bool latched = handler.ghostLatched();
-        assertEq(mgr.depositsLatched(), latched, "latch diverged from ghost");
+        bool vaultLatched = handler.ghostVaultLatched();
+        assertEq(m.depositsLatched(), latched, "manager latch diverged from ghost");
+        assertEq(
+            IVaultCoreRecovery(address(vault)).managerSwapLatched(), vaultLatched, "swap latch diverged from ghost"
+        );
         address[3] memory a = handler.actors();
-        uint256 open = latched ? 0 : type(uint256).max;
+        uint256 open = latched || vaultLatched ? 0 : type(uint256).max;
         for (uint256 i; i < a.length; ++i) {
             assertEq(vault.maxDeposit(a[i]), open, "maxDeposit vs latch");
             assertEq(vault.maxMint(a[i]), open, "maxMint vs latch");
         }
 
-        address[] memory s = mgr.getStrategies();
+        address[] memory s = m.getStrategies();
         uint256 bps;
         for (uint256 i; i < s.length; ++i) {
-            bps += mgr.getStrategyTarget(s[i]);
+            bps += m.getStrategyTarget(s[i]);
         }
-        assertEq(mgr.totalTargetBps(), bps, "totalTargetBps != sum of targets");
+        assertEq(m.totalTargetBps(), bps, "totalTargetBps != sum of targets");
         assertLe(bps, 10_000, "targets exceed 100%");
     }
 }
@@ -703,9 +803,8 @@ contract VaultCoreDiamondInvariant is VaultDiamondInvariantBase {
         return address(d);
     }
 
-    function _setStrategyManager(address manager) internal override {
-        vm.prank(VAULT_ADMIN);
-        vault.setStrategyManager(manager);
+    function _vaultAdmin() internal pure override returns (address) {
+        return VAULT_ADMIN;
     }
 }
 
@@ -728,10 +827,9 @@ contract GovernedVaultDiamondInvariant is VaultDiamondInvariantBase {
         v = new DeployGovernedVault().deployAtomic(p, factory, bytes32(0));
     }
 
-    /// @dev The diamond is its own DEFAULT_ADMIN_ROLE holder; a passed proposal makes this same call.
-    function _setStrategyManager(address manager) internal override {
-        vm.prank(address(vault));
-        vault.setStrategyManager(manager);
+    /// @dev The diamond is its own DEFAULT_ADMIN_ROLE holder; a passed proposal makes the same calls.
+    function _vaultAdmin() internal view override returns (address) {
+        return address(vault);
     }
 
     function setUp() public override {
