@@ -6,7 +6,8 @@ pragma solidity >=0.8.4;
 ///         Upstream license: AGPL-3.0.
 /// @notice Minimal vendored subset of the Aave v3 Pool used by the Lattice Aave adapter:
 ///         supply/withdraw (supply leg), borrow/repay/setUserEMode (leverage leg), plus the
-///         account-data and reserve-data reads needed for health and aToken resolution.
+///         account-data and reserve-data reads needed for health and aToken resolution, and the
+///         v3.1+ virtual-balance read that caps a recall at the reserve's available cash.
 /// @dev Version-pinned to Aave v3.x. Only the selectors the adapter calls are declared.
 interface IAaveV3Pool {
     /// @notice Supplies `amount` of `asset` into the protocol, minting aTokens to `onBehalfOf`.
@@ -83,4 +84,11 @@ interface IAaveV3Pool {
 
     /// @notice Returns the reserve data for `asset` (used to resolve the aToken address).
     function getReserveData(address asset) external view returns (ReserveData memory);
+
+    /// @notice Returns the reserve's virtual underlying balance: the cash the Pool lets suppliers withdraw
+    ///         and borrowers take. Unlike the aToken's raw underlying balance, it ignores direct transfers to
+    ///         the aToken.
+    /// @dev Aave v3.1+ only (https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/interfaces/IPool.sol).
+    ///      A v3.0 Pool has no such function, so callers must tolerate the call reverting.
+    function getVirtualUnderlyingBalance(address asset) external view returns (uint128);
 }

@@ -88,7 +88,7 @@ contract AaveV3AdapterLeverageTest is Test {
         pool = new MockAaveV3Pool();
         pool.setAToken(asset, aToken);
         // Seed the pool with extra liquidity so it can fund borrows.
-        asset.mint(address(pool), 1_000_000e6);
+        pool.addLiquidity(1_000_000e6);
 
         feed = new MockAggregator(1e8); // $1.00, 8 decimals
 

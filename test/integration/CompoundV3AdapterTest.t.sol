@@ -49,6 +49,12 @@ contract MockComet {
         require(base.transfer(msg.sender, amt), "send");
     }
 
+    /// @dev Simulates a borrower draining the market's cash: Comet pays base out of its own balance, so a
+    ///      withdrawal larger than what is left reverts.
+    function borrow(address to, uint256 amt) external {
+        require(base.transfer(to, amt), "borrow");
+    }
+
     /// @dev simulate yield accrual by minting balance.
     function accrueYield(address who, uint256 amt) external {
         balanceOf[who] += amt;
