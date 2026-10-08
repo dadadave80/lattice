@@ -217,7 +217,12 @@ import {
     ERC165_MAP_IUNISWAPV3ADAPTER_SLOT,
     UNISWAP_V3_ADAPTER_STORAGE_SLOT
 } from "@lattice/defi/libraries/UniswapV3AdapterLib.sol";
-import {ERC165_MAP_IVAULTCORE_SLOT, VAULT_CORE_STORAGE_SLOT} from "@lattice/defi/libraries/VaultCoreLib.sol";
+import {
+    ERC165_MAP_IVAULTCORERECOVERY_SLOT,
+    ERC165_MAP_IVAULTCORE_SLOT,
+    VAULT_CORE_RECOVERY_STORAGE_SLOT,
+    VAULT_CORE_STORAGE_SLOT
+} from "@lattice/defi/libraries/VaultCoreLib.sol";
 
 // amm
 import {
@@ -366,6 +371,7 @@ import {IStrategyManager} from "@lattice/interfaces/defi/IStrategyManager.sol";
 import {IStrategyManagerRecovery} from "@lattice/interfaces/defi/IStrategyManagerRecovery.sol";
 import {IUniswapV3Adapter} from "@lattice/interfaces/defi/IUniswapV3Adapter.sol";
 import {IVaultCore} from "@lattice/interfaces/defi/IVaultCore.sol";
+import {IVaultCoreRecovery} from "@lattice/interfaces/defi/IVaultCoreRecovery.sol";
 import {IENSResolver} from "@lattice/interfaces/ens/IENSResolver.sol";
 import {IENSReverseClaimer} from "@lattice/interfaces/ens/IENSReverseClaimer.sol";
 import {IENSSubnameIssuer} from "@lattice/interfaces/ens/IENSSubnameIssuer.sol";
@@ -634,6 +640,14 @@ contract StorageSlotVerificationTest is Test {
 
     function test_VaultCoreStorageSlot() public pure {
         assertEq(VAULT_CORE_STORAGE_SLOT, _erc7201Slot("lattice.storage.VaultCore"), "VaultCore storage slot mismatch");
+    }
+
+    function test_VaultCoreRecoveryStorageSlot() public pure {
+        assertEq(
+            VAULT_CORE_RECOVERY_STORAGE_SLOT,
+            _erc7201Slot("lattice.storage.VaultCoreRecovery"),
+            "VaultCoreRecovery storage slot mismatch"
+        );
     }
 
     function test_StrategyManagerStorageSlot() public pure {
@@ -1480,6 +1494,18 @@ contract StorageSlotVerificationTest is Test {
         );
     }
 
+    function test_Erc165MapIVaultCoreRecoverySlot() public pure {
+        // The manager-swap latch lives in its own interface so IVaultCore's id stays 0xa86d8962 (#305).
+        assertEq(type(IVaultCore).interfaceId, bytes4(0xa86d8962), "IVaultCore interfaceId moved");
+        bytes4 interfaceId = type(IVaultCoreRecovery).interfaceId;
+        assertEq(interfaceId, bytes4(0x065383d4), "IVaultCoreRecovery interfaceId comment is stale");
+        assertEq(
+            ERC165_MAP_IVAULTCORERECOVERY_SLOT,
+            _erc165MapSlot(interfaceId, ERC165_STORAGE_LOCATION),
+            "ERC165 IVaultCoreRecovery map slot mismatch"
+        );
+    }
+
     function test_Erc165MapIStrategyManagerSlot() public pure {
         assertEq(
             ERC165_MAP_ISTRATEGYMANAGER_SLOT,
@@ -2214,7 +2240,7 @@ contract StorageSlotVerificationTest is Test {
     // ======================== Slot inventories ========================
 
     function _allStorageSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](93);
+        slots = new bytes32[](94);
         uint256 i;
         // access
         slots[i++] = ACCESS_CONTROL_STORAGE_SLOT;
@@ -2244,6 +2270,7 @@ contract StorageSlotVerificationTest is Test {
         slots[i++] = SAFE_HARBOR_ADOPTER_STORAGE_SLOT;
         // defi
         slots[i++] = VAULT_CORE_STORAGE_SLOT;
+        slots[i++] = VAULT_CORE_RECOVERY_STORAGE_SLOT;
         slots[i++] = STRATEGY_MANAGER_STORAGE_SLOT;
         slots[i++] = AAVE_V3_ADAPTER_STORAGE_SLOT;
         slots[i++] = COMPOUND_V3_ADAPTER_STORAGE_SLOT;
@@ -2327,7 +2354,7 @@ contract StorageSlotVerificationTest is Test {
     }
 
     function _allErc165MapSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](104);
+        slots = new bytes32[](105);
         uint256 i;
         // access
         slots[i++] = ERC165_MAP_IACCESSCONTROL_SLOT;
@@ -2367,6 +2394,7 @@ contract StorageSlotVerificationTest is Test {
         slots[i++] = ERC165_MAP_ISAFEHARBORADOPTER_SLOT;
         // defi
         slots[i++] = ERC165_MAP_IVAULTCORE_SLOT;
+        slots[i++] = ERC165_MAP_IVAULTCORERECOVERY_SLOT;
         slots[i++] = ERC165_MAP_ISTRATEGYMANAGER_SLOT;
         slots[i++] = ERC165_MAP_ISTRATEGYMANAGERRECOVERY_SLOT;
         slots[i++] = ERC165_MAP_IPROTOCOLADAPTER_SLOT;

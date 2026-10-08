@@ -20,7 +20,7 @@ import {ERC4626} from "@lattice/tokens/ERC4626/ERC4626.sol";
 ///         surface; `ERC4626` is a MIXED cut over it (REPLACE `decimals`, ADD the vault surface); and `VaultCore`
 ///         is a MIXED cut over `ERC4626` — it REPLACEs `totalAssets`/`deposit`/`mint`/`withdraw`/`redeem` (the
 ///         strategy-aware / rebalance-guarded variants) and `maxDeposit`/`maxMint` (deposit-latch-aware), and
-///         ADDs the strategy-hook surface. `AccessControl` is
+///         ADDs the strategy-hook surface and the manager-swap latch (`IVaultCoreRecovery`). `AccessControl` is
 ///         cut so an admin can administer roles; strategy-manager changes are gated by `DEFAULT_ADMIN_ROLE`. The
 ///         ONE source of truth for what a VaultCore diamond is, shared by production and the facet tests.
 contract DeployVaultCore is BaseDeploy {
@@ -90,15 +90,17 @@ contract DeployVaultCore is BaseDeploy {
         s[0] = ERC4626.decimals.selector;
     }
 
-    /// @notice The strategy-hook selectors VaultCore ADDs over ERC-4626.
+    /// @notice The strategy-hook and manager-swap-latch selectors VaultCore ADDs over ERC-4626.
     function _strategySurface() internal pure returns (bytes4[] memory s) {
-        s = new bytes4[](6);
+        s = new bytes4[](8);
         s[0] = VaultCore.strategyManager.selector;
         s[1] = VaultCore.idleAssets.selector;
         s[2] = VaultCore.allocatedAssets.selector;
         s[3] = VaultCore.setStrategyManager.selector;
         s[4] = VaultCore.allocateToStrategy.selector;
         s[5] = VaultCore.recallFromStrategy.selector;
+        s[6] = VaultCore.managerSwapLatched.selector;
+        s[7] = VaultCore.clearManagerSwapLatch.selector;
     }
 
     /// @notice The ERC-4626 selectors VaultCore REPLACEs (strategy-aware totalAssets, rebalance-guarded flows,

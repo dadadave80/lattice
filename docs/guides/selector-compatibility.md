@@ -25,7 +25,7 @@ forge build && forge test --match-test test_EverySharedSelectorIsClassified -vv
 | Variant | Alternative implementations of one Lattice module: the cut gates, the AccessControl flavours, the account flavours | Cut exactly one |
 | Override | A documented seam: a recipe routes the selector to one facet over shared storage with `_cutExcept` or `Replace` | Follow the recipe's exclusion list |
 | Identical | The same function over the same storage | Cut one copy and `_cutExcept` the other |
-| One per diamond | Providers with one ABI and independent storage: price adapters, ERC-7786 gateways and handlers, VRF providers, and the ERC-20 movement overrides and ERC-1155 burns (decision D25 on [#234](https://github.com/dadadave80/lattice/issues/234)) | Use one per diamond, or a second diamond |
+| One per diamond | Providers with one ABI and independent storage: price adapters, ERC-7786 gateways and handlers, VRF providers, and the ERC-20 movement-replacing extensions and ERC-1155 burns (decision D25, see [Token extension hook model](#token-extension-hook-model)) | Use one per diamond, or a second diamond |
 | Incompatible | The selector means different things in two standards, or under a name Lattice chose | Never in one diamond |
 
 A selector with mixed relations takes the most restrictive class, and its note names the others. For example,
@@ -53,6 +53,103 @@ Today's 72 shared selectors: 18 Variant, 16 Override, 1 Identical, 20 One per di
   [#240](https://github.com/dadadave80/lattice/issues/240) is to keep the names and record them in this table. A
   rename before 1.0 would need its own issue, coordinated with #206.
 
+## Token extension hook model
+
+Decision D25 on [#234](https://github.com/dadadave80/lattice/issues/234) (option (a), for 0.5.0) fixes how token
+extensions that change transfer, mint or burn behaviour compose:
+
+1. **Base libraries run no hooks.** `ERC20Lib._update`, `ERC721Lib._update` and `ERC1155Lib._update` move balances
+   and emit the standard events. They call no extension and read no extension flag. OpenZeppelin composes its
+   extensions through `virtual _update` overrides. A Lattice library cannot dispatch virtually, and a hook in the
+   base library would cost every token an SLOAD per movement.
+2. **A movement-replacing extension replaces the base selectors it gates.** An extension that must see or gate
+   every transfer (Pausable, Votes, and later Enumerable, Supply, Consecutive) exports its own versions of the
+   standard's public movement selectors. Its recipe cuts it with `Replace`, or excludes the base copies with
+   `_cutExcept`.
+3. **Two extensions that replace the same selectors are mutually exclusive.** Every member of a standard's family
+   replaces all of that standard's movement selectors, so any two members collide. `Add` reverts with
+   `CannotAddFunctionToDiamondThatAlreadyExists`. A `Replace` routes the selectors to the later facet with no
+   error and drops the earlier facet's logic: Pausable over Votes stops moving votes, and Votes over Pausable
+   ignores the pause.
+4. **A direct mover bypasses the family.** A facet that mints, burns or moves balances by calling the base library
+   (`_mint`, `_burn`, `_update`) and does not apply the extension's logic itself never goes through the replaced
+   selectors. It shares no selector with a movement-replacing extension, so the cut succeeds with no signal and the
+   diamond silently loses pause or vote accounting on that path. Treat every such direct mover as mutually
+   exclusive with every movement-replacing extension of its standard.
+5. **A mint-gating extension holds only on its own mint path.** ERC20Capped checks its cap inside the internal
+   `_mint` a composing facet calls, not in `ERC20Lib._mint`, and exports only `cap()`. Every shipped facet that
+   mints through the base library directly lifts the supply past the cap, so each is mutually exclusive with
+   ERC20Capped.
+6. **The escape is a combined facet.** A diamond that needs two behaviours on one path gets one facet that does
+   both. The minimal combined facets are the sanctioned mint and burn paths that the recipes leave to the
+   integrator, since `DeployERC20Pausable`, `DeployERC20Votes` and `DeployERC20Capped` expose no mint:
+   - Pausable: call `PausableLib.checkNotPaused()` before `ERC20Lib._mint`/`_burn`.
+   - Votes: call `ERC20VotesLib._mint`/`_burn`, which checkpoint voting units and enforce the uint208 supply bound.
+   - Capped: call `ERC20Capped`'s internal `_mint`, or `ERC20CappedLib._checkCap(totalSupply + value)` before
+     `ERC20Lib._mint`.
+   - Two of them on one path: apply each check in one function, for example `_checkCap` then `ERC20VotesLib._mint`.
+
+   GovernedVault is the shipped example of a full combined facet: its `transfer`/`transferFrom` and ERC-4626
+   mutators move ERC-20 balances and voting units together, and `DeployGovernedVault` routes those selectors to it
+   with `_cutExcept`.
+7. **Option (b), a hook in each base library, is revisited only with ERC-3643
+   ([#172](https://github.com/dadadave80/lattice/issues/172)).** It would append to the released `ERC20Storage`.
+
+### ERC-20
+
+The movement selectors are `transfer` (`0xa9059cbb`) and `transferFrom` (`0x23b872dd`).
+
+| Facet | Role | Selectors it replaces or moves balances through | Mutually exclusive with |
+| --- | --- | --- | --- |
+| ERC20Pausable | Movement-replacing | `transfer`, `transferFrom` | ERC20Votes, GovernedVault; every direct mover when the pause must also stop mints and burns |
+| ERC20Votes | Movement-replacing | `transfer`, `transferFrom` (and Votes' `delegate`, `delegateBySig`) | ERC20Pausable; GovernedVault, except as `DeployGovernedVault` composes them; every direct mover |
+| GovernedVault | Combined facet | `transfer`, `transferFrom`, `deposit`, `mint`, `withdraw`, `redeem` | ERC20Pausable, ERC20Capped; every direct mover below except the ERC4626 and VaultCore paths it wraps |
+| ERC20Capped | Mint-gating | its internal `_mint` (no selector; exports only `cap()`) | Every direct minter below (ERC20FlashMint for the length of a loan). A facet that exposes the `_mint` is itself a direct mover for ERC20Pausable and ERC20Votes |
+| ERC20Burnable | Direct mover | `burn`, `burnFrom` | ERC20Pausable, ERC20Votes |
+| ERC20FlashMint | Direct mover | `flashLoan` (mints, then burns) | ERC20Pausable, ERC20Votes, ERC20Capped |
+| ERC20Crosschain | Direct mover | `crosschainTransfer` (burns), `processMessage` (mints) | ERC20Pausable, ERC20Votes, ERC20Capped |
+| ERC20Wrapper | Direct mover | `depositFor`, `withdrawTo` (and the library's internal `recover`) | ERC20Pausable, ERC20Votes, ERC20Capped |
+| ERC7802 | Direct mover | `crosschainMint`, `crosschainBurn` | ERC20Pausable, ERC20Votes, ERC20Capped |
+| ERC4626 | Direct mover | `deposit`, `mint`, `withdraw`, `redeem` | ERC20Pausable, ERC20Votes, ERC20Capped (GovernedVault reconciles ERC4626 with votes) |
+| VaultCore | Direct mover | `deposit`, `mint`, `withdraw`, `redeem` (replacing ERC4626's) | ERC20Pausable, ERC20Votes, ERC20Capped (GovernedVault reconciles VaultCore with votes in `DeployGovernedVault`) |
+
+The vote-aware `ERC20VotesLib._mint` is a direct minter for ERC20Capped too: it enforces only the uint208 bound.
+
+[`CompositionHazardsTest`](../../test/composability/CompositionHazardsTest.t.sol) section 3 pins this:
+
+- `test_MovementReplacingFamilyClaimsTheTransferPair`: every family member replaces both movement selectors.
+- `test_PausableAddedToVotesRevertsAtCut`: `Add` of a second member reverts.
+- `test_PausableReplacingVotesDesyncsVotes` and `test_VotesReplacingPausableBypassesPause`: `Replace` is silent.
+- `test_BurnableNextToVotesDesyncsVotes` and `test_BurnableNextToPausableBurnsWhilePaused`: a direct mover
+  bypasses the family.
+- `test_DirectMinterNextToCappedExceedsCap`: ERC7802 next to the capped recipe mints past the cap, while a
+  composing mint over `_checkCap` still reverts.
+
+The matrix below classifies `transfer` as One per diamond and `transferFrom` as Incompatible (it is also the
+ERC-721 selector), each with a D25 note.
+
+### ERC-721 and ERC-1155
+
+ERC1155Pausable is the first movement-replacing extension for these standards: it replaces both ERC-1155
+movement selectors and serves pause-gated `burn`/`burnBatch`. ERC1155Supply replaces no movement selector; it
+serves supply-tracking `burn`/`burnBatch` and mints through `ERC1155SupplyLib`. ERC1155Burnable, ERC1155Pausable
+and ERC1155Supply share the burn selectors, so a diamond takes one of the three. The ERC-721 movement selectors are `transferFrom` (`0x23b872dd`) and
+both `safeTransferFrom` overloads (`0x42842e0e`, `0xb88d4fde`). The ERC-1155 movement selectors are
+`safeTransferFrom` (`0xf242432a`) and `safeBatchTransferFrom` (`0x2eb2c2d6`). The shipped direct movers are
+ERC721Burnable (`burn`), ERC721Wrapper (`depositFor`, `withdrawTo`, `onERC721Received`) and ERC1155Burnable
+(`burn`, `burnBatch`). Each is mutually exclusive with every movement-replacing extension of its standard.
+
+ERC-721 Pausable, Enumerable, Votes and Consecutive
+([#236](https://github.com/dadadave80/lattice/issues/236)) follow the ERC-20 pattern, as ERC-1155 Pausable and
+Supply ([#237](https://github.com/dadadave80/lattice/issues/237)) do. Each one:
+
+- replaces all of its standard's movement selectors, so any two members collide on `Add`;
+- joins a family test like `test_MovementReplacingFamilyClaimsTheTransferPair` for its standard;
+- has its shared selectors classified in `SelectorCompatibilityTest` with a D25 note;
+- pins its exclusivity with each shipped direct mover in `CompositionHazardsTest`, or replaces that mover's
+  selectors too, or ships a combined facet;
+- names in its NatSpec the selectors it replaces and the extensions it excludes.
+
 ## Matrix
 
 | Selector | Signature | Facets | Class | Note |
@@ -71,7 +168,7 @@ Today's 72 shared selectors: 18 Variant, 16 Override, 1 Identical, 20 One per di
 | `0x19822f7c` | `validateUserOp((address,uint256,bytes,bytes,bytes32,uint256,bytes32,bytes,bytes),bytes32,uint256)` | ERC4337Validation, ERC6900Validation | Variant | account flavours: cut one |
 | `0x1f931c1c` | `diamondCut((address,uint8,bytes4[])[],address,bytes)` | AccessControlDiamondCut, GovernedDiamondCut, SafeDiamondCut, DiamondCutFacet | Variant | cut-gate variants: cut one |
 | `0x22cabf70` | `frozenSelectors()` | GovernedDiamondCut, GovernedSafeDiamondCut, SafeDiamondCut | Variant | cut-gate variants: cut one |
-| `0x23b872dd` | `transferFrom(address,address,uint256)` | ERC20, ERC20Pausable, ERC20Votes, ERC721, GovernedVault | Incompatible | ERC-20 vs ERC-721 (standard); one ERC-20 movement override per diamond (D25) |
+| `0x23b872dd` | `transferFrom(address,address,uint256)` | ERC20, ERC20Pausable, ERC20Votes, ERC721, GovernedVault | Incompatible | ERC-20 vs ERC-721 (standard); one ERC-20 movement-replacing extension per diamond (D25) |
 | `0x2432ef26` | `receiveMessage(bytes32,bytes,bytes)` | CrosschainLink, ERC7786OpenBridge | One per diamond | inbound ERC-7786 recipients: one per diamond |
 | `0x248a9ca3` | `getRoleAdmin(bytes32)` | AccessControl, AccessControlEnumerable, AccessControlTimed | Variant | AccessControl flavours: cut one |
 | `0x280aebcf` | `getFeed(bytes32)` | API3Adapter, BandAdapter, ChainlinkAdapter, ChronicleAdapter, DIAAdapter, PythAdapter, RedStoneAdapter, TellorAdapter | One per diamond | price adapters: one per diamond |

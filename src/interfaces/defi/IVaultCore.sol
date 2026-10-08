@@ -49,19 +49,25 @@ interface IVaultCore is IERC4626 {
     ///      strategy whose read reverts (see {IStrategyManager-removeStrategy}); if none can be removed (e.g. a
     ///      well-formed balance that overflows the sum), the vault admin calls `setStrategyManager` with a
     ///      fresh manager. Either way the affected strategies' funds leave the NAV, and returning them later
-    ///      moves their value to whoever holds shares at that moment. A force removal therefore latches
-    ///      deposits closed ({VaultCoreDepositsLatched}) until the manager admin clears the latch, so no new
-    ///      depositor shares in returned funds; they accrue to whoever still holds shares when they return (a
-    ///      holder who exits while latched is priced on the idle-only NAV). The `setStrategyManager` route sets
-    ///      no latch: the fresh manager starts unlatched and deposits reopen at once, so funds the old
-    ///      manager's strategies return later still move value to post-switch depositors.
+    ///      moves their value to whoever holds shares at that moment. Both routes therefore latch deposits closed
+    ///      ({VaultCoreDepositsLatched}), so no new depositor shares in returned funds; they accrue to whoever
+    ///      still holds shares when they return (a holder who exits while latched is priced on the idle-only
+    ///      NAV). A force removal latches the manager until the manager admin clears it. The `setStrategyManager`
+    ///      route latches the vault itself (`IVaultCoreRecovery`): the old manager still reports allocations
+    ///      (here up to `type(uint256).max`) or cannot answer, so deposits stay closed on the fresh manager until
+    ///      the vault admin calls `clearManagerSwapLatch()` (#305).
     error VaultCoreStrategyNavUnavailable(address manager);
 
-    /// @dev Reverts from `deposit`/`mint` while the configured strategy manager reports `depositsLatched()`
-    ///      (`IStrategyManagerRecovery`), set by a strategy force removal. `maxDeposit`/`maxMint` return 0 over
-    ///      the same window; withdrawals and redemptions stay open, capped at idle. Cleared by the manager
-    ///      admin's `clearDepositLatch()`. The vault admin's `setStrategyManager` also drops it: the latch lives
-    ///      in the manager, and a fresh manager starts unlatched, so deposits reopen at once.
+    /// @dev Reverts from `deposit`/`mint` while deposits are latched closed. `manager` names the latch holder,
+    ///      whose clear reopens deposits:
+    ///      - this vault, while its manager-swap latch is set (`IVaultCoreRecovery.managerSwapLatched()`): a
+    ///        `setStrategyManager` swap away from a manager that was latched, still reported allocations, or
+    ///        could not answer. Cleared by the vault admin's `clearManagerSwapLatch()`; it survives later swaps.
+    ///      - otherwise the configured strategy manager, while it reports `depositsLatched()`
+    ///        (`IStrategyManagerRecovery`), set by a strategy force removal. Cleared by the manager admin's
+    ///        `clearDepositLatch()`. A swap away from that manager carries this latch over to the vault.
+    ///      `maxDeposit`/`maxMint` return 0 while either latch is set; withdrawals and redemptions stay open,
+    ///      capped at idle.
     error VaultCoreDepositsLatched(address manager);
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -84,6 +90,13 @@ interface IVaultCore is IERC4626 {
     //////////////////////////////////////////////////////////////////////////*//
 
     /// @notice Sets the strategy manager address. Admin-only (DEFAULT_ADMIN_ROLE).
+    /// @dev Never blocked by the old manager. Swapping away from a manager that is latched, still reports
+    ///      allocations, or cannot answer either read latches deposits on the vault until the admin calls
+    ///      `IVaultCoreRecovery.clearManagerSwapLatch()` (#305). The swap skips the latch only when the old manager
+    ///      reports `depositsLatched() == false` and `totalAllocated() == 0`. Reaching zero can take more than
+    ///      zero targets and `rebalance()`: some adapters hold legs a rebalance never recalls (the UniswapV3
+    ///      adapter's position exits only through its admin's `emergencyWithdraw`; the Lido adapter's staked and
+    ///      queued legs need `requestWithdrawal`/`claimWithdrawal`).
     /// @param manager The new strategy manager address.
     function setStrategyManager(address manager) external;
 

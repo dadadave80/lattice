@@ -24,8 +24,8 @@ import {Test, console} from "forge-std/Test.sol";
 ///        ERC1155/ERC1155URIStorage, ERC1155/ERC1155Pausable).
 ///      - Identical: the same function over the same storage. Cut one copy.
 ///      - OnePerDiamond: providers with one ABI and independent backends (price adapters, ERC-7786 gateways
-///        and handlers, VRF providers, the ERC-20 movement overrides and the ERC-1155 burns per D25). One per
-///        diamond.
+///        and handlers, VRF providers, the ERC-20 movement-replacing extensions and the ERC-1155 burns per D25). One
+///        per diamond.
 ///      - Incompatible: the same selector means different things, from two standards or a Lattice-chosen name.
 ///        A row with mixed relations takes the most restrictive class; the note names the rest.
 ///      Inventory facets only: VestingWallet and ERC20Wrapper export no selectors yet (#176), so they are absent.
@@ -203,7 +203,7 @@ contract SelectorCompatibilityTest is Test {
             "transferFrom(address,address,uint256)",
             "ERC20, ERC20Pausable, ERC20Votes, ERC721, GovernedVault",
             Class.Incompatible,
-            "ERC-20 vs ERC-721 (standard); one ERC-20 movement override per diamond (D25)",
+            "ERC-20 vs ERC-721 (standard); one ERC-20 movement-replacing extension per diamond (D25)",
             0x23b872dd
         );
         r[15] = _row(

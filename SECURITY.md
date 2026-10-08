@@ -255,8 +255,22 @@ original attack against the fixed code; run one with
   `test_ForceRemoval_DonationSandwich_DepositsLatched` in
   [`VaultFullNavPricingTest`](test/integration/VaultFullNavPricingTest.t.sol).
   A force removal now latches deposits closed until the manager admin calls
-  `clearDepositLatch()`; exits stay open. Replacing the manager is still
-  open; see below.
+  `clearDepositLatch()`; exits stay open.
+- **Vault deposits after a strategy-manager replacement (unreleased).** The
+  deposit latch lived in the strategy manager, so `setStrategyManager` dropped
+  it: a fresh manager started unlatched, deposits reopened at the lower NAV,
+  and depositors who entered then shared in any funds the old manager's
+  strategies returned later. This applied both to the last-resort recovery
+  from an overflowing strategy and to a swap made while the old manager was
+  latched ([#305](https://github.com/dadadave80/lattice/issues/305)). Reproduce
+  with `test_DepositLatch_ManagerSwapCarriesLatch` and
+  `test_OverflowingStrategy_RecoveredBySetStrategyManager` in
+  [`VaultFullNavPricingTest`](test/integration/VaultFullNavPricingTest.t.sol).
+  A swap now latches deposits on the vault itself (`IVaultCoreRecovery`)
+  unless the old manager reports both no latch and nothing allocated; a read
+  that fails counts as stranding funds and never blocks the swap. Deposits stay
+  closed on the new manager until the vault admin calls
+  `clearManagerSwapLatch()`; exits stay open.
 
 ### Open
 
@@ -264,15 +278,6 @@ original attack against the fixed code; run one with
   deleted, expires unfired, or cannot be paid for at fire time holds its
   `jobId` until a diamond cut
   ([#226](https://github.com/dadadave80/lattice/issues/226)).
-- **Vault deposits after a strategy-manager replacement.** The deposit latch
-  lives in the strategy manager, so `setStrategyManager` drops it: a fresh
-  manager starts unlatched, deposits reopen at the lower NAV, and depositors
-  who enter then share in any funds the old manager's strategies return later.
-  This applies both to the last-resort recovery from an overflowing strategy
-  and to a swap made while the old manager is latched
-  ([#270](https://github.com/dadadave80/lattice/issues/270)). Pinned by
-  `test_DepositLatch_ManagerSwapDropsLatch` in
-  [`VaultFullNavPricingTest`](test/integration/VaultFullNavPricingTest.t.sol).
 - **UniswapV3 adapter exit (accepted).** `rebalance()` can allocate into the
   swap-free position but never recall from it, so capital allocated there
   reaches redeemers only after the admin's `emergencyWithdraw`, the only exit;
