@@ -8,9 +8,11 @@ review.
 
 ## Supported versions
 
-This is pre-release software with no stable version yet. Only the default branch
-(`main`) and the active development branch receive fixes. Tagged releases will
-define supported versions once 1.0 is reached.
+Lattice is pre-1.0. Only the latest tagged release is supported: fixes land on
+the development branch (`dev`) and ship in the next release. Older 0.x releases
+receive no backports. See
+[Versioning and compatibility](README.md#versioning-and-compatibility) for what
+a minor or patch release may change.
 
 ## Reporting a vulnerability
 

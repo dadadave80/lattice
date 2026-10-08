@@ -15,6 +15,13 @@ if older documentation conflicts with the development policy below, apply this p
 - A non-upgradeable deployed contract is not a stable implementation. LatticeRegistry and
   LatticeFactory still require rigorous testing, design comparisons, review, and optimization
   before production use; see issue #176.
+- The published [versioning policy](README.md#versioning-and-compatibility) is the exception to the
+  points above, and this policy does not override it. Once a module is live on any network (a
+  release deployment, a Lattice demo, or a known downstream deployment), its ERC-7201 namespace and
+  interfaceId are frozen: append to its storage struct only, and keep its selector set. Mark any
+  ABI or storage break of an undeployed module with `!`. A `fix:` or other patch-level change never
+  changes a storage layout, a selector set or interfaceId, or the `LatticeRegistry`/`LatticeFactory`
+  bytecode; title such a change `feat` or with `!` so Release Please cuts a minor.
 - For material architecture decisions, compare the current design with credible alternatives.
   Explain correctness guarantees, trust assumptions, complexity, deployment consequences, gas,
   and bytecode tradeoffs. Measure optimization claims; label estimates. Do not implement every
