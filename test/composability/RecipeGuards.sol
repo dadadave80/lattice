@@ -70,6 +70,15 @@ abstract contract RecipeGuards is Test {
         assertEq(vm.load(diamond, keccak256(abi.encode(bytes32(0)))), bytes32(0), "stray write to keccak256(0)");
     }
 
+    /// @notice A plain ETH send to `diamond` succeeds iff `accepts`. Recipes cut {Receive} only when the
+    ///         diamond must accept plain (empty-calldata) native sends; forwarding `msg.value` from a
+    ///         payable call does not need it. Every other recipe must reject bare ETH (#246).
+    function _assertBareEth(address diamond, bool accepts) internal {
+        vm.deal(address(this), 1 wei);
+        (bool ok,) = diamond.call{value: 1 wei}("");
+        assertEq(ok, accepts, accepts ? "bare ETH must be accepted" : "bare ETH must be rejected");
+    }
+
     /// @notice `admin` — and only `admin` — can `diamondCut` a live probe facet onto `diamond`, and the
     ///         upgrade authority is INSPECTABLE on-chain: `hasRole(DEFAULT_ADMIN_ROLE, admin)` answers true
     ///         through the diamond (requires the AccessControl role surface to actually be routed — a

@@ -6,9 +6,12 @@ pragma solidity ^0.8.30;
 /// @notice Bare-ETH acceptance as a facet: cut this under the ZERO selector (`bytes4(0)`) and the
 ///         diamond accepts plain ETH sends. An empty-calldata call reads as `msg.sig == 0x00000000`
 ///         in the diamond's fallback, routes to this facet, and the empty-calldata delegatecall runs
-///         this contract's `receive()` in the diamond's context. Every Lattice recipe cuts it —
-///         {Lattice} itself deliberately declares NO `receive()`, so a diamond without this
-///         facet rejects bare ETH (an explicit opt-out for contracts that should never hold value).
+///         this contract's `receive()` in the diamond's context. It is opt-in: cut it only into a
+///         diamond that must accept plain (empty-calldata) native sends, i.e. one funded or paid
+///         back that way (accounts, timelocks, an HTS treasury, a swap executor's native payouts).
+///         Forwarding `msg.value` from a payable call never needs it. {Lattice} itself deliberately
+///         declares NO `receive()`, so a diamond without this facet rejects bare ETH instead of
+///         locking it.
 /// @dev Stateless, no init, no interface, no ERC-165 registration (there is nothing to register —
 ///      `receive()` has no selector). Only genuinely EMPTY calldata succeeds: 1-4 zero bytes still
 ///      route here via the zero-padded `msg.sig` but match no function and revert. NOTE the routing
@@ -16,7 +19,7 @@ pragma solidity ^0.8.30;
 ///      `.send()` with their 2,300-gas stipend CANNOT pay a Lattice diamond — senders must use
 ///      `call{value: ...}("")`.
 contract Receive {
-    /// @notice Accept bare ETH (vault deposits, account funding, timelock/governor value).
+    /// @notice Accept bare ETH (account funding, timelock/governor value, native payouts).
     receive() external payable virtual {}
 
     /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).

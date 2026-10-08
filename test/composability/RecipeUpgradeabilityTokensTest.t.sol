@@ -42,14 +42,16 @@ contract RecipeUpgradeabilityTokensTest is RecipeGuards {
     function test_Immutable_ERC20() public {
         (FacetCut[] memory cuts, address init, bytes memory cd) = new DeployERC20().buildCuts("Tok", "TOK");
         address d = _assemble(cuts, init, cd);
-        _assertIntrospectable(d, 4);
+        _assertIntrospectable(d, 3);
+        _assertBareEth(d, false);
         _assertImmutableByDesign(d);
     }
 
     function test_Upgradeable_ERC20() public {
         (FacetCut[] memory cuts, address init, bytes memory cd) = new DeployERC20().buildCuts("Tok", "TOK", ADMIN);
         address d = _assemble(cuts, init, cd);
-        _assertIntrospectable(d, 6);
+        _assertIntrospectable(d, 5);
+        _assertBareEth(d, false);
         assertEq(IERC20(d).name(), "Tok", "module init: ERC20 name");
         _assertAdminCanCut(d, ADMIN);
     }
@@ -57,14 +59,16 @@ contract RecipeUpgradeabilityTokensTest is RecipeGuards {
     function test_Immutable_ERC721() public {
         (FacetCut[] memory cuts, address init, bytes memory cd) = new DeployERC721().buildCuts("Tok", "TOK");
         address d = _assemble(cuts, init, cd);
-        _assertIntrospectable(d, 4);
+        _assertIntrospectable(d, 3);
+        _assertBareEth(d, false);
         _assertImmutableByDesign(d);
     }
 
     function test_Upgradeable_ERC721() public {
         (FacetCut[] memory cuts, address init, bytes memory cd) = new DeployERC721().buildCuts("Tok", "TOK", ADMIN);
         address d = _assemble(cuts, init, cd);
-        _assertIntrospectable(d, 6);
+        _assertIntrospectable(d, 5);
+        _assertBareEth(d, false);
         assertEq(ERC721(d).name(), "Tok", "module init: ERC721 name");
         _assertAdminCanCut(d, ADMIN);
     }
@@ -72,14 +76,16 @@ contract RecipeUpgradeabilityTokensTest is RecipeGuards {
     function test_Immutable_ERC1155() public {
         (FacetCut[] memory cuts, address init, bytes memory cd) = new DeployERC1155().buildCuts("uri://");
         address d = _assemble(cuts, init, cd);
-        _assertIntrospectable(d, 4);
+        _assertIntrospectable(d, 3);
+        _assertBareEth(d, false);
         _assertImmutableByDesign(d);
     }
 
     function test_Upgradeable_ERC1155() public {
         (FacetCut[] memory cuts, address init, bytes memory cd) = new DeployERC1155().buildCuts("uri://", ADMIN);
         address d = _assemble(cuts, init, cd);
-        _assertIntrospectable(d, 6);
+        _assertIntrospectable(d, 5);
+        _assertBareEth(d, false);
         assertEq(ERC1155(d).uri(0), "uri://", "module init: ERC1155 uri");
         _assertAdminCanCut(d, ADMIN);
     }
@@ -88,7 +94,8 @@ contract RecipeUpgradeabilityTokensTest is RecipeGuards {
         (FacetCut[] memory cuts, address init, bytes memory cd) =
             new DeployERC4626().buildCuts(address(asset), "Vault", "VLT", 0);
         address d = _assemble(cuts, init, cd);
-        _assertIntrospectable(d, 5);
+        _assertIntrospectable(d, 4);
+        _assertBareEth(d, false);
         _assertImmutableByDesign(d);
     }
 
@@ -96,7 +103,8 @@ contract RecipeUpgradeabilityTokensTest is RecipeGuards {
         (FacetCut[] memory cuts, address init, bytes memory cd) =
             new DeployERC4626().buildCuts(address(asset), "Vault", "VLT", 0, ADMIN);
         address d = _assemble(cuts, init, cd);
-        _assertIntrospectable(d, 7);
+        _assertIntrospectable(d, 6);
+        _assertBareEth(d, false);
         assertEq(ERC4626(d).asset(), address(asset), "module init: ERC4626 asset");
         _assertAdminCanCut(d, ADMIN);
     }
@@ -105,7 +113,8 @@ contract RecipeUpgradeabilityTokensTest is RecipeGuards {
         (FacetCut[] memory cuts, address[] memory inits, bytes[] memory cds) =
             new DeployERC20Burnable().buildCuts("Tok", "TOK");
         address d = _assembleMulti(cuts, inits, cds);
-        _assertIntrospectable(d, 5);
+        _assertIntrospectable(d, 4);
+        _assertBareEth(d, false);
         _assertImmutableByDesign(d);
     }
 
@@ -113,7 +122,8 @@ contract RecipeUpgradeabilityTokensTest is RecipeGuards {
         (FacetCut[] memory cuts, address[] memory inits, bytes[] memory cds) =
             new DeployERC20Burnable().buildCuts("Tok", "TOK", ADMIN);
         address d = _assembleMulti(cuts, inits, cds);
-        _assertIntrospectable(d, 7);
+        _assertIntrospectable(d, 6);
+        _assertBareEth(d, false);
         assertEq(IERC20(d).name(), "Tok", "module init chain: ERC20 name");
         _assertAdminCanCut(d, ADMIN);
     }
@@ -122,7 +132,8 @@ contract RecipeUpgradeabilityTokensTest is RecipeGuards {
         (FacetCut[] memory cuts, address[] memory inits, bytes[] memory cds) =
             new DeployERC20Capped().buildCuts("Tok", "TOK", 1000 ether);
         address d = _assembleMulti(cuts, inits, cds);
-        _assertIntrospectable(d, 5);
+        _assertIntrospectable(d, 4);
+        _assertBareEth(d, false);
         _assertImmutableByDesign(d);
     }
 
@@ -130,7 +141,8 @@ contract RecipeUpgradeabilityTokensTest is RecipeGuards {
         (FacetCut[] memory cuts, address[] memory inits, bytes[] memory cds) =
             new DeployERC20Capped().buildCuts("Tok", "TOK", 1000 ether, ADMIN);
         address d = _assembleMulti(cuts, inits, cds);
-        _assertIntrospectable(d, 7);
+        _assertIntrospectable(d, 6);
+        _assertBareEth(d, false);
         assertEq(IERC20(d).name(), "Tok", "module init chain: ERC20 name");
         _assertAdminCanCut(d, ADMIN);
     }
@@ -139,7 +151,8 @@ contract RecipeUpgradeabilityTokensTest is RecipeGuards {
         (FacetCut[] memory cuts, address[] memory inits, bytes[] memory cds) =
             new DeployERC20FlashMint().buildCuts("Tok", "TOK");
         address d = _assembleMulti(cuts, inits, cds);
-        _assertIntrospectable(d, 5);
+        _assertIntrospectable(d, 4);
+        _assertBareEth(d, false);
         _assertImmutableByDesign(d);
     }
 
@@ -147,7 +160,8 @@ contract RecipeUpgradeabilityTokensTest is RecipeGuards {
         (FacetCut[] memory cuts, address[] memory inits, bytes[] memory cds) =
             new DeployERC20FlashMint().buildCuts("Tok", "TOK", ADMIN);
         address d = _assembleMulti(cuts, inits, cds);
-        _assertIntrospectable(d, 7);
+        _assertIntrospectable(d, 6);
+        _assertBareEth(d, false);
         assertEq(IERC20(d).name(), "Tok", "module init chain: ERC20 name");
         _assertAdminCanCut(d, ADMIN);
     }
@@ -156,7 +170,8 @@ contract RecipeUpgradeabilityTokensTest is RecipeGuards {
         (FacetCut[] memory cuts, address[] memory inits, bytes[] memory cds) =
             new DeployERC20Permit().buildCuts("Tok", "TOK");
         address d = _assembleMulti(cuts, inits, cds);
-        _assertIntrospectable(d, 5);
+        _assertIntrospectable(d, 4);
+        _assertBareEth(d, false);
         _assertImmutableByDesign(d);
     }
 
@@ -164,7 +179,8 @@ contract RecipeUpgradeabilityTokensTest is RecipeGuards {
         (FacetCut[] memory cuts, address[] memory inits, bytes[] memory cds) =
             new DeployERC20Permit().buildCuts("Tok", "TOK", ADMIN);
         address d = _assembleMulti(cuts, inits, cds);
-        _assertIntrospectable(d, 7);
+        _assertIntrospectable(d, 6);
+        _assertBareEth(d, false);
         assertEq(IERC20(d).name(), "Tok", "module init chain: ERC20 name");
         _assertAdminCanCut(d, ADMIN);
     }
@@ -173,7 +189,8 @@ contract RecipeUpgradeabilityTokensTest is RecipeGuards {
         (FacetCut[] memory cuts, address[] memory inits, bytes[] memory cds) =
             new DeployERC20Wrapper().buildCuts("Tok", "TOK", address(asset));
         address d = _assembleMulti(cuts, inits, cds);
-        _assertIntrospectable(d, 5);
+        _assertIntrospectable(d, 4);
+        _assertBareEth(d, false);
         _assertImmutableByDesign(d);
     }
 
@@ -181,7 +198,8 @@ contract RecipeUpgradeabilityTokensTest is RecipeGuards {
         (FacetCut[] memory cuts, address[] memory inits, bytes[] memory cds) =
             new DeployERC20Wrapper().buildCuts("Tok", "TOK", address(asset), ADMIN);
         address d = _assembleMulti(cuts, inits, cds);
-        _assertIntrospectable(d, 7);
+        _assertIntrospectable(d, 6);
+        _assertBareEth(d, false);
         assertEq(ERC20Wrapper(d).underlying(), address(asset), "module init: wrapper underlying");
         _assertAdminCanCut(d, ADMIN);
     }
@@ -189,14 +207,16 @@ contract RecipeUpgradeabilityTokensTest is RecipeGuards {
     function test_Upgradeable_ERC2981() public {
         (FacetCut[] memory cuts, address init, bytes memory cd) = new DeployERC2981().buildCuts(ADMIN);
         address d = _assemble(cuts, init, cd);
-        _assertIntrospectable(d, 6);
+        _assertIntrospectable(d, 5);
+        _assertBareEth(d, false);
         _assertAdminCanCut(d, ADMIN);
     }
 
     function test_Upgradeable_MarketplaceZone() public {
         (FacetCut[] memory cuts, address init, bytes memory cd) = new DeployMarketplaceZone().buildCuts(ADMIN);
         address d = _assemble(cuts, init, cd);
-        _assertIntrospectable(d, 6);
+        _assertIntrospectable(d, 5);
+        _assertBareEth(d, false);
         _assertAdminCanCut(d, ADMIN);
     }
 
@@ -204,7 +224,8 @@ contract RecipeUpgradeabilityTokensTest is RecipeGuards {
         (FacetCut[] memory cuts, address[] memory inits, bytes[] memory cds) =
             new DeployERC20Pausable().buildCuts("Tok", "TOK", ADMIN);
         address d = _assembleMulti(cuts, inits, cds);
-        _assertIntrospectable(d, 8);
+        _assertIntrospectable(d, 7);
+        _assertBareEth(d, false);
         _assertAdminCanCut(d, ADMIN);
     }
 
@@ -212,7 +233,8 @@ contract RecipeUpgradeabilityTokensTest is RecipeGuards {
         (FacetCut[] memory cuts, address[] memory inits, bytes[] memory cds) =
             new DeployERC20Votes().buildCuts("Tok", "TOK", ADMIN);
         address d = _assembleMulti(cuts, inits, cds);
-        _assertIntrospectable(d, 8);
+        _assertIntrospectable(d, 7);
+        _assertBareEth(d, false);
         _assertAdminCanCut(d, ADMIN);
     }
 
@@ -220,7 +242,8 @@ contract RecipeUpgradeabilityTokensTest is RecipeGuards {
         (FacetCut[] memory cuts, address[] memory inits, bytes[] memory cds) =
             new DeployERC721URIStorage().buildCuts("Tok", "TOK", ADMIN);
         address d = _assembleMulti(cuts, inits, cds);
-        _assertIntrospectable(d, 7);
+        _assertIntrospectable(d, 6);
+        _assertBareEth(d, false);
         _assertAdminCanCut(d, ADMIN);
     }
 
@@ -228,7 +251,8 @@ contract RecipeUpgradeabilityTokensTest is RecipeGuards {
         (FacetCut[] memory cuts, address init, bytes memory cd) =
             new DeployERC20Crosschain().buildCuts(ADMIN, "Tok", "TOK");
         address d = _assemble(cuts, init, cd);
-        _assertIntrospectable(d, 8);
+        _assertIntrospectable(d, 7);
+        _assertBareEth(d, false);
         _assertAdminCanCut(d, ADMIN);
     }
 
@@ -236,7 +260,8 @@ contract RecipeUpgradeabilityTokensTest is RecipeGuards {
         (FacetCut[] memory cuts, address init, bytes memory cd) =
             new DeployERC7802().buildCuts(ADMIN, address(this), "Tok", "TOK");
         address d = _assemble(cuts, init, cd);
-        _assertIntrospectable(d, 7);
+        _assertIntrospectable(d, 6);
+        _assertBareEth(d, false);
         _assertAdminCanCut(d, ADMIN);
     }
 
@@ -244,6 +269,7 @@ contract RecipeUpgradeabilityTokensTest is RecipeGuards {
         (FacetCut[] memory cuts, address init, bytes memory cd) = new DeployHTSAdapter().buildCuts(ADMIN);
         address d = _assemble(cuts, init, cd);
         _assertIntrospectable(d, 6);
+        _assertBareEth(d, true);
         _assertAdminCanCut(d, ADMIN);
     }
 }

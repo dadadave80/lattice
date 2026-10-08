@@ -211,7 +211,11 @@ The same four steps build any composition. A worked example, an admin-upgradeabl
 `grant-m2` tag, so read it on `dev` or `main`.
 
 1. **Pick modules.** Cut each facet for its own exported selectors. These facets share no selector, so no
-   `_cutExcept` is needed; the vault recipe above shows that case.
+   `_cutExcept` is needed; the vault recipe above shows that case. Leave out `Receive` unless the diamond
+   must accept plain (empty-calldata) native sends: it holds native value, or something pays it back
+   with a plain send. Forwarding `msg.value` from a payable call, as the bridge adapters do, does not
+   need it. The vault cuts it because its timelock spends ETH; a token does not, so without it a plain ETH
+   send reverts instead of being locked.
 
    ```solidity
    cuts[0] = _cut(address(new ERC165Facet()));
@@ -220,7 +224,6 @@ The same four steps build any composition. A worked example, an admin-upgradeabl
    cuts[3] = _cut(address(new DiamondLoupeFacet()));
    cuts[4] = _cut(address(new ERC20()));
    cuts[5] = _cut(address(new ERC20Capped()));
-   cuts[6] = _cut(address(new Receive()));
    ```
 
 2. **Declare every storage owner, including transitive ones,** and validate them before deploying. The cut

@@ -18,7 +18,9 @@ import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondC
 ///         execution diamond is, shared by production (`run --broadcast`) and the facet tests (which build on
 ///         {buildCuts}). `AccessControl` is part of the base recipe because the `(aggregator, selector)`
 ///         allow-list setter is `DEFAULT_ADMIN_ROLE`-gated. The aggregator allow-list is populated by the admin
-///         AFTER deploy (e.g. allow-listing the LI.FI Diamond's swap/bridge selectors).
+///         AFTER deploy (e.g. allow-listing the LI.FI Diamond's swap/bridge selectors). `Receive` is part of it
+///         because an aggregator pays native swap output and unspent `msg.value` back with a plain send, which
+///         {AggregatorExecAdapter} then sweeps to the caller.
 contract DeployAggregatorExecAdapter is BaseDeploy {
     /// @notice Builds the aggregator execution diamond cuts + initializer (no broadcast, no proxy deploy).
     /// @param admin The address granted `DEFAULT_ADMIN_ROLE` (controls the allow-list setter).

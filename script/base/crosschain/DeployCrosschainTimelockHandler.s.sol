@@ -19,7 +19,8 @@ import {TimelockController} from "@lattice/governance/TimelockController.sol";
 ///         `CrosschainLink` + `TimelockController` + `CrosschainTimelockHandler` + {CrosschainTimelockHandlerInit}.
 ///         The ONE source of truth for what a cross-chain timelock diamond is, shared by production
 ///         (`run --broadcast`) and the facet tests (which build on {buildCuts}). The Diamond itself is the sole
-///         timelock proposer, so only the authenticated cross-chain handler can schedule operations.
+///         timelock proposer, so only the authenticated cross-chain handler can schedule operations. `Receive`
+///         is part of it because the timelock holds the ETH its scheduled operations spend.
 contract DeployCrosschainTimelockHandler is BaseDeploy {
     /// @notice Builds the cross-chain timelock diamond cuts + initializer (no broadcast, no proxy deploy).
     /// @param admin The address granted `DEFAULT_ADMIN_ROLE` (timelock + link/handler registry admin).

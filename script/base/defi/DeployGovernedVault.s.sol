@@ -117,12 +117,13 @@ contract DeployGovernedVault is BaseDeploy {
     }
 
     /// @dev The 14 base facet cuts alone — shared with recipes that EXTEND this one under a different
-    ///      initializer (they must not pay for a discarded {GovernedVaultInit} deployment). The last three
+    ///      initializer (they must not pay for a discarded {GovernedVaultInit} deployment). Cuts 10-12
     ///      are the anti-frozen-diamond set: {DiamondLoupeFacet} (EIP-2535 introspection),
     ///      {EmergencyStop} (guardian halt + resume surface for the governed cut), and
     ///      {GovernedDiamondCut} (the `0x1f931c1c` upgrade path, reachable here ONLY through a passed,
     ///      timelock-executed proposal — see {GovernedVaultInit}; cutting a self-call relay such as
-    ///      AccessManager next to it would open a second path). All diamond-lib facets are cut via the
+    ///      AccessManager next to it would open a second path). {Receive} lets the timelock hold the
+    ///      ETH that proposals spend. All diamond-lib facets are cut via the
     ///      ERC-8153 address helpers (diamond-lib ≥0.2.0 facets self-report their selectors) — no FFI. Every
     ///      facet comes from {_facet}, so on a CreateX chain vaults share one released facet set.
     function _buildBaseCuts() internal returns (FacetCut[] memory cuts) {
