@@ -1,0 +1,57 @@
+name: close linked issues
+
+permissions: {}
+
+# GitHub only honours closing keywords ("Closes #N", "Fixes #N", ...) when a PR merges into the default
+# branch, which is main, while feature PRs merge into dev. This closes those issues when a PR lands on dev
+# instead of leaving them open until someone notices. script/closing-issues.sh does the matching (tested by
+# script/test-closing-issues.sh). The PR body is attacker-controlled text, so it reaches the shell only via
+# env, never through `${{ }}` inside `run:`. Fork PRs get a read-only token under `pull_request`, so their
+# issues are still closed by hand; do not switch to `pull_request_target` to work around that.
+on:
+  pull_request:
+    types: [closed]
+    branches: [dev]
+
+jobs:
+  close:
+    name: Close issues referenced by the merged PR
+    if: github.event.pull_request.merged
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      # The PR's merge ref can be gone once it is closed; the base branch always exists.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.base.ref }}
+          persist-credentials: false
+      - name: Close issues
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$PR_BODY" | ./script/closing-issues.sh "$GITHUB_REPOSITORY" >issues.txt
+          if [ ! -s issues.txt ]; then
+            echo "No closing keywords in #$PR_NUMBER."
+            exit 0
+          fi
+          while read -r n <&3; do
+            if ! info=$(gh api "repos/$GITHUB_REPOSITORY/issues/$n" --jq '[.state, (.pull_request != null)] | @tsv'); then
+              echo "#$n not found; skipped."
+              continue
+            fi
+            state=${info%%$'\t'*}
+            is_pr=${info##*$'\t'}
+            if [ "$is_pr" = true ]; then
+              echo "#$n is a pull request; skipped."
+            elif [ "$state" != open ]; then
+              echo "#$n is already $state; skipped."
+            else
+              gh issue close "$n" --repo "$GITHUB_REPOSITORY" --reason completed \
+                --comment "Closed by #$PR_NUMBER (merged into dev)."
+            fi
+          done 3<issues.txt

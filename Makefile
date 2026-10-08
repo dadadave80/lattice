@@ -111,6 +111,10 @@ license-check: ## License notices: SPDX on every .sol, license texts present, ex
 	./script/test-check-licenses.sh
 	./script/check-licenses.sh
 
+.PHONY: scripts-check
+scripts-check: ## Regression tests for the CI helper scripts (closing-keyword parser behind close-linked-issues.yml)
+	./script/test-closing-issues.sh
+
 .PHONY: storage-update
 storage-update: ## Regenerate the storage-layout baseline (review the diff: appends only for live namespaces; see CONTRIBUTING.md)
 	./script/upgrades/check-storage-layout.sh --update
@@ -120,7 +124,7 @@ test-ci: ## Full test suite under the CI profile (snapshots/ is left to snapshot
 	FOUNDRY_PROFILE=ci FORGE_SNAPSHOT_EMIT=false forge test
 
 .PHONY: ci
-ci: fmt-check license-check sizes via-ir storage-check test-ci snapshot-check ## All CI gates, locally, in CI order
+ci: fmt-check license-check scripts-check sizes via-ir storage-check test-ci snapshot-check ## All CI gates, locally, in CI order
 
 .PHONY: slither
 slither: ## Static analysis gate, as CI runs it (slither.config.json + triaged slither.db.json; fails on High)

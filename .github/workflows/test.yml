@@ -85,6 +85,8 @@ jobs:
         run: |
           ./script/test-check-licenses.sh
           ./script/check-licenses.sh
+      - name: Test CI helper scripts
+        run: ./script/test-closing-issues.sh
 
   # Single source-of-truth compile (legacy/ci profile). Gates EIP-170 and populates the shared
   # forge cache (out/ + cache/, keyed on src + lib content) so the `test` and `storage-layout`
