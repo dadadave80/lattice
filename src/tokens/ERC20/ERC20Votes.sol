@@ -16,6 +16,14 @@ import {Checkpoints} from "@lattice/utils/libraries/Checkpoints.sol";
 ///      surface (`getVotes`/`getPastVotes`/`getPastTotalSupply`/`delegates`/`clock`/`CLOCK_MODE`) from a
 ///      separately-cut {Votes} facet; {DeployERC20Votes} composes all three.
 ///
+///      Hook model (D25, #234): replacing `transfer`/`transferFrom` makes this facet mutually exclusive with every
+///      other facet that replaces them (ERC20Pausable; GovernedVault, which supersedes it in {DeployGovernedVault}).
+///      A direct mover beside it (ERC20Burnable, ERC20FlashMint, ERC20Crosschain, ERC20Wrapper, ERC7802, ERC4626,
+///      VaultCore, or a mint facet over ERC20Capped's `_mint`) mints and burns without moving voting units, so
+///      delegated votes drift from the supply. The sanctioned mint/burn path is a facet that calls
+///      {ERC20VotesLib._mint}/{ERC20VotesLib._burn}, which checkpoint votes and enforce the uint208 supply bound.
+///      See docs/guides/selector-compatibility.md#token-extension-hook-model.
+///
 ///      Callers must initialize the following modules in their initializer:
 ///        - ERC20Lib.__ERC20_init(name, symbol)
 ///        - EIP712Lib.__EIP712_init(name, version)

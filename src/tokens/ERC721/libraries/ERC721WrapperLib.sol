@@ -29,8 +29,9 @@ struct ERC721WrapperStorage {
 /// @notice Library implementing id-for-id wrapping of an underlying ERC-721. All logic lives here; the facet delegates.
 /// @dev OpenZeppelin keeps the underlying in an `immutable`; a diamond's facets are shared, so this stores it in the
 ///      ERC-7201 slot instead. The underlying is trusted, as upstream assumes: {depositFor} calls it before minting.
-///      Mints and burns go straight through {ERC721Lib}, so an extension that observes movement by `Replace`-ing the
-///      base transfer selectors would not see them (issue #234).
+///      Mints and burns go straight through {ERC721Lib}, which has no hook (D25, option (a)), so the movement
+///      overrides that `Replace` the transfer selectors do not see them: {ERC721Enumerable} and {ERC721Votes} are
+///      mutually exclusive with this extension, and {ERC721Pausable} does not pause it.
 library ERC721WrapperLib {
     //*//////////////////////////////////////////////////////////////////////////
     //                              STORAGE ACCESS

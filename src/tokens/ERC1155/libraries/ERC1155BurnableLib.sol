@@ -17,6 +17,8 @@ bytes32 constant ERC165_MAP_IERC1155BURNABLE_SLOT = 0xb792d4a365dc518babbaf5a6b3
 /// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC1155/extensions/ERC1155Burnable.sol)
 /// @notice Library implementing the ERC-1155 burn extension. Adds no own storage: burns debit the {ERC1155Lib}
 ///         balances.
+/// @dev Burns call {ERC1155Lib} directly: an ERC-1155 movement-replacing extension (a Pausable or Supply facet)
+///      would not see them, so the two are mutually exclusive (D25, #234).
 library ERC1155BurnableLib {
     //*//////////////////////////////////////////////////////////////////////////
     //                             INITIALIZATION

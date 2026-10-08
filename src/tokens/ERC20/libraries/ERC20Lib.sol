@@ -38,7 +38,7 @@ struct ERC20Storage {
 ///      - Nothing here is `virtual`. OpenZeppelin extensions override `_update`, `_approve` and `_spendAllowance`;
 ///        a Lattice extension that changes movement replaces the facet's `transfer`/`transferFrom` instead
 ///        (decision D25 on #234). Every other {ERC20Lib} caller (ERC20Burnable, ERC20FlashMint, ERC20Wrapper,
-///        ERC20Crosschain, ERC7802, ERC1363, ERC4626) skips that replacement, so those extensions are mutually
+///        ERC20Crosschain, ERC7802, ERC1363, ERC4626, VaultCore, GovernedVault) skips that replacement, so those extensions are mutually
 ///        exclusive with ERC20Pausable and ERC20Votes where they move tokens.
 ///      - `_spendAllowance` reads the allowance from storage, not through an overridable `allowance()`. It keeps
 ///        the `!= type(uint256).max` test that OpenZeppelin v5.2 rewrote as `<`: the two agree for every
@@ -49,6 +49,7 @@ struct ERC20Storage {
 ///      - OpenZeppelin's ERC20 has no ERC-165. {__ERC20_init} registers {IERC20}, whose id `0x942e8b22` also
 ///        covers `name`, `symbol` and `decimals`, so it is not the bare ERC-20 id `0x36372b07`.
 ///      - The ERC-6093 errors are declared on {IERC20} rather than `IERC20Errors`; their selectors are the same.
+///      See docs/guides/selector-compatibility.md#token-extension-hook-model.
 library ERC20Lib {
     //*//////////////////////////////////////////////////////////////////////////
     //                              STORAGE ACCESS
@@ -164,7 +165,8 @@ library ERC20Lib {
     }
 
     /// @notice Actual state-change for all token movements; emits Transfer.
-    /// @dev This is the core function that submodules (Capped) hook into.
+    /// @dev Runs no extension hook (D25): unlike OpenZeppelin's `virtual _update`, it cannot be overridden, so a
+    ///      pause or vote checkpoint applies only on the facet selectors that wrap it.
     function _update(address from, address to, uint256 value) internal {
         ERC20Storage storage $ = erc20Storage();
 

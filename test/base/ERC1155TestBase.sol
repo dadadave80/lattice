@@ -60,15 +60,29 @@ abstract contract ERC1155TestBase is GetSelectors {
         internal
         returns (address diamond_)
     {
+        diamond_ = _deployWithHelper(prodCuts, inits, initCalldatas, address(new ERC1155TestFacet()));
+    }
+
+    /// @notice As {_deployWithHelper}, but cuts `helperFacet` as the seeding helper. An extension test passes a
+    ///         helper that mints through its own library (supply tracking, pause gating), so seeding goes
+    ///         through the same path a production mint facet must use. The helper must expose exactly
+    ///         {ERC1155TestFacet}'s `mint`/`mintBatch` signatures.
+    function _deployWithHelper(
+        FacetCut[] memory prodCuts,
+        address[] memory inits,
+        bytes[] memory initCalldatas,
+        address helperFacet
+    ) internal returns (address diamond_) {
+        bytes4[] memory helperSelectors = new bytes4[](2);
+        helperSelectors[0] = ERC1155TestFacet.mint.selector;
+        helperSelectors[1] = ERC1155TestFacet.mintBatch.selector;
+
         FacetCut[] memory cuts = new FacetCut[](prodCuts.length + 1);
         for (uint256 i; i < prodCuts.length; ++i) {
             cuts[i] = prodCuts[i];
         }
-        cuts[prodCuts.length] = FacetCut({
-            facetAddress: address(new ERC1155TestFacet()),
-            action: FacetCutAction.Add,
-            functionSelectors: _getSelectors("ERC1155TestFacet")
-        });
+        cuts[prodCuts.length] =
+            FacetCut({facetAddress: helperFacet, action: FacetCutAction.Add, functionSelectors: helperSelectors});
 
         MultiInit multiInit = new MultiInit();
         Lattice d = new Lattice();

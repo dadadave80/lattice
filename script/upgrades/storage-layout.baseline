@@ -190,6 +190,10 @@
 1	0	_operatorApprovals	t_mapping(t_address,t_mapping(t_address,t_bool))
 2	0	_uri	t_string_storage
 
+### ERC1155SupplyStorage @ erc7201:lattice.storage.ERC1155Supply (slot 0x587745c63b1b33029f813b403978fa83db2954e4dd333c28aeae4b4e067ade00)
+0	0	_totalSupply	t_mapping(t_uint256,t_uint256)
+1	0	_totalSupplyAll	t_uint256
+
 ### ERC1155URIStorageStorage @ erc7201:lattice.storage.ERC1155URIStorage (slot 0x410b28ad7d410d71a721debe93a5796847f0aba6b82f9b5e65108eff17bfbc00)
 0	0	_baseURI	t_string_storage
 1	0	_tokenURIs	t_mapping(t_uint256,t_string_storage)
@@ -242,6 +246,12 @@
 0	0	_executions	t_mapping(t_bytes4,t_struct(ExecutionStorage)_storage)
 1	0	_validations	t_mapping(t_userDefinedValueType(ModuleEntity),t_struct(ValidationStorage)_storage)
 2	0	_interfaceRefCount	t_mapping(t_bytes4,t_uint256)
+
+### ERC721EnumerableStorage @ erc7201:lattice.storage.ERC721Enumerable (slot 0xf44b1a2ac6259907d34f22f5cc88909b4db34b47d9193d82fe8ed2889ec8e200)
+0	0	_ownedTokens	t_mapping(t_address,t_mapping(t_uint256,t_uint256))
+1	0	_ownedTokensIndex	t_mapping(t_uint256,t_uint256)
+2	0	_allTokens	t_array(t_uint256)dyn_storage
+3	0	_allTokensIndex	t_mapping(t_uint256,t_uint256)
 
 ### ERC721Storage @ erc7201:lattice.storage.ERC721 (slot 0xb57056eaff39f17dbb7656e3d0f4bee059cc8b05a6894f946db4b85f3b03e700)
 0	0	_owners	t_mapping(t_uint256,t_address)
@@ -481,6 +491,9 @@
 7	10	_tickUpper	t_int24
 8	0	_slippageBps	t_uint256
 9	0	_operator	t_address
+
+### VaultCoreRecoveryStorage @ erc7201:lattice.storage.VaultCoreRecovery (slot 0x47912b574bd5afb37a2207dcbb19ecd0a5ba9d0ace45a4775d2beed47d20cd00)
+0	0	_managerSwapLatched	t_bool
 
 ### VaultCoreStorage @ erc7201:lattice.storage.VaultCore (slot 0x391c4f0f82559e85ff01d307d4b19b40f088495abd453c84d7e0fa35497de600)
 0	0	_strategyManager	t_address

@@ -100,7 +100,7 @@ contract DeployGovernedVault is BaseDeploy {
     /// @notice Unique storage owners, including dependencies shared across facets.
     /// @dev Initializable and the reentrancy guard use fixed non-ERC-7201 slots; see the guide.
     function storageNamespaces() public pure virtual returns (string[] memory ids) {
-        ids = new string[](14);
+        ids = new string[](15);
         ids[0] = "diamond.lib.storage";
         ids[1] = "diamond.lib.storage.ERC165";
         ids[2] = "lattice.storage.AccessControl";
@@ -115,6 +115,7 @@ contract DeployGovernedVault is BaseDeploy {
         ids[11] = "lattice.storage.GovernedDiamondCut";
         ids[12] = "lattice.storage.EIP712";
         ids[13] = "lattice.storage.Nonces";
+        ids[14] = "lattice.storage.VaultCoreRecovery";
     }
 
     /// @dev The 14 base facet cuts alone — shared with recipes that EXTEND this one under a different

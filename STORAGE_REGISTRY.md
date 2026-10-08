@@ -70,16 +70,20 @@ and a row here.
   `GovernedSafeDiamondCutStorage`; `setMinDelay` keeps its selector, so the id and slot are unchanged.
 - Utility libraries that hold no own ERC-7201 storage slot (`EnumerableSet`, `TimelockLib`) and
   token-extension libraries that declare no `*_STORAGE_SLOT` (`ERC20Burnable`, `ERC20Permit`,
-  `ERC20Votes`, `ERC7802`, `ERC721Burnable`) are intentionally **not** listed here. `ERC1155Burnable` and
-  `ERC1363` are newer and follow the stateless-row convention (as `HederaPrngAdapter` and `SuperchainETHBridgeAdapter` do), so
-  each has a row in the Tokens table even though neither has a slot of its own. (`ERC20Permit`, `ERC20Burnable`,
+  `ERC20Votes`, `ERC7802`, `ERC721Burnable`, `ERC721Votes`) are intentionally **not** listed here. `ERC1155Burnable`,
+  `ERC1155Pausable` and `ERC1363` are newer and follow the stateless-row convention (as `HederaPrngAdapter` and
+  `SuperchainETHBridgeAdapter` do), so each has a row in the Tokens table even though neither has a slot of its
+  own. `ERC1155Pausable` also registers no ERC-165 id of its own: its recipe registers `IPausable` (the Pausable
+  row) and `IERC1155Burnable`. (`ERC20Permit`, `ERC20Burnable`,
   `ERC7802` and `ERC721Burnable` do register ERC-165 ids but reuse the underlying `ERC20`/`ERC721`/`Nonces`
   storage, so they have no row of their own; their map slots are still derived and checked for uniqueness in
   `StorageSlotVerificationTest`. `ERC721Burnable` registers `IERC721Burnable` `0x42966c68`, which is the
   `burn(uint256)` selector, at map slot
   `0x9eb38abe883a9d9203f59f04d3952f6b497989121d4c2afe4ca6d5038b9dfc43`. `ERC20Votes` registers **no** ERC-165 id: `IERC20Votes` declares only
   errors, so its interfaceId is the meaningless `0x00000000`, and the voting surface is advertised as
-  `IVotes` by `Votes`.) The cut-alias constants (`GovernedDiamondCutLib`/`SafeDiamondCutLib`
+  `IVotes` by `Votes`. `ERC721Votes` likewise registers no id of its own: it moves units in the `Votes` storage,
+  and its init registers `IVotes`. `ERC721Pausable` has no library and reuses `Pausable`'s storage and
+  `IPausable` id.) The cut-alias constants (`GovernedDiamondCutLib`/`SafeDiamondCutLib`
   `ERC165_MAP_ICUT_SLOT`, `ERC165_MAP_IACCESSCONTROLDIAMONDCUT_SLOT`) are asserted equal to diamond-lib's
   `ERC165_MAP_ICUT_SLOT` instead of being listed as unique slots.
 - **ERC7802** is the crosschain-native ERC-20 extension (ERC-7802: `crosschainMint`/`crosschainBurn`,
@@ -232,10 +236,13 @@ and a row here.
 | ERC721 | `lattice.storage.ERC721` | `0xb57056eaff39f17dbb7656e3d0f4bee059cc8b05a6894f946db4b85f3b03e700` | `IERC721` (EIP-721) | `0x80ac58cd` | `0x741e8246930c2bfc93c4e7042569e8d7f42e535e31e366398006f597e42d38fb` |
 | ERC721 (metadata) | `lattice.storage.ERC721` | (shares ERC721 slot) | `IERC721Metadata` | `0x5b5e139f` | `0xdec0fb77ff71ebf00e30e78bd255149ae2525d6ff9925bff1ddd9a569813231d` |
 | ERC721URIStorage | `lattice.storage.ERC721URIStorage` | `0xcad0a180da252dc6d7fda719c706c048d7fcfbea8301125fec9b8527feaa7700` | ERC-4906 (MetadataUpdate) | `0x49064906` | `0xf6e2df7ae707ae7f293659ac6f748c7ba27a30d8639e53e763363aebc5fa8f65` |
+| ERC721Enumerable | `lattice.storage.ERC721Enumerable` | `0xf44b1a2ac6259907d34f22f5cc88909b4db34b47d9193d82fe8ed2889ec8e200` | `IERC721Enumerable` | `0x780e9d63` | `0x9fad85d457c138ef818380b4b39b6b747ee53391250a17c4834c66e238e37af4` |
 | ERC721Wrapper | `lattice.storage.ERC721Wrapper` | `0x434ed71ac956f35c738c07eaadcb4935b3686524cef619db6f8caec66db4f500` | `IERC721Wrapper` | `0xd9e5011d` | `0x77282127b26cc01e57f32ac10fe9c172e5d41d192d3e6e87d2e5c74c35c6f9e8` |
 | ERC1155 | `lattice.storage.ERC1155` | `0xe39704fe713bf9d011ae08177a1e99cc7df74d40063bba4426aeb9d10e274c00` | `IERC1155` (EIP-1155) | `0xd9b67a26` | `0xa10754813726d67c8d4e4553f74a520d6623216a67c6c4a53860c47e2ccde594` |
 | ERC1155 (metadata URI) | `lattice.storage.ERC1155` | (shares ERC1155 slot) | `IERC1155MetadataURI` | `0x0e89341c` | `0x16223e323116e54e339612437d2478d553a51948c039066bf3354fac71c5ef6c` |
 | ERC1155Burnable | — (no own storage; burns debit the ERC1155 balances) | — | `IERC1155Burnable` | `0x9e094e9e` | `0xb792d4a365dc518babbaf5a6b3fa80d3f09c413d4a7f831e1cc47184f1a864a9` |
+| ERC1155Pausable | — (no own storage; gates on the shared `lattice.storage.Pausable` flag) | — | none of its own: `IPausable` is the Pausable module's row, and its `burn`/`burnBatch` advertise as `IERC1155Burnable` | — | — |
+| ERC1155Supply | `lattice.storage.ERC1155Supply` | `0x587745c63b1b33029f813b403978fa83db2954e4dd333c28aeae4b4e067ade00` | `IERC1155Supply` (supply views only; `burn`/`burnBatch` stay under `IERC1155Burnable`) | `0xeac6339d` | `0x1c1760c9fb8bc6a2feef129121ee2d30637b318349bcc0156b579ab5b5af6f16` |
 | ERC1155URIStorage | `lattice.storage.ERC1155URIStorage` | `0x410b28ad7d410d71a721debe93a5796847f0aba6b82f9b5e65108eff17bfbc00` | `IERC1155URIStorage` (setters only; `uri` stays under `IERC1155MetadataURI`) | `0xd3dc4451` | `0xd822e48b513c28ab47f256a8e46baad1ce902e38e6cae6a58b04347a1a191de1` |
 | ERC1363 | — (no own storage; moves the ERC20 balances and allowances) | — | `IERC1363` (EIP-1363) | `0xb0202a11` | `0x0ebeb7a78f222e08be2c2d80a20fcc22cbe5dd2ddf53005dc602c88dd66185a1` |
 | ERC2981 | `lattice.storage.ERC2981` | `0xf01000cac811e850d05bb5588943b621fb762a575809c98a87e3540df4e97a00` | `IERC2981` | `0x2a55205a` | `0x0b6e5f3aef2b5db6c8b7f9a90550b00e1bcf3efa09341feda1a90dabdea92899` |
@@ -259,6 +266,7 @@ and a row here.
 | Module | ERC-7201 namespace | Storage slot (hex) | Interface | interfaceId | ERC-165 map slot (hex) |
 |---|---|---|---|---|---|
 | VaultCore | `lattice.storage.VaultCore` | `0x391c4f0f82559e85ff01d307d4b19b40f088495abd453c84d7e0fa35497de600` | `IVaultCore` | `0xa86d8962` | `0xee1c77df59bab5696d7427515bb0fba56d8719259c4cc5bc6587a3654b26bdf2` |
+| VaultCore (recovery) | `lattice.storage.VaultCoreRecovery` | `0x47912b574bd5afb37a2207dcbb19ecd0a5ba9d0ace45a4775d2beed47d20cd00` | `IVaultCoreRecovery` | `0x065383d4` | `0x5537f73b9d1f73b54596091975d6c567826a5e930691e592f6a854f19cdcd2fb` |
 | StrategyManager | `lattice.storage.StrategyManager` | `0x1b00913e47c53f1d64d326bde2ad6a7904ed791d4ee4432bc133be907894ca00` | `IStrategyManager` | `0xcce4011b` | `0x3d05027e9ebc1daac4235d8ac5fc59b9acea5ece08ff307b79ab5b69ad569930` |
 | StrategyManager (recovery) | `lattice.storage.StrategyManager` | (shares StrategyManager slot) | `IStrategyManagerRecovery` | `0xd352d843` | `0x59c693771151cd0d11eb26b1e9fd28dca5722cdc5fa2b4db3a12e7d9be8d4e2c` |
 | AaveV3Adapter | `lattice.storage.AaveV3Adapter` | `0x78e1f0849c8352c9588d407dc28e9981715ac638a0aa753fc1ecf5191c1f8200` | `IProtocolAdapter` + `IAaveV3Adapter` | `0x8f7783e6` / `0xe0d5525d` | `0x789387b95720f4aa713e912bc377a2f999f1310b69003727d9c01b7ea1494c77` / `0x262752a3af13c9a5ddea1c5915891d611ab5f872b74fae046923437d05fcf120` |
@@ -386,8 +394,10 @@ and a row here.
 
 ---
 
-**Counts:** 88 storage-bearing modules (88 unique ERC-7201 slots) and 92 ERC-165 interface
-map slots (the privacy track adds the stateful `ERC6538Registry` — one ERC-7201 slot and one
+**Counts:** 93 unique ERC-7201 slots and 104 ERC-165 interface map slots — the entry counts of
+`StorageSlotVerificationTest`'s `_allStorageSlots` and `_allErc165MapSlots`, which pin them. A module can hold
+more than one slot (VaultCore keeps its frozen `lattice.storage.VaultCore` namespace plus
+`lattice.storage.VaultCoreRecovery`, #305), so slots outnumber modules. (The privacy track adds the stateful `ERC6538Registry` — one ERC-7201 slot and one
 `IERC6538Registry` ERC-165 slot — plus the stateless `ERC5564Announcer` — no ERC-7201 slot, one
 `IERC5564Announcer` ERC-165 slot — and the stateless `Groth16Verifier` — no ERC-7201 slot, one
 `IGroth16Verifier` (`0x6d832d8e`) ERC-165 slot — and the stateless `PlonkVerifier` — no ERC-7201 slot,

@@ -40,6 +40,11 @@ struct ERC721Storage {
 /// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC721/ERC721.sol)
 /// @notice Library implementing the ERC-721 Non-Fungible Token standard.
 /// @dev Mirrors OpenZeppelin v5.6.1 ERC721 logic. All state lives in an ERC-7201 slot.
+///      Hook model (decision D25, #234): {_update} calls no extension hook. An extension that gates or observes
+///      movement (Pausable, Enumerable, Votes) must replace the public `transferFrom` and both `safeTransferFrom`
+///      selectors instead, and two such extensions are mutually exclusive. A caller of {_mint}/{_burn}/{_update}
+///      outside those selectors (ERC721Burnable, ERC721Wrapper) bypasses them.
+///      See docs/guides/selector-compatibility.md#token-extension-hook-model.
 library ERC721Lib {
     //*//////////////////////////////////////////////////////////////////////////
     //                              STORAGE ACCESS
@@ -198,7 +203,7 @@ library ERC721Lib {
     }
 
     /// @notice Central state mutation. Transfers `tokenId` to `to`, authorized by `auth`.
-    /// @dev If `auth` is non-zero, checks authorization. Returns previous owner.
+    /// @dev If `auth` is non-zero, checks authorization. Returns previous owner. Runs no extension hook (D25).
     function _update(address to, uint256 tokenId, address auth) internal returns (address from) {
         from = _ownerOf(tokenId);
 

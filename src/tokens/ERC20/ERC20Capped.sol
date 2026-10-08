@@ -11,6 +11,13 @@ import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
 /// @dev Exports only `cap()`. The internal `_mint` helper applies {ERC20CappedLib._checkCap} for a composing
 ///      facet that inherits it; it is not reachable through a diamond. {ERC20CappedLib} lists the differences
 ///      from OpenZeppelin.
+///      Hook model (D25, #234): this is a mint-gating extension, and the cap holds only on that `_mint`. Unlike
+///      OpenZeppelin, whose cap check runs in `_update`, every shipped facet that mints through {ERC20Lib} directly
+///      skips it: ERC7802 `crosschainMint`, ERC20Crosschain `processMessage`, ERC20Wrapper `depositFor` (and the
+///      library's internal `recover`), ERC4626, VaultCore and GovernedVault `deposit`/`mint`, the vote-aware
+///      {ERC20VotesLib._mint}, and ERC20FlashMint `flashLoan` for the length of the loan. Each is mutually exclusive
+///      with this facet. A facet that exposes `_mint` is in turn a direct mover for ERC20Pausable and ERC20Votes unless
+///      it applies their checks too. See docs/guides/selector-compatibility.md#token-extension-hook-model.
 /// @custom:lattice-version 0.1.0
 /// @custom:lattice-source OpenZeppelin v5.6.1
 contract ERC20Capped is IERC20Capped {

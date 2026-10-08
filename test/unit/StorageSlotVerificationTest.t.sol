@@ -38,6 +38,10 @@ import {
     ERC165_MAP_IERC1155_SLOT
 } from "@lattice/tokens/ERC1155/libraries/ERC1155Lib.sol";
 import {
+    ERC1155SUPPLY_STORAGE_SLOT,
+    ERC165_MAP_IERC1155SUPPLY_SLOT
+} from "@lattice/tokens/ERC1155/libraries/ERC1155SupplyLib.sol";
+import {
     ERC1155URISTORAGE_STORAGE_SLOT,
     ERC165_MAP_IERC1155URISTORAGE_SLOT
 } from "@lattice/tokens/ERC1155/libraries/ERC1155URIStorageLib.sol";
@@ -56,6 +60,10 @@ import {
 } from "@lattice/tokens/ERC20/libraries/ERC20WrapperLib.sol";
 import {ERC165_MAP_IERC2981_SLOT, ERC2981_STORAGE_SLOT} from "@lattice/tokens/ERC2981/libraries/ERC2981Lib.sol";
 import {ERC165_MAP_IERC4626_SLOT, ERC4626_STORAGE_SLOT} from "@lattice/tokens/ERC4626/libraries/ERC4626Lib.sol";
+import {
+    ERC165_MAP_IERC721ENUMERABLE_SLOT,
+    ERC721ENUMERABLE_STORAGE_SLOT
+} from "@lattice/tokens/ERC721/libraries/ERC721EnumerableLib.sol";
 import {
     ERC165_MAP_IERC721METADATA_SLOT,
     ERC165_MAP_IERC721_SLOT,
@@ -214,7 +222,12 @@ import {
     ERC165_MAP_IUNISWAPV3ADAPTER_SLOT,
     UNISWAP_V3_ADAPTER_STORAGE_SLOT
 } from "@lattice/defi/libraries/UniswapV3AdapterLib.sol";
-import {ERC165_MAP_IVAULTCORE_SLOT, VAULT_CORE_STORAGE_SLOT} from "@lattice/defi/libraries/VaultCoreLib.sol";
+import {
+    ERC165_MAP_IVAULTCORERECOVERY_SLOT,
+    ERC165_MAP_IVAULTCORE_SLOT,
+    VAULT_CORE_RECOVERY_STORAGE_SLOT,
+    VAULT_CORE_STORAGE_SLOT
+} from "@lattice/defi/libraries/VaultCoreLib.sol";
 
 // amm
 import {
@@ -363,6 +376,7 @@ import {IStrategyManager} from "@lattice/interfaces/defi/IStrategyManager.sol";
 import {IStrategyManagerRecovery} from "@lattice/interfaces/defi/IStrategyManagerRecovery.sol";
 import {IUniswapV3Adapter} from "@lattice/interfaces/defi/IUniswapV3Adapter.sol";
 import {IVaultCore} from "@lattice/interfaces/defi/IVaultCore.sol";
+import {IVaultCoreRecovery} from "@lattice/interfaces/defi/IVaultCoreRecovery.sol";
 import {IENSResolver} from "@lattice/interfaces/ens/IENSResolver.sol";
 import {IENSReverseClaimer} from "@lattice/interfaces/ens/IENSReverseClaimer.sol";
 import {IENSSubnameIssuer} from "@lattice/interfaces/ens/IENSSubnameIssuer.sol";
@@ -413,6 +427,7 @@ import {IERC20Capped} from "@lattice/interfaces/tokens/IERC20Capped.sol";
 import {IERC20Wrapper} from "@lattice/interfaces/tokens/IERC20Wrapper.sol";
 import {IERC2981} from "@lattice/interfaces/tokens/IERC2981.sol";
 import {IERC4626} from "@lattice/interfaces/tokens/IERC4626.sol";
+import {IERC721Enumerable} from "@lattice/interfaces/tokens/IERC721Enumerable.sol";
 import {IERC721Wrapper} from "@lattice/interfaces/tokens/IERC721Wrapper.sol";
 import {IHTSAdapter} from "@lattice/interfaces/tokens/IHTSAdapter.sol";
 import {IEIP712} from "@lattice/interfaces/utils/IEIP712.sol";
@@ -437,6 +452,7 @@ import {IAccessControlDiamondCut} from "@lattice/interfaces/governance/IAccessCo
 import {IGovernedDiamondCut} from "@lattice/interfaces/governance/IGovernedDiamondCut.sol";
 import {IERC1155} from "@lattice/interfaces/tokens/IERC1155.sol";
 import {IERC1155Burnable} from "@lattice/interfaces/tokens/IERC1155Burnable.sol";
+import {IERC1155Supply} from "@lattice/interfaces/tokens/IERC1155Supply.sol";
 import {IERC1155URIStorage} from "@lattice/interfaces/tokens/IERC1155URIStorage.sol";
 import {IERC1363} from "@lattice/interfaces/tokens/IERC1363.sol";
 import {IERC20Burnable} from "@lattice/interfaces/tokens/IERC20Burnable.sol";
@@ -553,6 +569,14 @@ contract StorageSlotVerificationTest is Test {
         assertEq(ERC1155_STORAGE_SLOT, _erc7201Slot("lattice.storage.ERC1155"), "ERC1155 storage slot mismatch");
     }
 
+    function test_ERC1155SupplyStorageSlot() public pure {
+        assertEq(
+            ERC1155SUPPLY_STORAGE_SLOT,
+            _erc7201Slot("lattice.storage.ERC1155Supply"),
+            "ERC1155Supply storage slot mismatch"
+        );
+    }
+
     function test_ERC1155URIStorageStorageSlot() public pure {
         assertEq(
             ERC1155URISTORAGE_STORAGE_SLOT,
@@ -623,6 +647,14 @@ contract StorageSlotVerificationTest is Test {
 
     function test_VaultCoreStorageSlot() public pure {
         assertEq(VAULT_CORE_STORAGE_SLOT, _erc7201Slot("lattice.storage.VaultCore"), "VaultCore storage slot mismatch");
+    }
+
+    function test_VaultCoreRecoveryStorageSlot() public pure {
+        assertEq(
+            VAULT_CORE_RECOVERY_STORAGE_SLOT,
+            _erc7201Slot("lattice.storage.VaultCoreRecovery"),
+            "VaultCoreRecovery storage slot mismatch"
+        );
     }
 
     function test_StrategyManagerStorageSlot() public pure {
@@ -1237,6 +1269,24 @@ contract StorageSlotVerificationTest is Test {
         );
     }
 
+    function test_ERC721EnumerableStorageSlot() public pure {
+        assertEq(
+            ERC721ENUMERABLE_STORAGE_SLOT,
+            _erc7201Slot("lattice.storage.ERC721Enumerable"),
+            "ERC721Enumerable storage slot mismatch"
+        );
+    }
+
+    function test_Erc165MapIERC721EnumerableSlot() public pure {
+        bytes4 interfaceId = type(IERC721Enumerable).interfaceId;
+        assertEq(interfaceId, bytes4(0x780e9d63), "IERC721Enumerable interfaceId comment is stale");
+        assertEq(
+            ERC165_MAP_IERC721ENUMERABLE_SLOT,
+            _erc165MapSlot(interfaceId, ERC165_STORAGE_LOCATION),
+            "ERC165 IERC721Enumerable map slot mismatch"
+        );
+    }
+
     function test_ERC721WrapperStorageSlot() public pure {
         assertEq(
             ERC721WRAPPER_STORAGE_SLOT,
@@ -1368,6 +1418,16 @@ contract StorageSlotVerificationTest is Test {
         );
     }
 
+    function test_Erc165MapIERC1155SupplySlot() public pure {
+        bytes4 interfaceId = type(IERC1155Supply).interfaceId;
+        assertEq(interfaceId, bytes4(0xeac6339d), "IERC1155Supply interfaceId comment is stale");
+        assertEq(
+            ERC165_MAP_IERC1155SUPPLY_SLOT,
+            _erc165MapSlot(interfaceId, ERC165_STORAGE_LOCATION),
+            "ERC165 IERC1155Supply map slot mismatch"
+        );
+    }
+
     function test_Erc165MapIERC1155URIStorageSlot() public pure {
         bytes4 interfaceId = type(IERC1155URIStorage).interfaceId;
         assertEq(interfaceId, bytes4(0xd3dc4451), "IERC1155URIStorage interfaceId comment is stale");
@@ -1466,6 +1526,18 @@ contract StorageSlotVerificationTest is Test {
             ERC165_MAP_IVAULTCORE_SLOT,
             _erc165MapSlot(type(IVaultCore).interfaceId, ERC165_STORAGE_LOCATION),
             "ERC165 IVaultCore map slot mismatch"
+        );
+    }
+
+    function test_Erc165MapIVaultCoreRecoverySlot() public pure {
+        // The manager-swap latch lives in its own interface so IVaultCore's id stays 0xa86d8962 (#305).
+        assertEq(type(IVaultCore).interfaceId, bytes4(0xa86d8962), "IVaultCore interfaceId moved");
+        bytes4 interfaceId = type(IVaultCoreRecovery).interfaceId;
+        assertEq(interfaceId, bytes4(0x065383d4), "IVaultCoreRecovery interfaceId comment is stale");
+        assertEq(
+            ERC165_MAP_IVAULTCORERECOVERY_SLOT,
+            _erc165MapSlot(interfaceId, ERC165_STORAGE_LOCATION),
+            "ERC165 IVaultCoreRecovery map slot mismatch"
         );
     }
 
@@ -2203,7 +2275,7 @@ contract StorageSlotVerificationTest is Test {
     // ======================== Slot inventories ========================
 
     function _allStorageSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](92);
+        slots = new bytes32[](95);
         uint256 i;
         // access
         slots[i++] = ACCESS_CONTROL_STORAGE_SLOT;
@@ -2218,7 +2290,9 @@ contract StorageSlotVerificationTest is Test {
         slots[i++] = ERC721_STORAGE_SLOT;
         slots[i++] = ERC721URISTORAGE_STORAGE_SLOT;
         slots[i++] = ERC721WRAPPER_STORAGE_SLOT;
+        slots[i++] = ERC721ENUMERABLE_STORAGE_SLOT;
         slots[i++] = ERC1155_STORAGE_SLOT;
+        slots[i++] = ERC1155SUPPLY_STORAGE_SLOT;
         slots[i++] = ERC1155URISTORAGE_STORAGE_SLOT;
         slots[i++] = ERC2981_STORAGE_SLOT;
         slots[i++] = ERC4626_STORAGE_SLOT;
@@ -2232,6 +2306,7 @@ contract StorageSlotVerificationTest is Test {
         slots[i++] = SAFE_HARBOR_ADOPTER_STORAGE_SLOT;
         // defi
         slots[i++] = VAULT_CORE_STORAGE_SLOT;
+        slots[i++] = VAULT_CORE_RECOVERY_STORAGE_SLOT;
         slots[i++] = STRATEGY_MANAGER_STORAGE_SLOT;
         slots[i++] = AAVE_V3_ADAPTER_STORAGE_SLOT;
         slots[i++] = COMPOUND_V3_ADAPTER_STORAGE_SLOT;
@@ -2315,7 +2390,7 @@ contract StorageSlotVerificationTest is Test {
     }
 
     function _allErc165MapSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](104);
+        slots = new bytes32[](107);
         uint256 i;
         // access
         slots[i++] = ERC165_MAP_IACCESSCONTROL_SLOT;
@@ -2331,10 +2406,12 @@ contract StorageSlotVerificationTest is Test {
         slots[i++] = ERC165_MAP_ERC4906_SLOT;
         slots[i++] = ERC165_MAP_IERC721BURNABLE_SLOT;
         slots[i++] = ERC165_MAP_IERC721WRAPPER_SLOT;
+        slots[i++] = ERC165_MAP_IERC721ENUMERABLE_SLOT;
         slots[i++] = ERC165_MAP_IERC1155_SLOT;
         slots[i++] = ERC165_MAP_IERC1155METADATAURI_SLOT;
         slots[i++] = ERC165_MAP_IERC1155BURNABLE_SLOT;
         slots[i++] = ERC165_MAP_IERC1363_SLOT;
+        slots[i++] = ERC165_MAP_IERC1155SUPPLY_SLOT;
         slots[i++] = ERC165_MAP_IERC1155URISTORAGE_SLOT;
         slots[i++] = ERC165_MAP_IERC2981_SLOT;
         slots[i++] = ERC165_MAP_IERC4626_SLOT;
@@ -2355,6 +2432,7 @@ contract StorageSlotVerificationTest is Test {
         slots[i++] = ERC165_MAP_ISAFEHARBORADOPTER_SLOT;
         // defi
         slots[i++] = ERC165_MAP_IVAULTCORE_SLOT;
+        slots[i++] = ERC165_MAP_IVAULTCORERECOVERY_SLOT;
         slots[i++] = ERC165_MAP_ISTRATEGYMANAGER_SLOT;
         slots[i++] = ERC165_MAP_ISTRATEGYMANAGERRECOVERY_SLOT;
         slots[i++] = ERC165_MAP_IPROTOCOLADAPTER_SLOT;
