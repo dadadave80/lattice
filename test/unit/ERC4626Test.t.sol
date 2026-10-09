@@ -763,4 +763,126 @@ contract ERC4626Test is ERC4626TestBase {
     function test_DecimalsCodelessAssetDefaultsTo18() public {
         assertEq(IERC4626(_deployVault(address(0xDEAD), "Codeless", "vC", 0)).decimals(), 18);
     }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //            #234: OPENZEPPELIN v5.6.1 `maxWithdraw` (previewRedeem(maxRedeem))
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice On a plain ERC-4626 diamond, `maxWithdraw` equals OpenZeppelin v5.6.1's value,
+    ///         `previewRedeem(maxRedeem(owner))` with OpenZeppelin's `maxRedeem = balanceOf(owner)`, for every
+    ///         decimals offset and after any mix of deposits, gains and losses; `withdraw(maxWithdraw)` succeeds.
+    function testFuzz_MaxWithdrawMatchesOpenZeppelinV561(
+        uint8 offset,
+        uint256 aliceIn,
+        uint256 bobIn,
+        uint256 gain,
+        uint256 loss
+    ) public {
+        offset = uint8(bound(offset, 0, 18));
+        IERC4626 v = IERC4626(_deployVault(underlyingAddr, "V", "v", offset));
+        aliceIn = bound(aliceIn, 1, INITIAL_MINT);
+        bobIn = bound(bobIn, 0, INITIAL_MINT);
+        gain = bound(gain, 0, INITIAL_MINT);
+
+        vm.prank(alice);
+        underlying.approve(address(v), type(uint256).max);
+        vm.prank(alice);
+        v.deposit(aliceIn, alice);
+        underlying.mint(address(v), gain);
+        if (bobIn > 0) {
+            vm.prank(bob);
+            underlying.approve(address(v), type(uint256).max);
+            vm.prank(bob);
+            v.deposit(bobIn, bob);
+        }
+        _vaultLoses(address(v), bound(loss, 0, v.totalAssets()));
+
+        for (uint256 i; i < 2; ++i) {
+            address owner = i == 0 ? alice : bob;
+            uint256 max = v.maxWithdraw(owner);
+            assertEq(max, v.previewRedeem(v.balanceOf(owner)), "maxWithdraw differs from OZ v5.6.1");
+            assertGe(max, v.previewRedeem(v.maxRedeem(owner)), "maxWithdraw below previewRedeem(maxRedeem)");
+            assertLe(max, v.totalAssets(), "maxWithdraw above idle");
+            if (max > 0) {
+                vm.prank(owner);
+                v.withdraw(max, owner, owner);
+            }
+        }
+    }
+
+    /// @notice While the idle cap does not bind, `maxWithdraw == previewRedeem(maxRedeem)` exactly as in
+    ///         OpenZeppelin v5.6.1.
+    function test_MaxWithdrawEqualsPreviewRedeemOfMaxRedeemAfterGain() public {
+        vm.prank(alice);
+        underlying.approve(vaultAddr, type(uint256).max);
+        vm.prank(alice);
+        vault.deposit(100e18, alice);
+        underlying.mint(vaultAddr, 37e18);
+
+        assertEq(vault.maxRedeem(alice), vault.balanceOf(alice));
+        assertEq(vault.maxWithdraw(alice), vault.previewRedeem(vault.maxRedeem(alice)));
+    }
+
+    /// @notice Decision pin (#234): after a loss the idle cap on `maxRedeem` binds, and Lattice keeps `maxWithdraw` at
+    ///         `min(previewRedeem(balanceOf), idle)` instead of deriving it as `previewRedeem(maxRedeem)`. Lattice's
+    ///         value is the one OpenZeppelin v5.6.1 reports (its `maxRedeem` is the full balance); the derived value
+    ///         would be one wei lower here. `maxRedeem` reports one share fewer than OpenZeppelin's.
+    function test_MaxWithdrawStaysAtIdleWhenMaxRedeemCapBinds() public {
+        _aliceDeposits100ThenVaultLoses50();
+
+        assertEq(vault.maxWithdraw(alice), 50e18, "maxWithdraw is the OZ v5.6.1 value");
+        assertEq(vault.previewRedeem(vault.maxRedeem(alice)), 50e18 - 1, "derived value is one wei lower");
+        assertEq(vault.maxRedeem(alice), vault.balanceOf(alice) - 1, "maxRedeem is one share below balance");
+
+        vm.prank(alice);
+        uint256 burned = vault.withdraw(50e18, alice, alice);
+        assertEq(burned, 100e18, "withdraw(maxWithdraw) burns the whole balance");
+        assertEq(vault.totalAssets(), 0);
+    }
+
+    /// @notice After the same loss, `redeem(maxRedeem)` still succeeds and pays at most idle.
+    function test_RedeemMaxRedeemSucceedsWhenCapBinds() public {
+        _aliceDeposits100ThenVaultLoses50();
+
+        uint256 shares = vault.maxRedeem(alice);
+        vm.prank(alice);
+        uint256 assets = vault.redeem(shares, alice, alice);
+        assertEq(assets, 50e18 - 1);
+        assertEq(vault.balanceOf(alice), 1);
+    }
+
+    /// @notice Decision pin (#234): a failed asset transfer reverts `SafeERC20FailedOperation(asset)`; OpenZeppelin
+    ///         v5.6.1 would bubble the token's own `ERC20InsufficientAllowance`.
+    function test_DepositWithoutApprovalRevertsSafeERC20FailedOperation() public {
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(IERC4626.SafeERC20FailedOperation.selector, underlyingAddr));
+        vault.deposit(1e18, alice);
+    }
+
+    /// @notice Decision pin (#234): a `transferFrom` returning a word that is not a bool reverts with empty data;
+    ///         OpenZeppelin v5.6.1 reverts `SafeERC20FailedOperation`.
+    function test_DepositWithNonBoolReturndataRevertsEmpty() public {
+        vm.prank(alice);
+        underlying.approve(vaultAddr, 1e18);
+        vm.mockCall(underlyingAddr, abi.encodeWithSelector(IERC20.transferFrom.selector), abi.encode(uint256(2)));
+        vm.prank(alice);
+        vm.expectRevert(bytes(""));
+        vault.deposit(1e18, alice);
+    }
+
+    /// @dev Alice holds all 100e18 shares; the vault then loses half its assets (nav 50e18, supply 100e18).
+    function _aliceDeposits100ThenVaultLoses50() private {
+        vm.prank(alice);
+        underlying.approve(vaultAddr, type(uint256).max);
+        vm.prank(alice);
+        vault.deposit(100e18, alice);
+        _vaultLoses(vaultAddr, 50e18);
+    }
+
+    /// @dev Shrinks the vault's idle balance, as another module holding the same asset could (#240).
+    function _vaultLoses(address vault_, uint256 amount) private {
+        if (amount == 0) return;
+        vm.prank(vault_);
+        underlying.transfer(charlie, amount);
+    }
 }

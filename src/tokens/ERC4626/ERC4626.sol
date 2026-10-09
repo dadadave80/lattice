@@ -23,8 +23,10 @@ import {ERC4626Lib} from "@lattice/tokens/ERC4626/libraries/ERC4626Lib.sol";
 ///      Callers must initialize the following modules in their initializer:
 ///        - ERC20Lib.__ERC20_init(name, symbol)
 ///        - ERC4626Lib.__ERC4626_init(asset, decimalsOffset)
+///
+///      {ERC4626Lib} lists every difference from OpenZeppelin.
 /// @custom:lattice-version 0.1.0
-/// @custom:lattice-source OpenZeppelin v5.1.0
+/// @custom:lattice-source OpenZeppelin v5.6.1
 contract ERC4626 {
     //*//////////////////////////////////////////////////////////////////////////
     //                           ERC-20 OVERRIDE

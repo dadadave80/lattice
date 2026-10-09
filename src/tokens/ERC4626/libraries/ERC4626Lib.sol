@@ -34,7 +34,7 @@ struct ERC4626Storage {
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/extensions/ERC4626.sol)
 /// @notice Library implementing the ERC-4626 Tokenized Vault Standard.
-/// @dev Mirrors OpenZeppelin v5 ERC4626 logic. All state lives in an ERC-7201 slot.
+/// @dev Mirrors OpenZeppelin v5.6.1 ERC4626 logic. All state lives in an ERC-7201 slot.
 ///      The vault IS an ERC-20 share token — callers must also initialize ERC20Lib.
 ///
 ///      NAV source: OZ prices shares through the virtual `totalAssets()`, but a library call cannot dispatch
@@ -55,6 +55,29 @@ struct ERC4626Storage {
 ///      ERC20Votes) does not see them, and neither does ERC20Capped's cap, so they are mutually exclusive (D25,
 ///      #234). VaultCore's `deposit`/`mint`/`withdraw`/`redeem` share this path. GovernedVault is the combined facet
 ///      that wraps these mutators and moves voting units.
+///
+///      Differences from OpenZeppelin v5.6.1:
+///      - The caller is `msg.sender`, not `_msgSender()`; Lattice has no ERC-2771 context.
+///      - Nothing here is `virtual`, so there are no `_transferIn`/`_transferOut` hooks (added in v5.6.0).
+///        `_deposit` and `_withdraw` move the asset through private SafeERC20-style helpers (see below); a vault
+///        that needs another transfer path replaces the mutator selectors (D25).
+///      - A failed asset transfer reverts `SafeERC20FailedOperation(asset)` instead of bubbling the token's own
+///        revert data, so an unapproved `deposit` reports `SafeERC20FailedOperation`, not the token's
+///        `ERC20InsufficientAllowance`. Returndata that does not decode as a bool (non-empty but shorter than
+///        32 bytes, or a word other than 0 or 1) reverts with empty data; OpenZeppelin reverts
+///        `SafeERC20FailedOperation`. These helpers, and the `decimals()` probe in {__ERC4626_init}, copy the
+///        whole returndata; OpenZeppelin bounds the copy (0x20 bytes for transfers, 0x40 for decimals).
+///      - Share math reads the NAV through the self-staticcall above and fails closed while it is unreadable.
+///      - `maxRedeem` is capped at the floor shares idle assets buy back; OpenZeppelin returns `balanceOf(owner)`.
+///        The cap can bind after a loss, or while VaultCore has funds allocated.
+///      - `maxWithdraw` is `min(previewRedeem(balanceOf(owner)), idle)`, not OpenZeppelin's (since v5.5.0)
+///        `previewRedeem(maxRedeem(owner))`. On a plain ERC-4626 diamond it always equals OpenZeppelin's value: a
+///        holder's shares are never worth more than idle. Where the `maxRedeem` cap binds, deriving `maxWithdraw`
+///        from it would report up to one share's value less; Lattice keeps the larger value, which `withdraw`
+///        accepts (#234).
+///      - `decimalsOffset` is set once in {__ERC4626_init}, not by an overridable `_decimalsOffset()`.
+///      - {__ERC4626_init} registers {IERC4626} for ERC-165; OpenZeppelin's ERC4626 has no ERC-165.
+///      - The ERC-4626 errors and `SafeERC20FailedOperation` are declared on {IERC4626}; their selectors are the same.
 library ERC4626Lib {
     //*//////////////////////////////////////////////////////////////////////////
     //                              STORAGE ACCESS
@@ -89,8 +112,8 @@ library ERC4626Lib {
         $._decimalsOffset = decimalsOffset_;
 
         // Try to fetch underlying decimals; default to 18 on failure.
-        // Uses a low-level staticcall with an explicit upper-bound check (per OZ v5.1.0) to avoid
-        // silent truncation when a token returns a uint256 value larger than type(uint8).max.
+        // Same acceptance rule as OZ v5.6.1's `_tryGetAssetDecimals`: a successful call with at least 32 bytes of
+        // returndata whose value fits in uint8. The bound check avoids silently truncating a larger uint256.
         uint8 underlyingDecimals_ = 18;
         (bool success, bytes memory encodedDecimals) = asset_.staticcall(abi.encodeWithSignature("decimals()"));
         if (success && encodedDecimals.length >= 32) {
