@@ -74,14 +74,14 @@ are no longer on a branch. Each has a tree-identical commit on `main`:
 
 ## Milestone 3 — Docs site + reusable storage-safety Action
 
-In progress. The site and the Action are built and tested in this repository; nothing is published yet.
+In progress. The site and the Action are built and tested in this repository; the docs deploy to GitHub Pages from `main`; the rest is not published yet.
 Each "pending" row is filled with a public URL, run or commit permalink once it exists.
 
 | Evidence | Status |
 |---|---|
 | Docs site source: the guides plus the API reference `forge doc` generates, built with Vocs under `/lattice` | [`docs/site/`](docs/site/vocs.config.ts) · [`script/docs/build.sh`](script/docs/build.sh) (`make doc`) |
-| Docs build and link check in CI on every relevant pull request | [`.github/workflows/docs.yml`](.github/workflows/docs.yml) (build only, no deploy) |
-| Public docs URL (expected `https://dadadave80.github.io/lattice/`) | pending: GitHub Pages deployment |
+| Docs build and link check in CI on every relevant pull request | [`.github/workflows/docs.yml`](.github/workflows/docs.yml) (pull requests build only; `main` builds and deploys to GitHub Pages) |
+| Public docs URL (expected `https://dadadave80.github.io/lattice/`) | pending: first deploy from `main` |
 | Storage-safety Action: composite Action on the Bash+jq checker Lattice's own CI runs | [`.github/actions/storage-layout/`](.github/actions/storage-layout/README.md) |
 | Action regression cases (43) on a fixture consumer project, and a CI self-test calling the Action | [`script/test-storage-layout.sh`](script/test-storage-layout.sh) · `storage-action` job in [`test.yml`](.github/workflows/test.yml) |
 | Lattice CI checks every pull request append-only against its base through the same Action | `storage-layout` job in [`test.yml`](.github/workflows/test.yml) |
