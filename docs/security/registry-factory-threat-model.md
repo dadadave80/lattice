@@ -177,8 +177,7 @@ hardening change, as corroboration on a node. With the current ABI the `deploy` 
   on anything that can change, turns every read and every deploy that resolves it into `SelectorDrift`
   until a new version is registered. The caps bound what such an exporter costs a caller; nothing
   prevents the failure itself. Moving to a stored blob later changes `LatticeRegistry`'s bytecode and so
-  moves both canonical addresses, so **the maintainer confirms this choice, or switches to the stored
-  blob, before the first canonical broadcast.**
+  moves both canonical addresses. **The maintainer confirmed the capped live read on 2026-10-09.**
 - **`deploy` alongside `deployStrict`.** `deploy` keeps the idempotent return for scripts that pre-check
   the address (`BaseDeploy._assemble`); user interfaces should call `deployStrict`.
 
