@@ -59,6 +59,7 @@ import {IERC20Capped} from "@lattice/interfaces/tokens/IERC20Capped.sol";
 import {IERC4626} from "@lattice/interfaces/tokens/IERC4626.sol";
 import {IERC721} from "@lattice/interfaces/tokens/IERC721.sol";
 import {IERC721Burnable} from "@lattice/interfaces/tokens/IERC721Burnable.sol";
+import {IERC721Consecutive} from "@lattice/interfaces/tokens/IERC721Consecutive.sol";
 import {IERC721Enumerable} from "@lattice/interfaces/tokens/IERC721Enumerable.sol";
 import {IERC721Wrapper} from "@lattice/interfaces/tokens/IERC721Wrapper.sol";
 import {IVestingWallet} from "@lattice/interfaces/utils/IVestingWallet.sol";
@@ -76,6 +77,7 @@ import {ERC20Pausable} from "@lattice/tokens/ERC20/ERC20Pausable.sol";
 import {ERC20Votes} from "@lattice/tokens/ERC20/ERC20Votes.sol";
 import {ERC20VotesInit} from "@lattice/tokens/ERC20/ERC20VotesInit.sol";
 import {ERC721Burnable} from "@lattice/tokens/ERC721/ERC721Burnable.sol";
+import {ERC721ConsecutiveInit} from "@lattice/tokens/ERC721/ERC721ConsecutiveInit.sol";
 import {ERC721Enumerable} from "@lattice/tokens/ERC721/ERC721Enumerable.sol";
 import {ERC721Pausable} from "@lattice/tokens/ERC721/ERC721Pausable.sol";
 import {ERC721Votes} from "@lattice/tokens/ERC721/ERC721Votes.sol";
@@ -687,6 +689,55 @@ contract CompositionHazardsTest is Test {
         assertEq(IERC721(token).balanceOf(alice), 0, "burned while paused");
     }
 
+    /// @notice Batch mints and ERC721Votes are forbidden in either init order. OpenZeppelin's ERC721Votes moves
+    ///         batch-minted units through `_increaseBalance`; {ERC721VotesLib} cannot see a batch, so the batch would
+    ///         vote while the supply checkpoint, and a Governor quorum read from it, missed it.
+    function test_ERC721ConsecutiveAndVotesRevertInEitherOrder() public {
+        (FacetCut[] memory base, address[] memory inits, bytes[] memory datas) =
+            new DeployERC721Votes().buildCuts("N", "S");
+        (address[] memory allInits, bytes[] memory allDatas) = _withConsecutiveInit(inits, datas, alice, 3);
+        (address init, bytes memory data) = _multi(allInits, allDatas);
+        Lattice d = new Lattice();
+        vm.expectRevert(IERC721Consecutive.ERC721VotesForbiddenBatchMint.selector);
+        d.initialize(base, init, data);
+
+        // Batch first ({DeployERC721}'s chain, then the batch), votes last.
+        (, address baseInit, bytes memory baseData) = new DeployERC721().buildCuts("N", "S");
+        address[] memory reordered = new address[](3);
+        bytes[] memory reorderedData = new bytes[](3);
+        (reordered[0], reorderedData[0]) = (baseInit, baseData);
+        (reordered[1], reorderedData[1]) = (allInits[allInits.length - 1], allDatas[allDatas.length - 1]);
+        (reordered[2], reorderedData[2]) = (inits[inits.length - 1], datas[datas.length - 1]);
+        (init, data) = _multi(reordered, reorderedData);
+        d = new Lattice();
+        vm.expectRevert(IERC721Consecutive.ERC721VotesForbiddenBatchMint.selector);
+        d.initialize(base, init, data);
+    }
+
+    /// @notice Batch mints and ERC721Enumerable are forbidden in either init order, as OpenZeppelin forbids them:
+    ///         a batch on an enumerable diamond reverts, and so does enumeration initialized after batch minting.
+    function test_ERC721ConsecutiveAndEnumerableRevertInEitherOrder() public {
+        (FacetCut[] memory base, address[] memory inits, bytes[] memory datas) =
+            new DeployERC721Enumerable().buildCuts("N", "S");
+        (address[] memory allInits, bytes[] memory allDatas) = _withConsecutiveInit(inits, datas, alice, 3);
+        (address init, bytes memory data) = _multi(allInits, allDatas);
+        Lattice d = new Lattice();
+        vm.expectRevert(IERC721Enumerable.ERC721EnumerableForbiddenBatchMint.selector);
+        d.initialize(base, init, data);
+
+        // Batch first ({DeployERC721}'s chain, then the batch), enumeration last.
+        (, address baseInit, bytes memory baseData) = new DeployERC721().buildCuts("N", "S");
+        address[] memory reordered = new address[](3);
+        bytes[] memory reorderedData = new bytes[](3);
+        (reordered[0], reorderedData[0]) = (baseInit, baseData);
+        (reordered[1], reorderedData[1]) = (allInits[allInits.length - 1], allDatas[allDatas.length - 1]);
+        (reordered[2], reorderedData[2]) = (inits[inits.length - 1], datas[datas.length - 1]);
+        (init, data) = _multi(reordered, reorderedData);
+        d = new Lattice();
+        vm.expectRevert(IERC721Enumerable.ERC721EnumerableForbiddenBatchMint.selector);
+        d.initialize(base, init, data);
+    }
+
     /// @notice D25: ERC1363 shares no selector with ERC20Pausable, so the cut succeeds, but `transferAndCall`
     ///         moves tokens through ERC20Lib and never meets the pause. The pairing is declared mutually exclusive.
     function test_ERC1363BypassesPause() public {
@@ -1024,6 +1075,24 @@ contract CompositionHazardsTest is Test {
         }
         allInits[inits.length] = address(new ERC721WrapperInit());
         allDatas[inits.length] = abi.encodeCall(ERC721WrapperInit.init, (underlying));
+    }
+
+    /// @dev `inits`/`datas` followed by {ERC721ConsecutiveInit} minting one batch of `amount` from id 0 to `to`.
+    function _withConsecutiveInit(address[] memory inits, bytes[] memory datas, address to, uint96 amount)
+        internal
+        returns (address[] memory allInits, bytes[] memory allDatas)
+    {
+        allInits = new address[](inits.length + 1);
+        allDatas = new bytes[](inits.length + 1);
+        for (uint256 i; i < inits.length; ++i) {
+            (allInits[i], allDatas[i]) = (inits[i], datas[i]);
+        }
+        address[] memory receivers = new address[](1);
+        receivers[0] = to;
+        uint96[] memory amounts = new uint96[](1);
+        amounts[0] = amount;
+        allInits[inits.length] = address(new ERC721ConsecutiveInit());
+        allDatas[inits.length] = abi.encodeCall(ERC721ConsecutiveInit.init, (0, receivers, amounts));
     }
 
     /// @dev `owner` wraps underlying `id` into `wrapper`.

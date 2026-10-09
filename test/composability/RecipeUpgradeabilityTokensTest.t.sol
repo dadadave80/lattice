@@ -23,6 +23,7 @@ import {DeployERC2981} from "@lattice-script/base/tokens/DeployERC2981.s.sol";
 import {DeployERC4626} from "@lattice-script/base/tokens/DeployERC4626.s.sol";
 import {DeployERC721} from "@lattice-script/base/tokens/DeployERC721.s.sol";
 import {DeployERC721Burnable} from "@lattice-script/base/tokens/DeployERC721Burnable.s.sol";
+import {DeployERC721Consecutive} from "@lattice-script/base/tokens/DeployERC721Consecutive.s.sol";
 import {DeployERC721Enumerable} from "@lattice-script/base/tokens/DeployERC721Enumerable.s.sol";
 import {DeployERC721Pausable} from "@lattice-script/base/tokens/DeployERC721Pausable.s.sol";
 import {DeployERC721Royalty} from "@lattice-script/base/tokens/DeployERC721Royalty.s.sol";
@@ -353,6 +354,35 @@ contract RecipeUpgradeabilityTokensTest is RecipeGuards {
         _assertBareEth(d, false);
         assertEq(ERC721(d).name(), "Tok", "module init chain: ERC721 name");
         _assertAdminCanCut(d, ADMIN);
+    }
+
+    function test_Immutable_ERC721Consecutive() public {
+        (address[] memory receivers, uint96[] memory amounts) = _oneConsecutiveBatch();
+        (FacetCut[] memory cuts, address[] memory inits, bytes[] memory cds) =
+            new DeployERC721Consecutive().buildCuts("Tok", "TOK", 0, receivers, amounts);
+        address d = _assembleMulti(cuts, inits, cds);
+        _assertIntrospectable(d, 3);
+        _assertBareEth(d, false);
+        _assertImmutableByDesign(d);
+        assertEq(ERC721(d).balanceOf(ADMIN), 3, "module init chain: batch minted");
+    }
+
+    function test_Upgradeable_ERC721Consecutive() public {
+        (address[] memory receivers, uint96[] memory amounts) = _oneConsecutiveBatch();
+        (FacetCut[] memory cuts, address[] memory inits, bytes[] memory cds) =
+            new DeployERC721Consecutive().buildCuts("Tok", "TOK", 0, receivers, amounts, ADMIN);
+        address d = _assembleMulti(cuts, inits, cds);
+        _assertIntrospectable(d, 5);
+        _assertBareEth(d, false);
+        assertEq(ERC721(d).ownerOf(2), ADMIN, "module init chain: batch minted");
+        _assertAdminCanCut(d, ADMIN);
+    }
+
+    function _oneConsecutiveBatch() internal pure returns (address[] memory receivers, uint96[] memory amounts) {
+        receivers = new address[](1);
+        receivers[0] = ADMIN;
+        amounts = new uint96[](1);
+        amounts[0] = 3;
     }
 
     function test_Immutable_ERC721Wrapper() public {

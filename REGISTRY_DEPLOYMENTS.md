@@ -11,6 +11,10 @@ reproducible offline from a salt string and an initcode hash — nothing depends
 what nonce they are at. The one thing that does vary per chain is **which** of the two deterministic
 deployers that chain has.
 
+The decisions behind this scheme are recorded in
+[ADR 0004](docs/adr/0004-release-deployer-and-salts.md) (deployer and salts) and
+[ADR 0007](docs/adr/0007-registry-trust-model.md) (the registry's trust model).
+
 ## The CreateX singleton
 
 Release deployments go through **CreateX**

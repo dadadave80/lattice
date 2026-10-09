@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {ERC721ConsecutiveLib} from "@lattice/tokens/ERC721/libraries/ERC721ConsecutiveLib.sol";
 import {ERC721EnumerableLib} from "@lattice/tokens/ERC721/libraries/ERC721EnumerableLib.sol";
 import {ERC721Lib} from "@lattice/tokens/ERC721/libraries/ERC721Lib.sol";
 import {ERC721URIStorageLib} from "@lattice/tokens/ERC721/libraries/ERC721URIStorageLib.sol";
@@ -52,6 +53,12 @@ contract ERC721TestFacet {
     ///         needs access control. Only meaningful on a wrapper diamond.
     function recoverWrapped(address account, uint256 tokenId) external returns (uint256) {
         return ERC721WrapperLib.recover(account, tokenId);
+    }
+
+    /// @notice Calls {ERC721ConsecutiveLib._mintConsecutive} after initialization, which must revert for a non-empty
+    ///         batch.
+    function consecutiveMint(address to, uint96 batchSize) external returns (uint96) {
+        return ERC721ConsecutiveLib._mintConsecutive(to, batchSize);
     }
 
     /// @notice Mints through {ERC721EnumerableLib}, as an app mint facet on an enumerable diamond must.

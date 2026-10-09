@@ -3,8 +3,9 @@ name: Scheduled
 permissions: {}
 
 # Weekly lanes that are too slow or too RPC-dependent for every PR: the fork suites against archive RPC
-# secrets, and a coverage report. Neither is a required check or part of `CI OK`. A scheduled run uses
-# this file from the default branch and tests `dev`; a manual run tests the ref it is dispatched on.
+# secrets, a coverage report and the deep invariant campaign. None is a required check or part of `CI OK`.
+# A scheduled run uses this file from the default branch and tests `dev`; a manual run tests the ref it is
+# dispatched on.
 on:
   schedule:
     - cron: "23 5 * * 1" # Mondays 05:23 UTC
@@ -111,3 +112,26 @@ jobs:
           name: lcov
           path: lcov.info
           if-no-files-found: error
+
+  # `make invariant-deep`: every suite under test/invariant at 1,000 runs and depth 200 ([profile.deep.invariant]),
+  # against PR CI's 64-256 runs at depth 128. The seed is the run id, so each week explores new call sequences, and
+  # a failure replays locally with FOUNDRY_FUZZ_SEED set to the id the log prints.
+  invariant-deep:
+    name: Deep invariants
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event_name == 'schedule' && 'dev' || github.ref }}
+          submodules: recursive
+          persist-credentials: false
+      - uses: ./.github/actions/foundry-setup
+      - name: Deep invariant campaign
+        env:
+          FOUNDRY_FUZZ_SEED: ${{ github.run_id }}
+        run: |
+          echo "FOUNDRY_FUZZ_SEED=$FOUNDRY_FUZZ_SEED"
+          make invariant-deep

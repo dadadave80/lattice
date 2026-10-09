@@ -26,10 +26,11 @@ docs/
 # CI-generated contract-size report (forge build --sizes --json)
 sizes.json
 
-# Authored guides and the docs site's committed sources (package.json, lockfile, Vocs config); generated
-# pages (forge doc), the build, node_modules and local notes remain ignored.
+# Authored guides, architecture decision records and the docs site's committed sources (package.json,
+# lockfile, Vocs config); generated pages (forge doc), the build, node_modules and local notes remain ignored.
 !docs/
 docs/*
+!docs/adr/
 !docs/guides/
 docs/guides/*
 !docs/guides/compose-your-own-diamond.md

@@ -91,6 +91,7 @@ import {ERC20Storage} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
 import {ERC20WrapperStorage} from "@lattice/tokens/ERC20/libraries/ERC20WrapperLib.sol";
 import {ERC2981Storage} from "@lattice/tokens/ERC2981/libraries/ERC2981Lib.sol";
 import {ERC4626Storage} from "@lattice/tokens/ERC4626/libraries/ERC4626Lib.sol";
+import {ERC721ConsecutiveStorage} from "@lattice/tokens/ERC721/libraries/ERC721ConsecutiveLib.sol";
 import {ERC721EnumerableStorage} from "@lattice/tokens/ERC721/libraries/ERC721EnumerableLib.sol";
 import {ERC721Storage} from "@lattice/tokens/ERC721/libraries/ERC721Lib.sol";
 import {ERC721URIStorageStorage} from "@lattice/tokens/ERC721/libraries/ERC721URIStorageLib.sol";
@@ -163,6 +164,7 @@ contract StorageLayoutProbe {
     ERC6551AccountStorage internal _eRC6551AccountStorage;
     ERC6900ModuleManagerStorage internal _eRC6900ModuleManagerStorage;
     ERC721Storage internal _eRC721Storage;
+    ERC721ConsecutiveStorage internal _eRC721ConsecutiveStorage;
     ERC721EnumerableStorage internal _eRC721EnumerableStorage;
     ERC721URIStorageStorage internal _eRC721URIStorageStorage;
     ERC721WrapperStorage internal _eRC721WrapperStorage;

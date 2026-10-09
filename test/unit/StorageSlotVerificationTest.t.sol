@@ -60,6 +60,7 @@ import {
 } from "@lattice/tokens/ERC20/libraries/ERC20WrapperLib.sol";
 import {ERC165_MAP_IERC2981_SLOT, ERC2981_STORAGE_SLOT} from "@lattice/tokens/ERC2981/libraries/ERC2981Lib.sol";
 import {ERC165_MAP_IERC4626_SLOT, ERC4626_STORAGE_SLOT} from "@lattice/tokens/ERC4626/libraries/ERC4626Lib.sol";
+import {ERC721CONSECUTIVE_STORAGE_SLOT} from "@lattice/tokens/ERC721/libraries/ERC721ConsecutiveLib.sol";
 import {
     ERC165_MAP_IERC721ENUMERABLE_SLOT,
     ERC721ENUMERABLE_STORAGE_SLOT
@@ -1269,6 +1270,14 @@ contract StorageSlotVerificationTest is Test {
         );
     }
 
+    function test_ERC721ConsecutiveStorageSlot() public pure {
+        assertEq(
+            ERC721CONSECUTIVE_STORAGE_SLOT,
+            _erc7201Slot("lattice.storage.ERC721Consecutive"),
+            "ERC721Consecutive storage slot mismatch"
+        );
+    }
+
     function test_ERC721EnumerableStorageSlot() public pure {
         assertEq(
             ERC721ENUMERABLE_STORAGE_SLOT,
@@ -2275,7 +2284,7 @@ contract StorageSlotVerificationTest is Test {
     // ======================== Slot inventories ========================
 
     function _allStorageSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](95);
+        slots = new bytes32[](96);
         uint256 i;
         // access
         slots[i++] = ACCESS_CONTROL_STORAGE_SLOT;
@@ -2291,6 +2300,7 @@ contract StorageSlotVerificationTest is Test {
         slots[i++] = ERC721URISTORAGE_STORAGE_SLOT;
         slots[i++] = ERC721WRAPPER_STORAGE_SLOT;
         slots[i++] = ERC721ENUMERABLE_STORAGE_SLOT;
+        slots[i++] = ERC721CONSECUTIVE_STORAGE_SLOT;
         slots[i++] = ERC1155_STORAGE_SLOT;
         slots[i++] = ERC1155SUPPLY_STORAGE_SLOT;
         slots[i++] = ERC1155URISTORAGE_STORAGE_SLOT;

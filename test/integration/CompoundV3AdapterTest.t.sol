@@ -9,6 +9,7 @@ import {VaultCore} from "@lattice/defi/VaultCore.sol";
 import {CompoundV3AdapterLib} from "@lattice/defi/libraries/CompoundV3AdapterLib.sol";
 import {StrategyManagerLib} from "@lattice/defi/libraries/StrategyManagerLib.sol";
 import {VaultCoreLib} from "@lattice/defi/libraries/VaultCoreLib.sol";
+import {IAccessControl} from "@lattice/interfaces/access/IAccessControl.sol";
 import {IProtocolAdapter} from "@lattice/interfaces/defi/IProtocolAdapter.sol";
 import {ERC20} from "@lattice/tokens/ERC20/ERC20.sol";
 import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
@@ -214,6 +215,40 @@ contract CompoundV3AdapterTest is Test {
     function test_Deploy_RevertsWhenNothingToDeploy() public {
         vm.expectRevert(IProtocolAdapter.ProtocolAdapterNothingToDeploy.selector);
         adapter.deploy();
+    }
+
+    /// @notice #231: the admin's emergency exit withdraws the whole Comet position, accrued interest included,
+    ///         and sends it with any undeployed idle to the vault.
+    function test_EmergencyWithdraw_ExitsPositionAndIdleToVault() public {
+        asset.mint(address(adapter), 1_000e6);
+        adapter.deploy();
+        comet.accrueYield(address(adapter), 25e6);
+        asset.mint(address(adapter), 40e6); // allocated, not yet deployed
+
+        vm.expectEmit(true, true, false, true, address(adapter));
+        emit IProtocolAdapter.EmergencyWithdrawn(address(asset), vault, 1_065e6);
+        vm.prank(admin);
+        uint256 recovered = adapter.emergencyWithdraw();
+
+        assertEq(recovered, 1_065e6, "position + interest + idle recovered");
+        assertEq(asset.balanceOf(vault), 1_065e6, "all of it reached the vault");
+        assertEq(comet.balanceOf(address(adapter)), 0, "Comet position closed");
+        assertEq(adapter.totalAssetsManaged(), 0, "nothing left under management");
+    }
+
+    /// @notice #231: with nothing supplied the emergency exit skips Comet and still sweeps idle.
+    function test_EmergencyWithdraw_NoPosition_SweepsIdle() public {
+        asset.mint(address(adapter), 30e6);
+        vm.prank(admin);
+        assertEq(adapter.emergencyWithdraw(), 30e6, "idle swept");
+        assertEq(asset.balanceOf(vault), 30e6, "vault received idle");
+    }
+
+    function test_EmergencyWithdraw_OnlyAdmin() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, address(this), bytes32(0))
+        );
+        adapter.emergencyWithdraw();
     }
 }
 

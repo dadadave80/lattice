@@ -10,6 +10,8 @@
 #        docs/guides/<guide>.md                   -> /guides/<guide>
 #        .github/actions/storage-layout/README.md -> /guides/storage-action
 #        PROGRESS.md                              -> /grants
+#        docs/adr/README.md                       -> /adr             (decision record index)
+#        docs/adr/<NNNN-title>.md                 -> /adr/<NNNN-title>
 #      Links between these pages become site routes; any other repository-relative link becomes a
 #      GitHub permalink at the checked-out commit, matching forge doc's "Git Source" links.
 #   3. `npm ci` installs the pinned Vocs toolchain (docs/site/package-lock.json), `vocs build` writes
@@ -36,8 +38,8 @@ done
 forge doc --out "${SITE}"
 # forge doc writes README.md as the home page; the quickstart replaces it.
 rm -f "${PAGES}/index.mdx"
-rm -rf "${PAGES}/guides" "${PAGES}/grants.md"
-mkdir -p "${PAGES}/guides"
+rm -rf "${PAGES}/guides" "${PAGES}/grants.md" "${PAGES}/adr" "${PAGES}/adr.md"
+mkdir -p "${PAGES}/guides" "${PAGES}/adr"
 
 COMMIT="$(git rev-parse HEAD)"
 # "<source> <route>" for every copied page. Links to these sources become routes.
@@ -46,7 +48,12 @@ docs/guides/compose-your-own-diamond.md /guides/compose-your-own-diamond
 docs/guides/selector-compatibility.md /guides/selector-compatibility
 docs/guides/hedera.md /guides/hedera
 .github/actions/storage-layout/README.md /guides/storage-action
-PROGRESS.md /grants"
+PROGRESS.md /grants
+docs/adr/README.md /adr"
+for adr in docs/adr/[0-9][0-9][0-9][0-9]-*.md; do
+    ROUTES="${ROUTES}
+${adr} /adr/$(basename "${adr}" .md)"
+done
 
 while read -r source route; do
     [[ -f "${source}" ]] || { echo "ERROR: missing page source ${source}" >&2; exit 2; }
