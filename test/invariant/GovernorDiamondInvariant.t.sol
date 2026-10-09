@@ -885,7 +885,7 @@ contract GovernorDiamondInvariant is Test {
         assertEq(uint8(IGovernor(gov).state(id)), uint8(IGovernor.ProposalState.Queued), "proposal not queued");
     }
 
-    /// @notice FINDING (G-1): an Expired proposal is not terminal. The 14-day grace exists only in
+    /// @notice FINDING (G-1, #322): an Expired proposal is not terminal. The 14-day grace exists only in
     ///         `GovernorLib.state()`, so the timelock operation stays Ready, and its executor role is open, so ANY
     ///         account still runs it with `executeBatch`; the proposal then reads Executed. Its proposer cannot stop
     ///         this, because `cancel` refuses Expired. In OpenZeppelin's Governor, Expired is terminal. A fix
@@ -919,7 +919,7 @@ contract GovernorDiamondInvariant is Test {
         assertEq(uint8(IGovernor(gov).state(id)), uint8(IGovernor.ProposalState.Executed), "not executed");
     }
 
-    /// @notice FINDING (G-2): the proposer alone can cancel a proposal after it passed its vote and was queued,
+    /// @notice FINDING (G-2, #323): the proposer alone can cancel a proposal after it passed its vote and was queued,
     ///         which also cancels its timelock operation. OpenZeppelin allows a proposer cancel only while Pending.
     function test_Finding_ProposerCancelsQueuedProposal() public {
         (
