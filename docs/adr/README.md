@@ -18,6 +18,7 @@ the linked issue or pull request; a record is the outcome, not a spec.
 | [0010](0010-groth16-bn254.md) | Zero-knowledge modules standardize on Groth16 over BN254 | Accepted |
 | [0011](0011-no-stateless-utility-duplicates.md) | No new copies of stateless Solady or OpenZeppelin utilities | Accepted |
 | [0012](0012-storage-checker-bash-jq.md) | The storage-layout checker stays in Bash and jq | Accepted |
+| [0013](0013-colocated-timelock-enforces-governor-grace.md) | A timelock in the Governor's diamond enforces the proposal grace period | Accepted |
 
 ## When to write one
 

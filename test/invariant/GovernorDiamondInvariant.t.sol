@@ -192,23 +192,16 @@ contract GovernorHandler is Test {
 
     function _buildReach() internal {
         bool[8][8] memory e;
+        // Only the proposer cancels, and only while Pending (#323). Nothing in the campaign cancels a timelock
+        // operation directly, so Active, Succeeded and Queued proposals never become Canceled. Expired is terminal
+        // (#322): the timelock refuses an Expired proposal's operation, so there is no Expired -> Executed edge.
         e[PENDING][ACTIVE] = true;
         e[PENDING][CANCELED] = true;
-        e[ACTIVE][CANCELED] = true;
         e[ACTIVE][DEFEATED] = true;
         e[ACTIVE][SUCCEEDED] = true;
-        e[SUCCEEDED][CANCELED] = true;
         e[SUCCEEDED][QUEUED] = true;
-        e[QUEUED][CANCELED] = true;
         e[QUEUED][EXPIRED] = true;
         e[QUEUED][EXECUTED] = true;
-        // FINDING (G-1, known divergence, not intended behaviour): the 14-day grace exists only in
-        // GovernorLib.state(). The timelock keeps the operation Ready and GovernedVaultInit opens its executor role,
-        // so anyone can still run an Expired proposal with `executeBatch`, after which it reads Executed; and
-        // GovernorLib.cancel refuses Expired, so the proposer cannot stop it. In OpenZeppelin's Governor, Expired is
-        // terminal. The edge is modelled because the campaign reaches it, and
-        // test_Finding_ExpiredProposalExecutableByAnyone pins it.
-        e[EXPIRED][EXECUTED] = true;
         for (uint8 i; i < 8; ++i) {
             e[i][i] = true;
         }
@@ -564,12 +557,13 @@ contract GovernorHandler is Test {
     }
 
     /// @dev Executes straight through the timelock's open executor role, bypassing the Governor. Only an operation
-    ///      the Governor queued, past its ETA, and not yet done or cancelled, runs. That includes an Expired
-    ///      proposal's operation, which is a known divergence from OpenZeppelin (see the FINDING note in
-    ///      `_buildReach` and test_Finding_ExpiredProposalExecutableByAnyone), so one seed in three targets one.
+    ///      the Governor queued, past its ETA, not yet done or cancelled, and within its proposal's grace runs. The
+    ///      timelock refuses an Expired proposal's operation (#322); one seed in three targets one to keep that
+    ///      refusal exercised.
     function executeDirect(uint256 actorSeed, uint256 propSeed) external {
         if (_props.length == 0) return;
-        Prop storage p = _props[_pick(propSeed, propSeed % 3 == 0 ? EXPIRED : QUEUED)];
+        uint256 idx = _pick(propSeed, propSeed % 3 == 0 ? EXPIRED : QUEUED);
+        Prop storage p = _props[idx];
         (address[] memory targets, uint256[] memory values, bytes[] memory calldatas) = _arrays(p);
 
         bool ready = p.queued && !p.canceled && !p.done && block.timestamp >= p.eta;
@@ -578,6 +572,12 @@ contract GovernorHandler is Test {
             vm.expectRevert(
                 abi.encodeWithSelector(
                     ITimelockController.TimelockUnexpectedOperationState.selector, p.tlId, _bitmap(2)
+                )
+            );
+        } else if (modelState(idx) == EXPIRED) {
+            vm.expectRevert(
+                abi.encodeWithSelector(
+                    IGovernor.GovernorUnexpectedProposalState.selector, p.id, EXPIRED, _bitmap(QUEUED)
                 )
             );
         } else if (_callFails(p)) {
@@ -592,10 +592,7 @@ contract GovernorHandler is Test {
     }
 
     /// @dev Cancels as the proposer (one seed in sixteen, so most proposals live on) or as another actor. Only the
-    ///      proposer may cancel, and only while the proposal is Pending, Active, Succeeded or Queued.
-    ///      FINDING (G-2, known divergence, not intended behaviour): OpenZeppelin lets the proposer cancel only while
-    ///      Pending, but GovernorLib.cancel also accepts Succeeded and Queued, so one account can veto a proposal
-    ///      that passed its vote. test_Finding_ProposerCancelsQueuedProposal pins it.
+    ///      proposer may cancel, and only while the proposal is Pending, as in OpenZeppelin (#323).
     function cancel(uint256 propSeed, uint256 callerSeed) external {
         if (_props.length == 0) return;
         uint256 idx = propSeed % _props.length;
@@ -608,11 +605,10 @@ contract GovernorHandler is Test {
         }
         (address[] memory targets, uint256[] memory values, bytes[] memory calldatas) = _arrays(p);
 
-        bool cancellable = s == PENDING || s == ACTIVE || s == SUCCEEDED || s == QUEUED;
+        bool cancellable = s == PENDING;
         if (!cancellable) {
-            bytes32 allowed = _bitmap(PENDING) | _bitmap(ACTIVE) | _bitmap(SUCCEEDED) | _bitmap(QUEUED);
             vm.expectRevert(
-                abi.encodeWithSelector(IGovernor.GovernorUnexpectedProposalState.selector, p.id, s, allowed)
+                abi.encodeWithSelector(IGovernor.GovernorUnexpectedProposalState.selector, p.id, s, _bitmap(PENDING))
             );
         } else if (caller != p.proposer) {
             vm.expectRevert(abi.encodeWithSelector(IGovernor.GovernorOnlyExecutor.selector, caller));
@@ -846,7 +842,7 @@ contract GovernorDiamondInvariant is Test {
     }
 
     //*//////////////////////////////////////////////////////////////////////////
-    //                    FINDINGS (known divergences, pinned)
+    //                      LIFECYCLE FIXES (#322, #323)
     //////////////////////////////////////////////////////////////////////////*//
 
     /// @dev Proposes a ping of `tag`, has every seeded actor vote For, and queues it. Returns the proposal's call
@@ -885,12 +881,10 @@ contract GovernorDiamondInvariant is Test {
         assertEq(uint8(IGovernor(gov).state(id)), uint8(IGovernor.ProposalState.Queued), "proposal not queued");
     }
 
-    /// @notice FINDING (G-1, #322): an Expired proposal is not terminal. The 14-day grace exists only in
-    ///         `GovernorLib.state()`, so the timelock operation stays Ready, and its executor role is open, so ANY
-    ///         account still runs it with `executeBatch`; the proposal then reads Executed. Its proposer cannot stop
-    ///         this, because `cancel` refuses Expired. In OpenZeppelin's Governor, Expired is terminal. A fix
-    ///         either refuses execution after the grace or cancels the operation in the timelock.
-    function test_Finding_ExpiredProposalExecutableByAnyone() public {
+    /// @notice #322: an Expired proposal is terminal. Past the 14-day grace its timelock operation still reads Ready,
+    ///         but the timelock refuses to run it, even for an outsider using the open executor role, and the Governor
+    ///         refuses to execute it. Its proposer cannot cancel it either, since cancel is Pending-only (#323).
+    function test_ExpiredProposalIsTerminal() public {
         (
             address[] memory targets,
             uint256[] memory values,
@@ -903,25 +897,54 @@ contract GovernorDiamondInvariant is Test {
         assertEq(uint8(IGovernor(gov).state(id)), uint8(IGovernor.ProposalState.Expired), "not expired");
         assertTrue(ITimelockController(gov).isOperationReady(tlId), "timelock op no longer ready");
 
-        bytes32 cancellable = bytes32(uint256((1 << 0) | (1 << 1) | (1 << 4) | (1 << 5)));
         address proposer = IGovernor(gov).proposalProposer(id);
+        bytes memory expired = abi.encodeWithSelector(
+            IGovernor.GovernorUnexpectedProposalState.selector,
+            id,
+            IGovernor.ProposalState.Expired,
+            bytes32(uint256(1 << uint8(IGovernor.ProposalState.Queued)))
+        );
+        vm.expectRevert(expired);
+        vm.prank(address(0xBAD));
+        ITimelockController(gov).executeBatch(targets, values, calldatas, bytes32(0), bytes32(id));
+
+        vm.expectRevert(expired);
+        IGovernor(gov).execute(targets, values, calldatas, descHash);
+
         vm.expectRevert(
             abi.encodeWithSelector(
-                IGovernor.GovernorUnexpectedProposalState.selector, id, IGovernor.ProposalState.Expired, cancellable
+                IGovernor.GovernorUnexpectedProposalState.selector,
+                id,
+                IGovernor.ProposalState.Expired,
+                bytes32(uint256(1 << uint8(IGovernor.ProposalState.Pending)))
             )
         );
         vm.prank(proposer);
         IGovernor(gov).cancel(targets, values, calldatas, descHash);
 
+        assertEq(sink.hits(1001), 0, "expired proposal ran");
+        assertFalse(ITimelockController(gov).isOperationDone(tlId), "timelock op marked done");
+        assertEq(uint8(IGovernor(gov).state(id)), uint8(IGovernor.ProposalState.Expired), "left Expired");
+    }
+
+    /// @notice #322 boundary: at exactly `eta + 14 days` the proposal is still Queued and an outsider can run it
+    ///         through the open executor role; the refusal starts one second later.
+    function test_QueuedProposalRunsDirectlyUntilGraceEnds() public {
+        (address[] memory targets, uint256[] memory values, bytes[] memory calldatas,, uint256 id, bytes32 tlId) =
+            _passAndQueue(1003);
+        vm.warp(IGovernor(gov).proposalEta(id) + 14 days);
+        assertEq(uint8(IGovernor(gov).state(id)), uint8(IGovernor.ProposalState.Queued), "expired too early");
+
         vm.prank(address(0xBAD));
         ITimelockController(gov).executeBatch(targets, values, calldatas, bytes32(0), bytes32(id));
-        assertEq(sink.hits(1001), 1, "expired proposal did not run");
+        assertEq(sink.hits(1003), 1, "queued proposal did not run");
+        assertTrue(ITimelockController(gov).isOperationDone(tlId), "timelock op not done");
         assertEq(uint8(IGovernor(gov).state(id)), uint8(IGovernor.ProposalState.Executed), "not executed");
     }
 
-    /// @notice FINDING (G-2, #323): the proposer alone can cancel a proposal after it passed its vote and was queued,
-    ///         which also cancels its timelock operation. OpenZeppelin allows a proposer cancel only while Pending.
-    function test_Finding_ProposerCancelsQueuedProposal() public {
+    /// @notice #323: once a proposal has passed its vote and been queued, its proposer can no longer cancel it, and
+    ///         its timelock operation stays scheduled.
+    function test_ProposerCannotCancelQueuedProposal() public {
         (
             address[] memory targets,
             uint256[] memory values,
@@ -931,10 +954,19 @@ contract GovernorDiamondInvariant is Test {
             bytes32 tlId
         ) = _passAndQueue(1002);
         assertTrue(ITimelockController(gov).isOperation(tlId), "not scheduled");
+        address proposer = IGovernor(gov).proposalProposer(id);
 
-        vm.prank(IGovernor(gov).proposalProposer(id));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IGovernor.GovernorUnexpectedProposalState.selector,
+                id,
+                IGovernor.ProposalState.Queued,
+                bytes32(uint256(1 << uint8(IGovernor.ProposalState.Pending)))
+            )
+        );
+        vm.prank(proposer);
         IGovernor(gov).cancel(targets, values, calldatas, descHash);
-        assertEq(uint8(IGovernor(gov).state(id)), uint8(IGovernor.ProposalState.Canceled), "not canceled");
-        assertFalse(ITimelockController(gov).isOperation(tlId), "timelock op survived the cancel");
+        assertEq(uint8(IGovernor(gov).state(id)), uint8(IGovernor.ProposalState.Queued), "not queued");
+        assertTrue(ITimelockController(gov).isOperationPending(tlId), "timelock op cancelled");
     }
 }

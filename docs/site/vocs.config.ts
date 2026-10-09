@@ -27,6 +27,7 @@ const decisions: Item = {
     { text: '0010 Groth16 on BN254', link: '/adr/0010-groth16-bn254' },
     { text: '0011 No utility duplicates', link: '/adr/0011-no-stateless-utility-duplicates' },
     { text: '0012 Bash storage checker', link: '/adr/0012-storage-checker-bash-jq' },
+    { text: '0013 Governor grace', link: '/adr/0013-colocated-timelock-enforces-governor-grace' },
   ],
 }
 

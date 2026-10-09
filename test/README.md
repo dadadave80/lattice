@@ -42,9 +42,9 @@ Structured per the **Testing** and **Deployment** sections of the Cyfrin Solidit
    share Votes: voting power equals the delegated shares and past votes never change, tallies are the sum of their
    ballots, each proposal's state matches a ghost lifecycle model and only moves forward, and the timelock runs only
    queued operations, once, after their ETA (including governed cuts, and direct runs through its open executor role).
-   Two lifecycle edges the live Governor allows and OpenZeppelin's does not are modelled as they behave and pinned by
-   `test_Finding_*` tests in the same file: an Expired proposal still runs through the timelock's open executor (and
-   its proposer can no longer cancel it), and the proposer can cancel a Succeeded or Queued proposal.
+   The model has no Expired -> Executed edge, because the timelock refuses an Expired proposal's operation even
+   through its open executor role (#322), and Canceled is reachable only from Pending, because only the proposer
+   cancels and only before voting starts (#323); tests in the same file pin both refusals.
    `GovernedCutDiamondInvariant` drives a `DeployGovernedDiamondCut` diamond's authority surface: role membership
    against a ghost role table, cuts only from an executor while not stopped, guardian emergency removals that are
    Remove-only and spare the recovery entrypoints, an append-only upgrade registry and a frozen set whose selectors

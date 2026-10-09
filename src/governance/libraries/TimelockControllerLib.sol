@@ -2,6 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
+import {GovernorLib} from "@lattice/governance/libraries/GovernorLib.sol";
 import {ITimelockController} from "@lattice/interfaces/governance/ITimelockController.sol";
 import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 
@@ -303,13 +304,15 @@ library TimelockControllerLib {
         timelockControllerStorage()._timestamps[id] = block.timestamp + delay;
     }
 
-    /// @dev Check that id is ready and predecessor (if any) is done. Reverts otherwise.
+    /// @dev Check that id is ready, is not the operation of an Expired proposal queued by a Governor in the same
+    ///      diamond, and that its predecessor (if any) is done. Reverts otherwise.
     function _beforeCall(bytes32 id, bytes32 predecessor) private view {
         if (!isOperationReady(id)) {
             revert ITimelockController.TimelockUnexpectedOperationState(
                 id, _encodeStateBitmap(ITimelockController.OperationState.Ready)
             );
         }
+        GovernorLib.checkTimelockOperation(id);
         if (predecessor != bytes32(0) && !isOperationDone(predecessor)) {
             revert ITimelockController.TimelockUnexecutedPredecessor(predecessor);
         }

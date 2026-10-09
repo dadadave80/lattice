@@ -715,8 +715,8 @@ contract GovernorTest is Test {
         governor.cancel(targets, values, calldatas, keccak256(bytes(description)));
     }
 
-    function test_CancelAfterVotingStartedSucceeds() public {
-        // Cancel is now allowed in Active state (OZ reconciliation)
+    /// @dev #323: as in OpenZeppelin, the proposer may cancel only while Pending; once voting starts it reverts.
+    function test_CancelAfterVotingStartedReverts() public {
         uint256 proposalId = _propose();
         _advanceToActive();
         assertEq(uint8(governor.state(proposalId)), uint8(IGovernor.ProposalState.Active));
@@ -725,8 +725,37 @@ contract GovernorTest is Test {
             _buildProposal();
 
         vm.prank(alice);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IGovernor.GovernorUnexpectedProposalState.selector,
+                proposalId,
+                IGovernor.ProposalState.Active,
+                bytes32(uint256(1) << uint8(IGovernor.ProposalState.Pending))
+            )
+        );
         governor.cancel(targets, values, calldatas, keccak256(bytes(description)));
-        assertEq(uint8(governor.state(proposalId)), uint8(IGovernor.ProposalState.Canceled));
+        assertEq(uint8(governor.state(proposalId)), uint8(IGovernor.ProposalState.Active));
+    }
+
+    /// @dev The Pending-only state check runs before the proposer check, so a stranger cancelling an Active
+    ///      proposal sees the state error.
+    function test_CancelByNonProposerAfterVotingStartedRevertsWithStateError() public {
+        uint256 proposalId = _propose();
+        _advanceToActive();
+
+        (address[] memory targets, uint256[] memory values, bytes[] memory calldatas, string memory description) =
+            _buildProposal();
+
+        vm.prank(bob);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IGovernor.GovernorUnexpectedProposalState.selector,
+                proposalId,
+                IGovernor.ProposalState.Active,
+                bytes32(uint256(1) << uint8(IGovernor.ProposalState.Pending))
+            )
+        );
+        governor.cancel(targets, values, calldatas, keccak256(bytes(description)));
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -1061,23 +1090,32 @@ contract GovernorTest is Test {
     //                   OZ-RECONCILIATION TESTS (B-SERIES)
     //////////////////////////////////////////////////////////////////////////*//
 
-    // ---- B1: cancel scope expansion ----
+    // ---- B1: cancel is Pending-only (#323) ----
 
-    function test_CancelActiveProposal() public {
-        // Proposer can cancel once voting has started (Active state).
-        uint256 proposalId = _propose();
-        _advanceToActive();
-        assertEq(uint8(governor.state(proposalId)), uint8(IGovernor.ProposalState.Active));
+    /// @dev A proposal that passed its vote cannot be vetoed by its proposer.
+    function test_CancelSucceededProposalReverts() public {
+        uint256 proposalId = _proposeVoteAndSucceed();
+        assertEq(uint8(governor.state(proposalId)), uint8(IGovernor.ProposalState.Succeeded));
 
         (address[] memory targets, uint256[] memory values, bytes[] memory calldatas, string memory description) =
             _buildProposal();
         vm.prank(alice);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IGovernor.GovernorUnexpectedProposalState.selector,
+                proposalId,
+                IGovernor.ProposalState.Succeeded,
+                bytes32(uint256(1) << uint8(IGovernor.ProposalState.Pending))
+            )
+        );
         governor.cancel(targets, values, calldatas, keccak256(bytes(description)));
 
-        assertEq(uint8(governor.state(proposalId)), uint8(IGovernor.ProposalState.Canceled));
+        assertEq(uint8(governor.state(proposalId)), uint8(IGovernor.ProposalState.Succeeded));
     }
 
-    function test_CancelQueuedProposalAlsoCancelsTimelockOp() public {
+    /// @dev A queued proposal cannot be cancelled by its proposer, and its timelock operation stays scheduled and
+    ///      still executes.
+    function test_CancelQueuedProposalRevertsAndKeepsTimelockOp() public {
         uint256 proposalId = _proposeVoteAndSucceed();
 
         (address[] memory targets, uint256[] memory values, bytes[] memory calldatas, string memory description) =
@@ -1087,16 +1125,95 @@ contract GovernorTest is Test {
         governor.queue(targets, values, calldatas, descHash);
         assertEq(uint8(governor.state(proposalId)), uint8(IGovernor.ProposalState.Queued));
 
-        // Compute the expected timelock operation id
-        bytes32 salt = bytes32(proposalId);
-        bytes32 timelockId = timelock.hashOperationBatch(targets, values, calldatas, bytes32(0), salt);
+        bytes32 timelockId = timelock.hashOperationBatch(targets, values, calldatas, bytes32(0), bytes32(proposalId));
         assertTrue(timelock.isOperationPending(timelockId), "op should be pending before cancel");
 
         vm.prank(alice);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IGovernor.GovernorUnexpectedProposalState.selector,
+                proposalId,
+                IGovernor.ProposalState.Queued,
+                bytes32(uint256(1) << uint8(IGovernor.ProposalState.Pending))
+            )
+        );
         governor.cancel(targets, values, calldatas, descHash);
 
-        assertEq(uint8(governor.state(proposalId)), uint8(IGovernor.ProposalState.Canceled));
-        assertFalse(timelock.isOperationPending(timelockId), "op should be cancelled in timelock");
+        assertEq(uint8(governor.state(proposalId)), uint8(IGovernor.ProposalState.Queued));
+        assertTrue(timelock.isOperationPending(timelockId), "op should still be pending in timelock");
+
+        vm.warp(block.timestamp + TIMELOCK_DELAY + 1);
+        governor.execute(targets, values, calldatas, descHash);
+        assertEq(govTarget.value(), 42);
+    }
+
+    // ---- B1b: Expired is terminal (#322) ----
+
+    /// @dev A queued proposal stays Queued and executable through `eta + GRACE_PERIOD`, then reads Expired.
+    function test_QueuedProposalExpiresAfterGracePeriod() public {
+        uint256 proposalId = _proposeVoteAndSucceed();
+        (address[] memory targets, uint256[] memory values, bytes[] memory calldatas, string memory description) =
+            _buildProposal();
+        governor.queue(targets, values, calldatas, keccak256(bytes(description)));
+        uint256 eta = governor.proposalEta(proposalId);
+
+        vm.warp(eta + GovernorLib.GRACE_PERIOD);
+        assertEq(uint8(governor.state(proposalId)), uint8(IGovernor.ProposalState.Queued));
+        vm.warp(eta + GovernorLib.GRACE_PERIOD + 1);
+        assertEq(uint8(governor.state(proposalId)), uint8(IGovernor.ProposalState.Expired));
+    }
+
+    /// @dev The governor refuses to execute an Expired proposal, and its proposer cannot cancel it.
+    function test_ExecuteExpiredProposalReverts() public {
+        uint256 proposalId = _proposeVoteAndSucceed();
+        (address[] memory targets, uint256[] memory values, bytes[] memory calldatas, string memory description) =
+            _buildProposal();
+        bytes32 descHash = keccak256(bytes(description));
+        governor.queue(targets, values, calldatas, descHash);
+        vm.warp(governor.proposalEta(proposalId) + GovernorLib.GRACE_PERIOD + 1);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IGovernor.GovernorUnexpectedProposalState.selector,
+                proposalId,
+                IGovernor.ProposalState.Expired,
+                bytes32(uint256(1) << uint8(IGovernor.ProposalState.Queued))
+            )
+        );
+        governor.execute(targets, values, calldatas, descHash);
+
+        vm.prank(alice);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IGovernor.GovernorUnexpectedProposalState.selector,
+                proposalId,
+                IGovernor.ProposalState.Expired,
+                bytes32(uint256(1) << uint8(IGovernor.ProposalState.Pending))
+            )
+        );
+        governor.cancel(targets, values, calldatas, descHash);
+
+        assertEq(govTarget.value(), 0);
+        assertEq(uint8(governor.state(proposalId)), uint8(IGovernor.ProposalState.Expired));
+    }
+
+    /// @dev Documented limitation (ADR 0013): a timelock deployed apart from its governor cannot read the
+    ///      governor's grace period, so with an open executor it still runs an Expired proposal's operation. The
+    ///      grace is enforced only when both modules share a diamond (see GovernorDiamondInvariant) or when the
+    ///      governor is the sole executor.
+    function test_SeparateOpenTimelockStillRunsExpiredOperation() public {
+        uint256 proposalId = _proposeVoteAndSucceed();
+        (address[] memory targets, uint256[] memory values, bytes[] memory calldatas, string memory description) =
+            _buildProposal();
+        governor.queue(targets, values, calldatas, keccak256(bytes(description)));
+        vm.warp(governor.proposalEta(proposalId) + GovernorLib.GRACE_PERIOD + 1);
+        assertEq(uint8(governor.state(proposalId)), uint8(IGovernor.ProposalState.Expired));
+
+        vm.prank(makeAddr("anyone"));
+        timelock.executeBatch(targets, values, calldatas, bytes32(0), bytes32(proposalId));
+
+        assertEq(govTarget.value(), 42);
+        assertEq(uint8(governor.state(proposalId)), uint8(IGovernor.ProposalState.Executed));
     }
 
     // ---- B2: empty targets ----
