@@ -28,11 +28,7 @@ consumed as a Forge dependency; there is no application or canonical deployment 
 
 ## Install / usage
 
-Install as a Forge dependency, pinned to a release tag. The steps below assume a git repository
-(`forge init` creates one). In a `--no-git` project, run `forge install --no-git
-dadadave80/lattice@<tag>` instead and skip the commit step and the `git describe` check below: Forge
-records no gitlink, so check the pin from `VERSION` in `lib/lattice/src/LatticeVersion.sol`. CI builds with
-Foundry v1.8.5 and Solidity 0.8.36, and these steps were checked on Forge v1.8.5.
+Install as a Forge dependency, pinned to a release tag:
 
 <!-- x-release-please-start-version -->
 ```sh
@@ -40,6 +36,12 @@ forge install dadadave80/lattice@v0.4.0
 git add lib/lattice .gitmodules foundry.lock && git commit -m "Install lattice"
 ```
 <!-- x-release-please-end -->
+
+These steps assume a git repository (`forge init` creates one). In a `--no-git` project, run
+`forge install --no-git dadadave80/lattice@<tag>` instead and skip the commit step above and the
+`git describe` check below: Forge records no gitlink, so check the pin from `VERSION` in
+`lib/lattice/src/LatticeVersion.sol`. CI builds with Foundry v1.8.5 and Solidity 0.8.36, and these steps
+were checked on Forge v1.8.5.
 
 `forge install` checks out the tag and its nested `diamond-lib` and `forge-std` submodules. Commit the
 install straight away, as shown: some Forge releases stage the default branch's commit rather than the

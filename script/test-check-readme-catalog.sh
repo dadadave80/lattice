@@ -84,5 +84,35 @@ expect fail "path token resolves only at its path" 'mv src/utils/libraries/math/
 expect fail "name from diamond-lib missing" 'rm lib/diamond-lib/src/facets/OwnableFacet.sol'
 expect fail "no Modules section" 'readme "s/^## Modules$/## Packages/"'
 
+# expect_output <name> <setup-snippet> <stdout-want> <stderr-grep>: run the checker and
+# compare its output. stdout must equal <stdout-want>; stderr must match the grep -E
+# pattern <stderr-grep>, or be empty when the pattern is empty.
+expect_output() {
+    local name=$1 setup=$2 want_out=$3 want_err=$4 d out err ok=1
+    n=$((n + 1))
+    d="$tmp/case$n"
+    fixture "$d"
+    (cd "$d" && eval "$setup")
+    "$CHECK" "$d" >"$d.out" 2>"$d.err" || true
+    out=$(cat "$d.out")
+    err=$(cat "$d.err")
+    [ "$out" = "$want_out" ] || ok=0
+    if [ -z "$want_err" ]; then
+        [ -z "$err" ] || ok=0
+    else
+        printf '%s\n' "$err" | grep -qE "$want_err" || ok=0
+    fi
+    if [ "$ok" -eq 1 ]; then
+        echo "ok   $name"
+    else
+        echo "FAIL $name (stdout: '$out'; stderr: '$err')"
+        failures=$((failures + 1))
+    fi
+}
+
+expect_output "passing check prints nothing" ':' '' ''
+expect_output "failing check names the file on stderr only" 'touch src/access/AccessManager.sol' '' \
+    'src/access/AccessManager.sol is missing'
+
 echo "$((n - failures))/$n readme-check cases passed"
 [ "$failures" -eq 0 ]

@@ -28,6 +28,8 @@
 #      `SignerType.HederaAccount`) are prose and are not checked;
 #   3. README.md has no `## Modules` section.
 #
+# Prints nothing on success; each failure is one line on stderr.
+#
 # Usage: ./script/check-readme-catalog.sh [root]   (`make readme-check`; root defaults
 #        to the repo root and exists so script/test-check-readme-catalog.sh can run it
 #        on fixtures)
@@ -61,24 +63,17 @@ find src -name '*.sol' -type f | sort >"$sources"
 [ -d "$DEPS" ] && find "$DEPS" -name '*.sol' -type f | sort >>"$sources"
 
 # 1. Every contract file has an exact backticked entry in the catalog.
-ncontracts=0
 while IFS= read -r f; do
     name=$(basename "$f" .sol)
-    ncontracts=$((ncontracts + 1))
     grep -qxF "$name" "$catalog" || err "$f is missing from the $README '## Modules' catalog (add \`$name\`)"
 done < <(find src -name '*.sol' -type f \
     -not -path 'src/interfaces/*' -not -path 'src/examples/*' -not -path '*/libraries/*' \
     -not -name '*Init.sol' -not -name '*Lib.sol' | sort)
 
 # 2. Every contract-like token in the catalog names an existing .sol file.
-nnames=0
 while IFS= read -r token; do
-    nnames=$((nnames + 1))
     grep -q "/${token}[.]sol\$" "$sources" \
         || err "$README '## Modules' names \`$token\` but no src/**/$token.sol (or $DEPS/**/$token.sol) exists"
 done < <(grep -E '^([a-z0-9_]+/)*[A-Z][A-Za-z0-9]*$' "$catalog" || true)
 
-if [ "$fail" -ne 0 ]; then
-    exit 1
-fi
-echo "readme-check: OK ($ncontracts contract files listed; $nnames catalog names resolve)"
+exit "$fail"
