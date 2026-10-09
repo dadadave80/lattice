@@ -1,5 +1,110 @@
 # Changelog
 
+## [0.5.0](https://github.com/dadadave80/lattice/compare/v0.4.0...v0.5.0) (2026-10-09)
+
+
+### ⚠ BREAKING CHANGES
+
+* **core:** RecipeEntry gains bytes4[] exclude (changes the deploy selector), DiamondDeployed gains recipeHash and init, LatticeFactory__ZeroRegistry becomes LatticeFactory__InvalidRegistry(address). The canonical registry and factory addresses move.
+* **access:** IAccessManager adds consumeScheduledOp (interfaceId changes); restrictedCheck is non-view; admin functions honour target-admin and role-admin delays.
+* **defi:** StrategyManagerWithdrawShortfall reports (released, received); UniswapV3Adapter keeps freed token1 in NAV and harvest no longer sweeps idle; Curve strategies are unsupported in 0.5.0.
+* **vaults:** share pricing follows the full NAV (idle + strategies); maxWithdraw/maxRedeem are capped at idle; VaultCore.totalAssets reverts while the strategy NAV is unreadable; addStrategy rejects non-empty strategies.
+* **access:** IAccessManaged drops setConsumingScheduledOp (interfaceId 0xe5b444fd -> 0x4a531f33); IAccessManager adds updateAuthority (0x8fc52f86 -> 0x973a37ba); AccessManagerStorage appends _executionId.
+
+### Features
+
+* **core:** add deployStrict and harden LatticeRegistry and LatticeFactory ([564f7b4](https://github.com/dadadave80/lattice/commit/564f7b4f2fb506c6dd3cf740b82dd4263e4f3ad5))
+* **core:** add ERC-8153 exports to the remaining facets and mutation-test the registry and factory ([c1d170f](https://github.com/dadadave80/lattice/commit/c1d170f2f738c838f497cd21332bdf297fbcc45b))
+* **core:** add ERC-8153 exports to the remaining facets and mutation-test the registry and factory ([32b3944](https://github.com/dadadave80/lattice/commit/32b39443ae5d1a3b260d5318a1ad717273d40f16))
+* **docs:** add the documentation site and the storage-safety Action ([1274a94](https://github.com/dadadave80/lattice/commit/1274a946980ae0f3120c29b9b8559a323e0c38b5))
+* **docs:** add the documentation site and the storage-safety Action ([39bd37f](https://github.com/dadadave80/lattice/commit/39bd37ff4c8128bad2e85c6a6e21b946f46859c0))
+* **oracles:** add an opt-in OracleGuard for L2 sequencer uptime and price bounds ([aea6c58](https://github.com/dadadave80/lattice/commit/aea6c58042402981025921339f54cb839843fa65))
+* **oracles:** add an opt-in OracleGuard for L2 sequencer uptime and price bounds ([fdf37aa](https://github.com/dadadave80/lattice/commit/fdf37aae8e0de4dcf07e91956ccf7a8f9f7456b9))
+* **tokens:** add ERC-1155 Burnable and URIStorage extensions ([87dda64](https://github.com/dadadave80/lattice/commit/87dda64e9823f263ba5f1ef7b9f8778581143b24))
+* **tokens:** add ERC-1155 Burnable and URIStorage extensions ([fe75d42](https://github.com/dadadave80/lattice/commit/fe75d420dd646f2b3374269f5ed412845d0fcc83))
+* **tokens:** add ERC-1155 Supply and Pausable extensions ([f900479](https://github.com/dadadave80/lattice/commit/f90047968b78dbf78b2b857c2e9ba3b83a345924))
+* **tokens:** add ERC-1155 Supply and Pausable extensions ([60abe02](https://github.com/dadadave80/lattice/commit/60abe02a24d626d2cdf474ee8d49e7d93823dc15))
+* **tokens:** add ERC-1363 and re-base ERC-20 on OpenZeppelin v5.6.1 ([8e95a08](https://github.com/dadadave80/lattice/commit/8e95a08f19eacffbad9fe6008a8386ce05caacfc))
+* **tokens:** add ERC-1363 and re-base ERC-20 on OpenZeppelin v5.6.1 ([468d642](https://github.com/dadadave80/lattice/commit/468d642ac1fe72af39c94bd0d70402989f53e2c7))
+* **tokens:** add ERC-721 Burnable, Wrapper and a royalty recipe ([aad86b2](https://github.com/dadadave80/lattice/commit/aad86b2a0cea99e363671fd350a580d3033f05d1))
+* **tokens:** add ERC-721 Burnable, Wrapper and a royalty recipe ([d57e7b2](https://github.com/dadadave80/lattice/commit/d57e7b213ea1f236f38f08ffe8fd006ea6c82feb))
+* **tokens:** add ERC-721 Pausable, Enumerable and Votes extensions ([0b5fc48](https://github.com/dadadave80/lattice/commit/0b5fc482b56da335c4ea851a92f5510382a84294))
+* **tokens:** add ERC-721 Pausable, Enumerable and Votes extensions ([dfb2008](https://github.com/dadadave80/lattice/commit/dfb2008969b0ce1915bfb931334c8b937299a026))
+* **tokens:** add ERC721Consecutive for initialization-time batch mints ([ec3a0c8](https://github.com/dadadave80/lattice/commit/ec3a0c8aa14aaf0c702d21708f7c5ea7129b9128))
+* **tokens:** add ERC721Consecutive for initialization-time batch mints ([d0ea258](https://github.com/dadadave80/lattice/commit/d0ea2587a0f19ffaf7314db4f0d32c25f0bf3104))
+* **vaults:** keep the deposit latch across a strategy-manager swap ([9a011e2](https://github.com/dadadave80/lattice/commit/9a011e2c34575c9c2dee823130e0070e90fc8c51))
+* **vaults:** keep the deposit latch across a strategy-manager swap ([344581e](https://github.com/dadadave80/lattice/commit/344581ed2e411a886542c30171854f67033a6bd5))
+* **vaults:** latch deposits after a strategy force-removal ([1abc748](https://github.com/dadadave80/lattice/commit/1abc74894abedb997d409655f7661d33c0f252eb))
+* **vaults:** latch deposits after a strategy force-removal ([d1c33f5](https://github.com/dadadave80/lattice/commit/d1c33f541a2ee299c3d61e305c586438a0610d44))
+
+
+### Bug Fixes
+
+* **access:** delay execution-delay decreases for existing members as OpenZeppelin does ([0f5fe70](https://github.com/dadadave80/lattice/commit/0f5fe704f5098100fba744335c20815f14096bc9))
+* **access:** delay execution-delay decreases for existing members as OpenZeppelin does ([8cbba2a](https://github.com/dadadave80/lattice/commit/8cbba2ac61f17b45779e9e466451a0237cdef041))
+* **access:** enforce AccessManager target-admin and role-admin delays (OZ v5 parity) ([5a6a8db](https://github.com/dadadave80/lattice/commit/5a6a8dbb74a6d170cd1cd46528f072e75d5bcb33))
+* **access:** replace AccessManaged consuming-flag bypass with OZ execution-id model ([1b92f49](https://github.com/dadadave80/lattice/commit/1b92f49b6bf5a9b2db267123aded9615f6e60004))
+* **accounts:** reset session-key approvals, orphan grants on revoke, and keep wildcards off the account ([b378748](https://github.com/dadadave80/lattice/commit/b3787482fb086c33100550f7d9ac261c66496e95))
+* **accounts:** reset session-key approvals, orphan grants on revoke, and keep wildcards off the account ([ea46b10](https://github.com/dadadave80/lattice/commit/ea46b10cc763693a2307b353c797a523ad4c7c30))
+* **crosschain:** never execute ERC-7786 OpenBridge messages at threshold 0 ([dfd7fb9](https://github.com/dadadave80/lattice/commit/dfd7fb9badab41f48dcc60594e9c518305136b21))
+* **crosschain:** never execute ERC-7786 OpenBridge messages at threshold 0 ([13ea9dc](https://github.com/dadadave80/lattice/commit/13ea9dc51f4c1b17cc8b21424d3bcf5147968d04))
+* **crosschain:** refuse hook-less relay of hooked CCTP burns and require destinationCaller ([305f3bf](https://github.com/dadadave80/lattice/commit/305f3bfb8aad04007b630d2d755ec689165972b1))
+* **crosschain:** refuse hook-less relay of hooked CCTP burns and require destinationCaller ([9764dcb](https://github.com/dadadave80/lattice/commit/9764dcbcc610636c904c5e0f818bc3b4db0e0c52))
+* **defi:** cap Aave/Compound recalls at available cash and exclude stranded UniswapV3 token1 from NAV ([e6d6b9b](https://github.com/dadadave80/lattice/commit/e6d6b9b52964e39b745ceb797fbbe7e6761bdaae))
+* **defi:** cap Aave/Compound recalls at available cash and exclude stranded UniswapV3 token1 from NAV ([dba0c00](https://github.com/dadadave80/lattice/commit/dba0c00d9a96936b611a77ba8158f0c1655ba354))
+* **defi:** recall adapter idle first, accept honest partial recalls, and deploy adapter idle in rebalance ([7349580](https://github.com/dadadave80/lattice/commit/734958067dfe5dafad85ee92ddc691dd392ea6c4))
+* **erc165:** remove ERC20Votes' stray keccak256(0) write and register IERC165 on every recipe diamond ([c6ccfb6](https://github.com/dadadave80/lattice/commit/c6ccfb679c62b3d8d11203146b19613143d8fc35))
+* **erc165:** remove ERC20Votes' stray keccak256(0) write and register IERC165 on every recipe diamond ([bcd82e8](https://github.com/dadadave80/lattice/commit/bcd82e8ba7707d1fc7725afbe3b29fce5486e17f))
+* **governance:** make Expired proposals terminal and limit proposer cancel to Pending ([f289e5d](https://github.com/dadadave80/lattice/commit/f289e5dc9abc5c738b7edad39fc0ce7ff2cd600d))
+* **governance:** make Expired proposals terminal and limit proposer cancel to Pending ([dcc460d](https://github.com/dadadave80/lattice/commit/dcc460d89dda9d235ace33c14a630ec591882148))
+* **governance:** stop cut delays and the emergency guardian from bypassing or bricking upgrades ([19e225e](https://github.com/dadadave80/lattice/commit/19e225e7b7f21e4f213fac7e26b19caffb81622a))
+* **governance:** stop cut delays and the emergency guardian from bypassing or bricking upgrades ([c68cd75](https://github.com/dadadave80/lattice/commit/c68cd75b8f5a84e584cfbf1ac8bbdfa089dbda89))
+* reject no-code tokens, harden oracle reads and emit adapter setter events ([cfa038a](https://github.com/dadadave80/lattice/commit/cfa038af5a7e7c43200aabc7dcb6e961015e04a3))
+* reject no-code tokens, harden oracle reads and emit adapter setter events ([52cd31b](https://github.com/dadadave80/lattice/commit/52cd31b8858a546988fc670a6dc3bd7b67271665))
+* **tokens:** revert on ERC-1155 receiver balance overflow ([3bcd95f](https://github.com/dadadave80/lattice/commit/3bcd95f4c18277eea4a67d43ff8ba303c1a7989c))
+* **vaults:** price ERC-4626 shares on full NAV and cap withdrawals at idle ([a866759](https://github.com/dadadave80/lattice/commit/a8667596c99c6f7c084a05a4df2e2fe54da7e9ef))
+
+
+### Refactors
+
+* **math:** consolidate mulDiv ([49e73d6](https://github.com/dadadave80/lattice/commit/49e73d6c3fe870501f4eda36439020b0afeb03ed))
+* **math:** consolidate mulDiv ([ee1c6bb](https://github.com/dadadave80/lattice/commit/ee1c6bb6b0cec65691f6e0954be819fe0c92d536))
+* replace string requires with custom errors ([a67e0a2](https://github.com/dadadave80/lattice/commit/a67e0a24f2edcb21bfad0b835869585df8dcbf95))
+* replace string requires with custom errors ([78d1596](https://github.com/dadadave80/lattice/commit/78d15960ed0ab5b08215b0ae92aa666308d5fcf1))
+
+
+### Documentation
+
+* **adr:** date ADR 0013 and link its pull request ([fec6732](https://github.com/dadadave80/lattice/commit/fec6732e525c1fa2131aafb0af72342f49ab7e8d))
+* **changelog:** drop duplicate and superseded 0.4.0 entries ([c8265e4](https://github.com/dadadave80/lattice/commit/c8265e445a8cd6027c5b6bcee4e27ca42faac864))
+* **composition:** document co-cut hazards and pin them in tests ([6c33fbd](https://github.com/dadadave80/lattice/commit/6c33fbd48149211e4ccca7d3f0f8882155092a4f))
+* **composition:** document co-cut hazards and pin them in tests ([dc8e66c](https://github.com/dadadave80/lattice/commit/dc8e66cba9f74329a24e57dfc7ea346f588eba71))
+* **core:** record the maintainer's selector-storage decision ([3d0b77e](https://github.com/dadadave80/lattice/commit/3d0b77efda14acad91f1e69a6d93656aaf4b1967))
+* finish the README restructure ([6ca91e2](https://github.com/dadadave80/lattice/commit/6ca91e29ad30e137b05cf94b4cae6b061fff8da2))
+* finish the README restructure ([7c0c171](https://github.com/dadadave80/lattice/commit/7c0c171a76bf03bf74c62e6198212828f0a3c8c8))
+* fix the README install quick start and state the 0.x versioning policy ([954fe31](https://github.com/dadadave80/lattice/commit/954fe310ac45d28be188a085091d298a07da127a))
+* fix the README install quick start and state the 0.x versioning policy ([63ef256](https://github.com/dadadave80/lattice/commit/63ef25682f574ac0fb58add38fd7d74bc46331df))
+* **governance:** list the SEAL Safe Harbor off-chain steps in SafeHarborAdopter ([1b788e8](https://github.com/dadadave80/lattice/commit/1b788e82444f338687e1ec695038135cc471affc))
+* **governance:** list the SEAL Safe Harbor off-chain steps in SafeHarborAdopter ([51721ca](https://github.com/dadadave80/lattice/commit/51721ca6f6967d01126af6ca3b619abe39c9b101))
+* **grants:** record the M3 Action release and demo runs ([46c9cbf](https://github.com/dadadave80/lattice/commit/46c9cbf5949b1ef809b0dc9cab3059bcbedb2dd8))
+* **hedera:** update the Foundry pin wording and parity notes ([ab77f50](https://github.com/dadadave80/lattice/commit/ab77f50e9a91d5f69fa694ff60664f80725e3211))
+* **hedera:** update the Foundry pin wording and parity notes ([a5030c1](https://github.com/dadadave80/lattice/commit/a5030c12ea9ea47f0d0e37b9d314ce29ef0c0e94))
+* lead the README with the library and move grant and demo evidence out ([50edf35](https://github.com/dadadave80/lattice/commit/50edf35406da9c36ae6ce24dec562bc3a0a69b1d))
+* lead the README with the library and move grant and demo evidence out ([173f367](https://github.com/dadadave80/lattice/commit/173f3670b0034af329af0f5f8430ddb18591c421))
+* **licence:** ship the Apache-2.0 text, a third-party interface table, and an SPDX check ([d4e4008](https://github.com/dadadave80/lattice/commit/d4e4008ae4b9efaca203aa702062d02afd71fa03))
+* **licence:** ship the Apache-2.0 text, a third-party interface table, and an SPDX check ([4cfc58a](https://github.com/dadadave80/lattice/commit/4cfc58a7dff5ee8499bfcad2731415b74156a3ff))
+* list the pinned-VK privacy examples in the README ([a5ec166](https://github.com/dadadave80/lattice/commit/a5ec16653ca9b29a4e7967a62071136687228c74))
+* **privacy:** require pinned verification keys ([20d163e](https://github.com/dadadave80/lattice/commit/20d163ede1ff57efbd5712d6aea0a25799634533))
+* **privacy:** require pinned verification keys ([b5f38cc](https://github.com/dadadave80/lattice/commit/b5f38cc70fed4020d4e97df5f3b3db447adbb522))
+* record the core design decisions as ADRs ([1279d05](https://github.com/dadadave80/lattice/commit/1279d05f731afffd533ac28aacfd568d9dfe001a))
+* record the core design decisions as ADRs ([e36a3b8](https://github.com/dadadave80/lattice/commit/e36a3b8522bd61acfe0631413ea42bd83f6ad090))
+* **security:** complete SECURITY.md and index the review evidence ([5d2982a](https://github.com/dadadave80/lattice/commit/5d2982a56bc6df6c5dd6592216515c197e0d5fae))
+* **security:** complete SECURITY.md and index the review evidence ([731ee37](https://github.com/dadadave80/lattice/commit/731ee37ee4d389ca0cc9f6af7d07c5c01456828b))
+* sync CONTRIBUTING with AGENTS.md and add an add-a-module checklist ([b104046](https://github.com/dadadave80/lattice/commit/b104046245f4fa39214e1452312af6f493d6e074))
+* sync CONTRIBUTING with AGENTS.md and add an add-a-module checklist ([69d5a3e](https://github.com/dadadave80/lattice/commit/69d5a3ed21ae0b4272997d29270988b83b7f58a2))
+* **tokens:** record the replace-selector hook model and pin Pausable+Votes exclusivity ([1377a6f](https://github.com/dadadave80/lattice/commit/1377a6f3d31d9a59377dc8fa750e1939f39b8782))
+* **tokens:** record the replace-selector hook model and pin Pausable+Votes exclusivity ([26f8016](https://github.com/dadadave80/lattice/commit/26f8016b6952719e7694b8e89b11ab4de1bb5d43))
+
 ## [0.4.0](https://github.com/dadadave80/lattice/compare/v0.3.0...v0.4.0) (2026-10-07)
 
 

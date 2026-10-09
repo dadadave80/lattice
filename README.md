@@ -32,7 +32,7 @@ Install as a Forge dependency, pinned to a release tag:
 
 <!-- x-release-please-start-version -->
 ```sh
-forge install dadadave80/lattice@v0.4.0
+forge install dadadave80/lattice@v0.5.0
 git add lib/lattice .gitmodules foundry.lock && git commit -m "Install lattice"
 ```
 <!-- x-release-please-end -->
