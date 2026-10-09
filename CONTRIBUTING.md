@@ -33,6 +33,10 @@ recipe-built test setup.
   changelog. Add a scope where it helps (`fix(crosschain): ...`).
 - **Breaking changes** use `!` after the type or scope and a `BREAKING CHANGE:` footer saying what
   integrators must change: `fix(vaults)!: ...`. A changed interfaceId, ABI or storage layout counts.
+- **PRs into `dev` are squash-merged.** The PR title becomes the commit subject and the PR body its
+  message, so the PR title is the changelog line. A merge commit would repeat the title next to the
+  branch's own commits and list the change twice. End a breaking PR's body with its `BREAKING CHANGE:`
+  footer. Release promotions and back-merges between `dev` and `main` use merge commits.
 - **Sign your commits.** The branch rulesets require signed commits, so an unverified commit cannot land.
 - Keep each PR to one concern, and say in the description what changed, why, and how you validated it.
   The [PR template](.github/pull_request_template.md) has the sections and the steps most often missed.

@@ -42,6 +42,9 @@ if older documentation conflicts with the development policy below, apply this p
   `release-please-config.json` (`feat`, `fix`, `perf`, `refactor`, `docs`, `test`, `build`, `ci`,
   `chore`). Mark a breaking change with `!` and a `BREAKING CHANGE:` footer stating what integrators
   must change. Commits must be signed.
+- PRs into `dev` are squash-merged: the PR title becomes the commit subject and the PR body its message,
+  so Release Please reads each PR once. Put a breaking PR's `BREAKING CHANGE:` footer at the end of its
+  body. Release promotions (`dev` → `main`) and back-merges (`main` → `dev`) use merge commits.
 - Name each issue a PR completes on its own `Closes #N` line in the PR body (`Refs #N` for partial
   work). GitHub ignores closing keywords in PRs into `dev`, so
   `.github/workflows/close-linked-issues.yml` closes those issues when the PR merges.
