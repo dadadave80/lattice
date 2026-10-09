@@ -74,14 +74,13 @@ are no longer on a branch. Each has a tree-identical commit on `main`:
 
 ## Milestone 3 — Docs site + reusable storage-safety Action
 
-In progress. The site and the Action are built and tested in this repository; the Action is released and proven in an external repository; the docs deploy to GitHub Pages from `main` on the next release.
-Each "pending" row is filled with a public URL, run or commit permalink once it exists.
+Delivered in release [`v0.5.0`](https://github.com/dadadave80/lattice/releases/tag/v0.5.0). The site and the Action are built and tested in this repository, the docs deploy to GitHub Pages from `main`, and the Action is released and proven in an external repository.
 
 | Evidence | Status |
 |---|---|
 | Docs site source: the guides plus the API reference `forge doc` generates, built with Vocs under `/lattice` | [`docs/site/`](docs/site/vocs.config.ts) · [`script/docs/build.sh`](script/docs/build.sh) (`make doc`) |
 | Docs build and link check in CI on every relevant pull request | [`.github/workflows/docs.yml`](.github/workflows/docs.yml) (pull requests build only; `main` builds and deploys to GitHub Pages) |
-| Public docs URL (expected `https://dadadave80.github.io/lattice/`) | pending: first deploy from `main` |
+| Public docs URL | [`https://dadadave80.github.io/lattice/`](https://dadadave80.github.io/lattice/), first deployed by [run 37938597222](https://github.com/dadadave80/lattice/actions/runs/37938597222) from `main` at [`2134a6e`](https://github.com/dadadave80/lattice/commit/2134a6e67bec3c1422675fbd3cf6c20b230516bf) |
 | Storage-safety Action: composite Action on the Bash+jq checker Lattice's own CI runs | [`.github/actions/storage-layout/`](.github/actions/storage-layout/README.md) |
 | Action regression cases (43) on a fixture consumer project, and a CI self-test calling the Action | [`script/test-storage-layout.sh`](script/test-storage-layout.sh) · `storage-action` job in [`test.yml`](.github/workflows/test.yml) |
 | Lattice CI checks every pull request append-only against its base through the same Action | `storage-layout` job in [`test.yml`](.github/workflows/test.yml) |
@@ -89,7 +88,7 @@ Each "pending" row is filled with a public URL, run or commit permalink once it 
 | External demo repository calling the released Action | [`lattice-storage-guard-demo`](https://github.com/dadadave80/lattice-storage-guard-demo) pins `.github/actions/storage-layout@828e0a8…` ([workflow](https://github.com/dadadave80/lattice-storage-guard-demo/blob/main/.github/workflows/storage.yml)) |
 | Demo runs: red on an incompatible change, green on its fix, green on a safe append | reorder [red](https://github.com/dadadave80/lattice-storage-guard-demo/actions/runs/37923527240) → fix [green](https://github.com/dadadave80/lattice-storage-guard-demo/actions/runs/37923624481) ([#1](https://github.com/dadadave80/lattice-storage-guard-demo/pull/1)) · safe append [green](https://github.com/dadadave80/lattice-storage-guard-demo/actions/runs/37923536837) ([#2](https://github.com/dadadave80/lattice-storage-guard-demo/pull/2)) |
 
-Tag: `grant-m3`, created after every row above has public evidence.
+Tag: [`grant-m3`](https://github.com/dadadave80/lattice/releases/tag/grant-m3), commit [`cca133b`](https://github.com/dadadave80/lattice/commit/cca133b07abda7fdde4468798d1dce3e36ea7849) (the v0.5.0 release), on `main`.
 
 # Circle Arc Grant (2026 Cohort 2 — application evidence)
 
