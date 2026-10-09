@@ -1,7 +1,7 @@
 # 0013. A timelock in the Governor's diamond enforces the proposal grace period
 
 - **Status:** Accepted
-- **Date:** the pull request that closes [#322](https://github.com/dadadave80/lattice/issues/322)
+- **Date:** 2026-10-09, [#325](https://github.com/dadadave80/lattice/pull/325)
   (2026-10-09); recorded 2026-10-09
 
 ## Context
