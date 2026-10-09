@@ -41,6 +41,9 @@ docs/site/*
 !docs/site/package.json
 !docs/site/package-lock.json
 !docs/site/vocs.config.ts
+!docs/security/
+docs/security/*
+!docs/security/registry-factory-threat-model.md
 
 # Local Gambit mutation pilot output (make mutation)
 /gambit_out/
