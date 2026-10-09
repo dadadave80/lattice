@@ -34,6 +34,9 @@ docs/guides/*
 !docs/guides/compose-your-own-diamond.md
 !docs/guides/hedera.md
 !docs/guides/selector-compatibility.md
+!docs/security/
+docs/security/*
+!docs/security/registry-factory-threat-model.md
 
 # Local Gambit mutation pilot output (make mutation)
 /gambit_out/

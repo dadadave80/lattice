@@ -40,8 +40,10 @@ Structured per the **Testing** and **Deployment** sections of the Cyfrin Solidit
    against per-id supply, holder balances and a mint-minus-burn ledger), and `ERC721EnumerableInvariant` (a `DeployERC721Enumerable` diamond against a ghost set of live
    ids). They run 64 runs under `FOUNDRY_PROFILE=ci` (a contract-level
    `/// forge-config: ci.invariant.runs = 64` key, since a function-level key does not reach invariants
-   inherited from a base) and the full 256 locally. `make invariant-deep` runs every invariant suite at 1,000
-   runs and depth 200 (`[profile.deep.invariant]`); it is not a CI gate.
+   inherited from a base) and the full 256 locally. `LatticeRegistryInvariant`, `LatticeRegistryCodeDriftInvariant`
+   and `LatticeFactoryInvariant` check the registry and factory invariant set (R1-R7, F1-F6) from #176; the
+   threat model in `docs/security/registry-factory-threat-model.md` maps each invariant to its tests.
+   `make invariant-deep` runs every invariant suite at 1,000 runs and depth 200 (`[profile.deep.invariant]`); it is not a CI gate.
 3. **Branching-tree technique (BTT)** for exhaustive, named coverage of revert paths and state-dependent
    branches. A `.tree` file lives **next to** the `.t.sol` it documents, named `<Subject><Function>.tree`.
    Each leaf maps to a named test; a `given` is a state-setup modifier, a `when` is a parameter branch, an
