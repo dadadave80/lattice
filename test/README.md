@@ -93,29 +93,34 @@ divergent test-only assembly.
 ## Mutation testing (local pilot)
 
 `make mutation` runs a [Gambit](https://github.com/Certora/gambit) mutation pilot (#245) on three
-libraries: `ERC4626Lib`, `StrategyManagerLib` and `AccessManagerLib`. It is a local check only. It is not
+libraries, `ERC4626Lib`, `StrategyManagerLib` and `AccessManagerLib`, and on the two standalone contracts
+`LatticeRegistry` and `LatticeFactory` (#176; their results are in
+[the registry and factory threat model](../docs/security/registry-factory-threat-model.md#mutation-testing)).
+It is a local check only. It is not
 in `make ci` or any workflow, and Gambit is not a repo dependency, so install it yourself
 (`cargo install --git https://github.com/Certora/gambit`).
 
 How it works (`script/mutation-test.sh`, config in `test/mutation/gambit.conf.json`):
 
-1. Gambit writes every mutant of the three files to `gambit_out/` (gitignored), compiling each one with the
+1. Gambit writes every mutant of the five files to `gambit_out/` (gitignored), compiling each one with the
    pinned solc (`SOLC=` overrides). Paths in the config are relative to the config's own directory. The
    mutants are reused while the config, the sources and solc are unchanged.
-2. Each library gets its own scratch copy of the repo (outside the tree, deleted on exit), so `src/` in
+2. Each target file gets its own scratch copy of the repo (outside the tree, deleted on exit), so `src/` in
    your checkout is never modified. Forge runs inside the copy, so the `forge inspect` FFI in
    `test/helpers/GetSelectors.sol` reads the copy's build.
-3. A baseline run of the library's test set must pass first. Then each mutant is copied over the source
+3. A baseline run of the target's test set must pass first. Then each mutant is copied over the source
    and the test set runs with `--fail-fast` under `FOUNDRY_PROFILE=ci`, fork suites excluded, with a fixed
    fuzz seed. A failing test kills the mutant. A mutant that passes every test survives. A mutant that does
    not compile is stillborn and is left out of the score. The test sets are the unit, fuzz, integration
-   and invariant suites that reach each library through a recipe diamond (`match_set()` in the script).
+   and invariant suites that reach each library through a recipe diamond, and for the registry and factory
+   their own unit, fuzz, integration and invariant suites (`match_set()` in the script).
 4. The score per file and the survivor list go to `gambit_out/run/report.md`, and each mutant's forge log
    to `gambit_out/run/logs/<id>.log`.
 
 `MUTANTS="12 45"` re-runs only those ids into `gambit_out/rerun/`, which is how you check that new tests
-kill the survivors. `TARGETS=AccessManagerLib` limits the run to one library, and `KEEP=1` keeps the scratch
-copies. A full run takes about an hour on a 12-core laptop. Recompiling the dependents of the mutated
+kill the survivors. `TARGETS=AccessManagerLib` limits the run to one target, and `KEEP=1` keeps the scratch
+copies. The three libraries take about an hour on a 12-core laptop, and so do the registry and factory
+(`TARGETS="LatticeRegistry LatticeFactory"`). Recompiling the dependents of the mutated
 library takes most of the roughly 35 seconds each `ERC4626Lib` or `StrategyManagerLib` mutant costs.
 
 Gambit mutates Solidity expressions, not Yul. The `assembly` blocks (the 512-bit half of `mulDiv`, the

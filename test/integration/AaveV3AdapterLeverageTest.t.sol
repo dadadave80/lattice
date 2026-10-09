@@ -51,6 +51,10 @@ contract MockAggregator {
 ///         they would in a real Diamond, so `ChainlinkAdapterLib.latestAnswer(feedKey)` reads the
 ///         feed registered here.
 contract MockLeverAdapter is AaveV3Adapter, ChainlinkAdapter, Initializable {
+    /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare
+    ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing.
+    function exportSelectors() external pure virtual override(AaveV3Adapter, ChainlinkAdapter) returns (bytes memory) {}
+
     function initialize(
         address admin_,
         address provider_,

@@ -172,7 +172,13 @@ contract MockCurveGauge {
 contract MockCurveAdapter is CurveStableSwapAdapter, Pausable, EmergencyStop, Initializable {
     /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare
     ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing.
-    function exportSelectors() external pure virtual override(Pausable, EmergencyStop) returns (bytes memory) {}
+    function exportSelectors()
+        external
+        pure
+        virtual
+        override(CurveStableSwapAdapter, Pausable, EmergencyStop)
+        returns (bytes memory)
+    {}
 
     function initialize(
         address admin_,

@@ -51,4 +51,19 @@ contract SessionKey is ISessionKey {
     function spendLimit(address key, address token) external view virtual returns (uint256 cap, uint256 spent) {
         return SessionKeyLib.spendLimit(key, token);
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect SessionKey methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `isCallPermitted(address,address,bytes4)` 0xe4aea089
+    ///      `isSessionKeyActive(address)` 0xf4d2a194
+    ///      `registerSessionKey(address,uint48,uint48,(address,bytes4)[])` 0xc8337e5a
+    ///      `revokeSessionKey(address)` 0x84f4fc6a
+    ///      `sessionKeyValidity(address)` 0x78b6590d
+    ///      `setSpendLimit(address,address,uint256)` 0xba9735cc
+    ///      `spendLimit(address,address)` 0xab1c8674
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors = hex"e4aea089f4d2a194c8337e5a84f4fc6a78b6590dba9735ccab1c8674";
+    }
 }

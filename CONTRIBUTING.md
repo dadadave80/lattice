@@ -120,10 +120,10 @@ fails; `./script/fork-lanes.sh run <lane>` runs one lane the way the workflow do
 diamond built from the module's recipe.
 
 Optional, local only: `make mutation` runs the [Gambit](https://github.com/Certora/gambit) mutation pilot
-on `ERC4626Lib`, `StrategyManagerLib` and `AccessManagerLib` and reports which mutants the tests miss. It
-needs `gambit` on your `PATH`, is not part of `make ci` or any workflow, and takes about an hour on a
-laptop. See [test/README.md](test/README.md#mutation-testing-local-pilot) for how it works and the pilot
-results.
+on `ERC4626Lib`, `StrategyManagerLib`, `AccessManagerLib`, `LatticeRegistry` and `LatticeFactory` and reports
+which mutants the tests miss. It needs `gambit` on your `PATH`, is not part of `make ci` or any workflow, and
+takes one to two hours on a laptop (`TARGETS=` runs a subset). See
+[test/README.md](test/README.md#mutation-testing-local-pilot) for how it works and the pilot results.
 
 ## Adding a module
 

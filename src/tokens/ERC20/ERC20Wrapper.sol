@@ -34,4 +34,16 @@ contract ERC20Wrapper is IERC20Wrapper {
     function withdrawTo(address account, uint256 value) public virtual returns (bool) {
         return ERC20WrapperLib.withdrawTo(account, value);
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect ERC20Wrapper methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `decimals()` 0x313ce567
+    ///      `depositFor(address,uint256)` 0x2f4f21e2
+    ///      `underlying()` 0x6f307dc3
+    ///      `withdrawTo(address,uint256)` 0x205c2878
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors = hex"313ce5672f4f21e26f307dc3205c2878";
+    }
 }

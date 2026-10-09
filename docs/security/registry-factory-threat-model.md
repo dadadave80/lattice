@@ -122,6 +122,7 @@ run. Under `FOUNDRY_PROFILE=ci` they run 64 runs at depth 128.
 | Malicious init callbacks: re-entering `initialize` (refused, deploy rolls back), re-entering `factory.deploy` (the child's salt is bound to the new diamond), a custom-error revert (bubbles byte for byte) | `LatticeFactoryHardeningTest` authority and callbacks section |
 | A selector the proxy itself defines (`initialize`) can be cut but is never reachable through the diamond | `test_ProxyShadowedSelectorIsCutButUnreachable` |
 | A real module (the self-governed vault) through the registry path, both as 8 entries plus 6 custom cuts and as 14 entries (6 with `exclude`): same routing as the custom-only recipe, byte-identical applied cuts, self-governance wired, no role for the factory or the deployer, no shared state between two vaults | `LatticeFactoryGovernedVaultTest` |
+| The 13 facets that had no ERC-8153 export (#176 research comment) now export: each registers, `getCut` equals the cut it was custom-cut with (the recipe's mixed Add/Replace cut for ERC20Wrapper and ERC721URIStorage, the `forge inspect` cut for the rest), and the two that replace a base selector deploy from registry entries alone, with the base entry excluding that selector | `LatticeRegistryNewExportsTest`, `ExportSelectorsParityTest` |
 | Gas and size baselines | `LatticeCoreGasTest` (gated, `snapshots/LatticeCoreGasTest.json`), `LatticeCoreDesignBenchTest` (logged, not gated) |
 
 ## Findings
@@ -180,6 +181,46 @@ hardening change, as corroboration on a node. With the current ABI the `deploy` 
   moves both canonical addresses. **The maintainer confirmed the capped live read on 2026-10-09.**
 - **`deploy` alongside `deployStrict`.** `deploy` keeps the idempotent return for scripts that pre-check
   the address (`BaseDeploy._assemble`); user interfaces should call `deployStrict`.
+- **Every facet exports and ships.** All 13 facets the #176 research comment listed now carry
+  `exportSelectors()`, so none is custom-cut only, and all 13 join `FacetInventory` (129 entries), which
+  deploys and registers them in each release. That includes CurveStableSwapAdapter. The README still marks it
+  unsupported as a vault strategy (its spot `get_virtual_price()` NAV is exposed to read-only reentrancy), but
+  that caveat is about registering it with a vault's `StrategyManager`, not about listing the facet in the
+  registry. The export is never cut into a diamond and is not part of any registered ERC-165 interface, so
+  adding it moves no live interfaceId (the `Nonces` facet's storage is live on the Sepolia M2 vault).
+
+## Mutation testing
+
+`LatticeRegistry` and `LatticeFactory` are targets of the local Gambit run (`make mutation`, config in
+`test/mutation/gambit.conf.json`; `TARGETS="LatticeRegistry LatticeFactory"` runs only these two). Each mutant
+runs against the registry and factory suites with `--fail-fast` under `FOUNDRY_PROFILE=ci`, fuzz seed
+`0x245`: the unit tests (`LatticeRegistryTest`, `LatticeRegistryHostileExporterTest`, `LatticeFactoryTest`,
+`LatticeFactoryHardeningTest`, `DeployFactoryTest`), the fuzz suites (`LatticeRegistryFuzz`,
+`LatticeFactoryFuzz`), the integration suites (`LatticeRegistryCompositionTest`,
+`LatticeFactoryCompositionTest`, `LatticeFactoryGovernedVaultTest`) and the invariant suites
+(`LatticeRegistryInvariant`, `LatticeFactoryInvariant`). The gas suites are left out. The test/README.md
+section on mutation testing describes how the run works.
+
+Results on the source this document describes (2026-10-09; all mutants run, none sampled, no function
+excluded; the two lanes took about an hour on a 12-core laptop):
+
+| File | Mutants | Killed | Survived | Stillborn | Score | Equivalent | Score excluding equivalents |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| `LatticeRegistry` | 109 | 109 | 0 | 0 | 100% | 0 | 100% |
+| `LatticeFactory` | 144 | 141 | 1 | 2 | 99.3% | 1 | 100% |
+
+The suites from the #176 hardening change already kill every non-equivalent mutant, so this change adds no
+mutation regression tests. The mutants by operator: 70 `if` conditions forced true or false, 72 deleted
+statements, 40 binary and 40 unary operator swaps, 21 swapped arguments and 10 changed assignments.
+
+| Id | Location | Mutant | Status and reason |
+| ---: | --- | --- | --- |
+| 762 | `LatticeFactory` constructor | `address(_registry).code.length == 0` → `true` | Stillborn: the constructor then always reverts before assigning its immutables, which solc rejects (error 1284) |
+| 767 | `LatticeFactory` constructor | the ENS argument check → `true` | Stillborn, for the same reason |
+| 823 | `LatticeFactory` `_materialize` | `entry.exclude.length != 0` → `true` | Equivalent: `_exclude` with an empty list runs no loop iteration and stores the unchanged length, so only the gas cost differs |
+
+Mutant ids are positions in `gambit_out/mutants.log`. They hold while the config and the target sources are
+unchanged, so `MUTANTS="823"` re-runs a survivor; any edit to either contract renumbers them.
 
 ## What is not covered
 
@@ -190,10 +231,10 @@ hardening change, as corroboration on a node. With the current ABI the `deploy` 
 - **Low-gas callers.** A `getCut` or `getSelectors` call left with too little gas to forward the full
   100,000 to the exporter can see the exporter run out of gas and then revert `SelectorDrift` instead of
   running out of gas itself. It still fails closed; retry with more gas.
-- **The 13 facets without ERC-8153 exports** (#176 research comment). They cannot be registered and stay
-  custom cuts.
-- **Mutation testing** of the two contracts. The Gambit pilot (`make mutation`) targets three libraries; adding
-  `LatticeRegistry` and `LatticeFactory` would measure how many mutants these suites kill.
+- **Yul.** Gambit mutates Solidity expressions only, so the [mutation run](#mutation-testing) says nothing
+  about the `assembly` blocks: the registry's hand decoder in `_exportedBlob` and its selector unpacking in
+  `_unpack`, and the factory's length store in `_exclude`. The decoder's acceptance rule is checked
+  differentially against `abi.decode` by the raw-return fuzz tests (finding R-1).
 - **Formal verification.** None.
 - **Off-chain consumers** (Studio, indexers) and how they treat F-3, F-5 and F-7.
 

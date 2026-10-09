@@ -41,4 +41,17 @@ contract ERC6551Account is IERC6551Account, IERC6551Executable {
     {
         return ERC6551AccountLib.execute(to, value, data, operation);
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect ERC6551Account methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. `receive()` has no selector and is not exported: behind a diamond, plain
+    ///      ETH transfers reach the cut {Receive} facet (its export is 0x00000000). Chunks:
+    ///      `execute(address,uint256,bytes,uint8)` 0x51945447
+    ///      `isValidSigner(address,bytes)` 0x523e3260
+    ///      `state()` 0xc19d93fb
+    ///      `token()` 0xfc0c546a
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors = hex"51945447523e3260c19d93fbfc0c546a";
+    }
 }

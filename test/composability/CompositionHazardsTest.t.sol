@@ -8,6 +8,7 @@ import {CannotAddFunctionToDiamondThatAlreadyExists, FacetCut, FacetCutAction} f
 import {OwnableLib} from "@diamond/libraries/OwnableLib.sol";
 import {DeployAccessManager} from "@lattice-script/base/access/DeployAccessManager.s.sol";
 import {DeployBridgeERC20} from "@lattice-script/base/crosschain/DeployBridgeERC20.s.sol";
+import {DeployStrategyManager} from "@lattice-script/base/defi/DeployStrategyManager.s.sol";
 import {DeployGovernedDiamondCut} from "@lattice-script/base/governance/DeployGovernedDiamondCut.s.sol";
 import {DeployGovernedSafeDiamondCut} from "@lattice-script/base/governance/DeployGovernedSafeDiamondCut.s.sol";
 import {DeployChainlinkAdapter} from "@lattice-script/base/oracles/DeployChainlinkAdapter.s.sol";
@@ -36,7 +37,10 @@ import {BridgeERC20} from "@lattice/crosschain/BridgeERC20.sol";
 import {BridgeERC20Init} from "@lattice/crosschain/BridgeERC20Init.sol";
 import {CrosschainLink} from "@lattice/crosschain/CrosschainLink.sol";
 import {CrosschainTimelockHandler} from "@lattice/crosschain/CrosschainTimelockHandler.sol";
+import {AaveV3Adapter} from "@lattice/defi/AaveV3Adapter.sol";
+import {CurveStableSwapAdapter} from "@lattice/defi/CurveStableSwapAdapter.sol";
 import {GovernedVault} from "@lattice/defi/GovernedVault.sol";
+import {UniswapV3Adapter} from "@lattice/defi/UniswapV3Adapter.sol";
 import {GovernedDiamondCutInit} from "@lattice/governance/GovernedDiamondCutInit.sol";
 import {TimelockController} from "@lattice/governance/TimelockController.sol";
 import {Votes} from "@lattice/governance/Votes.sol";
@@ -226,6 +230,30 @@ contract CompositionHazardsTest is Test {
         (FacetCut[] memory base, address init, bytes memory data) = new DeployChainlinkVRF().buildCuts(admin);
         FacetCut[] memory cuts = _append(base, _add(address(new PythEntropyAdapter())));
         _expectCutClash(cuts, init, data, _firstClash(base, cuts[cuts.length - 1]));
+    }
+
+    /// @notice One strategy adapter per diamond: the six adapters share the `IStrategy`, `IProtocolAdapter` and
+    ///         `IAdapterOperator` selectors over separate storage, so a second adapter reverts at cut time.
+    function test_SecondStrategyAdapterRevertsAtCut() public {
+        FacetCut[] memory base = new FacetCut[](1);
+        base[0] = _add(address(new CurveStableSwapAdapter()));
+        FacetCut[] memory cuts = _append(base, _add(address(new UniswapV3Adapter())));
+        _expectCutClash(cuts, address(0), "", _firstClash(base, cuts[cuts.length - 1]));
+    }
+
+    /// @notice A strategy adapter never goes into a vault diamond: it clashes with StrategyManager on `harvest()`,
+    ///         `vault()` and `reentrancyGuardEntered()`, and with ERC4626 on `asset()`.
+    function test_StrategyAdapterInVaultDiamondRevertsAtCut() public {
+        (FacetCut[] memory base, address init, bytes memory data) = new DeployStrategyManager().buildCuts(admin);
+        FacetCut[] memory cuts = _append(base, _add(address(new AaveV3Adapter())));
+        bytes4 clash = _firstClash(base, cuts[cuts.length - 1]);
+        assertTrue(clash == 0x4641257d || clash == 0xfbfa77cf || clash == 0xd2c725e0, "a StrategyManager selector");
+        _expectCutClash(cuts, init, data, clash);
+
+        (base, init, data) = new DeployERC4626().buildCuts(makeAddr("asset"), "Vault", "vTKN", 0);
+        cuts = _append(base, _add(address(new AaveV3Adapter())));
+        assertEq(_firstClash(base, cuts[cuts.length - 1]), bytes4(0x38d52e0f), "asset() clashes first");
+        _expectCutClash(cuts, init, data, 0x38d52e0f);
     }
 
     //*//////////////////////////////////////////////////////////////////////////

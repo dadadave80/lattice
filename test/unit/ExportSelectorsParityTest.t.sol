@@ -14,10 +14,10 @@ import {Test} from "forge-std/Test.sol";
 ///         wrong function set. For each facet: deploy it, read `exportSelectors()`, decode the tightly packed
 ///         bytes, and assert SET equality (order-insensitive) with `forge inspect`, no duplicates, no
 ///         `exportSelectors()` (0x0ef22643) in the export, and a non-empty result — every failure names the facet.
-/// @dev The `test_AllFacetsExportSelectorsParity` gate FAILS until every facet implements ERC-8153 (facets are
-///      migrated in parallel). The `test_Harness_*` cases prove the harness itself is correct TODAY against local
-///      mock fixtures: a compliant facet passes every check; a facet that (wrongly) exports 0x0ef22643, one with a
-///      duplicate selector, and one with a malformed (non-4-multiple) length are each caught.
+/// @dev Every facet in `src/` implements ERC-8153 and is in the inventory (#176 added the last 13). The
+///      `test_Harness_*` cases prove the harness itself is correct against local mock fixtures: a compliant facet
+///      passes every check; a facet that (wrongly) exports 0x0ef22643, one with a duplicate selector, and one
+///      with a malformed (non-4-multiple) length are each caught.
 contract ExportSelectorsParityTest is Test {
     /// @dev `IERC8153.exportSelectors()` — must never appear inside any facet's own export.
     bytes4 private constant SEL_EXPORT = 0x0ef22643;

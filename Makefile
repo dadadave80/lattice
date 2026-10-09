@@ -83,7 +83,7 @@ invariant-deep: ## Deep invariant campaign over test/invariant (profile deep: 1,
 	FOUNDRY_PROFILE=deep forge test --match-path 'test/invariant/*'
 
 .PHONY: mutation
-mutation: ## Local Gambit mutation pilot on ERC4626Lib, StrategyManagerLib, AccessManagerLib (needs gambit; not in CI; MUTANTS=/TARGETS= filter)
+mutation: ## Local Gambit mutation run on ERC4626Lib, StrategyManagerLib, AccessManagerLib, LatticeRegistry, LatticeFactory (needs gambit; not in CI; MUTANTS=/TARGETS= filter)
 	./script/mutation-test.sh
 
 .PHONY: clean

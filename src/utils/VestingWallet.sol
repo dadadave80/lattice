@@ -71,4 +71,23 @@ contract VestingWallet is IVestingWallet {
     function release(address token) public virtual {
         VestingWalletLib.release(token);
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect VestingWallet methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `duration()` 0x0fb5a6b4
+    ///      `end()` 0xefbe1c1c
+    ///      `releasable()` 0xfbccedae
+    ///      `releasable(address)` 0xa3f8eace
+    ///      `release()` 0x86d1a69f
+    ///      `release(address)` 0x19165587
+    ///      `released()` 0x96132521
+    ///      `released(address)` 0x9852595c
+    ///      `start()` 0xbe9a6555
+    ///      `vestedAmount(address,uint64)` 0x810ec23b
+    ///      `vestedAmount(uint64)` 0x0a17b06b
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors = hex"0fb5a6b4efbe1c1cfbccedaea3f8eace86d1a69f19165587961325219852595cbe9a6555810ec23b0a17b06b";
+    }
 }

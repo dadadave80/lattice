@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {Selectors} from "@diamond-test/helpers/Selectors.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
-import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
 import {Lattice} from "@lattice/Lattice.sol";
 import {Receive} from "@lattice/Receive.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
@@ -88,7 +88,7 @@ contract LidoStipendInit {
 /// @notice Regression for the Receive-facet migration: a DIAMOND-HOSTED LidoAdapter must survive
 ///         canonical WETH9's 2,300-gas `transfer` payout in `deploy()`. `vm.cool` restores the
 ///         realistic cold access-list state (in-test warmth otherwise masks the stipend failure).
-contract LidoWETH9StipendTest is Test, GetSelectors {
+contract LidoWETH9StipendTest is Test {
     address internal diamond;
     address internal receiveFacet;
     WETH9TransferMock internal weth;
@@ -101,11 +101,12 @@ contract LidoWETH9StipendTest is Test, GetSelectors {
         wst = new MockWstETH(steth);
         receiveFacet = address(new Receive());
 
+        LidoAdapter lido = new LidoAdapter();
         FacetCut[] memory cuts = new FacetCut[](2);
         cuts[0] = FacetCut({
-            facetAddress: address(new LidoAdapter()),
+            facetAddress: address(lido),
             action: FacetCutAction.Add,
-            functionSelectors: _getSelectors("LidoAdapter")
+            functionSelectors: Selectors.decode(lido.exportSelectors())
         });
         bytes4[] memory zero = new bytes4[](1);
         zero[0] = bytes4(0);
