@@ -42,7 +42,8 @@ recipe-built test setup.
 ## Architecture in brief
 
 Modules follow a three-layer pattern. The full rules are in
-[AGENTS.md: Solidity architecture and storage](AGENTS.md#solidity-architecture-and-storage).
+[AGENTS.md: Solidity architecture and storage](AGENTS.md#solidity-architecture-and-storage), and the
+reasons behind them are in the [architecture decision records](docs/adr/README.md).
 
 1. **Interface** (`src/interfaces/<area>/I<Module>.sol`): ABI, errors and events.
 2. **Library** (`src/<area>/libraries/<Module>Lib.sol`): all logic, storage through one ERC-7201 namespace,
