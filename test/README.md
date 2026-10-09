@@ -38,12 +38,32 @@ Structured per the **Testing** and **Deployment** sections of the Cyfrin Solidit
    the locked ADMIN_ROLE, the global nonce, a too-early `when` raised instead of refused, and Lattice error
    shapes), and `ERC1155SupplyInvariant` (a `DeployERC1155Supply` diamond under mints, burns and transfers,
    against per-id supply, holder balances and a mint-minus-burn ledger), and `ERC721EnumerableInvariant` (a `DeployERC721Enumerable` diamond against a ghost set of live
-   ids). They run 64 runs under `FOUNDRY_PROFILE=ci` (a contract-level
+   ids). `GovernorDiamondInvariant` drives a `DeployGovernedVault` diamond's Governor, its own timelock and the
+   share Votes: voting power equals the delegated shares and past votes never change, tallies are the sum of their
+   ballots, each proposal's state matches a ghost lifecycle model and only moves forward, and the timelock runs only
+   queued operations, once, after their ETA (including governed cuts, and direct runs through its open executor role).
+   Two lifecycle edges the live Governor allows and OpenZeppelin's does not are modelled as they behave and pinned by
+   `test_Finding_*` tests in the same file: an Expired proposal still runs through the timelock's open executor (and
+   its proposer can no longer cancel it), and the proposer can cancel a Succeeded or Queued proposal.
+   `GovernedCutDiamondInvariant` drives a `DeployGovernedDiamondCut` diamond's authority surface: role membership
+   against a ghost role table, cuts only from an executor while not stopped, guardian emergency removals that are
+   Remove-only and spare the recovery entrypoints, an append-only upgrade registry and a frozen set whose selectors
+   never move. `CrosschainLaneDiamondInvariant` relays messages out of order between two lanes of recipe diamonds
+   modelled locally (burn/mint between two `DeployERC20Crosschain` tokens; lock/mint between `DeployBridgeERC20` and
+   `DeployBridgeERC7802` over a `DeployERC7802` token): value is conserved across each lane including what is in
+   flight, every balance matches a ghost ledger, and replays, foreign gateways, wrong origins and direct handler
+   calls are refused. `OpenBridgeDiamondInvariant` drives two `DeployERC7786OpenBridge` diamonds over four gateways:
+   each message executes at most once and only with `threshold` distinct member attestations (the recipient snapshots
+   B's threshold and attestation count during each delivery, and B's tracker, read from its storage, matches a ghost
+   of who attested what), a failed execution is retried, never doubled, and A's stored nonce rises by one per send.
+   They run 64 runs under `FOUNDRY_PROFILE=ci` (a contract-level
    `/// forge-config: ci.invariant.runs = 64` key, since a function-level key does not reach invariants
    inherited from a base) and the full 256 locally. `LatticeRegistryInvariant`, `LatticeRegistryCodeDriftInvariant`
    and `LatticeFactoryInvariant` check the registry and factory invariant set (R1-R7, F1-F6) from #176; the
    threat model in `docs/security/registry-factory-threat-model.md` maps each invariant to its tests.
-   `make invariant-deep` runs every invariant suite at 1,000 runs and depth 200 (`[profile.deep.invariant]`); it is not a CI gate.
+   `make invariant-deep` runs every invariant suite at 1,000 runs and depth 200 (`[profile.deep.invariant]`). The
+   weekly `Scheduled` workflow runs it as the `Deep invariants` job, seeded with the run id; it is not a required
+   check or part of `CI OK`.
 3. **Branching-tree technique (BTT)** for exhaustive, named coverage of revert paths and state-dependent
    branches. A `.tree` file lives **next to** the `.t.sol` it documents, named `<Subject><Function>.tree`.
    Each leaf maps to a named test; a `given` is a state-setup modifier, a `when` is a parameter branch, an
