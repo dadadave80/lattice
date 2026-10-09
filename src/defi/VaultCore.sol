@@ -41,8 +41,10 @@ import {ERC4626Lib} from "@lattice/tokens/ERC4626/libraries/ERC4626Lib.sol";
 ///      Hook model (D25, #234): the four mutators mint and burn shares through {ERC20Lib} directly, so they skip
 ///      ERC20Pausable's pause, ERC20Votes' checkpoints and ERC20Capped's cap; VaultCore is mutually exclusive with
 ///      those extensions. {DeployGovernedVault} routes the mutators to GovernedVault, which moves voting units.
+///
+///      The vault math is {ERC4626Lib}'s, which lists every difference from OpenZeppelin.
 /// @custom:lattice-version 0.1.0
-/// @custom:lattice-source OpenZeppelin v5.1.0
+/// @custom:lattice-source OpenZeppelin v5.6.1
 contract VaultCore is IVaultCoreRecovery {
     //*//////////////////////////////////////////////////////////////////////////
     //                           ERC-4626 OVERRIDE
