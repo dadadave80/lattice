@@ -3,8 +3,9 @@
 # check-links.sh
 #
 # Offline check of the built documentation site (script/docs/build.sh runs it):
-#   - the pages the site promises exist: home, every guide, the grant evidence and representative
-#     API reference pages;
+#   - the pages the site promises exist: home, every guide, the grant evidence, the decision-record
+#     index and every record in docs/adr/, and representative API reference pages;
+#   - every record in docs/adr/ is linked from the Design decisions sidebar in docs/site/vocs.config.ts;
 #   - every local href/src in every HTML page resolves to a built file. The site is served under the
 #     /lattice base path, so a root-absolute link must start with /lattice/; one that does not would
 #     404 on GitHub Pages.
@@ -37,8 +38,17 @@ exists() {
     [[ -z "${p}" || -f "${DIR}/${p}" || -f "${DIR}/${p%/}/index.html" || -f "${DIR}/${p}.html" ]]
 }
 
+# Every decision record in docs/adr/ must be built and listed in the site's Design decisions sidebar.
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+ADRS=()
+for adr in "${ROOT}"/docs/adr/[0-9][0-9][0-9][0-9]-*.md; do
+    name="$(basename "${adr}" .md)"
+    ADRS+=("adr/${name}")
+    grep -qF "'/adr/${name}'" "${ROOT}/docs/site/vocs.config.ts" \
+        || fail "ADR ${name} missing from the Design decisions sidebar in docs/site/vocs.config.ts"
+done
 for page in "" guides/compose-your-own-diamond guides/selector-compatibility guides/storage-action \
-    guides/hedera grants src/contract.Lattice src/governance/contract.Governor \
+    guides/hedera grants adr "${ADRS[@]}" src/contract.Lattice src/governance/contract.Governor \
     src/access/libraries/library.AccessControlLib; do
     exists "${page}" && [[ -n "${page}" || -f "${DIR}/index.html" ]] || fail "missing page /${page}"
 done

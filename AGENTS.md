@@ -26,6 +26,10 @@ if older documentation conflicts with the development policy below, apply this p
   Explain correctness guarantees, trust assumptions, complexity, deployment consequences, gas,
   and bytecode tradeoffs. Measure optimization claims; label estimates. Do not implement every
   alternative or add abstractions without a demonstrated need.
+- Record a settled material decision as an architecture decision record in `docs/adr/`, using the
+  template in [docs/adr/README.md](docs/adr/README.md). The record states the outcome and links the
+  issue or PR that holds the comparison. A change that contradicts an accepted ADR supersedes it with a
+  new one.
 
 ## Git workflow and authorization
 
@@ -81,6 +85,7 @@ if older documentation conflicts with the development policy below, apply this p
 | `script/upgrades/` | Storage-layout guard wrapper, probe, baseline and reviewed resets |
 | `.github/actions/storage-layout/` | Reusable storage-safety Action: the Bash+jq checker, its README and test fixture |
 | `docs/guides/`, `docs/site/` | Authored guides; the Vocs docs site's committed config and lockfile |
+| `docs/adr/` | Architecture decision records and their index |
 | `script/README.md` | Map of every `script/` folder, its entry points and Makefile targets |
 | `test/` | Layout and conventions in [test/README.md](test/README.md) |
 
@@ -146,6 +151,9 @@ Adding a module touches more than its three source files: follow the
   or a worktree unless the user explicitly overrides that rule for the specific document.
 - Store such documents outside the repository (the maintainer uses `~/.codex/specs/`), verify the
   destination is outside a Git worktree, and return the absolute path. This requested `AGENTS.md` is project guidance.
+- Architecture decision records in `docs/adr/` are not specifications or plans: they record decided
+  outcomes and belong in the repository. The comparisons behind them stay in issues, PRs or
+  `~/.codex/specs/`.
 
 ## External-source attribution (always)
 

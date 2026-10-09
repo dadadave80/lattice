@@ -1,12 +1,34 @@
 // Lattice documentation site. `script/docs/build.sh` (`make doc`) stages the pages and builds it:
 // `forge doc` regenerates the API reference (src/pages/src/) and ./vocs.sidebar.ts, and the guides are
-// copied from docs/guides/, the storage Action README and PROGRESS.md, so each has one source.
+// copied from docs/guides/, the storage Action README, PROGRESS.md and docs/adr/, so each has one source.
 import { defineConfig } from 'vocs/config'
 import { sidebar as api } from './vocs.sidebar'
 
 type Item = { text: string; link?: string; collapsed?: boolean; items?: Item[] }
 
 const firstLink = (item: Item): string | undefined => item.link ?? item.items?.map(firstLink).find(Boolean)
+
+// One entry per record in docs/adr/; its README lists them too, and script/docs/check-links.sh
+// fails when one is missing here.
+const decisions: Item = {
+  text: 'Design decisions',
+  collapsed: true,
+  items: [
+    { text: 'Index', link: '/adr' },
+    { text: '0001 Three-file modules', link: '/adr/0001-three-file-pattern' },
+    { text: '0002 ERC-7201 storage', link: '/adr/0002-erc7201-namespaced-storage' },
+    { text: '0003 ERC-165 map slots', link: '/adr/0003-precomputed-erc165-slots' },
+    { text: '0004 Release salts', link: '/adr/0004-release-deployer-and-salts' },
+    { text: '0005 Receive facet', link: '/adr/0005-receive-facet' },
+    { text: '0006 Atomic initialization', link: '/adr/0006-atomic-factory-initialization' },
+    { text: '0007 Registry trust', link: '/adr/0007-registry-trust-model' },
+    { text: '0008 Freeze once live', link: '/adr/0008-freeze-once-live' },
+    { text: '0009 Token hook model', link: '/adr/0009-token-extension-hook-model' },
+    { text: '0010 Groth16 on BN254', link: '/adr/0010-groth16-bn254' },
+    { text: '0011 No utility duplicates', link: '/adr/0011-no-stateless-utility-duplicates' },
+    { text: '0012 Bash storage checker', link: '/adr/0012-storage-checker-bash-jq' },
+  ],
+}
 
 const guides: Item = {
   text: 'Guides',
@@ -17,6 +39,7 @@ const guides: Item = {
     { text: 'Storage-safety Action', link: '/guides/storage-action' },
     { text: 'Hedera', link: '/guides/hedera' },
     { text: 'Grant evidence', link: '/grants' },
+    decisions,
   ],
 }
 
