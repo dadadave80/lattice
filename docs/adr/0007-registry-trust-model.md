@@ -43,11 +43,12 @@ diamond, no ERC-7201 storage, no proxy.
 - A curated record cannot be repointed, so a pinned version always yields the same cut or a drift revert.
 - Tier A identifies code, not behaviour. Two instances with one codehash can export different selectors
   when the exporter reads its own storage, and `resolve` returns the first attester (finding R-3 in the
-  threat model). The `ILatticeRegistry` NatSpec still describes same-codehash addresses as equivalent and
-  cites #118 for the trust model; correcting it changes the registry bytecode and address
-  ([0004](0004-release-deployer-and-salts.md)), so it belongs to the #176 change.
+  threat model). The `ILatticeRegistry` NatSpec lists the assumptions under which same-codehash
+  addresses are equivalent and says `resolve` is not a selector source (#321).
 - Registration reads exports through a `staticcall`, which cannot enforce `pure`, and a hostile exporter
-  can make registration or reads expensive or malformed. #315 pins each case as a `test_Finding_*` test.
+  could make registration or reads expensive or malformed. Since #321 every exporter call gets at most
+  100,000 gas and 8,192 bytes of return, and a malformed return is `NotERC8153` at `register` and
+  `SelectorDrift` on a read.
 - No production script resolves registry entries today: `BaseDeploy._assemble` passes custom cuts, and
   `DeployRelease` only writes the registry.
 

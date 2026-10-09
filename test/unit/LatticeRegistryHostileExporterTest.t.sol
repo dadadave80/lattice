@@ -18,10 +18,12 @@ import {Test} from "forge-std/Test.sol";
 /// @notice #176: how {LatticeRegistry} treats hostile ERC-8153 selector exporters. Each case pins the exact
 ///         outcome today, at registration and on the live read path that {LatticeRegistry.getCut} and the factory
 ///         use: reverting and gas-burning calls, short, malformed and non-canonical ABI encodings, trailing bytes,
-///         huge returns, duplicates and the forbidden self-selector deep in a long blob, mutable exports, code
-///         drift, and an exporter that tries to write to the registry from inside its staticcall.
-/// @dev Tests named `test_Finding_*` pin behaviour that differs from the interface NatSpec or that the #176
-///      design work should change. They pass today on purpose; see docs/security/registry-factory-threat-model.md.
+///         huge returns and the return-size and gas bounds, duplicates and the forbidden self-selector deep in a
+///         long blob, mutable exports, code drift, and an exporter that tries to write to the registry from inside
+///         its staticcall.
+/// @dev Findings R-1 (malformed returns reported as empty reverts or Panics) and R-2 (unbounded gas and return
+///      size) are fixed; the tests below pin the fixed behaviour. R-3 (Tier A is a code-identity lookup) is
+///      documented in {ILatticeRegistry}. See docs/security/registry-factory-threat-model.md.
 contract LatticeRegistryHostileExporterTest is Test {
     LatticeRegistry internal registry;
     address internal owner = makeAddr("registryOwner");
@@ -30,6 +32,9 @@ contract LatticeRegistryHostileExporterTest is Test {
     uint64 internal constant V1 = 1 << 48;
 
     bytes4 internal constant SEL_A = 0x11111111;
+
+    /// @dev The registry's cap on an `exportSelectors()` return, in bytes.
+    uint256 internal constant MAX_EXPORT_SIZE = 8192;
     bytes32 internal constant SEL_A_WORD = bytes32(SEL_A);
 
     function setUp() public {
@@ -68,42 +73,42 @@ contract LatticeRegistryHostileExporterTest is Test {
         _expectNotERC8153(RawCode.deploy(abi.encodePacked(SEL_A)));
     }
 
-    /// @notice FINDING (R-1): a return of 64 bytes or more whose offset points past the end fails inside
-    ///         `abi.decode` with EMPTY revert data, not {LatticeRegistry__NotERC8153} as the interface documents.
-    ///         Registration still fails closed; only the reported error differs.
-    function test_Finding_RegisterBareRevertOnOffsetPastEnd() public {
-        address facet = RawCode.deploy(abi.encode(uint256(0x1000), uint256(4), SEL_A_WORD));
-        vm.expectRevert(bytes(""));
-        _register(facet);
+    /// @notice R-1 (fixed): a return of 64 bytes or more whose offset points past the end is refused with the
+    ///         documented error (it used to revert with empty data from inside `abi.decode`).
+    function test_RegisterRevertsNotERC8153OnOffsetPastEnd() public {
+        _expectNotERC8153(RawCode.deploy(abi.encode(uint256(0x1000), uint256(4), SEL_A_WORD)));
     }
 
-    /// @notice FINDING (R-1): the same for an offset of `2**256 - 1`.
-    function test_Finding_RegisterBareRevertOnHugeOffset() public {
-        address facet = RawCode.deploy(abi.encode(type(uint256).max, uint256(4), SEL_A_WORD));
-        vm.expectRevert(bytes(""));
-        _register(facet);
+    /// @notice R-1 (fixed): the same for an offset of `2**256 - 1`.
+    function test_RegisterRevertsNotERC8153OnHugeOffset() public {
+        _expectNotERC8153(RawCode.deploy(abi.encode(type(uint256).max, uint256(4), SEL_A_WORD)));
     }
 
-    /// @notice FINDING (R-1): a declared length larger than the data that follows: empty revert data.
-    function test_Finding_RegisterBareRevertOnLengthPastEnd() public {
-        address facet = RawCode.deploy(abi.encode(uint256(0x20), uint256(0x100), SEL_A_WORD));
-        vm.expectRevert(bytes(""));
-        _register(facet);
+    /// @notice R-1 (fixed): an offset that leaves no room for the length word (offset + 32 > size).
+    function test_RegisterRevertsNotERC8153OnOffsetWithoutLengthWord() public {
+        _expectNotERC8153(RawCode.deploy(abi.encode(uint256(0x41), uint256(4), SEL_A_WORD)));
     }
 
-    /// @notice FINDING (R-1): truncated data (8 bytes declared, 4 present, no padding): empty revert data.
-    function test_Finding_RegisterBareRevertOnTruncatedData() public {
-        address facet = RawCode.deploy(abi.encodePacked(uint256(0x20), uint256(8), SEL_A));
-        vm.expectRevert(bytes(""));
-        _register(facet);
+    /// @notice R-1 (fixed): a declared length larger than the data that follows.
+    function test_RegisterRevertsNotERC8153OnLengthPastEnd() public {
+        _expectNotERC8153(RawCode.deploy(abi.encode(uint256(0x20), uint256(0x100), SEL_A_WORD)));
     }
 
-    /// @notice FINDING (R-1): a declared length of `2**256 - 1` overflows the decoder's allocation and reverts
-    ///         with `Panic(0x41)` instead of {LatticeRegistry__NotERC8153}.
-    function test_Finding_RegisterPanicsOnHugeDeclaredLength() public {
-        address facet = RawCode.deploy(abi.encode(uint256(0x20), type(uint256).max, SEL_A_WORD));
-        vm.expectRevert(abi.encodeWithSignature("Panic(uint256)", uint256(0x41)));
-        _register(facet);
+    /// @notice R-1 (fixed): truncated data (8 bytes declared, 4 present, no padding).
+    function test_RegisterRevertsNotERC8153OnTruncatedData() public {
+        _expectNotERC8153(RawCode.deploy(abi.encodePacked(uint256(0x20), uint256(8), SEL_A)));
+    }
+
+    /// @notice R-1 (fixed): a declared length of `2**256 - 1` is refused with the documented error (it used to
+    ///         overflow the decoder's allocation with `Panic(0x41)`).
+    function test_RegisterRevertsNotERC8153OnHugeDeclaredLength() public {
+        _expectNotERC8153(RawCode.deploy(abi.encode(uint256(0x20), type(uint256).max, SEL_A_WORD)));
+    }
+
+    /// @notice Unpadded data that exactly fills the return is accepted, as `abi.decode` accepts it.
+    function test_UnpaddedDataEndingAtTheReturnEndRegisters() public {
+        _register(RawCode.deploy(abi.encodePacked(uint256(0x20), uint256(4), SEL_A)));
+        assertEq(registry.get(NAME, V1).selectorsHash, keccak256(abi.encodePacked(SEL_A)), "pin = decoded blob");
     }
 
     /// @notice A non-canonical encoding (offset 0x40, one padding word) decodes to the same blob, so it pins the
@@ -134,27 +139,42 @@ contract LatticeRegistryHostileExporterTest is Test {
         assertEq(registry.getSelectors(NAME, V1)[0], SEL_A, "padding ignored");
     }
 
-    /// @notice An exporter that loops forever burns all the gas the staticcall forwards (63/64 of what is left),
-    ///         then registration fails with the documented error on the remaining 1/64.
-    function test_LoopingExporterBurnsForwardedGasThenRevertsNotERC8153() public {
+    /// @notice R-2 (fixed): an exporter that loops forever burns only the 100,000 gas the registry forwards,
+    ///         however much the caller has, and registration fails with the documented error.
+    function test_LoopingExporterBurnsAtMostTheExportGasThenRevertsNotERC8153() public {
         address facet = address(new CoreLoopExporter());
-        vm.expectRevert(abi.encodeWithSelector(ILatticeRegistry.LatticeRegistry__NotERC8153.selector, facet));
+        bytes memory expected = abi.encodeWithSelector(ILatticeRegistry.LatticeRegistry__NotERC8153.selector, facet);
+        uint256 before = gasleft();
         vm.prank(owner);
-        registry.register{gas: 2_000_000}(NAME, V1, facet);
+        try registry.register{gas: 10_000_000}(NAME, V1, facet) {
+            revert("looping exporter registered");
+        } catch (bytes memory err) {
+            assertEq(err, expected, "documented error");
+        }
+        assertLt(before - gasleft(), 200_000, "the exporter call is capped at 100,000 gas");
     }
 
-    /// @notice FINDING (R-2): there is no cap on return-data size. A curated exporter that returns a valid
-    ///         one-selector encoding followed by ~1 MB of zeros registers, and then EVERY live read (`getCut`,
-    ///         `getSelectors`, each factory deploy that resolves it) pays to copy the whole return into memory.
-    function test_Finding_ReturnBombRegistersAndTaxesEveryRead() public {
+    /// @notice R-2 (fixed): a valid one-selector encoding followed by ~1 MB of zeros is refused at registration,
+    ///         and refusing it is cheap: the registry never copies a return over its size cap.
+    function test_ReturnBombIsRefusedAtRegistration() public {
         address bomb = address(new CoreReturnBombExporter(1_000_000));
-        _register(bomb);
-
         uint256 before = gasleft();
-        FacetCut memory cut = registry.getCut(NAME, V1);
-        uint256 used = before - gasleft();
-        assertEq(cut.functionSelectors.length, 1, "decoded one selector");
-        assertGt(used, 3_000_000, "every read copies ~1 MB of return data");
+        _expectNotERC8153(bomb);
+        assertLt(before - gasleft(), 300_000, "the bomb is never copied");
+    }
+
+    /// @notice R-2 boundary: a return of exactly the cap (a valid encoding padded with trailing bytes) registers;
+    ///         one byte more is refused.
+    function test_ReturnSizeCapBoundary() public {
+        bytes memory head = abi.encode(abi.encodePacked(SEL_A));
+        address atCap = RawCode.deploy(abi.encodePacked(head, new bytes(MAX_EXPORT_SIZE - head.length)));
+        address overCap = RawCode.deploy(abi.encodePacked(head, new bytes(MAX_EXPORT_SIZE + 1 - head.length)));
+        _register(atCap);
+        assertEq(registry.getSelectors(NAME, V1)[0], SEL_A, "at the cap registers and reads");
+
+        vm.expectRevert(abi.encodeWithSelector(ILatticeRegistry.LatticeRegistry__NotERC8153.selector, overCap));
+        vm.prank(owner);
+        registry.register(NAME, V1 + 1, overCap);
     }
 
     /// @notice The registry scans the whole blob: a duplicate in last position of a 128-selector blob is caught.
@@ -220,16 +240,28 @@ contract LatticeRegistryHostileExporterTest is Test {
         registry.getCut(NAME, V1);
     }
 
-    /// @notice FINDING (R-1, live path): a live answer switched to a malformed encoding of 64 bytes or more
-    ///         makes `getCut` revert with EMPTY data. `_liveSelectors`' NatSpec says such a read reverts with a
-    ///         Panic; it is a bare revert. Still fail-closed: no stale cut is returned.
-    function test_Finding_LiveMalformedReturnIsBareRevert() public {
+    /// @notice R-1 (fixed, live path): a live answer switched to a malformed encoding of 64 bytes or more is
+    ///         reported as {LatticeRegistry__SelectorDrift} (it used to revert with empty data).
+    function test_LiveMalformedReturnIsSelectorDrift() public {
         CoreSwitchableRawExporter facet = new CoreSwitchableRawExporter();
         facet.set(abi.encode(abi.encodePacked(SEL_A)));
         _register(address(facet));
 
         facet.set(abi.encode(uint256(0x1000), uint256(4), SEL_A_WORD));
-        vm.expectRevert(bytes(""));
+        vm.expectRevert(abi.encodeWithSelector(ILatticeRegistry.LatticeRegistry__SelectorDrift.selector, facet));
+        registry.getCut(NAME, V1);
+    }
+
+    /// @notice R-2 (fixed, live path): a registered exporter that later answers with more than the cap is
+    ///         drift, and the read never copies the oversized return.
+    function test_LiveOversizedReturnIsSelectorDrift() public {
+        CoreSwitchableRawExporter facet = new CoreSwitchableRawExporter();
+        bytes memory head = abi.encode(abi.encodePacked(SEL_A));
+        facet.set(head);
+        _register(address(facet));
+
+        facet.set(abi.encodePacked(head, new bytes(MAX_EXPORT_SIZE + 1 - head.length)));
+        vm.expectRevert(abi.encodeWithSelector(ILatticeRegistry.LatticeRegistry__SelectorDrift.selector, facet));
         registry.getCut(NAME, V1);
     }
 
@@ -256,10 +288,11 @@ contract LatticeRegistryHostileExporterTest is Test {
     //                 TIER A — code identity is not export identity
     //////////////////////////////////////////////////////////////////////////*//
 
-    /// @notice FINDING (R-3, the Tier A trust model): two same-codehash instances in different states export
-    ///         different selectors, yet `resolve` returns whichever was attested first. `resolve` is a code
-    ///         identity lookup; it says nothing about selectors or about direct (non-delegatecall) behaviour.
-    function test_Finding_ResolveReturnsFirstAttesterWhileExportsDiffer() public {
+    /// @notice R-3 (documented in the {ILatticeRegistry} Tier A NatSpec): two same-codehash instances in different
+    ///         states export different selectors, yet `resolve` returns whichever was attested first. `resolve` is
+    ///         a code identity lookup; it says nothing about selectors or about direct (non-delegatecall)
+    ///         behaviour.
+    function test_ResolveReturnsFirstAttesterWhileExportsDiffer() public {
         CoreFlippingExporter first = new CoreFlippingExporter();
         CoreFlippingExporter second = new CoreFlippingExporter();
         second.flip();

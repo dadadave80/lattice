@@ -113,9 +113,9 @@ contract LatticeRegistryFuzz is Test {
         }
     }
 
-    /// @notice For ARBITRARY raw return data, registration never accepts anything but a decodable, valid blob,
-    ///         and the pin is always the hash of the decoded blob. Failures are {LatticeRegistry__NotERC8153}, or
-    ///         (finding R-1) an empty revert or `Panic(0x41)` from the decoder.
+    /// @notice For ARBITRARY raw return data, registration accepts exactly what `abi.decode(ret, (bytes))` decodes
+    ///         to a valid blob, the pin is always the hash of the decoded blob, and every failure is
+    ///         {LatticeRegistry__NotERC8153} (R-1 fixed: never an empty revert or a Panic).
     function testFuzz_RawReturnNeverRegistersAnythingButTheDecodedBlob(bytes memory ret) public {
         if (ret.length > MAX_BLOB) {
             assembly ("memory-safe") {
@@ -164,12 +164,11 @@ contract LatticeRegistryFuzz is Test {
             assertEq(registry.get(bytes32(0), 1).selectorsHash, keccak256(decoded), "pin != decoded blob");
         } catch (bytes memory err) {
             assertFalse(decodes && _acceptable(decoded), "rejected a valid return");
-            bool documented = keccak256(err)
-                == keccak256(abi.encodeWithSelector(ILatticeRegistry.LatticeRegistry__NotERC8153.selector, facet));
-            bool bare = err.length == 0;
-            bool panic = keccak256(err) == keccak256(abi.encodeWithSignature("Panic(uint256)", uint256(0x41)));
-            assertTrue(documented || bare || panic, "unexpected revert shape");
-            if (!decodes && ret.length >= 64) assertFalse(documented, "decoder failures are not NotERC8153 (R-1)");
+            assertEq(
+                err,
+                abi.encodeWithSelector(ILatticeRegistry.LatticeRegistry__NotERC8153.selector, facet),
+                "every refusal is NotERC8153"
+            );
         }
     }
 
@@ -183,14 +182,13 @@ contract LatticeRegistryFuzz is Test {
         registry.get(nameHash, 0);
     }
 
-    /// @notice The handover completes only for the nominated account, and only once. (`transferOwnership(0)`
-    ///         "cancels" by nominating address 0, which no transaction can send from; see
-    ///         {test_Finding_CancelledHandoverIsAcceptableOnlyByAddressZero}.)
+    /// @notice The handover completes only for the nominated account, and only once. Nominating address 0
+    ///         cancels, and then nobody can accept, not even a call from address 0 (R-4).
     function testFuzz_OwnershipHandover(address nominee, address caller) public {
         vm.prank(owner);
         registry.transferOwnership(nominee);
 
-        if (caller != nominee) {
+        if (caller != nominee || nominee == address(0)) {
             vm.expectRevert(abi.encodeWithSelector(ILatticeRegistry.LatticeRegistry__NotPendingOwner.selector, caller));
             vm.prank(caller);
             registry.acceptOwnership();
@@ -202,25 +200,23 @@ contract LatticeRegistryFuzz is Test {
         assertEq(registry.owner(), nominee, "handover");
         assertEq(registry.pendingOwner(), address(0), "pending cleared");
 
-        if (caller == address(0)) return;
         vm.expectRevert(abi.encodeWithSelector(ILatticeRegistry.LatticeRegistry__NotPendingOwner.selector, caller));
         vm.prank(caller);
         registry.acceptOwnership();
     }
 
-    /// @notice FINDING (R-4, informational): cancelling stores `pendingOwner = 0`, and `acceptOwnership` does not
-    ///         reject a zero pending owner, so a call FROM address 0 would complete the cancelled handover and
-    ///         set `owner = 0`, contradicting the constructor's non-zero rule. No EVM transaction is sent from
-    ///         address 0, so this is reachable only under a cheatcode; an explicit check would make R4
-    ///         (`owner != 0`) hold by construction.
-    function test_Finding_CancelledHandoverIsAcceptableOnlyByAddressZero() public {
+    /// @notice R-4 (fixed): cancelling stores `pendingOwner = 0`, and `acceptOwnership` refuses a zero pending
+    ///         owner, so even a call FROM address 0 (reachable only under a cheatcode) cannot complete a cancelled
+    ///         handover: `owner != 0` holds by construction.
+    function test_CancelledHandoverCannotBeAcceptedEvenByAddressZero() public {
         vm.startPrank(owner);
         registry.transferOwnership(makeAddr("nominee"));
         registry.transferOwnership(address(0));
         vm.stopPrank();
 
+        vm.expectRevert(abi.encodeWithSelector(ILatticeRegistry.LatticeRegistry__NotPendingOwner.selector, address(0)));
         vm.prank(address(0));
         registry.acceptOwnership();
-        assertEq(registry.owner(), address(0), "owner zeroed by a call from address 0");
+        assertEq(registry.owner(), owner, "owner unchanged");
     }
 }

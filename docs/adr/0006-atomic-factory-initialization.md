@@ -43,10 +43,10 @@ From the design comparison in #182:
 - No mempool window exists between creation and initialization.
 - The diamond address commits to the caller and salt, not to the recipe. A repeat `deploy` with the same
   caller and salt returns the existing diamond and ignores the new recipe, so callers use one salt per
-  recipe. #176 weighs a strict mode that reverts instead.
+  recipe. `deployStrict` (#321) reverts `LatticeFactory__AlreadyDeployed` instead, and `DiamondDeployed`
+  carries the hash of the applied recipe.
 - The factory is the caller of `initialize`, so an init that grants `msg.sender` a role grants it to the
-  factory. No shipped init does this; `test_Finding_InitGrantingMsgSenderGrantsTheFactory` pins the
-  behaviour.
+  factory. No shipped init does this; `test_InitGrantingMsgSenderGrantsTheFactory` pins the behaviour.
 - Hand-written deployments outside `BaseDeploy` must keep creation and initialization atomic themselves.
 
 ## Confirmation

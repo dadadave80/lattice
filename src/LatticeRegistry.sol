@@ -8,7 +8,8 @@ import {IERC8153} from "@lattice/interfaces/external/ercs/IERC8153.sol";
 /// @title LatticeRegistry
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice Two-tier, immutable, deploy-once on-chain registry of canonical Lattice facets (issue #118). Tier A
-///         is a permissionless, self-verifying codehash → address resolver; Tier B is a curated, append-only
+///         is a permissionless, self-verifying codehash → first-attested-address index (code identity only,
+///         never a selector source; see {ILatticeRegistry}); Tier B is a curated, append-only
 ///         `(name, version)` catalog governed by two-step ownership. Because Lattice facets are stateless (all
 ///         state lives in the caller diamond's ERC-7201 slots), one deployed facet safely serves unlimited
 ///         diamonds via `delegatecall`, so recording addresses here replaces re-`CREATE`ing byte-identical
@@ -28,6 +29,20 @@ contract LatticeRegistry is ILatticeRegistry {
     ///      Together with `0` (a non-existent account) these are the two "no code" states {_requireCode}
     ///      rejects, so only real contract bytecode is ever attested / registered (invariant I4).
     bytes32 private constant EMPTY_CODE_HASH = 0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470;
+
+    /// @dev Gas forwarded to every `exportSelectors()` call (finding R-2). A compiled `pure` exporter returns a
+    ///      constant blob: every release facet's export runs in at most 2,233 gas (AccessManager; measured over
+    ///      the whole release inventory), so this leaves over 40x headroom while bounding what a looping or
+    ///      gas-burning exporter can take from the caller (a `register` transaction, a `getCut` read, or every
+    ///      factory deploy resolving it).
+    uint256 private constant EXPORT_GAS = 100_000;
+
+    /// @dev Largest `exportSelectors()` return the registry copies (finding R-2): 8,192 bytes, room for 2,032
+    ///      selectors in the canonical encoding (64-byte head + data). The largest release export is 224 bytes
+    ///      (Governor, 36 selectors), and EIP-170 caps a facet at 24,576 bytes of code with every routed
+    ///      selector costing a dispatcher several bytes, so no real facet comes close. The cap stops a
+    ///      return-data bomb from taxing every live read: a larger return is never copied at all.
+    uint256 private constant MAX_EXPORT_SIZE = 8192;
 
     //*//////////////////////////////////////////////////////////////////////////
     //                                  STORAGE
@@ -108,6 +123,25 @@ contract LatticeRegistry is ILatticeRegistry {
     }
 
     /// @inheritdoc ILatticeRegistry
+    function getMany(RecordKey[] calldata keys) external view returns (Record[] memory records) {
+        uint256 n = keys.length;
+        records = new Record[](n);
+        for (uint256 i; i < n; ++i) {
+            RecordKey calldata key = keys[i];
+            records[i] = key.version == 0 ? _latest(key.nameHash) : _get(key.nameHash, key.version);
+        }
+    }
+
+    /// @inheritdoc ILatticeRegistry
+    function latestMany(bytes32[] calldata nameHashes) external view returns (Record[] memory records) {
+        uint256 n = nameHashes.length;
+        records = new Record[](n);
+        for (uint256 i; i < n; ++i) {
+            records[i] = _latest(nameHashes[i]);
+        }
+    }
+
+    /// @inheritdoc ILatticeRegistry
     function getSelectors(bytes32 nameHash, uint64 version) external view returns (bytes4[] memory selectors) {
         (, selectors) = _verifiedSelectors(nameHash, version);
     }
@@ -173,7 +207,9 @@ contract LatticeRegistry is ILatticeRegistry {
 
     /// @inheritdoc ILatticeRegistry
     function acceptOwnership() external {
-        if (msg.sender != pendingOwner) revert LatticeRegistry__NotPendingOwner(msg.sender);
+        address pending = pendingOwner;
+        // A zero pending owner means no handover is open (never started, or cancelled), so nobody may accept.
+        if (pending == address(0) || msg.sender != pending) revert LatticeRegistry__NotPendingOwner(msg.sender);
         address previousOwner = owner;
         owner = msg.sender;
         delete pendingOwner;
@@ -267,16 +303,12 @@ contract LatticeRegistry is ILatticeRegistry {
     ///      it, matching `BaseDeploy`'s cut-path strip and the parity gate.
     bytes4 private constant EXPORT_SELECTOR = IERC8153.exportSelectors.selector;
 
-    /// @dev Staticcall `IERC8153(facet).exportSelectors()` and enforce the ERC-8153 contract at registration:
-    ///      the call must succeed and return a well-formed, non-empty, 4-aligned, duplicate-free selector blob
-    ///      that does not self-include `exportSelectors()`. Reverts {LatticeRegistry__NotERC8153} on any
-    ///      violation. Returns the raw packed blob (to be pinned).
+    /// @dev Read `IERC8153(facet).exportSelectors()` through {_exportedBlob} and enforce the ERC-8153 contract
+    ///      at registration: the blob must be non-empty, 4-aligned, duplicate-free, and must not self-include
+    ///      `exportSelectors()`. Reverts {LatticeRegistry__NotERC8153} on any violation, including every call or
+    ///      decoding failure {_exportedBlob} reports as an empty blob. Returns the packed blob (to be pinned).
     function _fetchSelectors(address facet) private view returns (bytes memory blob) {
-        (bool ok, bytes memory ret) = facet.staticcall(abi.encodeCall(IERC8153.exportSelectors, ()));
-        // A valid ABI-encoded `bytes` return is at least 64 bytes (offset word + length word).
-        if (!ok || ret.length < 64) revert LatticeRegistry__NotERC8153(facet);
-
-        blob = abi.decode(ret, (bytes));
+        blob = _exportedBlob(facet);
         uint256 len = blob.length;
         if (len == 0 || len % 4 != 0) revert LatticeRegistry__NotERC8153(facet);
 
@@ -307,20 +339,43 @@ contract LatticeRegistry is ILatticeRegistry {
         // Code pin first: a mutated/self-destructed facet fails here even if some blob still decodes.
         if (facet.codehash != record.codehash) revert LatticeRegistry__CodeDrift(facet);
 
-        bytes memory blob = _liveSelectors(facet);
+        // A failed or malformed read returns an empty blob, whose hash never equals a pin (pins are of
+        // non-empty blobs), so every live-read failure surfaces as SelectorDrift.
+        bytes memory blob = _exportedBlob(facet);
         if (keccak256(blob) != record.selectorsHash) revert LatticeRegistry__SelectorDrift(facet);
         selectors = _unpack(blob);
     }
 
-    /// @dev Best-effort live read of `exportSelectors()`. Returns the raw blob, or empty bytes when the call
-    ///      reverts / self-destructs / returns too few bytes to be ABI `bytes`. An empty (or otherwise
-    ///      non-matching) blob's hash never equals a pinned `selectorsHash`, so the caller's selector pin
-    ///      rejects it with {LatticeRegistry__SelectorDrift}. NOTE: a return that is >= 64 bytes yet not a valid
-    ///      ABI `bytes` encoding makes `abi.decode` revert with a Panic that propagates out of the view — still
-    ///      fail-closed (no stale cut is ever returned), just not surfaced as {LatticeRegistry__SelectorDrift}.
-    function _liveSelectors(address facet) private view returns (bytes memory blob) {
-        (bool ok, bytes memory ret) = facet.staticcall(abi.encodeCall(IERC8153.exportSelectors, ()));
-        if (ok && ret.length >= 64) blob = abi.decode(ret, (bytes));
+    /// @dev Bounded read of `exportSelectors()` (findings R-1 and R-2). Staticcalls `facet` with at most
+    ///      {EXPORT_GAS} gas, copies nothing until the return size is known, and refuses a return shorter than an
+    ///      ABI `bytes` encoding (64 bytes) or longer than {MAX_EXPORT_SIZE}. The encoding is then decoded by hand
+    ///      with exactly the acceptance rule of `abi.decode(ret, (bytes))`: the offset word must leave room for the
+    ///      length word, and the declared length must fit in the bytes that follow it (no padding is required,
+    ///      trailing bytes are ignored). Returns the decoded blob, or EMPTY bytes on any failure, so no hostile
+    ///      return can make the caller revert with empty data or a Panic.
+    function _exportedBlob(address facet) private view returns (bytes memory blob) {
+        assembly ("memory-safe") {
+            blob := 0x60 // empty `bytes` (the zero slot) unless a valid encoding is found below
+            mstore(0x00, shl(224, 0x0ef22643)) // exportSelectors()
+            let ok := staticcall(EXPORT_GAS, facet, 0x00, 0x04, 0x00, 0x00)
+            let size := returndatasize()
+            if and(ok, and(gt(size, 0x3f), iszero(gt(size, MAX_EXPORT_SIZE)))) {
+                returndatacopy(0x00, 0x00, 0x20)
+                let offset := mload(0x00)
+                // The length word must lie inside the return: offset + 32 <= size.
+                if iszero(gt(offset, sub(size, 0x20))) {
+                    returndatacopy(0x00, offset, 0x20)
+                    let len := mload(0x00)
+                    // The data must lie inside the return: offset + 32 + len <= size.
+                    if iszero(gt(len, sub(sub(size, offset), 0x20))) {
+                        blob := mload(0x40)
+                        mstore(blob, len)
+                        returndatacopy(add(blob, 0x20), add(offset, 0x20), len)
+                        mstore(0x40, add(add(blob, 0x20), and(add(len, 0x1f), not(0x1f))))
+                    }
+                }
+            }
+        }
     }
 
     /// @dev Unpack a tightly packed selector blob (`length % 4 == 0`, validated by the caller) to `bytes4[]`.

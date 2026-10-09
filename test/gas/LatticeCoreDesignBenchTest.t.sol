@@ -320,7 +320,7 @@ contract LatticeCoreDesignBenchTest is Test {
         assertLt(loupeFirst, loupeLast, "loupe-first is cheaper");
     }
 
-    /// @notice What the proposed recipe hash for `DiamondDeployed` would cost: `keccak256(abi.encode(cuts, init,
+    /// @notice What the recipe hash `DiamondDeployed` carries costs: `keccak256(abi.encode(cuts, init,
     ///         initCalldata))` over the materialized governed-vault recipe (14 cuts).
     function test_RecipeHashCost() public {
         GovernedVaultParams memory p;

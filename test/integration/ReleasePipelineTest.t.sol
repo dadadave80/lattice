@@ -60,8 +60,9 @@ contract ReleasePipelineTest is GetSelectors, DeployRelease {
         // 2. The deployer's whole job: two recipe entries resolving the curator's LATEST pointer (version
         //    0) — the token facet and the release-registered diamond-lib loupe...
         RecipeEntry[] memory entries = new RecipeEntry[](2);
-        entries[0] = RecipeEntry({nameHash: ERC20_NAME, version: 0});
-        entries[1] = RecipeEntry({nameHash: keccak256("lattice.DiamondLoupeFacet"), version: 0});
+        entries[0] = RecipeEntry({nameHash: ERC20_NAME, version: 0, exclude: new bytes4[](0)});
+        entries[1] =
+            RecipeEntry({nameHash: keccak256("lattice.DiamondLoupeFacet"), version: 0, exclude: new bytes4[](0)});
 
         // ...one custom cut for the diamond-lib ERC165Facet, selectors from its OWN ERC-8153 export
         //    (diamond-lib >=0.2.0; the export excludes exportSelectors() itself, which the factory refuses)...

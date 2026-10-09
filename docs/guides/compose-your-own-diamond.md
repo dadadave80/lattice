@@ -255,7 +255,9 @@ The same four steps build any composition. A worked example, an admin-upgradeabl
    ERC20Lib._mint(p.holder, p.supply);                        // seed supply last
    ```
 
-4. **Deploy in one transaction** with `factory.deploy(new RecipeEntry[](0), cuts, init, data, salt)`.
+4. **Deploy in one transaction** with `factory.deploy(new RecipeEntry[](0), cuts, init, data, salt)`, or
+   `factory.deployStrict` with the same arguments, which reverts if the address is already deployed instead of
+   returning the existing diamond.
 
 The test also shows a later upgrade: the admin cuts `ERC20Burnable` in with `diamondCut`, and a stranger's
 attempt reverts. For governed upgrades, cut GovernedDiamondCut and EmergencyStop instead of

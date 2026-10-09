@@ -4,6 +4,7 @@ pragma solidity ^0.8.30;
 import {IDiamondLoupe} from "@diamond/interfaces/IDiamondLoupe.sol";
 import {CannotAddFunctionToDiamondThatAlreadyExists, Facet, FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {DeployGovernedVault} from "@lattice-script/base/defi/DeployGovernedVault.s.sol";
+import {RawCode} from "@lattice-test/helpers/LatticeCoreMocks.sol";
 import {LatticeFactory} from "@lattice/LatticeFactory.sol";
 import {LatticeRegistry} from "@lattice/LatticeRegistry.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
@@ -12,11 +13,11 @@ import {GovernedVault} from "@lattice/defi/GovernedVault.sol";
 import {GovernedVaultParams} from "@lattice/defi/GovernedVaultInit.sol";
 import {Governor} from "@lattice/governance/Governor.sol";
 import {UPGRADE_EXECUTOR_ROLE} from "@lattice/governance/libraries/GovernedDiamondCutLib.sol";
-import {RecipeEntry} from "@lattice/interfaces/ILatticeFactory.sol";
+import {ILatticeFactory, RecipeEntry} from "@lattice/interfaces/ILatticeFactory.sol";
 import {IERC8153} from "@lattice/interfaces/external/ercs/IERC8153.sol";
 import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
 import {EMERGENCY_GUARDIAN_ROLE} from "@lattice/security/libraries/EmergencyStopLib.sol";
-import {Test} from "forge-std/Test.sol";
+import {Test, Vm} from "forge-std/Test.sol";
 
 /// @notice Minimal mintable ERC-20 used as the vault's underlying asset.
 contract CompositionAsset {
@@ -51,11 +52,13 @@ contract CompositionAsset {
 }
 
 /// @title LatticeFactoryGovernedVaultTest
-/// @notice #176: the production {DeployGovernedVault} recipe assembled through the REGISTRY path. The 8 facets
-///         the recipe cuts whole become registry entries; the 6 facets it cuts with `_cutExcept` stay custom
-///         cuts, because a {RecipeEntry} cannot exclude selectors. The registry-built vault must route every
-///         selector exactly like the custom-only reference vault, wire its self-governance, leave the factory
-///         without any role, and keep state isolated between instances.
+/// @notice #176: the production {DeployGovernedVault} recipe assembled through the REGISTRY path, two ways: a
+///         mixed recipe (the 8 facets the recipe cuts whole as registry entries, the 6 it cuts with `_cutExcept`
+///         as custom cuts) and an all-registry recipe (all 14 facets as entries, the 6 partial ones with
+///         {RecipeEntry.exclude}). Each registry-built vault must route every selector exactly like the
+///         custom-only reference vault, wire its self-governance, leave the factory without any role, and keep
+///         state isolated between instances. The all-registry recipe applies byte-identical cuts to the
+///         production recipe's, so its `DiamondDeployed` recipe hash is the hash of `buildCuts`' own output.
 contract LatticeFactoryGovernedVaultTest is Test {
     DeployGovernedVault internal recipe;
     LatticeRegistry internal registry;
@@ -98,7 +101,7 @@ contract LatticeFactoryGovernedVaultTest is Test {
             address facet = cuts[WHOLE[i]].facetAddress;
             bytes32 name = keccak256(abi.encode("lattice.vault-part", WHOLE[i]));
             if (registry.resolve(facet.codehash) == address(0)) registry.register(name, V1, facet);
-            entries[i] = RecipeEntry({nameHash: name, version: V1});
+            entries[i] = RecipeEntry({nameHash: name, version: V1, exclude: new bytes4[](0)});
         }
         customCuts = new FacetCut[](PARTIAL.length);
         for (uint256 i; i < PARTIAL.length; ++i) {
@@ -112,12 +115,50 @@ contract LatticeFactoryGovernedVaultTest is Test {
         vault = factory.deploy(entries, customCuts, init, data, salt);
     }
 
-    /// @notice The registry-built vault routes every selector to the same facet as the custom-only reference.
-    function test_RegistryVaultRoutesLikeTheCustomOnlyReference() public {
-        address refVault = recipe.deployAtomic(_params("Ref"), factory, keccak256("reference"));
-        address vault = _deployMixed("Mixed", keccak256("mixed"));
-        assertEq(vault, factory.predict(address(this), keccak256("mixed")), "deploy == predict");
+    /// @dev Registers all 14 facets and returns the all-registry recipe for `p`: each entry excludes what the
+    ///      production recipe drops from that facet (its export minus the recipe cut's selectors).
+    function _registryRecipe(GovernedVaultParams memory p)
+        internal
+        returns (RecipeEntry[] memory entries, FacetCut[] memory cuts, address init, bytes memory data)
+    {
+        (cuts, init, data) = recipe.buildCuts(p);
+        entries = new RecipeEntry[](cuts.length);
+        for (uint256 i; i < cuts.length; ++i) {
+            address facet = cuts[i].facetAddress;
+            bytes32 name = keccak256(abi.encode("lattice.vault-part", i));
+            if (registry.resolve(facet.codehash) == address(0)) registry.register(name, V1, facet);
+            entries[i] = RecipeEntry({
+                nameHash: name, version: V1, exclude: _missing(_exported(facet), cuts[i].functionSelectors)
+            });
+        }
+    }
 
+    function _exported(address facet) internal view returns (bytes4[] memory) {
+        return RawCode.unpack(IERC8153(facet).exportSelectors());
+    }
+
+    /// @dev The selectors of `all` that `kept` does not contain, in `all`'s order.
+    function _missing(bytes4[] memory all, bytes4[] memory kept) internal pure returns (bytes4[] memory out) {
+        out = new bytes4[](all.length);
+        uint256 n;
+        for (uint256 i; i < all.length; ++i) {
+            bool found;
+            for (uint256 j; j < kept.length && !found; ++j) {
+                found = all[i] == kept[j];
+            }
+            if (!found) out[n++] = all[i];
+        }
+        assembly ("memory-safe") {
+            mstore(out, n)
+        }
+    }
+
+    function _deployAllRegistry(string memory name, bytes32 salt) internal returns (address vault) {
+        (RecipeEntry[] memory entries,, address init, bytes memory data) = _registryRecipe(_params(name));
+        vault = factory.deployStrict(entries, new FacetCut[](0), init, data, salt);
+    }
+
+    function _assertRoutesLike(address refVault, address vault) internal view {
         Facet[] memory refFacets = IDiamondLoupe(refVault).facets();
         assertEq(IDiamondLoupe(vault).facetAddresses().length, refFacets.length, "same facet count (14)");
         assertEq(refFacets.length, 14, "14 facets");
@@ -132,9 +173,51 @@ contract LatticeFactoryGovernedVaultTest is Test {
         assertEq(IDiamondLoupe(vault).facetAddress(IERC8153.exportSelectors.selector), address(0), "no 8153 route");
     }
 
-    /// @notice Self-governance wiring holds and the factory ends up holding no role the recipe defines.
-    function test_RegistryVaultIsSelfGovernedAndFactoryHoldsNoRole() public {
+    /// @notice The mixed registry-built vault routes every selector to the same facet as the custom-only
+    ///         reference.
+    function test_RegistryVaultRoutesLikeTheCustomOnlyReference() public {
+        address refVault = recipe.deployAtomic(_params("Ref"), factory, keccak256("reference"));
         address vault = _deployMixed("Mixed", keccak256("mixed"));
+        assertEq(vault, factory.predict(address(this), keccak256("mixed")), "deploy == predict");
+        _assertRoutesLike(refVault, vault);
+    }
+
+    /// @notice The all-registry vault (14 entries, 6 with `exclude`) routes like the reference, and its
+    ///         materialized cuts are byte-identical to the production recipe's custom cuts: the emitted recipe
+    ///         hash equals `keccak256(abi.encode(cuts, init, data))` over `buildCuts`' own output.
+    function test_AllRegistryVaultRoutesLikeTheReferenceAndHashesTheProductionCuts() public {
+        address refVault = recipe.deployAtomic(_params("Ref"), factory, keccak256("reference"));
+
+        (RecipeEntry[] memory entries, FacetCut[] memory cuts, address init, bytes memory data) =
+            _registryRecipe(_params("All"));
+        uint256 excluded;
+        for (uint256 i; i < entries.length; ++i) {
+            if (entries[i].exclude.length != 0) ++excluded;
+        }
+        assertEq(excluded, PARTIAL.length, "six partial facets use exclude");
+
+        vm.recordLogs();
+        address vault = factory.deployStrict(entries, new FacetCut[](0), init, data, keccak256("all-registry"));
+        assertEq(_lastRecipeHash(vm.getRecordedLogs()), keccak256(abi.encode(cuts, init, data)), "same cuts");
+        _assertRoutesLike(refVault, vault);
+    }
+
+    function _lastRecipeHash(Vm.Log[] memory logs) internal view returns (bytes32 recipeHash) {
+        for (uint256 i; i < logs.length; ++i) {
+            if (logs[i].emitter == address(factory) && logs[i].topics[0] == ILatticeFactory.DiamondDeployed.selector) {
+                recipeHash = logs[i].topics[3];
+            }
+        }
+    }
+
+    /// @notice Self-governance wiring holds and the factory ends up holding no role the recipe defines, for
+    ///         both registry-built vaults.
+    function test_RegistryVaultIsSelfGovernedAndFactoryHoldsNoRole() public {
+        _assertSelfGoverned(_deployMixed("Mixed", keccak256("mixed")));
+        _assertSelfGoverned(_deployAllRegistry("All", keccak256("all")));
+    }
+
+    function _assertSelfGoverned(address vault) internal view {
         assertEq(Governor(payable(vault)).token(), vault, "votes come from the vault");
         assertEq(Governor(payable(vault)).timelock(), vault, "queues through the vault");
 
@@ -177,19 +260,19 @@ contract LatticeFactoryGovernedVaultTest is Test {
         assertEq(IERC20(b).name(), "Vault B", "B metadata");
     }
 
-    /// @notice Why six facets stay custom cuts: the same facets as WHOLE registry entries collide with
-    ///         {GovernedVault}'s reconciled selectors. A registry recipe for this vault needs selector exclusion
-    ///         on {RecipeEntry} (the #176 `exclude` proposal).
-    function test_PartialFacetsCannotBeRegistryEntriesToday() public {
+    /// @notice Why the six partial facets need `exclude`: cut WHOLE as registry entries they collide with
+    ///         {GovernedVault}'s reconciled selectors, and the deploy aborts.
+    function test_PartialFacetsWithoutExcludeCollide() public {
         (FacetCut[] memory cuts,,) = recipe.buildCuts(_params("X"));
         registry.register(keccak256("lattice.ERC20"), V1, cuts[3].facetAddress);
         registry.register(keccak256("lattice.GovernedVault"), V1, cuts[9].facetAddress);
         registry.register(keccak256("lattice.DiamondLoupeFacet"), V1, cuts[10].facetAddress);
 
         RecipeEntry[] memory entries = new RecipeEntry[](3);
-        entries[0] = RecipeEntry({nameHash: keccak256("lattice.DiamondLoupeFacet"), version: V1});
-        entries[1] = RecipeEntry({nameHash: keccak256("lattice.ERC20"), version: V1});
-        entries[2] = RecipeEntry({nameHash: keccak256("lattice.GovernedVault"), version: V1});
+        entries[0] =
+            RecipeEntry({nameHash: keccak256("lattice.DiamondLoupeFacet"), version: V1, exclude: new bytes4[](0)});
+        entries[1] = RecipeEntry({nameHash: keccak256("lattice.ERC20"), version: V1, exclude: new bytes4[](0)});
+        entries[2] = RecipeEntry({nameHash: keccak256("lattice.GovernedVault"), version: V1, exclude: new bytes4[](0)});
 
         vm.expectRevert(
             abi.encodeWithSelector(CannotAddFunctionToDiamondThatAlreadyExists.selector, bytes4(keccak256("name()")))

@@ -45,13 +45,21 @@ Each run still deploys its own registry and factory unless `LATTICE_FACTORY` nam
 The factory binds salts to the caller, so give every run from the same wallet a new `LATTICE_SALT`:
 
 ```sh
-LATTICE_FACTORY=0x9E49FB5CDBb09ECf65513F7c690909E093170037 LATTICE_SALT=$(cast keccak "$(date)") \
+LATTICE_SALT=$(cast keccak "$(date)") \
   make example-ens-grant-m2 RPC=sepolia KEYSTORE=my-testnet-wallet
 ```
 
+No published factory accepts this checkout's `deploy` call yet. The Sepolia dev factory
+`0x9E49FB5CDBb09ECf65513F7c690909E093170037` (`factory.lattice.studio.eth`) predates the #176 hardening
+change, which moved the `deploy` selector (`RecipeEntry` gained an `exclude` field), so `LATTICE_FACTORY`
+pointing at it reverts from this checkout. To reuse that factory, run the command above with
+`LATTICE_FACTORY=0x9E49FB5CDBb09ECf65513F7c690909E093170037` from a checkout of `6ca91e2` (the last `dev`
+commit before the change), set up like the `c0c8e50` worktree below. This section will name a new
+factory once one built from the current code is published.
+
 A factory embeds the `Lattice` proxy bytecode of the commit it was built from. When your checkout's
 `Lattice` differs, `--verify` skips the vault ("haven't found any matching bytecode") while still
-verifying everything else. The Sepolia factory above (`factory.lattice.studio.eth`) was built from
+verifying everything else. The Sepolia dev factory above (`factory.lattice.studio.eth`) was built from
 `c0c8e50` (on `main`; earlier copies of this page cited `fba66cb`, the same tree before a history rewrite),
 so verify its vaults from that commit:
 

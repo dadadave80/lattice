@@ -10,6 +10,8 @@ import {LatticeFactory} from "@lattice/LatticeFactory.sol";
 import {LatticeRegistry} from "@lattice/LatticeRegistry.sol";
 import {GovernedVaultParams} from "@lattice/defi/GovernedVaultInit.sol";
 import {ILatticeFactory, RecipeEntry} from "@lattice/interfaces/ILatticeFactory.sol";
+import {ILatticeRegistry} from "@lattice/interfaces/ILatticeRegistry.sol";
+import {IERC8153} from "@lattice/interfaces/external/ercs/IERC8153.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @notice Runs a raw CREATE of the given initcode. Foundry's dynamic test linking (on by default) turns a `new`
@@ -27,9 +29,10 @@ contract RawCreator {
 
 /// @title LatticeCoreGasTest
 /// @notice #176 baselines for {LatticeRegistry} and {LatticeFactory}: runtime and initcode sizes, singleton
-///         deployment, registry writes and reads across selector counts, and factory deploys for custom-only,
-///         pinned, latest and mixed recipes across facet x selector shapes, the idempotent repeat, and the
-///         production governed-vault recipe both as custom cuts and through the registry.
+///         deployment, registry writes, reads across selector counts and batch views, and factory deploys for
+///         custom-only, pinned, latest and mixed recipes across facet x selector shapes, `deployStrict`, the
+///         idempotent repeat, and the production governed-vault recipe as custom cuts, as 8 registry entries plus
+///         6 custom cuts, and as 14 registry entries (6 with `exclude`).
 /// @dev Forge runs tests isolated (`isolate = true` is the default in the pinned Foundry): every top-level call
 ///      from a test is its own transaction, so each measured call starts from cold accounts and storage.
 ///      State-changing calls are measured as whole isolated transactions (21,000 intrinsic plus calldata plus
@@ -67,6 +70,8 @@ contract LatticeCoreGasTest is Test {
             readNames[i] = keccak256(abi.encode("read", i));
             registry.register(readNames[i], V1, RawCode.exporter(RawCode.selectorBlob(readNames[i], readCounts[i])));
         }
+        registry.setLatest(readNames[1], V1);
+        registry.setLatest(readNames[2], V1);
 
         _prepareLoupeShapes();
         _prepareGrid("8x16", 8, 16);
@@ -189,6 +194,26 @@ contract LatticeCoreGasTest is Test {
         _getCut(2, "registry.getCut.64");
     }
 
+    function test_Gas_GetMany3() public {
+        ILatticeRegistry.RecordKey[] memory keys = new ILatticeRegistry.RecordKey[](3);
+        for (uint256 i; i < 3; ++i) {
+            keys[i] = ILatticeRegistry.RecordKey({nameHash: readNames[i], version: V1});
+        }
+        vm.startSnapshotGas("registry.getMany.3");
+        registry.getMany(keys);
+        vm.stopSnapshotGas();
+    }
+
+    function test_Gas_LatestMany3() public {
+        bytes32[] memory names = new bytes32[](3);
+        names[0] = LOUPE;
+        names[1] = readNames[1];
+        names[2] = readNames[2];
+        vm.startSnapshotGas("registry.latestMany.3");
+        registry.latestMany(names);
+        vm.stopSnapshotGas();
+    }
+
     //*//////////////////////////////////////////////////////////////////////////
     //                                 FACTORY
     //////////////////////////////////////////////////////////////////////////*//
@@ -211,6 +236,10 @@ contract LatticeCoreGasTest is Test {
 
     function test_Gas_DeployLoupeLatest() public {
         _deploy("loupe.latest");
+    }
+
+    function test_Gas_DeployStrictLoupePinned() public {
+        _deploy("loupe.pinned.strict");
     }
 
     function test_Gas_DeployLoupeRepeat() public {
@@ -247,6 +276,10 @@ contract LatticeCoreGasTest is Test {
         _deploy("governedVault.registry");
     }
 
+    function test_Gas_DeployGovernedVaultRegistryAll() public {
+        _deploy("governedVault.registryAll");
+    }
+
     //*//////////////////////////////////////////////////////////////////////////
     //                              PREPARATION
     //////////////////////////////////////////////////////////////////////////*//
@@ -274,12 +307,15 @@ contract LatticeCoreGasTest is Test {
         deployCalls["loupe.custom"] = _call(new RecipeEntry[](0), cuts, address(0), "", "loupe.custom");
 
         RecipeEntry[] memory pinned = new RecipeEntry[](1);
-        pinned[0] = RecipeEntry(LOUPE, V1);
+        pinned[0] = RecipeEntry(LOUPE, V1, new bytes4[](0));
         deployCalls["loupe.pinned"] = _call(pinned, new FacetCut[](0), address(0), "", "loupe.pinned");
         deployCalls["loupe.pinned.repeat"] = deployCalls["loupe.pinned"];
+        deployCalls["loupe.pinned.strict"] = abi.encodeCall(
+            ILatticeFactory.deployStrict, (pinned, new FacetCut[](0), address(0), "", "loupe.pinned.strict")
+        );
 
         RecipeEntry[] memory latest = new RecipeEntry[](1);
-        latest[0] = RecipeEntry(LOUPE, 0);
+        latest[0] = RecipeEntry(LOUPE, 0, new bytes4[](0));
         deployCalls["loupe.latest"] = _call(latest, new FacetCut[](0), address(0), "", "loupe.latest");
     }
 
@@ -290,15 +326,15 @@ contract LatticeCoreGasTest is Test {
         FacetCut[] memory custom = new FacetCut[](facets + 1);
         RecipeEntry[] memory mixedEntries = new RecipeEntry[](facets / 2 + 1);
         FacetCut[] memory mixedCuts = new FacetCut[](facets - facets / 2);
-        pinned[0] = RecipeEntry(LOUPE, V1);
+        pinned[0] = RecipeEntry(LOUPE, V1, new bytes4[](0));
         custom[0] = _loupeCut();
-        mixedEntries[0] = RecipeEntry(LOUPE, V1);
+        mixedEntries[0] = RecipeEntry(LOUPE, V1, new bytes4[](0));
         for (uint256 i; i < facets; ++i) {
             bytes32 name = keccak256(abi.encode(label, i));
             bytes memory blob = RawCode.selectorBlob(name, selectors);
             address facet = RawCode.exporter(blob);
             registry.register(name, V1, facet);
-            pinned[i + 1] = RecipeEntry(name, V1);
+            pinned[i + 1] = RecipeEntry(name, V1, new bytes4[](0));
             custom[i + 1] = FacetCut(facet, FacetCutAction.Add, RawCode.unpack(blob));
             if (i < facets / 2) mixedEntries[i + 1] = pinned[i + 1];
             else mixedCuts[i - facets / 2] = custom[i + 1];
@@ -311,8 +347,9 @@ contract LatticeCoreGasTest is Test {
             _call(mixedEntries, mixedCuts, address(0), "", keccak256(abi.encode(label, "mixed")));
     }
 
-    /// @dev The production {DeployGovernedVault} recipe: 14 custom cuts, or its 8 whole facets as registry
-    ///      entries plus its 6 partial facets as custom cuts.
+    /// @dev The production {DeployGovernedVault} recipe: 14 custom cuts; its 8 whole facets as registry entries
+    ///      plus its 6 partial facets as custom cuts; or all 14 as registry entries, the 6 partial ones
+    ///      excluding what the recipe drops.
     function _prepareGovernedVault() internal {
         GovernedVaultParams memory p;
         p.asset = address(0xA55E7);
@@ -331,12 +368,41 @@ contract LatticeCoreGasTest is Test {
         for (uint256 i; i < 8; ++i) {
             bytes32 name = keccak256(abi.encode("vault-part", whole[i]));
             registry.register(name, V1, cuts[whole[i]].facetAddress);
-            entries[i] = RecipeEntry(name, V1);
+            entries[i] = RecipeEntry(name, V1, new bytes4[](0));
         }
         FacetCut[] memory partialCuts = new FacetCut[](6);
         for (uint256 i; i < 6; ++i) {
             partialCuts[i] = cuts[partialIdx[i]];
         }
         deployCalls["governedVault.registry"] = _call(entries, partialCuts, init, data, "vault.registry");
+
+        RecipeEntry[] memory all = new RecipeEntry[](14);
+        for (uint256 i; i < 8; ++i) {
+            all[whole[i]] = entries[i];
+        }
+        for (uint256 i; i < 6; ++i) {
+            FacetCut memory cut = cuts[partialIdx[i]];
+            bytes32 name = keccak256(abi.encode("vault-part", partialIdx[i]));
+            registry.register(name, V1, cut.facetAddress);
+            bytes4[] memory exported = RawCode.unpack(IERC8153(cut.facetAddress).exportSelectors());
+            all[partialIdx[i]] = RecipeEntry(name, V1, _missing(exported, cut.functionSelectors));
+        }
+        deployCalls["governedVault.registryAll"] = _call(all, new FacetCut[](0), init, data, "vault.registryAll");
+    }
+
+    /// @dev The selectors of `exported` that `kept` does not contain, in `exported`'s order.
+    function _missing(bytes4[] memory exported, bytes4[] memory kept) internal pure returns (bytes4[] memory out) {
+        out = new bytes4[](exported.length);
+        uint256 n;
+        for (uint256 i; i < exported.length; ++i) {
+            bool found;
+            for (uint256 j; j < kept.length && !found; ++j) {
+                found = exported[i] == kept[j];
+            }
+            if (!found) out[n++] = exported[i];
+        }
+        assembly ("memory-safe") {
+            mstore(out, n)
+        }
     }
 }

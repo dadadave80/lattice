@@ -69,8 +69,8 @@ contract LatticeFactoryCompositionTest is GetSelectors {
 
         // 3. The deployer's whole job: two recipe entries pinning (name, version)...
         RecipeEntry[] memory entries = new RecipeEntry[](2);
-        entries[0] = RecipeEntry({nameHash: ERC20_NAME, version: version});
-        entries[1] = RecipeEntry({nameHash: LOUPE_NAME, version: version});
+        entries[0] = RecipeEntry({nameHash: ERC20_NAME, version: version, exclude: new bytes4[](0)});
+        entries[1] = RecipeEntry({nameHash: LOUPE_NAME, version: version, exclude: new bytes4[](0)});
 
         // ...one custom cut for the diamond-lib ERC165Facet, selectors from its OWN ERC-8153 export
         //    (diamond-lib >=0.2.0; the export excludes exportSelectors() itself, which the factory refuses)...
