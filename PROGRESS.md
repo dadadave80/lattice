@@ -74,7 +74,7 @@ are no longer on a branch. Each has a tree-identical commit on `main`:
 
 ## Milestone 3 — Docs site + reusable storage-safety Action
 
-In progress. The site and the Action are built and tested in this repository; the docs deploy to GitHub Pages from `main`; the rest is not published yet.
+In progress. The site and the Action are built and tested in this repository; the Action is released and proven in an external repository; the docs deploy to GitHub Pages from `main` on the next release.
 Each "pending" row is filled with a public URL, run or commit permalink once it exists.
 
 | Evidence | Status |
@@ -85,9 +85,9 @@ Each "pending" row is filled with a public URL, run or commit permalink once it 
 | Storage-safety Action: composite Action on the Bash+jq checker Lattice's own CI runs | [`.github/actions/storage-layout/`](.github/actions/storage-layout/README.md) |
 | Action regression cases (43) on a fixture consumer project, and a CI self-test calling the Action | [`script/test-storage-layout.sh`](script/test-storage-layout.sh) · `storage-action` job in [`test.yml`](.github/workflows/test.yml) |
 | Lattice CI checks every pull request append-only against its base through the same Action | `storage-layout` job in [`test.yml`](.github/workflows/test.yml) |
-| Versioned Action release (tag and commit) | pending |
-| External demo repository calling the released Action | pending |
-| Demo runs: red on an incompatible change, green on its fix, green on a safe append | pending |
+| Versioned Action release (tag and commit) | [`storage-layout-v1.0.0`](https://github.com/dadadave80/lattice/releases/tag/storage-layout-v1.0.0) → [`828e0a8`](https://github.com/dadadave80/lattice/commit/828e0a88d2eff10cfea786ab2dc7854cdf26785c) |
+| External demo repository calling the released Action | [`lattice-storage-guard-demo`](https://github.com/dadadave80/lattice-storage-guard-demo) pins `.github/actions/storage-layout@828e0a8…` ([workflow](https://github.com/dadadave80/lattice-storage-guard-demo/blob/main/.github/workflows/storage.yml)) |
+| Demo runs: red on an incompatible change, green on its fix, green on a safe append | reorder [red](https://github.com/dadadave80/lattice-storage-guard-demo/actions/runs/37923527240) → fix [green](https://github.com/dadadave80/lattice-storage-guard-demo/actions/runs/37923624481) ([#1](https://github.com/dadadave80/lattice-storage-guard-demo/pull/1)) · safe append [green](https://github.com/dadadave80/lattice-storage-guard-demo/actions/runs/37923536837) ([#2](https://github.com/dadadave80/lattice-storage-guard-demo/pull/2)) |
 
 Tag: `grant-m3`, created after every row above has public evidence.
 
