@@ -175,8 +175,8 @@ depth = 128
 # vm.expectRevert.
 fail_on_revert = true
 
-# Deep invariant campaign (`make invariant-deep`), not a CI gate. The ci profile runs the diamond-level
-# invariant suites at 64 runs through a contract-level inline key.
+# Deep invariant campaign (`make invariant-deep`, run weekly by the Scheduled workflow), not a PR gate. The ci
+# profile runs the diamond-level invariant suites at 64 runs through a contract-level inline key.
 [profile.deep.invariant]
 runs = 1000
 depth = 200
