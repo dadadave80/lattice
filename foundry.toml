@@ -166,6 +166,8 @@ arc-testnet = "${ARC_TESTNET_RPC_URL}"                  # circle arc testnet 504
 
 [etherscan]
 mainnet = { key = "${ETHERSCAN_API_KEY}" }
+avalanche = { key = "${ETHERSCAN_API_KEY}", chain = 43114 }
+fuji = { key = "${ETHERSCAN_API_KEY}", chain = 43113 }
 
 [invariant]
 runs = 256

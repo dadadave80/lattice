@@ -264,6 +264,15 @@ timelock queue → execute. `<actor>` must be the signer's address. The
 [Milestone 1 evidence](PROGRESS.md#milestone-1--reference-deployment-) links the live vault, its 14 verified
 facets, and the executed proposal.
 
+**Governed vault on Avalanche Fuji.** The same governed vault runs on Avalanche's Fuji testnet at
+[`0xd06F72Eabf158CDFAa550450cCb220b42A1068ef`](https://testnet.snowscan.xyz/address/0xd06F72Eabf158CDFAa550450cCb220b42A1068ef#code), assembled through `LatticeFactory` in one
+transaction and upgraded by an executed shareholder proposal. Every contract is source-verified on Sourcify,
+Snowscan and Snowtrace. It uses the repository's own build: Avalanche runs the Cancun EVM, and Lattice
+compiles to identical code under Cancun and the repository's default target, so the release addresses match
+every other chain. Reproduce it with `make example-ens-grant-m2 RPC=fuji KEYSTORE=<name>`. The
+[Avalanche evidence](PROGRESS.md#team1-builder-grants-avalanche--mini-grant-application-evidence) lists
+every contract and transaction.
+
 **Cross-chain USDC (Circle CCTP v2, Arc testnet as the source chain).** Lattice diamonds on Arc burn USDC
 toward Ethereum Sepolia and Base Sepolia; Arc's sub-second finality means Iris attests in seconds. The
 hook and round-trip demos run against the live contracts by default, so all you need is a funded signer:
