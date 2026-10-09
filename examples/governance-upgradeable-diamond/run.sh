@@ -50,6 +50,8 @@ send() {
   jq -e '.status == "0x1" or .status == 1' <<< "$receipt" >/dev/null || fail 'transaction receipt reports failure'
   jq -r '"Confirmed " + .transactionHash' <<< "$receipt" >&2
 }
+# The script reads diamond-lib facet artifacts from out/ (vm.getCode), which only a full build writes.
+forge build
 forge script script/base/defi/GrantExample.s.sol:GrantExample --sig 'run()' \
   --rpc-url "$RPC_URL" --sender "$ACCOUNT" "${AUTH[@]}" --broadcast --slow \
   ${VERIFY_ARGS[@]+"${VERIFY_ARGS[@]}"} | tee "$LOG"
