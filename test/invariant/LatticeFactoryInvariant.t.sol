@@ -17,7 +17,7 @@ import {LatticeRegistry} from "@lattice/LatticeRegistry.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlInit} from "@lattice/access/AccessControlInit.sol";
 import {DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
-import {RecipeEntry} from "@lattice/interfaces/ILatticeFactory.sol";
+import {ILatticeFactory, RecipeEntry} from "@lattice/interfaces/ILatticeFactory.sol";
 import {ILatticeRegistry} from "@lattice/interfaces/ILatticeRegistry.sol";
 import {Test} from "forge-std/Test.sol";
 
@@ -25,10 +25,11 @@ import {Test} from "forge-std/Test.sol";
 //                                  HANDLER
 //////////////////////////////////////////////////////////////////////////*//
 
-/// @notice Drives {LatticeFactory.deploy} over 3 callers x 4 salts with four recipe kinds (pinned, latest,
-///         custom-only, mixed) and four init kinds (none, reverting, grants `msg.sender`, explicit admin),
-///         interleaved with the registry curator moving `latest` and a stateful exporter drifting. Each outcome
-///         is predicted from ghost state; expected reverts are asserted with `vm.expectRevert`.
+/// @notice Drives {LatticeFactory.deploy} and {LatticeFactory.deployStrict} over 3 callers x 4 salts with four
+///         recipe kinds (pinned, latest, custom-only, mixed) and four init kinds (none, reverting, grants
+///         `msg.sender`, explicit admin), interleaved with the registry curator moving `latest` and a stateful
+///         exporter drifting. Each outcome is predicted from ghost state; expected reverts are asserted with
+///         `vm.expectRevert`.
 /// @dev The handler is the registry owner, so it can move `latest`. Every recipe cuts AccessControl, so F3 can
 ///      read roles on every diamond.
 contract LatticeFactoryHandler is Test {
@@ -120,9 +121,10 @@ contract LatticeFactoryHandler is Test {
         FacetCut[] cuts;
         address init;
         bytes data;
+        bool strict;
     }
 
-    function deploy(uint256 callerSeed, uint256 saltSeed, uint256 recipeSeed, uint256 initSeed) external {
+    function deploy(uint256 callerSeed, uint256 saltSeed, uint256 recipeSeed, uint256 initSeed, bool strict) external {
         uint256 c = callerSeed % CALLERS;
         uint256 s = saltSeed % SALTS;
         Slot storage st = _slots[c * SALTS + s];
@@ -135,7 +137,21 @@ contract LatticeFactoryHandler is Test {
         uint256 expectedValue;
         (call_.entries, call_.cuts, expectedValue) = _recipe(kind);
         (call_.init, call_.data) = _init(initKind, c * SALTS + s);
+        call_.strict = strict;
 
+        // deployStrict validates the entries before it looks at the address: a `latest` entry is refused.
+        if (strict && kind == 1) {
+            vm.expectRevert(abi.encodeWithSelector(ILatticeFactory.LatticeFactory__UnpinnedEntry.selector, VALUE));
+            _deploy(call_);
+            return;
+        }
+        if (strict && st.deployed) {
+            vm.expectRevert(
+                abi.encodeWithSelector(ILatticeFactory.LatticeFactory__AlreadyDeployed.selector, st.diamond)
+            );
+            _deploy(call_);
+            return;
+        }
         if (st.deployed) {
             vm.recordLogs();
             assertEq(_deploy(call_), st.diamond, "F4: idempotent return moved");
@@ -164,6 +180,7 @@ contract LatticeFactoryHandler is Test {
 
     function _deploy(Call memory call_) internal returns (address) {
         vm.prank(call_.caller);
+        if (call_.strict) return factory.deployStrict(call_.entries, call_.cuts, call_.init, call_.data, call_.salt);
         return factory.deploy(call_.entries, call_.cuts, call_.init, call_.data, call_.salt);
     }
 
@@ -194,18 +211,18 @@ contract LatticeFactoryHandler is Test {
         }
         if (kind == 3) {
             entries = new RecipeEntry[](3);
-            entries[0] = RecipeEntry(VALUE, V1);
-            entries[1] = RecipeEntry(ACCESS, V1);
-            entries[2] = RecipeEntry(FLIP, V1);
+            entries[0] = RecipeEntry(VALUE, V1, new bytes4[](0));
+            entries[1] = RecipeEntry(ACCESS, V1, new bytes4[](0));
+            entries[2] = RecipeEntry(FLIP, V1, new bytes4[](0));
             cuts = new FacetCut[](2);
             cuts[0] = _customCut(_loupeFacet);
             cuts[1] = FacetCut(_pongFacet, FacetCutAction.Add, _one(CorePongFacet.pong.selector));
             return (entries, cuts, 1);
         }
         entries = new RecipeEntry[](3);
-        entries[0] = RecipeEntry(LOUPE, V1);
-        entries[1] = RecipeEntry(VALUE, kind == 0 ? V1 : 0);
-        entries[2] = RecipeEntry(ACCESS, V1);
+        entries[0] = RecipeEntry(LOUPE, V1, new bytes4[](0));
+        entries[1] = RecipeEntry(VALUE, kind == 0 ? V1 : 0, new bytes4[](0));
+        entries[2] = RecipeEntry(ACCESS, V1, new bytes4[](0));
         expectedValue = kind == 0 ? 1 : (ghostLatestValue == V1 ? 1 : 2);
     }
 

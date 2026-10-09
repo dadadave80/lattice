@@ -12,17 +12,35 @@ import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 ///      (no diamond, no ERC-7201, no proxy) — the smallest possible trust surface for the thing every
 ///      deployment depends on. Two tiers:
 ///
-///      - Tier A (permissionless, trustless): {attest} / {resolve}. A content-addressed codehash → address
-///        map. `attest` is self-verifying (it reads `deployed.codehash` on-chain — impossible to spoof) and
-///        first-write-wins; any address with a given runtime codehash is `delegatecall`-equivalent, so one
-///        entry serves all. No curation, no admin.
+///      - Tier A (permissionless, trustless): {attest} / {resolve}. A content-addressed index from a runtime
+///        codehash to the FIRST address attested with it. `attest` is self-verifying (it reads
+///        `deployed.codehash` on-chain — impossible to spoof) and first-write-wins. No curation, no admin.
+///        `resolve` answers ONE question: "where is a contract with exactly this code?". It is a code-identity
+///        lookup, NOT a selector source and not a statement about behaviour. Two addresses with one codehash
+///        behave the same only when the diamond `delegatecall`s them AND the facet meets every assumption
+///        below; Lattice facets do, arbitrary contracts need not:
+///          1. no reads of the facet's OWN storage on any path (a direct call or `staticcall` reads the
+///             facet's storage, which can differ between two instances of the same code);
+///          2. a `pure` ERC-8153 `exportSelectors()` (a `view` exporter can answer differently per instance,
+///             and a `staticcall` cannot enforce `pure`);
+///          3. no proxy used as a facet (a proxy's codehash says nothing about the code it forwards to);
+///          4. selectors come from Tier B ({getSelectors} / {getCut}), never from `resolve`.
+///        `register` mirrors a curated facet into Tier A only when its codehash is unmapped, so a curated
+///        record can name a different address than `resolve` returns for the same codehash.
 ///      - Tier B (curated, append-only): {register} / {setLatest} + views. `Ownable2Step` (→ multisig)
 ///        governs ONLY this namespace. A `(nameHash, version)` record is IMMUTABLE once written (invariant
 ///        I1) — never repointed; `latest(nameHash)` is a curator-movable convenience pointer that
 ///        security-critical consumers ignore in favour of pinning an exact version (invariant I3). Curated
 ///        facets MUST implement ERC-8153 `exportSelectors()`; {register} pulls and validates the selectors
-///        and pins `keccak256(rawBlob)`, and the live-read views re-verify against that pin so an impure or
+///        and pins `keccak256(blob)`, and the live-read views re-verify against that pin so an impure or
 ///        lying `exportSelectors()` can never drift the cut a consumer receives (invariant I2 for selectors).
+///
+///      EXPORTER CALLS ARE BOUNDED. Every `exportSelectors()` read (at {register} and on each live read)
+///      forwards at most 100,000 gas and accepts at most 8,192 bytes of return data; a call that runs out of
+///      gas, reverts, or returns more is treated as a non-conformant export. Return data is decoded by hand
+///      with exactly the acceptance rule of `abi.decode(ret, (bytes))` (any in-bounds offset, trailing bytes
+///      ignored), so a malformed encoding is reported as {LatticeRegistry__NotERC8153} at registration and as
+///      {LatticeRegistry__SelectorDrift} on a live read, never as an empty revert or a Panic.
 ///
 ///      `version` is a semver value packed into a `uint64` as `major (16 bits) | minor (24) | patch (24)`
 ///      (`(major << 48) | (minor << 24) | patch`), so lexicographic `uint64` ordering equals semver
@@ -46,6 +64,14 @@ interface ILatticeRegistry {
         uint48 registeredAt;
         bytes32 codehash;
         bytes32 selectorsHash;
+    }
+
+    /// @notice One lookup for {getMany}: a curated name and the version to read.
+    /// @param nameHash The curated name key.
+    /// @param version The semver-packed version, or `0` to read the record `latest(nameHash)` points at.
+    struct RecordKey {
+        bytes32 nameHash;
+        uint64 version;
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -107,12 +133,16 @@ interface ILatticeRegistry {
     error LatticeRegistry__LatestUnset(bytes32 nameHash);
 
     /// @notice Thrown when a curated facet does not satisfy the ERC-8153 selector contract at {register}
-    ///         (call reverts / returns nothing / empty selectors / length not a multiple of 4 / duplicates /
-    ///         a blob that self-includes `exportSelectors()` (`0x0ef22643`), which must never be cut).
+    ///         (call reverts or runs out of its 100,000-gas budget / returns fewer than 64 or more than 8,192
+    ///         bytes / an encoding `abi.decode(ret, (bytes))` would reject / empty selectors / length not a
+    ///         multiple of 4 / duplicates / a blob that self-includes `exportSelectors()` (`0x0ef22643`), which
+    ///         must never be cut).
     error LatticeRegistry__NotERC8153(address facet);
 
     /// @notice Thrown by the live-read views when `keccak256(exportSelectors())` no longer equals the pinned
-    ///         `selectorsHash` — an impure or mutated facet (invariant I2 for selectors).
+    ///         `selectorsHash` — an impure or mutated facet (invariant I2 for selectors). A live read that fails
+    ///         the bounds {LatticeRegistry__NotERC8153} lists (revert, gas, size, malformed encoding) is also
+    ///         reported as drift.
     error LatticeRegistry__SelectorDrift(address facet);
 
     /// @notice Thrown by the live-read views when the facet's current `codehash` no longer equals the codehash
@@ -132,6 +162,8 @@ interface ILatticeRegistry {
     function attest(address deployed) external;
 
     /// @notice Resolve a runtime `codehash` to the first address attested with it (0 if none).
+    /// @dev A code-identity lookup only: it never says which selectors an address exports, and two addresses
+    ///      with one codehash are interchangeable only under the Tier A assumptions in the interface NatSpec.
     /// @param codehash The runtime codehash to look up.
     /// @return deployed The first attested address, or `address(0)` if unmapped.
     function resolve(bytes32 codehash) external view returns (address deployed);
@@ -165,13 +197,27 @@ interface ILatticeRegistry {
     /// @dev Reverts {LatticeRegistry__LatestUnset} if {setLatest} was never called for `nameHash`.
     function latest(bytes32 nameHash) external view returns (Record memory record);
 
+    /// @notice Batch {get}: one record per key, in order. A key with `version == 0` reads the record
+    ///         `latest(nameHash)` points at, the way a factory recipe entry with version `0` resolves.
+    /// @dev Reverts on the first key that {get} (or {latest}, for version `0`) would revert on. Records are
+    ///      read from storage only; use {getSelectors} / {getCut} for live-verified selectors.
+    /// @param keys The `(nameHash, version)` lookups.
+    /// @return records The records, `records[i]` for `keys[i]`.
+    function getMany(RecordKey[] calldata keys) external view returns (Record[] memory records);
+
+    /// @notice Batch {latest}: the record each name's `latest` pointer flags, in order.
+    /// @dev Reverts {LatticeRegistry__LatestUnset} on the first name whose pointer was never set.
+    /// @param nameHashes The curated name keys.
+    /// @return records The records, `records[i]` for `nameHashes[i]`.
+    function latestMany(bytes32[] calldata nameHashes) external view returns (Record[] memory records);
+
     /// @notice Live-read and drift-verify the facet's selectors for `(nameHash, version)`.
     /// @dev Reverts {LatticeRegistry__RecordNotFound} if unregistered, {LatticeRegistry__CodeDrift} if
     ///      `facet.codehash` no longer equals the pinned codehash, and {LatticeRegistry__SelectorDrift} if
     ///      `keccak256(exportSelectors())` no longer equals the pinned `selectorsHash`. A facet that reverts,
-    ///      self-destructs, or returns a malformed blob is caught by the code/selector pins (an unmatchable or
-    ///      undecodable live read never satisfies both pins), so the call always reverts rather than returning a
-    ///      stale cut. Then unpacks the blob to `bytes4[]`.
+    ///      runs out of its gas budget, returns oversized or malformed data, or lost its code is caught by the
+    ///      code/selector pins with one of those two errors, so the call never returns a stale cut. Then
+    ///      unpacks the blob to `bytes4[]`.
     function getSelectors(bytes32 nameHash, uint64 version) external view returns (bytes4[] memory selectors);
 
     /// @notice Live-read, drift-verify, and assemble a ready-to-apply `Add` {FacetCut} for `(nameHash, version)`.
@@ -223,5 +269,7 @@ interface ILatticeRegistry {
     function transferOwnership(address newOwner) external;
 
     /// @notice Complete a pending ownership handover (pending-owner-only).
+    /// @dev Reverts {LatticeRegistry__NotPendingOwner} when no handover is pending (`pendingOwner == 0`, which
+    ///      is also the state a cancelled handover leaves), so the owner can never become `address(0)`.
     function acceptOwnership() external;
 }

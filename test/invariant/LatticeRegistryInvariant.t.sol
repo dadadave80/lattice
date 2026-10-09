@@ -124,7 +124,6 @@ contract LatticeRegistryHandler is Test {
         bytes32 nameHash = keccak256(bytes(_names[nameIdx]));
 
         bytes memory expected;
-        bool bare;
         if (caller != ghostOwner) {
             expected = abi.encodeWithSelector(ILatticeRegistry.LatticeRegistry__Unauthorized.selector, caller);
         } else if (version == 0) {
@@ -134,17 +133,16 @@ contract LatticeRegistryHandler is Test {
                 abi.encodeWithSelector(ILatticeRegistry.LatticeRegistry__RecordExists.selector, nameHash, version);
         } else if (facet.code.length == 0) {
             expected = abi.encodeWithSelector(ILatticeRegistry.LatticeRegistry__EmptyCode.selector, facet);
-        } else if (f == 5) {
+        } else if (f == 5 || f == 6) {
+            // f == 6 has a malformed offset: reported as NotERC8153 since R-1 was fixed.
             expected = abi.encodeWithSelector(ILatticeRegistry.LatticeRegistry__NotERC8153.selector, facet);
-        } else if (f == 6) {
-            bare = true; // finding R-1: a malformed offset fails inside abi.decode with empty revert data
         }
 
-        if (expected.length != 0 || bare) vm.expectRevert(expected);
+        if (expected.length != 0) vm.expectRevert(expected);
         vm.prank(caller);
         if (byString) registry.register(_names[nameIdx], version, facet);
         else registry.register(nameHash, version, facet);
-        if (expected.length != 0 || bare) return;
+        if (expected.length != 0) return;
 
         bytes32 h = facet.codehash;
         _records[nameIdx][version] = GhostRecord({

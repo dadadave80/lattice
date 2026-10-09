@@ -24,7 +24,8 @@ import {
     CoreSelfDestructInit,
     CoreShadowedSelectorFacet,
     CoreValueCollidingFacet,
-    CoreValueFacet
+    CoreValueFacet,
+    RawCode
 } from "@lattice-test/helpers/LatticeCoreMocks.sol";
 import {Lattice} from "@lattice/Lattice.sol";
 import {LatticeFactory} from "@lattice/LatticeFactory.sol";
@@ -39,12 +40,13 @@ import {Test, Vm} from "forge-std/Test.sol";
 
 /// @title LatticeFactoryHardeningTest
 /// @notice #176: adversarial and edge-case coverage for {LatticeFactory} on top of {LatticeFactoryTest}: registry
-///         binding, recipe kinds and selector collisions, CREATE2 prediction against the real {Lattice}
-///         creation code, caller/salt isolation, occupied-address reuse, initialization authority, and malicious
-///         init callbacks.
-/// @dev Tests named `test_Finding_*` pin behaviour the #176 design work should change (most of it is what the
-///      joint `deployStrict` PR addresses). They pass today on purpose; see
-///      docs/security/registry-factory-threat-model.md.
+///         binding, recipe kinds and selector collisions, entry exclusions, CREATE2 prediction against the real
+///         {Lattice} creation code, caller/salt isolation, occupied-address reuse through `deploy` and
+///         `deployStrict`, the recipe hash in `DiamondDeployed`, initialization authority, and malicious init
+///         callbacks.
+/// @dev The findings F-1 to F-7 in docs/security/registry-factory-threat-model.md are each covered here: F-1, F-2
+///      and F-5 by tests of the fix, F-3 and F-4 by `deployStrict` tests next to the documented `deploy`
+///      behaviour, and F-6 and F-7 by tests of the documented behaviour.
 contract LatticeFactoryHardeningTest is Test {
     LatticeRegistry internal registry;
     LatticeFactory internal factory;
@@ -99,15 +101,15 @@ contract LatticeFactoryHardeningTest is Test {
 
     function _entries(bytes32 a, uint64 va) internal pure returns (RecipeEntry[] memory e) {
         e = new RecipeEntry[](2);
-        e[0] = RecipeEntry({nameHash: LOUPE, version: V1});
-        e[1] = RecipeEntry({nameHash: a, version: va});
+        e[0] = RecipeEntry({nameHash: LOUPE, version: V1, exclude: new bytes4[](0)});
+        e[1] = RecipeEntry({nameHash: a, version: va, exclude: new bytes4[](0)});
     }
 
     function _entries3(bytes32 a, uint64 va, bytes32 b, uint64 vb) internal pure returns (RecipeEntry[] memory e) {
         e = new RecipeEntry[](3);
-        e[0] = RecipeEntry({nameHash: LOUPE, version: V1});
-        e[1] = RecipeEntry({nameHash: a, version: va});
-        e[2] = RecipeEntry({nameHash: b, version: vb});
+        e[0] = RecipeEntry({nameHash: LOUPE, version: V1, exclude: new bytes4[](0)});
+        e[1] = RecipeEntry({nameHash: a, version: va, exclude: new bytes4[](0)});
+        e[2] = RecipeEntry({nameHash: b, version: vb, exclude: new bytes4[](0)});
     }
 
     function _noCuts() internal pure returns (FacetCut[] memory) {
@@ -144,26 +146,39 @@ contract LatticeFactoryHardeningTest is Test {
         return uint256(vm.load(diamond, keccak256("lattice.test.core.marker")));
     }
 
+    function _entry(bytes32 name, uint64 version, bytes4[] memory exclude) internal pure returns (RecipeEntry memory) {
+        return RecipeEntry({nameHash: name, version: version, exclude: exclude});
+    }
+
+    /// @dev The `recipeHash` {ILatticeFactory.DiamondDeployed} carries for a loupe entry plus one registry
+    ///      record, with no init: `keccak256(abi.encode(cuts, init, initCalldata))` over the applied cuts.
+    function _recipeHash(bytes32 name, uint64 version) internal view returns (bytes32) {
+        FacetCut[] memory applied = new FacetCut[](2);
+        applied[0] = registry.getCut(LOUPE, V1);
+        applied[1] = registry.getCut(name, version);
+        return keccak256(abi.encode(applied, address(0), bytes("")));
+    }
+
+    /// @dev The `recipeHash` topic of the last {ILatticeFactory.DiamondDeployed} in `logs`.
+    function _lastRecipeHash(Vm.Log[] memory logs) internal view returns (bytes32 recipeHash) {
+        for (uint256 i; i < logs.length; ++i) {
+            if (logs[i].emitter == address(factory) && logs[i].topics[0] == ILatticeFactory.DiamondDeployed.selector) {
+                recipeHash = logs[i].topics[3];
+            }
+        }
+    }
+
     //*//////////////////////////////////////////////////////////////////////////
     //                            REGISTRY BINDING
     //////////////////////////////////////////////////////////////////////////*//
 
-    /// @notice FINDING (F-1): the constructor rejects only the zero registry, not a CODELESS one. Such a factory
-    ///         deploys custom-only recipes, but every recipe entry reverts with empty data (Solidity's
-    ///         no-code check on the `latest`/`getCut` call). It is a permanent misconfiguration of an immutable
-    ///         contract; the joint PR can add a code-length check next to {LatticeFactory__ZeroRegistry}.
-    function test_Finding_ConstructorAcceptsCodelessRegistry() public {
-        LatticeFactory broken = new LatticeFactory(ILatticeRegistry(makeAddr("noRegistry")), address(0), address(0));
-
-        address diamond = broken.deploy(
-            new RecipeEntry[](0), _cut(loupeFacet, FacetCutAction.Add, _loupeSelectors()), address(0), "", SALT
-        );
-        assertTrue(diamond.code.length != 0, "custom-only recipes still deploy");
-
-        RecipeEntry[] memory entries = new RecipeEntry[](1);
-        entries[0] = RecipeEntry({nameHash: LOUPE, version: V1});
-        vm.expectRevert(bytes(""));
-        broken.deploy(entries, _noCuts(), address(0), "", keccak256("other"));
+    /// @notice F-1 (fixed): a registry address without code is refused at construction, like the zero address.
+    ///         Such a factory could deploy custom-only recipes, but every recipe entry would revert with empty data,
+    ///         a permanent misconfiguration of an immutable contract.
+    function test_ConstructorRejectsCodelessRegistry() public {
+        address codeless = makeAddr("noRegistry");
+        vm.expectRevert(abi.encodeWithSelector(ILatticeFactory.LatticeFactory__InvalidRegistry.selector, codeless));
+        new LatticeFactory(ILatticeRegistry(codeless), address(0), address(0));
     }
 
     /// @notice Registry-resolved cuts are TRUSTED: the factory refuses `exportSelectors()` only in custom cuts.
@@ -179,7 +194,7 @@ contract LatticeFactoryHardeningTest is Test {
         LatticeFactory hostileFactory = new LatticeFactory(ILatticeRegistry(address(hostile)), address(0), address(0));
 
         RecipeEntry[] memory entries = new RecipeEntry[](1);
-        entries[0] = RecipeEntry({nameHash: PING, version: 0});
+        entries[0] = RecipeEntry({nameHash: PING, version: 0, exclude: new bytes4[](0)});
         address diamond = hostileFactory.deploy(
             entries, _cut(loupeFacet, FacetCutAction.Add, _loupeSelectors()), address(0), "", SALT
         );
@@ -283,13 +298,19 @@ contract LatticeFactoryHardeningTest is Test {
     //                    INIT ADDRESS AND CALLDATA HANDLING
     //////////////////////////////////////////////////////////////////////////*//
 
-    /// @notice FINDING (F-2): `init == address(0)` with NON-empty calldata succeeds and the calldata is silently
-    ///         dropped (DiamondLib returns early on a zero init). A recipe that forgot its init address deploys
-    ///         an uninitialized diamond without an error.
-    function test_Finding_ZeroInitSilentlyDropsCalldata() public {
-        address diamond =
-            factory.deploy(_entries(VALUE, V1), _noCuts(), address(0), abi.encodeCall(CoreMarkerInit.init, (7)), SALT);
-        assertEq(_marker(diamond), 0, "calldata dropped, nothing initialized");
+    /// @notice F-2 (fixed): `init == address(0)` with NON-empty calldata is refused by both entry points, so a
+    ///         recipe that forgot its init address no longer deploys an uninitialized diamond. The check is argument
+    ///         validation, so it also runs on `deploy`'s idempotent path.
+    function test_ZeroInitWithCalldataReverts() public {
+        bytes memory data = abi.encodeCall(CoreMarkerInit.init, (7));
+        vm.expectRevert(ILatticeFactory.LatticeFactory__InitCalldataWithoutInit.selector);
+        factory.deploy(_entries(VALUE, V1), _noCuts(), address(0), data, SALT);
+        vm.expectRevert(ILatticeFactory.LatticeFactory__InitCalldataWithoutInit.selector);
+        factory.deployStrict(_entries(VALUE, V1), _noCuts(), address(0), data, SALT);
+
+        factory.deploy(_entries(VALUE, V1), _noCuts(), address(0), "", SALT);
+        vm.expectRevert(ILatticeFactory.LatticeFactory__InitCalldataWithoutInit.selector);
+        factory.deploy(_entries(VALUE, V1), _noCuts(), address(0), data, SALT);
     }
 
     /// @notice An init address without code aborts the deploy.
@@ -312,11 +333,11 @@ contract LatticeFactoryHardeningTest is Test {
     //////////////////////////////////////////////////////////////////////////*//
 
     /// @notice `predict` equals the standard CREATE2 formula over `keccak256(type(Lattice).creationCode)`, which
-    ///         also confirms the factory's private initcode hash (the value a `diamondInitCodeHash()` view would
-    ///         return).
+    ///         is exactly what `diamondInitCodeHash()` returns.
     function test_PredictMatchesCreate2OverLatticeCreationCode() public view {
         bytes32 s = keccak256(abi.encode(address(this), SALT));
         bytes32 initCodeHash = keccak256(type(Lattice).creationCode);
+        assertEq(factory.diamondInitCodeHash(), initCodeHash, "diamondInitCodeHash");
         address expected =
             address(uint160(uint256(keccak256(abi.encodePacked(bytes1(0xff), address(factory), s, initCodeHash)))));
         assertEq(factory.predict(address(this), SALT), expected, "predict != CREATE2(keccak(creationCode))");
@@ -350,14 +371,14 @@ contract LatticeFactoryHardeningTest is Test {
     }
 
     //*//////////////////////////////////////////////////////////////////////////
-    //                   OCCUPIED ADDRESSES (deployStrict inputs)
+    //                 OCCUPIED ADDRESSES, deployStrict AND THE RECIPE HASH
     //////////////////////////////////////////////////////////////////////////*//
 
-    /// @notice FINDING (F-3, what `deployStrict` addresses): a repeat call for an occupied `(sender, salt)` with a
-    ///         DIFFERENT recipe and a DIFFERENT init returns the existing diamond, runs neither the new cuts nor
-    ///         the new init, emits nothing, and leaves the loupe unchanged. The caller cannot tell from the call
-    ///         that its recipe was ignored.
-    function test_Finding_OccupiedAddressIgnoresNewRecipeAndInit() public {
+    /// @notice F-3 (by design for `deploy`): a repeat call for an occupied `(sender, salt)` with a DIFFERENT
+    ///         recipe and a DIFFERENT init returns the existing diamond, runs neither the new cuts nor the new
+    ///         init, emits nothing, and leaves the loupe unchanged. `deployStrict` is the entry point that reports
+    ///         it (next test).
+    function test_DeployOccupiedAddressIgnoresNewRecipeAndInit() public {
         address marker = address(new CoreMarkerInit());
         address first =
             factory.deploy(_entries(VALUE, V1), _noCuts(), marker, abi.encodeCall(CoreMarkerInit.init, (1)), SALT);
@@ -376,63 +397,220 @@ contract LatticeFactoryHardeningTest is Test {
         assertEq(_facetsHash(first), facetsBefore, "loupe unchanged");
     }
 
-    /// @notice FINDING (F-4, residual (b) in #176): every user behind one shared forwarder reaches the factory
-    ///         with the same `msg.sender`, so they share one salt namespace. The second user's deploy returns the
-    ///         FIRST user's diamond, silently, with the first user's admin.
-    function test_Finding_SharedForwarderCallersShareOneNamespace() public {
+    /// @notice F-3 (fixed for strict callers): `deployStrict` on an occupied `(sender, salt)` reverts
+    ///         `AlreadyDeployed(diamond)`, whichever entry point occupied it, and changes nothing.
+    function test_DeployStrictRevertsOnOccupiedAddress() public {
+        address first = factory.deployStrict(_entries(VALUE, V1), _noCuts(), address(0), "", SALT);
+        assertEq(first, factory.predict(address(this), SALT), "strict deploy == predict");
+        bytes32 facetsBefore = _facetsHash(first);
+
+        vm.expectRevert(abi.encodeWithSelector(ILatticeFactory.LatticeFactory__AlreadyDeployed.selector, first));
+        factory.deployStrict(_entries(VALUE, V1), _noCuts(), address(0), "", SALT);
+        vm.expectRevert(abi.encodeWithSelector(ILatticeFactory.LatticeFactory__AlreadyDeployed.selector, first));
+        factory.deployStrict(_entries3(VALUE, V2, PING, V1), _noCuts(), address(0), "", SALT);
+
+        address other = factory.deploy(_entries(VALUE, V1), _noCuts(), address(0), "", keccak256("other"));
+        vm.expectRevert(abi.encodeWithSelector(ILatticeFactory.LatticeFactory__AlreadyDeployed.selector, other));
+        factory.deployStrict(_entries(VALUE, V1), _noCuts(), address(0), "", keccak256("other"));
+        assertEq(_facetsHash(first), facetsBefore, "loupe unchanged");
+    }
+
+    /// @notice F-4 (#176 residual (b)): every user behind one shared forwarder reaches the factory with the same
+    ///         `msg.sender`, so they share one salt namespace. Through `deploy` the second user silently receives
+    ///         the FIRST user's diamond and admin (documented on {ILatticeFactory}); through `deployStrict` the
+    ///         second user's call reverts instead.
+    function test_SharedForwarderCallersShareOneNamespace() public {
         CoreForwarder forwarder = new CoreForwarder();
         address alice = makeAddr("alice");
         address bob = makeAddr("bob");
         address aci = address(new AccessControlInit());
 
         bytes memory aliceCall = abi.encodeCall(
-            ILatticeFactory.deploy,
+            ILatticeFactory.deployStrict,
             (_entries(ACCESS, V1), _noCuts(), aci, abi.encodeCall(AccessControlInit.init, (alice)), SALT)
         );
-        bytes memory bobCall = abi.encodeCall(
+        bytes memory bobStrict = abi.encodeCall(
+            ILatticeFactory.deployStrict,
+            (_entries(ACCESS, V1), _noCuts(), aci, abi.encodeCall(AccessControlInit.init, (bob)), SALT)
+        );
+        bytes memory bobLegacy = abi.encodeCall(
             ILatticeFactory.deploy,
             (_entries(ACCESS, V1), _noCuts(), aci, abi.encodeCall(AccessControlInit.init, (bob)), SALT)
         );
 
         vm.prank(alice);
         address aliceDiamond = abi.decode(forwarder.forward(address(factory), aliceCall), (address));
-        vm.prank(bob);
-        address bobDiamond = abi.decode(forwarder.forward(address(factory), bobCall), (address));
 
-        assertEq(bobDiamond, aliceDiamond, "bob receives alice's diamond");
+        vm.expectRevert(abi.encodeWithSelector(ILatticeFactory.LatticeFactory__AlreadyDeployed.selector, aliceDiamond));
+        vm.prank(bob);
+        forwarder.forward(address(factory), bobStrict);
+
+        vm.prank(bob);
+        address bobDiamond = abi.decode(forwarder.forward(address(factory), bobLegacy), (address));
+        assertEq(bobDiamond, aliceDiamond, "deploy hands bob alice's diamond");
         assertTrue(AccessControl(bobDiamond).hasRole(DEFAULT_ADMIN_ROLE, alice), "alice is the admin");
         assertFalse(AccessControl(bobDiamond).hasRole(DEFAULT_ADMIN_ROLE, bob), "bob holds nothing");
     }
 
-    /// @notice FINDING (F-5, residual (a) in #176): a `version == 0` entry resolves `latest` when the transaction
-    ///         EXECUTES. If the curator moves `latest` between signing and inclusion, the diamond gets the new
-    ///         version, and `DiamondDeployed` carries only `(diamond, deployer, salt)`, so an indexer cannot tell
-    ///         which version was cut.
-    function test_Finding_LatestMovedBeforeInclusionIsInvisibleInTheEvent() public {
+    /// @notice F-5 (fixed, #176 residual (a)): a `version == 0` entry still resolves `latest` when the transaction
+    ///         EXECUTES through `deploy`, but `DiamondDeployed` now carries the hash of the applied cuts, so an
+    ///         indexer sees that v2 was cut although the signer saw v1. `deployStrict` refuses the unpinned entry.
+    function test_LatestMovedBeforeInclusionShowsInTheRecipeHash() public {
         RecipeEntry[] memory signed = _entries(VALUE, 0); // signed while latest(VALUE) == v1
+        bytes32 signerExpected = _recipeHash(VALUE, V1);
 
         vm.prank(owner);
         registry.setLatest(VALUE, V2); // moved before the deploy is included
 
+        vm.expectRevert(abi.encodeWithSelector(ILatticeFactory.LatticeFactory__UnpinnedEntry.selector, VALUE));
+        factory.deployStrict(signed, _noCuts(), address(0), "", SALT);
+
         vm.recordLogs();
         address diamond = factory.deploy(signed, _noCuts(), address(0), "", SALT);
-        Vm.Log[] memory logs = vm.getRecordedLogs();
-        Vm.Log memory deployed = logs[logs.length - 1];
+        bytes32 emitted = _lastRecipeHash(vm.getRecordedLogs());
 
-        assertEq(CoreValueFacet(diamond).value(), 2, "the diamond got v2, not the v1 the signer saw");
-        assertEq(deployed.topics[0], ILatticeFactory.DiamondDeployed.selector, "last log is DiamondDeployed");
-        assertEq(deployed.data, abi.encode(SALT), "event data carries only the salt: no recipe or version");
+        assertEq(CoreValueFacet(diamond).value(), 2, "the diamond got v2");
+        assertEq(emitted, _recipeHash(VALUE, V2), "the event names the applied recipe");
+        assertTrue(emitted != signerExpected, "and it differs from the one the signer expected");
+    }
+
+    /// @notice The recipe hash commits to the applied cuts, the init and the init calldata: the same cuts with
+    ///         another init argument give another hash, and the event's `init` and `salt` are the call's.
+    function test_RecipeHashCommitsToCutsInitAndCalldata() public {
+        address marker = address(new CoreMarkerInit());
+        FacetCut[] memory applied = new FacetCut[](2);
+        applied[0] = registry.getCut(LOUPE, V1);
+        applied[1] = registry.getCut(VALUE, V1);
+
+        for (uint256 m = 1; m <= 2; ++m) {
+            bytes memory data = abi.encodeCall(CoreMarkerInit.init, (m));
+            bytes32 salt = bytes32(m);
+            address predicted = factory.predict(address(this), salt);
+            vm.expectEmit(true, true, true, true, address(factory));
+            emit ILatticeFactory.DiamondDeployed(
+                predicted, address(this), keccak256(abi.encode(applied, marker, data)), salt, marker
+            );
+            factory.deployStrict(_entries(VALUE, V1), _noCuts(), marker, data, salt);
+        }
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                         RECIPE ENTRY EXCLUSIONS
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice An excluded selector is not cut; the entry's other selectors are, in export order, and the
+    ///         recipe hash covers the post-exclusion cut.
+    function test_ExcludeDropsSelectorsFromARegistryEntry() public {
+        bytes4[] memory exclude = _one(Lattice.initialize.selector);
+        RecipeEntry[] memory entries = new RecipeEntry[](2);
+        entries[0] = _entry(LOUPE, V1, new bytes4[](0));
+        entries[1] = _entry(SHADOW, V1, exclude);
+
+        FacetCut[] memory applied = new FacetCut[](2);
+        applied[0] = registry.getCut(LOUPE, V1);
+        applied[1] = registry.getCut(SHADOW, V1);
+        applied[1].functionSelectors = _one(CoreShadowedSelectorFacet.shadowPing.selector);
+
+        vm.recordLogs();
+        address diamond = factory.deployStrict(entries, _noCuts(), address(0), "", SALT);
+        assertEq(_lastRecipeHash(vm.getRecordedLogs()), keccak256(abi.encode(applied, address(0), bytes(""))));
+
+        address shadowFacet = registry.get(SHADOW, V1).facet;
+        assertEq(IDiamondLoupe(diamond).facetAddress(Lattice.initialize.selector), address(0), "excluded");
+        assertEq(IDiamondLoupe(diamond).facetAddress(CoreShadowedSelectorFacet.shadowPing.selector), shadowFacet);
+        assertEq(IDiamondLoupe(diamond).facetFunctionSelectors(shadowFacet).length, 1, "one selector left");
+    }
+
+    /// @notice Exclusion lets two registry entries that export one selector coexist: the entry that does not
+    ///         serve it excludes it. Without the exclusion the deploy aborts on the collision; excluding every
+    ///         selector of an entry leaves an empty `Add` cut, which DiamondLib refuses.
+    function test_ExcludeResolvesARegistryRegistryCollision() public {
+        bytes32 superset = keccak256("lattice.CoreValueSuperset");
+        address supersetFacet = RawCode.exporter(abi.encodePacked(CoreValueFacet.value.selector, bytes4(0x22222222)));
+        vm.prank(owner);
+        registry.register(superset, V1, supersetFacet);
+
+        RecipeEntry[] memory entries = new RecipeEntry[](3);
+        entries[0] = _entry(LOUPE, V1, new bytes4[](0));
+        entries[1] = _entry(VALUE, V1, new bytes4[](0));
+        entries[2] = _entry(superset, V1, new bytes4[](0));
+        vm.expectRevert(
+            abi.encodeWithSelector(CannotAddFunctionToDiamondThatAlreadyExists.selector, CoreValueFacet.value.selector)
+        );
+        factory.deploy(entries, _noCuts(), address(0), "", SALT);
+
+        entries[2] = _entry(COLLIDE, V1, _one(CoreValueFacet.value.selector)); // COLLIDE exports only `value()`
+        vm.expectRevert(NoSelectorsGivenToAdd.selector);
+        factory.deploy(entries, _noCuts(), address(0), "", SALT);
+
+        entries[2] = _entry(superset, V1, _one(CoreValueFacet.value.selector));
+        address diamond = factory.deployStrict(entries, _noCuts(), address(0), "", SALT);
+        assertEq(CoreValueFacet(diamond).value(), 1, "VALUE serves value()");
+        assertEq(IDiamondLoupe(diamond).facetAddress(0x22222222), supersetFacet, "the rest of the superset is cut");
+    }
+
+    /// @notice A selector the entry's pinned export does not contain, or the same selector excluded twice, is
+    ///         refused on both entry points: a typo never silently leaves a selector cut.
+    function test_ExcludeOfASelectorNotExportedReverts() public {
+        RecipeEntry[] memory entries = new RecipeEntry[](2);
+        entries[0] = _entry(LOUPE, V1, new bytes4[](0));
+        entries[1] = _entry(VALUE, V1, _one(CorePingFacet.ping.selector));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ILatticeFactory.LatticeFactory__ExcludedSelectorNotExported.selector, VALUE, CorePingFacet.ping.selector
+            )
+        );
+        factory.deployStrict(entries, _noCuts(), address(0), "", SALT);
+
+        bytes4[] memory twice = new bytes4[](2);
+        twice[0] = Lattice.initialize.selector;
+        twice[1] = Lattice.initialize.selector;
+        entries[1] = _entry(SHADOW, V1, twice);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ILatticeFactory.LatticeFactory__ExcludedSelectorNotExported.selector,
+                SHADOW,
+                Lattice.initialize.selector
+            )
+        );
+        factory.deploy(entries, _noCuts(), address(0), "", SALT);
+        assertEq(factory.predict(address(this), SALT).code.length, 0, "nothing deployed");
+    }
+
+    /// @notice Excluding a loupe selector from the loupe entry leaves it uncovered, so the deploy is refused.
+    function test_ExcludeOfALoupeSelectorFailsLoupeCoverage() public {
+        RecipeEntry[] memory entries = new RecipeEntry[](1);
+        entries[0] = _entry(LOUPE, V1, _one(0x52ef6b2c));
+        vm.expectRevert(
+            abi.encodeWithSelector(ILatticeFactory.LatticeFactory__MissingLoupeCoverage.selector, bytes4(0x52ef6b2c))
+        );
+        factory.deployStrict(entries, _noCuts(), address(0), "", SALT);
+    }
+
+    /// @notice Exclusions apply to `latest` entries too, against the version `latest` resolves to: the
+    ///         exclusion sits on a version-0 entry, and the excluded selector is not routed.
+    function test_ExcludeAppliesToLatestEntries() public {
+        vm.prank(owner);
+        registry.setLatest(SHADOW, V1);
+
+        RecipeEntry[] memory entries = new RecipeEntry[](3);
+        entries[0] = _entry(LOUPE, V1, new bytes4[](0));
+        entries[1] = _entry(VALUE, 0, new bytes4[](0));
+        entries[2] = _entry(SHADOW, 0, _one(Lattice.initialize.selector));
+        address diamond = factory.deploy(entries, _noCuts(), address(0), "", SALT);
+        assertEq(CoreValueFacet(diamond).value(), 1, "latest resolved");
+        assertEq(IDiamondLoupe(diamond).facetAddress(Lattice.initialize.selector), address(0), "excluded");
     }
 
     //*//////////////////////////////////////////////////////////////////////////
     //                    INITIALIZATION AUTHORITY AND CALLBACKS
     //////////////////////////////////////////////////////////////////////////*//
 
-    /// @notice FINDING (F-6): {Lattice.initialize} is called BY THE FACTORY, so an init that grants `msg.sender`
-    ///         grants the factory. The factory has no call surface to use the role, so the diamond ends up with
-    ///         an admin nobody can exercise, and the deployer holds nothing. No shipped Init does this (they take
-    ///         an explicit admin); it is a footgun for consumer inits.
-    function test_Finding_InitGrantingMsgSenderGrantsTheFactory() public {
+    /// @notice F-6 (documented on {ILatticeFactory.deploy}): {Lattice.initialize} is called BY THE FACTORY, so an
+    ///         init that grants `msg.sender` grants the factory. The factory has no call surface to use the role,
+    ///         so the diamond ends up with an admin nobody can exercise, and the deployer holds nothing. No shipped
+    ///         Init does this (they take an explicit admin); it is a footgun for consumer inits.
+    function test_InitGrantingMsgSenderGrantsTheFactory() public {
         address init = address(new CoreGrantSenderInit());
         address diamond =
             factory.deploy(_entries(ACCESS, V1), _noCuts(), init, abi.encodeCall(CoreGrantSenderInit.init, ()), SALT);
@@ -452,20 +630,21 @@ contract LatticeFactoryHardeningTest is Test {
         assertFalse(AccessControl(diamond).hasRole(DEFAULT_ADMIN_ROLE, address(factory)), "factory holds no role");
     }
 
-    /// @notice FINDING (F-7): an init that self-destructs the diamond is accepted, and `deploy` still returns the
-    ///         address and emits `DiamondDeployed`; the factory never checks that the diamond survives its own
-    ///         initialization. The diamond was created in the same transaction, so EIP-6780 deletes it when that
-    ///         transaction ends. Forge runs each top-level call as its own transaction (`isolate`, on by
-    ///         default), so the next `deploy` for the same `(sender, salt)` sees the empty address, creates the
-    ///         diamond AGAIN with another recipe, and emits a second `DiamondDeployed` for the same address.
+    /// @notice F-7 (documented on {ILatticeFactory.DiamondDeployed}): an init that self-destructs the diamond is
+    ///         accepted, and `deploy` still returns the address and emits `DiamondDeployed`. No in-transaction
+    ///         check can see the deletion: the diamond was created in the same transaction, so EIP-6780 deletes
+    ///         it only when that transaction ends, after `deploy` returns. Forge runs each top-level call as its
+    ///         own transaction (`isolate`, on by default), so the next `deploy` for the same `(sender, salt)`
+    ///         sees the empty address, creates the diamond AGAIN with another recipe, and emits a second
+    ///         `DiamondDeployed` for the same address.
     ///         The test contract's own `code.length` read is not a reliable witness of the deletion, so the test
     ///         asserts on the two events and on the second recipe's routing.
-    function test_Finding_SelfDestructingInitStillEmitsDiamondDeployed() public {
+    function test_SelfDestructingInitCanEmitDiamondDeployedTwice() public {
         address init = address(new CoreSelfDestructInit());
         address predicted = factory.predict(address(this), SALT);
 
         vm.expectEmit(true, true, false, true, address(factory));
-        emit ILatticeFactory.DiamondDeployed(predicted, address(this), SALT);
+        emit ILatticeFactory.DiamondDeployed(predicted, address(this), bytes32(0), SALT, init);
         address diamond =
             factory.deploy(_entries(VALUE, V1), _noCuts(), init, abi.encodeCall(CoreSelfDestructInit.init, ()), SALT);
         assertEq(diamond, predicted, "address returned as if deployed");

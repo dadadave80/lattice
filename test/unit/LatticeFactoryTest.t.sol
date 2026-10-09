@@ -9,6 +9,7 @@ import {
     FacetCut,
     FacetCutAction
 } from "@diamond/libraries/DiamondLib.sol";
+import {Lattice} from "@lattice/Lattice.sol";
 import {LatticeFactory} from "@lattice/LatticeFactory.sol";
 import {LatticeRegistry} from "@lattice/LatticeRegistry.sol";
 import {ILatticeFactory, RecipeEntry} from "@lattice/interfaces/ILatticeFactory.sol";
@@ -171,7 +172,7 @@ contract LatticeFactoryTest is Test {
     /// @dev Single-entry recipe for `(NAME, version)`.
     function _entries(uint64 version) internal pure returns (RecipeEntry[] memory entries) {
         entries = new RecipeEntry[](1);
-        entries[0] = RecipeEntry({nameHash: NAME, version: version});
+        entries[0] = RecipeEntry({nameHash: NAME, version: version, exclude: new bytes4[](0)});
     }
 
     /// @dev Single classic Add cut for `facet` exposing exactly `selectors`.
@@ -227,8 +228,12 @@ contract LatticeFactoryTest is Test {
     }
 
     function test_ConstructorRevertsOnZeroRegistry() public {
-        vm.expectRevert(ILatticeFactory.LatticeFactory__ZeroRegistry.selector);
+        vm.expectRevert(abi.encodeWithSelector(ILatticeFactory.LatticeFactory__InvalidRegistry.selector, address(0)));
         new LatticeFactory(ILatticeRegistry(address(0)), address(0), address(0));
+    }
+
+    function test_DiamondInitCodeHashIsLatticeCreationCodeHash() public view {
+        assertEq(factory.diamondInitCodeHash(), keccak256(type(Lattice).creationCode));
     }
 
     function test_ConstructorClaimsReverseRecordForExplicitOwner() public {
@@ -321,8 +326,8 @@ contract LatticeFactoryTest is Test {
         registry.register(NAME_PING, _v(1, 0, 0), pingFacet);
 
         RecipeEntry[] memory entries = new RecipeEntry[](2);
-        entries[0] = RecipeEntry({nameHash: NAME, version: _v(1, 0, 0)});
-        entries[1] = RecipeEntry({nameHash: NAME_PING, version: _v(1, 0, 0)});
+        entries[0] = RecipeEntry({nameHash: NAME, version: _v(1, 0, 0), exclude: new bytes4[](0)});
+        entries[1] = RecipeEntry({nameHash: NAME_PING, version: _v(1, 0, 0), exclude: new bytes4[](0)});
 
         bytes4[] memory pongSelectors = new bytes4[](1);
         pongSelectors[0] = MockPongFacet.pong.selector;
@@ -453,7 +458,8 @@ contract LatticeFactoryTest is Test {
         // resolution is skipped entirely and the original wiring is untouched. Distinct recipes need
         // distinct salts.
         RecipeEntry[] memory unregistered = new RecipeEntry[](1);
-        unregistered[0] = RecipeEntry({nameHash: keccak256("lattice.Unregistered"), version: _v(9, 0, 0)});
+        unregistered[0] =
+            RecipeEntry({nameHash: keccak256("lattice.Unregistered"), version: _v(9, 0, 0), exclude: new bytes4[](0)});
         address second = factory.deploy(unregistered, _noCuts(), address(0), "", SALT);
 
         assertEq(second, first, "existing diamond returned");
@@ -557,13 +563,22 @@ contract LatticeFactoryTest is Test {
     //                                  EVENT
     //////////////////////////////////////////////////////////////////////////*//
 
+    /// @notice The event names the diamond, the deployer, the hash of the MATERIALIZED cuts (registry cut first,
+    ///         then the custom cuts) with the init and its calldata, the salt and the init.
     function test_DeployEmitsDiamondDeployed() public {
-        _registerV1();
+        address facet = _registerV1();
         address predicted = factory.predict(address(this), SALT);
         FacetCut[] memory loupeCut = _loupeCut(); // hoisted: the CREATE must not consume the expectEmit
 
-        vm.expectEmit(true, true, false, true);
-        emit ILatticeFactory.DiamondDeployed(predicted, address(this), SALT);
+        FacetCut[] memory applied = new FacetCut[](2);
+        bytes4[] memory valueSelectors = new bytes4[](1);
+        valueSelectors[0] = MockValueV1Facet.value.selector;
+        applied[0] = FacetCut({facetAddress: facet, action: FacetCutAction.Add, functionSelectors: valueSelectors});
+        applied[1] = loupeCut[0];
+        bytes32 recipeHash = keccak256(abi.encode(applied, address(0), bytes("")));
+
+        vm.expectEmit(true, true, true, true, address(factory));
+        emit ILatticeFactory.DiamondDeployed(predicted, address(this), recipeHash, SALT, address(0));
         factory.deploy(_entries(_v(1, 0, 0)), loupeCut, address(0), "", SALT);
     }
 

@@ -14,7 +14,8 @@ import {Test} from "forge-std/Test.sol";
 /// @title LatticeFactoryFuzz
 /// @notice #176: stateless fuzz properties of {LatticeFactory}: CREATE2 prediction against the real {Lattice}
 ///         creation code, caller/salt isolation, atomic rollback and retry, the recipe-ignored idempotent return,
-///         routing of fuzzed pinned/latest/custom/mixed recipes, loupe coverage, and the custom-cut refusal of
+///         `deployStrict`'s single deploy, revert on reuse and refusal of `latest` entries, routing of fuzzed
+///         pinned/latest/custom/mixed recipes, entry exclusions, loupe coverage, and the custom-cut refusal of
 ///         `exportSelectors()`.
 contract LatticeFactoryFuzz is Test {
     LatticeRegistry internal registry;
@@ -62,7 +63,7 @@ contract LatticeFactoryFuzz is Test {
 
     function _loupeOnly() internal pure returns (RecipeEntry[] memory e) {
         e = new RecipeEntry[](1);
-        e[0] = RecipeEntry({nameHash: LOUPE, version: V1});
+        e[0] = RecipeEntry({nameHash: LOUPE, version: V1, exclude: new bytes4[](0)});
     }
 
     function _create2(address deployer, bytes32 salt) internal view returns (address) {
@@ -153,6 +154,90 @@ contract LatticeFactoryFuzz is Test {
         assertEq(keccak256(abi.encode(IDiamondLoupe(first).facets())), facetsBefore, "loupe unchanged");
     }
 
+    /// @notice `deployStrict` lands at `predict` for any (caller, salt) and any pinned/custom recipe, emits the hash
+    ///         of the applied cuts, and a second strict call for the same (caller, salt) reverts `AlreadyDeployed`
+    ///         whatever its recipe; `deploy` still takes the idempotent return there.
+    function testFuzz_DeployStrictDeploysOnceThenReverts(
+        address caller,
+        bytes32 salt,
+        uint8 entryMask,
+        uint8 customMask,
+        uint8 secondMask
+    ) public {
+        (RecipeEntry[] memory entries, FacetCut[] memory cuts) =
+            _recipe(uint8(bound(entryMask, 0, 63)), 0, uint8(bound(customMask, 0, 63)));
+        FacetCut[] memory applied = new FacetCut[](entries.length + cuts.length);
+        for (uint256 i; i < entries.length; ++i) {
+            applied[i] = registry.getCut(entries[i].nameHash, entries[i].version);
+        }
+        for (uint256 i; i < cuts.length; ++i) {
+            applied[entries.length + i] = cuts[i];
+        }
+        address expected = _create2(caller, salt);
+
+        vm.expectEmit(true, true, true, true, address(factory));
+        emit ILatticeFactory.DiamondDeployed(
+            expected, caller, keccak256(abi.encode(applied, address(0), bytes(""))), salt, address(0)
+        );
+        vm.prank(caller);
+        assertEq(factory.deployStrict(entries, cuts, address(0), "", salt), expected, "strict deploy == predict");
+
+        (entries, cuts) = _recipe(uint8(bound(secondMask, 0, 63)), 0, 0);
+        vm.expectRevert(abi.encodeWithSelector(ILatticeFactory.LatticeFactory__AlreadyDeployed.selector, expected));
+        vm.prank(caller);
+        factory.deployStrict(entries, cuts, address(0), "", salt);
+
+        vm.prank(caller);
+        assertEq(factory.deploy(entries, cuts, address(0), "", salt), expected, "deploy stays idempotent");
+    }
+
+    /// @notice `deployStrict` refuses any recipe with a `latest` (version 0) entry, before the address is
+    ///         occupied, naming the first unpinned entry.
+    function testFuzz_DeployStrictRefusesLatestEntries(uint8 entryMask, uint8 latestMask, bytes32 salt) public {
+        entryMask = uint8(bound(entryMask, 1, 63));
+        latestMask = uint8(bound(latestMask, 0, 63));
+        vm.assume(entryMask & latestMask != 0);
+        (RecipeEntry[] memory entries, FacetCut[] memory cuts) = _recipe(entryMask, latestMask, 0);
+        bytes32 first;
+        for (uint256 i; i < entries.length && first == bytes32(0); ++i) {
+            if (entries[i].version == 0) first = entries[i].nameHash;
+        }
+        vm.expectRevert(abi.encodeWithSelector(ILatticeFactory.LatticeFactory__UnpinnedEntry.selector, first));
+        factory.deployStrict(entries, cuts, address(0), "", salt);
+        assertEq(factory.predict(address(this), salt).code.length, 0, "nothing deployed");
+    }
+
+    /// @notice Excluding any strict subset of an entry's export, listed in any order, cuts exactly the rest of
+    ///         the export; nothing excluded is routed. Holds for a pinned entry and for a `latest` entry (which
+    ///         resolves to V2 here, so `deploy` is used; `deployStrict` refuses unpinned entries).
+    function testFuzz_ExcludeCutsExactlyTheComplement(uint8 mask, bool reversed, bool latest, bytes32 salt) public {
+        mask = uint8(bound(mask, 0, 62)); // name 5 exports 6 selectors; excluding all 6 leaves an empty cut
+        bytes4[] memory exported = RawCode.unpack(entryBlobs[5]);
+        bytes4[] memory exclude = new bytes4[](6);
+        uint256 n;
+        for (uint256 i; i < 6; ++i) {
+            uint256 k = reversed ? 5 - i : i;
+            if (mask & (1 << k) != 0) exclude[n++] = exported[k];
+        }
+        assembly ("memory-safe") {
+            mstore(exclude, n)
+        }
+        RecipeEntry[] memory entries = new RecipeEntry[](2);
+        entries[0] = _loupeOnly()[0];
+        entries[1] = RecipeEntry({nameHash: names[5], version: latest ? 0 : V1, exclude: exclude});
+
+        IDiamondLoupe loupe = IDiamondLoupe(
+            latest
+                ? factory.deploy(entries, new FacetCut[](0), address(0), "", salt)
+                : factory.deployStrict(entries, new FacetCut[](0), address(0), "", salt)
+        );
+        address routed = latest ? v2Facets[5] : v1Facets[5];
+        for (uint256 k; k < 6; ++k) {
+            address want = mask & (1 << k) != 0 ? address(0) : routed;
+            assertEq(loupe.facetAddress(exported[k]), want, "excluded iff in the mask");
+        }
+    }
+
     /// @notice A fresh deploy needs all four loupe selectors in Add cuts; any strict subset is refused, naming
     ///         the first missing selector in the factory's fixed order.
     function testFuzz_LoupeCoverageNeedsAllFour(uint8 mask) public {
@@ -206,13 +291,15 @@ contract LatticeFactoryFuzz is Test {
             if (customMask & (1 << i) != 0) ++nc;
         }
         entries = new RecipeEntry[](ne);
-        entries[0] = RecipeEntry({nameHash: LOUPE, version: V1});
+        entries[0] = RecipeEntry({nameHash: LOUPE, version: V1, exclude: new bytes4[](0)});
         cuts = new FacetCut[](nc);
         uint256 e = 1;
         uint256 c;
         for (uint256 i; i < POOL; ++i) {
             if (entryMask & (1 << i) != 0) {
-                entries[e++] = RecipeEntry({nameHash: names[i], version: latestMask & (1 << i) != 0 ? 0 : V1});
+                entries[e++] = RecipeEntry({
+                    nameHash: names[i], version: latestMask & (1 << i) != 0 ? 0 : V1, exclude: new bytes4[](0)
+                });
             }
             if (customMask & (1 << i) != 0) {
                 cuts[c++] = FacetCut({
