@@ -90,6 +90,7 @@ jobs:
           ./script/test-closing-issues.sh
           ./script/test-fork-lanes.sh
           ./script/fork-lanes.sh check
+          ./script/test-storage-layout.sh
 
   # README catalog vs src/. Not gated on `changes`: a README-only PR (code=false) can drop or misspell a
   # catalog entry, so this job runs on every PR. It needs only bash and diamond-lib's sources.
@@ -186,12 +187,16 @@ jobs:
           fi
           echo "via_ir size gate OK (only the vendored PoseidonT3 is exempt)."
 
-  # Append-only ERC-7201 storage-struct guard. Restores the `build` cache, so only the
-  # StorageLayoutProbe (script/) is compiled here, not src/.
+  # Append-only ERC-7201 storage-struct guard, run through the repository's own storage-safety Action.
+  # The checker compiles only the StorageLayoutProbe and the files it imports, in a temporary directory,
+  # so this job needs no build cache.
+  # On a pull request the layout must also be an append-only extension of the baseline at the PR base,
+  # so editing the source and the baseline together cannot hide an incompatible change. Pushes check
+  # drift only: the pull request into the branch already ran the comparison.
   storage-layout:
     name: Storage layout (append-only)
     runs-on: ubuntu-latest
-    needs: [changes, build]
+    needs: changes
     if: needs.changes.outputs.code == 'true'
     permissions:
       contents: read
@@ -201,16 +206,83 @@ jobs:
           submodules: recursive
           persist-credentials: false
       - uses: ./.github/actions/foundry-setup
-      - name: Restore forge build cache
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            out
-            cache
-          key: forge-build-${{ runner.os }}-${{ hashFiles('foundry.toml', 'remappings.txt', 'src/**/*.sol', 'lib/**/*.sol') }}
+      - name: Fetch the PR base
+        if: github.event_name == 'pull_request'
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: git fetch --no-tags --depth=1 origin "$BASE"
       # `jq` is preinstalled on ubuntu-latest runners.
       - name: Check ERC-7201 storage layout
-        run: ./script/upgrades/check-storage-layout.sh
+        uses: ./.github/actions/storage-layout
+        with:
+          probe: script/upgrades/StorageLayoutProbe.sol:StorageLayoutProbe
+          baseline: script/upgrades/storage-layout.baseline
+          baseline-ref: ${{ github.event.pull_request.base.sha }}
+          resets: script/upgrades/storage-layout.resets
+          src: src
+          foundry-profile: ci
+
+  # Self-test of the storage-safety Action as a consumer calls it: the fixture project is committed into
+  # a fresh repository under a path with a space, the Action passes on it, and then must fail on a
+  # reordered struct whose baseline was regenerated in the same commit. The checker's own regression
+  # cases run in `make scripts-check` (the fmt job).
+  storage-action:
+    name: Storage Action self-test
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/foundry-setup
+      - name: Commit the fixture as a consumer repository
+        id: fixture
+        run: |
+          set -euo pipefail
+          dir="$RUNNER_TEMP/consumer repo"
+          cp -R .github/actions/storage-layout/fixture "$dir"
+          git -C "$dir" init -q
+          git -C "$dir" -c user.name=ci -c user.email=ci@example.invalid add -A
+          git -C "$dir" -c user.name=ci -c user.email=ci@example.invalid commit -qm base
+          echo "dir=$dir" >> "$GITHUB_OUTPUT"
+          echo "base=$(git -C "$dir" rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - name: Unchanged layout passes
+        uses: ./.github/actions/storage-layout
+        with:
+          working-directory: ${{ steps.fixture.outputs.dir }}
+          probe: script/StorageProbe.sol:StorageProbe
+          baseline: storage-layout.baseline
+          baseline-ref: ${{ steps.fixture.outputs.base }}
+      - name: Reorder a struct and regenerate its baseline
+        env:
+          DIR: ${{ steps.fixture.outputs.dir }}
+        run: |
+          set -euo pipefail
+          perl -0pi -e 's/address owner;\n    uint96 fee;/uint96 fee;\n    address owner;/' "$DIR/src/VaultLib.sol"
+          ./.github/actions/storage-layout/check-storage-layout.sh --root "$DIR" \
+            --probe script/StorageProbe.sol:StorageProbe --baseline storage-layout.baseline --profile default --update
+          git -C "$DIR" -c user.name=ci -c user.email=ci@example.invalid commit -qam reorder
+      - name: Incompatible layout fails
+        id: incompatible
+        continue-on-error: true
+        uses: ./.github/actions/storage-layout
+        with:
+          working-directory: ${{ steps.fixture.outputs.dir }}
+          probe: script/StorageProbe.sol:StorageProbe
+          baseline: storage-layout.baseline
+          baseline-ref: ${{ steps.fixture.outputs.base }}
+      - name: Require the failure
+        env:
+          OUTCOME: ${{ steps.incompatible.outcome }}
+        run: |
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::The storage Action passed an incompatible layout (outcome: $OUTCOME)."
+            exit 1
+          fi
+          echo "The storage Action rejected the reordered struct, as expected."
 
   # Restores the `build` cache, so only test/ files are compiled here, not src/.
   test:
@@ -271,7 +343,7 @@ jobs:
   ci-ok:
     name: CI OK
     runs-on: ubuntu-latest
-    needs: [changes, fmt, readme, build, via-ir, storage-layout, test, slither]
+    needs: [changes, fmt, readme, build, via-ir, storage-layout, storage-action, test, slither]
     if: always()
     permissions: {}
     steps:

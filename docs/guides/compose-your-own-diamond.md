@@ -67,8 +67,9 @@ the test fail.
 This is a **declared namespace** check: it does not discover arbitrary assembly storage. Facets that
 intentionally share ERC20/Votes library storage represent one owner. Initializable and the reentrancy
 guard use fixed non-ERC-7201 slots and are outside that list. `STORAGE_REGISTRY.md` and
-`StorageSlotVerificationTest` document/check the actual constants. The separate storage-layout Action
-is a Milestone 3 deliverable tracked in #177; it is not required to run this example.
+`StorageSlotVerificationTest` document/check the actual constants. The
+[storage-safety Action](../../.github/actions/storage-layout/README.md) runs the same check on your own
+project; it is not required to run this example.
 
 ## Initialize in one transaction
 

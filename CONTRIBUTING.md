@@ -66,8 +66,21 @@ Storage policy, as AGENTS.md states it:
 `make storage-check` compares every `@custom:storage-location erc7201:` struct in `src/` against the
 committed baseline. The struct list is derived from those annotations, so a new struct is checked
 automatically. It must also be imported into
-[script/upgrades/StorageLayoutProbe.sol](script/upgrades/StorageLayoutProbe.sol), or the check fails.
-After an intended layout change, run `make storage-update` and review the baseline diff.
+[script/upgrades/StorageLayoutProbe.sol](script/upgrades/StorageLayoutProbe.sol) and declared there as a
+state variable (the checker rejects a copy of the struct by its compiler AST id), and its library must
+hold the namespace's slot as a literal, or the check fails. After an intended layout change, run
+`make storage-update` and review the baseline diff.
+
+On a pull request, CI also requires the layout to be an append-only extension of the baseline at the PR
+base, so a regenerated baseline cannot hide a reorder, retype, removal or nested change; run
+`make storage-check BASE_REF=origin/dev` to check this locally. A layout change for a fresh deployment of a
+module that is live nowhere needs the reset line the failure prints, added to
+`script/upgrades/storage-layout.resets` in the same pull request and reviewed with the change. A line that
+matches the base but waives nothing fails the check. The line names the old layout, so later pull requests
+into `dev` only note that it has no effect; keep it until the `dev` → `main` release pull request that
+carries the change has merged (that pull request compares with `main`, which still holds the old layout),
+then delete it. Never reset a live namespace. The
+[storage-safety Action README](.github/actions/storage-layout/README.md#changing-a-layout) describes the rules.
 
 Two conventions have exact forms in AGENTS.md: the
 [external-source attribution line](AGENTS.md#external-source-attribution-always) and the

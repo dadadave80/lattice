@@ -16,6 +16,8 @@
 
 MATCH ?=
 PATH_GLOB ?=
+# Trusted ref for `make storage-check`: the layout must also be append-only relative to it.
+BASE_REF ?=
 ARGS ?=
 SCRIPT ?=
 SIG ?= run()
@@ -111,8 +113,8 @@ via-ir: ## IR-pipeline parity build (catches stack-too-deep / IR-only errors)
 	forge build --via-ir --skip test script
 
 .PHONY: storage-check
-storage-check: ## ERC-7201 storage-layout guard (every annotated struct vs the committed baseline)
-	./script/upgrades/check-storage-layout.sh
+storage-check: ## ERC-7201 storage-layout guard: every annotated struct vs the committed baseline (BASE_REF=origin/dev also checks append-only vs that ref, as CI does vs the PR base)
+	./script/upgrades/check-storage-layout.sh $(if $(BASE_REF),--baseline-ref '$(BASE_REF)')
 
 .PHONY: license-check
 license-check: ## License notices: SPDX on every .sol, license texts present, external interfaces attributed + listed in lib/VENDORED.md
@@ -125,10 +127,11 @@ readme-check: ## README Modules catalog lists every src/ contract, and names onl
 	./script/check-readme-catalog.sh
 
 .PHONY: scripts-check
-scripts-check: ## Regression tests for the CI helper scripts (closing-keyword parser, fork-lane runner), and every fork suite in one scheduled lane
+scripts-check: ## Regression tests for the CI helper scripts (closing-keyword parser, fork-lane runner, storage-layout checker), and every fork suite in one scheduled lane
 	./script/test-closing-issues.sh
 	./script/test-fork-lanes.sh
 	./script/fork-lanes.sh check
+	./script/test-storage-layout.sh
 
 .PHONY: storage-update
 storage-update: ## Regenerate the storage-layout baseline (review the diff: appends only for live namespaces; see CONTRIBUTING.md)
@@ -156,12 +159,12 @@ slither-triage: ## Accept new Slither results one by one into slither.db.json, t
 # -------------------------------------------------------------- docs & coverage
 
 .PHONY: doc
-doc: ## Build the module reference (forge doc → docs/, gitignored)
-	forge doc
+doc: ## Build and link-check the docs site (forge doc + Vocs -> docs/site/dist/public; needs Node.js >= 22.15; not part of `make ci`)
+	./script/docs/build.sh
 
 .PHONY: doc-serve
-doc-serve: ## Build and serve the docs locally (http://localhost:4000)
-	forge doc --serve --port 4000
+doc-serve: ## Stage the docs site and serve it on the Vocs dev server (pages under /lattice/)
+	./script/docs/build.sh --serve
 
 .PHONY: coverage
 coverage: ## Coverage summary for src/, fork suites excluded (add --ir-minimum via ARGS if a suite hits stack-too-deep)

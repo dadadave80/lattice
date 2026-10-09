@@ -1,0 +1,13 @@
+### ConfigStorage @ erc7201:fixture.storage.Config (slot 0x4cde6f039520bb9e87112bc5a05a8169891a850e911c7b3c2d029420f1388900)
+0	0	cap	t_uint256
+1	0	paused	t_bool
+
+### VaultStorage @ erc7201:fixture.storage.Vault (slot 0xd8ed81b9bd71049e7f9a03b7ecdaa60a314d16d0d1fe77f622a86c25512e3400)
+0	0	owner	t_address
+0	20	fee	t_uint96
+1	0	positions	t_mapping(t_address,t_struct(Position)_storage)
+2	0	history	t_array(t_struct(Position)_storage)dyn_storage
+
+### Position (nested)
+0	0	amount	t_uint128
+0	16	since	t_uint64
