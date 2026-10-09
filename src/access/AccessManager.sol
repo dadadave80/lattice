@@ -7,6 +7,9 @@ import {IAccessManager} from "@lattice/interfaces/access/IAccessManager.sol";
 /// @title AccessManager
 /// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/access/manager/AccessManager.sol)
 /// @notice Diamond facet exposing AccessManagerLib.
+/// @dev Cut it into its own authority diamond. Next to other facets its ADMIN_ROLE is root: `execute` calls the
+///      diamond as the diamond, which passes every gate that trusts `address(this)` (a governed `diamondCut`, the
+///      timelock's self-only setters, the ERC-7786 handlers). See {IAccessManager} and issue #240.
 /// @custom:lattice-version 0.1.0
 /// @custom:lattice-source OpenZeppelin v5.1.0
 contract AccessManager is IAccessManager {
@@ -136,6 +139,10 @@ contract AccessManager is IAccessManager {
         AccessManagerLib.setTargetClosed(target, closed);
     }
 
+    function updateAuthority(address target, address newAuthority) external virtual override {
+        AccessManagerLib.updateAuthority(target, newAuthority);
+    }
+
     function schedule(address target, bytes calldata data, uint48 when)
         external
         virtual
@@ -153,6 +160,10 @@ contract AccessManager is IAccessManager {
         return AccessManagerLib.cancel(caller, target, data);
     }
 
+    function consumeScheduledOp(address caller, bytes calldata data) external virtual override {
+        AccessManagerLib.consumeScheduledOp(caller, data);
+    }
+
     /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
     /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
     ///      `forge inspect AccessManager methodIdentifiers` (alphabetical by signature); kept in exact parity by
@@ -161,6 +172,7 @@ contract AccessManager is IAccessManager {
     ///      `PUBLIC_ROLE()` 0x3ca7c02a
     ///      `canCall(address,address,bytes4)` 0xb7009613
     ///      `cancel(address,address,bytes)` 0xd6bb62c6
+    ///      `consumeScheduledOp(address,bytes)` 0x94c7d7ee
     ///      `execute(address,bytes)` 0x1cff79cd
     ///      `getAccess(uint64,address)` 0x3078f114
     ///      `getNonce(bytes32)` 0x4136a33c
@@ -186,8 +198,9 @@ contract AccessManager is IAccessManager {
     ///      `setTargetAdminDelay(address,uint32)` 0xd22b5989
     ///      `setTargetClosed(address,bool)` 0x167bd395
     ///      `setTargetFunctionRole(address,bytes4[],uint64)` 0x08d6122d
+    ///      `updateAuthority(address,address)` 0x18ff183c
     function exportSelectors() external pure virtual returns (bytes memory selectors) {
         selectors =
-            hex"75b238fc3ca7c02ab7009613d6bb62c61cff79cd3078f1144136a33c530dd45612be87270b0a93bafc8610d1a5808e2f3adc277a4c1da1e26d5115bd25c471a0d1f856eeabd9bd2aa166aa89853551b8fe0776f5b7d2b162f801a698a64d95ce30cae18752962952d22b5989167bd39508d6122d";
+            hex"75b238fc3ca7c02ab7009613d6bb62c694c7d7ee1cff79cd3078f1144136a33c530dd45612be87270b0a93bafc8610d1a5808e2f3adc277a4c1da1e26d5115bd25c471a0d1f856eeabd9bd2aa166aa89853551b8fe0776f5b7d2b162f801a698a64d95ce30cae18752962952d22b5989167bd39508d6122d18ff183c";
     }
 }

@@ -6,7 +6,7 @@ pragma solidity >=0.8.4;
 // Pinned against the spec text (https://eips.ethereum.org/EIPS/eip-6900) and the reference implementation
 // github.com/erc6900/reference-implementation @ commit 65892c2dc9464a4ef24e39bed30f0a8140b0c5de: the packed
 // ENCODINGS below are the spec (mandatory for cross-impl interop); all account/facet/storage LOGIC is written
-// fresh in src/accounts (the reference impl is GPL — NOT a dependency, used for semantics only).
+// fresh in src/accounts (the reference impl is MIT, its interfaces CC0-1.0 — NOT a dependency).
 // Names match the finalized spec (IERC6900*), NOT the deprecated plugin/pluginManifest/FunctionReference era.
 
 import {PackedUserOperation} from "@lattice/interfaces/external/ercs/IAccount.sol";
@@ -104,12 +104,14 @@ struct ValidationDataView {
 // Module interfaces
 // ---------------------------------------------------------------------------------------------------------
 
-// ponytail: minimal IERC165 — no first-party interface exists in src/; inline rather than add a file only
+// Minimal IERC165: no first-party interface exists in src/, so it is inlined rather than added as a file only
 // IERC6900Module consumes. Extract to its own vendored file if a second consumer appears.
 interface IERC165 {
     function supportsInterface(bytes4 interfaceId) external view returns (bool);
 }
 
+/// @author Vendored minimal subset of the ERC-6900 reference implementation
+///         (https://github.com/erc6900/reference-implementation). Upstream license: CC0-1.0.
 /// @dev Base interface every ERC-6900 module implements.
 interface IERC6900Module is IERC165 {
     function onInstall(bytes calldata data) external;

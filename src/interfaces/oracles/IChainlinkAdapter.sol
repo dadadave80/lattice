@@ -7,6 +7,11 @@ pragma solidity >=0.8.4;
 /// @dev Price feeds are identified by an arbitrary `bytes32` key chosen by the
 ///      administrator.  All answers returned by `latestAnswer` are normalised to
 ///      18 decimal places (WAD).
+///
+///      The adapter checks staleness, round completeness and non-positive answers only. It does NOT check
+///      an L2 sequencer-uptime feed and does NOT bound the answer to a sane range, so on an L2 it can return
+///      a pre-outage answer or one read right after a restart. Integrators that need either check read
+///      through the opt-in {IOracleGuard} (`OracleGuard` facet) instead of calling `latestAnswer` directly.
 interface IChainlinkAdapter {
     // -------------------------------------------------------------------------
     //                                  Events

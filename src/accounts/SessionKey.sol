@@ -9,8 +9,9 @@ import {ISessionKey} from "@lattice/interfaces/accounts/ISessionKey.sol";
 /// @notice Session-key facet. An admin registers scoped, expiring secondary keys (a `(target, selector)`
 ///         allowlist + validity window); a registered key can then authorize batches through the
 ///         `ERC7821Executor` signed-`opData` path without holding the owner key.
-/// @dev Stateless delegator — logic/storage live in {SessionKeyLib}. v1 enforces expiry + the allowlist
-///      (with `ANY_*` wildcards); per-token spend limits are a planned follow-on.
+/// @dev Stateless delegator — logic/storage live in {SessionKeyLib}. Enforces expiry, the allowlist (with
+///      `ANY_*` wildcards) and per-token cumulative spend limits, with post-batch approval resets on capped
+///      tokens. Revoking a key drops its grants and limits.
 /// @custom:lattice-version 0.1.0
 contract SessionKey is ISessionKey {
     /// @inheritdoc ISessionKey
@@ -49,5 +50,20 @@ contract SessionKey is ISessionKey {
     /// @inheritdoc ISessionKey
     function spendLimit(address key, address token) external view virtual returns (uint256 cap, uint256 spent) {
         return SessionKeyLib.spendLimit(key, token);
+    }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect SessionKey methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `isCallPermitted(address,address,bytes4)` 0xe4aea089
+    ///      `isSessionKeyActive(address)` 0xf4d2a194
+    ///      `registerSessionKey(address,uint48,uint48,(address,bytes4)[])` 0xc8337e5a
+    ///      `revokeSessionKey(address)` 0x84f4fc6a
+    ///      `sessionKeyValidity(address)` 0x78b6590d
+    ///      `setSpendLimit(address,address,uint256)` 0xba9735cc
+    ///      `spendLimit(address,address)` 0xab1c8674
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors = hex"e4aea089f4d2a194c8337e5a84f4fc6a78b6590dba9735ccab1c8674";
     }
 }

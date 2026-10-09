@@ -12,6 +12,12 @@ import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
 ///      mint and burn); Lattice's base {ERC20} facet calls {ERC20Lib} directly with no facet-level `_update`, so the
 ///      gate is applied to the public movement surface (`transfer`/`transferFrom`). A composing facet that also
 ///      mints/burns while paused should apply {PausableLib.checkNotPaused} on those entrypoints too.
+///      Hook model (D25, #234): this facet replaces ERC20's `transfer`/`transferFrom`, so it is mutually exclusive
+///      with every other facet that replaces them (ERC20Votes, GovernedVault). A direct mover beside it
+///      (ERC20Burnable, ERC20FlashMint, ERC20Crosschain, ERC20Wrapper, ERC7802, ERC4626, VaultCore, or a mint
+///      facet over ERC20Capped's `_mint`) mints and burns while paused. The sanctioned mint/burn path is a facet
+///      that calls {PausableLib.checkNotPaused} before {ERC20Lib._mint}/{ERC20Lib._burn}.
+///      See docs/guides/selector-compatibility.md#token-extension-hook-model.
 /// @custom:lattice-version 0.1.0
 /// @custom:lattice-source OpenZeppelin v5.6.1
 contract ERC20Pausable {
@@ -24,6 +30,7 @@ contract ERC20Pausable {
     /// @notice Moves `value` from `from` to `to`, reverting with {IPausable-EnforcedPause} while paused (replaces base).
     function transferFrom(address from, address to, uint256 value) public virtual returns (bool) {
         PausableLib.checkNotPaused();
+        // slither-disable-next-line arbitrary-send-erc20 ERC20Lib spends msg.sender's allowance first
         return ERC20Lib.transferFrom(from, to, value);
     }
 

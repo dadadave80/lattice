@@ -2,6 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
+import {ArchiveFork} from "@lattice-test/helpers/ArchiveFork.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {IPythEntropyAdapter} from "@lattice/interfaces/oracles/IPythEntropyAdapter.sol";
@@ -41,26 +42,35 @@ contract MockPythEntropyAdapterForkContract is AccessControl, PythEntropyAdapter
 // ---------------------------------------------------------------------------
 
 /// @title PythEntropyAdapterFork
-/// @notice Fork tests that exercise PythEntropyAdapter against a live Pyth Entropy
-///         contract on Ethereum mainnet.
+/// @notice Fork tests that exercise PythEntropyAdapter against the live Pyth Entropy
+///         contract on Base Sepolia. Pyth has no Entropy deployment on Ethereum
+///         mainnet, so this suite runs in the Base Sepolia lane.
 ///
 /// Enabling fork tests:
-///   export PYTH_ENTROPY=<live-entropy-address>
-///   forge test --match-path "test/fork/*"
+///   export BASE_SEPOLIA_RPC_URL=<your-rpc-url>
+///   forge test --match-path "test/fork/PythEntropyAdapterFork.t.sol"
 ///
-/// Without PYTH_ENTROPY set, all tests in this contract are skipped.
+/// Without BASE_SEPOLIA_RPC_URL set, all tests in this contract are skipped. The
+/// fork is pinned (PYTH_ENTROPY_FORK_BLOCK overrides it); an RPC that pruned the
+/// pin skips with a reason (see {ArchiveFork}). PYTH_ENTROPY overrides the
+/// Entropy address for a fork of another chain.
 contract PythEntropyAdapterFork is Test {
+    /// @notice Pinned Base Sepolia block (October 2026), inside the public endpoint's retention window.
+    uint256 constant DEFAULT_FORK_BLOCK = 47_800_000;
+    /// @notice Pyth Entropy on Base Sepolia (pyth-crosschain contract_manager store, EvmEntropyContracts.json).
+    address constant BASE_SEPOLIA_ENTROPY = 0x41c9e39574F40Ad34c79f1C99B66A45eFB830d4c;
+
     MockPythEntropyAdapterForkContract adapter;
     address admin = address(0x1);
     address entropy;
 
     function setUp() public {
-        entropy = vm.envOr("PYTH_ENTROPY", address(0));
-        if (entropy == address(0)) {
+        if (bytes(vm.envOr("BASE_SEPOLIA_RPC_URL", string(""))).length == 0) {
             vm.skip(true);
             return;
         }
-        vm.createSelectFork("mainnet");
+        entropy = vm.envOr("PYTH_ENTROPY", BASE_SEPOLIA_ENTROPY);
+        if (!ArchiveFork.select("base-sepolia", vm.envOr("PYTH_ENTROPY_FORK_BLOCK", DEFAULT_FORK_BLOCK))) return;
 
         adapter = new MockPythEntropyAdapterForkContract();
         adapter.initialize(admin);

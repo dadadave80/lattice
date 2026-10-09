@@ -2,7 +2,8 @@
 pragma solidity >=0.8.4;
 
 /// @title IPyth
-/// @author Modified from Pyth Network (https://github.com/pyth-network/pyth-crosschain/blob/main/target_chains/ethereum/sdk/solidity/IPyth.sol)
+/// @author Vendored minimal subset of Pyth Network (https://github.com/pyth-network/pyth-crosschain/blob/main/target_chains/ethereum/sdk/solidity/IPyth.sol).
+///         Upstream license: Apache-2.0.
 /// @notice Minimal interface for the Pyth on-chain price oracle.
 /// @dev Vendored subset — do not add a `@pythnetwork/pyth-sdk-solidity` dependency. Pyth is pull-based:
 ///      a caller submits a signed `updateData` blob (paying `getUpdateFee`) via `updatePriceFeeds`,

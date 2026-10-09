@@ -546,4 +546,73 @@ contract SafeDiamondCutTest is SafeDiamondCutTestBase {
         assertEq(rec.executor, guardian, "executor must be the guardian");
         assertEq(rec.init, address(0), "emergency removal records no init (removal-only)");
     }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                     EMERGENCY CUT: ENTRYPOINT PROTECTION
+    //////////////////////////////////////////////////////////////////////////*//
+
+    bytes4 internal constant CUT_SEL = 0x1f931c1c; // diamondCut
+
+    /// @notice #218 regression: with an empty frozen set, a guardian (even the admin appointing itself)
+    ///         cannot remove `diamondCut`, alone or inside a batch with an ordinary removal.
+    function test_EmergencyRemove_RefusesDiamondCut() public {
+        _bindPing();
+        assertEq(cut.frozenSelectors().length, 0, "frozen set must be empty");
+        _makeGuardian(admin);
+
+        vm.prank(admin);
+        vm.expectRevert(abi.encodeWithSelector(IEmergencyCut.EmergencyCutEntrypointProtected.selector, CUT_SEL));
+        cut.emergencyRemoveCut(_removeCut(CUT_SEL));
+
+        FacetCut[] memory batch = new FacetCut[](2);
+        batch[0] = _removeCut(PING_SEL)[0];
+        batch[1] = _removeCut(CUT_SEL)[0];
+        vm.prank(admin);
+        vm.expectRevert(abi.encodeWithSelector(IEmergencyCut.EmergencyCutEntrypointProtected.selector, CUT_SEL));
+        cut.emergencyRemoveCut(batch);
+
+        assertTrue(loupe.facetAddress(CUT_SEL) != address(0), "diamondCut must stay bound");
+        assertEq(loupe.facetAddress(PING_SEL), address(dummy), "reverted batch applies nothing");
+    }
+
+    /// @notice The entrypoint guard is guardian-only: the Safe can still `Replace` the cut facet.
+    function test_SafeCanStillReplaceCutFacet() public {
+        SafeDiamondCut next = new SafeDiamondCut();
+        bytes4[] memory sels = new bytes4[](1);
+        sels[0] = CUT_SEL;
+        FacetCut[] memory cuts = new FacetCut[](1);
+        cuts[0] = FacetCut({facetAddress: address(next), action: FacetCutAction.Replace, functionSelectors: sels});
+        vm.prank(address(safe));
+        cut.diamondCut(cuts, address(0), "");
+        assertEq(loupe.facetAddress(CUT_SEL), address(next), "the Safe must be able to replace diamondCut");
+    }
+
+    /// @notice #218 regression: a guardian that trips the stop cannot then remove the selectors the admin
+    ///         needs to recover from it (`emergencyResume`, `removeGuardian`, `revokeRole`), which would
+    ///         leave `diamondCut` bound but stopped forever. The admin revokes the guardian, resumes, and
+    ///         the Safe cuts again.
+    function test_EmergencyRemove_RefusesStopRecoverySelectors() public {
+        _makeGuardian(guardian);
+        vm.prank(guardian);
+        es.emergencyStop("incident");
+
+        bytes4[3] memory recovery = [
+            IEmergencyStop.emergencyResume.selector,
+            IEmergencyStop.removeGuardian.selector,
+            IAccessControl.revokeRole.selector
+        ];
+        for (uint256 i; i < recovery.length; ++i) {
+            vm.prank(guardian);
+            vm.expectRevert(abi.encodeWithSelector(IEmergencyCut.EmergencyCutEntrypointProtected.selector, recovery[i]));
+            cut.emergencyRemoveCut(_removeCut(recovery[i]));
+            assertTrue(loupe.facetAddress(recovery[i]) != address(0), "recovery selector must stay bound");
+        }
+
+        vm.startPrank(admin);
+        es.removeGuardian(guardian);
+        es.emergencyResume();
+        vm.stopPrank();
+        _bindPing();
+        assertEq(loupe.facetAddress(PING_SEL), address(dummy), "the Safe must cut again after recovery");
+    }
 }

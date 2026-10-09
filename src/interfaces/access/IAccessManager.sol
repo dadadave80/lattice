@@ -5,7 +5,32 @@ pragma solidity >=0.8.4;
 /// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/access/manager/IAccessManager.sol)
 /// @notice Centralized authority: roles, hierarchies, grant/execution delays,
 ///         per-target function-selector permissions, operation scheduling.
-///         Mirrors OpenZeppelin v5 AccessManager.
+///         Follows OpenZeppelin v5 AccessManager, including its admin restrictions: `setTargetFunctionRole`,
+///         `setTargetClosed` and `updateAuthority` carry the target's admin delay, `grantRole`/`revokeRole` are
+///         restricted to the role's admin, and a non-zero required delay (the larger of that delay and the caller's
+///         execution delay) means the call must be scheduled against this manager, then made directly or through
+///         `execute` once ready. A schedule expires 1 week after it is ready, that second included.
+///         As in OZ, the admin delay on `updateAuthority` does not bind `execute(target, setAuthority(x))`, which is
+///         gated by the target's own role for `setAuthority` (ADMIN_ROLE unless mapped). To make the admin delay an
+///         exit window for authority migration, map the target's `setAuthority` selector to a role nobody holds;
+///         undoing that mapping is itself subject to the admin delay.
+/// @dev Differences from OpenZeppelin v5.1.0: ADMIN_ROLE is held only by the initial admin and cannot be granted,
+///      revoked or renounced; errors keep the Lattice shapes (`AccessManagerUnauthorizedAccount` where OZ has
+///      `AccessManagerUnauthorizedCall`, `AccessManagerTargetCallFailed` for a target that reverts without data,
+///      and a `schedule` by a caller with immediate access reverts `AccessManagerNotScheduled`); `execute` does not
+///      reject a target without code (OZ reverts `AddressEmptyCode`); `schedule` raises
+///      a too-early `when` to the earliest allowed time instead of reverting; nonces come from one global counter;
+///      `hasRole` reports an execution delay of 0 for an account whose grant is still waiting out the grant delay
+///      (OZ returns `(false, delay)`; membership and `canCall` are the same); and `expiration()`/`minSetback()` are
+///      not exposed (1 week and 5 days). In a diamond, `address(this)` also hosts the other facets, so a call
+///      `execute` makes to the diamond with a selector that is not one of this manager's admin functions is gated by the diamond's own target roles (see issue #240). Those default to
+///      ADMIN_ROLE, and the call arrives with `msg.sender == address(this)`, so a co-cut ADMIN_ROLE holder acts as
+///      the diamond itself on every other facet: it passes any gate that trusts the diamond as caller, such as
+///      GovernedDiamondCut's UPGRADE_EXECUTOR_ROLE, the timelock's self-only setters and the ERC-7786 handlers.
+///      Keep the manager in its own authority diamond; to govern it, make the governed diamond that authority's
+///      initial admin (ADMIN_ROLE cannot be granted later). Do not make a co-cut manager's own diamond its admin:
+///      the manager refuses that caller outside an `execute` already in flight, so it could never be configured.
+///      See "Composition hazards" in docs/guides/compose-your-own-diamond.md.
 interface IAccessManager {
     // ---- Events ----
 
@@ -88,6 +113,12 @@ interface IAccessManager {
     function setTargetAdminDelay(address target, uint32 newDelay) external;
     function setTargetClosed(address target, bool closed) external;
 
+    // ---- Managed targets ----
+
+    /// @notice Points managed `target` at `newAuthority`. Only callable by `ADMIN_ROLE`; this manager must be
+    ///         `target`'s current authority.
+    function updateAuthority(address target, address newAuthority) external;
+
     // ---- Operation scheduling ----
 
     function schedule(address target, bytes calldata data, uint48 when)
@@ -95,4 +126,10 @@ interface IAccessManager {
         returns (bytes32 operationId, uint32 nonce);
     function execute(address target, bytes calldata data) external payable returns (uint32 nonce);
     function cancel(address caller, address target, bytes calldata data) external returns (uint32 nonce);
+
+    /// @notice Consumes the scheduled operation (`caller`, `msg.sender`, `data`) for a managed target making a
+    ///         delayed direct call. Reverts {AccessManagerUnauthorizedConsume} unless `msg.sender` reports
+    ///         `isConsumingScheduledOp.selector` from {IAccessManaged-isConsumingScheduledOp}, and reverts unless
+    ///         the operation is scheduled, ready and not expired.
+    function consumeScheduledOp(address caller, bytes calldata data) external;
 }

@@ -2,8 +2,10 @@
 pragma solidity >=0.8.4;
 
 /// @title IComet
-/// @author Modified from Compound v3 (https://github.com/compound-finance/comet/blob/main/contracts/CometMainInterface.sol)
-/// @notice Minimal vendored subset of a Compound v3 Comet market (base-asset supply leg).
+/// @author ABI-equivalent interface authored fresh from Compound v3's public ABI
+///         (https://github.com/compound-finance/comet/blob/main/contracts/CometMainInterface.sol).
+///         Upstream license: BUSL-1.1 (not copied). Only the selectors the adapter calls are declared.
+/// @notice Minimal ABI-equivalent interface of a Compound v3 Comet market (base-asset supply leg).
 interface IComet {
     /// @notice Supplies `amount` of `asset` (the base asset) to the caller's position.
     function supply(address asset, uint256 amount) external;

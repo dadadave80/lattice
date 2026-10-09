@@ -251,9 +251,9 @@ abstract contract BaseDeploy is Script, GetSelectors {
     //                      INTROSPECTION INIT CHAINING
     //////////////////////////////////////////////////////////////////////////*//
 
-    /// @notice Chains a recipe's module init with {DiamondIntrospectionInit.initUpgradeable} (IDiamondCut +
-    ///         IDiamondLoupe ERC-165 flags) behind ONE `MultiInit`-wrapped (init, calldata) pair — for
-    ///         recipes that cut `DiamondLoupeFacet` + a `diamondCut`-carrying facet. Keeps `buildCuts`'s
+    /// @notice Chains a recipe's module init with {DiamondIntrospectionInit.initUpgradeable} (IERC165 +
+    ///         IDiamondCut + IDiamondLoupe ERC-165 flags) behind ONE `MultiInit`-wrapped (init, calldata) pair —
+    ///         for recipes that cut `DiamondLoupeFacet` + a `diamondCut`-carrying facet. Keeps `buildCuts`'s
     ///         single-init return shape so extension recipes and testbases compose unchanged.
     /// @param moduleInit The recipe's own initializer contract.
     /// @param moduleCalldata The calldata for `moduleInit`.
@@ -266,8 +266,9 @@ abstract contract BaseDeploy is Script, GetSelectors {
         return _withIntrospection(moduleInit, moduleCalldata, true);
     }
 
-    /// @notice Same chaining with {DiamondIntrospectionInit.initImmutable} (IDiamondLoupe flag ONLY) — for
-    ///         immutable-by-design recipes that cut `DiamondLoupeFacet` but deliberately no cut facet.
+    /// @notice Same chaining with {DiamondIntrospectionInit.initImmutable} (IERC165 + IDiamondLoupe flags, no
+    ///         IDiamondCut) — for immutable-by-design recipes that cut `DiamondLoupeFacet` but deliberately no
+    ///         cut facet.
     function _withImmutableIntrospection(address moduleInit, bytes memory moduleCalldata)
         internal
         returns (address init, bytes memory initCalldata)

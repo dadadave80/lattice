@@ -18,6 +18,8 @@ import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 ///      shared {FUNGIBLE_BRIDGE_TAG} and reuses {IBridgeFungible} for ERC-165. No own storage (reuses the
 ///      ERC20 balances). No role is needed: `crosschainTransfer` burns the CALLER's own tokens, and the
 ///      inbound mint is gated by CrosschainLink's gateway/counterpart auth + the `address(this)` handler guard.
+///      The burn and mint call {ERC20Lib} directly: an ERC-20 movement-replacing extension (ERC20Pausable, ERC20Votes)
+///      does not see them, so the two are mutually exclusive (D25, #234).
 library ERC20CrosschainLib {
     /// @notice Registers the IBridgeFungible ERC-165 interface. Must be called in a pre/postInitializer block.
     function __ERC20Crosschain_init() internal {

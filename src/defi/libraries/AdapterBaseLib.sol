@@ -47,6 +47,7 @@ library AdapterBaseLib {
     ///      caller). Fee-on-transfer is handled by measuring the recipient's delta. Reverts
     ///      `AdapterSafeERC20FailedOperation` only on an explicit transfer failure.
     function forwardRewardRaw(address rewardToken, address recipient) internal returns (uint256 forwarded) {
+        // slither-disable-next-line reentrancy-balance bal is only the amount sent
         uint256 bal = IERC20(rewardToken).balanceOf(address(this));
         if (bal == 0) return 0;
         uint256 beforeBal = IERC20(rewardToken).balanceOf(recipient);
@@ -60,9 +61,11 @@ library AdapterBaseLib {
     /// @notice Transfers up to `amount` of `token` to `to`, capped at the adapter's balance,
     ///         and returns the real amount transferred.
     /// @dev Shortfall-honest: when the adapter holds less than requested (e.g. after a partial
-    ///      liquidation), it sends what it has and reports that. The StrategyManager turns an
-    ///      under-delivery into `StrategyManagerWithdrawShortfall` upstream.
+    ///      liquidation), it sends what it has and reports that. The StrategyManager accepts an honest
+    ///      partial recall and reverts with `StrategyManagerWithdrawShortfall` only when the strategy's
+    ///      reported balance drops by more than it delivered.
     function transferHonest(address token, address to, uint256 amount) internal returns (uint256 sent) {
+        // slither-disable-next-line reentrancy-balance bal only caps the amount sent
         uint256 bal = IERC20(token).balanceOf(address(this));
         sent = amount > bal ? bal : amount;
         if (sent == 0) return 0;

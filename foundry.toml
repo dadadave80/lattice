@@ -170,12 +170,17 @@ mainnet = { key = "${ETHERSCAN_API_KEY}" }
 [invariant]
 runs = 256
 depth = 128
-# fail_on_revert stays false for now: the ERC20-balance, ConstantProduct, and AccessControl-admin-chain
-# handlers are not yet revert-safe (they rely on Foundry discarding invalid calls — over-balance
-# transfers, invalid swaps, unauthorized grants). Flipping to true requires bounding handler inputs
-# (amounts→balances) and callers (→authorized roles). The ERC4626 and Timelock handlers already pass
-# with fail_on_revert=true (0 reverts over 32k calls). Tracked as a follow-up.
-fail_on_revert = false
+# A reverting handler call fails the run instead of being discarded, so a suite whose actions always
+# revert cannot pass vacuously. Handlers bound inputs to valid calls and assert expected reverts with
+# vm.expectRevert.
+fail_on_revert = true
+
+# Deep invariant campaign (`make invariant-deep`, run weekly by the Scheduled workflow), not a PR gate. The ci
+# profile runs the diamond-level invariant suites at 64 runs through a contract-level inline key.
+[profile.deep.invariant]
+runs = 1000
+depth = 200
+fail_on_revert = true
 
 [fmt]
 sort_imports = true

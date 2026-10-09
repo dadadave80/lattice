@@ -80,9 +80,19 @@ and re-derived from first principles by `test/unit/StorageSlotVerificationTest.t
   attestations (content-keyed trackers, one-shot execution). `setMinDirectCoverage(k)` (0 = off)
   hard-refuses destinations whose **direct** registry coverage is below `k` — hub-routed coverage
   (ZetaChain via the ZEVM) never counts. Aurora is the M=2 showcase (`script/config/EnableAurora.s.sol`).
+  The bridge starts at threshold 0 and never executes an inbound message in that state, so the admin
+  configures it in this order: `addGateway` (each gateway), then `setThreshold`, then `registerRemoteBridge`,
+  which reverts with `ThresholdViolation` while the threshold is still 0.
 - **`CrosschainLink`** authorizes exactly **one gateway per source chain** and tag-dispatches inbound
   payloads (`FUNGIBLE_BRIDGE_TAG` → the bridge libs). This is what makes cross-adapter replay a
   non-issue: a second transport is rejected at auth, or counts as an OpenBridge attestation.
+  Tag routing does not let one diamond host several handler facets. The link always calls
+  `processMessage` (`0x902d5027`) on the tag's handler, and BridgeERC20, BridgeERC7802, ERC20Crosschain
+  and CrosschainTimelockHandler all export it, so cutting a second one reverts
+  `CannotAddFunctionToDiamondThatAlreadyExists`. Point other tags at an external handler contract, or
+  put them on a second link diamond. The three fungible handlers share `FUNGIBLE_BRIDGE_TAG` anyway, so
+  in practice this rules out a fungible bridge plus `CrosschainTimelockHandler` on one diamond. See the
+  [composition hazards](docs/guides/compose-your-own-diamond.md#composition-hazards).
 - **`ChainRegistry.addEvmChain(cfg)`** is the one-action admin fan-out: registers the chain identity
   (canonical eip-155 reference enforced), records native ids + gateway coverage, and writes each
   enabled adapter's hot-path maps **via direct internal lib calls** (the admin's `msg.sender` flows

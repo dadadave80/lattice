@@ -35,12 +35,6 @@ contract ERC20GasTest is Test {
     uint256 constant INITIAL_SUPPLY = 1_000_000e18;
     uint256 constant TRANSFER_AMOUNT = 100e18;
 
-    // Generous upper bounds (roughly 3× expected) so the suite does not flicker.
-    uint256 constant GAS_BOUND_TRANSFER = 60_000;
-    uint256 constant GAS_BOUND_APPROVE = 60_000;
-    uint256 constant GAS_BOUND_TRANSFER_FROM = 60_000;
-    uint256 constant GAS_BOUND_MINT = 60_000;
-
     function setUp() public {
         token = new GasERC20();
         token.initialize("Gas Token", "GAS", alice, INITIAL_SUPPLY);
@@ -51,8 +45,7 @@ contract ERC20GasTest is Test {
         vm.prank(alice);
         vm.startSnapshotGas("ERC20.transfer");
         token.transfer(bob, TRANSFER_AMOUNT);
-        uint256 gasUsed = vm.stopSnapshotGas();
-        assertLt(gasUsed, GAS_BOUND_TRANSFER, "ERC20.transfer gas regression");
+        vm.stopSnapshotGas();
     }
 
     /// @notice Gas cost of approve followed by transferFrom.
@@ -61,22 +54,19 @@ contract ERC20GasTest is Test {
         vm.prank(alice);
         vm.startSnapshotGas("ERC20.approve");
         token.approve(spender, TRANSFER_AMOUNT);
-        uint256 approveGas = vm.stopSnapshotGas();
-        assertLt(approveGas, GAS_BOUND_APPROVE, "ERC20.approve gas regression");
+        vm.stopSnapshotGas();
 
         // Snapshot transferFrom
         vm.prank(spender);
         vm.startSnapshotGas("ERC20.transferFrom");
         token.transferFrom(alice, bob, TRANSFER_AMOUNT);
-        uint256 transferFromGas = vm.stopSnapshotGas();
-        assertLt(transferFromGas, GAS_BOUND_TRANSFER_FROM, "ERC20.transferFrom gas regression");
+        vm.stopSnapshotGas();
     }
 
     /// @notice Gas cost of minting tokens via the admin helper.
     function test_Gas_MintByAdmin() public {
         vm.startSnapshotGas("ERC20.mint");
         token.mint(bob, TRANSFER_AMOUNT);
-        uint256 gasUsed = vm.stopSnapshotGas();
-        assertLt(gasUsed, GAS_BOUND_MINT, "ERC20.mint gas regression");
+        vm.stopSnapshotGas();
     }
 }

@@ -2,6 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {DiamondLib} from "@diamond/libraries/DiamondLib.sol";
+import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {GovernedVaultLib} from "@lattice/defi/libraries/GovernedVaultLib.sol";
 import {VaultCoreLib} from "@lattice/defi/libraries/VaultCoreLib.sol";
@@ -11,7 +12,6 @@ import {TimelockControllerLib} from "@lattice/governance/libraries/TimelockContr
 import {VotesLib} from "@lattice/governance/libraries/VotesLib.sol";
 import {EmergencyStopLib} from "@lattice/security/libraries/EmergencyStopLib.sol";
 import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
-import {ERC20VotesLib} from "@lattice/tokens/ERC20/libraries/ERC20VotesLib.sol";
 import {ERC4626Lib} from "@lattice/tokens/ERC4626/libraries/ERC4626Lib.sol";
 import {EIP712Lib} from "@lattice/utils/libraries/EIP712Lib.sol";
 import {NoncesLib} from "@lattice/utils/libraries/NoncesLib.sol";
@@ -37,7 +37,8 @@ struct GovernedVaultParams {
 ///         {Governor}'s vote `token` and `timelock` are both set to it, the timelock's sole proposer is it (so
 ///         the Governor can queue), and its `DEFAULT_ADMIN_ROLE` (the vault's strategy-admin gate) is held by it
 ///         (i.e. only reachable through a passed, timelock-executed proposal). Execution is left OPEN
-///         (`executor = address(0)`), so anyone may execute a proposal once its delay elapses.
+///         (`executor = address(0)`), so anyone may execute a queued proposal once its delay elapses and until
+///         its 14-day grace period ends; after that the proposal is Expired and the timelock refuses it.
 /// @dev Delegatecalled inside the diamond's initializing window — each `__*_init` guard passes because the
 ///      window is already open; it must NOT open its own pre/postInitializer.
 contract GovernedVaultInit {
@@ -49,13 +50,17 @@ contract GovernedVaultInit {
 
         // 1b. Governed upgradeability — the anti-frozen-diamond wiring. EmergencyStop arms the guardian
         //     surface (no guardian is appointed at init; governance may appoint one by proposal), the
-        //     IDiamondCut + IDiamondLoupe ERC-165 flags match the facets the recipe actually cuts, and
-        //     UPGRADE_EXECUTOR_ROLE is granted to the diamond ONLY and pinned to administer ITSELF — so a
+        //     IERC165 + IDiamondCut + IDiamondLoupe ERC-165 flags match the facets the recipe actually cuts,
+        //     and UPGRADE_EXECUTOR_ROLE is granted to the diamond ONLY and pinned to administer ITSELF — so a
         //     passed + queued + timelock-executed shareholder proposal is the ONLY upgrade path (not even
         //     the DEFAULT_ADMIN_ROLE holder can mint an executor out-of-band). Selectors are deliberately
-        //     NOT frozen at init (precedent: {GovernedDiamondCutInit}); the recommended first proposal
-        //     freezes the loupe + cut + emergency selectors.
+        //     NOT frozen at init (precedent: {GovernedDiamondCutInit}), so a guardian, once governance
+        //     appoints one, is trusted for governance liveness: it can remove any unfrozen selector except
+        //     `diamondCut` and the stop-recovery selectors. The recommended first proposal freezes
+        //     `DeployGovernedVault.recommendedFreezeSelectors()` (loupe, cut, emergency and the
+        //     Governor/Timelock execution path).
         EmergencyStopLib.__EmergencyStop_init();
+        ERC165Lib.registerInterface();
         DiamondLib.registerInterface();
         GovernedDiamondCutLib.__GovernedDiamondCut_init();
 
@@ -65,11 +70,11 @@ contract GovernedVaultInit {
         EIP712Lib.__EIP712_init(p.name, "1");
         NoncesLib.__Nonces_init();
         VotesLib.__Votes_init();
-        ERC20VotesLib.__ERC20Votes_init();
         VaultCoreLib.__VaultCore_init();
 
         // 3. Timelock: the diamond is the sole PROPOSER (so the Governor can queue) and its own admin; execution
-        //    is open (address(0)).
+        //    is open (address(0)). The timelock shares the Governor's storage, so it refuses an Expired
+        //    proposal's operation even when it is run directly.
         address[] memory proposers = new address[](1);
         proposers[0] = self;
         address[] memory executors = new address[](1);

@@ -1,0 +1,6 @@
+# Storage-safety Action test fixture: a minimal consumer project with no dependencies.
+[profile.default]
+solc = "0.8.36"
+src = "src"
+out = "out"
+libs = []

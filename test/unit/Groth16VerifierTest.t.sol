@@ -149,4 +149,12 @@ contract Groth16VerifierTest is Groth16VerifierTestBase {
     function test_SupportsInterface() public view {
         assertTrue(ERC165Facet(diamond).supportsInterface(type(IGroth16Verifier).interfaceId));
     }
+
+    function test_BareEthSendReverts() public {
+        // Immutable with no ETH egress, so the recipe omits {Receive}: a plain send reverts instead of locking ETH.
+        vm.deal(address(this), 1 ether);
+        (bool ok,) = diamond.call{value: 1 ether}("");
+        assertFalse(ok, "bare ETH must be rejected");
+        assertEq(diamond.balance, 0);
+    }
 }

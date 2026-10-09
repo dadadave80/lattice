@@ -15,7 +15,8 @@ bytes32 constant ERC1155_STORAGE_SLOT = 0xe39704fe713bf9d011ae08177a1e99cc7df74d
 /// `keccak256(abi.encode(uint256(keccak256("diamond.lib.storage.ERC165")) - 1)) & ~bytes32(uint256(0xff))`.
 bytes32 constant ERC1155_ERC165_STORAGE_LOCATION = 0x9ca7f3e2e2bfb15fdf072b85dde92837cddacee6cf2f6b38cd06c9457c1c4200;
 
-/// @dev 0xd9b67a26 is `type(IERC1155).interfaceId`.
+/// @dev 0xd9b67a26 is the canonical EIP-1155 id, NOT `type(IERC1155).interfaceId`: Lattice's {IERC1155} bundles
+///      the metadata URI extension, so its derived id is 0xd73f4e3a. ERC-165 callers query the canonical id.
 /// `keccak256(abi.encode(bytes4(0xd9b67a26), 0x9ca7f3e2e2bfb15fdf072b85dde92837cddacee6cf2f6b38cd06c9457c1c4200))`.
 bytes32 constant ERC165_MAP_IERC1155_SLOT = 0xa10754813726d67c8d4e4553f74a520d6623216a67c6c4a53860c47e2ccde594;
 
@@ -36,7 +37,14 @@ struct ERC1155Storage {
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC1155/ERC1155.sol)
 /// @notice Library implementing the ERC-1155 Multi-Token Standard.
-/// @dev Mirrors OpenZeppelin v5 ERC1155 logic. All state lives in an ERC-7201 slot.
+/// @dev Mirrors OpenZeppelin v5.6.1 ERC1155 logic. All state lives in an ERC-7201 slot. Differences: no
+///      `_setApprovalForAll(owner, ...)` variant (approval always uses `msg.sender`, so OZ's owner-zero check
+///      cannot fire) and no five-argument `_updateWithAcceptanceCheck` overload.
+///      Hook model (decision D25, #234): {_update} calls no extension hook. An extension that gates or observes
+///      movement (Pausable, Supply) must replace the public `safeTransferFrom`/`safeBatchTransferFrom` selectors
+///      instead, and two such extensions are mutually exclusive. A caller of {_mint}/{_burn}/{_update} outside
+///      those selectors (ERC1155Burnable) bypasses them.
+///      See docs/guides/selector-compatibility.md#token-extension-hook-model.
 library ERC1155Lib {
     //*//////////////////////////////////////////////////////////////////////////
     //                              STORAGE ACCESS
@@ -126,10 +134,7 @@ library ERC1155Lib {
 
     /// @notice Transfers `value` of token `id` from `from` to `to`.
     function safeTransferFrom(address from, address to, uint256 id, uint256 value, bytes memory data) internal {
-        address sender = msg.sender;
-        if (from != sender && !isApprovedForAll(from, sender)) {
-            revert IERC1155.ERC1155MissingApprovalForAll(sender, from);
-        }
+        _checkAuthorized(msg.sender, from);
         _safeTransferFrom(from, to, id, value, data);
     }
 
@@ -141,10 +146,7 @@ library ERC1155Lib {
         uint256[] memory values,
         bytes memory data
     ) internal {
-        address sender = msg.sender;
-        if (from != sender && !isApprovedForAll(from, sender)) {
-            revert IERC1155.ERC1155MissingApprovalForAll(sender, from);
-        }
+        _checkAuthorized(msg.sender, from);
         _safeBatchTransferFrom(from, to, ids, values, data);
     }
 
@@ -152,15 +154,19 @@ library ERC1155Lib {
     //                            INTERNAL HELPERS
     //////////////////////////////////////////////////////////////////////////*//
 
+    /// @notice Reverts with {IERC1155.ERC1155MissingApprovalForAll} unless `operator` is `owner` or an
+    ///         approved operator of `owner`.
+    function _checkAuthorized(address operator, address owner) internal view {
+        if (owner != operator && !isApprovedForAll(owner, operator)) {
+            revert IERC1155.ERC1155MissingApprovalForAll(operator, owner);
+        }
+    }
+
     /// @notice Internal safe single transfer. Validates receiver.
     function _safeTransferFrom(address from, address to, uint256 id, uint256 value, bytes memory data) internal {
         if (to == address(0)) revert IERC1155.ERC1155InvalidReceiver(address(0));
         if (from == address(0)) revert IERC1155.ERC1155InvalidSender(address(0));
-        uint256[] memory ids = _asSingletonArray(id);
-        uint256[] memory values = _asSingletonArray(value);
-        address operator = msg.sender;
-        _update(from, to, ids, values);
-        _doSafeTransferAcceptanceCheck(operator, from, to, id, value, data);
+        _updateWithAcceptanceCheck(from, to, _asSingletonArray(id), _asSingletonArray(value), data, false);
     }
 
     /// @notice Internal safe batch transfer. Validates receiver.
@@ -173,12 +179,11 @@ library ERC1155Lib {
     ) internal {
         if (to == address(0)) revert IERC1155.ERC1155InvalidReceiver(address(0));
         if (from == address(0)) revert IERC1155.ERC1155InvalidSender(address(0));
-        address operator = msg.sender;
-        _update(from, to, ids, values);
-        _doSafeBatchTransferAcceptanceCheck(operator, from, to, ids, values, data);
+        _updateWithAcceptanceCheck(from, to, ids, values, data, true);
     }
 
     /// @notice Central state mutation. Validates array lengths, adjusts balances, emits events.
+    /// @dev Runs no extension hook (D25).
     function _update(address from, address to, uint256[] memory ids, uint256[] memory values) internal {
         if (ids.length != values.length) {
             revert IERC1155.ERC1155InvalidArrayLength(ids.length, values.length);
@@ -202,9 +207,7 @@ library ERC1155Lib {
             }
 
             if (to != address(0)) {
-                unchecked {
-                    $._balances[id][to] += value;
-                }
+                $._balances[id][to] += value;
             }
         }
 
@@ -218,51 +221,51 @@ library ERC1155Lib {
     /// @notice Mints `value` of token `id` to `to`.
     function _mint(address to, uint256 id, uint256 value, bytes memory data) internal {
         if (to == address(0)) revert IERC1155.ERC1155InvalidReceiver(address(0));
-        uint256[] memory ids = _asSingletonArray(id);
-        uint256[] memory values = _asSingletonArray(value);
-        _update(address(0), to, ids, values);
-        _doSafeTransferAcceptanceCheck(msg.sender, address(0), to, id, value, data);
+        _updateWithAcceptanceCheck(address(0), to, _asSingletonArray(id), _asSingletonArray(value), data, false);
     }
 
     /// @notice Batch mints tokens to `to`.
     function _mintBatch(address to, uint256[] memory ids, uint256[] memory values, bytes memory data) internal {
         if (to == address(0)) revert IERC1155.ERC1155InvalidReceiver(address(0));
-        _update(address(0), to, ids, values);
-        _doSafeBatchTransferAcceptanceCheck(msg.sender, address(0), to, ids, values, data);
+        _updateWithAcceptanceCheck(address(0), to, ids, values, data, true);
     }
 
     /// @notice Burns `value` of token `id` from `from`.
     function _burn(address from, uint256 id, uint256 value) internal {
         if (from == address(0)) revert IERC1155.ERC1155InvalidSender(address(0));
-        uint256[] memory ids = _asSingletonArray(id);
-        uint256[] memory values = _asSingletonArray(value);
-        _update(from, address(0), ids, values);
+        _updateWithAcceptanceCheck(from, address(0), _asSingletonArray(id), _asSingletonArray(value), "", false);
     }
 
     /// @notice Batch burns tokens from `from`.
     function _burnBatch(address from, uint256[] memory ids, uint256[] memory values) internal {
         if (from == address(0)) revert IERC1155.ERC1155InvalidSender(address(0));
-        _update(from, address(0), ids, values);
+        _updateWithAcceptanceCheck(from, address(0), ids, values, "", true);
     }
 
-    /// @notice Updates balances then performs the ERC-1155 receiver acceptance check.
-    /// @dev Provides the OZ _updateWithAcceptanceCheck override hook layer. Extensions that
-    ///      need to intercept both state-update and receiver-check in one virtual point can
-    ///      wrap this function at the facet layer.
+    /// @notice Updates balances, then runs the ERC-1155 receiver acceptance check when `to` is not the zero
+    ///         address. Every {ERC1155Lib} transfer, mint and burn path routes through here, as in OpenZeppelin
+    ///         v5.6.1 ({ERC1155PausableLib} too, after its pause check). {ERC1155SupplyLib} carries its own copy,
+    ///         which writes the supply counters between {_update} and the receiver check.
+    /// @dev `batch` names the operation type and alone picks the receiver hook: a batch operation calls
+    ///      `onERC1155BatchReceived` even with a single id, and a single operation calls `onERC1155Received`.
+    ///      OpenZeppelin v5.6.1 also keeps a five-argument overload that infers `batch` from `ids.length != 1`
+    ///      for backwards compatibility; it is not ported, so no caller can pick the hook by array length.
+    /// @param batch True for `safeBatchTransferFrom`, `_mintBatch` and `_burnBatch`.
     function _updateWithAcceptanceCheck(
         address from,
         address to,
         uint256[] memory ids,
         uint256[] memory values,
-        bytes memory data
+        bytes memory data,
+        bool batch
     ) internal {
         _update(from, to, ids, values);
         if (to != address(0)) {
             address operator = msg.sender;
-            if (ids.length == 1) {
-                _doSafeTransferAcceptanceCheck(operator, from, to, ids[0], values[0], data);
-            } else {
+            if (batch) {
                 _doSafeBatchTransferAcceptanceCheck(operator, from, to, ids, values, data);
+            } else {
+                _doSafeTransferAcceptanceCheck(operator, from, to, ids[0], values[0], data);
             }
         }
     }

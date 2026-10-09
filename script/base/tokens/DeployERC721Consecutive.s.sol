@@ -1,0 +1,121 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.30;
+
+import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
+import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
+import {DeployERC721} from "@lattice-script/base/tokens/DeployERC721.s.sol";
+import {AccessControl} from "@lattice/access/AccessControl.sol";
+import {AccessControlInit} from "@lattice/access/AccessControlInit.sol";
+import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
+import {ERC721ConsecutiveInit} from "@lattice/tokens/ERC721/ERC721ConsecutiveInit.sol";
+import {DiamondIntrospectionInit} from "@lattice/utils/DiamondIntrospectionInit.sol";
+
+/// @title DeployERC721Consecutive
+/// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @notice Ready-to-deploy recipe for an ERC-721 token diamond with ERC-2309 batch mints at creation: the base
+///         {DeployERC721} recipe (ERC165 + ERC721 + {ERC721Init}) plus {ERC721ConsecutiveInit}, which mints
+///         `amounts[i]` consecutive ids from `firstId` to `receivers[i]`. Batch minting adds no facet: the base
+///         {ERC721} facet reads batch ownership through {ERC721Lib}. All inits run in the diamond's first
+///         initialization via {BaseDeploy._assembleMulti}, the only window in which a batch may mint.
+/// @dev DEFAULT overload: Immutable by design — no cut facet is cut (the inherited base recipe provides the
+///      loupe); deploy a new diamond to change behavior. Use the ADMIN overload for an upgradeable deployment gated on
+///      `DEFAULT_ADMIN_ROLE`; an upgrade cut cannot batch mint.
+///      Do not add {ERC721Enumerable} or {ERC721Votes}: either init order reverts. {ERC721Pausable},
+///      {ERC721Burnable}, {ERC721URIStorage}, {ERC721Wrapper} and {ERC2981} compose. Add no init that single-mints:
+///      mint after the diamond is initialized.
+contract DeployERC721Consecutive is BaseDeploy {
+    /// @notice Builds the batch-minted ERC-721 diamond cuts + initializers (no broadcast, no proxy deploy).
+    /// @param name_ Token name. @param symbol_ Token symbol.
+    /// @param firstId The first batch-minted id. @param receivers Each batch's owner.
+    /// @param amounts Each batch's size, at most 5000.
+    /// @return cuts The facet cuts (ERC165 + ERC721 + DiamondLoupeFacet).
+    /// @return inits The initializers, run in order ({DeployERC721}'s {MultiInit} chain, then
+    ///         {ERC721ConsecutiveInit}).
+    /// @return initCalldatas The calldata matching each initializer.
+    function buildCuts(
+        string memory name_,
+        string memory symbol_,
+        uint96 firstId,
+        address[] memory receivers,
+        uint96[] memory amounts
+    ) public returns (FacetCut[] memory cuts, address[] memory inits, bytes[] memory initCalldatas) {
+        address baseInit;
+        bytes memory baseCalldata;
+        (cuts, baseInit, baseCalldata) = new DeployERC721().buildCuts(name_, symbol_);
+
+        inits = new address[](2);
+        inits[0] = baseInit;
+        inits[1] = address(new ERC721ConsecutiveInit());
+
+        initCalldatas = new bytes[](2);
+        initCalldatas[0] = baseCalldata;
+        initCalldatas[1] = abi.encodeCall(ERC721ConsecutiveInit.init, (firstId, receivers, amounts));
+    }
+
+    /// @notice Deploys a batch-minted ERC-721 token diamond (broadcasting entrypoint for `forge script ... --broadcast`).
+    function run(
+        string memory name_,
+        string memory symbol_,
+        uint96 firstId,
+        address[] memory receivers,
+        uint96[] memory amounts
+    ) external returns (address token) {
+        vm.startBroadcast();
+        (FacetCut[] memory cuts, address[] memory inits, bytes[] memory initCalldatas) =
+            buildCuts(name_, symbol_, firstId, receivers, amounts);
+        token = _assembleMulti(cuts, inits, initCalldatas);
+        vm.stopBroadcast();
+    }
+
+    /// @notice ADMIN OVERLOAD: the immutable default plus `AccessControl` + `AccessControlDiamondCut`, so
+    ///         `admin` (granted `DEFAULT_ADMIN_ROLE`) can upgrade the diamond via `diamondCut`.
+    function buildCuts(
+        string memory name_,
+        string memory symbol_,
+        uint96 firstId,
+        address[] memory receivers,
+        uint96[] memory amounts,
+        address admin
+    ) public returns (FacetCut[] memory cuts, address[] memory inits, bytes[] memory initCalldatas) {
+        (FacetCut[] memory defCuts, address[] memory defInits, bytes[] memory defCalldatas) =
+            buildCuts(name_, symbol_, firstId, receivers, amounts);
+
+        cuts = new FacetCut[](defCuts.length + 2);
+        for (uint256 i; i < defCuts.length; ++i) {
+            cuts[i] = defCuts[i];
+        }
+        cuts[defCuts.length] = _cut(address(new AccessControl()));
+        cuts[defCuts.length + 1] = _cut(address(new AccessControlDiamondCut()));
+
+        inits = new address[](defInits.length + 2);
+        for (uint256 i; i < defInits.length; ++i) {
+            inits[i] = defInits[i];
+        }
+        inits[defInits.length] = address(new AccessControlInit());
+        inits[defInits.length + 1] = address(new DiamondIntrospectionInit());
+
+        initCalldatas = new bytes[](defCalldatas.length + 2);
+        for (uint256 i; i < defCalldatas.length; ++i) {
+            initCalldatas[i] = defCalldatas[i];
+        }
+        initCalldatas[defCalldatas.length] = abi.encodeCall(AccessControlInit.init, (admin));
+        // The base chain registered the loupe flag; the cut facet is live too — advertise both.
+        initCalldatas[defCalldatas.length + 1] = abi.encodeCall(DiamondIntrospectionInit.initUpgradeable, ());
+    }
+
+    /// @notice ADMIN OVERLOAD: deploys the UPGRADEABLE variant — `admin` can `diamondCut`.
+    function run(
+        string memory name_,
+        string memory symbol_,
+        uint96 firstId,
+        address[] memory receivers,
+        uint96[] memory amounts,
+        address admin
+    ) external returns (address token) {
+        vm.startBroadcast();
+        (FacetCut[] memory cuts, address[] memory inits, bytes[] memory initCalldatas) =
+            buildCuts(name_, symbol_, firstId, receivers, amounts, admin);
+        token = _assembleMulti(cuts, inits, initCalldatas);
+        vm.stopBroadcast();
+    }
+}

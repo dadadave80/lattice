@@ -1,0 +1,226 @@
+[
+  {
+    "check": "arbitrary-send-eth",
+    "impact": "High",
+    "id": "7760e8be31a580e1f6544f503f639d7d46bcede1d65e96864f2a2c97571e896a",
+    "description": "WETHUnwrapper.unwrap(IWETH9) (src/defi/WETHUnwrapper.sol#24-28) sends eth to arbitrary user\n\tDangerous calls:\n\t- (ok,None) = msg.sender.call{value: address(this).balance}() (src/defi/WETHUnwrapper.sol#26)\n",
+    "reason": "False positive: WETHUnwrapper is stateless and permissionless by design; it returns its own unwrapped WETH balance to msg.sender in the same call, and callers transfer-then-unwrap atomically. Triaged here, not with a comment, because LidoAdapterLib CREATE2-deploys it from its creation code, so a source comment would move every diamond's unwrapper address."
+  },
+  {
+    "check": "incorrect-exp",
+    "impact": "High",
+    "id": "606f20709bd07ebda56b473be1fbed46ae6b4648f7686caee016a0a5e70500e2",
+    "description": "Base64.encode(bytes,bool,bool) (src/utils/libraries/Base64.sol#18-78) has bitwise-xor operator ^ instead of the exponentiation operator **: \n\t - mstore(uint256,uint256)(0x3f,ghijklmnopqrstuvwxyz0123456789-_ ^ ! fileSafe * 0x0670) (src/utils/libraries/Base64.sol#41)\n",
+    "reason": "False positive: vendored Solady Base64. `xor(..., mul(iszero(fileSafe), 0x0670))` switches the alphabet between URL-safe and standard; XOR is intended. Triaged here, not with a comment, because the file is fmt-ignored and kept byte-exact with upstream."
+  },
+  {
+    "check": "msg-value-in-nonpayable",
+    "impact": "High",
+    "id": "1ff7aae1c27dc3a3a8197f3aeb5a75860b762d86dc14589b28cc7a89b99ea97f",
+    "description": "AccessManagerLib.execute(address,bytes) (src/access/libraries/AccessManagerLib.sol#324-356) uses msg.value but is not reachable from any payable function\n",
+    "reason": "False positive: internal library function. Every src caller reaches it only from payable entry points (AccessManager.execute); the detector does not follow facet-to-library calls."
+  },
+  {
+    "check": "msg-value-in-nonpayable",
+    "impact": "High",
+    "id": "ad90c6fd1451190cb8c01433e4c2f8f372c1e2c795b26e2cc3c3401ce01ed4b4",
+    "description": "AggregatorExecAdapterLib.execute(address,address,uint256,address,bytes) (src/defi/libraries/AggregatorExecAdapterLib.sol#113-174) uses msg.value but is not reachable from any payable function\n",
+    "reason": "False positive: internal library function. Every src caller reaches it only from payable entry points (AggregatorExecAdapter.execute); the detector does not follow facet-to-library calls."
+  },
+  {
+    "check": "msg-value-in-nonpayable",
+    "impact": "High",
+    "id": "d705866d4305ab68dae30e8ce90b1ed5a30c8c1b36508be084eacdc340bedae1",
+    "description": "AxelarGatewayAdapterLib.sendMessage(bytes,bytes,bytes[]) (src/crosschain/axelar/AxelarGatewayAdapterLib.sol#135-151) uses msg.value but is not reachable from any payable function\n",
+    "reason": "False positive: internal library function. Every src caller reaches it only from payable entry points (AxelarGatewayAdapter.sendMessage); the detector does not follow facet-to-library calls."
+  },
+  {
+    "check": "msg-value-in-nonpayable",
+    "impact": "High",
+    "id": "669c0e813f846396bac13e85c783341996d43b98871c21dd27bcd971d081d53f",
+    "description": "CCIPGatewayAdapterLib.sendMessage(bytes,bytes,bytes[]) (src/crosschain/chainlink/CCIPGatewayAdapterLib.sol#241-277) uses msg.value but is not reachable from any payable function\n",
+    "reason": "False positive: internal library function. Every src caller reaches it only from payable entry points (CCIPGatewayAdapter.sendMessage); the detector does not follow facet-to-library calls."
+  },
+  {
+    "check": "msg-value-in-nonpayable",
+    "impact": "High",
+    "id": "a8d6a13622586e04dc049ee658fafa11af553b556dba3712049fd90c5a6719d5",
+    "description": "ERC6900ExecutorLib._doPreRuntimeValidationHooks(ModuleEntity,bytes) (src/accounts/erc6900/libraries/ERC6900ExecutorLib.sol#237-251) uses msg.value but is not reachable from any payable function\n",
+    "reason": "False positive: internal library function. Every src caller reaches it only from payable entry points (ERC6900Executor.execute, ERC6900Executor.executeBatch, ERC6900Executor.executeWithRuntimeValidation, ModularAccount6900.fallback); the detector does not follow facet-to-library calls."
+  },
+  {
+    "check": "msg-value-in-nonpayable",
+    "impact": "High",
+    "id": "645e9a0abfe8a59038116fa5be4264fa91fa42ea416ae110bbf94d87f4404bd3",
+    "description": "ERC6900ExecutorLib._doRuntimeValidation(ModuleEntity,bytes,bytes) (src/accounts/erc6900/libraries/ERC6900ExecutorLib.sol#219-227) uses msg.value but is not reachable from any payable function\n",
+    "reason": "False positive: internal library function. Every src caller reaches it only from payable entry points (ERC6900Executor.executeWithRuntimeValidation); the detector does not follow facet-to-library calls."
+  },
+  {
+    "check": "msg-value-in-nonpayable",
+    "impact": "High",
+    "id": "cdfff48a790f8a96b4afbf31c20f594439f29855116b6e4f79ee6f503701f255",
+    "description": "ERC6900ExecutorLib._runPreExecHook(ModuleEntity,bytes) (src/accounts/erc6900/libraries/ERC6900ExecutorLib.sol#273-282) uses msg.value but is not reachable from any payable function\n",
+    "reason": "False positive: internal library function. Every src caller reaches it only from payable entry points (ERC6900Executor.execute, ERC6900Executor.executeBatch, ERC6900Executor.executeWithRuntimeValidation, ModularAccount6900.fallback); the detector does not follow facet-to-library calls."
+  },
+  {
+    "check": "msg-value-in-nonpayable",
+    "impact": "High",
+    "id": "0b0fda453e31516bfb94c0ac9f8cae66983391c17c40d790512c3b5470bde3a0",
+    "description": "ERC7579ModuleConfigLib.preExecutionHook(bytes) (src/accounts/erc7579/libraries/ERC7579ModuleConfigLib.sol#234-237) uses msg.value but is not reachable from any payable function\n",
+    "reason": "False positive: internal library function. Every src caller reaches it only from payable entry points (ERC7579ModuleConfig.executeFromExecutor, ERC7821Executor.execute); the detector does not follow facet-to-library calls."
+  },
+  {
+    "check": "msg-value-in-nonpayable",
+    "impact": "High",
+    "id": "d9645f48f8a35384bc091b1f4367e67bcba8facb622d3f5843f7cbd9218b1e73",
+    "description": "ERC7786OpenBridgeLib.sendMessage(bytes,bytes,bytes[]) (src/crosschain/libraries/ERC7786OpenBridgeLib.sol#163-175) uses msg.value but is not reachable from any payable function\n",
+    "reason": "False positive: internal library function. Every src caller reaches it only from payable entry points (ERC7786OpenBridge.sendMessage); the detector does not follow facet-to-library calls."
+  },
+  {
+    "check": "msg-value-in-nonpayable",
+    "impact": "High",
+    "id": "2405f2f048029e0be6059cc0c549708119028496b498d0a58f896061ed0b34bb",
+    "description": "HTSAdapterLib.createFungibleToken(string,string,string,int32,int64,int64) (src/tokens/hedera/HTSAdapterLib.sol#147-166) uses msg.value but is not reachable from any payable function\n",
+    "reason": "False positive: internal library function. Every src caller reaches it only from payable entry points (HTSAdapter.createFungibleToken); the detector does not follow facet-to-library calls."
+  },
+  {
+    "check": "msg-value-in-nonpayable",
+    "impact": "High",
+    "id": "466d62388f8066576334df76a5db73f1200c9bbb1e7244612a3e02f90abfc320",
+    "description": "HTSAdapterLib.createNonFungibleToken(string,string,string,int64) (src/tokens/hedera/HTSAdapterLib.sol#170-182) uses msg.value but is not reachable from any payable function\n",
+    "reason": "False positive: internal library function. Every src caller reaches it only from payable entry points (HTSAdapter.createNonFungibleToken); the detector does not follow facet-to-library calls."
+  },
+  {
+    "check": "msg-value-in-nonpayable",
+    "impact": "High",
+    "id": "42370247d87ef7915bfaad20fca072dd0519a75833061ce57739584592979c87",
+    "description": "HyperbridgeGatewayAdapterLib.sendMessage(bytes,bytes,bytes[]) (src/crosschain/hyperbridge/HyperbridgeGatewayAdapterLib.sol#208-215) uses msg.value but is not reachable from any payable function\n",
+    "reason": "False positive: internal library function. Every src caller reaches it only from payable entry points (HyperbridgeGatewayAdapter.sendMessage); the detector does not follow facet-to-library calls."
+  },
+  {
+    "check": "msg-value-in-nonpayable",
+    "impact": "High",
+    "id": "0bbef4b2bc09b75639f3c2fe74e4c41bfc89fade9455e72c164e3b0e1606935a",
+    "description": "HyperlaneGatewayAdapterLib.handle(uint32,bytes32,bytes) (src/crosschain/hyperlane/HyperlaneGatewayAdapterLib.sol#245-280) uses msg.value but is not reachable from any payable function\n",
+    "reason": "False positive: internal library function. Every src caller reaches it only from payable entry points (HyperlaneGatewayAdapter.handle); the detector does not follow facet-to-library calls."
+  },
+  {
+    "check": "msg-value-in-nonpayable",
+    "impact": "High",
+    "id": "cea89e0ec345cb6dd7732d5bfa5386f74021ac2affc98872d90656e6ff416a9b",
+    "description": "HyperlaneGatewayAdapterLib.sendMessage(bytes,bytes,bytes[]) (src/crosschain/hyperlane/HyperlaneGatewayAdapterLib.sol#193-229) uses msg.value but is not reachable from any payable function\n",
+    "reason": "False positive: internal library function. Every src caller reaches it only from payable entry points (HyperlaneGatewayAdapter.sendMessage); the detector does not follow facet-to-library calls."
+  },
+  {
+    "check": "msg-value-in-nonpayable",
+    "impact": "High",
+    "id": "1b362faeaf8543de9883233bff185ce8e1aac228f6b5fe2eb8f62965aa667d56",
+    "description": "L1ToL2CrossDomainMessengerGatewayAdapterLib.sendMessage(bytes,bytes,bytes[]) (src/crosschain/optimism/L1ToL2CrossDomainMessengerGatewayAdapterLib.sol#174-215) uses msg.value but is not reachable from any payable function\n",
+    "reason": "False positive: internal library function. Every src caller reaches it only from payable entry points (L1ToL2CrossDomainMessengerGatewayAdapter.sendMessage); the detector does not follow facet-to-library calls."
+  },
+  {
+    "check": "msg-value-in-nonpayable",
+    "impact": "High",
+    "id": "2ed05e6e3bc4150a2b682f1736b96371d4ecbf25cee36819952b29b8c9330fef",
+    "description": "L2ToL2CrossDomainMessengerGatewayAdapterLib.sendMessage(bytes,bytes,bytes[]) (src/crosschain/optimism/L2ToL2CrossDomainMessengerGatewayAdapterLib.sol#128-167) uses msg.value but is not reachable from any payable function\n",
+    "reason": "False positive: internal library function. Every src caller reaches it only from payable entry points (L2ToL2CrossDomainMessengerGatewayAdapter.sendMessage); the detector does not follow facet-to-library calls."
+  },
+  {
+    "check": "msg-value-in-nonpayable",
+    "impact": "High",
+    "id": "a9f7e99d451b75dec32b8c3af73169c5a39b3a1829b27fa415bbc38993f2159b",
+    "description": "LayerZeroGatewayAdapterLib.lzReceive(Origin,bytes32,bytes) (src/crosschain/layerzero/LayerZeroGatewayAdapterLib.sol#224-255) uses msg.value but is not reachable from any payable function\n",
+    "reason": "False positive: internal library function. Every src caller reaches it only from payable entry points (LayerZeroGatewayAdapter.lzReceive); the detector does not follow facet-to-library calls."
+  },
+  {
+    "check": "msg-value-in-nonpayable",
+    "impact": "High",
+    "id": "c9cc743b8a8e2d390265e402f70c902a93a2b1db20edbc74ed8f23a7fde55d0c",
+    "description": "LayerZeroGatewayAdapterLib.sendMessage(bytes,bytes,bytes[]) (src/crosschain/layerzero/LayerZeroGatewayAdapterLib.sol#186-214) uses msg.value but is not reachable from any payable function\n",
+    "reason": "False positive: internal library function. Every src caller reaches it only from payable entry points (LayerZeroGatewayAdapter.sendMessage); the detector does not follow facet-to-library calls."
+  },
+  {
+    "check": "msg-value-in-nonpayable",
+    "impact": "High",
+    "id": "a86091ceb23d58327d3dd2e43b41de544abb4da59a0c8ce2e89b4cabd0110e91",
+    "description": "PythAdapterLib.updatePriceFeeds(bytes[]) (src/oracles/pyth/PythAdapterLib.sol#142-154) uses msg.value but is not reachable from any payable function\n",
+    "reason": "False positive: internal library function. Every src caller reaches it only from payable entry points (PythAdapter.updatePriceFeeds); the detector does not follow facet-to-library calls."
+  },
+  {
+    "check": "msg-value-in-nonpayable",
+    "impact": "High",
+    "id": "2b2f17e67f15e96c38d545249bd3453243d61bc5a57e258b02d98eedf075270a",
+    "description": "PythEntropyAdapterLib.requestRandomNumber(bytes32,bytes32) (src/oracles/pyth/PythEntropyAdapterLib.sol#119-141) uses msg.value but is not reachable from any payable function\n",
+    "reason": "False positive: internal library function. Every src caller reaches it only from payable entry points (PythEntropyAdapter.requestRandomNumber); the detector does not follow facet-to-library calls."
+  },
+  {
+    "check": "msg-value-in-nonpayable",
+    "impact": "High",
+    "id": "e8a77f4fa854df66c23cb7057154efb07ea5aa8523e36c4ed1e8bad24d418c46",
+    "description": "StargateBridgeAdapterLib._callPool(address,SendParam) (src/crosschain/layerzero/StargateBridgeAdapterLib.sol#237-246) uses msg.value but is not reachable from any payable function\n",
+    "reason": "False positive: internal library function. Every src caller reaches it only from payable entry points (StargateBridgeAdapter.sendToken); the detector does not follow facet-to-library calls."
+  },
+  {
+    "check": "msg-value-in-nonpayable",
+    "impact": "High",
+    "id": "8981f0e74703c42944a8b27f58f6eb94b87da8720bb1c3fec595487a4b3b3741",
+    "description": "StargateBridgeAdapterLib.sendToken(IStargateBridgeAdapter.SendTokenParams) (src/crosschain/layerzero/StargateBridgeAdapterLib.sol#164-194) uses msg.value but is not reachable from any payable function\n",
+    "reason": "False positive: internal library function. Every src caller reaches it only from payable entry points (StargateBridgeAdapter.sendToken); the detector does not follow facet-to-library calls."
+  },
+  {
+    "check": "msg-value-in-nonpayable",
+    "impact": "High",
+    "id": "1b0f2206e331238b7d1b05b47fe8124ae6580ddf64aa48dcfb3b48bd9dfded69",
+    "description": "StarknetGatewayAdapterLib.sendMessage(bytes,bytes) (src/crosschain/starknet/StarknetGatewayAdapterLib.sol#161-182) uses msg.value but is not reachable from any payable function\n",
+    "reason": "False positive: internal library function. Every src caller reaches it only from payable entry points (StarknetGatewayAdapter.sendMessage); the detector does not follow facet-to-library calls."
+  },
+  {
+    "check": "msg-value-in-nonpayable",
+    "impact": "High",
+    "id": "fabb7adc8a2037b5a51461714664e74da8112db541707877d098690546a0ef1d",
+    "description": "SuperchainETHBridgeAdapterLib.sendETH(address,uint256) (src/crosschain/optimism/SuperchainETHBridgeAdapterLib.sol#46-54) uses msg.value but is not reachable from any payable function\n",
+    "reason": "False positive: internal library function. Every src caller reaches it only from payable entry points (SuperchainETHBridgeAdapter.sendETH); the detector does not follow facet-to-library calls."
+  },
+  {
+    "check": "msg-value-in-nonpayable",
+    "impact": "High",
+    "id": "58c61b252fc2802635dc99e842d69807235702966274d601735949a378494e41",
+    "description": "WormholeGatewayAdapterLib._sendImmediate(bytes32,bytes,bytes,bytes[]) (src/crosschain/wormhole/WormholeGatewayAdapterLib.sol#189-206) uses msg.value but is not reachable from any payable function\n",
+    "reason": "False positive: internal library function. Every src caller reaches it only from payable entry points (WormholeGatewayAdapter.sendMessage); the detector does not follow facet-to-library calls."
+  },
+  {
+    "check": "msg-value-in-nonpayable",
+    "impact": "High",
+    "id": "7731e5ea95a811849f303aeaa673414a9e0902e00c7db8c20936fac2e8c9ab37",
+    "description": "WormholeGatewayAdapterLib._sendPending(bytes32,bytes,bytes) (src/crosschain/wormhole/WormholeGatewayAdapterLib.sol#175-186) uses msg.value but is not reachable from any payable function\n",
+    "reason": "False positive: internal library function. Every src caller reaches it only from payable entry points (WormholeGatewayAdapter.sendMessage); the detector does not follow facet-to-library calls."
+  },
+  {
+    "check": "msg-value-in-nonpayable",
+    "impact": "High",
+    "id": "8b41ff7162544091f5172143696a53654250491467655acf64190c180e59dbd8",
+    "description": "WormholeGatewayAdapterLib.receiveWormholeMessages(bytes,bytes32,uint16,bytes32) (src/crosschain/wormhole/WormholeGatewayAdapterLib.sol#222-251) uses msg.value but is not reachable from any payable function\n",
+    "reason": "False positive: internal library function. Every src caller reaches it only from payable entry points (WormholeGatewayAdapter.receiveWormholeMessages); the detector does not follow facet-to-library calls."
+  },
+  {
+    "check": "msg-value-in-nonpayable",
+    "impact": "High",
+    "id": "0333933be5e3ad7e5fdac7c49e576924d8e28dc88c965f7235836df7f406afc9",
+    "description": "WormholeGatewayAdapterLib.requestRelay(bytes32,uint256,address) (src/crosschain/wormhole/WormholeGatewayAdapterLib.sol#209-215) uses msg.value but is not reachable from any payable function\n",
+    "reason": "False positive: internal library function. Every src caller reaches it only from payable entry points (WormholeGatewayAdapter.requestRelay); the detector does not follow facet-to-library calls."
+  },
+  {
+    "check": "msg-value-in-nonpayable",
+    "impact": "High",
+    "id": "7228db1b9272a4bf0a4fce0608f484771b1598766e4373eba410da00db8e1754",
+    "description": "ZetaChainGatewayAdapterLib.onCall(MessageContext,bytes) (src/crosschain/zetachain/ZetaChainGatewayAdapterLib.sol#221-267) uses msg.value but is not reachable from any payable function\n",
+    "reason": "False positive: internal library function. Every src caller reaches it only from payable entry points (ZetaChainGatewayAdapter.onCall); the detector does not follow facet-to-library calls."
+  },
+  {
+    "check": "msg-value-in-nonpayable",
+    "impact": "High",
+    "id": "2e48db76ef0f84cf1225f7c94937199d26fa291ed9dd44aaad94040c7e7b90d9",
+    "description": "ZetaChainGatewayAdapterLib.sendMessage(bytes,bytes,bytes[]) (src/crosschain/zetachain/ZetaChainGatewayAdapterLib.sol#171-208) uses msg.value but is not reachable from any payable function\n",
+    "reason": "False positive: internal library function. Every src caller reaches it only from payable entry points (ZetaChainGatewayAdapter.sendMessage); the detector does not follow facet-to-library calls."
+  }
+]

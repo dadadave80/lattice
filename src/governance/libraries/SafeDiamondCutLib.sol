@@ -209,13 +209,20 @@ library SafeDiamondCutLib {
     ///         buggy facet's selectors WITHOUT going through the Safe — and, by design, even while the
     ///         normal cut path is halted by EmergencyStop. Deliberately constrained so a rogue guardian
     ///         can only AMPUTATE code (every entry must be `Remove`), never add or replace it (that still
-    ///         requires `diamondCut` under the Safe authority), and can never remove a frozen
-    ///         load-bearing selector.
+    ///         requires `diamondCut` under the Safe authority), can never remove `diamondCut` itself or a
+    ///         stop-recovery selector (`emergencyResume`, `removeGuardian`, `revokeRole`; even when
+    ///         unfrozen), and can never remove a frozen selector.
     /// @dev Guard ordering mirrors {GovernedDiamondCutLib.emergencyRemoveCut}: (1) guardian-only
     ///      authority; (2) NO `checkNotStopped()` — this is the panic button and must work while
     ///      stopped; (3) removal-only (any Add/Replace reverts {IEmergencyCut.EmergencyCutMustBeRemoveOnly});
-    ///      (4) frozen protection; (5) NO init delegatecall. Recorded in the SAME append-only registry
-    ///      and additionally emits {IEmergencyCut.EmergencyCutExecuted}.
+    ///      (4) entrypoint protection (`diamondCut` and {EmergencyStopLib.isRecoverySelector} revert
+    ///      {IEmergencyCut.EmergencyCutEntrypointProtected}) and frozen protection; (5) NO init
+    ///      delegatecall. Recorded in the SAME append-only registry and additionally emits
+    ///      {IEmergencyCut.EmergencyCutExecuted}.
+    ///      Liveness: a guardian can still trip the stop, which blocks `diamondCut`. Since the recovery
+    ///      selectors cannot be removed, the `DEFAULT_ADMIN_ROLE` holder can always revoke a hostile
+    ///      guardian, resume, and let the Safe cut again to restore anything removed. This assumes a live
+    ///      admin; with the admin role renounced a stop is permanent.
     /// @param _cuts The facet cuts to apply; every entry MUST be a `Remove` (facetAddress == address(0)).
     function emergencyRemoveCut(FacetCut[] calldata _cuts) internal {
         // 1) Authority: guardian-only. Reverts AccessControlUnauthorizedAccount(caller, role).
@@ -226,7 +233,7 @@ library SafeDiamondCutLib {
 
         SafeDiamondCutStorage storage $ = safeDiamondCutStorage();
 
-        // 2) Removal-only + 3) frozen protection, fused in a single pass; also accumulate the selector
+        // 2) Removal-only + 3) entrypoint and frozen protection, fused in a single pass; also accumulate the selector
         //    count for the audit event.
         uint256 cutsLength = _cuts.length;
         uint256 selectorCount;
@@ -239,8 +246,12 @@ library SafeDiamondCutLib {
             bytes4[] calldata selectors = _cuts[i].functionSelectors;
             uint256 selectorsLength = selectors.length;
             for (uint256 j; j < selectorsLength; ++j) {
-                if (frozen.contains(selectors[j])) {
-                    revert IFrozenSelectors.FrozenSelectorProtected(selectors[j]);
+                bytes4 selector = selectors[j];
+                if (selector == ISafeDiamondCut.diamondCut.selector || EmergencyStopLib.isRecoverySelector(selector)) {
+                    revert IEmergencyCut.EmergencyCutEntrypointProtected(selector);
+                }
+                if (frozen.contains(selector)) {
+                    revert IFrozenSelectors.FrozenSelectorProtected(selector);
                 }
             }
             unchecked {

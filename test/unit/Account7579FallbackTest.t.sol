@@ -67,6 +67,16 @@ contract DelegateHandler {
 
 /// @dev An AccountDiamond-based account with one cut facet (DummyFacet) plus the access + module-config facets.
 contract MockAccountDiamond is AccountDiamond, AccessControl, ERC7579ModuleConfig {
+    /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare
+    ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing.
+    function exportSelectors()
+        external
+        pure
+        virtual
+        override(AccessControl, ERC7579ModuleConfig)
+        returns (bytes memory)
+    {}
+
     function initialize(address admin_, FacetCut[] calldata cuts) external initializer {
         AccessControlLib.__AccessControl_init(admin_);
         ERC7579ModuleConfigLib.__ERC7579ModuleConfig_init();

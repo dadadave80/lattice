@@ -8,8 +8,9 @@ import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 /// @notice Protection layer for the {GovernedDiamondCut} facet: a governance-curated, append-only set
 ///         of "frozen" function selectors that can never be `Replace`d or `Remove`d by a subsequent
 ///         governed cut, plus a pre-flight simulator and an ERC-165 verification helper for upgrade
-///         workflows. Freezing the loupe selectors or the cut selector itself makes a diamond unable
-///         to brick its own introspection/upgrade path through a (mistaken or malicious) cut.
+///         workflows. Freezing prevents the executor from accidentally replacing or removing a frozen
+///         selector, and bounds `emergencyRemoveCut`. It does not constrain `_init` or added facets:
+///         the defence against a hostile proposal is the delay and cancel.
 /// @dev This interface is intentionally SEPARATE from {IGovernedDiamondCut}: that interface exposes
 ///      only `diamondCut`, so `type(IGovernedDiamondCut).interfaceId == 0x1f931c1c` (identical to
 ///      `IDiamondCut`), which is load-bearing — the governed facet must occupy the canonical cut
@@ -31,8 +32,11 @@ interface IFrozenSelectors {
 
     /// @notice Permanently marks `selectors` as frozen: once frozen, a selector can never be the
     ///         target of a `Replace` or `Remove` in any future governed cut. Append-only — there is
-    ///         deliberately no unfreeze. Gated behind UPGRADE_EXECUTOR_ROLE (the same single-holder
-    ///         role that gates `diamondCut`), so only a timelock-relayed governance proposal can freeze.
+    ///         deliberately no unfreeze. Gated like the facet's cut: on GovernedDiamondCut, behind
+    ///         UPGRADE_EXECUTOR_ROLE (the single-holder role that gates `diamondCut`), so in its recipes
+    ///         only a timelock-relayed governance proposal can freeze (a co-cut self-call relay such as
+    ///         AccessManager `execute` would also reach it); on SafeDiamondCut and
+    ///         GovernedSafeDiamondCut, by the pinned Safe.
     /// @param selectors The function selectors to freeze. Already-frozen selectors are idempotent.
     function freezeSelectors(bytes4[] calldata selectors) external;
 

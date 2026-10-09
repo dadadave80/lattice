@@ -1,0 +1,64 @@
+name: Feature or module proposal
+description: Propose a new module, or a feature for an existing module or the tooling.
+title: "feat: "
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Lattice ships modules as diamond facets: an interface, a library holding the logic and an
+        ERC-7201 namespace, and a thin facet. A stateless utility library that consumers can install
+        from Solady or OpenZeppelin is usually out of scope. See
+        [CONTRIBUTING.md](https://github.com/dadadave80/lattice/blob/main/CONTRIBUTING.md#adding-a-module)
+        for what a new module involves.
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Kind of change
+      options:
+        - New module
+        - Feature for an existing module
+        - Scripts, tooling or docs
+    validations:
+      required: true
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary and motivation
+      description: What it does, who needs it, and why it belongs in Lattice.
+    validations:
+      required: true
+  - type: input
+    id: standard
+    attributes:
+      label: Standard or EIP
+      placeholder: ERC-4626, EIP-7702, none
+  - type: textarea
+    id: upstream
+    attributes:
+      label: Upstream source and licence
+      description: >-
+        For ported or adapted code: the upstream repository, its version or commit, and its SPDX
+        licence. Code under a licence that forbids copying, such as BUSL-1.1, cannot be ported.
+      placeholder: OpenZeppelin Contracts v5.6.1, MIT
+  - type: input
+    id: namespace
+    attributes:
+      label: ERC-7201 namespace
+      description: Leave blank for a module with no storage.
+      placeholder: lattice.storage.<Module>
+  - type: input
+    id: interface-id
+    attributes:
+      label: ERC-165 interfaceId
+      description: The proposed interface's id, if known (`0x00000000` for an error-only interface).
+  - type: textarea
+    id: files
+    attributes:
+      label: Files
+      description: For a new module, the four files it adds.
+      value: |
+        - Interface: src/interfaces/<area>/I<Module>.sol
+        - Library: src/<area>/libraries/<Module>Lib.sol
+        - Facet: src/<area>/<Module>.sol
+        - Recipe: script/base/<area>/Deploy<Module>.s.sol

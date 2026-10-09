@@ -7,6 +7,7 @@ import {ICompoundV3Adapter} from "@lattice/interfaces/defi/ICompoundV3Adapter.so
 import {IProtocolAdapter} from "@lattice/interfaces/defi/IProtocolAdapter.sol";
 import {IComet} from "@lattice/interfaces/external/compound/IComet.sol";
 import {ICometRewards} from "@lattice/interfaces/external/compound/ICometRewards.sol";
+import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
 import {EmergencyStopLib} from "@lattice/security/libraries/EmergencyStopLib.sol";
 import {PausableLib} from "@lattice/security/libraries/PausableLib.sol";
 import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib.sol";
@@ -216,6 +217,14 @@ library CompoundV3AdapterLib {
         ReentrancyGuardLib.nonReentrantAfter();
     }
 
+    /// @notice Recalls up to `amount` of the base asset to `to`, spending undeployed idle before the Comet
+    ///         position, and returns the real amount sent.
+    /// @dev The Comet ask is capped at the adapter's supplied balance and at the market's available cash, the
+    ///      base asset Comet itself holds (`Comet.withdraw` pays out of its own balance and reverts when that is
+    ///      short). During a utilisation spike the recall therefore takes what the market can pay instead of
+    ///      reverting the calling `rebalance()` (#271); with no cash it skips Comet. A delivery short of `amount`
+    ///      is an honest partial recall: the unpaid remainder is still supplied and counted, so the
+    ///      StrategyManager accepts it and a later rebalance finishes it.
     function withdraw(uint256 amount, address to) internal returns (uint256 withdrawn) {
         _checkOperator();
         ReentrancyGuardLib.nonReentrantBefore();
@@ -227,11 +236,19 @@ library CompoundV3AdapterLib {
             revert IProtocolAdapter.ProtocolAdapterInvalidRecipient(to);
         }
         address asset_ = $._asset;
-        // Comet withdraws to the caller (this adapter); cap at our supplied balance, then forward.
-        uint256 supplied = IComet($._comet).balanceOf(address(this));
-        uint256 ask = amount > supplied ? supplied : amount;
-        if (ask > 0) IComet($._comet).withdraw(asset_, ask);
-        withdrawn = AdapterBaseLib.transferHonest(asset_, to, ask);
+        // Idle first (it is counted in NAV); Comet withdraws the remainder to this adapter, capped at our
+        // supplied balance and the market's cash, and the whole amount is then forwarded.
+        uint256 idle = AdapterBaseLib.balanceOfSelf(asset_);
+        if (amount > idle) {
+            address comet_ = $._comet;
+            uint256 ask = amount - idle;
+            uint256 supplied = IComet(comet_).balanceOf(address(this));
+            if (ask > supplied) ask = supplied;
+            uint256 cash = IERC20(asset_).balanceOf(comet_);
+            if (ask > cash) ask = cash;
+            if (ask > 0) IComet(comet_).withdraw(asset_, ask);
+        }
+        withdrawn = AdapterBaseLib.transferHonest(asset_, to, amount);
         ReentrancyGuardLib.nonReentrantAfter();
     }
 

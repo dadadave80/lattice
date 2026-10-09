@@ -2,7 +2,8 @@
 pragma solidity >=0.8.4;
 
 /// @title IDIAOracleV2
-/// @author Modified from DIA (https://github.com/diadata-org)
+/// @author Vendored minimal subset of DIA (https://github.com/diadata-org).
+///         Upstream license: GPL-3.0 (repository license; the upstream file has no SPDX tag).
 /// @notice Minimal interface for a DIA OracleV2 contract.
 /// @dev Vendored subset — do not add a DIA dependency. A single DIA oracle contract serves many
 ///      string-keyed feeds (e.g. "ETH/USD"); `value` is reported with 8 decimals and `timestamp`

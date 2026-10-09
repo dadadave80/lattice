@@ -81,6 +81,8 @@ library PlonkVerifierLib {
     //////////////////////////////////////////////////////////////////////////*//
 
     /// @notice Verifies a PLONK proof. See {IPlonkVerifier.verifyProof}.
+    /// @dev The `vk` checks below are structural (domain size, on-curve points), not authentication: a
+    ///      malicious key passes them, so the caller MUST pin it (see KEY PINNING on {IPlonkVerifier}).
     function verifyProof(
         IPlonkVerifier.VerifyingKey calldata vk,
         IPlonkVerifier.Proof calldata proof,
@@ -397,7 +399,7 @@ library PlonkVerifierLib {
         assembly ("memory-safe") {
             ok := staticcall(gas(), 0x07, inp, 0x60, r, 0x40)
         }
-        require(ok, "ecMul");
+        if (!ok) revert IPlonkVerifier.PlonkPrecompileFailed(address(0x07));
     }
 
     /// @dev G1 point addition via the ecAdd precompile (0x06). Reverts on precompile failure.
@@ -407,7 +409,7 @@ library PlonkVerifierLib {
         assembly ("memory-safe") {
             ok := staticcall(gas(), 0x06, inp, 0x80, r, 0x40)
         }
-        require(ok, "ecAdd");
+        if (!ok) revert IPlonkVerifier.PlonkPrecompileFailed(address(0x06));
     }
 
     /// @dev G1 subtraction: p1 - p2 = p1 + (-p2).
@@ -421,9 +423,10 @@ library PlonkVerifierLib {
         return [p[0], QF - p[1]];
     }
 
-    /// @dev Modular inverse mod Q via Fermat (a^(Q-2)) using the modexp precompile (0x05).
+    /// @dev Modular inverse mod Q via Fermat (a^(Q-2)) using the modexp precompile (0x05). Reverts on precompile failure.
     function _inv(uint256 a) private view returns (uint256 r) {
         uint256 q = Q;
+        bool ok;
         assembly ("memory-safe") {
             let p := mload(0x40)
             mstore(p, 0x20)
@@ -432,8 +435,9 @@ library PlonkVerifierLib {
             mstore(add(p, 0x60), a)
             mstore(add(p, 0x80), sub(q, 2))
             mstore(add(p, 0xa0), q)
-            if iszero(staticcall(gas(), 0x05, p, 0xc0, p, 0x20)) { revert(0, 0) }
+            ok := staticcall(gas(), 0x05, p, 0xc0, p, 0x20)
             r := mload(p)
         }
+        if (!ok) revert IPlonkVerifier.PlonkPrecompileFailed(address(0x05));
     }
 }

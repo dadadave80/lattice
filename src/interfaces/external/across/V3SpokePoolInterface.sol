@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 /// @title V3SpokePoolInterface
-/// @author Vendored minimal subset of Across's `V3SpokePoolInterface` (https://github.com/across-protocol/contracts). Upstream is MIT.
+/// @author Vendored minimal subset of Across's `V3SpokePoolInterface` (https://github.com/across-protocol/contracts). Upstream license: MIT.
 /// @notice Source-side entrypoint of the Across v3 intent/optimistic bridge: `deposit` escrows `inputAmount` of
 ///         `inputToken` on this chain and emits the intent a relayer may fill on `destinationChainId` by fronting
 ///         `outputAmount` of `outputToken` to `recipient` (the relayer is later reimbursed via UMA optimistic

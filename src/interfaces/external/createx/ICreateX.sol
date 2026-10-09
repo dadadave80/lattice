@@ -2,9 +2,9 @@
 pragma solidity >=0.8.4;
 
 /// @title ICreateX
-/// @author Minimal vendored subset of CreateX by pcaversaccio + Matt Solomon
-///         (https://github.com/pcaversaccio/createx/blob/main/src/ICreateX.sol). Upstream is
-///         AGPL-3.0-only; only the deterministic-deploy ABI Lattice calls is re-declared here.
+/// @author Vendored minimal subset of CreateX by pcaversaccio + Matt Solomon
+///         (https://github.com/pcaversaccio/createx/blob/main/src/ICreateX.sol).
+///         Upstream license: AGPL-3.0-only. Only the deterministic-deploy ABI Lattice calls is re-declared here.
 /// @notice Interface for the canonical CreateX universal deterministic deployer, deployed as a
 ///         singleton at `0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed` on every supported chain.
 /// @dev Lattice uses the CREATE3 path (address independent of initcode → cross-chain-stable) for the

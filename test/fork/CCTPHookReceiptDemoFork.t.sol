@@ -2,6 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {CCTPHookReceiptDemo} from "@lattice-script/base/crosschain/CCTPHookReceiptDemo.s.sol";
+import {ArchiveFork} from "@lattice-test/helpers/ArchiveFork.sol";
 import {CCTPHookReceipt} from "@lattice/examples/crosschain/CCTPHookReceipt.sol";
 import {ICCTPBridgeAdapter} from "@lattice/interfaces/crosschain/ICCTPBridgeAdapter.sol";
 import {Test} from "forge-std/Test.sol";
@@ -29,7 +30,7 @@ contract CCTPHookReceiptDemoFork is Test {
 
     function test_Fork_SetupBindsReceiptToDiamondExecutor() public {
         if (_skipped()) return;
-        vm.createSelectFork("base-sepolia", vm.envOr("BASE_SEPOLIA_FORK_BLOCK", BASE_SEPOLIA_FORK_BLOCK));
+        if (!ArchiveFork.select("base-sepolia", vm.envOr("BASE_SEPOLIA_FORK_BLOCK", BASE_SEPOLIA_FORK_BLOCK))) return;
         address diamond = 0x957259C5AEAa521c9DcFaEb6692C25ae53F349f1;
 
         (address receipt, address executor) = demo.receiptDemoSetup(diamond);
@@ -44,7 +45,7 @@ contract CCTPHookReceiptDemoFork is Test {
         string memory json = vm.readFile(FIXTURE);
         bytes memory message = vm.parseJsonBytes(json, ".message");
         if (message.length == 0) {
-            vm.skip(true);
+            ArchiveFork.skipOrFail(ArchiveFork.strict(), string.concat(FIXTURE, " has no captured message"));
             return;
         }
 
@@ -56,7 +57,7 @@ contract CCTPHookReceiptDemoFork is Test {
         uint256 tokenId = vm.parseJsonUint(json, ".tokenId");
         uint256 receiveBlock = vm.parseJsonUint(json, ".receiveBlock");
 
-        vm.createSelectFork("base-sepolia", receiveBlock - 1);
+        if (!ArchiveFork.select("base-sepolia", receiveBlock - 1)) return;
         ICCTPBridgeAdapter(diamond).relayMessageWithHook(message, attestation);
 
         assertEq(CCTPHookReceipt(receipt).ownerOf(tokenId), recipient);

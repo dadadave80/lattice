@@ -4,7 +4,8 @@ pragma solidity >=0.8.4;
 import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
 
 /// @title ILido
-/// @author Modified from Lido stETH (https://github.com/lidofinance/lido-dao/blob/master/contracts/0.4.24/Lido.sol)
+/// @author Vendored minimal subset of Lido stETH (https://github.com/lidofinance/lido-dao/blob/master/contracts/0.4.24/Lido.sol).
+///         Upstream license: GPL-3.0.
 /// @notice Minimal vendored subset of the Lido `stETH` token. `submit` stakes native ETH and mints
 ///         the caller stETH (a rebasing share token valued 1:1 with ETH by Lido's own accounting).
 /// @dev Extends `IERC20` for `balanceOf`/`approve`/`transfer`. NOTE: stETH is a *rebasing* balance;

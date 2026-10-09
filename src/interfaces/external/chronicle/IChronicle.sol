@@ -2,7 +2,8 @@
 pragma solidity >=0.8.4;
 
 /// @title IChronicle
-/// @author Modified from Chronicle (https://github.com/chronicleprotocol)
+/// @author Vendored minimal subset of Chronicle (https://github.com/chronicleprotocol).
+///         Upstream license: MIT.
 /// @notice Minimal interface for a Chronicle oracle feed.
 /// @dev Vendored subset — do not add a chronicle-std dependency. Chronicle oracles are Schnorr-signed
 ///      and publish values already scaled to 1e18 (WAD). Reads are **toll-gated**: the consuming contract

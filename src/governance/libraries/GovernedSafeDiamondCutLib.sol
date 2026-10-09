@@ -10,6 +10,7 @@ import {IFrozenSelectors} from "@lattice/interfaces/governance/IFrozenSelectors.
 import {IGovernedSafeDiamondCut} from "@lattice/interfaces/governance/IGovernedSafeDiamondCut.sol";
 import {ISafeAuthority} from "@lattice/interfaces/governance/ISafeAuthority.sol";
 import {ISafeDiamondCut} from "@lattice/interfaces/governance/ISafeDiamondCut.sol";
+import {ITimelockController} from "@lattice/interfaces/governance/ITimelockController.sol";
 import {IUpgradeRegistry} from "@lattice/interfaces/governance/IUpgradeRegistry.sol";
 import {EMERGENCY_GUARDIAN_ROLE, EmergencyStopLib} from "@lattice/security/libraries/EmergencyStopLib.sol";
 import {EnumerableSet} from "@lattice/utils/libraries/EnumerableSet.sol";
@@ -47,12 +48,13 @@ bytes32 constant ERC165_MAP_IGOVERNEDSAFEDIAMONDCUT_SLOT =
 struct GovernedSafeDiamondCutStorage {
     /// @dev The pinned Safe multisig that is the sole authority for schedule/execute/cancel/rotation.
     address _safe;
-    /// @dev Minimum timelock delay (seconds) enforced between `scheduleCut` and `executeCut`. May be 0
-    ///      (instant execution once scheduled) but that defeats the timelock — see init NatSpec.
+    /// @dev Minimum timelock delay (seconds) last committed. The delay in force is `_pendingMinDelay`
+    ///      once `_minDelayEffectAt` has passed (see `minDelay`). May be 0 (instant execution once
+    ///      scheduled) but that defeats the timelock — see init NatSpec.
     uint256 _minDelay;
-    /// @dev Schedule: operation id => ready timestamp (`eta`). 0 means "not scheduled". A nonzero value
-    ///      that is <= block.timestamp means "ready"; > block.timestamp means "pending". Cleared to 0 on
-    ///      execute or cancel.
+    /// @dev Schedule: operation id => ready timestamp (`eta`). 0 means "not scheduled" (never scheduled,
+    ///      or cancelled); 1 (`DONE_TIMESTAMP`) means "executed"; any other value is the `eta`, "pending"
+    ///      while > block.timestamp and "ready" once reached.
     mapping(bytes32 id => uint256 eta) _scheduledAt;
     /// @dev Monotonic counter of cuts applied; doubles as the latest registry version.
     uint256 _cutCount;
@@ -60,6 +62,12 @@ struct GovernedSafeDiamondCutStorage {
     mapping(uint256 version => IUpgradeRegistry.CutRecord record) _cutRegistry;
     /// @dev Append-only set of frozen function selectors (no unfreeze).
     EnumerableSet.Bytes4Set _frozenSelectors;
+    /// @dev Minimum delay requested by the latest `setMinDelay`; replaces `_minDelay` at
+    ///      `_minDelayEffectAt`. APPENDED.
+    uint256 _pendingMinDelay;
+    /// @dev Timestamp from which `_pendingMinDelay` is the delay in force; 0 when no change was ever
+    ///      requested. APPENDED.
+    uint256 _minDelayEffectAt;
 }
 
 /// @title GovernedSafeDiamondCut Library
@@ -79,6 +87,13 @@ struct GovernedSafeDiamondCutStorage {
 ///      (`0xacb1aeb6`) registered at init.
 library GovernedSafeDiamondCutLib {
     using EnumerableSet for EnumerableSet.Bytes4Set;
+
+    /// @dev `_scheduledAt` marker for an executed operation (OpenZeppelin's `_DONE_TIMESTAMP`). It keeps an
+    ///      executed id distinct from a never-scheduled or cancelled one (0) and blocks its replay. As in
+    ///      OpenZeppelin, an `eta` that lands on a marker is misread: with a zero delay, scheduling at
+    ///      timestamp 1 reads as Done (cannot execute or cancel; use another salt) and at timestamp 0 as
+    ///      Unset. Neither timestamp occurs on a live chain.
+    uint256 internal constant DONE_TIMESTAMP = 1;
 
     //*//////////////////////////////////////////////////////////////////////////
     //                           STORAGE ACCESSOR
@@ -107,8 +122,10 @@ library GovernedSafeDiamondCutLib {
     /// @dev Validates `_safe` is non-zero and a real Safe whose `getThreshold()` meets `_minThreshold`
     ///      (which must itself be > 0). `_minDelay` MAY be 0, but a zero delay makes the timelock a
     ///      no-op (a scheduled cut is immediately executable) — set a meaningful delay in production so
-    ///      the multisig's intent is publicly observable before it takes effect. Must be called inside
-    ///      the preInitializer/postInitializer window. Registers the IGovernedSafeDiamondCut ERC-165 id.
+    ///      the multisig's intent is publicly observable before it takes effect. There is no floor or
+    ///      ceiling: a delay so large that `block.timestamp + delay` overflows makes every `scheduleCut`
+    ///      and `setMinDelay` revert, permanently. Must be called inside the
+    ///      preInitializer/postInitializer window. Registers the IGovernedSafeDiamondCut ERC-165 id.
     /// @param _safe The Safe multisig to pin as the cut authority.
     /// @param _minThreshold The minimum signature threshold the pinned Safe must enforce.
     /// @param _minDelay The minimum timelock delay (seconds) between schedule and execute.
@@ -156,15 +173,33 @@ library GovernedSafeDiamondCutLib {
         emit ISafeAuthority.SafeRotated(old, _newSafe);
     }
 
-    /// @notice Sets the minimum timelock delay (seconds). Self-administered: callable ONLY by the pinned
-    ///         Safe. Affects operations scheduled AFTER the change. Emits {MinDelayChanged}.
+    /// @notice Requests a new minimum timelock delay (seconds). Self-administered: callable ONLY by the
+    ///         pinned Safe. The change is NOT immediate: it applies to operations scheduled from
+    ///         `effectAt = block.timestamp + max(current, _newDelay)`, so lowering the delay waits out the
+    ///         delay it replaces and the Safe cannot zero the delay and push a cut through in one
+    ///         transaction. A new request replaces any pending one (re-requesting the current delay
+    ///         withdraws it). Emits {IGovernedSafeDiamondCut.MinDelayChangeScheduled}.
+    /// @dev Pending-delay pattern after OpenZeppelin's AccessManager. Not gated on `msg.sender ==
+    ///      address(this)` like OpenZeppelin's TimelockController `updateDelay`: in a composed diamond
+    ///      `address(this)` can be reachable through other facets. Reverts on overflow of `effectAt`.
     /// @param _newDelay The new minimum delay (seconds); may be 0 (see init NatSpec on the risk).
     function setMinDelay(uint256 _newDelay) internal {
         GovernedSafeDiamondCutStorage storage $ = governedSafeDiamondCutStorage();
         _checkSafe($);
-        uint256 old = $._minDelay;
-        $._minDelay = _newDelay;
-        emit IGovernedSafeDiamondCut.MinDelayChanged(old, _newDelay);
+        uint256 current = _minDelayInForce($);
+        uint256 effectAt = block.timestamp + (_newDelay > current ? _newDelay : current);
+        $._minDelay = current;
+        $._pendingMinDelay = _newDelay;
+        $._minDelayEffectAt = effectAt;
+        emit IGovernedSafeDiamondCut.MinDelayChangeScheduled(current, _newDelay, effectAt);
+    }
+
+    /// @dev The delay in force now: the requested delay once its `effectAt` has passed, else the last
+    ///      committed one.
+    function _minDelayInForce(GovernedSafeDiamondCutStorage storage $) private view returns (uint256) {
+        uint256 effectAt = $._minDelayEffectAt;
+        if (effectAt != 0 && effectAt <= block.timestamp) return $._pendingMinDelay;
+        return $._minDelay;
     }
 
     /// @notice Returns the currently pinned Safe authority.
@@ -172,9 +207,10 @@ library GovernedSafeDiamondCutLib {
         return governedSafeDiamondCutStorage()._safe;
     }
 
-    /// @notice Returns the minimum timelock delay (seconds).
+    /// @notice Returns the minimum timelock delay (seconds) in force now. A change requested through
+    ///         {setMinDelay} is reflected only from its `effectAt`.
     function minDelay() internal view returns (uint256) {
-        return governedSafeDiamondCutStorage()._minDelay;
+        return _minDelayInForce(governedSafeDiamondCutStorage());
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -190,11 +226,22 @@ library GovernedSafeDiamondCutLib {
         return keccak256(abi.encode(_diamondCut, _init, _calldata, _salt));
     }
 
+    /// @dev Classifies a stored `_scheduledAt` value: 0 is Unset (never scheduled or cancelled),
+    ///      `DONE_TIMESTAMP` is Done, and any other value is Waiting until its `eta`, then Ready.
+    function _state(uint256 _eta) private view returns (ITimelockController.OperationState) {
+        if (_eta == 0) return ITimelockController.OperationState.Unset;
+        if (_eta == DONE_TIMESTAMP) return ITimelockController.OperationState.Done;
+        if (_eta > block.timestamp) return ITimelockController.OperationState.Waiting;
+        return ITimelockController.OperationState.Ready;
+    }
+
     /// @notice Schedules a cut for later execution. Reverts if emergency-stopped, then requires the
     ///         caller to be the pinned Safe, then stores `eta = block.timestamp + minDelay` under the
-    ///         operation id. Reverts {IGovernedSafeDiamondCut.CutAlreadyScheduled} if the id is already
-    ///         scheduled. Does NOT validate frozen selectors here — that check fires at execution time
-    ///         (against the then-current frozen set), matching the synchronous path's ordering.
+    ///         operation id (checked: a delay that would overflow reverts rather than wrap `eta` into the
+    ///         past). Reverts {IGovernedSafeDiamondCut.CutAlreadyScheduled} if the id is already
+    ///         scheduled or was executed; re-running an executed cut takes a new salt. Does NOT validate
+    ///         frozen selectors here — that check fires at execution time (against the then-current
+    ///         frozen set), matching the synchronous path's ordering.
     /// @param _diamondCut The facet addresses, cut actions, and function selectors.
     /// @param _init The address delegatecalled after the cut (address(0) to skip).
     /// @param _calldata The calldata passed to `_init`.
@@ -213,19 +260,17 @@ library GovernedSafeDiamondCutLib {
             revert IGovernedSafeDiamondCut.CutAlreadyScheduled(id);
         }
 
-        uint256 eta;
-        unchecked {
-            eta = block.timestamp + $._minDelay;
-        }
+        uint256 eta = block.timestamp + _minDelayInForce($);
         $._scheduledAt[id] = eta;
 
         emit IGovernedSafeDiamondCut.CutScheduled(id, _diamondCut.length, _init, _salt, eta);
     }
 
     /// @notice Executes a previously-scheduled, matured cut. Reverts if emergency-stopped, requires the
-    ///         caller to be the pinned Safe, re-derives the id and requires it scheduled and matured,
-    ///         enforces the frozen-selector guard, applies the cut, clears the operation, and records it
-    ///         in the append-only registry. Emits {IGovernedSafeDiamondCut.CutExecuted}.
+    ///         caller to be the pinned Safe, re-derives the id and requires it scheduled and matured
+    ///         (an executed id reverts {IGovernedSafeDiamondCut.CutNotScheduled}), marks it done, enforces
+    ///         the frozen-selector guard, applies the cut, and records it in the append-only registry.
+    ///         Emits {IGovernedSafeDiamondCut.CutExecuted}.
     /// @param _diamondCut The facet addresses, cut actions, and function selectors (must match schedule).
     /// @param _init The address delegatecalled after the cut (must match schedule).
     /// @param _calldata The calldata passed to `_init` (must match schedule).
@@ -239,13 +284,17 @@ library GovernedSafeDiamondCutLib {
 
         bytes32 id = _operationId(_diamondCut, _init, _calldata, _salt);
         uint256 eta = $._scheduledAt[id];
-        if (eta == 0) revert IGovernedSafeDiamondCut.CutNotScheduled(id);
-        if (block.timestamp < eta) revert IGovernedSafeDiamondCut.CutNotReady(id, eta);
+        ITimelockController.OperationState state = _state(eta);
+        if (state == ITimelockController.OperationState.Waiting) {
+            revert IGovernedSafeDiamondCut.CutNotReady(id, eta);
+        }
+        if (state != ITimelockController.OperationState.Ready) revert IGovernedSafeDiamondCut.CutNotScheduled(id);
 
-        // Effects before interactions: clear the schedule BEFORE the external cut so a re-entrant
-        // executeCut with the same id cannot replay it. Defense-in-depth — the _checkSafe gate already
-        // blocks re-entry, since an init delegatecall runs as the diamond (msg.sender != the Safe).
-        delete $._scheduledAt[id];
+        // Effects before interactions: mark the operation done BEFORE the external cut so neither a
+        // re-entrant nor a later executeCut with the same id can replay it. Defense-in-depth — the
+        // _checkSafe gate already blocks re-entry, since an init delegatecall runs as the diamond
+        // (msg.sender != the Safe).
+        $._scheduledAt[id] = DONE_TIMESTAMP;
 
         // Frozen-selector protection BEFORE applying the cut, against the CURRENT frozen set.
         _enforceNotFrozen($, _diamondCut);
@@ -272,14 +321,17 @@ library GovernedSafeDiamondCutLib {
         emit IUpgradeRegistry.CutRecorded(version, cutHash, msg.sender);
     }
 
-    /// @notice Cancels a still-pending operation. Requires the caller to be the pinned Safe. Reverts
-    ///         {IGovernedSafeDiamondCut.CutNotScheduled} if the id is not currently scheduled. Emits
-    ///         {IGovernedSafeDiamondCut.CutCancelled}.
+    /// @notice Cancels a scheduled, not-yet-executed operation (pending or ready). Requires the caller to
+    ///         be the pinned Safe. Reverts {IGovernedSafeDiamondCut.CutNotScheduled} if the id is not
+    ///         currently scheduled, including an executed id. Emits {IGovernedSafeDiamondCut.CutCancelled}.
     /// @param _id The operation id to cancel.
     function cancelCut(bytes32 _id) internal {
         GovernedSafeDiamondCutStorage storage $ = governedSafeDiamondCutStorage();
         _checkSafe($);
-        if ($._scheduledAt[_id] == 0) revert IGovernedSafeDiamondCut.CutNotScheduled(_id);
+        ITimelockController.OperationState state = _state($._scheduledAt[_id]);
+        if (state == ITimelockController.OperationState.Unset || state == ITimelockController.OperationState.Done) {
+            revert IGovernedSafeDiamondCut.CutNotScheduled(_id);
+        }
         delete $._scheduledAt[_id];
         emit IGovernedSafeDiamondCut.CutCancelled(_id);
     }
@@ -291,8 +343,16 @@ library GovernedSafeDiamondCutLib {
     /// @notice Zero-delay, REMOVAL-ONLY escape hatch: lets a guardian instantly unbind a compromised or
     ///         buggy facet's selectors WITHOUT scheduling and WITHOUT the Safe — and, by design, even
     ///         while the normal cut path is halted by EmergencyStop. Removal-only, frozen-protected, no
-    ///         init delegatecall. Recorded in the SAME append-only registry and emits
-    ///         {IEmergencyCut.EmergencyCutExecuted}. Mirrors {GovernedDiamondCutLib.emergencyRemoveCut}.
+    ///         init delegatecall, and never `scheduleCut`/`executeCut` or a stop-recovery selector
+    ///         (`emergencyResume`, `removeGuardian`, `revokeRole`; reverts
+    ///         {IEmergencyCut.EmergencyCutEntrypointProtected} even with an empty frozen set). Recorded in
+    ///         the SAME append-only registry and emits {IEmergencyCut.EmergencyCutExecuted}. Mirrors
+    ///         {GovernedDiamondCutLib.emergencyRemoveCut}.
+    /// @dev Liveness: a guardian can still trip the stop, which blocks `scheduleCut` and `executeCut`, and
+    ///      can trip it again between the two. A stop only delays: a ready operation never expires, and
+    ///      since the recovery selectors cannot be removed, the `DEFAULT_ADMIN_ROLE` holder can always
+    ///      revoke a hostile guardian, resume, and let the Safe cut again to restore anything removed.
+    ///      This assumes a live admin; with the admin role renounced a stop is permanent.
     /// @param _cuts The facet cuts to apply; every entry MUST be a `Remove` (facetAddress == address(0)).
     function emergencyRemoveCut(FacetCut[] calldata _cuts) internal {
         AccessControlLib.checkRole(EMERGENCY_GUARDIAN_ROLE);
@@ -312,8 +372,16 @@ library GovernedSafeDiamondCutLib {
             bytes4[] calldata selectors = _cuts[i].functionSelectors;
             uint256 selectorsLength = selectors.length;
             for (uint256 j; j < selectorsLength; ++j) {
-                if (frozen.contains(selectors[j])) {
-                    revert IFrozenSelectors.FrozenSelectorProtected(selectors[j]);
+                bytes4 selector = selectors[j];
+                if (
+                    selector == IGovernedSafeDiamondCut.scheduleCut.selector
+                        || selector == IGovernedSafeDiamondCut.executeCut.selector
+                        || EmergencyStopLib.isRecoverySelector(selector)
+                ) {
+                    revert IEmergencyCut.EmergencyCutEntrypointProtected(selector);
+                }
+                if (frozen.contains(selector)) {
+                    revert IFrozenSelectors.FrozenSelectorProtected(selector);
                 }
             }
             unchecked {
@@ -381,7 +449,8 @@ library GovernedSafeDiamondCutLib {
     //                          TIMELOCK VIEW FUNCTIONS
     //////////////////////////////////////////////////////////////////////////*//
 
-    /// @notice Returns the ready timestamp (`eta`) of an operation, or 0 if not scheduled.
+    /// @notice Returns the ready timestamp (`eta`) of an operation: 0 if never scheduled or cancelled, and
+    ///         `DONE_TIMESTAMP` (1) once executed.
     /// @param _id The operation id to query.
     function getTimestamp(bytes32 _id) internal view returns (uint256) {
         return governedSafeDiamondCutStorage()._scheduledAt[_id];
@@ -390,26 +459,20 @@ library GovernedSafeDiamondCutLib {
     /// @notice Returns whether `_id` is scheduled but not yet matured (eta in the future).
     /// @param _id The operation id to query.
     function isOperationPending(bytes32 _id) internal view returns (bool) {
-        uint256 eta = governedSafeDiamondCutStorage()._scheduledAt[_id];
-        return eta != 0 && eta > block.timestamp;
+        return _state(governedSafeDiamondCutStorage()._scheduledAt[_id]) == ITimelockController.OperationState.Waiting;
     }
 
-    /// @notice Returns whether `_id` is scheduled and matured (eta reached, ready to execute).
+    /// @notice Returns whether `_id` is scheduled and matured (eta reached, not yet executed).
     /// @param _id The operation id to query.
     function isOperationReady(bytes32 _id) internal view returns (bool) {
-        uint256 eta = governedSafeDiamondCutStorage()._scheduledAt[_id];
-        return eta != 0 && eta <= block.timestamp;
+        return _state(governedSafeDiamondCutStorage()._scheduledAt[_id]) == ITimelockController.OperationState.Ready;
     }
 
-    /// @notice Returns whether `_id` has been executed (and thereby cleared). An id whose schedule slot
-    ///         is 0 but whose cut hash appears in the registry is "done"; here we treat any unscheduled
-    ///         (eta == 0) id as not-pending/not-ready, and report "done" only when it is neither pending
-    ///         nor ready — i.e. the slot is cleared. Cancelled and never-scheduled ids also report not
-    ///         pending/ready; callers distinguish via the registry / events. Mirrors OZ's done semantic
-    ///         relative to the live schedule slot.
+    /// @notice Returns whether `_id` has been executed. Never-scheduled and cancelled ids report false,
+    ///         matching OpenZeppelin's TimelockController `Done` state.
     /// @param _id The operation id to query.
     function isOperationDone(bytes32 _id) internal view returns (bool) {
-        return governedSafeDiamondCutStorage()._scheduledAt[_id] == 0;
+        return governedSafeDiamondCutStorage()._scheduledAt[_id] == DONE_TIMESTAMP;
     }
 
     //*//////////////////////////////////////////////////////////////////////////

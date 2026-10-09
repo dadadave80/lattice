@@ -9,7 +9,7 @@ import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
 /// @dev Inherits IERC20 — the vault itself is an ERC-20 share token.
 ///      See https://eips.ethereum.org/EIPS/eip-4626
 ///
-///      OZ v5.1.0 declares `interface IERC4626 is IERC20, IERC20Metadata` to expose the metadata
+///      OZ v5.6.1 declares `interface IERC4626 is IERC20, IERC20Metadata` to expose the metadata
 ///      surface (`name()`, `symbol()`, `decimals()`) through the interface. Lattice's IERC20 already
 ///      includes the metadata surface, unlike OZ which splits IERC20 + IERC20Metadata — so inheriting
 ///      IERC20Metadata separately would be redundant in this setup. The metadata functions are fully
@@ -32,7 +32,9 @@ interface IERC4626 is IERC20 {
     //                                  ERRORS
     //////////////////////////////////////////////////////////////////////////*//
 
-    /// @dev Emitted when mulDiv overflows (result exceeds uint256 or denominator is 0).
+    /// @dev Raised by ERC4626 facets released through 0.4.0 when the share-math quotient overflows uint256 (on
+    ///      mulDiv's 512-bit path). Kept so their reverts still decode; current builds use `Math.mulDiv`, which
+    ///      raises `Panic(0x11)` instead.
     error MathOverflowedMulDiv();
 
     /// @dev A token transfer failed (covers tokens that return false or do not return a bool).

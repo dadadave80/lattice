@@ -21,12 +21,14 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      # Image pinned by digest and matcher fetched from the v1.7.12 release commit (914e7df);
+      # bump both together.
       - name: Add problem matchers
         run: |
           curl -sSL -o actionlint-matcher.json \
-            https://raw.githubusercontent.com/rhysd/actionlint/main/.github/actionlint-matcher.json
+            https://raw.githubusercontent.com/rhysd/actionlint/914e7df21a07ef503a81201c76d2b11c789d3fca/.github/actionlint-matcher.json
           echo "::add-matcher::actionlint-matcher.json"
-      - uses: docker://rhysd/actionlint:latest
+      - uses: docker://rhysd/actionlint:1.7.12@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667

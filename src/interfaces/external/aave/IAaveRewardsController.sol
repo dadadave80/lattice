@@ -2,7 +2,8 @@
 pragma solidity >=0.8.4;
 
 /// @title IAaveRewardsController
-/// @author Modified from Aave v3 periphery (https://github.com/aave/aave-v3-periphery/blob/master/contracts/rewards/interfaces/IRewardsController.sol)
+/// @author Vendored minimal subset of Aave v3 periphery (https://github.com/aave/aave-v3-periphery/blob/master/contracts/rewards/interfaces/IRewardsController.sol).
+///         Upstream license: AGPL-3.0.
 /// @notice Minimal vendored subset: claim all incentive rewards accrued to an account for a set
 ///         of assets (aTokens / debt tokens).
 interface IAaveRewardsController {

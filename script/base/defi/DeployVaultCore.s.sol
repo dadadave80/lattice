@@ -5,7 +5,6 @@ import {DiamondLoupeFacet} from "@diamond/facets/DiamondLoupeFacet.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
-import {Receive} from "@lattice/Receive.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {VaultCore} from "@lattice/defi/VaultCore.sol";
 import {VaultCoreInit} from "@lattice/defi/VaultCoreInit.sol";
@@ -20,7 +19,8 @@ import {ERC4626} from "@lattice/tokens/ERC4626/ERC4626.sol";
 ///         ONLY its own selectors (the composability principle): the base `ERC20` facet exposes the ERC-20 share
 ///         surface; `ERC4626` is a MIXED cut over it (REPLACE `decimals`, ADD the vault surface); and `VaultCore`
 ///         is a MIXED cut over `ERC4626` — it REPLACEs `totalAssets`/`deposit`/`mint`/`withdraw`/`redeem` (the
-///         strategy-aware / rebalance-guarded variants) and ADDs the strategy-hook surface. `AccessControl` is
+///         strategy-aware / rebalance-guarded variants) and `maxDeposit`/`maxMint` (deposit-latch-aware), and
+///         ADDs the strategy-hook surface and the manager-swap latch (`IVaultCoreRecovery`). `AccessControl` is
 ///         cut so an admin can administer roles; strategy-manager changes are gated by `DEFAULT_ADMIN_ROLE`. The
 ///         ONE source of truth for what a VaultCore diamond is, shared by production and the facet tests.
 contract DeployVaultCore is BaseDeploy {
@@ -43,7 +43,7 @@ contract DeployVaultCore is BaseDeploy {
         address vaultFacet = address(new ERC4626());
         address coreFacet = address(new VaultCore());
 
-        cuts = new FacetCut[](10);
+        cuts = new FacetCut[](9);
         cuts[0] = _cut(address(new ERC165Facet()));
         cuts[1] = _cut(address(new AccessControl()));
         cuts[2] = _cut(address(new ERC20()));
@@ -56,7 +56,6 @@ contract DeployVaultCore is BaseDeploy {
             FacetCut({facetAddress: coreFacet, action: FacetCutAction.Replace, functionSelectors: _coreOverrides()});
         cuts[7] = _cut(address(new DiamondLoupeFacet()));
         cuts[8] = _cut(address(new AccessControlDiamondCut()));
-        cuts[9] = _cut(address(new Receive()));
 
         (init, initCalldata) = _withUpgradeableIntrospection(
             address(new VaultCoreInit()),
@@ -91,25 +90,30 @@ contract DeployVaultCore is BaseDeploy {
         s[0] = ERC4626.decimals.selector;
     }
 
-    /// @notice The strategy-hook selectors VaultCore ADDs over ERC-4626.
+    /// @notice The strategy-hook and manager-swap-latch selectors VaultCore ADDs over ERC-4626.
     function _strategySurface() internal pure returns (bytes4[] memory s) {
-        s = new bytes4[](6);
+        s = new bytes4[](8);
         s[0] = VaultCore.strategyManager.selector;
         s[1] = VaultCore.idleAssets.selector;
         s[2] = VaultCore.allocatedAssets.selector;
         s[3] = VaultCore.setStrategyManager.selector;
         s[4] = VaultCore.allocateToStrategy.selector;
         s[5] = VaultCore.recallFromStrategy.selector;
+        s[6] = VaultCore.managerSwapLatched.selector;
+        s[7] = VaultCore.clearManagerSwapLatch.selector;
     }
 
-    /// @notice The ERC-4626 mutators VaultCore REPLACEs (strategy-aware totalAssets + rebalance-guarded flows).
+    /// @notice The ERC-4626 selectors VaultCore REPLACEs (strategy-aware totalAssets, rebalance-guarded flows,
+    ///         and the deposit-latch-aware `maxDeposit`/`maxMint`).
     function _coreOverrides() internal pure returns (bytes4[] memory s) {
-        s = new bytes4[](5);
+        s = new bytes4[](7);
         s[0] = VaultCore.totalAssets.selector;
         s[1] = VaultCore.deposit.selector;
         s[2] = VaultCore.mint.selector;
         s[3] = VaultCore.withdraw.selector;
         s[4] = VaultCore.redeem.selector;
+        s[5] = VaultCore.maxDeposit.selector;
+        s[6] = VaultCore.maxMint.selector;
     }
 
     /// @notice Deploys a VaultCore diamond (broadcasting entrypoint for `forge script ... --broadcast`).

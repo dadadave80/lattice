@@ -3,6 +3,7 @@ pragma solidity ^0.8.30;
 
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {AccountBlueprintHelper} from "@lattice-test/helpers/AccountBlueprintHelper.sol";
+import {ArchiveFork} from "@lattice-test/helpers/ArchiveFork.sol";
 import {Lattice} from "@lattice/Lattice.sol";
 import {AccountInit} from "@lattice/accounts/erc7579/AccountInit.sol";
 import {AccountSigner} from "@lattice/accounts/erc7579/AccountSigner.sol";
@@ -59,8 +60,10 @@ contract EntryPoint7702Fork is AccountBlueprintHelper {
             return;
         }
         vm.createSelectFork("mainnet", FORK_BLOCK);
+        // FORK_BLOCK postdates the v0.9 singleton, so missing code means a wrong pin or a bad RPC: skip locally,
+        // fail on the strict weekly lane.
         if (address(ENTRY_POINT).code.length == 0) {
-            vm.skip(true);
+            ArchiveFork.skipOrFail(ArchiveFork.strict(), "v0.9 EntryPoint has no code at FORK_BLOCK");
             return;
         }
 

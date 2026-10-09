@@ -2,8 +2,9 @@
 pragma solidity >=0.8.4;
 
 /// @title ILidoWithdrawalQueue
-/// @author Modified from Lido WithdrawalQueueERC721
-///         (https://github.com/lidofinance/lido-dao/blob/master/contracts/0.8.9/WithdrawalQueueERC721.sol)
+/// @author Vendored minimal subset of Lido WithdrawalQueueERC721
+///         (https://github.com/lidofinance/lido-dao/blob/master/contracts/0.8.9/WithdrawalQueueERC721.sol).
+///         Upstream license: GPL-3.0.
 /// @notice Minimal vendored subset of the Lido withdrawal queue. Lido withdrawals are an **async
 ///         queue**: requesting burns stETH and mints an NFT request id that becomes claimable only
 ///         after the protocol finalizes it (oracle report + buffer), at which point claiming pays

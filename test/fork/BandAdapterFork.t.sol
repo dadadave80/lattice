@@ -37,12 +37,17 @@ contract MockBandAdapterForkContract is AccessControl, BandAdapter, Initializabl
 ///
 /// Band publishes a SINGLE global StdReference contract per chain via a deterministic CREATE2 address
 /// (`0xDA7a001b254CD22e46d3eAB04d937489c93174C3` on most supported EVM chains). Ethereum mainnet is not
-/// in Band's officially supported-blockchains list, and the contract at that canonical address on mainnet
-/// is only sparsely maintained, so the StdReference address is supplied via the BAND_STD_REFERENCE env var
-/// rather than hard-coded. The test is skipped unless both MAINNET_RPC_URL and BAND_STD_REFERENCE are set.
+/// in Band's officially supported-blockchains list (https://docs.bandchain.org/develop/supported-blockchains),
+/// and the contract at that address on mainnet serves no ETH/USD rate at the 21_500_000 pin the other oracle
+/// suites share, or at any later block: it reverts `getSlotAndIndex: FAIL_SYMBOL_NOT_AVAILABLE` for every
+/// symbol. It last served ETH/USD at block 18_084_812 (September 2023), with a base rate unchanged since
+/// May 2023. With no official mainnet address and no live data, the suite has no canonical default, so the
+/// StdReference address is supplied via the BAND_STD_REFERENCE env var. The fork pins that last block, so it
+/// needs an archive endpoint. The test is skipped unless both MAINNET_RPC_URL and BAND_STD_REFERENCE are set.
 contract BandAdapterFork is Test {
-    /// @notice A recent mainnet block; overridable via BAND_FORK_BLOCK for a fresher reference value.
-    uint256 constant DEFAULT_FORK_BLOCK = 21_500_000;
+    /// @notice The last mainnet block at which the StdReference served ETH/USD (it reverts
+    ///         `FAIL_SYMBOL_NOT_AVAILABLE` from 18_084_813); overridable via BAND_FORK_BLOCK.
+    uint256 constant DEFAULT_FORK_BLOCK = 18_084_812;
 
     bytes32 constant KEY_ETH_USD = keccak256("ETH/USD");
 

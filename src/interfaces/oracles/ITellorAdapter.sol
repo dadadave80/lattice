@@ -14,6 +14,10 @@ pragma solidity >=0.8.4;
 ///      {IPriceOracleReader}, so consumers can read this adapter through that provider-agnostic interface.
 ///      (Declared directly, not by inheriting {IPriceOracleReader}, because Solidity excludes inherited
 ///      functions from `type(I).interfaceId`, which would shift the ERC-165 id.)
+///
+///      The adapter does NOT check an L2 sequencer-uptime feed and does NOT bound the answer to a sane range.
+///      Integrators that need either check read through the opt-in {IOracleGuard} (`OracleGuard` facet)
+///      instead of calling `latestAnswer` directly.
 interface ITellorAdapter {
     // -------------------------------------------------------------------------
     //                                  Events

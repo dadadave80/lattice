@@ -111,6 +111,11 @@ library GovernorLib {
     /// @dev Quorum denominator: quorum = (totalSupply * quorumNumerator) / QUORUM_DENOMINATOR.
     uint256 internal constant QUORUM_DENOMINATOR = 100;
 
+    /// @dev How long a queued proposal stays executable after its ETA. Past `eta + GRACE_PERIOD` the proposal is
+    ///      Expired, which is terminal: {state} reports it, {execute} refuses it, and {checkTimelockOperation}
+    ///      makes a colocated timelock refuse to run its operation directly.
+    uint256 internal constant GRACE_PERIOD = 14 days;
+
     //*//////////////////////////////////////////////////////////////////////////
     //                           STORAGE ACCESSOR
     //////////////////////////////////////////////////////////////////////////*//
@@ -323,6 +328,8 @@ library GovernorLib {
     /// @notice Returns the current state of a proposal.
     /// @dev State transitions (ordered by finality):
     ///      Executed → Canceled → Pending → Active → Defeated → Succeeded → Queued → Expired
+    ///      Expired (queued, still pending in the timelock, and past `eta + GRACE_PERIOD`) is terminal: {execute}
+    ///      refuses it, and a timelock in the same diamond refuses its operation (see {checkTimelockOperation}).
     function state(uint256 proposalId) internal view returns (IGovernor.ProposalState) {
         ProposalCore storage p = governorStorage()._proposals[proposalId];
         if (p.executed) return IGovernor.ProposalState.Executed;
@@ -349,14 +356,14 @@ library GovernorLib {
             }
             if (ITimelockController(timelockAddr).isOperationPending(timelockId)) {
                 // Still pending in timelock: check expiry grace period.
-                if (block.timestamp > uint256(p.etaSeconds) + 14 days) return IGovernor.ProposalState.Expired;
+                if (block.timestamp > uint256(p.etaSeconds) + GRACE_PERIOD) return IGovernor.ProposalState.Expired;
                 return IGovernor.ProposalState.Queued;
             }
             // Operation is no longer pending (was externally canceled in the timelock).
             return IGovernor.ProposalState.Canceled;
         }
         // No timelock configured but etaSeconds is set — fallback grace period check.
-        if (block.timestamp > uint256(p.etaSeconds) + 14 days) return IGovernor.ProposalState.Expired;
+        if (block.timestamp > uint256(p.etaSeconds) + GRACE_PERIOD) return IGovernor.ProposalState.Expired;
         return IGovernor.ProposalState.Queued;
     }
 
@@ -475,7 +482,8 @@ library GovernorLib {
         return proposalId;
     }
 
-    /// @notice Execute a proposal (succeeded with no timelock, or queued+ready with timelock).
+    /// @notice Execute a proposal (succeeded with no timelock, or queued+ready with timelock and within the grace
+    ///         period).
     /// @param targets Contract addresses to call.
     /// @param values ETH values for each call.
     /// @param calldatas Encoded calldata for each call.
@@ -549,9 +557,10 @@ library GovernorLib {
         return proposalId;
     }
 
-    /// @notice Cancel a proposal. Proposer can cancel in any non-terminal state
-    ///         (Pending, Active, Succeeded, or Queued). If the proposal is Queued, also
-    ///         cancels the corresponding timelock operation.
+    /// @notice Cancel a proposal. Only its proposer can cancel, and only while it is Pending (before voting
+    ///         starts), as in OpenZeppelin's Governor. Once voting has started, no single account can veto the
+    ///         proposal through the Governor; a queued operation can still be cancelled in the timelock by a
+    ///         `CANCELLER_ROLE` holder, after which {state} reports Canceled.
     /// @param targets Contract addresses for the proposal.
     /// @param values ETH values for the proposal.
     /// @param calldatas Calldata for the proposal.
@@ -566,33 +575,17 @@ library GovernorLib {
         uint256 proposalId = hashProposal(targets, values, calldatas, descriptionHash);
 
         IGovernor.ProposalState currentState = state(proposalId);
-        // Allow cancel in any non-terminal state: Pending, Active, Succeeded, Queued.
-        bytes32 allowedStates = _encodeStateBitmap(IGovernor.ProposalState.Pending)
-            | _encodeStateBitmap(IGovernor.ProposalState.Active) | _encodeStateBitmap(IGovernor.ProposalState.Succeeded)
-            | _encodeStateBitmap(IGovernor.ProposalState.Queued);
-        if (
-            currentState != IGovernor.ProposalState.Pending && currentState != IGovernor.ProposalState.Active
-                && currentState != IGovernor.ProposalState.Succeeded && currentState != IGovernor.ProposalState.Queued
-        ) {
-            revert IGovernor.GovernorUnexpectedProposalState(proposalId, currentState, allowedStates);
+        if (currentState != IGovernor.ProposalState.Pending) {
+            revert IGovernor.GovernorUnexpectedProposalState(
+                proposalId, currentState, _encodeStateBitmap(IGovernor.ProposalState.Pending)
+            );
         }
 
+        ProposalCore storage p = governorStorage()._proposals[proposalId];
         address caller = msg.sender;
-        if (caller != governorStorage()._proposals[proposalId].proposer) {
-            revert IGovernor.GovernorOnlyExecutor(caller);
-        }
+        if (caller != p.proposer) revert IGovernor.GovernorOnlyExecutor(caller);
 
-        // If the proposal is queued, cancel the corresponding timelock operation.
-        GovernorStorage storage $ = governorStorage();
-        ProposalCore storage p = $._proposals[proposalId];
-        if (p.etaSeconds != 0) {
-            address timelockAddr = $._timelock;
-            if (timelockAddr != address(0)) {
-                bytes32 timelockId = $._proposalTimelockIds[proposalId];
-                ITimelockController(timelockAddr).cancel(timelockId);
-            }
-        }
-
+        // A Pending proposal was never queued, so there is no timelock operation to cancel.
         p.canceled = true;
 
         emit IGovernor.ProposalCanceled(proposalId);
@@ -707,6 +700,30 @@ library GovernorLib {
         address old = governorStorage()._timelock;
         governorStorage()._timelock = newTimelock;
         emit IGovernor.TimelockChange(old, newTimelock);
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                         TIMELOCK EXECUTION GUARD
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice Reverts if `timelockId` is the operation of a proposal this governor queued and the proposal is
+    ///         past its grace period (Expired).
+    /// @dev Called by {TimelockControllerLib} before it runs an operation, so the grace is enforced even when the
+    ///      timelock's executor role is open and the operation is run directly, bypassing {execute}. It reads this
+    ///      diamond's Governor storage, so it only takes effect when the Governor and TimelockController facets
+    ///      share a diamond (as in `GovernedVaultInit`). An operation the governor did not queue maps to proposal 0
+    ///      and passes. A TimelockController deployed apart from its governor cannot see the grace; grant its
+    ///      `EXECUTOR_ROLE` to the governor alone so every execution goes through {execute}.
+    /// @param timelockId The timelock operation id about to be executed.
+    function checkTimelockOperation(bytes32 timelockId) internal view {
+        GovernorStorage storage $ = governorStorage();
+        uint256 proposalId = $._timelockIds[timelockId];
+        if (proposalId == 0) return;
+        if (block.timestamp > uint256($._proposals[proposalId].etaSeconds) + GRACE_PERIOD) {
+            revert IGovernor.GovernorUnexpectedProposalState(
+                proposalId, IGovernor.ProposalState.Expired, _encodeStateBitmap(IGovernor.ProposalState.Queued)
+            );
+        }
     }
 
     //*//////////////////////////////////////////////////////////////////////////

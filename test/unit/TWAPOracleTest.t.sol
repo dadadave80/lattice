@@ -82,6 +82,13 @@ contract TWAPOracleTest is TWAPOracleTestBase {
         oracle.registerPair(KEY_ETH_USD, address(pair));
     }
 
+    /// @notice Registering the zero address as a pair reverts.
+    function test_RegisterPairRevertsForZeroPair() public {
+        vm.prank(admin);
+        vm.expectRevert(ITWAPOracle.TWAPZeroPair.selector);
+        oracle.registerPair(KEY_ETH_USD, address(0));
+    }
+
     /// @notice Admin can register a pair and it records an initial observation.
     function test_RegisterPairByAdmin() public {
         vm.prank(admin);
@@ -158,6 +165,56 @@ contract TWAPOracleTest is TWAPOracleTestBase {
         // consult over a 3600-second window should return PRICE_PER_SEC.
         (uint256 twap0,) = oracle.consult(KEY_ETH_USD, elapsed);
         assertEq(twap0, PRICE0_PER_SEC);
+    }
+
+    /// @notice Uniswap V2 cumulatives are designed to wrap past 2^256; a window spanning the wrap must give
+    ///         the same TWAP as the unwrapped case instead of reverting on a checked underflow.
+    function test_ConsultCumulativeWrapMatchesUnwrapped() public {
+        uint32 elapsed = 3600;
+        uint256 delta0 = PRICE0_PER_SEC * elapsed;
+        uint256 delta1 = 7 * elapsed;
+        uint256 start0 = type(uint256).max - delta0 / 2; // the wrap lands mid-window
+        uint256 start1 = type(uint256).max - 1;
+
+        pair.setValues(start0, start1, uint32(block.timestamp));
+        vm.prank(admin);
+        oracle.registerPair(KEY_ETH_USD, address(pair));
+
+        vm.warp(block.timestamp + elapsed);
+        uint256 end0;
+        uint256 end1;
+        unchecked {
+            end0 = start0 + delta0;
+            end1 = start1 + delta1;
+        }
+        assertLt(end0, start0, "cumulative0 wrapped");
+        assertLt(end1, start1, "cumulative1 wrapped");
+        pair.setValues(end0, end1, uint32(block.timestamp));
+        oracle.recordObservation(KEY_ETH_USD);
+
+        (uint256 twap0, uint256 twap1) = oracle.consult(KEY_ETH_USD, elapsed);
+        assertEq(twap0, PRICE0_PER_SEC, "wrapped twap0 == unwrapped");
+        assertEq(twap1, 7, "wrapped twap1 == unwrapped");
+    }
+
+    /// @notice Re-registering a key to a different pair starts a fresh history: `consult` must not mix the old
+    ///         pair's cumulatives with the new pair's (which would wrap to a garbage price under the unchecked
+    ///         subtraction) and instead reverts until the new pair has two observations of its own.
+    function test_ReRegisterPairResetsHistory() public {
+        pair.setValues(1e40, 1e40, uint32(block.timestamp));
+        vm.prank(admin);
+        oracle.registerPair(KEY_ETH_USD, address(pair));
+
+        vm.warp(block.timestamp + 3600);
+        MockUniswapV2Pair pairB = new MockUniswapV2Pair();
+        pairB.setValues(5e30, 5e30, uint32(block.timestamp));
+        vm.prank(admin);
+        oracle.registerPair(KEY_ETH_USD, address(pairB));
+
+        ITWAPOracle.Observation memory latest = oracle.getLatestObservation(KEY_ETH_USD);
+        assertEq(latest.price0Cumulative, 5e30, "newest observation is pairB's");
+        vm.expectRevert(abi.encodeWithSelector(ITWAPOracle.TWAPInsufficientHistory.selector, KEY_ETH_USD));
+        oracle.consult(KEY_ETH_USD, 3600);
     }
 
     /// @notice consult across multiple observations picks the right base.

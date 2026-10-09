@@ -11,6 +11,10 @@ import {Initializable} from "@lattice/utils/Initializable.sol";
 import {Test} from "forge-std/Test.sol";
 
 contract MockSessionKey is AccessControl, SessionKey, Initializable {
+    /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare
+    ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing.
+    function exportSelectors() external pure virtual override(AccessControl, SessionKey) returns (bytes memory) {}
+
     function initialize(address admin_) external initializer {
         AccessControlLib.__AccessControl_init(admin_);
         SessionKeyLib.__SessionKey_init();
@@ -193,6 +197,16 @@ contract SessionKeyTest is Test {
         acct.authorize(key, _transferCall(tok, dest, 60));
         vm.expectRevert(abi.encodeWithSelector(ISessionKey.SpendLimitExceeded.selector, key, tok, 100, 110));
         acct.authorize(key, _transferCall(tok, dest, 50));
+    }
+
+    /// @notice `ANY_TARGET` never matches the account itself; only an exact `(account, selector)` grant does.
+    function test_Permission_AnyTarget_ExcludesSelf() public {
+        _register(key, 0, until, _perm(ANY_TARGET, ANY_SELECTOR));
+        assertFalse(acct.isCallPermitted(key, address(acct), selector), "wildcard matched self");
+        _register(key, 0, until, _perm(ANY_TARGET, selector));
+        assertFalse(acct.isCallPermitted(key, address(acct), selector), "any-target matched self");
+        _register(key, 0, until, _perm(address(acct), selector));
+        assertTrue(acct.isCallPermitted(key, address(acct), selector), "exact self grant denied");
     }
 
     function test_Spend_UnconfiguredIsUncapped() public {

@@ -3,8 +3,9 @@ pragma solidity ^0.8.30;
 
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {ShieldedPoolTestBase} from "@lattice-test/base/ShieldedPoolTestBase.sol";
+import {ShieldedWithdrawFixture, TestWithdrawVerifier} from "@lattice-test/helpers/ShieldedWithdrawFixture.sol";
 import {IGroth16Verifier} from "@lattice/interfaces/privacy/IGroth16Verifier.sol";
-import {IShieldedPool, IShieldedWithdrawVerifier} from "@lattice/interfaces/privacy/IShieldedPool.sol";
+import {IShieldedPool} from "@lattice/interfaces/privacy/IShieldedPool.sol";
 import {Groth16Verifier} from "@lattice/privacy/Groth16Verifier.sol";
 import {ShieldedPool} from "@lattice/privacy/ShieldedPool.sol";
 
@@ -36,92 +37,6 @@ contract MockERC20 {
     }
 }
 
-/// @notice Adapts the generic Groth16Verifier to the pool's 5-signal withdraw-verifier interface, with
-///         the test circuit's verifying key. This is exactly what a consumer writes for their circuit.
-contract TestWithdrawVerifier is IShieldedWithdrawVerifier {
-    Groth16Verifier private immutable groth16;
-
-    constructor(Groth16Verifier g) {
-        groth16 = g;
-    }
-
-    function verifyProof(
-        uint256[2] calldata a,
-        uint256[2][2] calldata b,
-        uint256[2] calldata c,
-        uint256[5] calldata pub
-    ) external view returns (bool) {
-        IGroth16Verifier.Proof memory proof = IGroth16Verifier.Proof({a: a, b: b, c: c});
-        uint256[] memory input = new uint256[](5);
-        for (uint256 i; i < 5; ++i) {
-            input[i] = pub[i];
-        }
-        return groth16.verifyProof(_vk(), proof, input);
-    }
-
-    function _vk() internal pure returns (IGroth16Verifier.VerifyingKey memory vk) {
-        vk.alpha = [
-            uint256(5302751435839650088604561552279609711324887400042066289421145452492691845022),
-            13438726559250473472158480636620069781305400611484529818512448705339208676218
-        ];
-        vk.beta = [
-            [
-                uint256(13537669330110998904979446114501428553344809619374592611432667224956055555704),
-                8208558165811728026600697726502946714707425666074839797823128464197010380045
-            ],
-            [
-                uint256(1605268472525291172497028610377750436828043015386995812683078469456048510155),
-                18961220506339502078994364071396144377629278165255115633857481500611527704813
-            ]
-        ];
-        vk.gamma = [
-            [
-                uint256(11559732032986387107991004021392285783925812861821192530917403151452391805634),
-                10857046999023057135944570762232829481370756359578518086990519993285655852781
-            ],
-            [
-                uint256(4082367875863433681332203403145435568316851327593401208105741076214120093531),
-                8495653923123431417604973247489272438418190587263600148770280649306958101930
-            ]
-        ];
-        vk.delta = [
-            [
-                uint256(9487840020944190812842229820164412711795975978274293585184008648994964373585),
-                7249253487578679435429818407221902176373727001963415926155817653860663191767
-            ],
-            [
-                uint256(3434165818315914404207936314086735710793714657820041307317610135605389044470),
-                21519082486935391664909137982566576958000198719491307067642038093271808783491
-            ]
-        ];
-        vk.ic = new uint256[2][](6);
-        vk.ic[0] = [
-            uint256(14330608352630660750906838748327660245137407024483434315079708048474262318303),
-            13718593365017292217322575880681804220864808776641744803462348433522279335736
-        ];
-        vk.ic[1] = [
-            uint256(19651056018071856925504501696809795299319844270250303657518216033853634615358),
-            14678907699362174310362880496475105965552818481284752979298708568602512686870
-        ];
-        vk.ic[2] = [
-            uint256(10055340604266861013475041180105879816171058095357478174923944137340013976792),
-            223584751289044745961173428600847216502107337102516029771485919196699471512
-        ];
-        vk.ic[3] = [
-            uint256(2671175592865746420713145315476284529102439312131124434319441005817297987287),
-            7252212506678134808196892779818857284449991587272419517105258030642234649683
-        ];
-        vk.ic[4] = [
-            uint256(10711449297826149595983615947535620250931826213785943404895269883958026740884),
-            13552271061216026084699421704392655167967440528235997361712982388814480941089
-        ];
-        vk.ic[5] = [
-            uint256(2741540396598746820940569516996657996878656083038436703535950452279064803299),
-            12403846918302773974008520078117675212953238205380179476013593296404723527705
-        ];
-    }
-}
-
 /// @title ShieldedPoolTest
 /// @notice Tests the deposit -> withdraw flow through a REAL {Diamond} assembled by the ready-to-deploy
 ///         {DeployShieldedPool} script (see {ShieldedPoolTestBase}) with a REAL Groth16 withdrawal proof (3
@@ -136,11 +51,11 @@ contract ShieldedPoolTest is ShieldedPoolTestBase {
     uint256 poolId;
 
     uint256 constant DENOM = 1000;
-    uint256 constant ROOT = 18957209925966657462584645419155802083555560412888865451941054255438714672993;
-    uint256 constant NULLIFIER_HASH = 13377623690824916797327209540443066247715962236839283896963055328700043345550;
-    address constant RECIPIENT = address(0xBeEF); // 0xbeef -> uint160 48879 (matches the proof)
-    address constant RELAYER = address(0xC0fE); // 0xc0fe -> uint160 49406
-    uint256 constant FEE = 5;
+    uint256 constant ROOT = ShieldedWithdrawFixture.ROOT;
+    uint256 constant NULLIFIER_HASH = ShieldedWithdrawFixture.NULLIFIER_HASH;
+    address constant RECIPIENT = ShieldedWithdrawFixture.RECIPIENT;
+    address constant RELAYER = ShieldedWithdrawFixture.RELAYER;
+    uint256 constant FEE = ShieldedWithdrawFixture.FEE;
 
     function setUp() public {
         Groth16Verifier g = new Groth16Verifier();
@@ -167,24 +82,8 @@ contract ShieldedPoolTest is ShieldedPoolTestBase {
     }
 
     function _proof() internal pure returns (IShieldedPool.WithdrawProof memory p) {
-        p.a = [
-            uint256(19513610530500703525524032632172051670901552822733031087886268921118077906542),
-            20278967013227174522877930728711965345583377353233099555490592684330218564017
-        ];
-        p.b = [
-            [
-                uint256(4830322330531715376663318176023629436430524537236056058153414788124590539920),
-                236425937072759341948539963754869024714418696157274351591524557828586274191
-            ],
-            [
-                uint256(21314074659677681581030697505857891516132015626298135153610681307173636950297),
-                7024785950739992390797048697337510292156234599111926317239263146849754282256
-            ]
-        ];
-        p.c = [
-            uint256(6721427163943066382911463888536112878501946696568816223619970043264778411083),
-            1913743312881955787981026244149874475447370939801164212009468150976711862742
-        ];
+        IGroth16Verifier.Proof memory g = ShieldedWithdrawFixture.proof();
+        (p.a, p.b, p.c) = (g.a, g.b, g.c);
     }
 
     function _withdraw() internal {
@@ -254,6 +153,29 @@ contract ShieldedPoolTest is ShieldedPoolTestBase {
         pool.createPool(address(token), 0, address(verifier));
         vm.expectRevert(IShieldedPool.ShieldedPoolInvalidConfig.selector);
         pool.createPool(address(token), DENOM, address(0));
+    }
+
+    /// @notice A token address with no code would accept deposits that move nothing, so `createPool` rejects it.
+    function test_CreatePoolNoCodeTokenReverts() public {
+        address noCode = address(0xDEAD);
+        assertEq(noCode.code.length, 0);
+        vm.expectRevert(IShieldedPool.ShieldedPoolInvalidConfig.selector);
+        pool.createPool(noCode, DENOM, address(verifier));
+    }
+
+    /// @notice A call to an address with no code returns success with empty data; the deposit pull must not
+    ///         count that as a transfer.
+    function test_DepositNoCodeTokenReverts() public {
+        vm.etch(address(token), hex"");
+        vm.expectRevert(abi.encodeWithSelector(IShieldedPool.ShieldedPoolTransferFailed.selector, address(token)));
+        pool.deposit(poolId, 1);
+    }
+
+    /// @notice The withdraw payout must not count a call to a token with no code as a transfer.
+    function test_WithdrawNoCodeTokenReverts() public {
+        vm.etch(address(token), hex"");
+        vm.expectRevert(abi.encodeWithSelector(IShieldedPool.ShieldedPoolTransferFailed.selector, address(token)));
+        _withdraw();
     }
 
     function test_InterfaceIdMatchesConstant() public pure {

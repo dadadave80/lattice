@@ -56,4 +56,18 @@ contract ERC7579ModuleConfig is IERC7579ModuleConfig {
     {
         return ERC7579ModuleConfigLib.executeFromExecutor(mode, executionCalldata);
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect ERC7579ModuleConfig methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `accountId()` 0x9cfd7cff
+    ///      `executeFromExecutor(bytes32,bytes)` 0xd691c964
+    ///      `installModule(uint256,address,bytes)` 0x9517e29f
+    ///      `isModuleInstalled(uint256,address,bytes)` 0x112d3a7d
+    ///      `supportsModule(uint256)` 0xf2dc691d
+    ///      `uninstallModule(uint256,address,bytes)` 0xa71763a8
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors = hex"9cfd7cffd691c9649517e29f112d3a7df2dc691da71763a8";
+    }
 }

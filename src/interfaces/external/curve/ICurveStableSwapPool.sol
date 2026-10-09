@@ -2,7 +2,8 @@
 pragma solidity >=0.8.4;
 
 /// @title ICurveStableSwapPool
-/// @author Modified from Curve StableSwap (https://github.com/curvefi/curve-contract/blob/master/contracts/pool-templates/base/SwapTemplateBase.vy)
+/// @author Vendored minimal subset of Curve StableSwap (https://github.com/curvefi/curve-contract/blob/master/contracts/pool-templates/base/SwapTemplateBase.vy).
+///         Upstream license: none granted ("Copyright (c) Curve.Fi, 2020 - all rights reserved").
 /// @notice Minimal vendored subset of a Curve StableSwap pool, specialized to a **2-coin** pool.
 /// @dev Curve pools are generated per-N (the coins array is fixed-size in the Vyper source), so a
 ///      single Solidity signature must pin N. The Lattice Curve adapter targets the dominant

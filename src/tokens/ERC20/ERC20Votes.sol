@@ -16,14 +16,34 @@ import {Checkpoints} from "@lattice/utils/libraries/Checkpoints.sol";
 ///      surface (`getVotes`/`getPastVotes`/`getPastTotalSupply`/`delegates`/`clock`/`CLOCK_MODE`) from a
 ///      separately-cut {Votes} facet; {DeployERC20Votes} composes all three.
 ///
+///      Hook model (D25, #234): replacing `transfer`/`transferFrom` makes this facet mutually exclusive with every
+///      other facet that replaces them (ERC20Pausable; GovernedVault, which supersedes it in {DeployGovernedVault}).
+///      A direct mover beside it (ERC20Burnable, ERC20FlashMint, ERC20Crosschain, ERC20Wrapper, ERC7802, ERC4626,
+///      VaultCore, or a mint facet over ERC20Capped's `_mint`) mints and burns without moving voting units, so
+///      delegated votes drift from the supply. The sanctioned mint/burn path is a facet that calls
+///      {ERC20VotesLib._mint}/{ERC20VotesLib._burn}, which checkpoint votes and enforce the uint208 supply bound.
+///      See docs/guides/selector-compatibility.md#token-extension-hook-model.
+///
 ///      Callers must initialize the following modules in their initializer:
 ///        - ERC20Lib.__ERC20_init(name, symbol)
 ///        - EIP712Lib.__EIP712_init(name, version)
 ///        - NoncesLib.__Nonces_init()
 ///        - VotesLib.__Votes_init()
-///        - ERC20VotesLib.__ERC20Votes_init()
+///
+///      Differences from OpenZeppelin v5.6.1:
+///      - OpenZeppelin moves voting units in `_update`, so every mint, burn and transfer moves votes. Here only
+///        this facet's `transfer`/`transferFrom` and {ERC20VotesLib._mint}/{ERC20VotesLib._burn} do. Movement
+///        through {ERC20Lib} from another facet (ERC20Burnable, ERC20FlashMint, ERC20Wrapper, ERC20Crosschain,
+///        ERC7802, ERC1363, ERC4626 outside GovernedVault) does not, so those are mutually exclusive with this
+///        facet (decision D25 on #234).
+///      - The `type(uint208).max` supply check runs only in {ERC20VotesLib._mint}.
+///      - The clock is `block.timestamp` ({Votes}), not the block number.
+///      - `numCheckpoints` narrows the length with a plain `uint32` cast rather than `SafeCast.toUint32`; 2^32
+///        checkpoints are unreachable.
+///      - {ERC20VotesInit} registers {IVotes} for ERC-165 (through {VotesLib.__Votes_init}); OpenZeppelin's
+///        extension has no ERC-165.
 /// @custom:lattice-version 0.1.0
-/// @custom:lattice-source OpenZeppelin v5.1.0
+/// @custom:lattice-source OpenZeppelin v5.6.1
 contract ERC20Votes is IERC20Votes {
     //*//////////////////////////////////////////////////////////////////////////
     //                        IERC20 — TRANSFER OVERRIDES
@@ -36,6 +56,7 @@ contract ERC20Votes is IERC20Votes {
 
     /// @notice Transfers from, updating vote checkpoints alongside balances (replaces the base transferFrom).
     function transferFrom(address from, address to, uint256 value) public virtual returns (bool) {
+        // slither-disable-next-line arbitrary-send-erc20 ERC20VotesLib spends msg.sender's allowance first
         return ERC20VotesLib.transferFrom(from, to, value);
     }
 

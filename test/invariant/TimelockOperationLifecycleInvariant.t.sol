@@ -24,6 +24,8 @@ contract DummyTarget {
 //////////////////////////////////////////////////////////////////////////*//
 
 /// @notice Handler for timelock lifecycle invariant testing.
+/// @dev Every action is authorised and state-checked first, so a revert means a broken lifecycle and fails the run
+///      under `fail_on_revert`.
 contract TimelockLifecycleHandler is Test {
     TimelockControllerStandalone public timelock;
     DummyTarget public target;
@@ -48,6 +50,9 @@ contract TimelockLifecycleHandler is Test {
 
     /// @notice Highest stage ever observed for each operation ID.
     mapping(bytes32 => uint8) public maxStage;
+
+    /// @notice Salt each tracked operation was scheduled with.
+    mapping(bytes32 => bytes32) internal _saltOf;
 
     /// @notice Salt counter — incremented to produce unique op IDs.
     uint256 internal _saltNonce;
@@ -106,39 +111,41 @@ contract TimelockLifecycleHandler is Test {
         if (timelock.isOperation(id)) return;
 
         _trackOp(id);
+        _saltOf[id] = salt;
         vm.prank(PROPOSER);
-        try timelock.schedule(address(target), 0, abi.encodeCall(DummyTarget.increment, ()), 0, salt, MIN_DELAY) {
-            _updateMaxStage(id);
-        } catch {}
+        timelock.schedule(address(target), 0, abi.encodeCall(DummyTarget.increment, ()), 0, salt, MIN_DELAY);
+        // A non-zero delay must hold a fresh op in Waiting; Ready here means the delay was skipped.
+        assertEq(uint8(timelock.getOperationState(id)), WAITING, "scheduled op not Waiting");
+        _updateMaxStage(id);
     }
 
-    /// @notice Execute the first operation that is Ready (if any).
-    function executeReadyOp() external {
-        for (uint256 i; i < _ops.length; ++i) {
-            bytes32 id = _ops[i];
+    /// @notice Execute the first Ready operation at or after a fuzzed start index (if any).
+    function executeReadyOp(uint256 startSeed) external {
+        uint256 n = _ops.length;
+        for (uint256 k; k < n; ++k) {
+            bytes32 id = _ops[(startSeed % n + k) % n];
             if (!timelock.isOperationReady(id)) continue;
 
-            // Reconstruct salt from index (we used ++_saltNonce starting at 1).
-            bytes32 salt = bytes32(i + 1);
             vm.prank(EXECUTOR);
-            try timelock.execute(address(target), 0, abi.encodeCall(DummyTarget.increment, ()), 0, salt) {
-                _updateMaxStage(id);
-            } catch {}
+            timelock.execute(address(target), 0, abi.encodeCall(DummyTarget.increment, ()), 0, _saltOf[id]);
+            // An executed op must be Done; one left Ready could be replayed.
+            assertTrue(timelock.isOperationDone(id), "executed op not Done");
+            _updateMaxStage(id);
             return;
         }
     }
 
-    /// @notice Cancel the first operation that is still Pending (Waiting or Ready).
-    function cancelOp() external {
-        for (uint256 i; i < _ops.length; ++i) {
-            bytes32 id = _ops[i];
+    /// @notice Cancel the first Pending (Waiting or Ready) operation at or after a fuzzed start index (if any).
+    function cancelOp(uint256 startSeed) external {
+        uint256 n = _ops.length;
+        for (uint256 k; k < n; ++k) {
+            bytes32 id = _ops[(startSeed % n + k) % n];
             if (!timelock.isOperationPending(id)) continue;
 
             vm.prank(CANCELLER);
-            try timelock.cancel(id) {
-                // After cancel, state returns to Unset — record as CANCELLED.
-                if (maxStage[id] < CANCELLED) maxStage[id] = CANCELLED;
-            } catch {}
+            timelock.cancel(id);
+            // After cancel, state returns to Unset — record as CANCELLED.
+            maxStage[id] = CANCELLED;
             return;
         }
     }
@@ -193,6 +200,7 @@ contract TimelockOperationLifecycleInvariant is Test {
 
     /// @notice Each operation's current stage must be >= the highest stage ever seen for it.
     /// This enforces that state transitions only move forward.
+    /// forge-config: default.invariant.fail-on-revert = true
     function invariant_OperationStateMonotonic() public view {
         bytes32[] memory ops = handler.trackedOps();
         for (uint256 i; i < ops.length; ++i) {
@@ -211,19 +219,13 @@ contract TimelockOperationLifecycleInvariant is Test {
             // On-chain Unset is valid only if the op was never scheduled (maxSeen=0) or was cancelled (maxSeen=4).
             // An on-chain Done (3) must have maxStage 3. An on-chain Ready (2) must have maxStage >= 2, etc.
             if (maxSeen == 4) {
-                // Cancelled: on-chain must be Unset; Done is a violation (executed after cancel).
-                assertNotEq(currentStage, 3, "op was executed after being cancelled");
+                // Cancelled: on-chain must stay Unset (the handler never reuses a salt); Done would mean the op
+                // executed after being cancelled.
+                assertEq(currentStage, 0, "cancelled op left Unset");
             } else {
-                // For non-cancelled ops, current stage must equal maxStage (never decrease, never skip Done).
-                assertGe(currentStage, 0, "invalid stage");
-                // The max recorded stage must be reachable from the current on-chain state.
-                // i.e. current stage must not be LESS than maxSeen.
-                // Exception: time may have NOT advanced to Ready yet after Waiting was the last warp.
-                // We allow current < maxSeen only if this would mean we somehow went Done -> Ready/Waiting,
-                // which is the real violation. So: if maxSeen == 3 (Done), current must be 3.
-                if (maxSeen == 3) {
-                    assertEq(currentStage, 3, "op regressed from Done to a lower state");
-                }
+                // For non-cancelled ops the on-chain stage never falls below the highest stage seen: time only
+                // moves forward, so Waiting -> Ready -> Done never reverses (e.g. Ready -> Waiting, Done -> Ready).
+                assertGe(currentStage, maxSeen, "op regressed to an earlier stage");
             }
         }
     }

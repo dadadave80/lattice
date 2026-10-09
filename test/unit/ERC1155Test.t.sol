@@ -3,7 +3,9 @@ pragma solidity ^0.8.30;
 
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {ERC1155TestBase} from "@lattice-test/base/ERC1155TestBase.sol";
+import {Recording1155Receiver} from "@lattice-test/helpers/Recording1155Receiver.sol";
 import {IERC1155} from "@lattice/interfaces/tokens/IERC1155.sol";
+import {stdError} from "forge-std/StdError.sol";
 
 /// @notice ERC1155 receiver that returns correct selectors.
 contract Good1155Receiver {
@@ -55,7 +57,7 @@ contract Reverting1155Receiver {
 /// @title ERC1155Test
 /// @notice Exercises the base ERC-1155 facet through a REAL {Diamond} assembled by the ready-to-deploy
 ///         {DeployERC1155} script (see {ERC1155TestBase}) — every call below routes through the diamond's
-///         `delegatecall` dispatch, not a flattened inheritance mock. `mint`/`mintBatch`/`burn` come from the
+///         `delegatecall` dispatch, not a flattened inheritance mock. `mint`/`mintBatch` come from the
 ///         test-only {ERC1155TestFacet} (`helper`); `supportsInterface` from the cut-in `ERC165Facet`. Mint
 ///         calls are pranked from `admin` to preserve the `operator == admin` event assertions.
 contract ERC1155Test is ERC1155TestBase {
@@ -315,5 +317,91 @@ contract ERC1155Test is ERC1155TestBase {
         vm.expectRevert(Reverting1155Receiver.TransferBlocked.selector);
         vm.prank(alice);
         token.safeTransferFrom(alice, address(receiver), ID_1, 50, "");
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //     RECEIVER HOOK SELECTION: the operation type picks the hook (#237)
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice A one-element `safeBatchTransferFrom` is still a batch operation: it calls
+    ///         `onERC1155BatchReceived`, not `onERC1155Received`. Pins OZ v5.6.1's explicit `batch` flag on
+    ///         `_updateWithAcceptanceCheck`, which every transfer, mint and burn path now routes through; an
+    ///         `ids.length == 1` dispatch would call the single hook here.
+    function test_OneElementSafeBatchTransferCallsBatchHook() public {
+        Recording1155Receiver receiver = new Recording1155Receiver();
+        vm.prank(admin);
+        helper.mint(alice, ID_1, 100, "");
+
+        uint256[] memory ids = new uint256[](1);
+        ids[0] = ID_1;
+        uint256[] memory values = new uint256[](1);
+        values[0] = 40;
+
+        vm.prank(alice);
+        token.safeBatchTransferFrom(alice, address(receiver), ids, values, "");
+
+        assertEq(uint8(receiver.lastHook()), uint8(Recording1155Receiver.Hook.Batch), "batch hook expected");
+        assertEq(receiver.batchIdsLength(), 1);
+        assertEq(token.balanceOf(address(receiver), ID_1), 40);
+    }
+
+    /// @notice A one-element `_mintBatch` also calls the batch hook.
+    function test_OneElementMintBatchCallsBatchHook() public {
+        Recording1155Receiver receiver = new Recording1155Receiver();
+        uint256[] memory ids = new uint256[](1);
+        ids[0] = ID_2;
+        uint256[] memory values = new uint256[](1);
+        values[0] = 7;
+
+        vm.prank(admin);
+        helper.mintBatch(address(receiver), ids, values, "");
+
+        assertEq(uint8(receiver.lastHook()), uint8(Recording1155Receiver.Hook.Batch), "batch hook expected");
+        assertEq(token.balanceOf(address(receiver), ID_2), 7);
+    }
+
+    /// @notice Single operations call the single hook.
+    function test_SafeTransferFromAndMintCallSingleHook() public {
+        Recording1155Receiver minted = new Recording1155Receiver();
+        vm.prank(admin);
+        helper.mint(address(minted), ID_1, 5, "");
+        assertEq(uint8(minted.lastHook()), uint8(Recording1155Receiver.Hook.Single), "mint: single hook expected");
+
+        Recording1155Receiver transferred = new Recording1155Receiver();
+        vm.prank(admin);
+        helper.mint(alice, ID_1, 10, "");
+        vm.prank(alice);
+        token.safeTransferFrom(alice, address(transferred), ID_1, 10, "");
+        assertEq(
+            uint8(transferred.lastHook()), uint8(Recording1155Receiver.Hook.Single), "transfer: single hook expected"
+        );
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //          CHECKED RECEIVER CREDIT (OZ v5.6.1 `_update` arithmetic)
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice Crediting past `type(uint256).max` reverts with an arithmetic panic instead of wrapping the
+    ///         receiver's balance (OZ v5.6.1 credits `to` with checked arithmetic).
+    function test_MintOverflowReverts() public {
+        vm.startPrank(admin);
+        helper.mint(alice, ID_1, type(uint256).max, "");
+        vm.expectRevert(stdError.arithmeticError);
+        helper.mint(alice, ID_1, 1, "");
+        vm.stopPrank();
+        assertEq(token.balanceOf(alice, ID_1), type(uint256).max);
+    }
+
+    /// @notice Two holders whose balances of one id sum past `type(uint256).max` cannot wrap one another's
+    ///         balance by transfer.
+    function test_TransferOverflowReverts() public {
+        vm.startPrank(admin);
+        helper.mint(alice, ID_1, type(uint256).max, "");
+        helper.mint(bob, ID_1, 1, "");
+        vm.stopPrank();
+
+        vm.expectRevert(stdError.arithmeticError);
+        vm.prank(bob);
+        token.safeTransferFrom(bob, alice, ID_1, 1, "");
     }
 }

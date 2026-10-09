@@ -77,6 +77,14 @@ contract MockVault is ERC20, ERC4626, VaultCore, Initializable {
         return VaultCore.mint(shares, receiver);
     }
 
+    function maxDeposit(address receiver) public view override(ERC4626, VaultCore) returns (uint256) {
+        return VaultCore.maxDeposit(receiver);
+    }
+
+    function maxMint(address receiver) public view override(ERC4626, VaultCore) returns (uint256) {
+        return VaultCore.maxMint(receiver);
+    }
+
     function withdraw(uint256 assets, address receiver, address owner)
         public
         override(ERC4626, VaultCore)
@@ -149,9 +157,9 @@ contract AaveV3AdapterVaultTest is Test {
         vm.stopPrank();
     }
 
-    /// @notice Deposit -> rebalance pushes the bare transfer to the adapter -> deploy() sweeps
-    ///         idle into the mock Aave Pool, with `vault.totalAssets()` conserved across the route.
-    function test_RebalanceThenDeploy_RoutesFundsIntoAave() public {
+    /// @notice Deposit -> rebalance pushes the bare transfer to the adapter and then calls its deploy() (#221),
+    ///         sweeping idle into the mock Aave Pool, with `vault.totalAssets()` conserved across the route.
+    function test_Rebalance_RoutesFundsIntoAave() public {
         // User deposits.
         asset.mint(user, DEPOSIT);
         vm.startPrank(user);
@@ -161,18 +169,10 @@ contract AaveV3AdapterVaultTest is Test {
 
         assertEq(vault.idleAssets(), DEPOSIT, "all idle pre-rebalance");
 
-        // Rebalance pushes the bare transfer to the adapter (adapter now holds idle asset).
+        // Rebalance pushes the bare transfer to the adapter, then the manager (the adapter's operator)
+        // sweeps the adapter's idle into Aave.
         mgr.rebalance();
-        assertEq(asset.balanceOf(address(adapter)), DEPOSIT, "pushed to adapter, not yet supplied");
-        // Before deploy(), the funds sit idle in the adapter (not yet supplied to Aave). The
-        // adapter's `totalAssetsManaged()` MUST still count that idle balance so NAV does not drop
-        // in the allocate→(no deploy) window — the supplied aToken leg is 0, the idle leg is DEPOSIT.
-        assertEq(adapter.totalAssetsManaged(), DEPOSIT, "idle counted before deploy() (no NAV gap)");
-
-        // Keeper sweeps idle into Aave (the StrategyManager is the authorized operator).
-        vm.prank(address(mgr));
-        uint256 deployed = adapter.deploy();
-        assertEq(deployed, DEPOSIT, "swept all");
+        assertEq(aToken.balanceOf(address(adapter)), DEPOSIT, "supplied to Aave by the rebalance");
         assertEq(adapter.totalAssetsManaged(), DEPOSIT, "now supplied 1:1");
         assertEq(asset.balanceOf(address(adapter)), 0, "adapter idle drained");
 
@@ -198,8 +198,10 @@ contract AaveV3AdapterVaultTest is Test {
 
         // Allocate: vault idle -> adapter idle (bare transfer, NO deploy). Pre-fix the adapter
         // reported 0 here and NAV cratered to 0 (the attacker's cheap-share window). Post-fix the
-        // adapter counts its idle, so NAV is invariant.
-        mgr.rebalance();
+        // adapter counts its idle, so NAV is invariant. The allocation is made directly as the manager:
+        // `rebalance()` now deploys right after allocating (#221), which would close the window.
+        vm.prank(address(mgr));
+        vault.allocateToStrategy(address(adapter), DEPOSIT);
         assertEq(asset.balanceOf(address(adapter)), DEPOSIT, "funds now idle in adapter, not deployed");
         assertEq(vault.totalAssets(), navBefore, "NAV UNCHANGED across allocate (no deploy)");
 
@@ -220,10 +222,8 @@ contract AaveV3AdapterVaultTest is Test {
         vault.deposit(DEPOSIT, user);
         vm.stopPrank();
 
-        mgr.rebalance();
-        vm.prank(address(mgr));
-        adapter.deploy();
-        assertEq(adapter.totalAssetsManaged(), DEPOSIT);
+        mgr.rebalance(); // allocates and deploys (#221)
+        assertEq(aToken.balanceOf(address(adapter)), DEPOSIT);
 
         // Drop target to 0, rebalance: manager calls IStrategy.withdraw to pull funds back.
         vm.prank(admin);

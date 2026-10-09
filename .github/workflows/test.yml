@@ -16,7 +16,6 @@ on:
       - "docs/**"
       - "broadcast/**"
       - "deployments/**"
-      - "snapshots/**"
       - "CHANGELOG.md"
       - "LICENSE"
       - "CODE_OF_CONDUCT.md"
@@ -44,7 +43,7 @@ jobs:
     outputs:
       code: ${{ steps.diff.outputs.code }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -60,7 +59,7 @@ jobs:
           fi
           files=$(git diff --name-only "$BASE...$HEAD")
           code=false
-          if [ -z "$files" ] || grep -qvE '^[^/]+\.md$|^LICENSE$|^(assets|docs|broadcast|deployments|snapshots)/' <<< "$files"; then
+          if [ -z "$files" ] || grep -qvE '^[^/]+\.md$|^LICENSE$|^(assets|docs|broadcast|deployments)/' <<< "$files"; then
             code=true
           fi
           echo "code=$code" >> "$GITHUB_OUTPUT"
@@ -75,13 +74,40 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: recursive
           persist-credentials: false
       - uses: ./.github/actions/foundry-setup
       - name: Run Forge fmt
         run: forge fmt --check
+      - name: Check license notices
+        run: |
+          ./script/test-check-licenses.sh
+          ./script/check-licenses.sh
+      - name: Test CI helper scripts
+        run: |
+          ./script/test-closing-issues.sh
+          ./script/test-fork-lanes.sh
+          ./script/fork-lanes.sh check
+          ./script/test-storage-layout.sh
+
+  # README catalog vs src/. Not gated on `changes`: a README-only PR (code=false) can drop or misspell a
+  # catalog entry, so this job runs on every PR. It needs only bash and diamond-lib's sources.
+  readme:
+    name: README catalog
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: true
+          persist-credentials: false
+      - name: Check the README module catalog
+        run: |
+          ./script/test-check-readme-catalog.sh
+          ./script/check-readme-catalog.sh
 
   # Single source-of-truth compile (legacy/ci profile). Gates EIP-170 and populates the shared
   # forge cache (out/ + cache/, keyed on src + lib content) so the `test` and `storage-layout`
@@ -95,13 +121,13 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: recursive
           persist-credentials: false
       - uses: ./.github/actions/foundry-setup
       - name: Cache forge build (src)
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             out
@@ -113,8 +139,10 @@ jobs:
       # exceed the limit and are never deployed; `--skip test script` excludes them. Tests are
       # still compiled by the `test` job, so compile errors there remain caught. On a cache hit
       # this is a near-instant no-op compile that still runs the size gate.
+      # --locked fails the build when a submodule gitlink drifts from foundry.lock; without it,
+      # forge (v1.8.5) builds against the checked-out submodule and passes silently.
       - name: Build src (--sizes)
-        run: forge build --sizes --skip test script
+        run: forge build --locked --sizes --skip test script
 
   # IR-pipeline parity is a SEPARATE compiler configuration (via_ir), so it cannot reuse the
   # legacy build cache -- it runs standalone, in parallel, and does not block `test`.
@@ -126,13 +154,13 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: recursive
           persist-credentials: false
       - uses: ./.github/actions/foundry-setup
       - name: Cache forge build (via_ir)
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             out
@@ -159,31 +187,102 @@ jobs:
           fi
           echo "via_ir size gate OK (only the vendored PoseidonT3 is exempt)."
 
-  # Append-only ERC-7201 storage-struct guard. Restores the `build` cache, so only the
-  # StorageLayoutProbe (script/) is compiled here, not src/.
+  # Append-only ERC-7201 storage-struct guard, run through the repository's own storage-safety Action.
+  # The checker compiles only the StorageLayoutProbe and the files it imports, in a temporary directory,
+  # so this job needs no build cache.
+  # On a pull request the layout must also be an append-only extension of the baseline at the PR base,
+  # so editing the source and the baseline together cannot hide an incompatible change. Pushes check
+  # drift only: the pull request into the branch already ran the comparison.
   storage-layout:
     name: Storage layout (append-only)
     runs-on: ubuntu-latest
-    needs: [changes, build]
+    needs: changes
     if: needs.changes.outputs.code == 'true'
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: recursive
           persist-credentials: false
       - uses: ./.github/actions/foundry-setup
-      - name: Restore forge build cache
-        uses: actions/cache@v6
-        with:
-          path: |
-            out
-            cache
-          key: forge-build-${{ runner.os }}-${{ hashFiles('foundry.toml', 'remappings.txt', 'src/**/*.sol', 'lib/**/*.sol') }}
+      - name: Fetch the PR base
+        if: github.event_name == 'pull_request'
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: git fetch --no-tags --depth=1 origin "$BASE"
       # `jq` is preinstalled on ubuntu-latest runners.
       - name: Check ERC-7201 storage layout
-        run: ./script/upgrades/check-storage-layout.sh
+        uses: ./.github/actions/storage-layout
+        with:
+          probe: script/upgrades/StorageLayoutProbe.sol:StorageLayoutProbe
+          baseline: script/upgrades/storage-layout.baseline
+          baseline-ref: ${{ github.event.pull_request.base.sha }}
+          resets: script/upgrades/storage-layout.resets
+          src: src
+          foundry-profile: ci
+
+  # Self-test of the storage-safety Action as a consumer calls it: the fixture project is committed into
+  # a fresh repository under a path with a space, the Action passes on it, and then must fail on a
+  # reordered struct whose baseline was regenerated in the same commit. The checker's own regression
+  # cases run in `make scripts-check` (the fmt job).
+  storage-action:
+    name: Storage Action self-test
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/foundry-setup
+      - name: Commit the fixture as a consumer repository
+        id: fixture
+        run: |
+          set -euo pipefail
+          dir="$RUNNER_TEMP/consumer repo"
+          cp -R .github/actions/storage-layout/fixture "$dir"
+          git -C "$dir" init -q
+          git -C "$dir" -c user.name=ci -c user.email=ci@example.invalid add -A
+          git -C "$dir" -c user.name=ci -c user.email=ci@example.invalid commit -qm base
+          echo "dir=$dir" >> "$GITHUB_OUTPUT"
+          echo "base=$(git -C "$dir" rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - name: Unchanged layout passes
+        uses: ./.github/actions/storage-layout
+        with:
+          working-directory: ${{ steps.fixture.outputs.dir }}
+          probe: script/StorageProbe.sol:StorageProbe
+          baseline: storage-layout.baseline
+          baseline-ref: ${{ steps.fixture.outputs.base }}
+      - name: Reorder a struct and regenerate its baseline
+        env:
+          DIR: ${{ steps.fixture.outputs.dir }}
+        run: |
+          set -euo pipefail
+          perl -0pi -e 's/address owner;\n    uint96 fee;/uint96 fee;\n    address owner;/' "$DIR/src/VaultLib.sol"
+          ./.github/actions/storage-layout/check-storage-layout.sh --root "$DIR" \
+            --probe script/StorageProbe.sol:StorageProbe --baseline storage-layout.baseline --profile default --update
+          git -C "$DIR" -c user.name=ci -c user.email=ci@example.invalid commit -qam reorder
+      - name: Incompatible layout fails
+        id: incompatible
+        continue-on-error: true
+        uses: ./.github/actions/storage-layout
+        with:
+          working-directory: ${{ steps.fixture.outputs.dir }}
+          probe: script/StorageProbe.sol:StorageProbe
+          baseline: storage-layout.baseline
+          baseline-ref: ${{ steps.fixture.outputs.base }}
+      - name: Require the failure
+        env:
+          OUTCOME: ${{ steps.incompatible.outcome }}
+        run: |
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::The storage Action passed an incompatible layout (outcome: $OUTCOME)."
+            exit 1
+          fi
+          echo "The storage Action rejected the reordered struct, as expected."
 
   # Restores the `build` cache, so only test/ files are compiled here, not src/.
   test:
@@ -194,13 +293,13 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: recursive
           persist-credentials: false
       - uses: ./.github/actions/foundry-setup
       - name: Restore forge build cache
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             out
@@ -223,7 +322,20 @@ jobs:
           make example-ens-grant-m2 LOCAL=1 WAIT_TIMEOUT=60
           make check-atomic-deploy
       - name: Run Forge tests
+        env:
+          FORGE_SNAPSHOT_EMIT: "false"
         run: forge test -vvv
+      # The same command developers run. It fails if a snapshot is recorded outside test/gas, deletes
+      # snapshots/, reruns test/gas and fails on any difference from the committed files: a changed value, a
+      # key added or removed, or a whole file added or removed. FORGE_SNAPSHOT_CHECK would compare only the
+      # keys already committed.
+      - name: Check gas snapshots
+        run: |
+          set -euo pipefail
+          if ! make snapshot-check; then
+            echo "::error::Gas snapshots changed. Run 'make snapshot' (it regenerates snapshots/ from test/gas), review the diff and commit snapshots/."
+            exit 1
+          fi
 
   # The single required check. Runs even when earlier jobs fail or are cancelled (a skipped required
   # check would otherwise report success). Fails on any failure/cancellation; when code changed, every
@@ -231,7 +343,7 @@ jobs:
   ci-ok:
     name: CI OK
     runs-on: ubuntu-latest
-    needs: [changes, fmt, build, via-ir, storage-layout, test]
+    needs: [changes, fmt, readme, build, via-ir, storage-layout, storage-action, test, slither]
     if: always()
     permissions: {}
     steps:
@@ -253,12 +365,14 @@ jobs:
           echo "CI OK (code=$CODE)"
 
   slither:
-    name: Slither (advisory)
+    name: Slither
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
           submodules: recursive
@@ -269,8 +383,13 @@ jobs:
 
       # Run on the host so crytic-compile uses the shared pinned Forge, without a container's
       # independent Foundry installer. Slither/Python remain the existing analysis dependencies.
-      # Advisory for now (continue-on-error + --fail-none). Triage findings, then make this
-      # a hard gate per the architecture spec's "0 high/medium" target.
+      # slither.config.json and the triaged slither.db.json load from the working directory. Any High
+      # result that is neither suppressed nor triaged fails the job (`make slither` runs the same commands);
+      # Medium and Low results are still printed. A false positive at a statement gets a
+      # `// slither-disable-next-line <detector> <reason>` above it, because a triaged id embeds that
+      # statement's line numbers. Function-level results, and files that must stay byte-exact, are triaged
+      # with `make slither-triage`, which normalizes the database and requires a reason per entry.
+      - name: Check the Slither triage database
+        run: ./script/slither-db.py --check
       - name: Run Slither
-        continue-on-error: true
-        run: slither . --fail-none
+        run: slither . --fail-high

@@ -15,6 +15,7 @@ import {DeployChronicleAdapter} from "@lattice-script/base/oracles/DeployChronic
 import {DeployDIAAdapter} from "@lattice-script/base/oracles/DeployDIAAdapter.s.sol";
 import {DeployGelatoAutomateAdapter} from "@lattice-script/base/oracles/DeployGelatoAutomateAdapter.s.sol";
 import {DeployGelatoVRFAdapter} from "@lattice-script/base/oracles/DeployGelatoVRFAdapter.s.sol";
+import {DeployOracleGuard} from "@lattice-script/base/oracles/DeployOracleGuard.s.sol";
 import {DeployPythAdapter} from "@lattice-script/base/oracles/DeployPythAdapter.s.sol";
 import {DeployPythEntropyAdapter} from "@lattice-script/base/oracles/DeployPythEntropyAdapter.s.sol";
 import {DeployRedStoneAdapter} from "@lattice-script/base/oracles/DeployRedStoneAdapter.s.sol";
@@ -36,14 +37,16 @@ contract RecipeUpgradeabilityOraclesTest is RecipeGuards {
     function test_Upgradeable_API3Adapter() public {
         (FacetCut[] memory cuts, address init, bytes memory cd) = new DeployAPI3Adapter().buildCuts(ADMIN);
         address d = _assemble(cuts, init, cd);
-        _assertIntrospectable(d, 6);
+        _assertIntrospectable(d, 5);
+        _assertBareEth(d, false);
         _assertAdminCanCut(d, ADMIN);
     }
 
     function test_Upgradeable_API3QRNGAdapter() public {
         (FacetCut[] memory cuts, address init, bytes memory cd) = new DeployAPI3QRNGAdapter().buildCuts(ADMIN);
         address d = _assemble(cuts, init, cd);
-        _assertIntrospectable(d, 6);
+        _assertIntrospectable(d, 5);
+        _assertBareEth(d, false);
         _assertAdminCanCut(d, ADMIN);
     }
 
@@ -51,14 +54,16 @@ contract RecipeUpgradeabilityOraclesTest is RecipeGuards {
         (FacetCut[] memory cuts, address init, bytes memory cd) =
             new DeployBandAdapter().buildCuts(ADMIN, address(this));
         address d = _assemble(cuts, init, cd);
-        _assertIntrospectable(d, 6);
+        _assertIntrospectable(d, 5);
+        _assertBareEth(d, false);
         _assertAdminCanCut(d, ADMIN);
     }
 
     function test_Upgradeable_ChainlinkAdapter() public {
         (FacetCut[] memory cuts, address init, bytes memory cd) = new DeployChainlinkAdapter().buildCuts(ADMIN);
         address d = _assemble(cuts, init, cd);
-        _assertIntrospectable(d, 6);
+        _assertIntrospectable(d, 5);
+        _assertBareEth(d, false);
         _assertAdminCanCut(d, ADMIN);
     }
 
@@ -66,49 +71,64 @@ contract RecipeUpgradeabilityOraclesTest is RecipeGuards {
         (FacetCut[] memory cuts, address init, bytes memory cd) =
             new DeployChainlinkAutomationAdapter().buildCuts(ADMIN);
         address d = _assemble(cuts, init, cd);
-        _assertIntrospectable(d, 6);
+        _assertIntrospectable(d, 5);
+        _assertBareEth(d, false);
         _assertAdminCanCut(d, ADMIN);
     }
 
     function test_Upgradeable_ChainlinkCREAdapter() public {
         (FacetCut[] memory cuts, address init, bytes memory cd) = new DeployChainlinkCREAdapter().buildCuts(ADMIN);
         address d = _assemble(cuts, init, cd);
-        _assertIntrospectable(d, 6);
+        _assertIntrospectable(d, 5);
+        _assertBareEth(d, false);
         _assertAdminCanCut(d, ADMIN);
     }
 
     function test_Upgradeable_ChainlinkVRF() public {
         (FacetCut[] memory cuts, address init, bytes memory cd) = new DeployChainlinkVRF().buildCuts(ADMIN);
         address d = _assemble(cuts, init, cd);
-        _assertIntrospectable(d, 6);
+        _assertIntrospectable(d, 5);
+        _assertBareEth(d, false);
         _assertAdminCanCut(d, ADMIN);
     }
 
     function test_Upgradeable_ChronicleAdapter() public {
         (FacetCut[] memory cuts, address init, bytes memory cd) = new DeployChronicleAdapter().buildCuts(ADMIN);
         address d = _assemble(cuts, init, cd);
-        _assertIntrospectable(d, 6);
+        _assertIntrospectable(d, 5);
+        _assertBareEth(d, false);
         _assertAdminCanCut(d, ADMIN);
     }
 
     function test_Upgradeable_DIAAdapter() public {
         (FacetCut[] memory cuts, address init, bytes memory cd) = new DeployDIAAdapter().buildCuts(ADMIN);
         address d = _assemble(cuts, init, cd);
-        _assertIntrospectable(d, 6);
+        _assertIntrospectable(d, 5);
+        _assertBareEth(d, false);
         _assertAdminCanCut(d, ADMIN);
     }
 
     function test_Upgradeable_GelatoAutomateAdapter() public {
         (FacetCut[] memory cuts, address init, bytes memory cd) = new DeployGelatoAutomateAdapter().buildCuts(ADMIN);
         address d = _assemble(cuts, init, cd);
-        _assertIntrospectable(d, 6);
+        _assertIntrospectable(d, 5);
+        _assertBareEth(d, false);
         _assertAdminCanCut(d, ADMIN);
     }
 
     function test_Upgradeable_GelatoVRFAdapter() public {
         (FacetCut[] memory cuts, address init, bytes memory cd) = new DeployGelatoVRFAdapter().buildCuts(ADMIN);
         address d = _assemble(cuts, init, cd);
-        _assertIntrospectable(d, 6);
+        _assertIntrospectable(d, 5);
+        _assertBareEth(d, false);
+        _assertAdminCanCut(d, ADMIN);
+    }
+
+    function test_Upgradeable_OracleGuard() public {
+        (FacetCut[] memory cuts, address init, bytes memory cd) = new DeployOracleGuard().buildCuts(ADMIN);
+        address d = _assemble(cuts, init, cd);
+        _assertIntrospectable(d, 5);
+        _assertBareEth(d, false);
         _assertAdminCanCut(d, ADMIN);
     }
 
@@ -116,21 +136,24 @@ contract RecipeUpgradeabilityOraclesTest is RecipeGuards {
         (FacetCut[] memory cuts, address init, bytes memory cd) =
             new DeployPythAdapter().buildCuts(ADMIN, address(this));
         address d = _assemble(cuts, init, cd);
-        _assertIntrospectable(d, 6);
+        _assertIntrospectable(d, 5);
+        _assertBareEth(d, false);
         _assertAdminCanCut(d, ADMIN);
     }
 
     function test_Upgradeable_PythEntropyAdapter() public {
         (FacetCut[] memory cuts, address init, bytes memory cd) = new DeployPythEntropyAdapter().buildCuts(ADMIN);
         address d = _assemble(cuts, init, cd);
-        _assertIntrospectable(d, 6);
+        _assertIntrospectable(d, 5);
+        _assertBareEth(d, false);
         _assertAdminCanCut(d, ADMIN);
     }
 
     function test_Upgradeable_RedStoneAdapter() public {
         (FacetCut[] memory cuts, address init, bytes memory cd) = new DeployRedStoneAdapter().buildCuts(ADMIN);
         address d = _assemble(cuts, init, cd);
-        _assertIntrospectable(d, 6);
+        _assertIntrospectable(d, 5);
+        _assertBareEth(d, false);
         _assertAdminCanCut(d, ADMIN);
     }
 
@@ -138,14 +161,16 @@ contract RecipeUpgradeabilityOraclesTest is RecipeGuards {
         (FacetCut[] memory cuts, address init, bytes memory cd) =
             new DeployTellorAdapter().buildCuts(ADMIN, address(this));
         address d = _assemble(cuts, init, cd);
-        _assertIntrospectable(d, 6);
+        _assertIntrospectable(d, 5);
+        _assertBareEth(d, false);
         _assertAdminCanCut(d, ADMIN);
     }
 
     function test_Upgradeable_TWAPOracle() public {
         (FacetCut[] memory cuts, address init, bytes memory cd) = new DeployTWAPOracle().buildCuts(ADMIN);
         address d = _assemble(cuts, init, cd);
-        _assertIntrospectable(d, 6);
+        _assertIntrospectable(d, 5);
+        _assertBareEth(d, false);
         _assertAdminCanCut(d, ADMIN);
     }
 }

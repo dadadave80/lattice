@@ -4,7 +4,7 @@ pragma solidity ^0.8.30;
 /// @title Strings
 /// @author Vendored minimal subset of OpenZeppelin Contracts v5.6.1
 ///         (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/5fd1781b1454fd1ef8e722282f86f9293cacf256/contracts/utils/Strings.sol).
-///         Upstream is MIT. Only the address→hex helpers and the decimal `toString` are re-declared (the full
+///         Upstream license: MIT. Only the address→hex helpers and the decimal `toString` are re-declared (the full
 ///         Strings lib pulls in Math/SignedMath/Bytes; `toString` is re-implemented Math-free). Vendored
 ///         subset — do not add an openzeppelin-contracts dependency.
 /// @notice Address-to-string and uint-to-decimal-string helpers, incl. EIP-55 checksummed hex (needed by

@@ -72,30 +72,23 @@ library ERC721URIStorageLib {
     //////////////////////////////////////////////////////////////////////////*//
 
     /// @notice Returns the URI for `tokenId`.
-    /// @dev Reverts with ERC721NonexistentToken for nonexistent tokens regardless of whether
-    ///      a per-token URI entry exists. This matches OZ ERC721URIStorage which calls
-    ///      _requireOwned first, before reading _tokenURIs.
-    ///      If a per-token URI is set, returns `_baseURI() + uri`.
-    ///      Falls back to the base ERC721 tokenURI (base + tokenId) if no per-token URI is set.
+    /// @dev Reverts with ERC721NonexistentToken for nonexistent tokens regardless of whether a per-token URI
+    ///      entry exists, because OZ ERC721URIStorage calls _requireOwned before reading the suffix. With no base
+    ///      URI it returns the per-token suffix (possibly empty). With a base URI it returns `base + suffix` when a
+    ///      suffix is set, and the base ERC721 tokenURI (base + tokenId) otherwise.
     function tokenURI(uint256 tokenId) internal view returns (string memory) {
-        // Always check existence first — nonexistent tokens must revert (ERC-721 spec).
         ERC721Lib._requireOwned(tokenId);
 
-        string memory _tokenURI = erc721URIStorageStorage()._tokenURIs[tokenId];
         string memory base = ERC721Lib._baseURI();
-
-        if (bytes(_tokenURI).length == 0) {
-            // No per-token URI: fall back to base ERC721 tokenURI.
-            // _requireOwned already called above; ERC721Lib.tokenURI will call it again
-            // (harmless double-check, both resolve to the same storage read).
-            return ERC721Lib.tokenURI(tokenId);
-        }
+        string memory suffix = _suffixURI(tokenId);
 
         if (bytes(base).length == 0) {
-            return _tokenURI;
+            return suffix;
         }
-
-        return string(abi.encodePacked(base, _tokenURI));
+        if (bytes(suffix).length > 0) {
+            return string.concat(base, suffix);
+        }
+        return ERC721Lib.tokenURI(tokenId);
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -106,5 +99,12 @@ library ERC721URIStorageLib {
     function _setTokenURI(uint256 tokenId, string memory uri) internal {
         erc721URIStorageStorage()._tokenURIs[tokenId] = uri;
         emit IERC721URIStorage.MetadataUpdate(tokenId);
+    }
+
+    /// @notice Returns the per-token suffix of the tokenURI for `tokenId` (the stored URI, possibly empty).
+    /// @dev OpenZeppelin v5.6 makes this a `virtual` hook. Library functions cannot be overridden, so a module
+    ///      that needs a different suffix supplies its own `tokenURI` facet instead.
+    function _suffixURI(uint256 tokenId) internal view returns (string memory) {
+        return erc721URIStorageStorage()._tokenURIs[tokenId];
     }
 }

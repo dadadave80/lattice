@@ -95,6 +95,15 @@ contract PythAdapterTest is PythAdapterTestBase {
         assertEq(adapter.latestAnswer(KEY), 3e16);
     }
 
+    /// @notice A positive price that truncates to 0 once normalized to WAD is rejected, never returned as 0.
+    function test_LatestAnswerTruncatedToZeroReverts() public {
+        _setPrice(99, 0, -20); // e = -2 -> 99 / 100 = 0
+        vm.expectRevert(
+            abi.encodeWithSelector(IPythAdapter.PythNormalizedAnswerZero.selector, KEY, int64(99), int32(-20))
+        );
+        adapter.latestAnswer(KEY);
+    }
+
     function test_LatestAnswerRaw() public {
         _setPrice(2000e8, 7, -8);
         (int64 price, int32 expo, uint64 conf, uint256 publishTime) = adapter.latestAnswerRaw(KEY);

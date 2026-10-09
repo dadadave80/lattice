@@ -2,6 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
+import {ArchiveFork} from "@lattice-test/helpers/ArchiveFork.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 import {IChronicle} from "@lattice/interfaces/external/chronicle/IChronicle.sol";
@@ -28,26 +29,26 @@ contract MockChronicleAdapterForkContract is AccessControl, ChronicleAdapter, In
 }
 
 /// @title ChronicleAdapterFork
-/// @notice Fork test against a real Chronicle oracle feed on Ethereum mainnet.
+/// @notice Fork test against Chronicle's ETH/USD oracle on Ethereum mainnet.
 ///
 /// Enabling this test:
-///   export MAINNET_RPC_URL=<your-rpc-url>
-///   export CHRONICLE_ETH_USD=<chronicle ETH/USD oracle address>
+///   export MAINNET_RPC_URL=<your-archive-rpc-url>
 ///   forge test --match-path "test/fork/ChronicleAdapterFork.t.sol"
 ///
-/// TOLL-GATING CAVEAT: Chronicle oracles are Schnorr-signed and access-controlled. The adapter contract
-/// that calls `readWithAge()` on the Chronicle oracle must be whitelisted ("`kiss`ed") by the oracle
-/// operator. In a fork test the freshly deployed `MockChronicleAdapterForkContract` will NOT be
-/// whitelisted, so live `readWithAge()` calls may revert unless the forked oracle happens to be
-/// publicly readable (some test/community feeds waive toll-gating). If reads revert, the test catches
-/// the revert and skips the value-range assertion, logging the toll-gate caveat. The configuration
-/// and registration paths are verified unconditionally.
+/// Without MAINNET_RPC_URL set, all tests here are skipped. The fork is pinned (CHRONICLE_FORK_BLOCK overrides
+/// it), so it needs an archive endpoint. The default oracle is `Chronicle_ETH_USD_3`; CHRONICLE_ETH_USD
+/// overrides it.
 ///
-/// The Chronicle ETH/USD oracle address is supplied via the CHRONICLE_ETH_USD env var. The test is
-/// skipped unless both MAINNET_RPC_URL and CHRONICLE_ETH_USD are set.
+/// Chronicle oracles are toll-gated: only addresses the oracle's wards whitelist with `kiss` can read them. As
+/// a consumer's diamond would be, the adapter is kissed in setUp, here by pranking one of the oracle's own
+/// wards (`authed()`), so every read below runs against the live oracle state.
 contract ChronicleAdapterFork is Test {
-    /// @notice A recent mainnet block; overridable via CHRONICLE_FORK_BLOCK for a fresher value.
+    /// @notice Pinned mainnet block (December 2024), shared with the other mainnet oracle suites.
     uint256 constant DEFAULT_FORK_BLOCK = 21_500_000;
+
+    /// @notice `Chronicle_ETH_USD_3` on Ethereum mainnet, as Chronicle's challenger guide lists it
+    ///         (https://github.com/chronicleprotocol/documentation/blob/d0149f46e0ae1636f72980cada76071623fdb72f/docs/Developers/Guides/runChallengerK8s.md#L73-L75).
+    address constant CHRONICLE_ETH_USD_3 = 0x46ef0071b1E2fF6B42d36e5A177EA43Ae5917f4E;
 
     bytes32 constant KEY_ETH_USD = keccak256("ETH/USD");
 
@@ -56,23 +57,50 @@ contract ChronicleAdapterFork is Test {
     address admin = address(0x1);
 
     function setUp() public {
-        string memory rpc = vm.envOr("MAINNET_RPC_URL", string(""));
-        chronicle = vm.envOr("CHRONICLE_ETH_USD", address(0));
-        if (bytes(rpc).length == 0 || chronicle == address(0)) {
+        if (bytes(vm.envOr("MAINNET_RPC_URL", string(""))).length == 0) {
             vm.skip(true);
             return;
         }
-        vm.createSelectFork("mainnet", vm.envOr("CHRONICLE_FORK_BLOCK", DEFAULT_FORK_BLOCK));
+        chronicle = vm.envOr("CHRONICLE_ETH_USD", CHRONICLE_ETH_USD_3);
+        if (!ArchiveFork.select("mainnet", vm.envOr("CHRONICLE_FORK_BLOCK", DEFAULT_FORK_BLOCK))) return;
+        // The pin postdates the oracle, so missing code means a wrong address or pin: skip locally, fail on the
+        // strict weekly lane.
+        if (chronicle.code.length == 0) {
+            ArchiveFork.skipOrFail(ArchiveFork.strict(), "Chronicle ETH/USD oracle has no code at the fork block");
+            return;
+        }
+        assertEq(_staticcall(abi.encodeWithSignature("wat()")), bytes32("ETH/USD"), "oracle is not ETH/USD");
+        assertEq(uint256(_staticcall(abi.encodeWithSignature("decimals()"))), 18, "oracle is not 18 decimals");
 
         adapter = new MockChronicleAdapterForkContract();
         adapter.initialize(admin);
+
+        (bool ok, bytes memory ret) = chronicle.staticcall(abi.encodeWithSignature("authed()"));
+        assertTrue(ok, "authed() reverted");
+        address[] memory wards = abi.decode(ret, (address[]));
+        assertGt(wards.length, 0, "oracle has no wards");
+        vm.prank(wards[0]);
+        (ok,) = chronicle.call(abi.encodeWithSignature("kiss(address)", address(adapter)));
+        assertTrue(ok, "kiss reverted");
+        assertEq(
+            uint256(_staticcall(abi.encodeWithSignature("tolled(address)", address(adapter)))), 1, "adapter not tolled"
+        );
     }
 
-    /// @dev Registers ETH/USD. We cannot inspect `age` from outside without being kiss-ed, so we use a
-    ///      generous maxStaleness (30 days) to cover any reasonable fork block age.
+    /// @dev Registers ETH/USD with a staleness window covering the forked block's on-chain value age.
     function _registerEthUsd() internal {
+        vm.prank(address(adapter));
+        (, uint256 age) = IChronicle(chronicle).readWithAge();
+        uint256 elapsed = block.timestamp > age ? block.timestamp - age : 0;
         vm.prank(admin);
-        adapter.registerFeed(KEY_ETH_USD, chronicle, uint48(30 days));
+        adapter.registerFeed(KEY_ETH_USD, chronicle, uint48(elapsed + 1 hours));
+    }
+
+    /// @dev The single word a view call on the oracle returns.
+    function _staticcall(bytes memory data) internal view returns (bytes32 word) {
+        (bool ok, bytes memory ret) = chronicle.staticcall(data);
+        assertTrue(ok && ret.length == 32, "oracle view call failed");
+        word = bytes32(ret);
     }
 
     function test_Fork_RegistrationAndConfig() public {
@@ -86,29 +114,25 @@ contract ChronicleAdapterFork is Test {
     function test_Fork_ETHUSDReadsLatestPrice() public {
         _registerEthUsd();
 
-        // Chronicle feeds are toll-gated: reads may revert if this contract is not kiss-ed.
-        // We attempt the read and only assert the range if it succeeds.
-        try adapter.readWithAge(KEY_ETH_USD) returns (uint256 value, uint256 age) {
-            // ETH/USD should be between $500 and $10,000 at any reasonable mainnet block.
-            assertTrue(
-                int256(value) >= int256(500e18) && int256(value) <= int256(10_000e18), "ETH/USD out of expected range"
-            );
-            assertGt(age, 0, "age must be non-zero");
-        } catch {
-            // Toll-gate revert: the mock adapter contract is not kiss-ed on the forked state.
-            // This is expected behaviour — register and config paths are already verified above.
-            emit log("Chronicle toll-gate active: readWithAge reverted (adapter not kiss-ed). Skipping range check.");
-        }
+        (uint256 value, uint256 age) = adapter.readWithAge(KEY_ETH_USD);
+        // ETH/USD should be between $500 and $10,000 at any reasonable mainnet block.
+        assertTrue(value >= 500e18 && value <= 10_000e18, "ETH/USD out of expected range");
+        assertGt(age, 0, "age must be non-zero");
+        assertLe(age, block.timestamp, "age is in the future");
     }
 
     function test_Fork_LatestAnswerMatchesRawWiden() public {
         _registerEthUsd();
 
         // Chronicle values are already 18-decimals; WAD answer is exactly the cast native value.
-        try adapter.readWithAge(KEY_ETH_USD) returns (uint256 value, uint256) {
-            assertEq(adapter.latestAnswer(KEY_ETH_USD), int256(value), "WAD cast mismatch");
-        } catch {
-            emit log("Chronicle toll-gate active: readWithAge reverted (adapter not kiss-ed). Skipping widen check.");
-        }
+        (uint256 value,) = adapter.readWithAge(KEY_ETH_USD);
+        assertEq(adapter.latestAnswer(KEY_ETH_USD), int256(value), "WAD cast mismatch");
+    }
+
+    /// @notice The toll gate is live: a caller the wards never kissed cannot read the oracle.
+    function test_Fork_UnkissedCallerCannotRead() public {
+        vm.prank(address(0xBEEF));
+        vm.expectRevert(abi.encodeWithSignature("NotTolled(address)", address(0xBEEF)));
+        IChronicle(chronicle).readWithAge();
     }
 }

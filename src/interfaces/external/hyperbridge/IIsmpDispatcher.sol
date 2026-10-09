@@ -3,7 +3,7 @@ pragma solidity ^0.8.30;
 
 /// @title IIsmpDispatcher
 /// @author Vendored minimal subset of Hyperbridge's ismp-solidity
-///         (https://github.com/polytope-labs/ismp-solidity). Upstream is Apache-2.0.
+///         (https://github.com/polytope-labs/ismp-solidity). Upstream license: Apache-2.0.
 /// @notice Dispatch surface of the local Hyperbridge `IsmpHost` (upstream `IDispatcher`): POST-request
 ///         dispatch plus the two fee views the {HyperbridgeGatewayAdapter} quotes against. Hyperbridge is
 ///         PROOF-VERIFIED interop — consensus + state proofs are aggregated on a Polkadot-secured coprocessor

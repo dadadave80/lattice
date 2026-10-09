@@ -1,0 +1,65 @@
+name: ERC-7201 storage layout guard
+description: >-
+  Fails when an ERC-7201 namespaced storage struct in a Foundry project drifts from its committed
+  baseline, or is not an append-only extension of the baseline at a trusted commit. Needs forge, cast,
+  jq and git on the runner; install Foundry first (foundry-rs/foundry-toolchain).
+
+inputs:
+  working-directory:
+    description: Foundry project root, relative to the workspace (paths with spaces are fine).
+    required: false
+    default: "."
+  probe:
+    description: >-
+      Probe contract that imports each guarded struct from its file and declares a state variable of
+      it, as `path/To.sol:Name` (or a bare name declared in exactly one file).
+    required: true
+  baseline:
+    description: Committed baseline file, relative to working-directory.
+    required: true
+  baseline-ref:
+    description: >-
+      Trusted commit to compare against for append-only compatibility, such as the pull request's
+      base SHA or a release tag. It must already be fetched. Empty checks drift only.
+    required: false
+    default: ""
+  resets:
+    description: >-
+      Reviewed fresh-deployment resets file, relative to working-directory. Each line is
+      `<StructName> <hash>` as printed by a failing check. Empty or missing means no resets.
+    required: false
+    default: ""
+  src:
+    description: Directory scanned for `@custom:storage-location erc7201:` annotations. Empty reads the profile's `src`.
+    required: false
+    default: ""
+  foundry-profile:
+    description: Foundry profile used to compile and inspect the probe.
+    required: false
+    default: default
+
+runs:
+  using: composite
+  steps:
+    - name: Check ERC-7201 storage layouts
+      shell: bash
+      env:
+        CHECKER: ${{ github.action_path }}/check-storage-layout.sh
+        PROJECT: ${{ inputs.working-directory }}
+        PROBE: ${{ inputs.probe }}
+        BASELINE: ${{ inputs.baseline }}
+        BASE_REF: ${{ inputs.baseline-ref }}
+        RESETS: ${{ inputs.resets }}
+        SRC: ${{ inputs.src }}
+        PROFILE: ${{ inputs.foundry-profile }}
+      run: |
+        set -euo pipefail
+        args=(--root "$PROJECT" --probe "$PROBE" --baseline "$BASELINE" --profile "$PROFILE")
+        if [ -n "$SRC" ]; then args+=(--src "$SRC"); fi
+        if [ -n "$RESETS" ]; then args+=(--resets "$RESETS"); fi
+        if [ -n "$BASE_REF" ]; then
+          args+=(--baseline-ref "$BASE_REF")
+        else
+          echo "::warning title=Storage layout::No baseline-ref: only drift against the committed baseline is checked."
+        fi
+        "$CHECKER" "${args[@]}"

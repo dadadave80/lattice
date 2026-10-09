@@ -116,12 +116,18 @@ interface ITimelockController {
     function isOperationPending(bytes32 id) external view returns (bool);
 
     /// @notice Returns whether an operation is ready for execution.
+    /// @dev Reads the timelock's own schedule only. In a diamond that also hosts the Governor, an operation the
+    ///      Governor queued still reports Ready after its proposal is Expired, and {execute}/{executeBatch} then
+    ///      refuse it; check `IGovernor.state(proposalId)` before executing.
     function isOperationReady(bytes32 id) external view returns (bool);
 
     /// @notice Returns whether an operation has been executed.
     function isOperationDone(bytes32 id) external view returns (bool);
 
     /// @notice Returns the state of an operation.
+    /// @dev Reads the timelock's own schedule only. In a diamond that also hosts the Governor, an operation the
+    ///      Governor queued still reports Ready after its proposal is Expired, and {execute}/{executeBatch} then
+    ///      refuse it; check `IGovernor.state(proposalId)` before executing.
     function getOperationState(bytes32 id) external view returns (OperationState);
 
     /// @notice Returns the timestamp at which an operation becomes ready.
@@ -180,12 +186,14 @@ interface ITimelockController {
     /// @param id The operation id.
     function cancel(bytes32 id) external;
 
-    /// @notice Execute a (ready) operation containing a single transaction.
+    /// @notice Execute a (ready) operation containing a single transaction. In a diamond that also hosts the
+    ///         Governor, an operation the Governor queued is refused once its proposal is Expired.
     function execute(address target, uint256 value, bytes calldata payload, bytes32 predecessor, bytes32 salt)
         external
         payable;
 
-    /// @notice Execute a (ready) operation containing a batch of transactions.
+    /// @notice Execute a (ready) operation containing a batch of transactions. In a diamond that also hosts the
+    ///         Governor, an operation the Governor queued is refused once its proposal is Expired.
     function executeBatch(
         address[] calldata targets,
         uint256[] calldata values,

@@ -14,6 +14,10 @@ pragma solidity >=0.8.4;
 ///      provider-agnostic interface. (Declared directly, not by inheriting {IPriceOracleReader}, because
 ///      Solidity excludes inherited functions from `type(I).interfaceId`, which would shift the ERC-165
 ///      id.)
+///
+///      The adapter does NOT check an L2 sequencer-uptime feed and does NOT bound the answer to a sane range.
+///      Integrators that need either check read through the opt-in {IOracleGuard} (`OracleGuard` facet)
+///      instead of calling `latestAnswer` directly.
 interface IPythAdapter {
     // -------------------------------------------------------------------------
     //                                  Events
@@ -56,6 +60,10 @@ interface IPythAdapter {
     /// @notice The price exponent is outside the supported normalization range.
     error PythExpoOutOfRange(int32 expo);
 
+    /// @notice A positive price truncated to zero when normalized to 18 decimals (`expo < -18` and
+    ///         `price < 10^(-18 - expo)`).
+    error PythNormalizedAnswerZero(bytes32 key, int64 price, int32 expo);
+
     /// @notice `registerFeed` was called with a zero price id or zero `maxStaleness`.
     error PythInvalidConfig();
 
@@ -86,7 +94,8 @@ interface IPythAdapter {
     function getFeed(bytes32 key) external view returns (bytes32 priceId, uint48 maxStaleness, uint64 maxConfBps);
 
     /// @notice Returns the latest price for `key`, normalized to 18 decimals (WAD). Selector matches
-    ///         {IPriceOracleReader.latestAnswer}. Reverts on stale / future / non-positive / wide-confidence.
+    ///         {IPriceOracleReader.latestAnswer}. Reverts on stale / future / non-positive / wide-confidence,
+    ///         or when the normalized answer truncates to zero.
     /// @param key The feed identifier.
     /// @return answerWad The latest price scaled to 1e18.
     function latestAnswer(bytes32 key) external view returns (int256 answerWad);

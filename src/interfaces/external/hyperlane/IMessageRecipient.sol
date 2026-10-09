@@ -3,7 +3,7 @@ pragma solidity ^0.8.30;
 
 /// @title IMessageRecipient (Hyperlane message recipient) — vendored subset
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
-/// @author Vendored minimal subset of Hyperlane's `IMessageRecipient` (https://github.com/hyperlane-xyz/hyperlane-monorepo). Upstream is MIT OR Apache-2.0.
+/// @author Vendored minimal subset of Hyperlane's `IMessageRecipient` (https://github.com/hyperlane-xyz/hyperlane-monorepo). Upstream license: MIT OR Apache-2.0.
 /// @notice The delivery callback the Hyperlane Mailbox invokes on the recipient at `process` time. PAYABLE
 ///         upstream — implementers that never expect value-bearing messages must guard `msg.value` themselves.
 /// @dev Verified verbatim against `hyperlane-xyz/hyperlane-monorepo` (MIT OR Apache-2.0):

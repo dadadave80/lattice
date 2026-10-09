@@ -30,6 +30,17 @@ struct ERC20CappedStorage {
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/extensions/ERC20Capped.sol)
 /// @notice Library implementing a capped total supply for ERC-20 tokens.
+/// @dev Ports OpenZeppelin v5.6.1 `ERC20Capped`. Differences from OpenZeppelin:
+///      - OpenZeppelin checks the cap in `_update`, so every mint is capped. Here the cap holds only where a
+///        mint path calls {_checkCap}. The {ERC20Capped} facet exports only `cap()`, and its internal `_mint` is
+///        not reachable through a diamond, so a composing mint facet must call {_checkCap} itself. A mint through
+///        {ERC20Lib._mint} from another facet (ERC7802, ERC20Crosschain, ERC20Wrapper, ERC4626, VaultCore, GovernedVault, {ERC20VotesLib._mint}, and
+///        ERC20FlashMint for the length of a loan) is not capped. Closing this needs a hook in {ERC20Lib}, which decision D25 on #234 rules
+///        out for 0.5.0.
+///      - {_checkCap} runs before the mint with the projected supply; OpenZeppelin checks the supply after it.
+///        Both revert {IERC20Capped.ERC20ExceededCap} with the same arguments.
+///      - Registers {IERC20Capped} for ERC-165 in its init; OpenZeppelin's extension has no ERC-165.
+///      See docs/guides/selector-compatibility.md#token-extension-hook-model.
 library ERC20CappedLib {
     //*//////////////////////////////////////////////////////////////////////////
     //                              STORAGE ACCESS

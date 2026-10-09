@@ -5,6 +5,7 @@ import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
 import {IERC4626} from "@lattice/interfaces/tokens/IERC4626.sol";
 import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
 import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
+import {Math} from "@lattice/utils/libraries/math/Math.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
 //                                  STORAGE
@@ -29,18 +30,54 @@ struct ERC4626Storage {
     uint8 _decimalsOffset;
 }
 
-/// @notice Rounding direction for mulDiv calculations.
-enum Rounding {
-    Floor,
-    Ceil
-}
-
 /// @title ERC4626Lib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/extensions/ERC4626.sol)
 /// @notice Library implementing the ERC-4626 Tokenized Vault Standard.
-/// @dev Mirrors OpenZeppelin v5 ERC4626 logic. All state lives in an ERC-7201 slot.
+/// @dev Mirrors OpenZeppelin v5.6.1 ERC4626 logic. All state lives in an ERC-7201 slot.
 ///      The vault IS an ERC-20 share token — callers must also initialize ERC20Lib.
+///
+///      NAV source: OZ prices shares through the virtual `totalAssets()`, but a library call cannot dispatch
+///      virtually. Every conversion, preview, `max*` and mutator therefore reads the NAV from the diamond's own
+///      `totalAssets()` selector through a self-staticcall. On a plain ERC-4626 diamond that selector is the
+///      {ERC4626} facet (this library's idle-only {totalAssets}); on a VaultCore diamond it is {VaultCore},
+///      which adds strategy-deployed funds. {totalAssets} here never makes that self-call, so it cannot recurse.
+///
+///      Liquidity: exits pay out of the vault's own balance only, so `maxWithdraw`/`maxRedeem` are capped at
+///      idle assets. If the NAV read fails (e.g. a strategy's balance read reverts), the vault fails closed:
+///      every `max*` returns 0, deposit/mint/withdraw/redeem revert with the matching `ERC4626ExceededMax*`
+///      error, and the converters and previews revert with the NAV read's error. On a VaultCore diamond
+///      `totalAssets()` itself reverts while the NAV is unreadable: the self-staticcall has no other way to
+///      signal an unknown NAV. Reverting `totalAssets()`, converters and previews deviate from ERC-4626's
+///      "MUST NOT revert" wording, which is preferred over pricing shares on a partial NAV.
+///
+///      Share mints and burns call {ERC20Lib} directly: an ERC-20 movement-replacing extension (ERC20Pausable,
+///      ERC20Votes) does not see them, and neither does ERC20Capped's cap, so they are mutually exclusive (D25,
+///      #234). VaultCore's `deposit`/`mint`/`withdraw`/`redeem` share this path. GovernedVault is the combined facet
+///      that wraps these mutators and moves voting units.
+///
+///      Differences from OpenZeppelin v5.6.1:
+///      - The caller is `msg.sender`, not `_msgSender()`; Lattice has no ERC-2771 context.
+///      - Nothing here is `virtual`, so there are no `_transferIn`/`_transferOut` hooks (added in v5.6.0).
+///        `_deposit` and `_withdraw` move the asset through private SafeERC20-style helpers (see below); a vault
+///        that needs another transfer path replaces the mutator selectors (D25).
+///      - A failed asset transfer reverts `SafeERC20FailedOperation(asset)` instead of bubbling the token's own
+///        revert data, so an unapproved `deposit` reports `SafeERC20FailedOperation`, not the token's
+///        `ERC20InsufficientAllowance`. Returndata that does not decode as a bool (non-empty but shorter than
+///        32 bytes, or a word other than 0 or 1) reverts with empty data; OpenZeppelin reverts
+///        `SafeERC20FailedOperation`. These helpers, and the `decimals()` probe in {__ERC4626_init}, copy the
+///        whole returndata; OpenZeppelin bounds the copy (0x20 bytes for transfers, 0x40 for decimals).
+///      - Share math reads the NAV through the self-staticcall above and fails closed while it is unreadable.
+///      - `maxRedeem` is capped at the floor shares idle assets buy back; OpenZeppelin returns `balanceOf(owner)`.
+///        The cap can bind after a loss, or while VaultCore has funds allocated.
+///      - `maxWithdraw` is `min(previewRedeem(balanceOf(owner)), idle)`, not OpenZeppelin's (since v5.5.0)
+///        `previewRedeem(maxRedeem(owner))`. On a plain ERC-4626 diamond it always equals OpenZeppelin's value: a
+///        holder's shares are never worth more than idle. Where the `maxRedeem` cap binds, deriving `maxWithdraw`
+///        from it would report up to one share's value less; Lattice keeps the larger value, which `withdraw`
+///        accepts (#234).
+///      - `decimalsOffset` is set once in {__ERC4626_init}, not by an overridable `_decimalsOffset()`.
+///      - {__ERC4626_init} registers {IERC4626} for ERC-165; OpenZeppelin's ERC4626 has no ERC-165.
+///      - The ERC-4626 errors and `SafeERC20FailedOperation` are declared on {IERC4626}; their selectors are the same.
 library ERC4626Lib {
     //*//////////////////////////////////////////////////////////////////////////
     //                              STORAGE ACCESS
@@ -75,8 +112,8 @@ library ERC4626Lib {
         $._decimalsOffset = decimalsOffset_;
 
         // Try to fetch underlying decimals; default to 18 on failure.
-        // Uses a low-level staticcall with an explicit upper-bound check (per OZ v5.1.0) to avoid
-        // silent truncation when a token returns a uint256 value larger than type(uint8).max.
+        // Same acceptance rule as OZ v5.6.1's `_tryGetAssetDecimals`: a successful call with at least 32 bytes of
+        // returndata whose value fits in uint8. The bound check avoids silently truncating a larger uint256.
         uint8 underlyingDecimals_ = 18;
         (bool success, bytes memory encodedDecimals) = asset_.staticcall(abi.encodeWithSignature("decimals()"));
         if (success && encodedDecimals.length >= 32) {
@@ -116,102 +153,115 @@ library ERC4626Lib {
         return $._underlyingDecimals + $._decimalsOffset;
     }
 
-    /// @notice Returns total underlying assets held by the vault (default: balance of this contract).
+    /// @notice Returns the vault's idle assets: its own balance of the underlying.
+    /// @dev This is the {ERC4626} facet's `totalAssets()` and the liquidity cap on exits. It is NOT the
+    ///      pricing NAV on a diamond that replaces the `totalAssets()` selector (e.g. {VaultCore}); share math
+    ///      reads that selector instead (see the library NatSpec). It must never call the converters.
     function totalAssets() internal view returns (uint256) {
         return IERC20(erc4626Storage()._asset).balanceOf(address(this));
     }
 
-    /// @notice Returns shares equivalent to `assets` (floor rounding).
+    /// @notice Returns shares equivalent to `assets` at the diamond's NAV (floor rounding).
     function convertToShares(uint256 assets) internal view returns (uint256) {
-        return _convertToShares(assets, Rounding.Floor);
+        return _convertToShares(assets, Math.Rounding.Floor);
     }
 
-    /// @notice Returns assets equivalent to `shares` (floor rounding).
+    /// @notice Returns assets equivalent to `shares` at the diamond's NAV (floor rounding).
     function convertToAssets(uint256 shares) internal view returns (uint256) {
-        return _convertToAssets(shares, Rounding.Floor);
+        return _convertToAssets(shares, Math.Rounding.Floor);
     }
 
-    /// @notice Returns the maximum depositible assets for `receiver` (unbounded by default).
-    function maxDeposit(address) internal pure returns (uint256) {
-        return type(uint256).max;
+    /// @notice Returns the maximum depositable assets for `receiver`: unbounded, or 0 while the NAV is unreadable.
+    function maxDeposit(address) internal view returns (uint256) {
+        (bool ok,) = _tryNav();
+        return ok ? type(uint256).max : 0;
     }
 
-    /// @notice Returns the maximum mintable shares for `receiver` (unbounded by default).
-    function maxMint(address) internal pure returns (uint256) {
-        return type(uint256).max;
+    /// @notice Returns the maximum mintable shares for `receiver`: unbounded, or 0 while the NAV is unreadable.
+    function maxMint(address) internal view returns (uint256) {
+        (bool ok,) = _tryNav();
+        return ok ? type(uint256).max : 0;
     }
 
-    /// @notice Returns the maximum withdrawable assets for `owner`.
+    /// @notice Returns the maximum withdrawable assets for `owner`: the NAV value of their shares, capped at
+    ///         idle assets (0 while the NAV is unreadable).
     function maxWithdraw(address owner) internal view returns (uint256) {
-        return _convertToAssets(ERC20Lib.balanceOf(owner), Rounding.Floor);
+        (bool ok, uint256 nav) = _tryNav();
+        if (!ok) return 0;
+        return _maxWithdraw(owner, ERC20Lib.totalSupply(), nav);
     }
 
-    /// @notice Returns the maximum redeemable shares for `owner`.
+    /// @notice Returns the maximum redeemable shares for `owner`: their balance, capped at the shares idle
+    ///         assets can pay out (0 while the NAV is unreadable).
     function maxRedeem(address owner) internal view returns (uint256) {
-        return ERC20Lib.balanceOf(owner);
+        (bool ok, uint256 nav) = _tryNav();
+        if (!ok) return 0;
+        return _maxRedeem(owner, ERC20Lib.totalSupply(), nav);
     }
 
     /// @notice Simulates shares minted for a `deposit` of `assets` (floor rounding).
     function previewDeposit(uint256 assets) internal view returns (uint256) {
-        return _convertToShares(assets, Rounding.Floor);
+        return _convertToShares(assets, Math.Rounding.Floor);
     }
 
     /// @notice Simulates assets required to `mint` exactly `shares` (ceiling rounding).
     function previewMint(uint256 shares) internal view returns (uint256) {
-        return _convertToAssets(shares, Rounding.Ceil);
+        return _convertToAssets(shares, Math.Rounding.Ceil);
     }
 
     /// @notice Simulates shares burned for a `withdraw` of `assets` (ceiling rounding).
     function previewWithdraw(uint256 assets) internal view returns (uint256) {
-        return _convertToShares(assets, Rounding.Ceil);
+        return _convertToShares(assets, Math.Rounding.Ceil);
     }
 
     /// @notice Simulates assets returned for redeeming `shares` (floor rounding).
     function previewRedeem(uint256 shares) internal view returns (uint256) {
-        return _convertToAssets(shares, Rounding.Floor);
+        return _convertToAssets(shares, Math.Rounding.Floor);
     }
 
     //*//////////////////////////////////////////////////////////////////////////
     //                          STATE-CHANGING FUNCTIONS
     //////////////////////////////////////////////////////////////////////////*//
 
+    // Each mutator reads the NAV once and applies the same checks and rounding as its `max*`/`preview*` pair.
+
     /// @notice Deposits `assets` and mints shares to `receiver`.
     function deposit(uint256 assets, address receiver) internal returns (uint256 shares) {
-        uint256 maxAssets = maxDeposit(receiver);
-        if (assets > maxAssets) {
-            revert IERC4626.ERC4626ExceededMaxDeposit(receiver, assets, maxAssets);
-        }
-        shares = previewDeposit(assets);
+        (bool ok, uint256 nav) = _tryNav();
+        if (!ok) revert IERC4626.ERC4626ExceededMaxDeposit(receiver, assets, 0);
+        shares = _convertToSharesFromTotals(assets, ERC20Lib.totalSupply(), nav, _decimalsOffset(), Math.Rounding.Floor);
         _deposit(msg.sender, receiver, assets, shares);
     }
 
     /// @notice Mints exactly `shares` to `receiver`, pulling the required assets.
     function mint(uint256 shares, address receiver) internal returns (uint256 assets) {
-        uint256 maxShares = maxMint(receiver);
-        if (shares > maxShares) {
-            revert IERC4626.ERC4626ExceededMaxMint(receiver, shares, maxShares);
-        }
-        assets = previewMint(shares);
+        (bool ok, uint256 nav) = _tryNav();
+        if (!ok) revert IERC4626.ERC4626ExceededMaxMint(receiver, shares, 0);
+        assets = _convertToAssetsFromTotals(shares, ERC20Lib.totalSupply(), nav, _decimalsOffset(), Math.Rounding.Ceil);
         _deposit(msg.sender, receiver, assets, shares);
     }
 
     /// @notice Withdraws `assets` from the vault, burning the required shares from `owner`.
     function withdraw(uint256 assets, address receiver, address owner) internal returns (uint256 shares) {
-        uint256 maxAssets = maxWithdraw(owner);
-        if (assets > maxAssets) {
+        (bool ok, uint256 nav) = _tryNav();
+        uint256 supply = ERC20Lib.totalSupply();
+        uint256 maxAssets = ok ? _maxWithdraw(owner, supply, nav) : 0;
+        if (!ok || assets > maxAssets) {
             revert IERC4626.ERC4626ExceededMaxWithdraw(owner, assets, maxAssets);
         }
-        shares = previewWithdraw(assets);
+        shares = _convertToSharesFromTotals(assets, supply, nav, _decimalsOffset(), Math.Rounding.Ceil);
         _withdraw(msg.sender, receiver, owner, assets, shares);
     }
 
     /// @notice Redeems `shares` from `owner`, transferring assets to `receiver`.
     function redeem(uint256 shares, address receiver, address owner) internal returns (uint256 assets) {
-        uint256 maxShares = maxRedeem(owner);
-        if (shares > maxShares) {
+        (bool ok, uint256 nav) = _tryNav();
+        uint256 supply = ERC20Lib.totalSupply();
+        uint256 maxShares = ok ? _maxRedeem(owner, supply, nav) : 0;
+        if (!ok || shares > maxShares) {
             revert IERC4626.ERC4626ExceededMaxRedeem(owner, shares, maxShares);
         }
-        assets = previewRedeem(shares);
+        assets = _convertToAssetsFromTotals(shares, supply, nav, _decimalsOffset(), Math.Rounding.Floor);
         _withdraw(msg.sender, receiver, owner, assets, shares);
     }
 
@@ -219,26 +269,93 @@ library ERC4626Lib {
     //                            INTERNAL HELPERS
     //////////////////////////////////////////////////////////////////////////*//
 
-    /// @dev Converts `assets` to shares using the given rounding direction.
-    ///      Formula: assets * (totalSupply + 10**offset) / (totalAssets + 1)
-    function _convertToShares(uint256 assets, Rounding rounding) internal view returns (uint256) {
-        ERC4626Storage storage $ = erc4626Storage();
-        uint256 totalSupply_ = ERC20Lib.totalSupply();
-        uint256 totalAssets_ = totalAssets();
-        uint256 virtualShares = totalSupply_ + (10 ** uint256($._decimalsOffset));
-        uint256 virtualAssets = totalAssets_ + 1;
-        return mulDiv(assets, virtualShares, virtualAssets, rounding);
+    /// @dev Converts `assets` to shares at the diamond's NAV using the given rounding direction.
+    function _convertToShares(uint256 assets, Math.Rounding rounding) internal view returns (uint256) {
+        return _convertToSharesFromTotals(assets, ERC20Lib.totalSupply(), _nav(), _decimalsOffset(), rounding);
     }
 
-    /// @dev Converts `shares` to assets using the given rounding direction.
+    /// @dev Converts `shares` to assets at the diamond's NAV using the given rounding direction.
+    function _convertToAssets(uint256 shares, Math.Rounding rounding) internal view returns (uint256) {
+        return _convertToAssetsFromTotals(shares, ERC20Lib.totalSupply(), _nav(), _decimalsOffset(), rounding);
+    }
+
+    /// @dev Converts `assets` to shares from explicit totals.
+    ///      Formula: assets * (totalSupply + 10**offset) / (totalAssets + 1)
+    function _convertToSharesFromTotals(
+        uint256 assets,
+        uint256 totalSupply_,
+        uint256 totalAssets_,
+        uint8 decimalsOffset_,
+        Math.Rounding rounding
+    ) internal pure returns (uint256) {
+        return _mulDiv(assets, totalSupply_ + 10 ** uint256(decimalsOffset_), totalAssets_ + 1, rounding);
+    }
+
+    /// @dev Converts `shares` to assets from explicit totals.
     ///      Formula: shares * (totalAssets + 1) / (totalSupply + 10**offset)
-    function _convertToAssets(uint256 shares, Rounding rounding) internal view returns (uint256) {
-        ERC4626Storage storage $ = erc4626Storage();
-        uint256 totalSupply_ = ERC20Lib.totalSupply();
-        uint256 totalAssets_ = totalAssets();
-        uint256 virtualShares = totalSupply_ + (10 ** uint256($._decimalsOffset));
-        uint256 virtualAssets = totalAssets_ + 1;
-        return mulDiv(shares, virtualAssets, virtualShares, rounding);
+    function _convertToAssetsFromTotals(
+        uint256 shares,
+        uint256 totalSupply_,
+        uint256 totalAssets_,
+        uint8 decimalsOffset_,
+        Math.Rounding rounding
+    ) internal pure returns (uint256) {
+        return _mulDiv(shares, totalAssets_ + 1, totalSupply_ + 10 ** uint256(decimalsOffset_), rounding);
+    }
+
+    /// @dev `maxWithdraw` at a known NAV: the floor value of `owner`'s shares, capped at idle assets.
+    function _maxWithdraw(address owner, uint256 totalSupply_, uint256 nav) private view returns (uint256) {
+        uint256 owed = _convertToAssetsFromTotals(
+            ERC20Lib.balanceOf(owner), totalSupply_, nav, _decimalsOffset(), Math.Rounding.Floor
+        );
+        uint256 idle = totalAssets();
+        return owed < idle ? owed : idle;
+    }
+
+    /// @dev `maxRedeem` at a known NAV: `owner`'s balance, capped at the floor shares idle assets buy back.
+    ///      Floor then floor keeps `previewRedeem(maxRedeem)` within idle.
+    function _maxRedeem(address owner, uint256 totalSupply_, uint256 nav) private view returns (uint256) {
+        uint256 balance = ERC20Lib.balanceOf(owner);
+        uint256 idleShares =
+            _convertToSharesFromTotals(totalAssets(), totalSupply_, nav, _decimalsOffset(), Math.Rounding.Floor);
+        return balance < idleShares ? balance : idleShares;
+    }
+
+    /// @dev `Math.mulDiv` in the given rounding direction. The round-up step is applied here rather than through
+    ///      Math's rounding overload, which costs markedly more gas on these hot paths. As in
+    ///      `Math.unsignedRoundsUp`, the odd modes (`Ceil`, `Expand`) round up; the checked increment panics if the
+    ///      floor is already `type(uint256).max`.
+    function _mulDiv(uint256 x, uint256 y, uint256 d, Math.Rounding rounding) private pure returns (uint256 result) {
+        result = Math.mulDiv(x, y, d);
+        if ((uint8(rounding) & 1) == 1 && mulmod(x, y, d) > 0) ++result;
+    }
+
+    function _decimalsOffset() private view returns (uint8) {
+        return erc4626Storage()._decimalsOffset;
+    }
+
+    /// @dev Reads the NAV from the diamond's own `totalAssets()` selector, bubbling its revert on failure.
+    function _nav() private view returns (uint256) {
+        (bool ok, bytes memory data) = _navStaticcall();
+        if (!ok || data.length < 32) {
+            assembly ("memory-safe") {
+                revert(add(data, 0x20), mload(data))
+            }
+        }
+        return abi.decode(data, (uint256));
+    }
+
+    /// @dev Reads the NAV from the diamond's own `totalAssets()` selector; `ok` is false if the read failed.
+    function _tryNav() private view returns (bool ok, uint256 nav) {
+        bytes memory data;
+        (ok, data) = _navStaticcall();
+        if (!ok || data.length < 32) return (false, 0);
+        nav = abi.decode(data, (uint256));
+    }
+
+    /// @dev Self-staticcall to `totalAssets()`, which dispatches to whichever facet owns that selector.
+    function _navStaticcall() private view returns (bool ok, bytes memory data) {
+        (ok, data) = address(this).staticcall(abi.encodeWithSelector(IERC4626.totalAssets.selector));
     }
 
     /// @dev Transfers assets in, mints shares, emits Deposit.
@@ -285,99 +402,6 @@ library ERC4626Lib {
         if (!ok || (ret.length == 0 ? token.code.length == 0 : !abi.decode(ret, (bool)))) {
             revert IERC4626.SafeERC20FailedOperation(token);
         }
-    }
-
-    // Ported from OpenZeppelin Math.mulDiv v5.1.0
-    /// @dev Calculates x * y / denominator with full 512-bit precision (Remco Bloemen algorithm).
-    ///      Reverts with MathOverflowedMulDiv if the result overflows a uint256 or the denominator is 0.
-    function mulDiv(uint256 x, uint256 y, uint256 denominator) internal pure returns (uint256 result) {
-        unchecked {
-            // 512-bit multiply [prod1 prod0] = x * y. Compute the product mod 2²⁵⁶ and mod 2²⁵⁶ - 1, then use
-            // the Chinese Remainder Theorem to reconstruct the 512 bit result. The result is stored in two 256
-            // variables such that product = prod1 * 2²⁵⁶ + prod0.
-            uint256 prod0 = x * y; // Least significant 256 bits of the product
-            uint256 prod1; // Most significant 256 bits of the product
-            assembly {
-                let mm := mulmod(x, y, not(0))
-                prod1 := sub(sub(mm, prod0), lt(mm, prod0))
-            }
-
-            // Handle non-overflow cases, 256 by 256 division.
-            if (prod1 == 0) {
-                // Solidity will revert if denominator == 0, unlike the div opcode on its own.
-                // The surrounding unchecked block does not change this fact.
-                // See https://docs.soliditylang.org/en/latest/control-structures.html#checked-or-unchecked-arithmetic.
-                return prod0 / denominator;
-            }
-
-            // Make sure the result is less than 2²⁵⁶. Also prevents denominator == 0.
-            if (denominator <= prod1) {
-                revert IERC4626.MathOverflowedMulDiv();
-            }
-
-            ///////////////////////////////////////////////
-            // 512 by 256 division.
-            ///////////////////////////////////////////////
-
-            // Make division exact by subtracting the remainder from [prod1 prod0].
-            uint256 remainder;
-            assembly {
-                // Compute remainder using mulmod.
-                remainder := mulmod(x, y, denominator)
-
-                // Subtract 256 bit number from 512 bit number.
-                prod1 := sub(prod1, gt(remainder, prod0))
-                prod0 := sub(prod0, remainder)
-            }
-
-            // Factor powers of two out of denominator and compute largest power of two divisor of denominator.
-            // Always >= 1. See https://cs.stackexchange.com/q/138556/92363.
-
-            uint256 twos = denominator & (0 - denominator);
-            assembly {
-                // Divide denominator by twos.
-                denominator := div(denominator, twos)
-
-                // Divide [prod1 prod0] by twos.
-                prod0 := div(prod0, twos)
-
-                // Flip twos such that it is 2²⁵⁶ / twos. If twos is zero, then it becomes one.
-                twos := add(div(sub(0, twos), twos), 1)
-            }
-
-            // Shift in bits from prod1 into prod0.
-            prod0 |= prod1 * twos;
-
-            // Invert denominator mod 2²⁵⁶. Now that denominator is an odd number, it has an inverse modulo 2²⁵⁶ such
-            // that denominator * inv ≡ 1 mod 2²⁵⁶. Compute the inverse by starting with a seed that is correct for
-            // four bits. That is, denominator * inv ≡ 1 mod 2⁴.
-            uint256 inverse = (3 * denominator) ^ 2;
-
-            // Use the Newton-Raphson iteration to improve the precision. Thanks to Hensel's lifting lemma, this also
-            // works in modular arithmetic, doubling the correct bits in each step.
-            inverse *= 2 - denominator * inverse; // inverse mod 2⁸
-            inverse *= 2 - denominator * inverse; // inverse mod 2¹⁶
-            inverse *= 2 - denominator * inverse; // inverse mod 2³²
-            inverse *= 2 - denominator * inverse; // inverse mod 2⁶⁴
-            inverse *= 2 - denominator * inverse; // inverse mod 2¹²⁸
-            inverse *= 2 - denominator * inverse; // inverse mod 2²⁵⁶
-
-            // Because the division is now exact we can divide by multiplying with the modular inverse of denominator.
-            // This will give us the correct result modulo 2²⁵⁶. Since the preconditions guarantee that the outcome is
-            // less than 2²⁵⁶, this is the final result. We don't need to compute the high bits of the result and prod1
-            // is no longer required.
-            result = prod0 * inverse;
-            return result;
-        }
-    }
-
-    /// @dev Calculates x * y / denominator with full precision, following the selected rounding direction.
-    function mulDiv(uint256 x, uint256 y, uint256 denominator, Rounding rounding) internal pure returns (uint256) {
-        uint256 result = mulDiv(x, y, denominator);
-        if (rounding == Rounding.Ceil && mulmod(x, y, denominator) > 0) {
-            result += 1;
-        }
-        return result;
     }
 }
 

@@ -83,6 +83,9 @@ contract CCTPBridgeAdapterFork is CCTPBridgeAdapterTestBase {
     ///         FULL `amount` is burned on source (the hook is destination-executed, not here), the allowance is
     ///         reset, and nothing is stranded on the diamond.
     function test_Fork_DepositForBurnWithHookTowardBase() public {
+        // Hooked burns require a destinationCaller lock (the destination diamond; a stand-in address here).
+        vm.prank(admin);
+        adapter.configureDomain(BASE_DOMAIN, MAX_FEE, MIN_FINALITY, bytes32(uint256(uint160(baseRecipient))));
         deal(USDC, user, AMOUNT);
         vm.prank(user);
         IERC20(USDC).approve(diamond, AMOUNT);

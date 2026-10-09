@@ -6,6 +6,8 @@ pragma solidity >=0.8.4;
 // Interface ids: IERC6551Account = 0x6faff5f1, IERC6551Executable = 0x51945447. The `isValidSigner` success
 // magic value is its own selector, 0x523e3260.
 
+/// @author Vendored minimal subset of the ERC-6551 reference implementation (https://github.com/erc6551/reference).
+///         Upstream license: MIT.
 /// @dev ERC-6551 account introspection + signer validation.
 interface IERC6551Account {
     /// @notice The account must be able to receive native value.

@@ -2,7 +2,8 @@
 pragma solidity >=0.8.4;
 
 /// @title IRedstonePriceFeedsAdapter
-/// @author Modified from RedStone (https://github.com/redstone-finance/redstone-oracles-monorepo)
+/// @author Vendored minimal subset of RedStone (https://github.com/redstone-finance/redstone-oracles-monorepo).
+///         Upstream license: unknown (no matching file in the linked monorepo, whose root license is BUSL-1.1).
 /// @notice Minimal interface for a RedStone Push `PriceFeedsAdapter` contract.
 /// @dev Vendored subset — do not add a redstone dependency. RedStone's Push model stores signed values
 ///      on-chain (updated in batches); a consumer reads the stored value for a `dataFeedId` and the

@@ -15,11 +15,18 @@ import {ERC4626Lib} from "@lattice/tokens/ERC4626/libraries/ERC4626Lib.sol";
 ///      one shared storage layout. The assembled diamond IS-A ERC-4626 (IERC4626), enforced by the recipe, not
 ///      by facet-level inheritance.
 ///
+///      CUSTODY: `totalAssets` is the diamond's WHOLE balance of the asset (`balanceOf(address(this))`). Any
+///      other module's holding of that asset (VestingWallet, BridgeERC20 or ShieldedPool escrow) is priced
+///      into the shares, so shareholders capture its inflows and lose its outflows. One custodian per asset
+///      per diamond (issue #240).
+///
 ///      Callers must initialize the following modules in their initializer:
 ///        - ERC20Lib.__ERC20_init(name, symbol)
 ///        - ERC4626Lib.__ERC4626_init(asset, decimalsOffset)
+///
+///      {ERC4626Lib} lists every difference from OpenZeppelin.
 /// @custom:lattice-version 0.1.0
-/// @custom:lattice-source OpenZeppelin v5.1.0
+/// @custom:lattice-source OpenZeppelin v5.6.1
 contract ERC4626 {
     //*//////////////////////////////////////////////////////////////////////////
     //                           ERC-20 OVERRIDE

@@ -14,7 +14,7 @@ import {ERC721URIStorageLib} from "@lattice/tokens/ERC721/libraries/ERC721URISto
 ///      surface comes from a separately-cut {ERC721} facet; {DeployERC721URIStorage} composes both. The EIP-4906
 ///      metadata-update events are emitted by {ERC721URIStorageLib}. Pure delegator pattern.
 /// @custom:lattice-version 0.1.0
-/// @custom:lattice-source OpenZeppelin v5.1.0
+/// @custom:lattice-source OpenZeppelin v5.6.1
 contract ERC721URIStorage {
     /// @notice Returns the URI for `tokenId`.
     /// @dev Replaces the base {ERC721} `tokenURI` to use per-token URI storage.
@@ -26,5 +26,15 @@ contract ERC721URIStorage {
     function setTokenURI(uint256 tokenId, string memory uri) public virtual {
         AccessControlLib.checkRole(DEFAULT_ADMIN_ROLE);
         ERC721URIStorageLib._setTokenURI(tokenId, uri);
+    }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect ERC721URIStorage methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `setTokenURI(uint256,string)` 0x162094c4
+    ///      `tokenURI(uint256)` 0xc87b56dd
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors = hex"162094c4c87b56dd";
     }
 }

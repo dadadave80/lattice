@@ -30,12 +30,17 @@ contract InvMockERC20 is ERC20, Initializable {
 //////////////////////////////////////////////////////////////////////////*//
 
 /// @notice Handler that exercises mint, burn, and transfer on a fixed set of 5 actors.
+/// @dev Inputs are bounded to valid calls, so every action is revert-free under `fail_on_revert`.
 contract ERC20BalanceSumHandler is Test {
     InvMockERC20 public token;
 
     address[5] public actors;
     address[] internal _touchedActors;
     mapping(address => bool) public hasTouched;
+
+    /// @notice Supply ledger: everything minted and burned through the handler.
+    uint256 public ghostMinted;
+    uint256 public ghostBurned;
 
     uint256 constant CAP = 1_000_000e18;
 
@@ -68,6 +73,7 @@ contract ERC20BalanceSumHandler is Test {
         amount = bound(amount, 1, CAP);
         _touch(to);
         token.mint(to, amount);
+        ghostMinted += amount;
     }
 
     function burn(uint256 actorSeed, uint256 amount) external {
@@ -76,12 +82,14 @@ contract ERC20BalanceSumHandler is Test {
         if (bal == 0) return;
         amount = bound(amount, 1, bal);
         token.burn(from, amount);
+        ghostBurned += amount;
     }
 
     function transfer(uint256 fromSeed, uint256 toSeed, uint256 amount) external {
         address from = _actor(fromSeed);
-        address to = _actor((toSeed + 1) % actors.length); // ensure different index possibility
-        if (from == to) to = actors[(toSeed + 2) % actors.length];
+        // Reduce the seed before offsetting it so a seed near type(uint256).max cannot overflow.
+        address to = _actor(toSeed % actors.length + 1);
+        if (from == to) to = _actor(toSeed % actors.length + 2);
         uint256 bal = token.balanceOf(from);
         if (bal == 0) return;
         amount = bound(amount, 1, bal);
@@ -96,7 +104,7 @@ contract ERC20BalanceSumHandler is Test {
 //////////////////////////////////////////////////////////////////////////*//
 
 /// @title ERC20BalanceSumInvariant
-/// @notice Invariant: sum of all actor balances == totalSupply at all times.
+/// @notice Invariant: sum of all actor balances == totalSupply == minted - burned at all times.
 contract ERC20BalanceSumInvariant is Test {
     InvMockERC20 internal token;
     ERC20BalanceSumHandler internal handler;
@@ -110,6 +118,7 @@ contract ERC20BalanceSumInvariant is Test {
     }
 
     /// @notice The sum of all actor balances must always equal totalSupply.
+    /// forge-config: default.invariant.fail-on-revert = true
     function invariant_BalanceSumEqualsSupply() public view {
         address[] memory touched = handler.touchedActors();
         uint256 sum;
@@ -117,5 +126,11 @@ contract ERC20BalanceSumInvariant is Test {
             sum += token.balanceOf(touched[i]);
         }
         assertEq(sum, token.totalSupply(), "balance sum != totalSupply");
+    }
+
+    /// @notice totalSupply must always equal everything minted minus everything burned.
+    /// forge-config: default.invariant.fail-on-revert = true
+    function invariant_SupplyMatchesLedger() public view {
+        assertEq(token.totalSupply(), handler.ghostMinted() - handler.ghostBurned(), "totalSupply != minted - burned");
     }
 }

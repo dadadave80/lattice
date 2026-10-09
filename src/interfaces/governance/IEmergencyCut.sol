@@ -9,8 +9,11 @@ import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 ///         REMOVAL-ONLY diamond cut a guardian can fire to instantly unbind a compromised or buggy
 ///         facet — even while the normal governed cut path is halted by EmergencyStop. It is
 ///         deliberately constrained: a guardian may only `Remove` selectors (never `Add`/`Replace`,
-///         which still require a full governance round) and may never remove a frozen, load-bearing
-///         selector (the loupe or the cut path itself).
+///         which still require a full governance round), may never remove the module's own cut
+///         entrypoint or the admin's stop-recovery selectors (even when unfrozen), and may never remove
+///         a frozen selector. Any other unfrozen selector is removable, so the guardian is trusted not
+///         to strand the path that reaches the cut entrypoint (e.g. Governor/Timelock execution) until
+///         governance freezes it.
 /// @dev This interface is intentionally SEPARATE from {IGovernedDiamondCut}: that interface exposes
 ///      only `diamondCut`, so `type(IGovernedDiamondCut).interfaceId == 0x1f931c1c` (identical to
 ///      `IDiamondCut`), which is load-bearing — the governed facet must occupy the canonical cut
@@ -36,13 +39,24 @@ interface IEmergencyCut {
     /// @param action The offending {FacetCutAction} (0 == Add, 1 == Replace) that was not Remove (2).
     error EmergencyCutMustBeRemoveOnly(uint8 action);
 
+    /// @dev Thrown when an emergency cut tries to remove the module's own cut entrypoint (`diamondCut` in
+    ///      {GovernedDiamondCut} and {SafeDiamondCut}; `scheduleCut`/`executeCut` in
+    ///      {GovernedSafeDiamondCut}) or a selector the admin needs to recover from an emergency stop
+    ///      (`emergencyResume`, `removeGuardian`, `revokeRole`). These are refused even while the frozen
+    ///      set is empty, so the guardian cannot remove the entrypoint or stop the diamond and then strip
+    ///      the admin's way to resume it. It can still remove other unfrozen selectors on the path to the
+    ///      entrypoint (see the Governor/Timelock note above).
+    /// @param selector The protected selector the emergency cut attempted to remove.
+    error EmergencyCutEntrypointProtected(bytes4 selector);
+
     /// @notice Zero-delay, removal-only emergency cut: instantly unbinds the supplied selectors from
     ///         the diamond. Callable ONLY by an EMERGENCY_GUARDIAN_ROLE holder, and — unlike the
     ///         governed `diamondCut` — it INTENTIONALLY works while EmergencyStop is engaged (it is the
     ///         panic button). Every FacetCut must use action `Remove` (revert
-    ///         {EmergencyCutMustBeRemoveOnly} otherwise); none may target a frozen selector (revert
-    ///         {IFrozenSelectors-FrozenSelectorProtected}); no init delegatecall is permitted (nothing
-    ///         to initialize on a pure removal). The removal is recorded in the {IUpgradeRegistry} and
+    ///         {EmergencyCutMustBeRemoveOnly} otherwise); none may target the cut entrypoint (revert
+    ///         {EmergencyCutEntrypointProtected}), a stop-recovery selector (same revert) or a frozen
+    ///         selector (revert {IFrozenSelectors-FrozenSelectorProtected}); no init delegatecall is
+    ///         permitted (nothing to initialize on a pure removal). The removal is recorded in the {IUpgradeRegistry} and
     ///         emits {EmergencyCutExecuted}.
     /// @param cuts The facet cuts to apply; every entry MUST be a `Remove` (facetAddress == address(0)).
     function emergencyRemoveCut(FacetCut[] calldata cuts) external;

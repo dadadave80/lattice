@@ -17,6 +17,15 @@ pragma solidity >=0.8.4;
 ///      G2 ENCODING: the `X_2` coordinate pairs are given in PRECOMPILE order `(c1, c0)` — imaginary
 ///      first, then real. When building from a snarkjs `vkey.json`, swap each pair:
 ///      `x2[0] = [X_2[0][1], X_2[0][0]]`. G1 points use affine `(x, y)`; the point at infinity is `(0, 0)`.
+///
+///      KEY PINNING: the verifier does not authenticate `vk`; it checks the proof against whatever key
+///      it is given. Its well-formedness check (domain size, on-curve points) is structural, and a
+///      malicious key passes it. Whoever generates a key can know its trapdoor and forge a proof for
+///      any input, so a consumer that forwards a caller-chosen key accepts every statement. Consumers
+///      MUST pin the key: compile it in as constants, or fix `keccak256(abi.encode(vk))` at deployment
+///      and check it on every call. A key in writable storage is only as trustworthy as whoever can
+///      write it, and the same holds for a verifier reached through a diamond whose cut authority can
+///      replace this facet. See `src/examples/privacy/` for both pinning patterns (shown for Groth16).
 interface IPlonkVerifier {
     /// @notice A PLONK proof over BN254 (snarkjs field order).
     struct Proof {
@@ -59,11 +68,16 @@ interface IPlonkVerifier {
     /// @dev Thrown when the number of public inputs is zero or does not match the circuit.
     error PlonkInvalidInputs();
 
+    /// @dev Thrown when an ecMul (0x07), ecAdd (0x06) or modexp (0x05) precompile call fails.
+    /// @param precompile The address of the failing precompile.
+    error PlonkPrecompileFailed(address precompile);
+
     /// @notice Verifies a PLONK proof against `vk` for the given public `input`.
     /// @dev Returns `false` (does not revert) for an invalid proof, an out-of-range public input
     ///      (`>= SNARK_SCALAR_FIELD`), an off-curve / out-of-range proof point, or a failed pairing.
-    ///      Reverts only on structural misuse (empty input).
-    /// @param vk The verifying key for the circuit.
+    ///      Reverts on structural misuse (empty input) or a failed ecMul/ecAdd/modexp precompile call.
+    /// @param vk The verifying key for the circuit. MUST be a key the consumer pins (see KEY PINNING
+    ///        above), never one taken from an untrusted caller.
     /// @param proof The PLONK proof.
     /// @param input The public inputs, in the circuit's public-signal order.
     /// @return True iff the proof is valid for `vk` and `input`.

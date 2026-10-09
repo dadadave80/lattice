@@ -17,6 +17,10 @@ pragma solidity >=0.8.4;
 ///      The adapter contract address must be whitelisted ("`kiss`ed") by the oracle operator before any
 ///      `read()` or `readWithAge()` call will succeed. Without whitelisting, calls will revert at the
 ///      Chronicle contract. Contact the Chronicle team or use the self-service portal to request access.
+///
+///      The adapter does NOT check an L2 sequencer-uptime feed and does NOT bound the answer to a sane range.
+///      Integrators that need either check read through the opt-in {IOracleGuard} (`OracleGuard` facet)
+///      instead of calling `latestAnswer` directly.
 interface IChronicleAdapter {
     // -------------------------------------------------------------------------
     //                                  Events

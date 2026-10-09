@@ -2,6 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {IERC721, IERC721Receiver} from "@lattice/interfaces/tokens/IERC721.sol";
+import {ERC721ConsecutiveLib} from "@lattice/tokens/ERC721/libraries/ERC721ConsecutiveLib.sol";
 import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
@@ -15,7 +16,8 @@ bytes32 constant ERC721_STORAGE_SLOT = 0xb57056eaff39f17dbb7656e3d0f4bee059cc8b0
 /// `keccak256(abi.encode(uint256(keccak256("diamond.lib.storage.ERC165")) - 1)) & ~bytes32(uint256(0xff))`.
 bytes32 constant ERC721_ERC165_STORAGE_LOCATION = 0x9ca7f3e2e2bfb15fdf072b85dde92837cddacee6cf2f6b38cd06c9457c1c4200;
 
-/// @dev 0x80ac58cd is `type(IERC721).interfaceId`.
+/// @dev 0x80ac58cd is the canonical EIP-721 id, NOT `type(IERC721).interfaceId`: Lattice's {IERC721} bundles the
+///      metadata extension, so its derived id is 0xdbf24b52. ERC-165 callers query the canonical id.
 /// `keccak256(abi.encode(bytes4(0x80ac58cd), 0x9ca7f3e2e2bfb15fdf072b85dde92837cddacee6cf2f6b38cd06c9457c1c4200))`.
 bytes32 constant ERC165_MAP_IERC721_SLOT = 0x741e8246930c2bfc93c4e7042569e8d7f42e535e31e366398006f597e42d38fb;
 
@@ -38,7 +40,15 @@ struct ERC721Storage {
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC721/ERC721.sol)
 /// @notice Library implementing the ERC-721 Non-Fungible Token standard.
-/// @dev Mirrors OpenZeppelin v5 ERC721 logic. All state lives in an ERC-7201 slot.
+/// @dev Mirrors OpenZeppelin v5.6.1 ERC721 logic. All state lives in an ERC-7201 slot.
+///      Hook model (decision D25, #234): {_update} calls no extension hook. An extension that gates or observes
+///      movement (Pausable, Enumerable, Votes) must replace the public `transferFrom` and both `safeTransferFrom`
+///      selectors instead, and two such extensions are mutually exclusive. A caller of {_mint}/{_burn}/{_update}
+///      outside those selectors (ERC721Burnable, ERC721Wrapper) bypasses them.
+///      The one exception is batch minting ({ERC721ConsecutiveLib}), which has no selector to replace: {_ownerOf}
+///      falls back to its ownership checkpoints, and {_update} applies its mint ban and burn bitmap, so every path
+///      sees batch-minted tokens.
+///      See docs/guides/selector-compatibility.md#token-extension-hook-model.
 library ERC721Lib {
     //*//////////////////////////////////////////////////////////////////////////
     //                              STORAGE ACCESS
@@ -170,8 +180,13 @@ library ERC721Lib {
     //////////////////////////////////////////////////////////////////////////*//
 
     /// @notice Returns the owner of `tokenId` without reverting (zero address if nonexistent).
-    function _ownerOf(uint256 tokenId) internal view returns (address) {
-        return erc721Storage()._owners[tokenId];
+    /// @dev An id with no stored owner falls back to the batch-mint checkpoints of {ERC721ConsecutiveLib}, as
+    ///      OpenZeppelin's ERC721Consecutive `_ownerOf` override does. On a diamond without batches that costs one
+    ///      SLOAD, on a mint or a lookup of a nonexistent id. On a batch-minting diamond an untransferred batch token
+    ///      also reads the burn bitmap and binary-searches the checkpoints.
+    function _ownerOf(uint256 tokenId) internal view returns (address owner) {
+        owner = erc721Storage()._owners[tokenId];
+        if (owner == address(0)) owner = ERC721ConsecutiveLib._sequentialOwnerOf(tokenId);
     }
 
     /// @notice Returns the approved address for `tokenId` without existence check.
@@ -197,7 +212,11 @@ library ERC721Lib {
     }
 
     /// @notice Central state mutation. Transfers `tokenId` to `to`, authorized by `auth`.
-    /// @dev If `auth` is non-zero, checks authorization. Returns previous owner.
+    /// @dev If `auth` is non-zero, checks authorization. Returns previous owner. Runs no extension hook (D25); it only
+    ///      keeps the batch-mint state of {ERC721ConsecutiveLib} consistent: a mint reverts
+    ///      {IERC721Consecutive.ERC721ForbiddenMint} during a batch-minting diamond's first initialization (which
+    ///      also reads the initializable slot on each mint there), and a burn marks a batch id burned (one SLOAD per
+    ///      burn, plus the bitmap write for a batch id).
     function _update(address to, uint256 tokenId, address auth) internal returns (address from) {
         from = _ownerOf(tokenId);
 
@@ -205,7 +224,9 @@ library ERC721Lib {
             _checkAuthorized(from, auth, tokenId);
         }
 
-        if (from != address(0)) {
+        if (from == address(0)) {
+            ERC721ConsecutiveLib._checkSingleMint();
+        } else {
             // Clear token approval on transfer. Pass address(0) as auth to skip authorization
             // check (no validation needed here) — matches OZ's _approve call in _update.
             _approve(address(0), tokenId, address(0), false);
@@ -218,6 +239,8 @@ library ERC721Lib {
             unchecked {
                 erc721Storage()._balances[to] += 1;
             }
+        } else if (from != address(0)) {
+            ERC721ConsecutiveLib._recordBurn(tokenId);
         }
 
         erc721Storage()._owners[tokenId] = to;
@@ -225,16 +248,18 @@ library ERC721Lib {
     }
 
     /// @notice Mints `tokenId` to `to`. Reverts if `to` is zero or token already exists.
+    /// @dev An existing id reverts {IERC721.ERC721InvalidSender} with `address(0)`, as OpenZeppelin does.
     function _mint(address to, uint256 tokenId) internal {
         if (to == address(0)) revert IERC721.ERC721InvalidReceiver(address(0));
         address previousOwner = _update(to, tokenId, address(0));
-        if (previousOwner != address(0)) revert IERC721.ERC721InvalidSender(previousOwner);
+        if (previousOwner != address(0)) revert IERC721.ERC721InvalidSender(address(0));
     }
 
     /// @notice Safely mints `tokenId` to `to`, calling receiver hook if `to` is a contract.
+    /// @dev The receiver sees `msg.sender` as `operator`, as OpenZeppelin does.
     function _safeMint(address to, uint256 tokenId, bytes memory data) internal {
         _mint(to, tokenId);
-        _checkOnERC721Received(address(0), address(0), to, tokenId, data);
+        _checkOnERC721Received(msg.sender, address(0), to, tokenId, data);
     }
 
     /// @notice Safely mints `tokenId` to `to` with empty data.
@@ -265,15 +290,18 @@ library ERC721Lib {
     }
 
     /// @notice Sets or unsets the approval of `operator` by `owner`.
+    /// @dev Reverts {IERC721.ERC721InvalidApprover} for a zero `owner` (added in OpenZeppelin v5.6), then
+    ///      {IERC721.ERC721InvalidOperator} for a zero `operator`.
     function _setApprovalForAll(address owner, address operator, bool approved) internal {
+        if (owner == address(0)) revert IERC721.ERC721InvalidApprover(address(0));
         if (operator == address(0)) revert IERC721.ERC721InvalidOperator(operator);
         erc721Storage()._operatorApprovals[owner][operator] = approved;
         emit IERC721.ApprovalForAll(owner, operator, approved);
     }
 
     /// @notice Increases the balance of `account` by `value` without minting a tracked token.
-    /// @dev Extension hook for ERC721Consecutive and similar patterns that synthesize ownership
-    ///      outside of the normal _owners mapping. Matches OZ's _increaseBalance.
+    /// @dev Used by {ERC721ConsecutiveLib._mintConsecutive}, whose batch owners live outside `_owners`. Matches OZ's
+    ///      _increaseBalance.
     function _increaseBalance(address account, uint128 value) internal {
         unchecked {
             erc721Storage()._balances[account] += value;
@@ -281,18 +309,23 @@ library ERC721Lib {
     }
 
     /// @notice Transfers `tokenId` from `from` to `to` bypassing msg.sender authorization.
-    /// @dev For permissioned or signature-based transfer mechanisms. Validates previous owner.
+    /// @dev For permissioned or signature-based transfer mechanisms. Validates that the token exists, so a zero
+    ///      `from` cannot mint, and that `from` is its previous owner.
     function _transfer(address from, address to, uint256 tokenId) internal {
         if (to == address(0)) revert IERC721.ERC721InvalidReceiver(address(0));
         address previousOwner = _update(to, tokenId, address(0));
-        if (previousOwner != from) revert IERC721.ERC721IncorrectOwner(from, tokenId, previousOwner);
+        if (previousOwner == address(0)) {
+            revert IERC721.ERC721NonexistentToken(tokenId);
+        } else if (previousOwner != from) {
+            revert IERC721.ERC721IncorrectOwner(from, tokenId, previousOwner);
+        }
     }
 
     /// @notice Safely transfers `tokenId` from `from` to `to` with `data`, bypassing authorization.
-    /// @dev Calls receiver hook if `to` is a contract.
+    /// @dev Calls receiver hook if `to` is a contract; the receiver sees `msg.sender` as `operator`.
     function _safeTransfer(address from, address to, uint256 tokenId, bytes memory data) internal {
         _transfer(from, to, tokenId);
-        _checkOnERC721Received(address(0), from, to, tokenId, data);
+        _checkOnERC721Received(msg.sender, from, to, tokenId, data);
     }
 
     /// @notice Reverts if `tokenId` does not exist. Returns the owner.

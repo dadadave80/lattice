@@ -26,7 +26,7 @@ contract LatticeAccount is AccessControl, AccountSigner, ERC4337Validation, ERC7
         external
         pure
         virtual
-        override(AccessControl, AccountSigner, ERC4337Validation, ERC7821Executor)
+        override(AccessControl, AccountSigner, ERC4337Validation, ERC7821Executor, SessionKey)
         returns (bytes memory)
     {}
 

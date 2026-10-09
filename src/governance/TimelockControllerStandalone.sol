@@ -30,7 +30,10 @@ contract TimelockControllerStandalone is TimelockController, AccessControl, Init
     /// @param minDelay The initial minimum delay for operations.
     /// @param proposers The addresses to grant PROPOSER_ROLE + CANCELLER_ROLE.
     /// @param executors The addresses to grant EXECUTOR_ROLE.
-    ///                  Pass address(0) in the array to allow open execution.
+    ///                  Pass address(0) in the array to allow open execution. When this timelock serves a
+    ///                  separate Governor, give EXECUTOR_ROLE to the governor only: this contract cannot read
+    ///                  the Governor's 14-day grace period, so an open executor could still run an Expired
+    ///                  proposal's operation.
     /// @param admin The address to grant DEFAULT_ADMIN_ROLE to.
     ///              Pass address(0) to leave administration to the timelock itself only.
     constructor(uint256 minDelay, address[] memory proposers, address[] memory executors, address admin) initializer {

@@ -17,4 +17,13 @@ contract Nonces {
     function nonces(address owner) public view virtual returns (uint256) {
         return NoncesLib.nonces(owner);
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect Nonces methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `nonces(address)` 0x7ecebe00
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors = hex"7ecebe00";
+    }
 }

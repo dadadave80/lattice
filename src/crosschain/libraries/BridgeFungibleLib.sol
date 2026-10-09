@@ -59,7 +59,8 @@ library BridgeFungibleLib {
         to = address(bytes20(toBinary));
     }
 
-    /// @notice ERC-20 `transfer` that tolerates no-return-data tokens (USDT) and reverts on failure.
+    /// @notice ERC-20 `transfer` that tolerates no-return-data tokens (USDT) and reverts on failure or when
+    ///         `token` has no code.
     function safeTransfer(address token, address to, uint256 amount) internal {
         _call(token, abi.encodeWithSelector(IERC20.transfer.selector, to, amount));
     }
@@ -67,16 +68,18 @@ library BridgeFungibleLib {
     /// @notice Pulls EXACTLY `amount` of `token` from `from` into this contract; reverts if the measured
     ///         balance delta differs (rejects fee-on-transfer tokens, which would break the 1:1 invariant).
     function pullExact(address token, address from, uint256 amount) internal {
+        // slither-disable-next-line reentrancy-balance deliberate balance delta that rejects fee-on-transfer tokens
         uint256 balanceBefore = IERC20(token).balanceOf(address(this));
         _call(token, abi.encodeWithSelector(IERC20.transferFrom.selector, from, address(this), amount));
         uint256 received = IERC20(token).balanceOf(address(this)) - balanceBefore;
         if (received != amount) revert IBridgeFungible.BridgeAmountMismatch(amount, received);
     }
 
-    /// @dev Low-level ERC-20 call: reverts on a failed call or an explicit `false` return.
+    /// @dev Low-level ERC-20 call: reverts on a failed call, an explicit `false` return, or empty return data
+    ///      from an address with no code (matches OpenZeppelin SafeERC20).
     function _call(address token, bytes memory data) private {
         (bool ok, bytes memory ret) = token.call(data);
-        if (!ok || (ret.length > 0 && !abi.decode(ret, (bool)))) {
+        if (!ok || (ret.length == 0 ? token.code.length == 0 : !abi.decode(ret, (bool)))) {
             revert IBridgeFungible.BridgeTransferFailed(token);
         }
     }

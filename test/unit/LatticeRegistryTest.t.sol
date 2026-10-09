@@ -358,6 +358,74 @@ contract LatticeRegistryTest is Test {
     }
 
     //*//////////////////////////////////////////////////////////////////////////
+    //                       batch views — getMany / latestMany
+    //////////////////////////////////////////////////////////////////////////*//
+
+    function _key(bytes32 nameHash, uint64 version) internal pure returns (ILatticeRegistry.RecordKey memory) {
+        return ILatticeRegistry.RecordKey({nameHash: nameHash, version: version});
+    }
+
+    /// @notice `getMany` returns exactly what `get` returns per key, in order, and a version-0 key reads the
+    ///         record `latest` points at (as a factory recipe entry with version 0 resolves).
+    function test_GetManyMatchesGetAndResolvesLatestForVersionZero() public {
+        _registerValid(NAME_A, _v(1, 0, 0));
+        _registerValid(NAME_A, _v(2, 0, 0));
+        _registerValid(NAME_B, _v(1, 0, 0));
+        vm.prank(owner);
+        registry.setLatest(NAME_A, _v(1, 0, 0));
+
+        ILatticeRegistry.RecordKey[] memory keys = new ILatticeRegistry.RecordKey[](3);
+        keys[0] = _key(NAME_B, _v(1, 0, 0));
+        keys[1] = _key(NAME_A, 0);
+        keys[2] = _key(NAME_A, _v(2, 0, 0));
+        ILatticeRegistry.Record[] memory records = registry.getMany(keys);
+
+        assertEq(records.length, 3, "one record per key");
+        assertEq(abi.encode(records[0]), abi.encode(registry.get(NAME_B, _v(1, 0, 0))), "pinned key");
+        assertEq(abi.encode(records[1]), abi.encode(registry.get(NAME_A, _v(1, 0, 0))), "version 0 reads latest");
+        assertEq(abi.encode(records[2]), abi.encode(registry.get(NAME_A, _v(2, 0, 0))), "order kept");
+        assertEq(registry.getMany(new ILatticeRegistry.RecordKey[](0)).length, 0, "empty batch");
+    }
+
+    /// @notice `getMany` reverts with the error the single-record view would raise for the first bad key.
+    function test_GetManyRevertsOnMissingRecordOrUnsetLatest() public {
+        _registerValid(NAME_A, _v(1, 0, 0));
+        ILatticeRegistry.RecordKey[] memory keys = new ILatticeRegistry.RecordKey[](2);
+        keys[0] = _key(NAME_A, _v(1, 0, 0));
+        keys[1] = _key(NAME_B, _v(1, 0, 0));
+        vm.expectRevert(
+            abi.encodeWithSelector(ILatticeRegistry.LatticeRegistry__RecordNotFound.selector, NAME_B, _v(1, 0, 0))
+        );
+        registry.getMany(keys);
+
+        keys[1] = _key(NAME_A, 0);
+        vm.expectRevert(abi.encodeWithSelector(ILatticeRegistry.LatticeRegistry__LatestUnset.selector, NAME_A));
+        registry.getMany(keys);
+    }
+
+    /// @notice `latestMany` returns `latest(n)` per name, in order, and reverts on the first unset name.
+    function test_LatestManyMatchesLatest() public {
+        _registerValid(NAME_A, _v(1, 0, 0));
+        _registerValid(NAME_B, _v(3, 0, 0));
+        vm.startPrank(owner);
+        registry.setLatest(NAME_A, _v(1, 0, 0));
+        registry.setLatest(NAME_B, _v(3, 0, 0));
+        vm.stopPrank();
+
+        bytes32[] memory names = new bytes32[](2);
+        names[0] = NAME_B;
+        names[1] = NAME_A;
+        ILatticeRegistry.Record[] memory records = registry.latestMany(names);
+        assertEq(abi.encode(records[0]), abi.encode(registry.latest(NAME_B)), "first");
+        assertEq(abi.encode(records[1]), abi.encode(registry.latest(NAME_A)), "second");
+
+        bytes32 unset = keccak256("lattice.Unset");
+        names[1] = unset;
+        vm.expectRevert(abi.encodeWithSelector(ILatticeRegistry.LatticeRegistry__LatestUnset.selector, unset));
+        registry.latestMany(names);
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
     //                    getSelectors / getCut + drift (I2)
     //////////////////////////////////////////////////////////////////////////*//
 

@@ -17,7 +17,11 @@ import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib
 ///         two-token, NFT-wrapped concentrated-liquidity position that does not fit the single-asset
 ///         `IStrategy` surface cleanly. Compromises (all documented in `UniswapV3AdapterLib`):
 ///         full-range only (no active range management), swap-free (the keeper funds both tokens),
-///         `asset` == token0, and NAV valued from the pool **TWAP** (`observe`), never `slot0` spot.
+///         `asset` == token0, and NAV counts token0 only (idle token0 plus the position's token0 leg),
+///         valued from the pool **TWAP** (`observe`), never `slot0` spot. A deploy, priced by the pool at
+///         spot, is refused when it would step that NAV by more than `slippageBps` of the token0 it
+///         consumes. A recall pays idle token0 only; the admin's `emergencyWithdraw` is the sole exit
+///         from the position.
 ///         All logic lives in UniswapV3AdapterLib.
 /// @dev Provenance: Uniswap V3 core (https://github.com/Uniswap/v3-core) + periphery
 ///      NonfungiblePositionManager (https://github.com/Uniswap/v3-periphery). The facet implements
@@ -178,5 +182,40 @@ contract UniswapV3Adapter is IStrategy, IProtocolAdapter, IAdapterOperator, IUni
     ///      real NFPM cannot revert.
     function onERC721Received(address, address, uint256, bytes calldata) external virtual returns (bytes4) {
         return this.onERC721Received.selector;
+    }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect UniswapV3Adapter methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `asset()` 0x38d52e0f
+    ///      `deploy()` 0x775c300c
+    ///      `emergencyWithdraw()` 0xdb2e21bc
+    ///      `fee()` 0xddca3f43
+    ///      `harvest()` 0x4641257d
+    ///      `healthFactor()` 0x22841f01
+    ///      `isPaused()` 0xb187bd26
+    ///      `minHealthFactor()` 0xe1b4264c
+    ///      `onERC721Received(address,address,uint256,bytes)` 0x150b7a02
+    ///      `operator()` 0x570ca735
+    ///      `pool()` 0x16f0115b
+    ///      `positionManager()` 0x791b98bc
+    ///      `reentrancyGuardEntered()` 0xd2c725e0
+    ///      `rewardRecipient()` 0x17f33340
+    ///      `setOperator(address)` 0xb3ab15fb
+    ///      `setRewardRecipient(address)` 0xe521136f
+    ///      `setSlippageBps(uint256)` 0x1a3ce4e6
+    ///      `setTwapWindow(uint32)` 0x5f553545
+    ///      `slippageBps()` 0x578c71d9
+    ///      `token0()` 0x0dfe1681
+    ///      `token1()` 0xd21220a7
+    ///      `tokenId()` 0x17d70f7c
+    ///      `totalAssetsManaged()` 0x613c822b
+    ///      `twapWindow()` 0x8107e133
+    ///      `vault()` 0xfbfa77cf
+    ///      `withdraw(uint256,address)` 0x00f714ce
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors =
+            hex"38d52e0f775c300cdb2e21bcddca3f434641257d22841f01b187bd26e1b4264c150b7a02570ca73516f0115b791b98bcd2c725e017f33340b3ab15fbe521136f1a3ce4e65f553545578c71d90dfe1681d21220a717d70f7c613c822b8107e133fbfa77cf00f714ce";
     }
 }

@@ -78,6 +78,8 @@ contract MockAmmPool is ConstantProduct, AccessControl, Initializable {
 //////////////////////////////////////////////////////////////////////////*//
 
 /// @notice Handler for ConstantProduct K and LP supply invariant tests.
+/// @dev Inputs are bounded and zero-output liquidity actions skipped, so every action is revert-free under
+///      `fail_on_revert`.
 contract ConstantProductHandler is Test {
     MockAmmPool public pool;
     AmmToken public token0;
@@ -137,8 +139,13 @@ contract ConstantProductHandler is Test {
 
     function addLiquidity(uint256 actorSeed, uint256 amount0, uint256 amount1) external {
         address actor = _actor(actorSeed);
-        amount0 = bound(amount0, 1000, token0.balanceOf(actor) / 2 + 1);
-        amount1 = bound(amount1, 1000, token1.balanceOf(actor) / 2 + 1);
+        uint256 bal0 = token0.balanceOf(actor);
+        uint256 bal1 = token1.balanceOf(actor);
+        if (bal0 < 2000 || bal1 < 2000) return;
+        amount0 = bound(amount0, 1000, bal0 / 2 + 1);
+        amount1 = bound(amount1, 1000, bal1 / 2 + 1);
+        // Skip deposits that would mint zero LP shares (ConstantProductInsufficientLiquidityMinted).
+        if (_previewLiquidity(amount0, amount1) == 0) return;
         _touchLp(actor);
         vm.prank(actor);
         pool.addLiquidity(amount0, amount1, 0, 0, actor);
@@ -149,8 +156,31 @@ contract ConstantProductHandler is Test {
         uint256 lpBal = pool.lpBalanceOf(actor);
         if (lpBal == 0) return;
         lpAmount = bound(lpAmount, 1, lpBal);
+        // Skip burns that would return zero of either token (ConstantProductInsufficientLiquidityBurned).
+        (uint256 r0, uint256 r1,) = pool.getReserves();
+        uint256 supply = pool.totalLpSupply();
+        if (lpAmount * r0 / supply == 0 || lpAmount * r1 / supply == 0) return;
         vm.prank(actor);
         pool.removeLiquidity(lpAmount, 0, 0, actor);
+    }
+
+    /// @dev Mirrors `ConstantProductLib.addLiquidity`'s LP-share math; returns 0 where the pool would revert.
+    function _previewLiquidity(uint256 amount0, uint256 amount1) internal view returns (uint256) {
+        (uint256 r0, uint256 r1,) = pool.getReserves();
+        uint256 supply = pool.totalLpSupply();
+        if (supply == 0) {
+            // First deposit: the pool reverts unless sqrt(amount0 * amount1) > MINIMUM_LIQUIDITY.
+            return amount0 * amount1 < (MINIMUM_LIQUIDITY + 1) * (MINIMUM_LIQUIDITY + 1) ? 0 : 1;
+        }
+        uint256 amount1Optimal = amount0 * r1 / r0;
+        if (amount1Optimal <= amount1) {
+            amount1 = amount1Optimal;
+        } else {
+            amount0 = amount1 * r0 / r1;
+        }
+        uint256 liq0 = amount0 * supply / r0;
+        uint256 liq1 = amount1 * supply / r1;
+        return liq0 < liq1 ? liq0 : liq1;
     }
 
     function swapForward(uint256 actorSeed, uint256 amountIn) external {
@@ -193,7 +223,8 @@ contract ConstantProductHandler is Test {
 
 /// @title ConstantProductKInvariant
 /// @notice Invariant: K never decreases after a swap (fees cause it to monotonically increase).
-///         Also: total LP supply matches the sum of all LP balances (excluding locked MINIMUM_LIQUIDITY).
+///         Also: total LP supply matches the sum of all LP balances (excluding locked MINIMUM_LIQUIDITY), and
+///         the recorded reserves equal the pool's token balances.
 contract ConstantProductKInvariant is Test {
     MockAmmPool internal pool;
     AmmToken internal token0;
@@ -225,11 +256,22 @@ contract ConstantProductKInvariant is Test {
     /// @notice K must never decrease as a result of a swap.
     /// Uses a persistent ghost flag set inside the handler to avoid false positives from
     /// liquidity removals that legitimately reduce K.
+    /// forge-config: default.invariant.fail-on-revert = true
     function invariant_KMonotonicOnSwap() public view {
         assertFalse(handler.kViolated(), "K decreased after swap");
     }
 
+    /// @notice The recorded reserves equal the pool's token balances: no handler action donates to the pool, so
+    ///         any drift means a reserve update and a transfer disagreed.
+    /// forge-config: default.invariant.fail-on-revert = true
+    function invariant_ReservesMatchBalances() public view {
+        (uint256 r0, uint256 r1,) = pool.getReserves();
+        assertEq(r0, token0.balanceOf(address(pool)), "reserve0 != token0 balance");
+        assertEq(r1, token1.balanceOf(address(pool)), "reserve1 != token1 balance");
+    }
+
     /// @notice totalLpSupply == sum of LP balances for all providers + MINIMUM_LIQUIDITY locked at address(1).
+    /// forge-config: default.invariant.fail-on-revert = true
     function invariant_LpSupplyConsistent() public view {
         address[] memory providers = handler.lpProviders();
         uint256 sum = pool.lpBalanceOf(address(1)); // locked MINIMUM_LIQUIDITY

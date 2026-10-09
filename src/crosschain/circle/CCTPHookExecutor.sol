@@ -16,8 +16,12 @@ import {ICCTPHookReceiver} from "@lattice/interfaces/crosschain/ICCTPHookReceive
 /// @dev CCTP does NOT execute hooks; the destination recipient does. This executor is that recipient's
 ///      indirection: {executeHook} is gated to the immutable {relay} diamond and calls the target with the FIXED
 ///      {ICCTPHookReceiver-onCCTPHook} selector via assembly, forwarding no value, dropping ALL returndata
-///      (return-bomb safe) and NEVER bubbling the target's revert — it returns a plain `bool success`. Every
-///      context argument the relay passes is read from the Circle-ATTESTED message, never from `hookData`.
+///      (return-bomb safe) and NEVER bubbling the target's revert — it returns a plain `bool success`. The one
+///      exception is a target that exhausts the gas of its OWN frame ({CCTPHookOutOfGas}): that reverts the whole
+///      relay, so a relayer cannot starve the target's own frame while the mint stands. An out-of-gas inside a
+///      sub-call the target makes is NOT visible here — the target reverts normally and this returns `false` —
+///      unless the target re-raises it as {ICCTPHookReceiver} requires. Every context argument the relay passes
+///      is read from the Circle-ATTESTED message, never from `hookData`.
 contract CCTPHookExecutor is ICCTPHookExecutor {
     /// @inheritdoc ICCTPHookExecutor
     address public immutable relay;
@@ -46,8 +50,17 @@ contract CCTPHookExecutor is ICCTPHookExecutor {
 
         // Low-level call: forward no value, copy NO returndata (return-bomb safe), and let a reverting target
         // surface only as `success == false` — the relay is LENIENT (the mint already stands, nonce consumed).
+        uint256 gasBefore;
         assembly ("memory-safe") {
+            gasBefore := gas()
             success := call(gas(), target, 0, add(callData, 0x20), mload(callData), 0x00, 0x00)
         }
+
+        // EIP-150 starvation check: the target got at most 63/64 of `gasBefore`, so a failure that leaves only
+        // ~1/64 behind means it ran out of gas — possibly because the relayer under-funded the call. Revert the
+        // whole relay instead of reporting `false`, so the mint and the CCTP nonce unwind for an honest retry.
+        // A target that reverts on its own keeps its unspent gas and still yields `false` — including one whose
+        // SUB-call ran out of gas, since its frame keeps a 1/64 reserve (see {ICCTPHookReceiver}).
+        if (!success && gasleft() <= gasBefore / 63) revert CCTPHookOutOfGas();
     }
 }

@@ -7,14 +7,31 @@ description: >-
   populates), so each job runs actions/checkout inline before
   `uses: ./.github/actions/foundry-setup`.
 
+inputs:
+  cache-key:
+    description: >-
+      RPC cache key, passed to foundry-toolchain. Empty keeps the toolchain's
+      default (job id + sha). Matrix jobs pass a key per matrix entry, since
+      they share one job id.
+    required: false
+    default: ""
+  cache-restore-keys:
+    description: >-
+      RPC cache restore-key prefixes, passed to foundry-toolchain. Empty keeps
+      the toolchain's default (job id).
+    required: false
+    default: ""
+
 runs:
   using: composite
   steps:
     # Use the same stable release for every job and local development.
     - name: Install Foundry
-      uses: foundry-rs/foundry-toolchain@v1
+      uses: foundry-rs/foundry-toolchain@908c540300062bd5a7e473851cdb4282204cee09 # v1.9.1
       with:
         version: v1.8.5
+        cache-key: ${{ inputs.cache-key || format('{0}-{1}', github.job, github.sha) }}
+        cache-restore-keys: ${{ inputs.cache-restore-keys || format('{0}-', github.job) }}
 
     - name: Show Forge version
       shell: bash

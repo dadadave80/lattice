@@ -13,11 +13,11 @@ pragma solidity ^0.8.30;
 ///      artifact contract names exactly: the registry key is `keccak256("lattice.<name>")` and the facet
 ///      deploy salt is `keccak256("lattice.<name>.<version>")`, so renaming an entry re-derives BOTH.
 library FacetInventory {
-    /// @notice The 105 release facets (101 Lattice + 4 diamond-lib core) as (contract name, `"<file>:<Name>"` deploy path) pairs.
+    /// @notice The 129 release facets (125 Lattice + 4 diamond-lib core) as (contract name, `"<file>:<Name>"` deploy path) pairs.
     /// @return names The facet contract names (registry name = `"lattice." ++ name`).
     /// @return paths The matching `vm.getCode`/`deployCode` artifact paths, index-aligned with `names`.
     function inventory() internal pure returns (string[] memory names, string[] memory paths) {
-        string[105] memory n = [
+        string[129] memory n = [
             "AcrossBridgeAdapter",
             "AxelarGatewayAdapter",
             "BridgeERC20",
@@ -52,12 +52,18 @@ library FacetInventory {
             "HederaExchangeRateAdapter",
             "HederaPrngAdapter",
             "HSSAdapter",
+            "OracleGuard",
             "PythAdapter",
             "PythEntropyAdapter",
             "RedStoneAdapter",
             "TellorAdapter",
             "TWAPOracle",
             "ERC1155",
+            "ERC1155Burnable",
+            "ERC1155Pausable",
+            "ERC1155Supply",
+            "ERC1155URIStorage",
+            "ERC1363",
             "ERC20",
             "ERC20Burnable",
             "ERC20Capped",
@@ -66,26 +72,42 @@ library FacetInventory {
             "ERC20Pausable",
             "ERC20Permit",
             "ERC20Votes",
+            "ERC20Wrapper",
             "ERC2981",
             "ERC4626",
             "ERC721",
+            "ERC721Burnable",
+            "ERC721Enumerable",
+            "ERC721Pausable",
+            "ERC721URIStorage",
+            "ERC721Votes",
+            "ERC721Wrapper",
             "ERC7802",
             "HTSAdapter",
             "MarketplaceZone",
             "AccountSigner",
             "ERC1271Signature",
             "ERC4337Validation",
+            "ERC6551Account",
             "ERC6900AccountView",
             "ERC6900Executor",
             "ERC6900ModuleManager",
             "ERC6900Signature",
             "ERC6900Validation",
+            "ERC7579ModuleConfig",
             "ERC7821Executor",
             "HASSignatureVerifier",
+            "SessionKey",
             "ConstantProduct",
+            "AaveV3Adapter",
             "AggregatorExecAdapter",
+            "CompoundV3Adapter",
+            "CurveStableSwapAdapter",
+            "ERC4626Adapter",
             "GovernedVault",
+            "LidoAdapter",
             "StrategyManager",
+            "UniswapV3Adapter",
             "VaultCore",
             "CommitReveal",
             "ERC5564Announcer",
@@ -118,6 +140,8 @@ library FacetInventory {
             "ENSSubnameIssuer",
             "EIP712",
             "Multicall",
+            "Nonces",
+            "VestingWallet",
             "Receive",
             // diamond-lib core facets (>=0.2.0 they implement IFacet/ERC-8153, so they are releasable —
             // release-versioned like every entry; the loupe entry is what lets factory recipes satisfy
@@ -127,7 +151,7 @@ library FacetInventory {
             "ERC165Facet",
             "OwnableFacet"
         ];
-        string[105] memory p = [
+        string[129] memory p = [
             "src/crosschain/across/AcrossBridgeAdapter.sol:AcrossBridgeAdapter",
             "src/crosschain/axelar/AxelarGatewayAdapter.sol:AxelarGatewayAdapter",
             "src/crosschain/BridgeERC20.sol:BridgeERC20",
@@ -162,12 +186,18 @@ library FacetInventory {
             "src/oracles/hedera/HederaExchangeRateAdapter.sol:HederaExchangeRateAdapter",
             "src/oracles/hedera/HederaPrngAdapter.sol:HederaPrngAdapter",
             "src/oracles/hedera/HSSAdapter.sol:HSSAdapter",
+            "src/oracles/OracleGuard.sol:OracleGuard",
             "src/oracles/pyth/PythAdapter.sol:PythAdapter",
             "src/oracles/pyth/PythEntropyAdapter.sol:PythEntropyAdapter",
             "src/oracles/redstone/RedStoneAdapter.sol:RedStoneAdapter",
             "src/oracles/tellor/TellorAdapter.sol:TellorAdapter",
             "src/oracles/uniswap/TWAPOracle.sol:TWAPOracle",
             "src/tokens/ERC1155/ERC1155.sol:ERC1155",
+            "src/tokens/ERC1155/ERC1155Burnable.sol:ERC1155Burnable",
+            "src/tokens/ERC1155/ERC1155Pausable.sol:ERC1155Pausable",
+            "src/tokens/ERC1155/ERC1155Supply.sol:ERC1155Supply",
+            "src/tokens/ERC1155/ERC1155URIStorage.sol:ERC1155URIStorage",
+            "src/tokens/ERC20/ERC1363.sol:ERC1363",
             "src/tokens/ERC20/ERC20.sol:ERC20",
             "src/tokens/ERC20/ERC20Burnable.sol:ERC20Burnable",
             "src/tokens/ERC20/ERC20Capped.sol:ERC20Capped",
@@ -176,26 +206,42 @@ library FacetInventory {
             "src/tokens/ERC20/ERC20Pausable.sol:ERC20Pausable",
             "src/tokens/ERC20/ERC20Permit.sol:ERC20Permit",
             "src/tokens/ERC20/ERC20Votes.sol:ERC20Votes",
+            "src/tokens/ERC20/ERC20Wrapper.sol:ERC20Wrapper",
             "src/tokens/ERC2981/ERC2981.sol:ERC2981",
             "src/tokens/ERC4626/ERC4626.sol:ERC4626",
             "src/tokens/ERC721/ERC721.sol:ERC721",
+            "src/tokens/ERC721/ERC721Burnable.sol:ERC721Burnable",
+            "src/tokens/ERC721/ERC721Enumerable.sol:ERC721Enumerable",
+            "src/tokens/ERC721/ERC721Pausable.sol:ERC721Pausable",
+            "src/tokens/ERC721/ERC721URIStorage.sol:ERC721URIStorage",
+            "src/tokens/ERC721/ERC721Votes.sol:ERC721Votes",
+            "src/tokens/ERC721/ERC721Wrapper.sol:ERC721Wrapper",
             "src/tokens/ERC7802/ERC7802.sol:ERC7802",
             "src/tokens/hedera/HTSAdapter.sol:HTSAdapter",
             "src/tokens/MarketplaceZone.sol:MarketplaceZone",
             "src/accounts/erc7579/AccountSigner.sol:AccountSigner",
             "src/accounts/ERC1271Signature.sol:ERC1271Signature",
             "src/accounts/ERC4337Validation.sol:ERC4337Validation",
+            "src/accounts/ERC6551Account.sol:ERC6551Account",
             "src/accounts/erc6900/ERC6900AccountView.sol:ERC6900AccountView",
             "src/accounts/erc6900/ERC6900Executor.sol:ERC6900Executor",
             "src/accounts/erc6900/ERC6900ModuleManager.sol:ERC6900ModuleManager",
             "src/accounts/erc6900/ERC6900Signature.sol:ERC6900Signature",
             "src/accounts/erc6900/ERC6900Validation.sol:ERC6900Validation",
+            "src/accounts/erc7579/ERC7579ModuleConfig.sol:ERC7579ModuleConfig",
             "src/accounts/erc7579/ERC7821Executor.sol:ERC7821Executor",
             "src/accounts/hedera/HASSignatureVerifier.sol:HASSignatureVerifier",
+            "src/accounts/SessionKey.sol:SessionKey",
             "src/amm/ConstantProduct.sol:ConstantProduct",
+            "src/defi/AaveV3Adapter.sol:AaveV3Adapter",
             "src/defi/AggregatorExecAdapter.sol:AggregatorExecAdapter",
+            "src/defi/CompoundV3Adapter.sol:CompoundV3Adapter",
+            "src/defi/CurveStableSwapAdapter.sol:CurveStableSwapAdapter",
+            "src/defi/ERC4626Adapter.sol:ERC4626Adapter",
             "src/defi/GovernedVault.sol:GovernedVault",
+            "src/defi/LidoAdapter.sol:LidoAdapter",
             "src/defi/StrategyManager.sol:StrategyManager",
+            "src/defi/UniswapV3Adapter.sol:UniswapV3Adapter",
             "src/defi/VaultCore.sol:VaultCore",
             "src/privacy/CommitReveal.sol:CommitReveal",
             "src/privacy/ERC5564Announcer.sol:ERC5564Announcer",
@@ -228,6 +274,8 @@ library FacetInventory {
             "src/ens/ENSSubnameIssuer.sol:ENSSubnameIssuer",
             "src/utils/EIP712.sol:EIP712",
             "src/utils/Multicall.sol:Multicall",
+            "src/utils/Nonces.sol:Nonces",
+            "src/utils/VestingWallet.sol:VestingWallet",
             "src/Receive.sol:Receive",
             // basename identifiers: lib sources compile to out/<File>.sol/<Name>.json, so the
             // dir-qualified "lib/..." form does not resolve for vm.getCode/deployCode.
@@ -236,9 +284,9 @@ library FacetInventory {
             "ERC165Facet.sol:ERC165Facet",
             "OwnableFacet.sol:OwnableFacet"
         ];
-        names = new string[](105);
-        paths = new string[](105);
-        for (uint256 i; i < 105; ++i) {
+        names = new string[](129);
+        paths = new string[](129);
+        for (uint256 i; i < 129; ++i) {
             names[i] = n[i];
             paths[i] = p[i];
         }

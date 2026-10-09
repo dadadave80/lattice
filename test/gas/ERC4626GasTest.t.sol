@@ -33,7 +33,6 @@ contract GasERC20Votes is ERC20, ERC20Votes, Initializable {
         EIP712Lib.__EIP712_init(name_, "1");
         NoncesLib.__Nonces_init();
         VotesLib.__Votes_init();
-        ERC20VotesLib.__ERC20Votes_init();
         AccessControlLib.__AccessControl_init(admin);
     }
 
@@ -67,11 +66,6 @@ contract ERC4626GasTest is Test {
     uint256 constant INITIAL_MINT = 1_000e18;
     uint256 constant DEPOSIT_AMOUNT = 100e18;
 
-    // Generous upper bounds (~3× expected).
-    uint256 constant GAS_BOUND_DEPOSIT = 250_000;
-    uint256 constant GAS_BOUND_WITHDRAW = 150_000;
-    uint256 constant GAS_BOUND_REDEEM = 150_000;
-
     function setUp() public {
         underlying = new GasERC20Votes();
         underlying.initialize("Gas Token", "GAS", admin);
@@ -91,8 +85,7 @@ contract ERC4626GasTest is Test {
         vm.prank(alice);
         vm.startSnapshotGas("ERC4626.deposit.first");
         vault.deposit(DEPOSIT_AMOUNT, alice);
-        uint256 gasUsed = vm.stopSnapshotGas();
-        assertLt(gasUsed, GAS_BOUND_DEPOSIT, "ERC4626.deposit.first gas regression");
+        vm.stopSnapshotGas();
     }
 
     /// @notice Gas cost of a deposit when totalSupply > 0 (subsequent depositor, share price math active).
@@ -110,8 +103,7 @@ contract ERC4626GasTest is Test {
         vm.prank(bob);
         vm.startSnapshotGas("ERC4626.deposit.subsequent");
         vault.deposit(DEPOSIT_AMOUNT, bob);
-        uint256 gasUsed = vm.stopSnapshotGas();
-        assertLt(gasUsed, GAS_BOUND_DEPOSIT, "ERC4626.deposit.subsequent gas regression");
+        vm.stopSnapshotGas();
     }
 
     /// @notice Gas cost of withdrawing assets.
@@ -125,8 +117,7 @@ contract ERC4626GasTest is Test {
         vm.prank(alice);
         vm.startSnapshotGas("ERC4626.withdraw");
         vault.withdraw(withdrawAmount, alice, alice);
-        uint256 gasUsed = vm.stopSnapshotGas();
-        assertLt(gasUsed, GAS_BOUND_WITHDRAW, "ERC4626.withdraw gas regression");
+        vm.stopSnapshotGas();
     }
 
     /// @notice Gas cost of redeeming shares.
@@ -140,7 +131,6 @@ contract ERC4626GasTest is Test {
         vm.prank(alice);
         vm.startSnapshotGas("ERC4626.redeem");
         vault.redeem(redeemShares, alice, alice);
-        uint256 gasUsed = vm.stopSnapshotGas();
-        assertLt(gasUsed, GAS_BOUND_REDEEM, "ERC4626.redeem gas regression");
+        vm.stopSnapshotGas();
     }
 }

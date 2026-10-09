@@ -1,0 +1,137 @@
+name: Scheduled
+
+permissions: {}
+
+# Weekly lanes that are too slow or too RPC-dependent for every PR: the fork suites against archive RPC
+# secrets, a coverage report and the deep invariant campaign. None is a required check or part of `CI OK`.
+# A scheduled run uses this file from the default branch and tests `dev`; a manual run tests the ref it is
+# dispatched on.
+on:
+  schedule:
+    - cron: "23 5 * * 1" # Mondays 05:23 UTC
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  FOUNDRY_PROFILE: ci
+
+jobs:
+  # One lane per RPC group, so a missing or failing endpoint fails only its own lane. script/fork-lanes.sh assigns
+  # every suite to a lane (`make scripts-check` fails on an unassigned suite, or on a suite that reads an RPC its
+  # lane lacks); suites that span chains share the cctp-testnet lane. The Hedera suites are a manual opt-in.
+  fork:
+    name: Fork tests (${{ matrix.lane }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        lane:
+          - mainnet
+          - sepolia
+          - base-sepolia
+          - cctp-testnet
+    env:
+      LANE: ${{ matrix.lane }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event_name == 'schedule' && 'dev' || github.ref }}
+          submodules: recursive
+          persist-credentials: false
+      # A lane without its secret would skip every suite and still pass, so a missing secret (or a matrix lane
+      # the script does not define) fails the lane.
+      - name: Require the lane's archive RPC secrets
+        env:
+          MAINNET_RPC_URL: ${{ secrets.MAINNET_RPC_URL }}
+          SEPOLIA_RPC_URL: ${{ secrets.SEPOLIA_RPC_URL }}
+          BASE_SEPOLIA_RPC_URL: ${{ secrets.BASE_SEPOLIA_RPC_URL }}
+          ARC_TESTNET_RPC_URL: ${{ secrets.ARC_TESTNET_RPC_URL }}
+        run: ./script/fork-lanes.sh require "$LANE"
+      # Each lane keeps its own RPC cache. With the toolchain's default key (job id + sha) all four lanes share one
+      # key, so only the first lane to finish saves its chains and the others start cold the next week.
+      - uses: ./.github/actions/foundry-setup
+        with:
+          cache-key: fork-${{ matrix.lane }}-${{ github.sha }}
+          cache-restore-keys: fork-${{ matrix.lane }}-
+      # FORK_REQUIRE_ARCHIVE turns the skips that could hide a regression into failures: a pruned pinned block, an
+      # emptied CCTP fixture, a pin without the v0.9 EntryPoint (test/helpers/ArchiveFork.sol). A fixed fuzz seed
+      # lets the lane's RPC cache serve fuzzed fork tests. A run whose log shows an RPC error reruns the whole lane
+      # once (not `forge test --rerun`, which skips a suite whose setUp failed).
+      - name: Run the lane's fork suites
+        env:
+          MAINNET_RPC_URL: ${{ secrets.MAINNET_RPC_URL }}
+          SEPOLIA_RPC_URL: ${{ secrets.SEPOLIA_RPC_URL }}
+          BASE_SEPOLIA_RPC_URL: ${{ secrets.BASE_SEPOLIA_RPC_URL }}
+          ARC_TESTNET_RPC_URL: ${{ secrets.ARC_TESTNET_RPC_URL }}
+          FORK_REQUIRE_ARCHIVE: "true"
+          FOUNDRY_FUZZ_SEED: "0x1a77ce"
+        run: ./script/fork-lanes.sh run "$LANE"
+
+  coverage:
+    name: Coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event_name == 'schedule' && 'dev' || github.ref }}
+          submodules: recursive
+          persist-credentials: false
+      - uses: ./.github/actions/foundry-setup
+      # `make coverage`, plus lcov.info for the artifact below. Coverage builds without the optimizer, so FORGE_SNAPSHOT_EMIT=false
+      # keeps the gas tests from rewriting snapshots/ with unoptimized numbers.
+      - name: Coverage summary
+        env:
+          FORGE_SNAPSHOT_EMIT: "false"
+        run: |
+          set -euo pipefail
+          forge coverage --report summary --md --report lcov --no-match-path 'test/fork/*' \
+            --no-match-coverage '(test|script)/' | tee coverage.md
+          {
+            echo "## Coverage of src/ (fork suites excluded) at $(git rev-parse --short HEAD)"
+            echo
+            sed -n '/^| File /,$p' coverage.md | grep -E '^\| (File|Total) |^\|-'
+            echo
+            echo "<details><summary>Per file</summary>"
+            echo
+            sed -n '/^| File /,$p' coverage.md | grep '^|'
+            echo
+            echo "</details>"
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload lcov.info
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: lcov
+          path: lcov.info
+          if-no-files-found: error
+
+  # `make invariant-deep`: every suite under test/invariant at 1,000 runs and depth 200 ([profile.deep.invariant]),
+  # against PR CI's 64-256 runs at depth 128. The seed is the run id, so each week explores new call sequences, and
+  # a failure replays locally with FOUNDRY_FUZZ_SEED set to the id the log prints.
+  invariant-deep:
+    name: Deep invariants
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event_name == 'schedule' && 'dev' || github.ref }}
+          submodules: recursive
+          persist-credentials: false
+      - uses: ./.github/actions/foundry-setup
+      - name: Deep invariant campaign
+        env:
+          FOUNDRY_FUZZ_SEED: ${{ github.run_id }}
+        run: |
+          echo "FOUNDRY_FUZZ_SEED=$FOUNDRY_FUZZ_SEED"
+          make invariant-deep

@@ -89,6 +89,17 @@ struct InboundHook {
     address target;
 }
 
+/// @notice Outcome of the shared inbound hook-envelope check ({CCTPBridgeAdapterLib-_checkHookEnvelope}). NOT
+///         persisted.
+enum HookEnvelopeCheck {
+    /// @dev Not a CCTP v2 `BurnMessageV2` addressed to this adapter's TokenMessenger.
+    NotBurnMessage,
+    /// @dev A burn message for this adapter whose `hookData` is not a Lattice envelope.
+    InvalidHookData,
+    /// @dev A burn message for this adapter carrying a well-formed Lattice hook envelope.
+    Valid
+}
+
 /// @notice Per-CCTP-domain outbound config, all admin-registered. Used verbatim as the trailing args of
 ///         `ITokenMessengerV2.depositForBurn`. APPEND-ONLY.
 struct DomainConfig {
@@ -96,7 +107,10 @@ struct DomainConfig {
     uint256 maxFee;
     /// @notice Minimum finality threshold before Iris attests (e.g. 1000 fast / 2000 standard-finalized).
     uint32 minFinalityThreshold;
-    /// @notice Optional destination caller lock (`bytes32(0)` = permissionless mint).
+    /// @notice Destination caller lock (`bytes32(0)` = permissionless mint). Optional for plain burns, but
+    ///         REQUIRED for Lattice hooked burns: set it to the destination diamond, or {depositForBurnWithHook}
+    ///         reverts {ICCTPBridgeAdapter-CCTPHookWithoutDestinationCaller}. It is per domain, so once set, plain
+    ///         burns to the domain are also receivable only through the destination diamond's relay.
     bytes32 destinationCaller;
 }
 
@@ -131,8 +145,13 @@ struct CCTPBridgeAdapterStorage {
 ///         `depositForBurn` pulls exactly `amount` USDC from the caller, force-approves the TokenMessenger for
 ///         exactly that amount, burns via CCTP, then resets the allowance to 0 (approval hygiene). Inbound
 ///         `relayMessage` is a PERMISSIONLESS passthrough to `MessageTransmitterV2.receiveMessage`; the mint
-///         goes DIRECTLY to the recipient through Circle's transmitter and the adapter adds no authorization.
-/// @dev TRUST MODEL: the inbound mint's correctness is rooted entirely in Circle's off-chain Iris attester set
+///         goes DIRECTLY to the recipient through Circle's transmitter and the adapter adds no authorization —
+///         except that a Lattice HOOKED burn is refused there (only `relayMessageWithHook`, or the attested
+///         `mintRecipient` itself, may relay it), so the hook cannot be skipped by a third party.
+/// @dev HOOKED BURNS: for a Lattice hook envelope the destination domain's `destinationCaller` MUST be the
+///      destination diamond (enforced outbound). Otherwise anyone can call Circle's transmitter directly and mint
+///      hook-less.
+///      TRUST MODEL: the inbound mint's correctness is rooted entirely in Circle's off-chain Iris attester set
 ///      and denylist (the transmitter verifies the attestation signatures) — this adapter neither attests nor
 ///      gates it. CCTP is a token bridge; it is intentionally NOT an {IERC7786GatewaySource} and is never
 ///      routed through {ERC7786OpenBridge} / {CrosschainLink}. Reuses the shared safe-transfer / force-approve
@@ -270,7 +289,11 @@ library CCTPBridgeAdapterLib {
     /// @notice Like {depositForBurn} but attaches CCTP v2 `hookData` to the burn message (via
     ///         `depositForBurnWithHook`) for the destination recipient to execute.
     /// @dev Reverts {CCTPEmptyHookData} BEFORE any work if `hookData` is empty — a hook-less burn must use
-    ///      {depositForBurn} so its `DepositForBurn` event and 7-arg CCTP call are unambiguous.
+    ///      {depositForBurn} so its `DepositForBurn` event and 7-arg CCTP call are unambiguous. For a Lattice
+    ///      hook envelope ({_isHookEnvelope}) it reverts {CCTPHookWithoutDestinationCaller} BEFORE any token
+    ///      movement if the destination domain's `destinationCaller` is `bytes32(0)`: the domain MUST be locked to
+    ///      the destination diamond so only that diamond can receive the message (where a third party's hook-less
+    ///      relay is refused). Other `hookData` is relayed plainly at the destination, so it is not guarded.
     /// @param amount    The USDC amount to burn (source of funds is the caller, NOT the Diamond balance).
     /// @param recipient The full ERC-7930 interoperable recipient (chain reference + destination address).
     /// @param hookData  The CCTP v2 hook payload to carry in the burn message (destination-executed, non-empty).
@@ -322,7 +345,10 @@ library CCTPBridgeAdapterLib {
     /// @notice Applies the maxFee guard, pulls EXACTLY `amount` from the caller, approves the messenger for
     ///         EXACTLY `amount`, burns (plain 7-arg `depositForBurn`, or 8-arg `depositForBurnWithHook` when
     ///         `hookData` is non-empty), then resets the allowance to 0 (approval hygiene).
-    /// @dev maxFee guard (before ANY token movement): CCTP's TokenMessengerV2 requires `amount > maxFee`; the
+    /// @dev destinationCaller guard (Lattice hook envelopes only, per {_isHookEnvelope}; before ANY token
+    ///      movement): reverts {CCTPHookWithoutDestinationCaller} when the domain is permissionless. Other
+    ///      `hookData` is relayed plainly at the destination anyway, so the lock would protect no Lattice hook.
+    ///      maxFee guard (before ANY token movement): CCTP's TokenMessengerV2 requires `amount > maxFee`; the
     ///      `>=` form also rejects a zero-amount burn. An unconfigured domain has `maxFee == 0`, mapping to
     ///      CCTP's free permissionless standard transfer (passes for any `amount > 0`). Split out of {_burn} so
     ///      the deep 8-arg external call has a shallow stack (no via-IR).
@@ -337,6 +363,11 @@ library CCTPBridgeAdapterLib {
         address token = $._usdc;
         DomainConfig memory cfg = $._domainConfig[domain];
 
+        // A Lattice hooked burn needs a destination caller lock: with `bytes32(0)` anyone could mint through
+        // Circle's transmitter directly, consuming the nonce without running the hook.
+        if (cfg.destinationCaller == bytes32(0) && _isHookEnvelope(hookData)) {
+            revert ICCTPBridgeAdapter.CCTPHookWithoutDestinationCaller(domain);
+        }
         if (cfg.maxFee >= amount) revert ICCTPBridgeAdapter.CCTPMaxFeeExceedsAmount(cfg.maxFee, amount);
 
         BridgeFungibleLib.pullExact(token, msg.sender, amount);
@@ -388,11 +419,27 @@ library CCTPBridgeAdapterLib {
     /// @notice PERMISSIONLESS passthrough: forwards an Iris-attested CCTP message to the transmitter, which
     ///         mints USDC DIRECTLY to the recipient. Adds no authorization — trust is Circle's attester set +
     ///         denylist. Reverts {CCTPRelayFailed} if the transmitter reports failure.
+    /// @dev A message that passes every {relayMessageWithHook} check (a Lattice hooked burn for this adapter's
+    ///      TokenMessenger) is refused with {CCTPHookRelayRequired} BEFORE the mint — relaying it here would burn
+    ///      the CCTP nonce without ever running the hook. The one exception is its attested `mintRecipient`
+    ///      (compared as the full `bytes32`), which may take its funds hook-less, so a hook that can never
+    ///      succeed cannot lock them. Every other message relays as before, so no message is refused by both
+    ///      entry points.
     /// @param message     The CCTP message bytes emitted by the source-chain burn.
     /// @param attestation The Iris attestation over `message`.
     function relayMessage(bytes calldata message, bytes calldata attestation) internal {
         ReentrancyGuardLib.nonReentrantBefore();
-        bool success = IReceiverV2(cctpBridgeAdapterStorage()._messageTransmitter).receiveMessage(message, attestation);
+        CCTPBridgeAdapterStorage storage $ = cctpBridgeAdapterStorage();
+        if (_checkHookEnvelope(message, $._tokenMessenger) == HookEnvelopeCheck.Valid) {
+            bytes32 mintRecipient;
+            assembly ("memory-safe") {
+                mintRecipient := calldataload(add(message.offset, add(_MSG_BODY, _BODY_MINT_RECIPIENT)))
+            }
+            if (mintRecipient != bytes32(uint256(uint160(msg.sender)))) {
+                revert ICCTPBridgeAdapter.CCTPHookRelayRequired();
+            }
+        }
+        bool success = IReceiverV2($._messageTransmitter).receiveMessage(message, attestation);
         if (!success) revert ICCTPBridgeAdapter.CCTPRelayFailed();
         emit ICCTPBridgeAdapter.RelayedMessage(msg.sender);
         ReentrancyGuardLib.nonReentrantAfter();
@@ -411,7 +458,10 @@ library CCTPBridgeAdapterLib {
     ///        3. LENIENT `executeHook` — a reverting/return-bombing target does NOT revert the relay (the mint
     ///           stands, the nonce is consumed). A hostile hook re-entering {relayMessage}/{depositForBurn}
     ///           hits the shared reentrancy guard → the inner call reverts → the executor reports `false` → this
-    ///           outer relay still completes;
+    ///           outer relay still completes. The exception is a target whose OWN frame runs out of gas: the
+    ///           executor reverts {ICCTPHookExecutor-CCTPHookOutOfGas}, unwinding the mint so the nonce stays
+    ///           live. A sub-call's out-of-gas is an ordinary revert unless the target re-raises it
+    ///           ({ICCTPHookReceiver});
     ///        4. emit {HookExecuted} + {RelayedMessage}.
     /// @param message     The CCTP v2 `BurnMessageV2` bytes (must carry a Lattice hook envelope).
     /// @param attestation The Iris attestation over `message`.
@@ -419,32 +469,11 @@ library CCTPBridgeAdapterLib {
         ReentrancyGuardLib.nonReentrantBefore();
         CCTPBridgeAdapterStorage storage $ = cctpBridgeAdapterStorage();
 
-        // --- (1) Pure validation (BEFORE the external mint). Scoped so its temporaries drop off the stack. ---
-        if (message.length < _MSG_MIN_HOOK_LENGTH) revert ICCTPBridgeAdapter.CCTPNotBurnMessage();
-        {
-            uint32 headerVersion;
-            uint32 bodyVersion;
-            bytes32 headerRecipient;
-            assembly ("memory-safe") {
-                headerVersion := shr(224, calldataload(add(message.offset, _MSG_VERSION)))
-                bodyVersion := shr(224, calldataload(add(message.offset, _MSG_BODY)))
-                headerRecipient := calldataload(add(message.offset, _MSG_RECIPIENT))
-            }
-            // Must be a CCTP v2 BurnMessageV2 addressed to THIS adapter's TokenMessenger.
-            if (headerVersion != _CCTP_VERSION_V2 || bodyVersion != _CCTP_VERSION_V2) {
-                revert ICCTPBridgeAdapter.CCTPNotBurnMessage();
-            }
-            if (headerRecipient != bytes32(uint256(uint160($._tokenMessenger)))) {
-                revert ICCTPBridgeAdapter.CCTPNotBurnMessage();
-            }
-        }
-
-        // Lattice hook envelope: `HOOK_MAGIC (4) ‖ target (20) ‖ payload`. TWO cheap comparisons only — never an
-        // abi.decode that could revert on attacker garbage (the `||` short-circuits before slicing on < 24 B).
+        // --- (1) Pure validation (BEFORE the external mint), shared with {relayMessage}'s hook detection. ---
+        HookEnvelopeCheck check = _checkHookEnvelope(message, $._tokenMessenger);
+        if (check == HookEnvelopeCheck.NotBurnMessage) revert ICCTPBridgeAdapter.CCTPNotBurnMessage();
+        if (check == HookEnvelopeCheck.InvalidHookData) revert ICCTPBridgeAdapter.CCTPInvalidHookData();
         bytes calldata hookData = message[_MSG_MIN_HOOK_LENGTH:];
-        if (hookData.length < _HOOK_ENVELOPE_MIN || bytes4(hookData[0:4]) != HOOK_MAGIC) {
-            revert ICCTPBridgeAdapter.CCTPInvalidHookData();
-        }
 
         // --- (2) Mint via the transmitter (external). ---
         if (!IReceiverV2($._messageTransmitter).receiveMessage(message, attestation)) {
@@ -455,6 +484,43 @@ library CCTPBridgeAdapterLib {
         _executeInboundHook(message, hookData);
         emit ICCTPBridgeAdapter.RelayedMessage(msg.sender);
         ReentrancyGuardLib.nonReentrantAfter();
+    }
+
+    /// @notice Classifies `message` against the hook-relay checks WITHOUT reverting, so {relayMessageWithHook}
+    ///         (reverts on anything but `Valid`) and {relayMessage} (refuses `Valid`) share one definition.
+    /// @dev Checks, in order: length >= 376, header AND body version == 1, header recipient == `tokenMessenger_`
+    ///      (else `NotBurnMessage`); then a Lattice envelope at byte 376 per {_isHookEnvelope} (else
+    ///      `InvalidHookData`). The length check runs first so no fixed-offset read touches a short message.
+    function _checkHookEnvelope(bytes calldata message, address tokenMessenger_)
+        private
+        pure
+        returns (HookEnvelopeCheck)
+    {
+        if (message.length < _MSG_MIN_HOOK_LENGTH) return HookEnvelopeCheck.NotBurnMessage;
+        uint32 headerVersion;
+        uint32 bodyVersion;
+        bytes32 headerRecipient;
+        assembly ("memory-safe") {
+            headerVersion := shr(224, calldataload(add(message.offset, _MSG_VERSION)))
+            bodyVersion := shr(224, calldataload(add(message.offset, _MSG_BODY)))
+            headerRecipient := calldataload(add(message.offset, _MSG_RECIPIENT))
+        }
+        // Must be a CCTP v2 BurnMessageV2 addressed to THIS adapter's TokenMessenger.
+        if (
+            headerVersion != _CCTP_VERSION_V2 || bodyVersion != _CCTP_VERSION_V2
+                || headerRecipient != bytes32(uint256(uint160(tokenMessenger_)))
+        ) return HookEnvelopeCheck.NotBurnMessage;
+
+        if (!_isHookEnvelope(message[_MSG_MIN_HOOK_LENGTH:])) return HookEnvelopeCheck.InvalidHookData;
+        return HookEnvelopeCheck.Valid;
+    }
+
+    /// @notice Whether `hookData` is a Lattice envelope `HOOK_MAGIC (4) ‖ target (20) ‖ payload` — the ONE
+    ///         definition shared by the outbound destinationCaller guard and the inbound relay checks.
+    /// @dev TWO cheap comparisons — never an abi.decode that could revert on attacker garbage (the `||`
+    ///      short-circuits before slicing on < 24 B).
+    function _isHookEnvelope(bytes calldata hookData) private pure returns (bool) {
+        return hookData.length >= _HOOK_ENVELOPE_MIN && bytes4(hookData[0:4]) == HOOK_MAGIC;
     }
 
     /// @notice Reads the ATTESTED context from `message`, decodes the `target`/`payload` from the validated

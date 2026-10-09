@@ -15,10 +15,21 @@ if older documentation conflicts with the development policy below, apply this p
 - A non-upgradeable deployed contract is not a stable implementation. LatticeRegistry and
   LatticeFactory still require rigorous testing, design comparisons, review, and optimization
   before production use; see issue #176.
+- The published [versioning policy](README.md#versioning-and-compatibility) is the exception to the
+  points above, and this policy does not override it. Once a module is live on any network (a
+  release deployment, a Lattice demo, or a known downstream deployment), its ERC-7201 namespace and
+  interfaceId are frozen: append to its storage struct only, and keep its selector set. Mark any
+  ABI or storage break of an undeployed module with `!`. A `fix:` or other patch-level change never
+  changes a storage layout, a selector set or interfaceId, or the `LatticeRegistry`/`LatticeFactory`
+  bytecode; title such a change `feat` or with `!` so Release Please cuts a minor.
 - For material architecture decisions, compare the current design with credible alternatives.
   Explain correctness guarantees, trust assumptions, complexity, deployment consequences, gas,
   and bytecode tradeoffs. Measure optimization claims; label estimates. Do not implement every
   alternative or add abstractions without a demonstrated need.
+- Record a settled material decision as an architecture decision record in `docs/adr/`, using the
+  template in [docs/adr/README.md](docs/adr/README.md). The record states the outcome and links the
+  issue or PR that holds the comparison. A change that contradicts an accepted ADR supersedes it with a
+  new one.
 
 ## Git workflow and authorization
 
@@ -27,6 +38,13 @@ if older documentation conflicts with the development policy below, apply this p
 - Use descriptive conventional branch names identifying the work, such as
   `feat/registry-factory-optimization`, `fix/storage-layout-validation`,
   `docs/project-instructions`, or `revert/ens-grant-merge`. Never use `codex/` or agent-name prefixes.
+- Commit subjects and PR titles follow Conventional Commits with the types in
+  `release-please-config.json` (`feat`, `fix`, `perf`, `refactor`, `docs`, `test`, `build`, `ci`,
+  `chore`). Mark a breaking change with `!` and a `BREAKING CHANGE:` footer stating what integrators
+  must change. Commits must be signed.
+- Name each issue a PR completes on its own `Closes #N` line in the PR body (`Refs #N` for partial
+  work). GitHub ignores closing keywords in PRs into `dev`, so
+  `.github/workflows/close-linked-issues.yml` closes those issues when the PR merges.
 - An implementation request authorizes local commits, pushing a feature branch, and opening a PR
   after the required validation. No additional permission is needed for those steps.
 - Merging PRs, promoting to `main`, publishing releases, and deploying contracts or sites require
@@ -40,17 +58,55 @@ if older documentation conflicts with the development policy below, apply this p
 - Pin one current latest stable Foundry release uniformly across local development and CI,
   including builds, tests, formatting, and documentation. Verify the current release when setting
   or updating the pin; do not use a floating release or split versions to work around incompatibility.
-- Recorded exception (user-approved 2026-09-12): Hedera `forge script` work runs on Foundry 1.7.1
-  through `script/config/hedera/forge-hedera.sh`. `forge script` on the shared pin cannot reach Hedera's
-  JSON-RPC relay (it sends EIP-1898 block-hash params the relay rejects), and whether the fix belongs in
-  Foundry or the relay is unresolved. CI and all other work stay on the shared pin. Remove the exception
-  once that root cause is resolved, and do not extend it to other chains.
+- Recorded exception (user-approved 2026-09-12, kept 2026-10-08): Hedera `forge script` work runs on
+  Foundry 1.7.1 through `script/config/hedera/forge-hedera.sh`. By default every 1.8 release
+  measured (1.8.1, 1.8.3, 1.8.5) fetches fork state with EIP-1898 block-hash objects, which Hedera's
+  JSON-RPC relay rejects. Foundry 1.8.5 adds `--fork-state-by-number`, which passed a `forge script`
+  simulation and the forking test on 2026-10-08 but is not yet verified for a broadcast. Under
+  `[profile.hedera]` both versions emit identical bytecode (`docs/guides/hedera.md`). CI and all
+  other work stay on the shared pin. #227 tracks retiring the exception once the shared pin is
+  verified end to end. Do not extend the exception to other chains.
 - Adapt the implementation to the shared toolchain and surface compatibility problems. Do not
   silently downgrade an individual job or change unrelated toolchain settings.
 - Improve existing scripts, helpers, and workflows first. Require user approval before replacing
   an existing script's implementation language or introducing a new runtime dependency.
 - Reuse existing repository patterns and tools; prefer standard-library/native capabilities and
   minimal changes. Trace callers and fix the shared root cause rather than only one symptom.
+
+## Repository map and commands
+
+| Path | Contents |
+| --- | --- |
+| `src/interfaces/<area>/I<Module>.sol` | Module ABI, errors, events (`src/interfaces/external/` holds vendored third-party subsets) |
+| `src/<area>/libraries/<Module>Lib.sol` | Module logic, ERC-7201 storage, `registerInterface`, `__<Module>_init` |
+| `src/<area>/<Module>.sol`, `<Module>Init.sol` | Stateless facet with `exportSelectors()`; optional standalone init |
+| `script/base/<area>/Deploy<Module>.s.sol` | Deploy recipe (`buildCuts` + `run`), shared by deploys and tests |
+| `script/lib/FacetInventory.sol` | Release inventory; also drives `ExportSelectorsParityTest` |
+| `script/upgrades/` | Storage-layout guard wrapper, probe, baseline and reviewed resets |
+| `.github/actions/storage-layout/` | Reusable storage-safety Action: the Bash+jq checker, its README and test fixture |
+| `docs/guides/`, `docs/site/` | Authored guides; the Vocs docs site's committed config and lockfile |
+| `docs/adr/` | Architecture decision records and their index |
+| `script/README.md` | Map of every `script/` folder, its entry points and Makefile targets |
+| `test/` | Layout and conventions in [test/README.md](test/README.md) |
+
+Adding a module touches more than its three source files: follow the
+[add-a-module checklist](CONTRIBUTING.md#adding-a-module).
+
+| Command | Purpose |
+| --- | --- |
+| `make install` | Fetch submodules |
+| `make build` / `make test` | Compile / run tests (`MATCH=<Contract>` filters) |
+| `make test-path PATH_GLOB=...` | Run tests by path |
+| `make test-fork` | Fork suites (RPC-gated; unset lanes skip) |
+| `make fmt` / `make fmt-check` | Format / formatting gate |
+| `make sizes` | EIP-170 size gate under `FOUNDRY_PROFILE=ci` |
+| `make via-ir` | IR-pipeline parity build |
+| `make storage-check` / `make storage-update` | Verify / regenerate the storage-layout baseline (`BASE_REF=origin/dev` also checks append-only, as CI does against the PR base) |
+| `make doc` / `make doc-serve` | Build and link-check / serve the docs site (Node.js; not part of `make ci`) |
+| `make test-ci` | Full suite under `FOUNDRY_PROFILE=ci` |
+| `make ci` | CI's Solidity gates in CI order (`fmt-check license-check scripts-check readme-check sizes via-ir storage-check test-ci snapshot-check`); CI also runs a via-ir size gate, Slither (`make slither`) and Anvil deploy checks (`make check-atomic-deploy` needs `make anvil`) |
+| `make clean` | `forge clean`; run it before trusting gates after tools touched the tree |
+| `make help` | Every target, including deploy and demo targets |
 
 ## Validation and readiness
 
@@ -61,7 +117,7 @@ if older documentation conflicts with the development policy below, apply this p
 - Run applicable storage, interface/namespace, deployment-size, gas, and security checks. Use the
   repository's existing workflows and commands, including
   `script/upgrades/check-storage-layout.sh` and
-  `FOUNDRY_PROFILE=ci forge build --sizes --skip test script` where relevant.
+  `FOUNDRY_PROFILE=ci forge build --locked --sizes --skip test script` where relevant.
 - Document intentional storage incompatibility instead of bypassing a failing check. Baseline
   updates must correspond to reviewed source changes and the chosen deployment/upgrade strategy.
 - Report failures and environmental blockers accurately. A partial or filtered run is not a full
@@ -84,14 +140,20 @@ if older documentation conflicts with the development policy below, apply this p
 - For fresh pre-major deployments, necessary layout changes are permitted. State that a fresh
   deployment is required, update baselines and consumers, and do not present incompatible code as
   safe to apply to an existing deployment. This qualifies older unconditional append-only wording.
+- A namespace or interfaceId is frozen once it is live on any network, including a downstream
+  project's deployment. From then on its layout follows the upgrade rule above, and the fresh-deployment
+  exception no longer applies to it.
 - Retain existing external-source attribution and ERC-165 conventions below.
 
 ## Specification storage
 
 - Never store specifications, implementation/design plans, or planning Markdown in this repository
   or a worktree unless the user explicitly overrides that rule for the specific document.
-- Store such documents under `/Users/dadadave/.codex/specs/`, verify the destination is outside a
-  Git worktree, and return the absolute path. This requested `AGENTS.md` is project guidance.
+- Store such documents outside the repository (the maintainer uses `~/.codex/specs/`), verify the
+  destination is outside a Git worktree, and return the absolute path. This requested `AGENTS.md` is project guidance.
+- Architecture decision records in `docs/adr/` are not specifications or plans: they record decided
+  outcomes and belong in the repository. The comparisons behind them stay in issues, PRs or
+  `~/.codex/specs/`.
 
 ## External-source attribution (always)
 
@@ -107,7 +169,17 @@ author line):
 - The facet, its `*Lib`, AND its first-party interface each carry the line (precedent: `BandAdapter`,
   `BandAdapterLib`, `IBandAdapter`).
 - Files under `src/interfaces/external/` use the vendored style instead:
-  `/// @author Vendored minimal subset of <SourceName> (<link>).` (+ upstream license note when known).
+  `/// @author Vendored minimal subset of <SourceName> (<link>).` followed by
+  `///         Upstream license: <SPDX id>.` (the upstream file's own tag; `unknown` if it cannot be found).
+  An interface re-declared from a BUSL-1.1 (or other non-copyable) upstream without copying its text
+  says `/// @author ABI-equivalent interface authored fresh from <Source>'s public ABI (<link>).` instead,
+  still followed by the `Upstream license:` note (precedents: `IStargate`, `IComet`).
+  Add a row for the file to the third-party interface table in `lib/VENDORED.md`. `make license-check`
+  rejects `@author Modified from` there, requires one of the two `@author` forms plus the
+  `Upstream license:` note (except under `ercs/` and `seal/`, where `IERC8153` is pinned by the registry and
+  factory bytecode and four files still lack the note), and requires the table row.
+- Every `.sol` file starts with an SPDX line; every id in its expression other than MIT needs its text at
+  `LICENSES/<id>.txt`.
 - OZ-ported modules may use `/// @author Adapted for EIP-2535 from OpenZeppelin ... (<link>[, commit <sha>])`.
 - Every attribution line must contain a link. Use a file-precise `blob/master` link only when certain the
   upstream path exists; a repo-root link is the accepted fallback. Never fabricate a source or deep path.

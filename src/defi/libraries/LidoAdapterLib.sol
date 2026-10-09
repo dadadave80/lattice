@@ -249,7 +249,10 @@ library LidoAdapterLib {
     ///      difference is socialized onto the remaining shareholders. This is a valuation-vs-realizable
     ///      mismatch, not an on-chain-manipulable bug (the redemption rate is monotone and not attacker-
     ///      controlled). MITIGATION until corrected: bound exposure by capping this strategy's vault
-    ///      allocation target and the WETH buffer so the par-priced synchronous-exit surface stays small.
+    ///      allocation target. A standing WETH buffer is not a lever: `rebalance()` calls `deploy()` and
+    ///      re-stakes the whole buffer each time (#221), after first recalling from it when the strategy
+    ///      is over target. A synchronous recall therefore pays out only what a claimed queue exit put
+    ///      into the buffer before that rebalance; otherwise it is a partial recall until a claim lands.
     ///      FUTURE FIX: apply a haircut to `stakedValue + _pendingAssets` from a Chainlink stETH/ETH feed
     ///      (via the existing `ChainlinkAdapter`) whenever stETH is below peg.
     function totalAssetsManaged() internal view returns (uint256) {
@@ -334,9 +337,11 @@ library LidoAdapterLib {
     /// @notice Synchronous `IStrategy.withdraw` — served **only** from the idle WETH buffer.
     /// @dev **Shortfall-honest by design.** `actual = min(amount, bufferBalance)`; when the buffer is
     ///      short it transfers what it has and reports that — the staked leg must be liberated
-    ///      out-of-band via `requestWithdrawal`/`claimWithdrawal`, and the StrategyManager's
-    ///      shortfall check turns the under-delivery into a recorded shortfall upstream. The staked
-    ///      wstETH position is intentionally never touched here.
+    ///      out-of-band via `requestWithdrawal`/`claimWithdrawal`. The buffer is idle, so this already
+    ///      spends idle first. The StrategyManager accepts the under-delivery as a partial recall (the
+    ///      staked and queued legs stay in this adapter's NAV) and recalls the rest on a later
+    ///      rebalance, once claims refill the buffer. The staked wstETH position is intentionally never
+    ///      touched here.
     function withdraw(uint256 amount, address to) internal returns (uint256 withdrawn) {
         _checkOperator();
         ReentrancyGuardLib.nonReentrantBefore();

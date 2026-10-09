@@ -32,11 +32,15 @@ On an existing checkout, run `git submodule update --init --recursive` first. Ru
 root: its remappings define `@lattice/=src/`, `@lattice-script/=script/`, `@lattice-test/=test/`,
 `@diamond/=lib/diamond-lib/src/`, and `forge-std/=lib/forge-std/src/`.
 
-To consume as a dependency, use `forge install dadadave80/lattice`, then recursively initialize
-submodules. Use `@lattice/=lib/lattice/src/`, `@diamond/=lib/lattice/lib/diamond-lib/src/`, and
-`forge-std/=lib/lattice/lib/forge-std/src/`. If importing the supplied deployment scripts, also map
+To consume as a dependency, follow the [README install steps](../../README.md#install--usage): install
+a release tag with `forge install dadadave80/lattice@vX.Y.Z`, then commit it straight away with
+`git add lib/lattice .gitmodules foundry.lock && git commit`. `forge install` checks out the nested
+submodules itself; a `git submodule update` before that commit can move `lib/lattice` off the tag. No
+remappings are needed, because Forge derives them from `lib/lattice/remappings.txt`. If you keep your own,
+use `@lattice/=lib/lattice/src/`, `@diamond/=lib/lattice/lib/diamond-lib/src/`, and
+`forge-std/=lib/forge-std/src/`. If importing the supplied deployment scripts, also map
 `@lattice-script/=lib/lattice/script/` and `@lattice-test/=lib/lattice/test/` (BaseDeploy's legacy
-selector helper lives there). Pin the dependency commit rather than silently updating production recipes.
+selector helper lives there). Pin a release tag rather than silently updating production recipes.
 
 ## Pick modules and reconcile selectors
 
@@ -46,7 +50,8 @@ DiamondLoupeFacet, EmergencyStop, GovernedDiamondCut, and Receive.
 
 The `buildCuts` function reads each facet's `exportSelectors()` and uses `_cutExcept` for deliberate
 overlaps. `GovernedVault` reconciles transfers and deposit/mint/withdraw/redeem so voting checkpoints
-follow share balances. ERC4626 owns share decimals; VaultCore owns strategy-aware `totalAssets`;
+follow share balances. ERC4626 owns share decimals; VaultCore owns strategy-aware `totalAssets` and the
+deposit-latch-aware `maxDeposit`/`maxMint` (exclude both from ERC4626 or Replace them);
 ERC20Votes owns balance-aware delegation; GovernedVault owns the shared name, clock, and ballot nonce
 reconciliation. Read the recipe's exclusion lists before swapping a facet. Never register the same
 selector twice or replace the vote-aware transfer seam with a plain ERC20 transfer.
@@ -62,8 +67,9 @@ the test fail.
 This is a **declared namespace** check: it does not discover arbitrary assembly storage. Facets that
 intentionally share ERC20/Votes library storage represent one owner. Initializable and the reentrancy
 guard use fixed non-ERC-7201 slots and are outside that list. `STORAGE_REGISTRY.md` and
-`StorageSlotVerificationTest` document/check the actual constants. The separate storage-layout Action
-is a Milestone 3 deliverable tracked in #177; it is not required to run this example.
+`StorageSlotVerificationTest` document/check the actual constants. The
+[storage-safety Action](../../.github/actions/storage-layout/README.md) runs the same check on your own
+project; it is not required to run this example.
 
 ## Initialize in one transaction
 
@@ -93,14 +99,27 @@ through `LatticeFactory` in one transaction; `deployAtomic` additionally lets yo
 | --- | --- |
 | Diamond itself | Governor token and timelock target; default admin and upgrade executor |
 | Shareholder | Deposit, delegate, propose, and vote subject to snapshot/threshold/quorum |
-| Anyone | Execute a successful queued proposal once its delay expires |
+| Anyone | Execute a successful queued proposal once its delay expires and before its 14-day grace period ends |
 | Deployer / factory | No permanent upgrade authority over the initialized vault |
-| Guardian | None appointed initially; governance may appoint one for emergency controls |
+| Guardian | None appointed initially; governance may appoint one for emergency controls. Trusted for governance liveness (see below) |
 
 Open execution does not authorize arbitrary calldata: the timelock authenticates the queued operation.
-Only the diamond's timelock self-call reaches the upgrade executor role. Voting uses the timestamp
+In this recipe only the diamond's timelock self-call reaches the upgrade executor role. The role is held by the
+diamond itself, so a facet that lets an outside key make the diamond call itself, such as a co-cut
+AccessManager, would reach it too (see [Composition hazards](#composition-hazards)). Voting uses the timestamp
 clock; voting delay/period and timelock delay are expressed in seconds. The example uses 60, 600,
 and 300 seconds respectively, a zero proposal threshold and 4% quorum. These are demo settings.
+
+A guardian's `emergencyRemoveCut` can only remove selectors. It can never remove `diamondCut` itself,
+the selectors needed to recover from an emergency stop (`emergencyResume`, `removeGuardian`,
+`revokeRole`), or a frozen selector. Nothing is frozen at init, so a guardian can still remove an
+unfrozen Governor or Timelock function a proposal needs, leaving `diamondCut` unreachable. Treat the
+guardian as trusted for governance liveness, or have the first proposal freeze
+`DeployGovernedVault.recommendedFreezeSelectors()`. With that path frozen, a guardian that trips the
+stop can only delay: a proposal resumes the vault and the next one upgrades it.
+Freezing is permanent: governance can never replace or remove a frozen selector afterwards.
+`GovernedVaultUpgradeTest.test_GuardianTrustedForLivenessUntilFrozen` and
+`test_RecommendedFreezeBoundsGuardian` pin both cases.
 
 ## Deploy and upgrade through Make
 
@@ -167,8 +186,8 @@ ENS ties the milestones together. The Milestone 1 vault is ENS-named, and so is 
 `LatticeFactory` (`factory.lattice.studio.eth`), both through the ENSReverseClaimer facet. The ENS variant
 of this example is the same composition plus that one facet: `DeployGovernedVaultENS.buildCutsWithENS`
 adds ENSReverseClaimer and a combined initializer that replays the base init sequence. Send those cuts
-through `LatticeFactory.deploy` for atomic creation. The root README's “Live testnet deployment” section and
-`PROGRESS.md` record the verified Milestone 1 vault and its name.
+through `LatticeFactory.deploy` for atomic creation. `PROGRESS.md` records the verified Milestone 1 vault
+and its ENS name; the root README's “Live deployments and demos” section has the reproduce command.
 
 On `dev` and `main` after the `grant-m2` tag, `buildCutsWithENS` also runs the namespace preflight over
 `storageNamespacesWithENS()`, which is the base list plus `lattice.storage.ENSReverseClaimer`. At the tag,
@@ -194,7 +213,11 @@ The same four steps build any composition. A worked example, an admin-upgradeabl
 `grant-m2` tag, so read it on `dev` or `main`.
 
 1. **Pick modules.** Cut each facet for its own exported selectors. These facets share no selector, so no
-   `_cutExcept` is needed; the vault recipe above shows that case.
+   `_cutExcept` is needed; the vault recipe above shows that case. Leave out `Receive` unless the diamond
+   must accept plain (empty-calldata) native sends: it holds native value, or something pays it back
+   with a plain send. Forwarding `msg.value` from a payable call, as the bridge adapters do, does not
+   need it. The vault cuts it because its timelock spends ETH; a token does not, so without it a plain ETH
+   send reverts instead of being locked.
 
    ```solidity
    cuts[0] = _cut(address(new ERC165Facet()));
@@ -203,7 +226,6 @@ The same four steps build any composition. A worked example, an admin-upgradeabl
    cuts[3] = _cut(address(new DiamondLoupeFacet()));
    cuts[4] = _cut(address(new ERC20()));
    cuts[5] = _cut(address(new ERC20Capped()));
-   cuts[6] = _cut(address(new Receive()));
    ```
 
 2. **Declare every storage owner, including transitive ones,** and validate them before deploying. The cut
@@ -225,6 +247,7 @@ The same four steps build any composition. A worked example, an admin-upgradeabl
 
    ```solidity
    AccessControlLib.__AccessControl_init(p.admin);           // authority first
+   ERC165Lib.registerInterface();                             // IERC165's own ERC-165 flag
    DiamondLib.registerInterface();                            // cut + loupe ERC-165 flags
    ERC20Lib.__ERC20_init(p.name, p.symbol);                   // the token
    ERC20CappedLib.__ERC20Capped_init(p.cap);                  // then its cap
@@ -232,7 +255,9 @@ The same four steps build any composition. A worked example, an admin-upgradeabl
    ERC20Lib._mint(p.holder, p.supply);                        // seed supply last
    ```
 
-4. **Deploy in one transaction** with `factory.deploy(new RecipeEntry[](0), cuts, init, data, salt)`.
+4. **Deploy in one transaction** with `factory.deploy(new RecipeEntry[](0), cuts, init, data, salt)`, or
+   `factory.deployStrict` with the same arguments, which reverts if the address is already deployed instead of
+   returning the existing diamond.
 
 The test also shows a later upgrade: the admin cuts `ERC20Burnable` in with `diamondCut`, and a stranger's
 attempt reverts. For governed upgrades, cut GovernedDiamondCut and EmergencyStop instead of
@@ -244,12 +269,57 @@ Fresh pre-major deployments may use intentionally breaking layouts; document tha
 and update the reviewed baseline. If a cut runs a new initializer, use a strictly
 increasing reinitializer version; never rerun the original init or overwrite existing user state.
 
+## Composition hazards
+
+Every facet in a diamond runs as one contract at one address, with one balance. Modules ported from standalone
+OpenZeppelin contracts assume they are alone there. These hazards follow from that. No shipped recipe hits one,
+and a selector clash reverts at cut time. The authority, override and custody rows do not revert: the diamond
+deploys, then misbehaves. Each row's core case is pinned by a test that fails if the behaviour changes
+([#240](https://github.com/dadadave80/lattice/issues/240)): the guardian row by `GovernedVaultUpgradeTest`, the
+others by [`CompositionHazardsTest`](../../test/composability/CompositionHazardsTest.t.sol), with every shared
+selector also covered by `SelectorCompatibilityTest`. The ERC20Wrapper and ShieldedPool custody effects are
+documented, not tested: the base wrapper facet does not expose `recover`.
+
+| Hazard | Modules | Effect | Recommended layout |
+| --- | --- | --- | --- |
+| One in-diamond ERC-7786 handler per link diamond | BridgeERC20, BridgeERC7802, ERC20Crosschain, CrosschainTimelockHandler | All four export `processMessage` (`0x902d5027`), and CrosschainLink calls that selector for every tag. A second handler facet reverts the cut | One handler facet per link diamond. Route other tags to an external handler contract or a second link diamond |
+| One price adapter per diamond | The eight price adapters (Chainlink, Pyth, API3, Band, Chronicle, DIA, RedStone, Tellor) | They share `getFeed`, `latestAnswer` and `unregisterFeed` over separate storage. A second adapter reverts the cut | One adapter per diamond; put each extra source in its own diamond |
+| One strategy adapter per diamond, never in a vault diamond | The six strategy adapters (AaveV3, CompoundV3, CurveStableSwap, ERC4626, Lido, UniswapV3) | They share the `IStrategy`, `IProtocolAdapter` and `IAdapterOperator` selectors over separate storage, and clash with the vault side: `asset()` with ERC4626, `harvest()` and `vault()` with StrategyManager. The cut reverts | Deploy each adapter as its own strategy diamond and register that diamond with the vault's StrategyManager (see the [strategy adapter decision](selector-compatibility.md#scope-and-decisions)). CurveStableSwapAdapter is unsupported as a vault strategy in 0.5.0; see the README module catalog |
+| Standard-imposed clashes | ERC20 and ERC721; ERC721 and ERC1155 | Same selector, different meaning and storage (`balanceOf`, `approve`, `transferFrom`, `setApprovalForAll`, ...). The cut reverts | One token standard per diamond |
+| Lattice-chosen clashes | `getConfig()` on the randomness and automation adapters; `getForwarder()` on Chainlink Automation and CRE; the GovernedSafeDiamondCut operation views and TimelockController; `owner()` on AccountSigner and OwnableFacet; `token()` on Governor, the bridges and ERC6551Account | Same name, different return type or meaning. The cut reverts | Do not combine them. The names are listed in the [matrix](selector-compatibility.md), not renamed |
+| One ERC-20 movement-replacing extension per diamond, and no direct mover or minter beside it or beside a cap ([D25](selector-compatibility.md#token-extension-hook-model)) | ERC20Pausable, ERC20Votes, GovernedVault; the mint-gating ERC20Capped; the direct movers ERC20Burnable, ERC20FlashMint, ERC20Crosschain, ERC20Wrapper, ERC7802, ERC4626, VaultCore | Each family member replaces `transfer`/`transferFrom`. `Add` reverts; a `Replace` is silent and drops the other's logic. Pausable over Votes stops moving votes, so delegated votes can exceed supply. Votes over Pausable ignores the pause. A direct mover shares no selector, so the cut succeeds, but its mints and burns skip the pause and the vote checkpoints. ERC20Capped's cap holds only on a composing facet's `_mint`, so every direct minter lifts the supply past it | Pick one family member. Mint and burn only through a facet that applies its logic: `PausableLib.checkNotPaused` before `ERC20Lib._mint`/`_burn`, `ERC20VotesLib._mint`/`_burn`, or `ERC20CappedLib._checkCap` before the mint. For more, write a combined facet the way GovernedVault reconciles ERC4626, VaultCore and ERC20Votes |
+| One ERC-1155 burn path per diamond (D25) | ERC1155Burnable, ERC1155Pausable, ERC1155Supply | Each serves `burn`/`burnBatch`: plain, pause-gated or supply-tracking. `Add` reverts; a `Replace` is silent and drops the other's logic. Supply over Pausable or Burnable over Pausable burns while paused. Pausable over Supply burns without lowering `totalSupply`. Mints have no shared facet: a mint facet that calls `ERC1155Lib` directly ignores the pause and the supply counters, and a later supply-tracking burn wraps the unchecked subtraction (as does cutting ERC1155Supply into a diamond that already holds balances) | Pick one. Mint through `ERC1155PausableLib` or `ERC1155SupplyLib`; to combine pause and supply, write a combined facet and mint path |
+| One ERC-721 movement override per diamond (D25) | ERC721Enumerable, ERC721Pausable, ERC721Votes | Each replaces `transferFrom` and both `safeTransferFrom` overloads. `Add` reverts; a `Replace` is silent and drops the other's logic: Pausable over Enumerable stops updating the lists, Enumerable over Pausable ignores the pause | Pick one |
+| ERC-721 burns and wraps skip movement overrides (D25) | ERC721Burnable, ERC721Wrapper, or any app facet calling `ERC721Lib._mint`/`_burn`/`_transfer`, next to ERC721Enumerable, ERC721Votes or ERC721Pausable | `burn`, `depositFor`, `withdrawTo` and `onERC721Received` move tokens through `ERC721Lib`, which has no hook. Next to Enumerable they desync `totalSupply` and the owner lists, next to Votes they leave delegated votes above the supply, and next to Pausable they still run while paused. No selector is shared, so the cut succeeds | Never cut Burnable or Wrapper next to Enumerable or Votes; mint, burn and do authorization-free transfers through `ERC721EnumerableLib` or `ERC721VotesLib` (`_mint`, `_burn`, `_transfer`, `_safeTransfer`), never `ERC721Lib`. The standalone `CCTPHookReceipt` example mints through `ERC721Lib._mint`; a fork of it that adds enumeration or votes must switch that mint. Next to Pausable, accept that burns and wraps ignore the pause, or gate your own burn facet with `PausableLib.checkNotPaused` |
+| ERC-721 batch mints exclude enumeration and votes (D25) | `ERC721ConsecutiveInit` with ERC721Enumerable or ERC721Votes | A batch credits balances and emits one ERC-2309 `ConsecutiveTransfer` without touching the enumeration lists or the vote checkpoints. Either init order reverts: `ERC721EnumerableForbiddenBatchMint` next to Enumerable, `ERC721VotesForbiddenBatchMint` next to Votes, including when the extension's init runs in a later upgrade cut | Batch mint on a diamond without Enumerable or Votes. Pausable, Burnable, URIStorage, Wrapper and ERC2981 compose with batch mints |
+| No single mints during a batch-minting diamond's first initialization | `ERC721ConsecutiveInit` with any init that mints through `ERC721Lib` or an extension library in the same `initialize` | A single mint after `ERC721ConsecutiveInit` reverts `ERC721ForbiddenMint`. One before it is not caught: a batch that covers its id counts the token twice (two balances for one id) | Never single-mint inside that `initialize`, in any init order. Mint after `initialize` returns, or in an upgrade cut |
+| ERC1363 bypasses the movement overrides (D25) | ERC1363 with ERC20Pausable, ERC20Votes or GovernedVault | ERC1363 shares no selector with them, so the cut succeeds. `transferAndCall` and `transferFromAndCall` move tokens through `ERC20Lib`, not the replaced `transfer`/`transferFrom`: they ignore a pause, and votes do not follow them | Never combine them. ERC1363 goes on a plain ERC-20 diamond (`DeployERC1363`) |
+| A co-cut AccessManager is root | AccessManager next to anything that trusts `address(this)`: GovernedDiamondCut, TimelockController, Governor, the ERC-7786 handlers | `execute(address(this), data)` calls the diamond as the diamond. Selectors default to ADMIN_ROLE, so its holder can `diamondCut` with no vote or delay, or call `processMessage` directly | Keep AccessManager in its own authority diamond, as `DeployAccessManager` does. To govern it, make the governed diamond that authority's initial admin. A co-cut manager whose admin is its own diamond can never be configured |
+| One custodian per asset | VestingWallet, ERC4626 (and VaultCore), ERC20Wrapper, BridgeERC20, ShieldedPool | Each counts or holds the diamond's whole `balanceOf(address(this))`. VestingWallet next to an ERC-4626 vault pays the depositors' assets to its beneficiary through its open `release`. A vault next to bridge or pool escrow prices the escrow into its shares | At most one module that holds a given asset per diamond |
+| Guardian is trusted for liveness (D10) | GovernedDiamondCut, EmergencyStop, Governor, TimelockController | Until governance freezes the proposal path, a guardian can remove a Governor or Timelock selector and leave `diamondCut` unreachable | Freeze `DeployGovernedVault.recommendedFreezeSelectors()` in the first proposal (see [Understand authority](#understand-authority)) |
+
+`DiamondValidationLib.assertNamespacesDisjoint` catches two modules that declare the same storage namespace. It
+does not catch two modules that share an asset or a trust assumption.
+
+**The AccessManager row is Lattice behaviour, not a port bug.** OpenZeppelin's AccessManager runs
+`execute(address(this), ...)` through the same admin restrictions, but a standalone manager has no other
+functions behind `address(this)`. Refusing self-targeted calls would not protect funds, because the admin can
+already `execute` a transfer on any token the diamond holds; it would only close the governance bypass, and it
+would break a same-diamond AccessManaged facet that uses delayed execution with the diamond as its authority. Lattice does not add that
+guard today (decision D11 on [#219](https://github.com/dadadave80/lattice/issues/219)). The shipped
+`DeployAccessManager` admin overload is safe: its diamond holds no AccessControl role, so the self-call cannot
+pass `AccessControlDiamondCut`. A test pins that too.
+
+**Selector matrix.** [`selector-compatibility.md`](selector-compatibility.md) lists every selector that two or
+more release facets export, classified as variant, override, identical, one per diamond or incompatible.
+`SelectorCompatibilityTest` generates it and fails on any new clash.
+
 ## Troubleshooting
 
 | Failure | Check |
 | --- | --- |
 | Import/file not found | Recursive submodules and project-root remappings |
-| Selector already exists | `_cutExcept` reconciliation and no exported introspection selector |
+| Selector already exists | `_cutExcept` reconciliation, no exported introspection selector, and the [selector matrix](selector-compatibility.md) |
 | NamespaceCollision | Duplicate owners in the declared namespace list |
 | InvalidInitialization / NotInitializing | Single outer guard and correct init dependency order |
 | Zero votes / threshold failure | Deposit, delegate, then move past the checkpoint before proposing |

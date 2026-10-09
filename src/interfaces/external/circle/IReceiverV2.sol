@@ -3,7 +3,7 @@ pragma solidity ^0.8.30;
 
 /// @title IReceiverV2
 /// @author Vendored minimal subset of Circle's CCTP v2 `MessageTransmitterV2`
-///         (https://github.com/circlefin/evm-cctp-contracts). Upstream is Apache-2.0 and compiled at
+///         (https://github.com/circlefin/evm-cctp-contracts). Upstream license: Apache-2.0. Upstream compiles at
 ///         Solidity 0.7.6 — this subset is REDECLARED at pragma ^0.8.30. Only the receive-side methods the
 ///         {CCTPBridgeAdapter} relays to are re-declared; do NOT add an evm-cctp-contracts dependency.
 /// @notice Destination-side of CCTP v2: `receiveMessage` validates the Iris attestation over `message` and,

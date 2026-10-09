@@ -3,7 +3,7 @@ pragma solidity ^0.8.30;
 
 /// @title IMailbox (Hyperlane Mailbox) — vendored subset
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
-/// @author Vendored minimal subset of Hyperlane's `IMailbox` (https://github.com/hyperlane-xyz/hyperlane-monorepo). Upstream is MIT OR Apache-2.0.
+/// @author Vendored minimal subset of Hyperlane's `IMailbox` (https://github.com/hyperlane-xyz/hyperlane-monorepo). Upstream license: MIT OR Apache-2.0.
 /// @notice Minimal vendored subset of the Hyperlane Mailbox: both `dispatch` overloads (default-hook and
 ///         default-hook-with-metadata) with their matching `quoteDispatch` views, plus the `delivered` replay
 ///         map and `localDomain` reads. Hyperlane routes by `uint32` domain (usually — but NOT guaranteed —

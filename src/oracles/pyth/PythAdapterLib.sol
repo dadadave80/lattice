@@ -119,6 +119,7 @@ library PythAdapterLib {
     }
 
     /// @notice Returns the latest price normalized to 18 decimals (WAD): `price * 10^(18 + expo)`.
+    /// @dev Reverts {IPythAdapter.PythNormalizedAnswerZero} rather than return 0 when the scaling truncates.
     function latestAnswer(bytes32 key) internal view returns (int256 answerWad) {
         (int64 price, int32 expo,,) = latestAnswerRaw(key);
 
@@ -128,8 +129,9 @@ library PythAdapterLib {
             answerWad = int256(price) * int256(10 ** uint256(e));
         } else {
             if (e < -36) revert IPythAdapter.PythExpoOutOfRange(expo);
-            // ponytail: integer division truncates toward zero; unreachable for real feeds (expo ~ -8).
+            // Integer division truncates toward zero, so a tiny price with `expo < -18` can scale to 0.
             answerWad = int256(price) / int256(10 ** uint256(-e));
+            if (answerWad == 0) revert IPythAdapter.PythNormalizedAnswerZero(key, price, expo);
         }
     }
 

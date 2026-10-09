@@ -38,7 +38,6 @@ contract InvAsset is ERC20, ERC20Votes, Initializable {
         EIP712Lib.__EIP712_init("Inv Asset", "1");
         NoncesLib.__Nonces_init();
         VotesLib.__Votes_init();
-        ERC20VotesLib.__ERC20Votes_init();
         AccessControlLib.__AccessControl_init(admin);
     }
 
@@ -74,7 +73,7 @@ contract InvVault is ERC20, ERC4626, Initializable {
 //                                  HANDLER
 //////////////////////////////////////////////////////////////////////////*//
 
-/// @notice Handler that exercises deposit, mint, withdraw, redeem, and donate.
+/// @notice Handler that exercises deposit, mint, withdraw, redeem, and donate, and fuzzes the invariants' probe.
 contract ERC4626RoundTripHandler is Test {
     InvAsset public asset;
     InvVault public vault;
@@ -82,6 +81,9 @@ contract ERC4626RoundTripHandler is Test {
     address[3] public actors;
     uint256 constant MAX_AMOUNT = 1_000e18;
     uint256 constant INITIAL_MINT = 100_000e18;
+
+    /// @notice Share amount the round-trip invariants probe with; fuzzed by {setProbe}.
+    uint256 public probeShares = 1e18;
 
     constructor(InvAsset asset_, InvVault vault_) {
         asset = asset_;
@@ -150,6 +152,11 @@ contract ERC4626RoundTripHandler is Test {
         vm.prank(actor);
         asset.transfer(address(vault), amount);
     }
+
+    /// @notice Fuzz the share amount the round-trip invariants probe with, from 1 wei up to far past supply.
+    function setProbe(uint256 shares) external {
+        probeShares = bound(shares, 1, 1e36);
+    }
 }
 
 //*//////////////////////////////////////////////////////////////////////////
@@ -177,9 +184,10 @@ contract ERC4626RoundTripInvariant is Test {
     }
 
     /// @notice previewDeposit(previewMint(s)) >= s — you never get more shares minting than depositing.
+    /// forge-config: default.invariant.fail-on-revert = true
     function invariant_RoundTripDepositMint() public view {
         if (vault.totalSupply() == 0) return; // skip empty vault (trivially true)
-        uint256 s = 1e18;
+        uint256 s = handler.probeShares();
         // previewMint(s) = assets needed to get s shares
         uint256 assets = vault.previewMint(s);
         if (assets == 0) return;
@@ -190,18 +198,24 @@ contract ERC4626RoundTripInvariant is Test {
     }
 
     /// @notice convertToShares(convertToAssets(s)) <= s — converting to assets and back never inflates shares.
+    /// forge-config: default.invariant.fail-on-revert = true
     function invariant_ConvertRoundTripNoFreeShares() public view {
         if (vault.totalSupply() == 0) return;
-        uint256 s = 1e18;
+        uint256 s = handler.probeShares();
         uint256 assets = vault.convertToAssets(s);
         if (assets == 0) return;
         uint256 sharesBack = vault.convertToShares(assets);
         assertLe(sharesBack, s, "convertToShares(convertToAssets(s)) > s");
     }
 
-    /// @notice totalAssets() must equal (or exceed, due to donations) the vault's asset balance.
+    /// @notice On an ERC-4626-only vault, totalAssets() (the NAV the converters read by self-staticcall) is
+    ///         exactly the vault's asset balance; donations raise both together.
+    /// forge-config: default.invariant.fail-on-revert = true
     function invariant_TotalAssetsConsistent() public view {
         uint256 vaultBalance = asset.balanceOf(address(vault));
         assertEq(vault.totalAssets(), vaultBalance, "totalAssets != vault asset balance");
     }
+
+    // The idle-liquidity cap on exits is vacuous here (idle == NAV); it is fuzzed on a recipe VaultCore +
+    // StrategyManager diamond in VaultFullNavFuzzBase (test/integration/VaultFullNavPricingTest.t.sol).
 }

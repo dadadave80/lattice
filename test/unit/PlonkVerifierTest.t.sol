@@ -181,6 +181,24 @@ contract PlonkVerifierTest is PlonkVerifierTestBase {
         verifier.verifyProof(_vk(), _proof(), empty);
     }
 
+    function test_RevertOnEcMulFailure() public {
+        vm.mockCallRevert(address(0x07), bytes(""), bytes(""));
+        vm.expectRevert(abi.encodeWithSelector(IPlonkVerifier.PlonkPrecompileFailed.selector, address(0x07)));
+        verifier.verifyProof(_vk(), _proof(), _input());
+    }
+
+    function test_RevertOnEcAddFailure() public {
+        vm.mockCallRevert(address(0x06), bytes(""), bytes(""));
+        vm.expectRevert(abi.encodeWithSelector(IPlonkVerifier.PlonkPrecompileFailed.selector, address(0x06)));
+        verifier.verifyProof(_vk(), _proof(), _input());
+    }
+
+    function test_RevertOnModExpFailure() public {
+        vm.mockCallRevert(address(0x05), bytes(""), bytes(""));
+        vm.expectRevert(abi.encodeWithSelector(IPlonkVerifier.PlonkPrecompileFailed.selector, address(0x05)));
+        verifier.verifyProof(_vk(), _proof(), _input());
+    }
+
     function test_InterfaceIdMatchesConstant() public pure {
         assertEq(type(IPlonkVerifier).interfaceId, bytes4(0x5d484314), "IPlonkVerifier interfaceId moved");
     }

@@ -9,6 +9,7 @@ import {VaultCore} from "@lattice/defi/VaultCore.sol";
 import {CompoundV3AdapterLib} from "@lattice/defi/libraries/CompoundV3AdapterLib.sol";
 import {StrategyManagerLib} from "@lattice/defi/libraries/StrategyManagerLib.sol";
 import {VaultCoreLib} from "@lattice/defi/libraries/VaultCoreLib.sol";
+import {IAccessControl} from "@lattice/interfaces/access/IAccessControl.sol";
 import {IProtocolAdapter} from "@lattice/interfaces/defi/IProtocolAdapter.sol";
 import {ERC20} from "@lattice/tokens/ERC20/ERC20.sol";
 import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
@@ -47,6 +48,12 @@ contract MockComet {
         uint256 amt = amount > bal ? bal : amount;
         balanceOf[msg.sender] -= amt;
         require(base.transfer(msg.sender, amt), "send");
+    }
+
+    /// @dev Simulates a borrower draining the market's cash: Comet pays base out of its own balance, so a
+    ///      withdrawal larger than what is left reverts.
+    function borrow(address to, uint256 amt) external {
+        require(base.transfer(to, amt), "borrow");
     }
 
     /// @dev simulate yield accrual by minting balance.
@@ -161,6 +168,42 @@ contract CompoundV3AdapterTest is Test {
         assertEq(got, 200e6, "capped at supplied");
     }
 
+    /// @notice #221: a recall spends the adapter's undeployed idle before withdrawing from Comet.
+    function test_Withdraw_SpendsIdleBeforePosition() public {
+        asset.mint(address(adapter), 1_000e6);
+        adapter.deploy();
+        asset.mint(address(adapter), 300e6); // allocated, not yet deployed
+
+        uint256 got = adapter.withdraw(200e6, vault);
+        assertEq(got, 200e6, "paid from idle");
+        assertEq(asset.balanceOf(vault), 200e6, "vault received");
+        assertEq(comet.balanceOf(address(adapter)), 1_000e6, "position untouched");
+        assertEq(asset.balanceOf(address(adapter)), 100e6, "idle spent first");
+    }
+
+    /// @notice #221: a recall larger than idle drains idle, then withdraws the remainder from Comet, after
+    ///         interest left the position at a non-round balance.
+    function test_Withdraw_IdleThenPosition_AfterAccrual() public {
+        asset.mint(address(adapter), 1_000e6);
+        adapter.deploy();
+        comet.accrueYield(address(adapter), 33_333_333);
+        asset.mint(address(adapter), 50e6);
+
+        uint256 nav = adapter.totalAssetsManaged();
+        uint256 got = adapter.withdraw(170_123_457, vault);
+        assertEq(got, 170_123_457, "idle + position");
+        assertEq(asset.balanceOf(vault), 170_123_457, "vault received");
+        assertEq(asset.balanceOf(address(adapter)), 0, "idle drained");
+        assertEq(adapter.totalAssetsManaged(), nav - 170_123_457, "NAV down by exactly what was sent");
+    }
+
+    /// @notice #221: with only undeployed idle (nothing supplied) the recall is paid in full from idle.
+    function test_Withdraw_UndeployedIdleOnly() public {
+        asset.mint(address(adapter), 500e6);
+        assertEq(adapter.withdraw(400e6, vault), 400e6, "paid from idle");
+        assertEq(asset.balanceOf(vault), 400e6, "vault received");
+    }
+
     function test_Harvest_ForwardsCompRaw() public {
         asset.mint(address(adapter), 1_000e6);
         adapter.deploy();
@@ -172,6 +215,40 @@ contract CompoundV3AdapterTest is Test {
     function test_Deploy_RevertsWhenNothingToDeploy() public {
         vm.expectRevert(IProtocolAdapter.ProtocolAdapterNothingToDeploy.selector);
         adapter.deploy();
+    }
+
+    /// @notice #231: the admin's emergency exit withdraws the whole Comet position, accrued interest included,
+    ///         and sends it with any undeployed idle to the vault.
+    function test_EmergencyWithdraw_ExitsPositionAndIdleToVault() public {
+        asset.mint(address(adapter), 1_000e6);
+        adapter.deploy();
+        comet.accrueYield(address(adapter), 25e6);
+        asset.mint(address(adapter), 40e6); // allocated, not yet deployed
+
+        vm.expectEmit(true, true, false, true, address(adapter));
+        emit IProtocolAdapter.EmergencyWithdrawn(address(asset), vault, 1_065e6);
+        vm.prank(admin);
+        uint256 recovered = adapter.emergencyWithdraw();
+
+        assertEq(recovered, 1_065e6, "position + interest + idle recovered");
+        assertEq(asset.balanceOf(vault), 1_065e6, "all of it reached the vault");
+        assertEq(comet.balanceOf(address(adapter)), 0, "Comet position closed");
+        assertEq(adapter.totalAssetsManaged(), 0, "nothing left under management");
+    }
+
+    /// @notice #231: with nothing supplied the emergency exit skips Comet and still sweeps idle.
+    function test_EmergencyWithdraw_NoPosition_SweepsIdle() public {
+        asset.mint(address(adapter), 30e6);
+        vm.prank(admin);
+        assertEq(adapter.emergencyWithdraw(), 30e6, "idle swept");
+        assertEq(asset.balanceOf(vault), 30e6, "vault received idle");
+    }
+
+    function test_EmergencyWithdraw_OnlyAdmin() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, address(this), bytes32(0))
+        );
+        adapter.emergencyWithdraw();
     }
 }
 
@@ -212,6 +289,14 @@ contract CompoundVaultMock is ERC20, ERC4626, VaultCore, Initializable {
 
     function mint(uint256 shares, address receiver) public override(ERC4626, VaultCore) returns (uint256) {
         return VaultCore.mint(shares, receiver);
+    }
+
+    function maxDeposit(address receiver) public view override(ERC4626, VaultCore) returns (uint256) {
+        return VaultCore.maxDeposit(receiver);
+    }
+
+    function maxMint(address receiver) public view override(ERC4626, VaultCore) returns (uint256) {
+        return VaultCore.maxMint(receiver);
     }
 
     function withdraw(uint256 assets, address receiver, address owner)
@@ -291,8 +376,10 @@ contract CompoundV3AdapterVaultNavTest is Test {
         uint256 navBefore = vault.totalAssets();
         assertEq(navBefore, DEPOSIT, "NAV == deposit at rest");
 
-        // Allocate: vault idle -> adapter idle (bare transfer, NO supply to Comet).
-        mgr.rebalance();
+        // Allocate: vault idle -> adapter idle (bare transfer, NO supply to Comet). Made directly as the
+        // manager: `rebalance()` now deploys right after allocating (#221), which would close the window.
+        vm.prank(address(mgr));
+        vault.allocateToStrategy(address(adapter), DEPOSIT);
         assertEq(asset.balanceOf(address(adapter)), DEPOSIT, "funds idle in adapter, not supplied");
         assertEq(comet.balanceOf(address(adapter)), 0, "nothing supplied to Comet yet");
         assertEq(adapter.totalAssetsManaged(), DEPOSIT, "adapter counts its idle");

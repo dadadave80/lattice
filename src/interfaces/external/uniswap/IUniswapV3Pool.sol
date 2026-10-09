@@ -2,8 +2,9 @@
 pragma solidity >=0.8.4;
 
 /// @title IUniswapV3Pool
-/// @author Modified from Uniswap V3 (https://github.com/Uniswap/v3-core/blob/main/contracts/interfaces/IUniswapV3Pool.sol
-///         and .../interfaces/pool/IUniswapV3PoolDerivedState.sol)
+/// @author Vendored minimal subset of Uniswap V3 (https://github.com/Uniswap/v3-core/blob/main/contracts/interfaces/IUniswapV3Pool.sol
+///         and .../interfaces/pool/IUniswapV3PoolDerivedState.sol).
+///         Upstream license: GPL-2.0-or-later.
 /// @notice Minimal vendored subset of a Uniswap V3 pool, covering only what the Lattice
 ///         UniswapV3Adapter needs: the time-weighted `observe` oracle (the manipulation-resistant
 ///         valuation source), the immutable token/fee/tick-spacing readers, and `slot0` (declared

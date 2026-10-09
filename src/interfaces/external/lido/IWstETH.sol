@@ -4,7 +4,8 @@ pragma solidity >=0.8.4;
 import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
 
 /// @title IWstETH
-/// @author Modified from Lido wstETH (https://github.com/lidofinance/lido-dao/blob/master/contracts/0.6.12/WstETH.sol)
+/// @author Vendored minimal subset of Lido wstETH (https://github.com/lidofinance/lido-dao/blob/master/contracts/0.6.12/WstETH.sol).
+///         Upstream license: GPL-3.0.
 /// @notice Minimal vendored subset of Lido wrapped stETH (wstETH), a non-rebasing wrapper around the
 ///         rebasing stETH. The Lido adapter holds its staked position as wstETH so its share balance
 ///         is constant and yield accrues through the rising `getStETHByWstETH` exchange rate.

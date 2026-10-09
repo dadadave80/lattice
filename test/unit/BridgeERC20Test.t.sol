@@ -205,6 +205,14 @@ contract BridgeERC20Test is BridgeERC20TestBase {
         assertEq(token.balanceOf(address(bridge)), 500e18 - AMT);
     }
 
+    /// @notice Releasing custody of a token with no code must revert, not consume the message and deliver nothing.
+    function test_ReceiveNoCodeTokenReverts() public {
+        vm.etch(address(token), hex"");
+        vm.prank(address(gateway));
+        vm.expectRevert(abi.encodeWithSelector(IBridgeFungible.BridgeTransferFailed.selector, address(token)));
+        link.receiveMessage(RECEIVE_ID, counterpart, bytes.concat(FUNGIBLE_BRIDGE_TAG, _inboundPayload(recipient, AMT)));
+    }
+
     function test_ReceiveRejectsNon20ByteRecipient() public {
         bytes memory badAddr = abi.encodePacked(recipient, uint8(0x11)); // 21 bytes
         bytes memory payload = bytes.concat(FUNGIBLE_BRIDGE_TAG, abi.encode(counterpart, badAddr, AMT));

@@ -241,6 +241,12 @@ library CurveStableSwapAdapterLib {
     ///      `deploy()` idle→~0 while LP grows by the same value, so the sum is invariant across
     ///      deploy. The idle asset is held loose by the adapter (not in the pool), so reading it is
     ///      free of the `get_virtual_price` read-only-reentrancy concern.
+    /// @dev **UNSUPPORTED in 0.5.0: unsafe as a share-pricing source.** VaultCore vaults price ERC-4626
+    ///      shares on their full NAV, which includes this value. The guards above cover only Lattice's own
+    ///      mutators and the rebalance flag; an outsider re-entering the vault from a pool's ETH callback
+    ///      runs no Lattice code, passes them, and deposits or redeems against a skewed
+    ///      `get_virtual_price()`. No read-only-reentrancy probe ships in this release (#221), so do not
+    ///      wire this adapter into a vault's StrategyManager.
     function totalAssetsManaged() internal view returns (uint256) {
         CurveStableSwapAdapterStorage storage $ = curveStableSwapAdapterStorage();
         uint256 idle = AdapterBaseLib.balanceOfSelf($._asset);
@@ -262,6 +268,7 @@ library CurveStableSwapAdapterLib {
     function setCrvToken(address token) internal {
         AccessControlLib.checkRole(DEFAULT_ADMIN_ROLE);
         curveStableSwapAdapterStorage()._crvToken = token; // address(0) clears (skip forwarding)
+        emit ICurveStableSwapAdapter.CurveCrvTokenSet(token);
     }
 
     function setSlippageBps(uint256 slippageBps_) internal {
@@ -343,41 +350,12 @@ library CurveStableSwapAdapterLib {
             ReentrancyGuardLib.nonReentrantAfter();
             revert IProtocolAdapter.ProtocolAdapterInvalidRecipient(to);
         }
+        // Idle first (it is counted in NAV); LP is burned only for the remainder, and the whole amount is
+        // then forwarded, capped at what the adapter actually holds.
         address asset_ = $._asset;
-        address pool_ = $._pool;
-        int128 idx = $._coinIndex;
-
-        uint256 lp = _lpHeld($);
-        if (lp == 0) {
-            ReentrancyGuardLib.nonReentrantAfter();
-            return 0;
-        }
-
-        // LP to burn for `amount` of asset. Inverse of valuation (`amount = lp * vp / 1e18`), capped
-        // at LP held. Reading `get_virtual_price` here is safe: we are inside our own nonReentrant op
-        // (no foreign callback can interpose before the subsequent remove), and VaultCore blocks
-        // share-price-sensitive entries while this rebalance is in flight.
-        uint256 vp = ICurveStableSwapPool(pool_).get_virtual_price();
-        uint256 lpToBurn = (amount * 1e18) / vp;
-        if (lpToBurn > lp) lpToBurn = lp;
-        if (lpToBurn == 0) {
-            ReentrancyGuardLib.nonReentrantAfter();
-            return 0;
-        }
-
-        // Pull LP from the gauge first if staked.
-        _ensureLooseLp($, lpToBurn);
-
-        // Slippage floor for the single-coin exit.
-        uint256 expectedOut = ICurveStableSwapPool(pool_).calc_withdraw_one_coin(lpToBurn, idx);
-        uint256 minOut = (expectedOut * (CURVE_BPS_DENOMINATOR - $._slippageBps)) / CURVE_BPS_DENOMINATOR;
-
-        // Measure the real asset delta the remove produces, then forward it honestly to `to`.
-        uint256 beforeBal = AdapterBaseLib.balanceOfSelf(asset_);
-        ICurveStableSwapPool(pool_).remove_liquidity_one_coin(lpToBurn, idx, minOut);
-        uint256 received = AdapterBaseLib.balanceOfSelf(asset_) - beforeBal;
-
-        withdrawn = AdapterBaseLib.transferHonest(asset_, to, received);
+        uint256 idle = AdapterBaseLib.balanceOfSelf(asset_);
+        if (amount > idle) _removeLiquidityFor($, amount - idle);
+        withdrawn = AdapterBaseLib.transferHonest(asset_, to, amount);
         ReentrancyGuardLib.nonReentrantAfter();
     }
 
@@ -427,6 +405,31 @@ library CurveStableSwapAdapterLib {
     //*//////////////////////////////////////////////////////////////////////////
     //                                INTERNAL
     //////////////////////////////////////////////////////////////////////////*//
+
+    /// @dev Burns the LP worth `amount` of the asset (single-coin exit into this adapter), capped at the LP
+    ///      held. The single-coin exit fee means the asset received can fall short of `amount`.
+    function _removeLiquidityFor(CurveStableSwapAdapterStorage storage $, uint256 amount) private {
+        uint256 lp = _lpHeld($);
+        if (lp == 0) return;
+        address pool_ = $._pool;
+        int128 idx = $._coinIndex;
+
+        // LP to burn for `amount` of asset. Inverse of valuation (`amount = lp * vp / 1e18`), capped
+        // at LP held. Reading `get_virtual_price` here is safe: we are inside our own nonReentrant op
+        // (no foreign callback can interpose before the subsequent remove), and VaultCore blocks
+        // share-price-sensitive entries while this rebalance is in flight.
+        uint256 lpToBurn = (amount * 1e18) / ICurveStableSwapPool(pool_).get_virtual_price();
+        if (lpToBurn > lp) lpToBurn = lp;
+        if (lpToBurn == 0) return;
+
+        // Pull LP from the gauge first if staked.
+        _ensureLooseLp($, lpToBurn);
+
+        // Slippage floor for the single-coin exit.
+        uint256 expectedOut = ICurveStableSwapPool(pool_).calc_withdraw_one_coin(lpToBurn, idx);
+        uint256 minOut = (expectedOut * (CURVE_BPS_DENOMINATOR - $._slippageBps)) / CURVE_BPS_DENOMINATOR;
+        ICurveStableSwapPool(pool_).remove_liquidity_one_coin(lpToBurn, idx, minOut);
+    }
 
     /// @dev Ensures at least `need` LP is held loose, unstaking the shortfall from the gauge.
     function _ensureLooseLp(CurveStableSwapAdapterStorage storage $, uint256 need) private {

@@ -134,10 +134,13 @@ library ERC7786OpenBridgeLib {
         emit IERC7786OpenBridge.MinDirectCoverageUpdated(minDirectCoverage_);
     }
 
+    /// @notice Registers the matching remote bridge for its chain. Reverts with {ThresholdViolation} while the
+    ///         threshold is still 0, forcing the safe configuration order: gateways, then threshold, then remotes.
     function registerRemoteBridge(bytes calldata bridge) internal {
         AccessControlLib.checkRole(DEFAULT_ADMIN_ROLE);
-        (bytes2 chainType, bytes memory chainReference,) = InteroperableAddress.parseV1(bridge);
         ERC7786OpenBridgeStorage storage $ = erc7786OpenBridgeStorage();
+        if ($._threshold == 0) revert IERC7786OpenBridge.ThresholdViolation();
+        (bytes2 chainType, bytes memory chainReference,) = InteroperableAddress.parseV1(bridge);
         if ($._remotes[chainType][chainReference].length != 0) {
             revert IERC7786OpenBridge.RemoteBridgeAlreadyRegistered(InteroperableAddress.formatV1(
                     chainType, chainReference, hex""
@@ -193,6 +196,10 @@ library ERC7786OpenBridgeLib {
 
     /// @notice ERC-7786 recipient: count an attesting gateway and, once the N threshold is met, deliver
     ///         the unwrapped message to the final recipient. Idempotent per gateway; retryable on failure.
+    /// @dev Never executes while the threshold is 0 (an unconfigured bridge): `0 >= 0` would otherwise let any
+    ///      non-gateway caller deliver a forged payload. Gateway attestations are still recorded, so calling
+    ///      again after `setThreshold` executes the message. Skips rather than reverts, so adapters that cannot
+    ///      redeliver don't lose the attestation.
     function receiveMessage(bytes32, bytes calldata sender, bytes calldata payload) internal returns (bytes4) {
         ERC7786OpenBridgeStorage storage $ = erc7786OpenBridgeStorage();
         if (keccak256(getRemoteBridge(sender)) != keccak256(sender)) {
@@ -207,7 +214,8 @@ library ERC7786OpenBridgeLib {
             emit IERC7786OpenBridge.Received(id, msg.sender);
         }
 
-        if (!t.executed && t.countReceived >= $._threshold) _execute(t, id, payload);
+        uint8 threshold = $._threshold;
+        if (!t.executed && threshold != 0 && t.countReceived >= threshold) _execute(t, id, payload);
         return IERC7786Recipient.receiveMessage.selector;
     }
 

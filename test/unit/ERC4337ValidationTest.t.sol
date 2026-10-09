@@ -23,7 +23,7 @@ contract MockERC4337 is AccessControl, AccountSigner, ERC4337Validation, ERC7579
         external
         pure
         virtual
-        override(AccessControl, AccountSigner, ERC4337Validation)
+        override(AccessControl, AccountSigner, ERC4337Validation, ERC7579ModuleConfig)
         returns (bytes memory)
     {}
 

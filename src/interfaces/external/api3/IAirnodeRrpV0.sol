@@ -2,7 +2,8 @@
 pragma solidity >=0.8.4;
 
 /// @title IAirnodeRrpV0
-/// @author Modified from API3 (https://github.com/api3dao/airnode/blob/master/packages/airnode-protocol/contracts/rrp/interfaces/IAirnodeRrpV0.sol)
+/// @author Vendored minimal subset of API3 (https://github.com/api3dao/airnode/blob/master/packages/airnode-protocol/contracts/rrp/interfaces/IAirnodeRrpV0.sol).
+///         Upstream license: MIT.
 /// @notice Minimal interface for the API3 Airnode Request-Response Protocol (RRP), used by QRNG.
 /// @dev Vendored subset — do not add an api3 dependency. The Airnode fulfils a full request by calling
 ///      the registered `fulfillFunctionId` on `fulfillAddress`; that callback must verify

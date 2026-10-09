@@ -5,6 +5,8 @@ import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
 import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
 import {AaveV3Adapter} from "@lattice/defi/AaveV3Adapter.sol";
 import {AaveV3AdapterLib} from "@lattice/defi/libraries/AaveV3AdapterLib.sol";
+import {IAccessControl} from "@lattice/interfaces/access/IAccessControl.sol";
+import {IAaveV3Adapter} from "@lattice/interfaces/defi/IAaveV3Adapter.sol";
 import {IProtocolAdapter} from "@lattice/interfaces/defi/IProtocolAdapter.sol";
 import {EmergencyStop} from "@lattice/security/EmergencyStop.sol";
 import {Pausable} from "@lattice/security/Pausable.sol";
@@ -19,7 +21,13 @@ import {MockAToken, MockAaveV3Pool, MockAsset} from "./AaveV3AdapterSupplyTest.t
 contract MockGuardedAdapter is AaveV3Adapter, Pausable, EmergencyStop, Initializable {
     /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare
     ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing.
-    function exportSelectors() external pure virtual override(Pausable, EmergencyStop) returns (bytes memory) {}
+    function exportSelectors()
+        external
+        pure
+        virtual
+        override(AaveV3Adapter, Pausable, EmergencyStop)
+        returns (bytes memory)
+    {}
 
     function initialize(
         address admin_,
@@ -57,7 +65,7 @@ contract AaveV3AdapterEmergencyTest is Test {
         aToken = new MockAToken(asset);
         pool = new MockAaveV3Pool();
         pool.setAToken(asset, aToken);
-        asset.mint(address(pool), 1_000_000e6);
+        pool.addLiquidity(1_000_000e6);
 
         adapter = new MockGuardedAdapter();
         adapter.initialize(admin, address(pool), address(asset), vault, treasury, FEED_KEY, 1.05e18);
@@ -116,5 +124,56 @@ contract AaveV3AdapterEmergencyTest is Test {
         vm.prank(address(0xBAD));
         vm.expectRevert(); // AccessControlUnauthorizedAccount
         adapter.emergencyWithdraw();
+    }
+
+    /// @notice #231: the admin's e-mode switch sets the category on the pool and records it.
+    function test_SetEMode_SetsPoolCategoryAndRecordsIt() public {
+        vm.expectEmit(false, false, false, true, address(adapter));
+        emit IAaveV3Adapter.EModeSet(1);
+        vm.prank(admin);
+        adapter.setEMode(1);
+        assertEq(adapter.eModeCategory(), 1, "category recorded");
+        assertEq(pool.getUserEMode(address(adapter)), 1, "category set on the pool");
+
+        vm.prank(admin);
+        adapter.setEMode(0);
+        assertEq(adapter.eModeCategory(), 0, "category cleared");
+        assertEq(pool.getUserEMode(address(adapter)), 0, "pool category cleared");
+    }
+
+    function test_SetEMode_OnlyAdmin() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, guardian, bytes32(0))
+        );
+        vm.prank(guardian);
+        adapter.setEMode(1);
+    }
+
+    /// @notice #231: the admin can raise or lower the leverage health-factor floor, never below 1.0.
+    function test_SetMinHealthFactor_UpdatesFloor() public {
+        vm.expectEmit(false, false, false, true, address(adapter));
+        emit IAaveV3Adapter.MinHealthFactorSet(1.5e18);
+        vm.prank(admin);
+        adapter.setMinHealthFactor(1.5e18);
+        assertEq(adapter.minHealthFactor(), 1.5e18, "floor raised");
+
+        vm.prank(admin);
+        adapter.setMinHealthFactor(1e18);
+        assertEq(adapter.minHealthFactor(), 1e18, "floor at exactly 1.0 accepted");
+    }
+
+    function test_SetMinHealthFactor_RejectsBelowOne() public {
+        vm.expectRevert(abi.encodeWithSelector(IAaveV3Adapter.AaveV3AdapterInvalidMinHealthFactor.selector, 1e18 - 1));
+        vm.prank(admin);
+        adapter.setMinHealthFactor(1e18 - 1);
+        assertEq(adapter.minHealthFactor(), 1.05e18, "floor unchanged");
+    }
+
+    function test_SetMinHealthFactor_OnlyAdmin() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, guardian, bytes32(0))
+        );
+        vm.prank(guardian);
+        adapter.setMinHealthFactor(2e18);
     }
 }

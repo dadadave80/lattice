@@ -11,6 +11,10 @@ reproducible offline from a salt string and an initcode hash — nothing depends
 what nonce they are at. The one thing that does vary per chain is **which** of the two deterministic
 deployers that chain has.
 
+The decisions behind this scheme are recorded in
+[ADR 0004](docs/adr/0004-release-deployer-and-salts.md) (deployer and salts) and
+[ADR 0007](docs/adr/0007-registry-trust-model.md) (the registry's trust model).
+
 ## The CreateX singleton
 
 Release deployments go through **CreateX**
@@ -43,17 +47,25 @@ deployer address and no chain id:
 [`FacetInventory`](script/lib/FacetInventory.sol) (also the source of the parity gate — the same
 string, prefixed `lattice.`, is the facet's registry name key). `<version>` is the release semver
 string (`"0.1.0"`), the same value that packs to the registry's `uint64` version key
-(`major<<48 | minor<<24 | patch`). The inventory's 105 entries include the four **diamond-lib core
+(`major<<48 | minor<<24 | patch`). The inventory's 129 entries include the four **diamond-lib core
 facets** (`DiamondCutFacet`, `DiamondLoupeFacet`, `ERC165Facet`, `OwnableFacet` — ERC-8153 since
 diamond-lib v0.2.0); they are release-versioned by the same `lattice.<Name>.<version>` scheme as
 every Lattice facet, so e.g. the loupe's registry key is `keccak256("lattice.DiamondLoupeFacet")`.
 
-**Factory loupe requirement.** `LatticeFactory.deploy` refuses to assemble an un-introspectable
-diamond: every fresh deploy's cuts must cover the four EIP-2535 loupe selectors (`facets()`,
+**Factory loupe requirement.** `LatticeFactory.deploy` and `deployStrict` refuse to assemble an
+un-introspectable diamond: every fresh deploy's cuts must cover the four EIP-2535 loupe selectors (`facets()`,
 `facetFunctionSelectors(address)`, `facetAddresses()`, `facetAddress(bytes4)`) in some `Add` cut, or
 it reverts `LatticeFactory__MissingLoupeCoverage(missingSelector)`. Coverage is selector-based —
 any facet may provide it; the registered `lattice.DiamondLoupeFacet` entry is the one-line way. The
 CUT facet remains optional (immutable-by-design diamonds are legal).
+
+**Registry and factory addresses move with their bytecode.** `REGISTRY_SALT` and `FACTORY_SALT` carry no
+version, so the singleton addresses depend only on the `LatticeRegistry` and `LatticeFactory` bytecode
+(and the registry owner). Any change to either contract, including the #176 hardening change
+(`deployStrict`, the recipe hash in `DiamondDeployed`, `RecipeEntry.exclude`, bounded exporter reads),
+moves both addresses. Compute them from the commit you deploy, never from an earlier one. A factory also
+embeds the `Lattice` proxy build: read `factory.diamondInitCodeHash()` before predicting diamond addresses
+with it.
 
 ## Address derivation
 

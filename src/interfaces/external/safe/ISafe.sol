@@ -2,7 +2,8 @@
 pragma solidity >=0.8.4;
 
 /// @title ISafe
-/// @author Modified from Safe (https://github.com/safe-global/safe-smart-account/blob/main/contracts/Safe.sol)
+/// @author Vendored minimal subset of Safe (https://github.com/safe-global/safe-smart-account/blob/main/contracts/Safe.sol).
+///         Upstream license: LGPL-3.0-only.
 /// @notice Minimal vendored subset of the Gnosis Safe smart-contract multisig surface used to validate
 ///         and introspect a pinned Safe authority.
 /// @dev A Safe collects M-of-N owner signatures OFF-CHAIN and verifies the threshold ON-CHAIN inside

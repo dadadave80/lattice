@@ -20,6 +20,13 @@ interface IStrategyManager {
     /// @dev Emitted when a strategy is removed from the registry.
     event StrategyRemoved(address indexed strategy);
 
+    /// @dev Emitted (before {StrategyRemoved}) when `removeStrategy` drops a strategy whose
+    ///      `totalAssetsManaged()` read fails. Any funds it still holds leave the vault's NAV; if they are
+    ///      later returned to the vault, they accrue to whoever holds shares then. The removal also latches the
+    ///      vault's deposits closed (`IStrategyManagerRecovery.DepositLatchSet` follows this event) until the
+    ///      admin calls `clearDepositLatch`, so no one can enter at the lower NAV and capture those funds.
+    event StrategyForceRemoved(address indexed strategy);
+
     /// @dev Emitted when a strategy's target allocation (in bps) is updated.
     event StrategyTargetUpdated(address indexed strategy, uint16 oldBps, uint16 newBps);
 
@@ -28,6 +35,22 @@ interface IStrategyManager {
 
     /// @dev Emitted after a rebalance operation completes.
     event Rebalanced();
+
+    /// @dev Emitted when `rebalance()` recalls less than it requested from a strategy that still reports the
+    ///      undelivered part (an honest partial recall, e.g. a Lido buffer that is short, or an Aave or Compound
+    ///      market whose cash is borrowed out). The strategy stays over its target until a later rebalance
+    ///      recalls the rest.
+    /// @param strategy The strategy recalled from.
+    /// @param requested The amount requested.
+    /// @param received The amount the vault actually received.
+    event StrategyPartiallyRecalled(address indexed strategy, uint256 requested, uint256 received);
+
+    /// @dev Emitted when `rebalance()` calls a protocol adapter's `deploy()` to put its idle to work and the
+    ///      call reverts (e.g. the adapter or its protocol is paused). The idle stays in the adapter, still
+    ///      counted in its NAV, and the rebalance completes.
+    /// @param strategy The adapter whose deploy failed.
+    /// @param reason The revert data.
+    event StrategyDeployFailed(address indexed strategy, bytes reason);
 
     //*//////////////////////////////////////////////////////////////////////////
     //                                  ERRORS
@@ -51,15 +74,23 @@ interface IStrategyManager {
     /// @dev Reverts when a strategy's underlying asset does not match the vault's asset.
     error StrategyManagerAssetMismatch(address strategy);
 
-    /// @dev Reverts when a strategy delivers fewer assets than requested during rebalance.
+    /// @dev Reverts when a rebalance recall loses value: the strategy's reported balance drops by more than the
+    ///      vault actually received, beyond a fixed rounding tolerance (slippage, an exit fee, or a strategy
+    ///      that writes off more than it pays). An honest partial recall does not revert.
     /// @param strategy The strategy that underdelivered.
-    /// @param requested The amount requested from the strategy.
-    /// @param actual The amount the strategy actually transferred.
-    error StrategyManagerWithdrawShortfall(address strategy, uint256 requested, uint256 actual);
+    /// @param released The drop in the strategy's reported balance across the recall.
+    /// @param received The amount the vault actually received.
+    error StrategyManagerWithdrawShortfall(address strategy, uint256 released, uint256 received);
 
     /// @dev Reverts when attempting to remove a strategy that still holds vault assets.
-    ///      Use forceRemove (if provided) or recall assets first via rebalance().
+    ///      Recall assets first via rebalance() (set the target to 0, then rebalance). Only a strategy whose
+    ///      balance read fails is removed without this check (see {StrategyForceRemoved}).
     error StrategyManagerStrategyStillAllocated(address strategy, uint256 balance);
+
+    /// @dev Reverts when adding a strategy that already reports a balance. A new strategy must start empty so
+    ///      that adding it cannot step the vault's NAV up, e.g. re-adding a force-removed strategy that still
+    ///      holds the stranded funds, which would hand them to whoever deposited after the removal.
+    error StrategyManagerStrategyNotEmpty(address strategy, uint256 balance);
 
     /// @dev Reverts when adding a strategy would exceed the MAX_STRATEGIES cap.
     error StrategyManagerTooManyStrategies();
@@ -80,7 +111,8 @@ interface IStrategyManager {
     function getStrategyTarget(address strategy) external view returns (uint16 targetBps);
 
     /// @notice Returns the sum of `IStrategy.totalAssetsManaged()` across all registered strategies.
-    /// @dev Trust assumption: strategies are trusted to report accurate balances.
+    /// @dev Trust assumption: strategies are trusted to report accurate balances. Reverts if any strategy's
+    ///      read reverts or the sum overflows, which makes a VaultCore vault's `totalAssets()` revert (fail closed).
     function totalAllocated() external view returns (uint256);
 
     /// @notice Returns the current sum of all registered strategy target allocations in basis points.
@@ -95,11 +127,21 @@ interface IStrategyManager {
     function setVault(address _vault) external;
 
     /// @notice Registers a new strategy with a target allocation. Admin-only.
+    /// @dev Reverts with {StrategyManagerStrategyNotEmpty} if the strategy already reports a balance, and bubbles
+    ///      the revert if its `totalAssetsManaged()` read fails.
     /// @param strategy Address of the strategy to register.
     /// @param targetBps Target allocation in basis points (0–10 000).
     function addStrategy(address strategy, uint16 targetBps) external;
 
     /// @notice Removes a registered strategy. Admin-only.
+    /// @dev Reverts with {StrategyManagerStrategyStillAllocated} while the strategy reports a balance. A strategy
+    ///      whose `totalAssetsManaged()` read fails is force-removed instead, emitting {StrategyForceRemoved};
+    ///      any funds it still holds leave the vault's NAV. The force removal latches the vault's deposits
+    ///      closed (`IStrategyManagerRecovery`): exits reopen, capped at idle, while deposit/mint stay closed
+    ///      until the admin calls `clearDepositLatch`, so no new depositor shares in funds the strategy returns
+    ///      in the meantime. Those funds accrue to whoever still holds shares when they return; a holder who
+    ///      exits while latched is priced on the idle-only NAV and gives up their share of the stranded funds.
+    ///      The strategy cannot be re-added while it reports a balance.
     /// @param strategy Address of the strategy to remove.
     function removeStrategy(address strategy) external;
 
@@ -113,6 +155,10 @@ interface IStrategyManager {
     function harvest() external;
 
     /// @notice Rebalances the vault's asset distribution to match strategy target allocations.
-    /// @dev Pushes or recalls assets to/from strategies. Anyone can call.
+    /// @dev Pushes or recalls assets to/from strategies, then calls `deploy()` on each strategy that advertises
+    ///      `IProtocolAdapter` and holds idle asset. Anyone can call. A recall that loses value beyond a fixed
+    ///      rounding tolerance reverts with {StrategyManagerWithdrawShortfall}; an honest partial recall emits
+    ///      {StrategyPartiallyRecalled}; a failing deploy emits {StrategyDeployFailed}. Allocations are capped
+    ///      at the vault's actual idle balance.
     function rebalance() external;
 }

@@ -120,8 +120,9 @@ contract MockUniV3Pool {
 
 /// @notice Mock NonfungiblePositionManager with internal liquidity↔amounts bookkeeping consistent
 ///         with the mock pool's TWAP price (uses the SAME `UniswapV3FullRangeMath` the adapter uses,
-///         so a mint→value→withdraw round-trips exactly). Pulls tokens on mint/increase, holds them,
-///         pays them back on decrease+collect. Supports a settable fee accrual that `collect` pays.
+///         so a mint→value→withdraw round-trips exactly), or with its spot price under `payAtSpot`, as
+///         the real pool prices every leg. Pulls tokens on mint/increase, holds them, pays them back on
+///         decrease+collect. Supports a settable fee accrual that `collect` pays.
 contract MockPositionManager {
     MockUniV3Pool public pool;
     MockERC20 public token0;
@@ -140,33 +141,43 @@ contract MockPositionManager {
 
     mapping(uint256 => Position) public pos;
 
+    /// @dev When set, `mint`/`increaseLiquidity` consume and `decreaseLiquidity` pays out at the pool's spot
+    ///      price instead of the TWAP, as the real pool does. Off, every leg prices at the TWAP.
+    bool public payAtSpot;
+
     constructor(MockUniV3Pool p, MockERC20 t0, MockERC20 t1) {
         pool = p;
         token0 = t0;
         token1 = t1;
     }
 
-    /// @dev Liquidity mintable from `(a0, a1)` and the amounts it actually consumes, at the TWAP price
-    ///      over [tickLower, tickUpper]. Uses the SAME math the adapter values with, so round-trips.
+    /// @dev Liquidity mintable from `(a0, a1)` and the amounts it actually consumes, at the TWAP price (or the
+    ///      spot price when `payAtSpot`) over [tickLower, tickUpper]. Uses the SAME math the adapter values
+    ///      with, so round-trips.
     function _quote(int24 tickLower, int24 tickUpper, uint256 a0, uint256 a1)
         internal
         view
         returns (uint128 liquidity, uint256 amount0, uint256 amount1)
     {
-        uint160 sc = UniswapV3FullRangeMath.getSqrtRatioAtTick(pool.twapTick());
+        uint160 sc = UniswapV3FullRangeMath.getSqrtRatioAtTick(payAtSpot ? pool.spotTick() : pool.twapTick());
         uint160 sl = UniswapV3FullRangeMath.getSqrtRatioAtTick(tickLower);
         uint160 su = UniswapV3FullRangeMath.getSqrtRatioAtTick(tickUpper);
         liquidity = UniswapV3FullRangeMath.getLiquidityForAmounts(sc, sl, su, a0, a1);
         (amount0, amount1) = UniswapV3FullRangeMath.getAmountsForLiquidity(sc, sl, su, liquidity);
     }
 
-    /// @dev Amounts owed when removing `liq` liquidity, at the TWAP price over [tickLower, tickUpper].
+    function setPayAtSpot(bool payAtSpot_) external {
+        payAtSpot = payAtSpot_;
+    }
+
+    /// @dev Amounts owed when removing `liq` liquidity over [tickLower, tickUpper], at the TWAP price (or the
+    ///      spot price when `payAtSpot`).
     function _amountsFor(int24 tickLower, int24 tickUpper, uint128 liq)
         internal
         view
         returns (uint256 amount0, uint256 amount1)
     {
-        uint160 sc = UniswapV3FullRangeMath.getSqrtRatioAtTick(pool.twapTick());
+        uint160 sc = UniswapV3FullRangeMath.getSqrtRatioAtTick(payAtSpot ? pool.spotTick() : pool.twapTick());
         uint160 sl = UniswapV3FullRangeMath.getSqrtRatioAtTick(tickLower);
         uint160 su = UniswapV3FullRangeMath.getSqrtRatioAtTick(tickUpper);
         (amount0, amount1) = UniswapV3FullRangeMath.getAmountsForLiquidity(sc, sl, su, liq);
@@ -286,7 +297,13 @@ contract MockPositionManager {
 contract MockUniV3Adapter is UniswapV3Adapter, Pausable, EmergencyStop, Initializable {
     /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare
     ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing.
-    function exportSelectors() external pure virtual override(Pausable, EmergencyStop) returns (bytes memory) {}
+    function exportSelectors()
+        external
+        pure
+        virtual
+        override(UniswapV3Adapter, Pausable, EmergencyStop)
+        returns (bytes memory)
+    {}
 
     function initialize(
         address admin_,
@@ -387,7 +404,7 @@ contract UniswapV3AdapterTest is Test {
         _fund(500e18, 500e18);
         adapter.deploy();
         assertEq(adapter.tokenId(), id, "same position id (increase, not re-mint)");
-        assertApproxEqRel(adapter.totalAssetsManaged(), navAfterFirst + 1_000e18, 1e15, "NAV grew by added value");
+        assertApproxEqRel(adapter.totalAssetsManaged(), navAfterFirst + 500e18, 1e15, "NAV grew by the token0 added");
     }
 
     function test_Deploy_RevertsWhenNothingToDeploy() public {
@@ -423,11 +440,12 @@ contract UniswapV3AdapterTest is Test {
     //                  TOTAL ASSETS — TWAP VALUATION (CENTRAL RISK)
     //////////////////////////////////////////////////////////////////////////*//
 
-    function test_TotalAssets_ValuesPositionViaTwap() public {
+    /// @notice #271: at price 1.0 the position holds ~1000 token0 + ~1000 token1. NAV is the token0 leg alone:
+    ///         the swap-free adapter can never hand the vault the token1 leg as token0.
+    function test_TotalAssets_CountsPositionToken0LegViaTwap() public {
         _fund(1_000e18, 1_000e18);
         adapter.deploy();
-        // At price 1.0 the position holds ~1000 token0 + ~1000 token1, valued in token0 == ~2000.
-        assertApproxEqRel(adapter.totalAssetsManaged(), 2_000e18, 1e15, "TWAP-valued NAV ~2000 token0");
+        assertApproxEqRel(adapter.totalAssetsManaged(), 1_000e18, 1e15, "NAV = the TWAP token0 leg ~1000");
     }
 
     /// @notice THE key property: a spiked `slot0` spot price does NOT move NAV — valuation reads only
@@ -447,20 +465,20 @@ contract UniswapV3AdapterTest is Test {
     }
 
     /// @notice A genuine TWAP move changes NAV in the correct direction: raising the TWAP tick raises
-    ///         the token1/token0 price, so token1 in the position is worth fewer token0 ⇒ NAV (in
-    ///         token0) decreases; lowering the tick increases it.
+    ///         the token1/token0 price, so the full-range position holds less token0 ⇒ NAV (its token0
+    ///         leg) decreases; lowering the tick increases it.
     function test_TotalAssets_TwapMoveChangesNav() public {
         _fund(1_000e18, 1_000e18);
         adapter.deploy();
         uint256 navAt1 = adapter.totalAssetsManaged();
 
-        pool.setTwapTick(6932); // ~price 2.0 (token1 per token0): token1 worth less in token0 terms
+        pool.setTwapTick(6932); // ~price 2.0 (token1 per token0): the position holds less token0
         uint256 navUp = adapter.totalAssetsManaged();
-        assertLt(navUp, navAt1, "higher token1/token0 price lowers token0-denominated NAV");
+        assertLt(navUp, navAt1, "higher token1/token0 price lowers the token0 leg");
 
-        pool.setTwapTick(-6932); // ~price 0.5: token1 worth more in token0 terms
+        pool.setTwapTick(-6932); // ~price 0.5: the position holds more token0
         uint256 navDown = adapter.totalAssetsManaged();
-        assertGt(navDown, navAt1, "lower token1/token0 price raises token0-denominated NAV");
+        assertGt(navDown, navAt1, "lower token1/token0 price raises the token0 leg");
     }
 
     function test_TotalAssets_IncludesIdleToken0() public {
@@ -472,44 +490,118 @@ contract UniswapV3AdapterTest is Test {
         assertEq(adapter.totalAssetsManaged(), nav + 123e18, "idle token0 counted at par");
     }
 
+    function test_TotalAssets_RevertsWhenPositionsCallFails() public {
+        _fund(1_000e18, 1_000e18);
+        adapter.deploy();
+        uint256 id = adapter.tokenId();
+        bytes memory call = abi.encodeWithSelector(INonfungiblePositionManager.positions.selector, id);
+        bytes memory err = abi.encodeWithSelector(IUniswapV3Adapter.UniswapV3AdapterPositionsCallFailed.selector, id);
+
+        vm.mockCallRevert(address(npm), call, bytes(""));
+        vm.expectRevert(err);
+        adapter.totalAssetsManaged();
+
+        vm.clearMockedCalls();
+        vm.mockCall(address(npm), call, abi.encode(uint256(1)));
+        vm.expectRevert(err);
+        adapter.totalAssetsManaged();
+    }
+
     function test_TotalAssets_ZeroWhenNoPosition() public view {
         assertEq(adapter.totalAssetsManaged(), 0, "no position, no idle -> zero NAV");
     }
 
-    //*//////////////////////////////////////////////////////////////////////////
-    //                       WITHDRAW — SHORTFALL-HONEST
-    //////////////////////////////////////////////////////////////////////////*//
-
-    function test_Withdraw_FreesToken0_ShortfallHonest() public {
+    /// @notice #271: idle token1 (keeper-funded ahead of a deploy, or left over from one) is not NAV: the vault
+    ///         can never receive it as token0.
+    function test_TotalAssets_ExcludesIdleToken1() public {
         _fund(1_000e18, 1_000e18);
         adapter.deploy();
-        uint256 vault0Before = token0.balanceOf(vault);
-
-        uint256 reported = adapter.withdraw(400e18, vault);
-        // Honest real delta: the reported value EQUALS the actual token0 the vault received.
-        uint256 vault0Delta = token0.balanceOf(vault) - vault0Before;
-        assertEq(reported, vault0Delta, "reports exactly the real token0 delta to vault");
-        assertGt(reported, 0, "freed some token0");
-        // Two-token caveat: a full-range decrease frees token0 AND token1 in the pool ratio, so the
-        // token0 freed for a 400-token0 ask is ~half (the rest comes out as token1, also sent to vault).
-        assertGt(token1.balanceOf(vault), 0, "freed token1 routed to vault too");
-        assertLe(reported, 400e18, "never over-reports the requested token0");
+        uint256 nav = adapter.totalAssetsManaged();
+        token1.mint(address(adapter), 123e18);
+        assertEq(adapter.totalAssetsManaged(), nav, "idle token1 not counted");
     }
 
-    function test_Withdraw_NeverOverReports_WholePosition() public {
+    /// @notice #271: an adapter holding only token1 reports zero.
+    function test_TotalAssets_OnlyToken1_IsZero() public {
+        token1.mint(address(adapter), 123e18);
+        assertEq(adapter.totalAssetsManaged(), 0, "token1 alone is not NAV");
+    }
+
+    /// @notice #271: with the mock pricing the mint at the TWAP (as the pool would at spot == TWAP), deploying
+    ///         converts idle token0 into an equal token0 leg, so NAV is flat across it (the keeper's token1 never
+    ///         enters NAV). Away from the TWAP the step is bounded: see `test_Deploy_RevertsWhenSpotFarFromTwap`.
+    function test_Deploy_KeepsNavFlat() public {
+        pool.setTwapTick(1234);
+        _fund(1_000e18, 1_140e18); // token1 in excess (inside the 1% slippage): token0 binds
+        uint256 navBefore = adapter.totalAssetsManaged();
+        assertEq(navBefore, 1_000e18, "only idle token0 counts");
+        adapter.deploy();
+        assertApproxEqAbs(adapter.totalAssetsManaged(), navBefore, 4, "NAV flat across deploy");
+        assertGt(token1.balanceOf(address(adapter)), 0, "excess token1 left idle, uncounted");
+    }
+
+    /// @notice #271 review: the pool prices a mint at spot while NAV counts the new token0 leg at the TWAP. With
+    ///         spot ~2x the TWAP and token1 funded to match spot, the mint passes its own floors, but the leg it
+    ///         builds is worth ~1.41x the token0 it took, so the deploy is refused rather than inflate NAV.
+    function test_Deploy_RevertsWhenSpotFarFromTwap() public {
+        npm.setPayAtSpot(true);
+        pool.setSpotTick(6932); // ~price 2.0; the TWAP stays at 1.0
+        _fund(1_000e18, 2_010e18);
+        vm.expectPartialRevert(IUniswapV3Adapter.UniswapV3AdapterDeployOffTwap.selector);
+        adapter.deploy();
+    }
+
+    /// @notice #271 review: spot within `slippageBps` of the TWAP (60 ticks, ~0.3%) deploys, stepping NAV up by
+    ///         the gap on the token0 consumed, well under the 1% bound.
+    function test_Deploy_SpotNearTwap_Deploys_NavStepBounded() public {
+        npm.setPayAtSpot(true);
+        pool.setSpotTick(60);
+        _fund(1_000e18, 1_010e18);
+        uint256 consumed = adapter.deploy();
+        uint256 nav = adapter.totalAssetsManaged();
+        uint256 idle0 = token0.balanceOf(address(adapter));
+        assertGt(nav, consumed + idle0, "spot above the TWAP steps NAV up");
+        assertLe(nav - consumed - idle0, (consumed * SLIPPAGE_BPS) / 10_000, "step within slippageBps");
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                       WITHDRAW — IDLE TOKEN0 ONLY
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice #271: a recall pays from idle token0 and leaves the position alone, since freeing its token0 leg
+    ///         would also free token1 the vault cannot take.
+    function test_Withdraw_SpendsIdleToken0_PositionUntouched() public {
         _fund(1_000e18, 1_000e18);
         adapter.deploy();
-        uint256 nav = adapter.totalAssetsManaged(); // ~2000 token0-value
-        uint256 vault0Before = token0.balanceOf(vault);
+        (,,, uint128 liquidityBefore,,) = npm.pos(adapter.tokenId());
+        token0.mint(address(adapter), 300e18); // allocated, not yet deployed
+        uint256 navBefore = adapter.totalAssetsManaged();
 
-        // Ask for far more than the whole position; adapter removes ALL liquidity.
-        uint256 reported = adapter.withdraw(nav * 2, vault);
-        uint256 vault0Delta = token0.balanceOf(vault) - vault0Before;
-        assertEq(reported, vault0Delta, "reported == real token0 delta");
-        // The whole position is gone; remaining NAV is ~0 (only any dust).
-        assertLt(adapter.totalAssetsManaged(), 1e12, "position fully removed");
-        // token0 freed is ~1000 (its half of the position); honest, not the 2000 token0-value asked.
-        assertApproxEqRel(reported, 1_000e18, 1e15, "honest token0 freed ~ position's token0 leg");
+        uint256 reported = adapter.withdraw(200e18, vault);
+        assertEq(reported, 200e18, "paid from idle");
+        assertEq(token0.balanceOf(vault), 200e18, "vault received");
+        (,,, uint128 liquidityAfter,,) = npm.pos(adapter.tokenId());
+        assertEq(liquidityAfter, liquidityBefore, "position untouched");
+        assertEq(adapter.totalAssetsManaged(), navBefore - reported, "NAV drops by exactly what was paid");
+    }
+
+    /// @notice #271: asking for more than the idle token0 pays the idle only and reports it honestly; the
+    ///         position, and the token1 it holds, stay put.
+    function test_Withdraw_BeyondIdle_PaysIdleOnly() public {
+        _fund(1_000e18, 1_000e18);
+        adapter.deploy();
+        (,,, uint128 liquidityBefore,,) = npm.pos(adapter.tokenId());
+        token0.mint(address(adapter), 100e18);
+        uint256 idle0 = token0.balanceOf(address(adapter));
+        uint256 navBefore = adapter.totalAssetsManaged();
+
+        uint256 reported = adapter.withdraw(navBefore, vault);
+        assertEq(reported, idle0, "honest: only the idle token0");
+        assertEq(token0.balanceOf(vault), idle0, "reported == real token0 delta");
+        (,,, uint128 liquidityAfter,,) = npm.pos(adapter.tokenId());
+        assertEq(liquidityAfter, liquidityBefore, "position untouched");
+        assertEq(token1.balanceOf(vault), 0, "no token1 sent to the vault");
+        assertEq(adapter.totalAssetsManaged(), navBefore - reported, "the token0 leg stays counted");
     }
 
     function test_Withdraw_RevertsZeroRecipient() public {
@@ -539,27 +631,38 @@ contract UniswapV3AdapterTest is Test {
         // Fees are NOT in NAV (principal liquidity unchanged) — proven before harvesting.
         assertEq(adapter.totalAssetsManaged(), navBefore, "uncollected fees not counted in NAV");
 
-        // The adapter may hold <=1 wei of each token as deploy rounding dust; harvest forwards the
-        // collected fees RAW *plus* that dust (it sweeps the full balance). Account for it honestly.
+        // Harvest forwards exactly the collected fees and leaves any idle balance (here the deploy rounding
+        // dust) in place: idle token0 is NAV, and idle token1 waits for the next deploy.
         uint256 dust0 = token0.balanceOf(address(adapter));
         uint256 dust1 = token1.balanceOf(address(adapter));
         adapter.harvest();
-        assertEq(token0.balanceOf(treasury), 7e18 + dust0, "fee0 (+dust) forwarded raw to recipient");
-        assertEq(token1.balanceOf(treasury), 9e18 + dust1, "fee1 (+dust) forwarded raw to recipient");
-        // Harvest does not touch the LP PRINCIPAL: the position's liquidity is untouched, so NAV only
-        // drops by the idle-token0 dust harvest swept out (the position-value component is unchanged).
-        assertEq(adapter.totalAssetsManaged(), navBefore - dust0, "only idle-token0 dust left NAV; principal intact");
-        assertEq(token0.balanceOf(address(adapter)), 0, "no token0 stranded");
-        assertEq(token1.balanceOf(address(adapter)), 0, "no token1 stranded");
+        assertEq(token0.balanceOf(treasury), 7e18, "fee0 forwarded raw to recipient");
+        assertEq(token1.balanceOf(treasury), 9e18, "fee1 forwarded raw to recipient");
+        assertEq(adapter.totalAssetsManaged(), navBefore, "NAV untouched; principal and idle intact");
+        assertEq(token0.balanceOf(address(adapter)), dust0, "idle token0 kept");
+        assertEq(token1.balanceOf(address(adapter)), dust1, "idle token1 kept");
+    }
+
+    /// @notice #221: harvest never forwards idle balances (idle token0 is NAV; idle token1 is kept for the next
+    ///         deploy).
+    function test_Harvest_LeavesIdleInPlace() public {
+        _fund(1_000e18, 1_000e18);
+        adapter.deploy();
+        token0.mint(address(adapter), 50e18);
+        token1.mint(address(adapter), 60e18);
+        uint256 navBefore = adapter.totalAssetsManaged();
+        adapter.harvest();
+        assertEq(token0.balanceOf(treasury), 0, "idle token0 not forwarded");
+        assertEq(token1.balanceOf(treasury), 0, "idle token1 not forwarded");
+        assertEq(adapter.totalAssetsManaged(), navBefore, "NAV untouched");
     }
 
     function test_Harvest_ZeroFees_Graceful() public {
         _fund(1_000e18, 1_000e18);
         adapter.deploy();
         adapter.harvest(); // no fees accrued -> must not revert
-        // Only the <=1 wei deploy dust can reach the treasury; no principal is ever forwarded.
-        assertLe(token0.balanceOf(treasury), 1, "no principal token0 forwarded");
-        assertLe(token1.balanceOf(treasury), 1, "no principal token1 forwarded");
+        assertEq(token0.balanceOf(treasury), 0, "no principal token0 forwarded");
+        assertEq(token1.balanceOf(treasury), 0, "no principal token1 forwarded");
     }
 
     function test_Harvest_NoPosition_NoOp() public {
@@ -583,6 +686,35 @@ contract UniswapV3AdapterTest is Test {
         assertEq(adapter.totalAssetsManaged(), 0, "position fully closed");
         assertEq(token0.balanceOf(address(adapter)), 0, "adapter emptied of token0");
         assertEq(token1.balanceOf(address(adapter)), 0, "adapter emptied of token1");
+    }
+
+    /// @notice #271: NAV counts only token0, so the emergency exit delivers what NAV reported (at spot == TWAP);
+    ///         the token1 leg it also sends was never NAV.
+    function test_EmergencyWithdraw_DeliversReportedNav() public {
+        pool.setTwapTick(1234);
+        _fund(1_000e18, 1_140e18);
+        adapter.deploy();
+        token1.mint(address(adapter), 50e18); // idle token1, uncounted
+        uint256 nav = adapter.totalAssetsManaged();
+        vm.prank(admin);
+        uint256 recovered = adapter.emergencyWithdraw();
+        assertApproxEqAbs(recovered, nav, 4, "token0 recovered == NAV reported");
+        assertGt(token1.balanceOf(vault), 50e18, "token1 leg and idle token1 sent to the vault");
+    }
+
+    /// @notice #271 review: the emergency exit has no slippage floor and the pool pays out at spot, so NAV moves
+    ///         by the spot/TWAP gap on the token0 leg. With spot ~2x the TWAP the vault receives ~1/√2 of the
+    ///         token0 NAV counted: the admin should exit while spot is near the TWAP.
+    function test_EmergencyWithdraw_AtSpotAboveTwap_DeliversLessThanNav() public {
+        _fund(1_000e18, 1_000e18);
+        adapter.deploy();
+        uint256 nav = adapter.totalAssetsManaged();
+        npm.setPayAtSpot(true);
+        pool.setSpotTick(6932);
+        token1.mint(address(npm), 1_000e18); // the mock pays the spot amounts from its own balance
+        vm.prank(admin);
+        uint256 recovered = adapter.emergencyWithdraw();
+        assertApproxEqRel(recovered, (nav * 7_071) / 10_000, 1e15, "token0 recovered ~ NAV / sqrt(2)");
     }
 
     function test_EmergencyWithdraw_WorksWhenStopped() public {

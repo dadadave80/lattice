@@ -12,8 +12,8 @@ pragma solidity >=0.8.4;
 ///         underlying is native ETH, which breaks the synchronous, ERC-20 withdraw assumption every
 ///         other adapter relies on. This adapter therefore splits withdrawals into two legs:
 ///         - the synchronous `IStrategy.withdraw` is served **only** from an idle WETH buffer and is
-///           shortfall-honest (returns less when the buffer is short; the StrategyManager's
-///           shortfall check upstream handles the remainder);
+///           shortfall-honest (returns less when the buffer is short; the StrategyManager accepts
+///           that as a partial recall, since the unpaid remainder stays in this adapter's NAV);
 ///         - the slow Lido-queue leg runs out-of-band via the keeper functions `requestWithdrawal`
 ///           (wstETH → stETH → enqueue) and `claimWithdrawal` (finalized request → ETH → refill the
 ///           WETH buffer).
