@@ -69,7 +69,8 @@ contract GovernedVaultENSInit {
         VaultCoreLib.__VaultCore_init();
 
         // 3. Timelock: the diamond is the sole PROPOSER (so the Governor can queue) and its own admin; execution
-        //    is open (address(0)).
+        //    is open (address(0)). The timelock shares the Governor's storage, so it refuses an Expired
+        //    proposal's operation even when it is run directly.
         address[] memory proposers = new address[](1);
         proposers[0] = self;
         address[] memory executors = new address[](1);

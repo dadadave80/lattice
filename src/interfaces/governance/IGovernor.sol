@@ -229,7 +229,8 @@ interface IGovernor {
         external
         returns (uint256);
 
-    /// @notice Execute a succeeded (or queued+ready) proposal.
+    /// @notice Execute a succeeded (or queued+ready) proposal. A queued proposal past its grace period is Expired
+    ///         and can no longer be executed.
     function execute(
         address[] memory targets,
         uint256[] memory values,
@@ -237,7 +238,7 @@ interface IGovernor {
         bytes32 descriptionHash
     ) external payable returns (uint256);
 
-    /// @notice Cancel a pending proposal (proposer only).
+    /// @notice Cancel a proposal before voting starts (proposer only, Pending state only).
     function cancel(
         address[] memory targets,
         uint256[] memory values,

@@ -37,7 +37,8 @@ struct GovernedVaultParams {
 ///         {Governor}'s vote `token` and `timelock` are both set to it, the timelock's sole proposer is it (so
 ///         the Governor can queue), and its `DEFAULT_ADMIN_ROLE` (the vault's strategy-admin gate) is held by it
 ///         (i.e. only reachable through a passed, timelock-executed proposal). Execution is left OPEN
-///         (`executor = address(0)`), so anyone may execute a proposal once its delay elapses.
+///         (`executor = address(0)`), so anyone may execute a queued proposal once its delay elapses and until
+///         its 14-day grace period ends; after that the proposal is Expired and the timelock refuses it.
 /// @dev Delegatecalled inside the diamond's initializing window — each `__*_init` guard passes because the
 ///      window is already open; it must NOT open its own pre/postInitializer.
 contract GovernedVaultInit {
@@ -72,7 +73,8 @@ contract GovernedVaultInit {
         VaultCoreLib.__VaultCore_init();
 
         // 3. Timelock: the diamond is the sole PROPOSER (so the Governor can queue) and its own admin; execution
-        //    is open (address(0)).
+        //    is open (address(0)). The timelock shares the Governor's storage, so it refuses an Expired
+        //    proposal's operation even when it is run directly.
         address[] memory proposers = new address[](1);
         proposers[0] = self;
         address[] memory executors = new address[](1);

@@ -318,11 +318,10 @@ contract GovernanceStackTest is Test {
     //                    CANCEL MID-FLIGHT TESTS
     //////////////////////////////////////////////////////////////////////////*//
 
-    /// @notice Proposer cancels an Active proposal.
-    function test_GovStack_CancelActiveMidFlight() public {
+    /// @notice Proposer cancels a Pending proposal before voting starts.
+    function test_GovStack_CancelPendingBeforeVoting() public {
         uint256 proposalId = _propose();
-        _advanceToActive();
-        assertEq(uint8(governor.state(proposalId)), uint8(IGovernor.ProposalState.Active));
+        assertEq(uint8(governor.state(proposalId)), uint8(IGovernor.ProposalState.Pending));
 
         (address[] memory targets, uint256[] memory values, bytes[] memory calldatas, string memory description) =
             _buildProposal();
@@ -338,8 +337,31 @@ contract GovernanceStackTest is Test {
         assertFalse(govTarget.called());
     }
 
-    /// @notice Proposer cancels a Queued proposal — the timelock op is also canceled.
-    function test_GovStack_CancelQueuedProposalAlsoCancelsTimelockOp() public {
+    /// @notice Once voting has started, the proposer can no longer cancel (#323).
+    function test_GovStack_CancelActiveMidFlightReverts() public {
+        uint256 proposalId = _propose();
+        _advanceToActive();
+        assertEq(uint8(governor.state(proposalId)), uint8(IGovernor.ProposalState.Active));
+
+        (address[] memory targets, uint256[] memory values, bytes[] memory calldatas, string memory description) =
+            _buildProposal();
+
+        vm.prank(alice);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IGovernor.GovernorUnexpectedProposalState.selector,
+                proposalId,
+                IGovernor.ProposalState.Active,
+                bytes32(uint256(1) << uint8(IGovernor.ProposalState.Pending))
+            )
+        );
+        governor.cancel(targets, values, calldatas, keccak256(bytes(description)));
+
+        assertEq(uint8(governor.state(proposalId)), uint8(IGovernor.ProposalState.Active));
+    }
+
+    /// @notice The proposer cannot cancel a Queued proposal (#323); the timelock op stays scheduled and executes.
+    function test_GovStack_CancelQueuedProposalRevertsAndExecutes() public {
         uint256 proposalId = _proposeAndVoteBothFor();
 
         (address[] memory targets, uint256[] memory values, bytes[] memory calldatas, string memory description) =
@@ -354,14 +376,24 @@ contract GovernanceStackTest is Test {
         bytes32 timelockId = timelock.hashOperationBatch(targets, values, calldatas, bytes32(0), salt);
         assertTrue(timelock.isOperationPending(timelockId));
 
-        // Alice (proposer) cancels.
+        // Alice (proposer) can no longer cancel.
         vm.prank(alice);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IGovernor.GovernorUnexpectedProposalState.selector,
+                proposalId,
+                IGovernor.ProposalState.Queued,
+                bytes32(uint256(1) << uint8(IGovernor.ProposalState.Pending))
+            )
+        );
         governor.cancel(targets, values, calldatas, descHash);
 
-        assertEq(uint8(governor.state(proposalId)), uint8(IGovernor.ProposalState.Canceled));
-        // Timelock op must also be canceled.
-        assertFalse(timelock.isOperationPending(timelockId));
-        assertFalse(govTarget.called());
+        assertEq(uint8(governor.state(proposalId)), uint8(IGovernor.ProposalState.Queued));
+        assertTrue(timelock.isOperationPending(timelockId));
+
+        vm.warp(governor.proposalEta(proposalId));
+        governor.execute(targets, values, calldatas, descHash);
+        assertTrue(govTarget.called());
     }
 
     //*//////////////////////////////////////////////////////////////////////////

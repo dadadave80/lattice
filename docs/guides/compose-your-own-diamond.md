@@ -99,7 +99,7 @@ through `LatticeFactory` in one transaction; `deployAtomic` additionally lets yo
 | --- | --- |
 | Diamond itself | Governor token and timelock target; default admin and upgrade executor |
 | Shareholder | Deposit, delegate, propose, and vote subject to snapshot/threshold/quorum |
-| Anyone | Execute a successful queued proposal once its delay expires |
+| Anyone | Execute a successful queued proposal once its delay expires and before its 14-day grace period ends |
 | Deployer / factory | No permanent upgrade authority over the initialized vault |
 | Guardian | None appointed initially; governance may appoint one for emergency controls. Trusted for governance liveness (see below) |
 
