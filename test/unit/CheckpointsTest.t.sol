@@ -42,12 +42,28 @@ contract CheckpointsHarness {
     }
 }
 
+/// @title Checkpoints160Harness
+/// @notice Exposes the Trace160 functions (uint96 keys, uint160 values) for testing.
+contract Checkpoints160Harness {
+    Checkpoints.Trace160 private _trace;
+
+    function push(uint96 key, uint160 value) external {
+        Checkpoints.push(_trace, key, value);
+    }
+
+    function lowerLookup(uint96 key) external view returns (uint160) {
+        return Checkpoints.lowerLookup(_trace, key);
+    }
+}
+
 /// @title CheckpointsTest
 contract CheckpointsTest is Test {
     CheckpointsHarness harness;
+    Checkpoints160Harness harness160;
 
     function setUp() public {
         harness = new CheckpointsHarness();
+        harness160 = new Checkpoints160Harness();
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -294,5 +310,36 @@ contract CheckpointsTest is Test {
         harness.push(10, 100);
         assertEq(harness.lowerLookup(10), 100);
         assertEq(harness.lowerLookup(11), 0);
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                                 TRACE160
+    //////////////////////////////////////////////////////////////////////////*//
+
+    function test_Trace160_PushReplacesEqualKey() public {
+        harness160.push(4, 100);
+        assertEq(harness160.lowerLookup(4), 100);
+        harness160.push(4, 200);
+        assertEq(harness160.lowerLookup(4), 200, "same key replaces");
+        assertEq(harness160.lowerLookup(5), 0, "no second checkpoint");
+    }
+
+    function test_Trace160_RevertWhen_UnorderedPush() public {
+        harness160.push(10, 100);
+        vm.expectRevert(Checkpoints.CheckpointUnorderedInsertion.selector);
+        harness160.push(9, 90);
+    }
+
+    function test_Trace160_LowerLookupFindsTheRangeEnd() public {
+        harness160.push(4, 100);
+        harness160.push(type(uint96).max, 200);
+        assertEq(harness160.lowerLookup(0), 100);
+        assertEq(harness160.lowerLookup(4), 100);
+        assertEq(harness160.lowerLookup(5), 200);
+        assertEq(harness160.lowerLookup(type(uint96).max), 200);
+    }
+
+    function test_Trace160_EmptyLookupReturnsZero() public view {
+        assertEq(harness160.lowerLookup(0), 0);
     }
 }

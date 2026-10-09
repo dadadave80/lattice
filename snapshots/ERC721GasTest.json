@@ -1,6 +1,6 @@
 {
-  "ERC721.approve": "51176",
-  "ERC721.mint": "77768",
-  "ERC721.safeTransferFrom": "57325",
-  "ERC721.transferFrom": "57103"
+  "ERC721.approve": "51310",
+  "ERC721.mint": "80354",
+  "ERC721.safeTransferFrom": "57388",
+  "ERC721.transferFrom": "57166"
 }

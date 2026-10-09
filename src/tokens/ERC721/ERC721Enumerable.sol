@@ -15,6 +15,8 @@ import {ERC721EnumerableLib} from "@lattice/tokens/ERC721/libraries/ERC721Enumer
 ///      - {ERC721Burnable} and {ERC721Wrapper} mint and burn through {ERC721Lib}, which skips the lists, so neither
 ///        may share a diamond with this facet (pinned by CompositionHazardsTest). A mint, burn or authorization-free
 ///        transfer facet for an enumerable diamond calls {ERC721EnumerableLib} instead, never {ERC721Lib}.
+///      - Batch mints ({ERC721ConsecutiveInit}) skip the lists; either init order reverts
+///        `ERC721EnumerableForbiddenBatchMint`, as OpenZeppelin forbids the pair.
 /// @custom:lattice-version 0.5.0
 /// @custom:lattice-source OpenZeppelin v5.6.1
 contract ERC721Enumerable is IERC721Enumerable {

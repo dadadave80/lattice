@@ -3,8 +3,10 @@ pragma solidity ^0.8.30;
 
 /// @title Checkpoints
 /// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/utils/structs/Checkpoints.sol)
-/// @notice Utility library for checkpointed uint208 values keyed by uint48 timepoints.
-/// @dev Mirrors OpenZeppelin v5 Checkpoints (Trace208 variant).
+/// @notice Utility library for checkpointed values: uint208 values keyed by uint48 timepoints (Trace208), and
+///         uint160 values keyed by uint96 ids (Trace160, the ERC721Consecutive ownership ranges).
+/// @dev Mirrors OpenZeppelin v5 Checkpoints (the Trace208 and Trace160 variants). Trace160 carries only the `push` and
+///      `lowerLookup` its one caller needs.
 library Checkpoints {
     //*//////////////////////////////////////////////////////////////////////////
     //                                  ERRORS
@@ -26,6 +28,17 @@ library Checkpoints {
     /// @notice An ordered list of checkpoints.
     struct Trace208 {
         Checkpoint208[] _checkpoints;
+    }
+
+    /// @notice A single checkpoint storing a uint160 value at a uint96 key.
+    struct Checkpoint160 {
+        uint96 _key;
+        uint160 _value;
+    }
+
+    /// @notice An ordered list of uint160 checkpoints keyed by uint96.
+    struct Trace160 {
+        Checkpoint160[] _checkpoints;
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -62,9 +75,46 @@ library Checkpoints {
         return (0, value);
     }
 
+    /// @notice Pushes a uint160 checkpoint. If `key` equals the latest key, replaces the value.
+    ///         Reverts if `key` is less than the latest key. Unlike OpenZeppelin's, it returns nothing: its one caller
+    ///         needs neither the previous nor the new value.
+    function push(Trace160 storage self, uint96 key, uint160 value) internal {
+        uint256 len = self._checkpoints.length;
+        if (len > 0) {
+            Checkpoint160 storage last = self._checkpoints[len - 1];
+            uint96 latestKey = last._key;
+            if (key < latestKey) {
+                revert CheckpointUnorderedInsertion();
+            }
+            if (key == latestKey) {
+                last._value = value;
+                return;
+            }
+        }
+        self._checkpoints.push(Checkpoint160({_key: key, _value: value}));
+    }
+
     //*//////////////////////////////////////////////////////////////////////////
     //                              READ OPERATIONS
     //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice Returns the value of the first checkpoint whose key is greater than or equal to `key`.
+    /// @dev Binary search. Returns 0 if all checkpoints have keys < `key`.
+    function lowerLookup(Trace160 storage self, uint96 key) internal view returns (uint160) {
+        uint256 len = self._checkpoints.length;
+        uint256 low = 0;
+        uint256 high = len;
+        while (low < high) {
+            uint256 mid = (low + high) / 2;
+            if (self._checkpoints[mid]._key < key) {
+                low = mid + 1;
+            } else {
+                high = mid;
+            }
+        }
+        if (low == len) return 0;
+        return self._checkpoints[low]._value;
+    }
 
     /// @notice Returns the lowest value whose key is greater than or equal to `key`.
     ///         (Lower-bound lookup — useful for "find first checkpoint at or after key".)

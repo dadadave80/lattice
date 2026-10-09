@@ -23,8 +23,9 @@ import {NoncesLib} from "@lattice/utils/libraries/NoncesLib.sol";
 ///      - OpenZeppelin overrides `_update`, so every internal path (`_mint`, `_burn`, `_transfer`, `_safeTransfer`)
 ///        moves voting units automatically. Here only this library's wrappers do: {ERC721Lib._transfer} and the
 ///        other {ERC721Lib} internals move no units.
-///      - OpenZeppelin overrides `_increaseBalance` to move batch-minted units. Lattice ships no batch-mint path (no
-///        ERC721Consecutive), so there is no override.
+///      - OpenZeppelin overrides `_increaseBalance` to move batch-minted units. This library cannot see a batch
+///        ({ERC721ConsecutiveLib._mintConsecutive}), so the pair is forbidden: a batch on a votes diamond and
+///        {ERC721VotesInit} on a batch-minting diamond both revert `ERC721VotesForbiddenBatchMint`.
 ///      - Voting units are read from the ERC-721 balance by {delegate} and {delegateBySig}, which replace the base
 ///        {Votes} facet's ERC-20-balance versions; OpenZeppelin overrides `_getVotingUnits` instead.
 library ERC721VotesLib {

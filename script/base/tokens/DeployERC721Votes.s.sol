@@ -23,8 +23,8 @@ import {DiamondIntrospectionInit} from "@lattice/utils/DiamondIntrospectionInit.
 ///      loupe); deploy a new diamond to change behavior. Use the ADMIN overload (`buildCuts(..., admin)` /
 ///      `run(..., admin)`) for an upgradeable deployment gated on `DEFAULT_ADMIN_ROLE`.
 ///      Mint and burn are app-specific: a minting facet calls {ERC721VotesLib._mint}/{_burn}, never {ERC721Lib}'s.
-///      Do not add {ERC721Burnable}, {ERC721Wrapper}, {ERC721Pausable} or {ERC721Enumerable} to this diamond (see
-///      {ERC721Votes}).
+///      Do not add {ERC721Burnable}, {ERC721Wrapper}, {ERC721Pausable} or {ERC721Enumerable} to this diamond, nor
+///      batch mints through {ERC721ConsecutiveInit} (see {ERC721Votes}).
 ///      The `ERC721Votes` facet is the release facet from {BaseDeploy._facet}; the other cuts and the inits still
 ///      deploy fresh until every recipe moves to release contracts (#195).
 contract DeployERC721Votes is BaseDeploy {
