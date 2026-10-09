@@ -3,6 +3,7 @@ pragma solidity ^0.8.30;
 
 import {IERC721} from "@lattice/interfaces/tokens/IERC721.sol";
 import {IERC721Enumerable} from "@lattice/interfaces/tokens/IERC721Enumerable.sol";
+import {ERC721ConsecutiveLib} from "@lattice/tokens/ERC721/libraries/ERC721ConsecutiveLib.sol";
 import {ERC721Lib} from "@lattice/tokens/ERC721/libraries/ERC721Lib.sol";
 import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 
@@ -42,8 +43,9 @@ struct ERC721EnumerableStorage {
 ///      - OpenZeppelin overrides `_update`, so every internal path (`_mint`, `_burn`, `_transfer`, `_safeTransfer`)
 ///        is enumerated automatically. Here only this library's wrappers are: {ERC721Lib._transfer} and the other
 ///        {ERC721Lib} internals skip the lists.
-///      - OpenZeppelin overrides `_increaseBalance` to revert `ERC721EnumerableForbiddenBatchMint`. Lattice ships no
-///        batch-mint path (no ERC721Consecutive), so there is no override and no such error.
+///      - OpenZeppelin overrides `_increaseBalance` to revert `ERC721EnumerableForbiddenBatchMint`. Here
+///        {ERC721ConsecutiveLib._mintConsecutive} reverts with it when this extension is registered, and
+///        {__ERC721Enumerable_init} reverts with it after batch minting was initialized, so either init order fails.
 ///      - The enumeration lists start empty when the extension is initialized. Cut it into a fresh diamond: on a
 ///        diamond that already holds tokens it would not list them.
 library ERC721EnumerableLib {
@@ -63,9 +65,14 @@ library ERC721EnumerableLib {
 
     /// @notice Registers the IERC721Enumerable interface for ERC-165 discovery.
     /// @dev Must be called inside a pre/postInitializer block. The lists start empty, so there is nothing to seed.
+    ///      Reverts {IERC721Enumerable.ERC721EnumerableForbiddenBatchMint} on a diamond that initialized batch minting
+    ///      ({ERC721ConsecutiveLib}), whose batches the lists would miss.
     function __ERC721Enumerable_init() internal {
         bytes32 s = InitializableLib.initializableSlot();
         InitializableLib.checkInitializing(s);
+        if (ERC721ConsecutiveLib.erc721ConsecutiveStorage()._enabled) {
+            revert IERC721Enumerable.ERC721EnumerableForbiddenBatchMint();
+        }
         registerInterface();
     }
 

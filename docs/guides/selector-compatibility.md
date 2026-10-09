@@ -74,9 +74,16 @@ extensions that change transfer, mint or burn behaviour compose:
 1. **Base libraries run no hooks.** `ERC20Lib._update`, `ERC721Lib._update` and `ERC1155Lib._update` move balances
    and emit the standard events. They call no extension and read no extension flag. OpenZeppelin composes its
    extensions through `virtual _update` overrides. A Lattice library cannot dispatch virtually, and a hook in the
-   base library would cost every token an SLOAD per movement.
+   base library would cost every token an SLOAD per movement. The one exception is ERC-721 batch minting
+   (`ERC721ConsecutiveLib`, [#236](https://github.com/dadadave80/lattice/issues/236)), which has no selector to
+   replace because its batches exist only as ownership checkpoints. `ERC721Lib._ownerOf` falls back to those
+   checkpoints for an id with no stored owner, and `ERC721Lib._update` bans single mints during a batch-minting
+   diamond's first initialization and marks burned batch ids. On a diamond without batches that reads one storage
+   slot on each mint and burn, and none on a transfer of a stored token. A batch-minting diamond also reads the
+   initializable slot on each mint, and resolves an untransferred batch token through the burn bitmap and the
+   checkpoint search. It lets every path, base or extension, see batch-minted tokens.
 2. **A movement-replacing extension replaces the base selectors it gates.** An extension that must see or gate
-   every transfer (Pausable, Votes, and later Enumerable, Supply, Consecutive) exports its own versions of the
+   every transfer (Pausable, Votes, Enumerable, Supply) exports its own versions of the
    standard's public movement selectors. Its recipe cuts it with `Replace`, or excludes the base copies with
    `_cutExcept`.
 3. **Two extensions that replace the same selectors are mutually exclusive.** Every member of a standard's family
@@ -156,8 +163,22 @@ both `safeTransferFrom` overloads (`0x42842e0e`, `0xb88d4fde`). The ERC-1155 mov
 ERC721Burnable (`burn`), ERC721Wrapper (`depositFor`, `withdrawTo`, `onERC721Received`) and ERC1155Burnable
 (`burn`, `burnBatch`). Each is mutually exclusive with every movement-replacing extension of its standard.
 
-ERC-721 Pausable, Enumerable and Votes and ERC-1155 Pausable and Supply follow the ERC-20 pattern, and ERC-721
-Consecutive ([#236](https://github.com/dadadave80/lattice/issues/236)) must too. Each one:
+ERC-721 Consecutive is not a family member. It ships no facet and no selector: `ERC721ConsecutiveInit` mints
+ERC-2309 batches in the diamond's first initialization only (an upgrade cut's reinitializer window cannot), and the
+base library resolves their owners (item 1 above). So it composes with ERC721Pausable, ERC721Burnable,
+ERC721URIStorage, ERC721Wrapper and ERC2981. Two extensions exclude it:
+
+- **ERC721Enumerable**, as OpenZeppelin forbids: a batch would skip the lists. Both init orders revert
+  `ERC721EnumerableForbiddenBatchMint`.
+- **ERC721Votes**, unlike OpenZeppelin, which moves batch-minted voting units through `_increaseBalance`.
+  `ERC721VotesLib` cannot see a batch, so the batch would vote while the supply checkpoint (and a Governor quorum
+  read from it) missed it, and a vote-aware burn of a batch token would underflow that checkpoint. Both init
+  orders, and `ERC721VotesInit` in a later upgrade cut, revert `ERC721VotesForbiddenBatchMint`.
+
+`CompositionHazardsTest` pins both (`test_ERC721ConsecutiveAndEnumerableRevertInEitherOrder`,
+`test_ERC721ConsecutiveAndVotesRevertInEitherOrder`).
+
+ERC-721 Pausable, Enumerable and Votes and ERC-1155 Pausable and Supply follow the ERC-20 pattern. Each one:
 
 - replaces all of its standard's movement selectors, so any two members collide on `Add`;
 - joins a family test like `test_MovementReplacingFamilyClaimsTheTransferPair` for its standard;

@@ -2,6 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {IERC721, IERC721Receiver} from "@lattice/interfaces/tokens/IERC721.sol";
+import {ERC721ConsecutiveLib} from "@lattice/tokens/ERC721/libraries/ERC721ConsecutiveLib.sol";
 import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
@@ -44,6 +45,9 @@ struct ERC721Storage {
 ///      movement (Pausable, Enumerable, Votes) must replace the public `transferFrom` and both `safeTransferFrom`
 ///      selectors instead, and two such extensions are mutually exclusive. A caller of {_mint}/{_burn}/{_update}
 ///      outside those selectors (ERC721Burnable, ERC721Wrapper) bypasses them.
+///      The one exception is batch minting ({ERC721ConsecutiveLib}), which has no selector to replace: {_ownerOf}
+///      falls back to its ownership checkpoints, and {_update} applies its mint ban and burn bitmap, so every path
+///      sees batch-minted tokens.
 ///      See docs/guides/selector-compatibility.md#token-extension-hook-model.
 library ERC721Lib {
     //*//////////////////////////////////////////////////////////////////////////
@@ -176,8 +180,13 @@ library ERC721Lib {
     //////////////////////////////////////////////////////////////////////////*//
 
     /// @notice Returns the owner of `tokenId` without reverting (zero address if nonexistent).
-    function _ownerOf(uint256 tokenId) internal view returns (address) {
-        return erc721Storage()._owners[tokenId];
+    /// @dev An id with no stored owner falls back to the batch-mint checkpoints of {ERC721ConsecutiveLib}, as
+    ///      OpenZeppelin's ERC721Consecutive `_ownerOf` override does. On a diamond without batches that costs one
+    ///      SLOAD, on a mint or a lookup of a nonexistent id. On a batch-minting diamond an untransferred batch token
+    ///      also reads the burn bitmap and binary-searches the checkpoints.
+    function _ownerOf(uint256 tokenId) internal view returns (address owner) {
+        owner = erc721Storage()._owners[tokenId];
+        if (owner == address(0)) owner = ERC721ConsecutiveLib._sequentialOwnerOf(tokenId);
     }
 
     /// @notice Returns the approved address for `tokenId` without existence check.
@@ -203,7 +212,11 @@ library ERC721Lib {
     }
 
     /// @notice Central state mutation. Transfers `tokenId` to `to`, authorized by `auth`.
-    /// @dev If `auth` is non-zero, checks authorization. Returns previous owner. Runs no extension hook (D25).
+    /// @dev If `auth` is non-zero, checks authorization. Returns previous owner. Runs no extension hook (D25); it only
+    ///      keeps the batch-mint state of {ERC721ConsecutiveLib} consistent: a mint reverts
+    ///      {IERC721Consecutive.ERC721ForbiddenMint} during a batch-minting diamond's first initialization (which
+    ///      also reads the initializable slot on each mint there), and a burn marks a batch id burned (one SLOAD per
+    ///      burn, plus the bitmap write for a batch id).
     function _update(address to, uint256 tokenId, address auth) internal returns (address from) {
         from = _ownerOf(tokenId);
 
@@ -211,7 +224,9 @@ library ERC721Lib {
             _checkAuthorized(from, auth, tokenId);
         }
 
-        if (from != address(0)) {
+        if (from == address(0)) {
+            ERC721ConsecutiveLib._checkSingleMint();
+        } else {
             // Clear token approval on transfer. Pass address(0) as auth to skip authorization
             // check (no validation needed here) — matches OZ's _approve call in _update.
             _approve(address(0), tokenId, address(0), false);
@@ -224,6 +239,8 @@ library ERC721Lib {
             unchecked {
                 erc721Storage()._balances[to] += 1;
             }
+        } else if (from != address(0)) {
+            ERC721ConsecutiveLib._recordBurn(tokenId);
         }
 
         erc721Storage()._owners[tokenId] = to;
@@ -283,8 +300,8 @@ library ERC721Lib {
     }
 
     /// @notice Increases the balance of `account` by `value` without minting a tracked token.
-    /// @dev Extension hook for ERC721Consecutive and similar patterns that synthesize ownership
-    ///      outside of the normal _owners mapping. Matches OZ's _increaseBalance.
+    /// @dev Used by {ERC721ConsecutiveLib._mintConsecutive}, whose batch owners live outside `_owners`. Matches OZ's
+    ///      _increaseBalance.
     function _increaseBalance(address account, uint128 value) internal {
         unchecked {
             erc721Storage()._balances[account] += value;

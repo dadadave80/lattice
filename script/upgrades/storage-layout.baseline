@@ -247,6 +247,13 @@
 1	0	_validations	t_mapping(t_userDefinedValueType(ModuleEntity),t_struct(ValidationStorage)_storage)
 2	0	_interfaceRefCount	t_mapping(t_bytes4,t_uint256)
 
+### ERC721ConsecutiveStorage @ erc7201:lattice.storage.ERC721Consecutive (slot 0xa366fb2bdee137bc7f716776578183d1280f09a256650bb770031cb75d936000)
+0	0	_firstConsecutiveId	t_uint96
+0	12	_nextConsecutiveId	t_uint96
+0	24	_enabled	t_bool
+1	0	_sequentialOwnership	t_struct(Trace160)_storage
+2	0	_sequentialBurn	t_mapping(t_uint256,t_uint256)
+
 ### ERC721EnumerableStorage @ erc7201:lattice.storage.ERC721Enumerable (slot 0xf44b1a2ac6259907d34f22f5cc88909b4db34b47d9193d82fe8ed2889ec8e200)
 0	0	_ownedTokens	t_mapping(t_address,t_mapping(t_uint256,t_uint256))
 1	0	_ownedTokensIndex	t_mapping(t_uint256,t_uint256)
@@ -569,6 +576,10 @@
 6	0	gateways	t_struct(AddressSet)_storage
 8	0	hubRouted	t_mapping(t_address,t_bool)
 
+### Checkpoint160 (nested)
+0	0	_key	t_uint96
+0	12	_value	t_uint160
+
 ### Checkpoint208 (nested)
 0	0	_key	t_uint48
 0	6	_value	t_uint208
@@ -777,6 +788,9 @@
 ### Timing (nested)
 0	0	start	t_uint48
 0	6	expires	t_uint48
+
+### Trace160 (nested)
+0	0	_checkpoints	t_array(t_struct(Checkpoint160)_storage)dyn_storage
 
 ### Trace208 (nested)
 0	0	_checkpoints	t_array(t_struct(Checkpoint208)_storage)dyn_storage

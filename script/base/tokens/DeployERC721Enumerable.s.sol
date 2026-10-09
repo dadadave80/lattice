@@ -23,7 +23,7 @@ import {DiamondIntrospectionInit} from "@lattice/utils/DiamondIntrospectionInit.
 ///      `run(..., admin)`) for an upgradeable deployment gated on `DEFAULT_ADMIN_ROLE`.
 ///      Mint and burn are app-specific: a minting facet calls {ERC721EnumerableLib._mint}/{_burn}, never
 ///      {ERC721Lib}'s. Do not add {ERC721Burnable}, {ERC721Wrapper}, {ERC721Pausable} or {ERC721Votes} to this
-///      diamond (see {ERC721Enumerable}).
+///      diamond (see {ERC721Enumerable}); an {ERC721ConsecutiveInit} batch reverts.
 ///      The `ERC721Enumerable` facet is the release facet from {BaseDeploy._facet}; the base recipe's cuts, the
 ///      admin-overload cuts and the inits still deploy fresh until every recipe moves to release contracts (#195).
 contract DeployERC721Enumerable is BaseDeploy {

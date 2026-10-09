@@ -18,6 +18,8 @@ import {ERC721VotesLib} from "@lattice/tokens/ERC721/libraries/ERC721VotesLib.so
 ///      - {ERC721Burnable} and {ERC721Wrapper} mint and burn through {ERC721Lib}, which moves no voting units, so
 ///        neither may share a diamond with this facet (both pinned by CompositionHazardsTest). A mint, burn or
 ///        authorization-free transfer facet for a votes diamond calls {ERC721VotesLib} instead, never {ERC721Lib}.
+///      - Batch mints ({ERC721ConsecutiveInit}) move no voting units, so the supply checkpoint would miss them;
+///        either init order reverts `ERC721VotesForbiddenBatchMint` (pinned by CompositionHazardsTest).
 /// @custom:lattice-version 0.5.0
 /// @custom:lattice-source OpenZeppelin v5.6.1
 contract ERC721Votes {
