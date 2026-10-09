@@ -153,4 +153,37 @@ contract AaveV3Adapter is IStrategy, IProtocolAdapter, IAdapterOperator, IAaveV3
     function delever(uint256 collateralToPull) external virtual override returns (uint256 repaid) {
         return AaveV3AdapterLib.delever(collateralToPull);
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect AaveV3Adapter methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `aToken()` 0xa0c1f15e
+    ///      `addressesProvider()` 0xc72c4d10
+    ///      `asset()` 0x38d52e0f
+    ///      `delever(uint256)` 0xcf60112b
+    ///      `deploy()` 0x775c300c
+    ///      `eModeCategory()` 0xa6e40bec
+    ///      `emergencyWithdraw()` 0xdb2e21bc
+    ///      `harvest()` 0x4641257d
+    ///      `healthFactor()` 0x22841f01
+    ///      `isPaused()` 0xb187bd26
+    ///      `lever(uint256)` 0x9dcc380a
+    ///      `minHealthFactor()` 0xe1b4264c
+    ///      `operator()` 0x570ca735
+    ///      `reentrancyGuardEntered()` 0xd2c725e0
+    ///      `rewardRecipient()` 0x17f33340
+    ///      `rewardsController()` 0x6bb65f53
+    ///      `setEMode(uint8)` 0xb94e11c6
+    ///      `setMinHealthFactor(uint256)` 0x01b08d58
+    ///      `setOperator(address)` 0xb3ab15fb
+    ///      `setRewardRecipient(address)` 0xe521136f
+    ///      `setRewardsController(address)` 0xbee36bb3
+    ///      `totalAssetsManaged()` 0x613c822b
+    ///      `vault()` 0xfbfa77cf
+    ///      `withdraw(uint256,address)` 0x00f714ce
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors =
+            hex"a0c1f15ec72c4d1038d52e0fcf60112b775c300ca6e40becdb2e21bc4641257d22841f01b187bd269dcc380ae1b4264c570ca735d2c725e017f333406bb65f53b94e11c601b08d58b3ab15fbe521136fbee36bb3613c822bfbfa77cf00f714ce";
+    }
 }

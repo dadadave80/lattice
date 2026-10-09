@@ -40,7 +40,7 @@ contract MockERC7821 is
         external
         pure
         virtual
-        override(AccessControl, AccountSigner, ERC4337Validation, ERC7821Executor)
+        override(AccessControl, AccountSigner, ERC4337Validation, ERC7821Executor, SessionKey, ERC7579ModuleConfig)
         returns (bytes memory)
     {}
 

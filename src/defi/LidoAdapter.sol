@@ -186,4 +186,41 @@ contract LidoAdapter is IStrategy, IProtocolAdapter, IAdapterOperator, ILidoAdap
     ///         diamond this is never dispatched — the diamond's zero-selector route runs the {Receive}
     ///         facet instead. No logic: the calling library re-wraps the ETH into WETH.
     receive() external payable {}
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect LidoAdapter methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. `receive()` has no selector and is not exported (it serves standalone
+    ///      hosting only; see the contract NatSpec). Chunks:
+    ///      `asset()` 0x38d52e0f
+    ///      `bufferBalance()` 0x1298f13c
+    ///      `claimWithdrawal(uint256)` 0xf8444436
+    ///      `deploy()` 0x775c300c
+    ///      `emergencyWithdraw()` 0xdb2e21bc
+    ///      `harvest()` 0x4641257d
+    ///      `harvestToken(address)` 0x0bb18dc1
+    ///      `healthFactor()` 0x22841f01
+    ///      `isPaused()` 0xb187bd26
+    ///      `lido()` 0x23509a2d
+    ///      `minHealthFactor()` 0xe1b4264c
+    ///      `operator()` 0x570ca735
+    ///      `pendingRequestAt(uint256)` 0x978e5f31
+    ///      `pendingRequestCount()` 0xe0abba57
+    ///      `pendingWithdrawalAssets()` 0xb5149a61
+    ///      `reentrancyGuardEntered()` 0xd2c725e0
+    ///      `requestWithdrawal(uint256)` 0x9ee679e8
+    ///      `rewardRecipient()` 0x17f33340
+    ///      `setOperator(address)` 0xb3ab15fb
+    ///      `setRewardRecipient(address)` 0xe521136f
+    ///      `stakedWstETH()` 0x4aedacb4
+    ///      `totalAssetsManaged()` 0x613c822b
+    ///      `vault()` 0xfbfa77cf
+    ///      `weth()` 0x3fc8cef3
+    ///      `withdraw(uint256,address)` 0x00f714ce
+    ///      `withdrawalQueue()` 0x37d5fe99
+    ///      `wstETH()` 0x4aa07e64
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors =
+            hex"38d52e0f1298f13cf8444436775c300cdb2e21bc4641257d0bb18dc122841f01b187bd2623509a2de1b4264c570ca735978e5f31e0abba57b5149a61d2c725e09ee679e817f33340b3ab15fbe521136f4aedacb4613c822bfbfa77cf3fc8cef300f714ce37d5fe994aa07e64";
+    }
 }

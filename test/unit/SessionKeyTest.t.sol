@@ -11,6 +11,10 @@ import {Initializable} from "@lattice/utils/Initializable.sol";
 import {Test} from "forge-std/Test.sol";
 
 contract MockSessionKey is AccessControl, SessionKey, Initializable {
+    /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare
+    ///      `exportSelectors()`. It is never cut as a diamond facet, so it exports nothing.
+    function exportSelectors() external pure virtual override(AccessControl, SessionKey) returns (bytes memory) {}
+
     function initialize(address admin_) external initializer {
         AccessControlLib.__AccessControl_init(admin_);
         SessionKeyLib.__SessionKey_init();

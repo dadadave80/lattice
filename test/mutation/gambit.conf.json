@@ -13,5 +13,15 @@
         "filename": "../../src/access/libraries/AccessManagerLib.sol",
         "sourceroot": "../..",
         "solc_remappings": ["@lattice/=../../src/"]
+    },
+    {
+        "filename": "../../src/LatticeRegistry.sol",
+        "sourceroot": "../..",
+        "solc_remappings": ["@lattice/=../../src/", "@diamond/=../../lib/diamond-lib/src/"]
+    },
+    {
+        "filename": "../../src/LatticeFactory.sol",
+        "sourceroot": "../..",
+        "solc_remappings": ["@lattice/=../../src/", "@diamond/=../../lib/diamond-lib/src/"]
     }
 ]

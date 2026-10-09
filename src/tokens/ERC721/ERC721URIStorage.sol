@@ -27,4 +27,14 @@ contract ERC721URIStorage {
         AccessControlLib.checkRole(DEFAULT_ADMIN_ROLE);
         ERC721URIStorageLib._setTokenURI(tokenId, uri);
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect ERC721URIStorage methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `setTokenURI(uint256,string)` 0x162094c4
+    ///      `tokenURI(uint256)` 0xc87b56dd
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors = hex"162094c4c87b56dd";
+    }
 }

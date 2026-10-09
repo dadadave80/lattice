@@ -25,16 +25,13 @@ import {Test, console} from "forge-std/Test.sol";
 ///        replacements read different balances, so that row is Incompatible.
 ///      - Identical: the same function over the same storage. Cut one copy.
 ///      - OnePerDiamond: providers with one ABI and independent backends (price adapters, ERC-7786 gateways
-///        and handlers, VRF providers, the ERC-20 and ERC-721 movement-replacing extensions and the ERC-1155 burns
-///        per D25). One per diamond.
+///        and handlers, VRF providers, strategy adapters, the ERC-20 and ERC-721 movement-replacing extensions
+///        and the ERC-1155 burns per D25). One per diamond.
 ///      - Incompatible: the same selector means different things, from two standards or a Lattice-chosen name.
 ///        A row with mixed relations takes the most restrictive class; the note names the rest.
-///      Inventory facets only: VestingWallet and ERC20Wrapper export no selectors yet (#176), so they are absent.
-///      By hand: VestingWallet shares nothing; ERC20Wrapper shares only `decimals()` with ERC20 and ERC4626, and
-///      `underlying()` with ERC721Wrapper (Incompatible). ERC721Wrapper's `onERC721Received` is also served by
-///      UniswapV3Adapter, which is not in the inventory (Incompatible: the receiver seam, #201). ERC1363 shares no
-///      selector, yet D25 makes it exclusive with ERC20Pausable, ERC20Votes and GovernedVault; that bypass is pinned
-///      by {CompositionHazardsTest}, not here.
+///      Inventory facets only; every facet that exports ERC-8153 is in the inventory (#176).
+///      ERC1363 shares no selector, yet D25 makes it exclusive with ERC20Pausable, ERC20Votes and GovernedVault;
+///      that bypass is pinned by {CompositionHazardsTest}, not here.
 contract SelectorCompatibilityTest is Test {
     enum Class {
         Variant,
@@ -111,501 +108,676 @@ contract SelectorCompatibilityTest is Test {
 
     /// @dev Sorted by selector. Facets are listed in {FacetInventory} order.
     function _rows() internal pure returns (Row[] memory r) {
-        r = new Row[](74);
+        r = new Row[](99);
         r[0] = _row(
+            "withdraw(uint256,address)",
+            "AaveV3Adapter, CompoundV3Adapter, CurveStableSwapAdapter, ERC4626Adapter, LidoAdapter, UniswapV3Adapter",
+            Class.OnePerDiamond,
+            "strategy adapters: one per diamond (each adapter is its own strategy diamond)",
+            0x00f714ce
+        );
+        r[1] = _row(
             "totalAssets()",
             "ERC4626, VaultCore",
             Class.Override,
             "VaultCore's strategy-aware NAV replaces ERC4626's idle balance",
             0x01e1d114
         );
-        r[1] = _row(
+        r[2] = _row(
             "name()",
             "ERC20, ERC721, GovernedVault, Governor",
             Class.Incompatible,
             "ERC-20 vs ERC-721 metadata (standard); GovernedVault owns the ERC-20/Governor name",
             0x06fdde03
         );
-        r[2] = _row(
+        r[3] = _row(
             "verifyInterfaceRegistered(bytes4)",
             "GovernedDiamondCut, GovernedSafeDiamondCut, SafeDiamondCut",
             Class.Variant,
             "cut-gate variants: cut one",
             0x0746a956
         );
-        r[3] = _row(
+        r[4] = _row(
             "latestAnswer(bytes32)",
             "API3Adapter, BandAdapter, ChainlinkAdapter, ChronicleAdapter, DIAAdapter, PythAdapter, RedStoneAdapter, TellorAdapter",
             Class.OnePerDiamond,
             "price adapters: one per diamond",
             0x084d4783
         );
-        r[4] = _row(
+        r[5] = _row(
             "approve(address,uint256)", "ERC20, ERC721", Class.Incompatible, "ERC-20 vs ERC-721 (standard)", 0x095ea7b3
         );
-        r[5] = _row(
+        r[6] = _row(
+            "token0()",
+            "ConstantProduct, UniswapV3Adapter",
+            Class.Incompatible,
+            "the AMM pair's token vs the Uniswap V3 position's token",
+            0x0dfe1681
+        );
+        r[7] = _row(
             "uri(uint256)",
             "ERC1155, ERC1155URIStorage",
             Class.Override,
             "ERC1155URIStorage's per-token URI replaces ERC1155's template",
             0x0e89341c
         );
-        r[6] = _row(
+        r[8] = _row(
             "gateway()",
             "AxelarGatewayAdapter, ZetaChainGatewayAdapter",
             Class.OnePerDiamond,
             "ERC-7786 gateways: one per diamond",
             0x116191b6
         );
-        r[7] = _row(
+        r[9] = _row(
             "isOperationReady(bytes32)",
             "GovernedSafeDiamondCut, TimelockController",
             Class.Incompatible,
             "GovernedSafe cut views vs TimelockController (Lattice-chosen; 0xacb1aeb6)",
             0x13bc9f20
         );
-        r[8] = _row(
+        r[10] = _row(
+            "onERC721Received(address,address,uint256,bytes)",
+            "ERC721Wrapper, UniswapV3Adapter",
+            Class.Incompatible,
+            "the ERC-721 receiver seam (#201): ERC721Wrapper accepts only its underlying collection, UniswapV3Adapter its position NFTs",
+            0x150b7a02
+        );
+        r[11] = _row(
             "isValidSignature(bytes32,bytes)",
             "ERC1271Signature, ERC6900Signature",
             Class.Variant,
             "account flavours: cut one",
             0x1626ba7e
         );
-        r[9] = _row(
+        r[12] = _row(
+            "pool()",
+            "CurveStableSwapAdapter, UniswapV3Adapter",
+            Class.OnePerDiamond,
+            "the Curve pool vs the Uniswap V3 pool each adapter deposits into; strategy adapters: one per diamond",
+            0x16f0115b
+        );
+        r[13] = _row(
+            "rewardRecipient()",
+            "AaveV3Adapter, CompoundV3Adapter, CurveStableSwapAdapter, ERC4626Adapter, LidoAdapter, UniswapV3Adapter",
+            Class.OnePerDiamond,
+            "strategy adapters: one per diamond (each adapter is its own strategy diamond)",
+            0x17f33340
+        );
+        r[14] = _row(
             "totalSupply()",
             "ERC1155Supply, ERC20, ERC721Enumerable",
             Class.Incompatible,
             "ERC-20 supply vs ERC-721 enumeration vs ERC-1155 supply (standard)",
             0x18160ddd
         );
-        r[10] = _row(
+        r[15] = _row(
             "safe()", "GovernedSafeDiamondCut, SafeDiamondCut", Class.Variant, "cut-gate variants: cut one", 0x186f0354
         );
-        r[11] = _row(
+        r[16] = _row(
             "validateUserOp((address,uint256,bytes,bytes,bytes32,uint256,bytes32,bytes,bytes),bytes32,uint256)",
             "ERC4337Validation, ERC6900Validation",
             Class.Variant,
             "account flavours: cut one",
             0x19822f7c
         );
-        r[12] = _row(
+        r[17] = _row(
+            "setSlippageBps(uint256)",
+            "CurveStableSwapAdapter, UniswapV3Adapter",
+            Class.OnePerDiamond,
+            "strategy adapters: one per diamond (each adapter is its own strategy diamond)",
+            0x1a3ce4e6
+        );
+        r[18] = _row(
             "diamondCut((address,uint8,bytes4[])[],address,bytes)",
             "AccessControlDiamondCut, GovernedDiamondCut, SafeDiamondCut, DiamondCutFacet",
             Class.Variant,
             "cut-gate variants: cut one",
             0x1f931c1c
         );
-        r[13] = _row(
+        r[19] = _row(
+            "healthFactor()",
+            "AaveV3Adapter, CompoundV3Adapter, CurveStableSwapAdapter, ERC4626Adapter, LidoAdapter, UniswapV3Adapter",
+            Class.OnePerDiamond,
+            "strategy adapters: one per diamond (each adapter is its own strategy diamond)",
+            0x22841f01
+        );
+        r[20] = _row(
             "frozenSelectors()",
             "GovernedDiamondCut, GovernedSafeDiamondCut, SafeDiamondCut",
             Class.Variant,
             "cut-gate variants: cut one",
             0x22cabf70
         );
-        r[14] = _row(
+        r[21] = _row(
             "transferFrom(address,address,uint256)",
             "ERC20, ERC20Pausable, ERC20Votes, ERC721, ERC721Enumerable, ERC721Pausable, ERC721Votes, GovernedVault",
             Class.Incompatible,
             "ERC-20 vs ERC-721 (standard); one ERC-20 and one ERC-721 movement-replacing extension per diamond (D25)",
             0x23b872dd
         );
-        r[15] = _row(
+        r[22] = _row(
             "receiveMessage(bytes32,bytes,bytes)",
             "CrosschainLink, ERC7786OpenBridge",
             Class.OnePerDiamond,
             "inbound ERC-7786 recipients: one per diamond",
             0x2432ef26
         );
-        r[16] = _row(
+        r[23] = _row(
             "getRoleAdmin(bytes32)",
             "AccessControl, AccessControlEnumerable, AccessControlTimed",
             Class.Variant,
             "AccessControl flavours: cut one",
             0x248a9ca3
         );
-        r[17] = _row(
+        r[24] = _row(
             "getFeed(bytes32)",
             "API3Adapter, BandAdapter, ChainlinkAdapter, ChronicleAdapter, DIAAdapter, PythAdapter, RedStoneAdapter, TellorAdapter",
             Class.OnePerDiamond,
             "price adapters: one per diamond",
             0x280aebcf
         );
-        r[18] = _row(
+        r[25] = _row(
             "crosschainTransfer(bytes,uint256)",
             "BridgeERC20, BridgeERC7802, ERC20Crosschain",
             Class.OnePerDiamond,
             "fungible bridges: one per diamond",
             0x28dcc8d8
         );
-        r[19] = _row(
+        r[26] = _row(
             "unregisterFeed(bytes32)",
             "API3Adapter, BandAdapter, ChainlinkAdapter, ChronicleAdapter, DIAAdapter, PythAdapter, RedStoneAdapter, TellorAdapter",
             Class.OnePerDiamond,
             "price adapters: one per diamond",
             0x2a589908
         );
-        r[20] = _row(
+        r[27] = _row(
             "isOperationDone(bytes32)",
             "GovernedSafeDiamondCut, TimelockController",
             Class.Incompatible,
             "GovernedSafe cut views vs TimelockController (Lattice-chosen; 0xacb1aeb6)",
             0x2ab0f529
         );
-        r[21] = _row(
+        r[28] = _row(
             "safeBatchTransferFrom(address,address,uint256[],uint256[],bytes)",
             "ERC1155, ERC1155Pausable",
             Class.Override,
             "ERC1155Pausable's pause-gated transfer replaces ERC1155's (D25)",
             0x2eb2c2d6
         );
-        r[22] = _row(
+        r[29] = _row(
             "grantRole(bytes32,address)",
             "AccessControl, AccessControlEnumerable, AccessControlTimed",
             Class.Variant,
             "AccessControl flavours: cut one",
             0x2f2ff15d
         );
-        r[23] = _row(
-            "decimals()", "ERC20, ERC4626", Class.Override, "ERC4626's share decimals replace ERC20's", 0x313ce567
+        r[30] = _row(
+            "decimals()",
+            "ERC20, ERC20Wrapper, ERC4626",
+            Class.Incompatible,
+            "ERC4626's share decimals and ERC20Wrapper's underlying decimals each replace ERC20's (Override); a share token and a wrapper never share a diamond",
+            0x313ce567
         );
-        r[24] = _row(
+        r[31] = _row(
             "previewCut((address,uint8,bytes4[])[])",
             "GovernedDiamondCut, GovernedSafeDiamondCut, SafeDiamondCut",
             Class.Variant,
             "cut-gate variants: cut one",
             0x35342750
         );
-        r[25] = _row(
+        r[32] = _row(
             "DOMAIN_SEPARATOR()",
             "ERC20Permit, ERC6538Registry",
             Class.Identical,
             "both return EIP712Lib.domainSeparatorV4(): cut one copy",
             0x3644e515
         );
-        r[26] = _row(
+        r[33] = _row(
             "renounceRole(bytes32,address)",
             "AccessControl, AccessControlEnumerable, AccessControlTimed",
             Class.Variant,
             "AccessControl flavours: cut one",
             0x36568abe
         );
-        r[27] = _row(
+        r[34] = _row(
+            "asset()",
+            "ERC4626, AaveV3Adapter, CompoundV3Adapter, CurveStableSwapAdapter, ERC4626Adapter, LidoAdapter, UniswapV3Adapter",
+            Class.Incompatible,
+            "the ERC-4626 vault's asset vs a strategy adapter's own asset; strategy adapters: one per diamond",
+            0x38d52e0f
+        );
+        r[35] = _row(
             "getCutRecord(uint256)",
             "GovernedDiamondCut, GovernedSafeDiamondCut, SafeDiamondCut",
             Class.Variant,
             "cut-gate variants: cut one",
             0x3adda78e
         );
-        r[28] = _row(
+        r[36] = _row(
             "messenger()",
             "L1ToL2CrossDomainMessengerGatewayAdapter, L2ToL2CrossDomainMessengerGatewayAdapter",
             Class.OnePerDiamond,
             "OP messenger gateways: one per diamond",
             0x3cb747bf
         );
-        r[29] = _row(
+        r[37] = _row(
             "maxDeposit(address)",
             "ERC4626, VaultCore",
             Class.Override,
             "VaultCore's deposit-latch-aware cap replaces ERC4626's",
             0x402d267d
         );
-        r[30] = _row(
+        r[38] = _row(
             "safeTransferFrom(address,address,uint256)",
             "ERC721, ERC721Enumerable, ERC721Pausable, ERC721Votes",
             Class.OnePerDiamond,
             "ERC721Enumerable, ERC721Pausable and ERC721Votes each replace ERC721's: one per diamond (D25)",
             0x42842e0e
         );
-        r[31] = _row(
+        r[39] = _row(
             "burn(uint256)",
             "ERC20Burnable, ERC721Burnable",
             Class.Incompatible,
             "ERC-20 vs ERC-721 (standard)",
             0x42966c68
         );
-        r[32] = _row(
+        r[40] = _row(
             "freezeSelectors(bytes4[])",
             "GovernedDiamondCut, GovernedSafeDiamondCut, SafeDiamondCut",
             Class.Variant,
             "cut-gate variants: cut one",
             0x4487678f
         );
-        r[33] = _row(
+        r[41] = _row(
+            "harvest()",
+            "AaveV3Adapter, CompoundV3Adapter, CurveStableSwapAdapter, ERC4626Adapter, LidoAdapter, StrategyManager, UniswapV3Adapter",
+            Class.Incompatible,
+            "StrategyManager harvests every strategy; an adapter harvests its own position (one per diamond)",
+            0x4641257d
+        );
+        r[42] = _row(
             "CLOCK_MODE()",
             "GovernedVault, Governor, Votes",
             Class.Override,
             "GovernedVault owns it; Governor's version reads its token's clock(), here the diamond itself",
             0x4bf5d7e9
         );
-        r[34] = _row(
+        r[43] = _row(
+            "operator()",
+            "AaveV3Adapter, CompoundV3Adapter, CurveStableSwapAdapter, ERC4626Adapter, LidoAdapter, UniswapV3Adapter",
+            Class.OnePerDiamond,
+            "strategy adapters: one per diamond (each adapter is its own strategy diamond)",
+            0x570ca735
+        );
+        r[44] = _row(
+            "slippageBps()",
+            "CurveStableSwapAdapter, UniswapV3Adapter",
+            Class.OnePerDiamond,
+            "strategy adapters: one per diamond (each adapter is its own strategy diamond)",
+            0x578c71d9
+        );
+        r[45] = _row(
             "isOperationPending(bytes32)",
             "GovernedSafeDiamondCut, TimelockController",
             Class.Incompatible,
             "GovernedSafe cut views vs TimelockController (Lattice-chosen; 0xacb1aeb6)",
             0x584b153e
         );
-        r[35] = _row(
+        r[46] = _row(
             "quoteFee(bytes,bytes)",
             "CCIPGatewayAdapter, HyperlaneGatewayAdapter, LayerZeroGatewayAdapter",
             Class.OnePerDiamond,
             "ERC-7786 gateways: one per diamond",
             0x58d14c04
         );
-        r[36] = _row(
+        r[47] = _row(
             "delegate(address)",
             "ERC20Votes, ERC721Votes, Votes",
             Class.Incompatible,
             "ERC20Votes' and ERC721Votes' balance-aware delegation each replace Votes' (Override); ERC-20 vs ERC-721 units",
             0x5c19a95c
         );
-        r[37] = _row(
+        r[48] = _row(
             "setSafe(address)",
             "GovernedSafeDiamondCut, SafeDiamondCut",
             Class.Variant,
             "cut-gate variants: cut one",
             0x5db0cb94
         );
-        r[38] = _row(
+        r[49] = _row(
             "receiveCrossChainMessage(bytes,bytes,bytes,uint256)",
             "L1ToL2CrossDomainMessengerGatewayAdapter, L2ToL2CrossDomainMessengerGatewayAdapter",
             Class.OnePerDiamond,
             "OP messenger gateways: one per diamond",
             0x610683bc
         );
-        r[39] = _row(
+        r[50] = _row(
+            "totalAssetsManaged()",
+            "AaveV3Adapter, CompoundV3Adapter, CurveStableSwapAdapter, ERC4626Adapter, LidoAdapter, UniswapV3Adapter",
+            Class.OnePerDiamond,
+            "strategy adapters: one per diamond (each adapter is its own strategy diamond)",
+            0x613c822b
+        );
+        r[51] = _row(
             "burnBatch(address,uint256[],uint256[])",
             "ERC1155Burnable, ERC1155Pausable, ERC1155Supply",
             Class.OnePerDiamond,
             "plain, pause-gated and supply-tracking ERC-1155 burns: one per diamond (D25)",
             0x6b20c454
         );
-        r[40] = _row(
+        r[52] = _row(
             "deposit(uint256,address)",
             "ERC4626, GovernedVault, VaultCore",
             Class.Override,
             "ERC4626 < VaultCore < GovernedVault checkpoint seam",
             0x6e553f65
         );
-        r[41] =
+        r[53] = _row(
+            "underlying()",
+            "ERC20Wrapper, ERC721Wrapper",
+            Class.Incompatible,
+            "an ERC-20 wrapper and an ERC-721 wrapper never share a diamond",
+            0x6f307dc3
+        );
+        r[54] =
             _row("balanceOf(address)", "ERC20, ERC721", Class.Incompatible, "ERC-20 vs ERC-721 (standard)", 0x70a08231);
-        r[42] = _row(
+        r[55] = _row(
             "getRemoteGateway(uint256)",
             "CCIPGatewayAdapter, WormholeGatewayAdapter",
             Class.OnePerDiamond,
             "ERC-7786 gateways: one per diamond",
             0x752bcf06
         );
-        r[43] = _row(
+        r[56] = _row(
+            "deploy()",
+            "AaveV3Adapter, CompoundV3Adapter, CurveStableSwapAdapter, ERC4626Adapter, LidoAdapter, UniswapV3Adapter",
+            Class.OnePerDiamond,
+            "strategy adapters: one per diamond (each adapter is its own strategy diamond)",
+            0x775c300c
+        );
+        r[57] = _row(
+            "nonces(address)", "ERC20Permit, Nonces", Class.Identical, "both read NoncesLib: cut one copy", 0x7ecebe00
+        );
+        r[58] = _row(
             "owner()",
             "AccountSigner, OwnableFacet",
             Class.Incompatible,
             "AccountSigner's signer vs ERC-173 diamond owner (separate storage)",
             0x8da5cb5b
         );
-        r[44] = _row(
+        r[59] = _row(
             "castVoteBySig(uint256,uint8,address,bytes)",
             "GovernedVault, Governor",
             Class.Override,
             "GovernedVault's ballot-nonce reconciliation replaces Governor's",
             0x8ff262e3
         );
-        r[45] = _row(
+        r[60] = _row(
             "processMessage(bytes32,bytes,bytes)",
             "BridgeERC20, BridgeERC7802, CrosschainTimelockHandler, ERC20Crosschain",
             Class.OnePerDiamond,
             "ERC-7786 handlers: one per link diamond",
             0x902d5027
         );
-        r[46] = _row(
+        r[61] = _row(
             "registerFeed(bytes32,address,uint48)",
             "API3Adapter, ChainlinkAdapter, ChronicleAdapter",
             Class.OnePerDiamond,
             "price adapters: one per diamond",
             0x915d3063
         );
-        r[47] = _row(
+        r[62] = _row(
             "hasRole(bytes32,address)",
             "AccessControl, AccessControlEnumerable, AccessControlTimed",
             Class.Variant,
             "AccessControl flavours: cut one",
             0x91d14854
         );
-        r[48] = _row(
+        r[63] = _row(
             "clock()",
             "GovernedVault, Governor, Votes",
             Class.Override,
             "GovernedVault owns it; Governor's version reads its token's clock(), here the diamond itself",
             0x91ddadf4
         );
-        r[49] = _row(
+        r[64] = _row(
             "mint(uint256,address)",
             "ERC4626, GovernedVault, VaultCore",
             Class.Override,
             "ERC4626 < VaultCore < GovernedVault checkpoint seam",
             0x94bf804d
         );
-        r[50] =
+        r[65] =
             _row("symbol()", "ERC20, ERC721", Class.Incompatible, "ERC-20 vs ERC-721 metadata (standard)", 0x95d89b41);
-        r[51] = _row(
+        r[66] = _row(
             "registerRemoteGateway(uint256,address)",
             "CCIPGatewayAdapter, WormholeGatewayAdapter",
             Class.OnePerDiamond,
             "ERC-7786 gateways: one per diamond",
             0x997ce1f0
         );
-        r[52] = _row(
+        r[67] = _row(
+            "accountId()",
+            "ERC6900ModuleManager, ERC7579ModuleConfig",
+            Class.Variant,
+            "account flavours (ERC-6900 vs ERC-7579): cut one",
+            0x9cfd7cff
+        );
+        r[68] = _row(
             "getForwarder()",
             "ChainlinkAutomationAdapter, ChainlinkCREAdapter",
             Class.Incompatible,
             "Chainlink Automation vs CRE forwarder (Lattice-chosen)",
             0xa0042526
         );
-        r[53] = _row(
+        r[69] = _row(
             "setApprovalForAll(address,bool)",
             "ERC1155, ERC721",
             Class.Incompatible,
             "ERC-721 vs ERC-1155 over separate storage (standard)",
             0xa22cb465
         );
-        r[54] = _row(
+        r[70] = _row(
             "transfer(address,uint256)",
             "ERC20, ERC20Pausable, ERC20Votes, GovernedVault",
             Class.OnePerDiamond,
             "ERC20Pausable, ERC20Votes and GovernedVault each replace ERC20's: one per diamond (D25)",
             0xa9059cbb
         );
-        r[55] = _row(
+        r[71] = _row(
             "cutCount()",
             "GovernedDiamondCut, GovernedSafeDiamondCut, SafeDiamondCut",
             Class.Variant,
             "cut-gate variants: cut one",
             0xaa982c45
         );
-        r[56] = _row(
+        r[72] = _row(
             "latestAnswerRaw(bytes32)",
             "ChainlinkAdapter, PythAdapter",
             Class.OnePerDiamond,
             "price adapters: one per diamond",
             0xad0ddbee
         );
-        r[57] = _row(
+        r[73] = _row(
+            "isPaused()",
+            "AaveV3Adapter, CompoundV3Adapter, CurveStableSwapAdapter, ERC4626Adapter, LidoAdapter, UniswapV3Adapter",
+            Class.OnePerDiamond,
+            "strategy adapters: one per diamond (each adapter is its own strategy diamond)",
+            0xb187bd26
+        );
+        r[74] = _row(
+            "setOperator(address)",
+            "GelatoVRFAdapter, AaveV3Adapter, CompoundV3Adapter, CurveStableSwapAdapter, ERC4626Adapter, LidoAdapter, UniswapV3Adapter",
+            Class.Incompatible,
+            "GelatoVRFAdapter's VRF operator vs a strategy adapter's keeper (Lattice-chosen name); adapters: one per diamond",
+            0xb3ab15fb
+        );
+        r[75] = _row(
             "withdraw(uint256,address,address)",
             "ERC4626, GovernedVault, VaultCore",
             Class.Override,
             "ERC4626 < VaultCore < GovernedVault checkpoint seam",
             0xb460af94
         );
-        r[58] = _row(
+        r[76] = _row(
             "safeTransferFrom(address,address,uint256,bytes)",
             "ERC721, ERC721Enumerable, ERC721Pausable, ERC721Votes",
             Class.OnePerDiamond,
             "ERC721Enumerable, ERC721Pausable and ERC721Votes each replace ERC721's: one per diamond (D25)",
             0xb88d4fde
         );
-        r[59] = _row(
+        r[77] = _row(
             "redeem(uint256,address,address)",
             "ERC4626, GovernedVault, VaultCore",
             Class.Override,
             "ERC4626 < VaultCore < GovernedVault checkpoint seam",
             0xba087652
         );
-        r[60] = _row(
+        r[78] = _row(
             "delegateBySig(address,uint256,uint256,uint8,bytes32,bytes32)",
             "ERC20Votes, ERC721Votes, Votes",
             Class.Incompatible,
             "ERC20Votes' and ERC721Votes' balance-aware delegation each replace Votes' (Override); ERC-20 vs ERC-721 units",
             0xc3cda520
         );
-        r[61] = _row(
+        r[79] = _row(
             "getConfig()",
             "API3QRNGAdapter, ChainlinkVRF, GelatoAutomateAdapter, PythEntropyAdapter",
             Class.Incompatible,
             "four different return types (Lattice-chosen)",
             0xc3f909d4
         );
-        r[62] = _row(
+        r[80] = _row(
             "maxMint(address)",
             "ERC4626, VaultCore",
             Class.Override,
             "VaultCore's deposit-latch-aware cap replaces ERC4626's",
             0xc63d75b6
         );
-        r[63] = _row(
+        r[81] = _row(
             "emergencyRemoveCut((address,uint8,bytes4[])[])",
             "GovernedDiamondCut, GovernedSafeDiamondCut, SafeDiamondCut",
             Class.Variant,
             "cut-gate variants: cut one",
             0xc83542a6
         );
-        r[64] = _row(
+        r[82] = _row(
+            "tokenURI(uint256)",
+            "ERC721, ERC721URIStorage",
+            Class.Override,
+            "ERC721URIStorage's per-token URI replaces ERC721's (Replace in DeployERC721URIStorage)",
+            0xc87b56dd
+        );
+        r[83] = _row(
             "isSelectorFrozen(bytes4)",
             "GovernedDiamondCut, GovernedSafeDiamondCut, SafeDiamondCut",
             Class.Variant,
             "cut-gate variants: cut one",
             0xc8d8e114
         );
-        r[65] = _row(
+        r[84] = _row(
             "sendMessage(bytes,bytes,bytes[])",
             "AxelarGatewayAdapter, CCIPGatewayAdapter, CrosschainLink, ERC7786OpenBridge, HyperbridgeGatewayAdapter, HyperlaneGatewayAdapter, L1ToL2CrossDomainMessengerGatewayAdapter, L2ToL2CrossDomainMessengerGatewayAdapter, LayerZeroGatewayAdapter, WormholeGatewayAdapter, ZetaChainGatewayAdapter",
             Class.OnePerDiamond,
             "ERC-7786 senders: one per diamond",
             0xcdfe7f5c
         );
-        r[66] = _row(
+        r[85] = _row(
+            "token1()",
+            "ConstantProduct, UniswapV3Adapter",
+            Class.Incompatible,
+            "the AMM pair's token vs the Uniswap V3 position's token",
+            0xd21220a7
+        );
+        r[86] = _row(
+            "reentrancyGuardEntered()",
+            "AaveV3Adapter, CompoundV3Adapter, CurveStableSwapAdapter, ERC4626Adapter, LidoAdapter, StrategyManager, UniswapV3Adapter",
+            Class.OnePerDiamond,
+            "strategy adapters: one per diamond; each copy, StrategyManager's too, reads ReentrancyGuardLib (Identical)",
+            0xd2c725e0
+        );
+        r[87] = _row(
             "getTimestamp(bytes32)",
             "GovernedSafeDiamondCut, TimelockController",
             Class.Incompatible,
             "GovernedSafe cut views vs TimelockController (Lattice-chosen; 0xacb1aeb6)",
             0xd45c4435
         );
-        r[67] = _row(
+        r[88] = _row(
             "revokeRole(bytes32,address)",
             "AccessControl, AccessControlEnumerable, AccessControlTimed",
             Class.Variant,
             "AccessControl flavours: cut one",
             0xd547741f
         );
-        r[68] = _row(
+        r[89] = _row(
+            "emergencyWithdraw()",
+            "AaveV3Adapter, CompoundV3Adapter, CurveStableSwapAdapter, ERC4626Adapter, LidoAdapter, UniswapV3Adapter",
+            Class.OnePerDiamond,
+            "strategy adapters: one per diamond (each adapter is its own strategy diamond)",
+            0xdb2e21bc
+        );
+        r[90] = _row(
             "supportsAttribute(bytes4)",
             "AxelarGatewayAdapter, CCIPGatewayAdapter, ERC7786OpenBridge, HyperbridgeGatewayAdapter, HyperlaneGatewayAdapter, L1ToL2CrossDomainMessengerGatewayAdapter, L2ToL2CrossDomainMessengerGatewayAdapter, LayerZeroGatewayAdapter, WormholeGatewayAdapter, ZetaChainGatewayAdapter",
             Class.OnePerDiamond,
             "ERC-7786 gateways: one per diamond",
             0xdc680a0f
         );
-        r[69] = _row(
+        r[91] = _row(
             "getUserKey(uint256)",
             "ChainlinkVRF, GelatoVRFAdapter",
             Class.OnePerDiamond,
             "VRF providers: one per diamond",
             0xdd1e2651
         );
-        r[70] = _row(
+        r[92] = _row(
+            "minHealthFactor()",
+            "AaveV3Adapter, CompoundV3Adapter, CurveStableSwapAdapter, ERC4626Adapter, LidoAdapter, UniswapV3Adapter",
+            Class.OnePerDiamond,
+            "strategy adapters: one per diamond (each adapter is its own strategy diamond)",
+            0xe1b4264c
+        );
+        r[93] = _row(
+            "setRewardRecipient(address)",
+            "AaveV3Adapter, CompoundV3Adapter, CurveStableSwapAdapter, ERC4626Adapter, LidoAdapter, UniswapV3Adapter",
+            Class.OnePerDiamond,
+            "strategy adapters: one per diamond (each adapter is its own strategy diamond)",
+            0xe521136f
+        );
+        r[94] = _row(
             "isApprovedForAll(address,address)",
             "ERC1155, ERC721",
             Class.Incompatible,
             "ERC-721 vs ERC-1155 over separate storage (standard)",
             0xe985e9c5
         );
-        r[71] = _row(
+        r[95] = _row(
             "safeTransferFrom(address,address,uint256,uint256,bytes)",
             "ERC1155, ERC1155Pausable",
             Class.Override,
             "ERC1155Pausable's pause-gated transfer replaces ERC1155's (D25)",
             0xf242432a
         );
-        r[72] = _row(
+        r[96] = _row(
             "burn(address,uint256,uint256)",
             "ERC1155Burnable, ERC1155Pausable, ERC1155Supply",
             Class.OnePerDiamond,
             "plain, pause-gated and supply-tracking ERC-1155 burns: one per diamond (D25)",
             0xf5298aca
         );
-        r[73] = _row(
-            "token()",
-            "BridgeERC20, BridgeERC7802, Governor",
+        r[97] = _row(
+            "vault()",
+            "AaveV3Adapter, CompoundV3Adapter, CurveStableSwapAdapter, ERC4626Adapter, LidoAdapter, StrategyManager, UniswapV3Adapter",
             Class.Incompatible,
-            "Governor's voting token vs the bridges' bridged token (one bridge per diamond)",
+            "StrategyManager's vault vs the vault an adapter serves, from separate storage; adapters: one per diamond",
+            0xfbfa77cf
+        );
+        r[98] = _row(
+            "token()",
+            "BridgeERC20, BridgeERC7802, ERC6551Account, Governor",
+            Class.Incompatible,
+            "Governor's voting token vs the bridges' bridged token (one bridge per diamond) vs ERC6551Account's bound NFT",
             0xfc0c546a
         );
     }

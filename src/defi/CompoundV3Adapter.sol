@@ -124,4 +124,31 @@ contract CompoundV3Adapter is IStrategy, IProtocolAdapter, IAdapterOperator, ICo
     function setRewardRecipient(address recipient) external virtual override {
         CompoundV3AdapterLib.setRewardRecipient(recipient);
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect CompoundV3Adapter methodIdentifiers` (alphabetical by signature); kept in exact parity by
+    ///      ExportSelectorsParityTest. Chunks:
+    ///      `asset()` 0x38d52e0f
+    ///      `comet()` 0xba3e9c12
+    ///      `cometRewards()` 0x32315972
+    ///      `deploy()` 0x775c300c
+    ///      `emergencyWithdraw()` 0xdb2e21bc
+    ///      `harvest()` 0x4641257d
+    ///      `healthFactor()` 0x22841f01
+    ///      `isPaused()` 0xb187bd26
+    ///      `minHealthFactor()` 0xe1b4264c
+    ///      `operator()` 0x570ca735
+    ///      `reentrancyGuardEntered()` 0xd2c725e0
+    ///      `rewardRecipient()` 0x17f33340
+    ///      `setCometRewards(address)` 0x36cbb3c3
+    ///      `setOperator(address)` 0xb3ab15fb
+    ///      `setRewardRecipient(address)` 0xe521136f
+    ///      `totalAssetsManaged()` 0x613c822b
+    ///      `vault()` 0xfbfa77cf
+    ///      `withdraw(uint256,address)` 0x00f714ce
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors =
+            hex"38d52e0fba3e9c1232315972775c300cdb2e21bc4641257d22841f01b187bd26e1b4264c570ca735d2c725e017f3334036cbb3c3b3ab15fbe521136f613c822bfbfa77cf00f714ce";
+    }
 }

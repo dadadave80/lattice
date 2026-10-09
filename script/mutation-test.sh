@@ -2,8 +2,9 @@
 # ---------------------------------------------------------------------------
 # mutation-test.sh
 #
-# Local Gambit mutation pilot (#245). NOT run in CI and not a repo dependency:
-# install Gambit (https://github.com/Certora/gambit) yourself to use it.
+# Local Gambit mutation pilot (#245; LatticeRegistry and LatticeFactory added in
+# #176). NOT run in CI and not a repo dependency: install Gambit
+# (https://github.com/Certora/gambit) yourself to use it.
 #
 #   1. Generates mutants of the files in test/mutation/gambit.conf.json into
 #      gambit_out/ (gitignored). Generation is skipped while the config, the
@@ -58,6 +59,9 @@ match_set() {
             ;;
         AccessManagerLib)
             echo 'test/{unit/{AccessManagerTest,AccessManagerStandaloneTest,AccessManagedTest},invariant/AccessManagerDiamondInvariant}.t.sol'
+            ;;
+        LatticeRegistry | LatticeFactory)
+            echo 'test/{unit/{LatticeRegistryTest,LatticeRegistryHostileExporterTest,LatticeFactoryTest,LatticeFactoryHardeningTest,DeployFactoryTest},fuzz/{LatticeRegistryFuzz,LatticeFactoryFuzz},integration/{LatticeRegistryCompositionTest,LatticeFactoryCompositionTest,LatticeFactoryGovernedVaultTest},invariant/{LatticeRegistryInvariant,LatticeFactoryInvariant}}.t.sol'
             ;;
         *)
             echo "mutation: no test set for $1; add one to match_set()" >&2

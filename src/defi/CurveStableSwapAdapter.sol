@@ -166,4 +166,37 @@ contract CurveStableSwapAdapter is IStrategy, IProtocolAdapter, IAdapterOperator
     function setRewardRecipient(address recipient) external virtual override {
         CurveStableSwapAdapterLib.setRewardRecipient(recipient);
     }
+
+    /// @notice ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).
+    /// @dev Excludes `exportSelectors()` itself (0x0ef22643) - it is never cut into a diamond. Order matches
+    ///      `forge inspect CurveStableSwapAdapter methodIdentifiers` (alphabetical by signature); kept in exact parity
+    ///      by ExportSelectorsParityTest. Chunks:
+    ///      `asset()` 0x38d52e0f
+    ///      `coinIndex()` 0x2604772c
+    ///      `crvToken()` 0x32d7d66d
+    ///      `deploy()` 0x775c300c
+    ///      `emergencyWithdraw()` 0xdb2e21bc
+    ///      `gauge()` 0xa6f19c84
+    ///      `harvest()` 0x4641257d
+    ///      `healthFactor()` 0x22841f01
+    ///      `isPaused()` 0xb187bd26
+    ///      `lpToken()` 0x5fcbd285
+    ///      `minHealthFactor()` 0xe1b4264c
+    ///      `operator()` 0x570ca735
+    ///      `pool()` 0x16f0115b
+    ///      `reentrancyGuardEntered()` 0xd2c725e0
+    ///      `rewardRecipient()` 0x17f33340
+    ///      `setCrvToken(address)` 0x07ec4de0
+    ///      `setGauge(address)` 0x55a68ed3
+    ///      `setOperator(address)` 0xb3ab15fb
+    ///      `setRewardRecipient(address)` 0xe521136f
+    ///      `setSlippageBps(uint256)` 0x1a3ce4e6
+    ///      `slippageBps()` 0x578c71d9
+    ///      `totalAssetsManaged()` 0x613c822b
+    ///      `vault()` 0xfbfa77cf
+    ///      `withdraw(uint256,address)` 0x00f714ce
+    function exportSelectors() external pure virtual returns (bytes memory selectors) {
+        selectors =
+            hex"38d52e0f2604772c32d7d66d775c300cdb2e21bca6f19c844641257d22841f01b187bd265fcbd285e1b4264c570ca73516f0115bd2c725e017f3334007ec4de055a68ed3b3ab15fbe521136f1a3ce4e6578c71d9613c822bfbfa77cf00f714ce";
+    }
 }
