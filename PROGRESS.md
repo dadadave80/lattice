@@ -75,7 +75,22 @@ are no longer on a branch. Each has a tree-identical commit on `main`:
 
 ## Milestone 3 — Docs site + reusable storage-safety Action
 
-Not started.
+In progress. The site and the Action are built and tested in this repository; nothing is published yet.
+Each "pending" row is filled with a public URL, run or commit permalink once it exists.
+
+| Evidence | Status |
+|---|---|
+| Docs site source: the guides plus the API reference `forge doc` generates, built with Vocs under `/lattice` | [`docs/site/`](docs/site/vocs.config.ts) · [`script/docs/build.sh`](script/docs/build.sh) (`make doc`) |
+| Docs build and link check in CI on every relevant pull request | [`.github/workflows/docs.yml`](.github/workflows/docs.yml) (build only, no deploy) |
+| Public docs URL (expected `https://dadadave80.github.io/lattice/`) | pending: GitHub Pages deployment |
+| Storage-safety Action: composite Action on the Bash+jq checker Lattice's own CI runs | [`.github/actions/storage-layout/`](.github/actions/storage-layout/README.md) |
+| Action regression cases (43) on a fixture consumer project, and a CI self-test calling the Action | [`script/test-storage-layout.sh`](script/test-storage-layout.sh) · `storage-action` job in [`test.yml`](.github/workflows/test.yml) |
+| Lattice CI checks every pull request append-only against its base through the same Action | `storage-layout` job in [`test.yml`](.github/workflows/test.yml) |
+| Versioned Action release (tag and commit) | pending |
+| External demo repository calling the released Action | pending |
+| Demo runs: red on an incompatible change, green on its fix, green on a safe append | pending |
+
+Tag: `grant-m3`, created after every row above has public evidence.
 
 # Circle Arc Grant (2026 Cohort 2 — application evidence)
 
