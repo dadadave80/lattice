@@ -74,14 +74,13 @@ are no longer on a branch. Each has a tree-identical commit on `main`:
 
 ## Milestone 3 — Docs site + reusable storage-safety Action
 
-In progress. The site and the Action are built and tested in this repository; the Action is released and proven in an external repository; the docs deploy to GitHub Pages from `main` on the next release.
-Each "pending" row is filled with a public URL, run or commit permalink once it exists.
+Delivered in release [`v0.5.0`](https://github.com/dadadave80/lattice/releases/tag/v0.5.0). The site and the Action are built and tested in this repository, the docs deploy to GitHub Pages from `main`, and the Action is released and proven in an external repository.
 
 | Evidence | Status |
 |---|---|
 | Docs site source: the guides plus the API reference `forge doc` generates, built with Vocs under `/lattice` | [`docs/site/`](docs/site/vocs.config.ts) · [`script/docs/build.sh`](script/docs/build.sh) (`make doc`) |
 | Docs build and link check in CI on every relevant pull request | [`.github/workflows/docs.yml`](.github/workflows/docs.yml) (pull requests build only; `main` builds and deploys to GitHub Pages) |
-| Public docs URL (expected `https://dadadave80.github.io/lattice/`) | pending: first deploy from `main` |
+| Public docs URL | [`https://dadadave80.github.io/lattice/`](https://dadadave80.github.io/lattice/), first deployed by [run 37938597222](https://github.com/dadadave80/lattice/actions/runs/37938597222) from `main` at [`2134a6e`](https://github.com/dadadave80/lattice/commit/2134a6e67bec3c1422675fbd3cf6c20b230516bf) |
 | Storage-safety Action: composite Action on the Bash+jq checker Lattice's own CI runs | [`.github/actions/storage-layout/`](.github/actions/storage-layout/README.md) |
 | Action regression cases (43) on a fixture consumer project, and a CI self-test calling the Action | [`script/test-storage-layout.sh`](script/test-storage-layout.sh) · `storage-action` job in [`test.yml`](.github/workflows/test.yml) |
 | Lattice CI checks every pull request append-only against its base through the same Action | `storage-layout` job in [`test.yml`](.github/workflows/test.yml) |
@@ -89,7 +88,7 @@ Each "pending" row is filled with a public URL, run or commit permalink once it 
 | External demo repository calling the released Action | [`lattice-storage-guard-demo`](https://github.com/dadadave80/lattice-storage-guard-demo) pins `.github/actions/storage-layout@828e0a8…` ([workflow](https://github.com/dadadave80/lattice-storage-guard-demo/blob/main/.github/workflows/storage.yml)) |
 | Demo runs: red on an incompatible change, green on its fix, green on a safe append | reorder [red](https://github.com/dadadave80/lattice-storage-guard-demo/actions/runs/37923527240) → fix [green](https://github.com/dadadave80/lattice-storage-guard-demo/actions/runs/37923624481) ([#1](https://github.com/dadadave80/lattice-storage-guard-demo/pull/1)) · safe append [green](https://github.com/dadadave80/lattice-storage-guard-demo/actions/runs/37923536837) ([#2](https://github.com/dadadave80/lattice-storage-guard-demo/pull/2)) |
 
-Tag: `grant-m3`, created after every row above has public evidence.
+Tag: [`grant-m3`](https://github.com/dadadave80/lattice/releases/tag/grant-m3), commit [`cca133b`](https://github.com/dadadave80/lattice/commit/cca133b07abda7fdde4468798d1dce3e36ea7849) (the v0.5.0 release), on `main`.
 
 # Circle Arc Grant (2026 Cohort 2 — application evidence)
 
@@ -118,3 +117,37 @@ source chain, in both a plain multi-destination transfer and a programmable-USDC
 All demo contracts are Sourcify-verified (`exact_match`) on both chains. The hook, receipt and round-trip
 demo scripts default to the hook demo's Arc hub and Base diamond above (`CANON_*` in
 `script/config/cctp-*.sh`); keep this table and those defaults in step.
+
+# Team1 Builder Grants (Avalanche) — Mini Grant application evidence
+
+Lattice's reference vault diamond is live and source-verified on Avalanche Fuji (chain 43113), with the same
+evidence as the ENS milestones: a governed vault assembled through `LatticeFactory` in one transaction, then
+a shareholder proposal that passes through the vault's own Governor and TimelockController and upgrades it.
+The deployment is release [`v0.5.0`](https://github.com/dadadave80/lattice/releases/tag/v0.5.0)
+([`cca133b`](https://github.com/dadadave80/lattice/commit/cca133b07abda7fdde4468798d1dce3e36ea7849) on `main`), built with the repository's own
+settings. Avalanche runs the Cancun EVM. Lattice compiles to identical creation and runtime code for Cancun
+and for the repository's default target (all 1,204 bytecode objects, compared without the metadata hash), so
+every facet sits at the address a v0.5.0 release gets on every chain (CreateX `CREATE2`, salt
+`lattice.<Name>.0.5.0`). The 14 facets were the first v0.5.0 facets deployed anywhere; a later `DeployRelease`
+on Fuji adopts them.
+
+| Evidence | Link |
+|---|---|
+| Deploy script (commit permalink) | [`script/base/defi/GrantExample.s.sol`](https://github.com/dadadave80/lattice/blob/cca133b07abda7fdde4468798d1dce3e36ea7849/script/base/defi/GrantExample.s.sol) · runner [`run.sh`](https://github.com/dadadave80/lattice/blob/cca133b07abda7fdde4468798d1dce3e36ea7849/examples/governance-upgradeable-diamond/run.sh) |
+| Governed vault (diamond) | [`0xd06F72Eabf158CDFAa550450cCb220b42A1068ef`](https://testnet.snowscan.xyz/address/0xd06F72Eabf158CDFAa550450cCb220b42A1068ef#code) · [Snowtrace](https://testnet.snowtrace.io/address/0xd06F72Eabf158CDFAa550450cCb220b42A1068ef/contract/43113/code) · [Sourcify](https://repo.sourcify.dev/43113/0xd06F72Eabf158CDFAa550450cCb220b42A1068ef) |
+| Vault asset (test token) | [`0x3cad51414bBd94E19C47Ef47fE2D65f89e467Eea`](https://testnet.snowscan.xyz/address/0x3cad51414bBd94E19C47Ef47fE2D65f89e467Eea#code) · [Snowtrace](https://testnet.snowtrace.io/address/0x3cad51414bBd94E19C47Ef47fE2D65f89e467Eea/contract/43113/code) · [Sourcify](https://repo.sourcify.dev/43113/0x3cad51414bBd94E19C47Ef47fE2D65f89e467Eea) |
+| Upgrade probe (facet added by the proposal) | [`0xD22736eCd4a7F1574f99feCff0fD59C96a2d1571`](https://testnet.snowscan.xyz/address/0xD22736eCd4a7F1574f99feCff0fD59C96a2d1571#code) · [Snowtrace](https://testnet.snowtrace.io/address/0xD22736eCd4a7F1574f99feCff0fD59C96a2d1571/contract/43113/code) · [Sourcify](https://repo.sourcify.dev/43113/0xD22736eCd4a7F1574f99feCff0fD59C96a2d1571) |
+| LatticeFactory (this run's own instance, not the canonical factory) | [`0xdaC8b1CaBfab28F99D6B572E464a42b37FAC7D1A`](https://testnet.snowscan.xyz/address/0xdaC8b1CaBfab28F99D6B572E464a42b37FAC7D1A#code) · [Snowtrace](https://testnet.snowtrace.io/address/0xdaC8b1CaBfab28F99D6B572E464a42b37FAC7D1A/contract/43113/code) · [Sourcify](https://repo.sourcify.dev/43113/0xdaC8b1CaBfab28F99D6B572E464a42b37FAC7D1A) |
+| LatticeRegistry (this run's own instance, owned by the deployer, not the canonical registry) | [`0x9c69eD8Bd87E85AF80d2546e2C4a8F064fc98F4C`](https://testnet.snowscan.xyz/address/0x9c69eD8Bd87E85AF80d2546e2C4a8F064fc98F4C#code) · [Snowtrace](https://testnet.snowtrace.io/address/0x9c69eD8Bd87E85AF80d2546e2C4a8F064fc98F4C/contract/43113/code) · [Sourcify](https://repo.sourcify.dev/43113/0x9c69eD8Bd87E85AF80d2546e2C4a8F064fc98F4C) |
+| Vault init contract | [`0xC360591B35BA82ad066b609CCFdCBab4D9f3f810`](https://testnet.snowscan.xyz/address/0xC360591B35BA82ad066b609CCFdCBab4D9f3f810#code) · [Snowtrace](https://testnet.snowtrace.io/address/0xC360591B35BA82ad066b609CCFdCBab4D9f3f810/contract/43113/code) · [Sourcify](https://repo.sourcify.dev/43113/0xC360591B35BA82ad066b609CCFdCBab4D9f3f810) |
+| Vault creation through the factory, one transaction | [`0x2e9bc8…0f52`](https://testnet.snowscan.xyz/tx/0x2e9bc871fe9a2ce5b01c92f652ec60218d2bd89e9bc3d7048842774520410f52) |
+| Governed upgrade: `ProposalExecuted`, then `grantVersion()` returns 2 through the vault | [`0x5deeea…0ed2`](https://testnet.snowscan.xyz/tx/0x5deeea5bec8a70605decb25261c21c9d14bfe0f6a4a80b1cd029700b85ab0ed2) (block 59,249,355) |
+| Governance steps | mint [`0x1451f2…197c`](https://testnet.snowscan.xyz/tx/0x1451f26b8855252cc62e4af260552b183df1702afd68c50963ebb01c1fd7197c) → approve [`0xcfc5b0…59bf`](https://testnet.snowscan.xyz/tx/0xcfc5b09a1f33df1db63f551a743ef6e48032af5b0c5a435db7080186859759bf) → deposit [`0xa288ee…2c27`](https://testnet.snowscan.xyz/tx/0xa288eeb20cb71f5e27ff6efc99dd4ce7849f5aaafc075dd95fc8e7bd6b6f2c27) → delegate [`0xcbe24b…f695`](https://testnet.snowscan.xyz/tx/0xcbe24b158f8c4d66628f983c01e2496e94c38cd324f12d0cbcf3b05b6aa4f695) → propose [`0xc78a91…6490`](https://testnet.snowscan.xyz/tx/0xc78a91b17c8e3fa4c26281c4a00a2d32ff1f9b0572323f04c7bbdd9cb2496490) → vote [`0x098789…9204`](https://testnet.snowscan.xyz/tx/0x098789c72bd701ac4adebbcc74fc305c025e85b065a0215ab092f78c4a929204) → queue [`0x88d746…44e5`](https://testnet.snowscan.xyz/tx/0x88d746fd6840116ea00b7ceaf95b14aa00c1215f99f3852fdbe3b3a71cd744e5) → execute (above) |
+| Vault facets, each verified | [AccessControl](https://testnet.snowscan.xyz/address/0x9549f7731866c46F5489E116577C42b4dEAaC1aB#code) · [TimelockController](https://testnet.snowscan.xyz/address/0x6578F2AD703f20d4d52810d7fd8a02c945d04A70#code) · [ERC20](https://testnet.snowscan.xyz/address/0x4E889a826daa5c3cCc9d6E08a5DeB08a41caAdC9#code) · [ERC4626](https://testnet.snowscan.xyz/address/0x31E368b44b0224E9126E6Fc3f97a209FD5769019#code) · [VaultCore](https://testnet.snowscan.xyz/address/0x7411D1D1666aB06b70E0252C1BEdfCC0559dC522#code) · [Votes](https://testnet.snowscan.xyz/address/0xE3910773b4176FC19cE8F55FB33134EE40BCEaf8#code) · [ERC20Votes](https://testnet.snowscan.xyz/address/0x24F4343Bea82Fae2dD53A2306D19e3d29aFbe406#code) · [Governor](https://testnet.snowscan.xyz/address/0xc8112a43aA2C84Ea305E5Fe29D0A28028d18CFfE#code) · [GovernedVault](https://testnet.snowscan.xyz/address/0x04D7b5da3A0a1E4eF1F18EaBb50839423f021cff#code) · [EmergencyStop](https://testnet.snowscan.xyz/address/0x97a28D2C9BE588e6240a9421dF84246992b86E67#code) · [GovernedDiamondCut](https://testnet.snowscan.xyz/address/0x9aC2765B80a5C083499871142Ad145640CFE37cE#code) · [Receive](https://testnet.snowscan.xyz/address/0x924dE4b5AE1991f0e24A7A86fB44D6495A57B652#code) · [ERC165Facet](https://testnet.snowscan.xyz/address/0x16A78da88a6Ff27cA38a7DEa1Be4d94DfB875F0C#code) · [DiamondLoupeFacet](https://testnet.snowscan.xyz/address/0xe3b0eDd953D1c521d26b2ad6eD1AAb1a9c621Dff#code) |
+| Broadcast log (20 transactions, 33.3M gas) | [`broadcast/GrantExample.s.sol/43113/run-latest.json`](broadcast/GrantExample.s.sol/43113/run-latest.json) |
+| One-command reproduce | `make example-ens-grant-m2 RPC=fuji KEYSTORE=<name>` (about 20 minutes of real governance delays) — see the [example README](examples/governance-upgradeable-diamond/README.md) |
+
+All 20 contracts in the broadcast are verified on Sourcify, Snowscan (Etherscan V2) and Snowtrace
+(Routescan). On Sourcify, 18 are exact matches. `ERC165Facet` and `DiamondLoupeFacet` from diamond-lib are
+full matches, because Sourcify had already verified the same bytecode from another source tree. Snowtrace
+lists the vault as `LatticeDiamond`, an earlier verified contract with identical bytecode.
