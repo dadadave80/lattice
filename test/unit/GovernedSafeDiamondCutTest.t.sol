@@ -320,7 +320,7 @@ contract GovernedSafeDiamondCutTest is GovernedSafeDiamondCutTestBase {
         assertFalse(cut.isOperationPending(id), "must not be pending after cancel");
 
         // A cancelled operation cannot be executed even after the original eta passes.
-        vm.warp(block.timestamp + MIN_DELAY + 1);
+        vm.warp(vm.getBlockTimestamp() + MIN_DELAY + 1);
         vm.prank(address(safe));
         vm.expectRevert(abi.encodeWithSelector(IGovernedSafeDiamondCut.CutNotScheduled.selector, id));
         cut.executeCut(cuts, address(0), "", SALT);
@@ -368,7 +368,7 @@ contract GovernedSafeDiamondCutTest is GovernedSafeDiamondCutTestBase {
     /// @notice Raising the delay is scheduled: it applies after max(old, new) = the new delay, and until
     ///         then new schedules still use the old delay.
     function test_SetMinDelay() public {
-        uint256 effectAt = block.timestamp + 5 days;
+        uint256 effectAt = vm.getBlockTimestamp() + 5 days;
         vm.expectEmit(false, false, false, true, address(diamond));
         emit IGovernedSafeDiamondCut.MinDelayChangeScheduled(MIN_DELAY, 5 days, effectAt);
         vm.prank(address(safe));
@@ -386,7 +386,7 @@ contract GovernedSafeDiamondCutTest is GovernedSafeDiamondCutTestBase {
         bytes32 id = _opId(cuts, address(0), "", SALT);
         vm.prank(address(safe));
         cut.scheduleCut(cuts, address(0), "", SALT);
-        assertEq(cut.getTimestamp(id), block.timestamp + 5 days, "new schedule must use new delay");
+        assertEq(cut.getTimestamp(id), vm.getBlockTimestamp() + 5 days, "new schedule must use new delay");
     }
 
     /// @notice #218 regression: the Safe cannot zero the delay and push a cut through in one transaction.
@@ -409,7 +409,7 @@ contract GovernedSafeDiamondCutTest is GovernedSafeDiamondCutTestBase {
 
     /// @notice A lowered delay applies only once the old delay has elapsed since the request.
     function test_LoweredDelayAppliesAfterOldDelay() public {
-        uint256 requestedAt = block.timestamp;
+        uint256 requestedAt = vm.getBlockTimestamp();
         vm.prank(address(safe));
         cut.setMinDelay(1 hours);
 
@@ -419,7 +419,7 @@ contract GovernedSafeDiamondCutTest is GovernedSafeDiamondCutTestBase {
         bytes32 early = _opId(cuts, address(0), "", SALT);
         vm.prank(address(safe));
         cut.scheduleCut(cuts, address(0), "", SALT);
-        assertEq(cut.getTimestamp(early), block.timestamp + MIN_DELAY, "pre-effect schedule uses old delay");
+        assertEq(cut.getTimestamp(early), vm.getBlockTimestamp() + MIN_DELAY, "pre-effect schedule uses old delay");
 
         vm.warp(requestedAt + MIN_DELAY);
         assertEq(cut.minDelay(), 1 hours, "lowered delay applies once the old delay has elapsed");
@@ -427,13 +427,13 @@ contract GovernedSafeDiamondCutTest is GovernedSafeDiamondCutTestBase {
         bytes32 late = _opId(cuts, address(0), "", salt2);
         vm.prank(address(safe));
         cut.scheduleCut(cuts, address(0), "", salt2);
-        assertEq(cut.getTimestamp(late), block.timestamp + 1 hours, "post-effect schedule uses new delay");
+        assertEq(cut.getTimestamp(late), vm.getBlockTimestamp() + 1 hours, "post-effect schedule uses new delay");
     }
 
     /// @notice A second request replaces the pending one and measures its wait from the delay then in
     ///         force; re-requesting the current delay withdraws a pending decrease.
     function test_SetMinDelayReplacesPendingChange() public {
-        uint256 t0 = block.timestamp;
+        uint256 t0 = vm.getBlockTimestamp();
         vm.prank(address(safe));
         cut.setMinDelay(0);
 
@@ -447,13 +447,13 @@ contract GovernedSafeDiamondCutTest is GovernedSafeDiamondCutTestBase {
         // A matured change is folded in before the next request measures its wait from it.
         vm.prank(address(safe));
         cut.setMinDelay(1 hours);
-        vm.warp(block.timestamp + MIN_DELAY);
+        vm.warp(vm.getBlockTimestamp() + MIN_DELAY);
         assertEq(cut.minDelay(), 1 hours, "matured decrease applies");
         vm.prank(address(safe));
         cut.setMinDelay(4 hours);
-        vm.warp(block.timestamp + 4 hours - 1);
+        vm.warp(vm.getBlockTimestamp() + 4 hours - 1);
         assertEq(cut.minDelay(), 1 hours, "increase waits max(1h, 4h)");
-        vm.warp(block.timestamp + 1);
+        vm.warp(vm.getBlockTimestamp() + 1);
         assertEq(cut.minDelay(), 4 hours, "increase applies after the new delay");
     }
 
@@ -622,7 +622,7 @@ contract GovernedSafeDiamondCutTest is GovernedSafeDiamondCutTestBase {
         assertTrue(cut.isOperationDone(id), "executed id must read as done");
         assertFalse(cut.isOperationReady(id), "executed id must not read as ready");
         assertFalse(cut.isOperationPending(id), "executed id must not read as pending");
-        vm.warp(block.timestamp + 365 days);
+        vm.warp(vm.getBlockTimestamp() + 365 days);
         assertTrue(cut.isOperationDone(id), "done is permanent");
         assertFalse(cut.isOperationReady(id), "done never turns ready");
     }

@@ -78,7 +78,7 @@ contract ERC20VotesTest is ERC20VotesTestBase {
 
     function test_TotalSupplyCheckpointAfterMint() public {
         // mint already called in setUp — warp forward and query
-        uint256 ts = block.timestamp;
+        uint256 ts = vm.getBlockTimestamp();
         vm.warp(ts + 1);
         assertEq(token.getPastTotalSupply(ts), INITIAL_SUPPLY);
     }
@@ -154,7 +154,7 @@ contract ERC20VotesTest is ERC20VotesTestBase {
     }
 
     function test_TransferBetweenNonDelegators_TotalSupplyCheckpointUpdates() public {
-        uint256 ts = block.timestamp;
+        uint256 ts = vm.getBlockTimestamp();
         // Mint more to observe total supply checkpoint
         helper.mint(bob, 500e18);
 
@@ -207,14 +207,14 @@ contract ERC20VotesTest is ERC20VotesTestBase {
         vm.prank(alice);
         token.delegate(alice);
 
-        uint256 ts = block.timestamp;
+        uint256 ts = vm.getBlockTimestamp();
         vm.warp(ts + 1);
 
         assertEq(token.getPastVotes(alice, ts), INITIAL_SUPPLY);
     }
 
     function test_GetPastVotes_BeforeDelegate_ReturnsZero() public {
-        uint256 ts = block.timestamp;
+        uint256 ts = vm.getBlockTimestamp();
         vm.warp(ts + 1);
 
         vm.prank(alice);
@@ -233,14 +233,14 @@ contract ERC20VotesTest is ERC20VotesTestBase {
         vm.prank(alice);
         token.delegate(alice);
 
-        uint256 ts1 = block.timestamp;
+        uint256 ts1 = vm.getBlockTimestamp();
         vm.warp(ts1 + 1);
 
         // Re-delegate to bob at ts2
         vm.prank(alice);
         token.delegate(bob);
 
-        uint256 ts2 = block.timestamp;
+        uint256 ts2 = vm.getBlockTimestamp();
         vm.warp(ts2 + 1);
 
         // At ts1, alice had all votes
@@ -256,7 +256,7 @@ contract ERC20VotesTest is ERC20VotesTestBase {
     //////////////////////////////////////////////////////////////////////////*//
 
     function test_GetPastTotalSupply_AfterMint() public {
-        uint256 ts = block.timestamp;
+        uint256 ts = vm.getBlockTimestamp();
         helper.mint(bob, 500e18);
 
         vm.warp(ts + 1);
@@ -264,7 +264,7 @@ contract ERC20VotesTest is ERC20VotesTestBase {
     }
 
     function test_GetPastTotalSupply_AfterBurn() public {
-        uint256 ts = block.timestamp;
+        uint256 ts = vm.getBlockTimestamp();
         helper.burn(alice, 100e18);
 
         vm.warp(ts + 1);
@@ -408,7 +408,7 @@ contract ERC20VotesTest is ERC20VotesTestBase {
         token.delegate(alice);
 
         // Warp so second delegation lands on a different timestamp key
-        vm.warp(block.timestamp + 1);
+        vm.warp(vm.getBlockTimestamp() + 1);
 
         vm.prank(alice);
         token.delegate(bob);

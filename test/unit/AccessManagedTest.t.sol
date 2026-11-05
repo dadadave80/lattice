@@ -180,7 +180,7 @@ contract AccessManagedTest is AccessManagedTestBase {
         vm.expectRevert(abi.encodeWithSelector(IAccessManager.AccessManagerNotReady.selector, opId));
         managedHelper.restrictedFn();
 
-        vm.warp(block.timestamp + 1 days);
+        vm.warp(vm.getBlockTimestamp() + 1 days);
         vm.expectEmit(true, true, false, false, authority);
         emit IAccessManager.OperationExecuted(opId, nonce);
         vm.prank(alice);
@@ -229,7 +229,7 @@ contract AccessManagedTest is AccessManagedTestBase {
         address newAuthority = _deployAuthority(admin);
         vm.prank(admin);
         mgr.setTargetAdminDelay(diamond, 1 days);
-        vm.warp(block.timestamp + 5 days);
+        vm.warp(vm.getBlockTimestamp() + 5 days);
 
         bytes memory data = abi.encodeCall(IAccessManager.updateAuthority, (diamond, newAuthority));
         bytes32 opId = mgr.hashOperation(admin, authority, data);
@@ -239,7 +239,7 @@ contract AccessManagedTest is AccessManagedTestBase {
 
         vm.prank(admin);
         mgr.schedule(authority, data, 0);
-        vm.warp(block.timestamp + 1 days);
+        vm.warp(vm.getBlockTimestamp() + 1 days);
         vm.prank(admin);
         mgr.execute(authority, data);
         assertEq(managed.authority(), newAuthority);
@@ -253,7 +253,7 @@ contract AccessManagedTest is AccessManagedTestBase {
         address newAuthority = _deployAuthority(admin);
         vm.prank(admin);
         mgr.setTargetAdminDelay(diamond, 7 days);
-        vm.warp(block.timestamp + 7 days);
+        vm.warp(vm.getBlockTimestamp() + 7 days);
         assertEq(mgr.getTargetAdminDelay(diamond), 7 days);
 
         vm.prank(admin);
@@ -273,7 +273,7 @@ contract AccessManagedTest is AccessManagedTestBase {
         mgr.setTargetFunctionRole(diamond, selectors, noOne);
         vm.prank(admin);
         mgr.setTargetAdminDelay(diamond, 7 days);
-        vm.warp(block.timestamp + 7 days);
+        vm.warp(vm.getBlockTimestamp() + 7 days);
 
         bytes memory setAuthorityCall = abi.encodeCall(IAccessManaged.setAuthority, (newAuthority));
         vm.prank(admin);
@@ -293,7 +293,7 @@ contract AccessManagedTest is AccessManagedTestBase {
         bytes memory update = abi.encodeCall(IAccessManager.updateAuthority, (diamond, newAuthority));
         vm.prank(admin);
         mgr.schedule(authority, update, 0);
-        vm.warp(block.timestamp + 7 days);
+        vm.warp(vm.getBlockTimestamp() + 7 days);
         vm.prank(admin);
         mgr.execute(authority, update);
         assertEq(managed.authority(), newAuthority);
@@ -315,7 +315,7 @@ contract AccessManagedTest is AccessManagedTestBase {
 
         // Schedule the operation
         vm.prank(alice);
-        (bytes32 opId,) = mgr.schedule(address(managed), data, uint48(block.timestamp + 1 days));
+        (bytes32 opId,) = mgr.schedule(address(managed), data, uint48(vm.getBlockTimestamp() + 1 days));
 
         // Before delay: execute must fail
         vm.prank(alice);
@@ -323,7 +323,7 @@ contract AccessManagedTest is AccessManagedTestBase {
         mgr.execute(address(managed), data);
 
         // After delay: execute must succeed (the manager is the authorized caller for this execution id)
-        vm.warp(block.timestamp + 1 days);
+        vm.warp(vm.getBlockTimestamp() + 1 days);
         vm.prank(alice);
         mgr.execute(address(managed), data);
 

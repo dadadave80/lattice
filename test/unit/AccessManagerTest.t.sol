@@ -147,7 +147,7 @@ contract AccessManagerTest is AccessManagerTestBase {
 
         // Wait for grant delay change to take effect (MIN_SETBACK = 5 days for increases;
         // we warp 1 week to comfortably clear the setback).
-        vm.warp(block.timestamp + 1 weeks);
+        vm.warp(vm.getBlockTimestamp() + 1 weeks);
 
         vm.prank(admin);
         mgr.grantRole(MINTER_ROLE, alice, 0);
@@ -155,7 +155,7 @@ contract AccessManagerTest is AccessManagerTestBase {
         (bool isMember,) = mgr.hasRole(MINTER_ROLE, alice);
         assertFalse(isMember);
 
-        vm.warp(block.timestamp + 1 days);
+        vm.warp(vm.getBlockTimestamp() + 1 days);
         (isMember,) = mgr.hasRole(MINTER_ROLE, alice);
         assertTrue(isMember);
     }
@@ -165,7 +165,7 @@ contract AccessManagerTest is AccessManagerTestBase {
     function test_HasRoleReportsZeroDelayWhileGrantPending() public {
         vm.prank(admin);
         mgr.setGrantDelay(MINTER_ROLE, 1 days);
-        vm.warp(block.timestamp + 1 weeks);
+        vm.warp(vm.getBlockTimestamp() + 1 weeks);
 
         vm.prank(admin);
         mgr.grantRole(MINTER_ROLE, alice, 3 days);
@@ -176,7 +176,7 @@ contract AccessManagerTest is AccessManagerTestBase {
         (, uint32 currentDelay,,) = mgr.getAccess(MINTER_ROLE, alice);
         assertEq(currentDelay, 3 days);
 
-        vm.warp(block.timestamp + 1 days);
+        vm.warp(vm.getBlockTimestamp() + 1 days);
         (isMember, execDelay) = mgr.hasRole(MINTER_ROLE, alice);
         assertTrue(isMember);
         assertEq(execDelay, 3 days);
@@ -246,14 +246,14 @@ contract AccessManagerTest is AccessManagerTestBase {
         vm.prank(admin);
         mgr.setGrantDelay(MINTER_ROLE, 3 days);
         assertEq(mgr.getRoleGrantDelay(MINTER_ROLE), 0);
-        vm.warp(block.timestamp + 1 weeks);
+        vm.warp(vm.getBlockTimestamp() + 1 weeks);
         assertEq(mgr.getRoleGrantDelay(MINTER_ROLE), 3 days);
     }
 
     function test_SetGrantDelayDecreaseUsesMinSetback() public {
         vm.prank(admin);
         mgr.setGrantDelay(MINTER_ROLE, 3 days);
-        vm.warp(block.timestamp + 5 days);
+        vm.warp(vm.getBlockTimestamp() + 5 days);
         assertEq(mgr.getRoleGrantDelay(MINTER_ROLE), 3 days);
 
         // Decrease from 3 days to 1 day: diff=2 days < MIN_SETBACK=5 days, so wait=5 days.
@@ -262,7 +262,7 @@ contract AccessManagerTest is AccessManagerTestBase {
         // Not yet effective
         assertEq(mgr.getRoleGrantDelay(MINTER_ROLE), 3 days);
         // After MIN_SETBACK
-        vm.warp(block.timestamp + 5 days);
+        vm.warp(vm.getBlockTimestamp() + 5 days);
         assertEq(mgr.getRoleGrantDelay(MINTER_ROLE), 1 days);
     }
 
@@ -385,7 +385,7 @@ contract AccessManagerTest is AccessManagerTestBase {
         bytes memory data = abi.encodeCall(CallSink.ping, (42));
 
         vm.prank(alice);
-        (bytes32 opId, uint32 nonce) = mgr.schedule(address(sink), data, uint48(block.timestamp + 1 days));
+        (bytes32 opId, uint32 nonce) = mgr.schedule(address(sink), data, uint48(vm.getBlockTimestamp() + 1 days));
         assertGt(uint256(opId), 0);
         assertEq(nonce, 1);
 
@@ -393,7 +393,7 @@ contract AccessManagerTest is AccessManagerTestBase {
         vm.prank(alice);
         mgr.execute(address(sink), data);
 
-        vm.warp(block.timestamp + 1 days);
+        vm.warp(vm.getBlockTimestamp() + 1 days);
         vm.prank(alice);
         mgr.execute(address(sink), data);
 
@@ -518,14 +518,14 @@ contract AccessManagerTest is AccessManagerTestBase {
 
         bytes memory data = abi.encodeCall(CallSink.ping, (42));
         vm.prank(alice);
-        (bytes32 opId,) = mgr.schedule(address(sink), data, uint48(block.timestamp + 1 days));
+        (bytes32 opId,) = mgr.schedule(address(sink), data, uint48(vm.getBlockTimestamp() + 1 days));
 
         // Before expiration, getSchedule returns nonzero
-        vm.warp(block.timestamp + 1 days);
+        vm.warp(vm.getBlockTimestamp() + 1 days);
         assertGt(mgr.getSchedule(opId), 0);
 
         // After expiration (readyAt + 1 week), getSchedule returns 0
-        vm.warp(block.timestamp + 1 weeks + 1);
+        vm.warp(vm.getBlockTimestamp() + 1 weeks + 1);
         assertEq(mgr.getSchedule(opId), 0);
     }
 
@@ -542,14 +542,14 @@ contract AccessManagerTest is AccessManagerTestBase {
 
         bytes memory data = abi.encodeCall(CallSink.ping, (42));
         vm.prank(alice);
-        mgr.schedule(address(sink), data, uint48(block.timestamp + 1 days));
+        mgr.schedule(address(sink), data, uint48(vm.getBlockTimestamp() + 1 days));
 
         // Warp past expiration
-        vm.warp(block.timestamp + 1 days + 1 weeks + 1);
+        vm.warp(vm.getBlockTimestamp() + 1 days + 1 weeks + 1);
 
         // Reschedule should succeed (expired = allowed)
         vm.prank(alice);
-        (bytes32 opId, uint32 nonce) = mgr.schedule(address(sink), data, uint48(block.timestamp + 1 days));
+        (bytes32 opId, uint32 nonce) = mgr.schedule(address(sink), data, uint48(vm.getBlockTimestamp() + 1 days));
         assertGt(nonce, 1);
         assertGt(uint256(opId), 0);
     }
@@ -603,9 +603,9 @@ contract AccessManagerTest is AccessManagerTestBase {
 
         // Schedule
         vm.prank(alice);
-        (bytes32 opId,) = mgr.schedule(address(rt), data, uint48(block.timestamp + 1 days));
+        (bytes32 opId,) = mgr.schedule(address(rt), data, uint48(vm.getBlockTimestamp() + 1 days));
 
-        vm.warp(block.timestamp + 1 days);
+        vm.warp(vm.getBlockTimestamp() + 1 days);
 
         // Execute: the reentrant attempt inside reentrantFn() must fail silently
         vm.prank(alice);
@@ -623,10 +623,10 @@ contract AccessManagerTest is AccessManagerTestBase {
     function test_SetGrantDelaySameValueAppliesMinSetback() public {
         vm.prank(admin);
         mgr.setGrantDelay(MINTER_ROLE, 1 days);
-        vm.warp(block.timestamp + 1 weeks); // let delay take effect
+        vm.warp(vm.getBlockTimestamp() + 1 weeks); // let delay take effect
         assertEq(mgr.getRoleGrantDelay(MINTER_ROLE), 1 days);
 
-        uint48 effectAt = uint48(block.timestamp + 5 days);
+        uint48 effectAt = uint48(vm.getBlockTimestamp() + 5 days);
         vm.expectEmit(true, false, false, true, diamond);
         emit IAccessManager.RoleGrantDelayChanged(MINTER_ROLE, 1 days, effectAt);
         vm.prank(admin);
@@ -641,7 +641,7 @@ contract AccessManagerTest is AccessManagerTestBase {
     function test_SetGrantDelaySameValueCancelsPendingDecrease() public {
         vm.prank(admin);
         mgr.setGrantDelay(MINTER_ROLE, 10 days);
-        vm.warp(block.timestamp + 5 days);
+        vm.warp(vm.getBlockTimestamp() + 5 days);
         assertEq(mgr.getRoleGrantDelay(MINTER_ROLE), 10 days);
 
         // 10 days -> 1 day waits out the 9-day difference.
@@ -650,7 +650,7 @@ contract AccessManagerTest is AccessManagerTestBase {
         vm.prank(admin);
         mgr.setGrantDelay(MINTER_ROLE, 10 days);
 
-        vm.warp(block.timestamp + 9 days + 1);
+        vm.warp(vm.getBlockTimestamp() + 9 days + 1);
         assertEq(mgr.getRoleGrantDelay(MINTER_ROLE), 10 days, "pending decrease was cancelled");
     }
 
@@ -687,12 +687,12 @@ contract AccessManagerTest is AccessManagerTestBase {
     function _setAdminDelayInForce(address target, uint32 delay) internal {
         vm.prank(admin);
         mgr.setTargetAdminDelay(target, delay);
-        vm.warp(block.timestamp + (delay > MIN_SETBACK ? delay : MIN_SETBACK));
+        vm.warp(vm.getBlockTimestamp() + (delay > MIN_SETBACK ? delay : MIN_SETBACK));
         assertEq(mgr.getTargetAdminDelay(target), delay);
     }
 
     function test_SetTargetAdminDelay_IncreaseTakesEffectAfterMinSetback() public {
-        uint48 effectAt = uint48(block.timestamp + MIN_SETBACK);
+        uint48 effectAt = uint48(vm.getBlockTimestamp() + MIN_SETBACK);
         vm.expectEmit(true, false, false, true, diamond);
         emit IAccessManager.TargetAdminDelayUpdated(TARGET, 3 days, effectAt);
         vm.prank(admin);
@@ -709,7 +709,7 @@ contract AccessManagerTest is AccessManagerTestBase {
         _setAdminDelayInForce(TARGET, 10 days);
 
         // 10 days -> 1 day: the 9-day difference exceeds MIN_SETBACK, so it sets the wait.
-        uint48 effectAt = uint48(block.timestamp + 9 days);
+        uint48 effectAt = uint48(vm.getBlockTimestamp() + 9 days);
         vm.expectEmit(true, false, false, true, diamond);
         emit IAccessManager.TargetAdminDelayUpdated(TARGET, 1 days, effectAt);
         vm.prank(admin);
@@ -725,7 +725,7 @@ contract AccessManagerTest is AccessManagerTestBase {
         _setAdminDelayInForce(TARGET, 3 days);
 
         // 3 days -> 1 day: the 2-day difference is below MIN_SETBACK, so MIN_SETBACK applies.
-        uint48 effectAt = uint48(block.timestamp + MIN_SETBACK);
+        uint48 effectAt = uint48(vm.getBlockTimestamp() + MIN_SETBACK);
         vm.expectEmit(true, false, false, true, diamond);
         emit IAccessManager.TargetAdminDelayUpdated(TARGET, 1 days, effectAt);
         vm.prank(admin);
@@ -742,7 +742,7 @@ contract AccessManagerTest is AccessManagerTestBase {
     function test_SetTargetAdminDelay_EqualValueAppliesMinSetback() public {
         _setAdminDelayInForce(TARGET, 2 days);
 
-        uint48 effectAt = uint48(block.timestamp + MIN_SETBACK);
+        uint48 effectAt = uint48(vm.getBlockTimestamp() + MIN_SETBACK);
         vm.expectEmit(true, false, false, true, diamond);
         emit IAccessManager.TargetAdminDelayUpdated(TARGET, 2 days, effectAt);
         vm.prank(admin);
@@ -757,9 +757,9 @@ contract AccessManagerTest is AccessManagerTestBase {
     function test_SetTargetAdminDelay_ReplacesPendingChange() public {
         vm.prank(admin);
         mgr.setTargetAdminDelay(TARGET, 3 days);
-        vm.warp(block.timestamp + 1 days);
+        vm.warp(vm.getBlockTimestamp() + 1 days);
 
-        uint48 effectAt = uint48(block.timestamp + MIN_SETBACK);
+        uint48 effectAt = uint48(vm.getBlockTimestamp() + MIN_SETBACK);
         vm.prank(admin);
         mgr.setTargetAdminDelay(TARGET, 4 days);
 
@@ -829,14 +829,14 @@ contract AccessManagerTest is AccessManagerTestBase {
         vm.prank(admin);
         (bytes32 opId,) = mgr.schedule(diamond, data, 0);
         assertEq(opId, mgr.hashOperation(admin, diamond, data));
-        assertEq(mgr.getSchedule(opId), block.timestamp + 2 days);
+        assertEq(mgr.getSchedule(opId), vm.getBlockTimestamp() + 2 days);
 
-        vm.warp(block.timestamp + 2 days - 1);
+        vm.warp(vm.getBlockTimestamp() + 2 days - 1);
         vm.prank(admin);
         vm.expectRevert(abi.encodeWithSelector(IAccessManager.AccessManagerNotReady.selector, opId));
         mgr.execute(diamond, data);
 
-        vm.warp(block.timestamp + 1);
+        vm.warp(vm.getBlockTimestamp() + 1);
         vm.prank(admin);
         mgr.execute(diamond, data);
         assertTrue(mgr.isTargetClosed(TARGET));
@@ -860,7 +860,7 @@ contract AccessManagerTest is AccessManagerTestBase {
         vm.expectRevert(abi.encodeWithSelector(IAccessManager.AccessManagerNotReady.selector, opId));
         mgr.setTargetFunctionRole(TARGET, _selectors(0x12345678), MINTER_ROLE);
 
-        vm.warp(block.timestamp + 2 days);
+        vm.warp(vm.getBlockTimestamp() + 2 days);
         vm.expectEmit(true, true, false, false, diamond);
         emit IAccessManager.OperationExecuted(opId, nonce);
         vm.prank(admin);
@@ -914,7 +914,7 @@ contract AccessManagerTest is AccessManagerTestBase {
 
         vm.prank(admin);
         mgr.setTargetAdminDelay(TARGET, 0);
-        vm.warp(block.timestamp + MIN_SETBACK);
+        vm.warp(vm.getBlockTimestamp() + MIN_SETBACK);
         assertEq(mgr.getTargetAdminDelay(TARGET), 0);
         assertGt(mgr.getSchedule(opId), 0);
 
@@ -932,7 +932,7 @@ contract AccessManagerTest is AccessManagerTestBase {
         bytes memory data = abi.encodeCall(IAccessManager.updateAuthority, (address(probe), address(0x1234)));
         vm.prank(admin);
         mgr.schedule(diamond, data, 0);
-        vm.warp(block.timestamp + 1 days);
+        vm.warp(vm.getBlockTimestamp() + 1 days);
         vm.prank(admin);
         mgr.execute(diamond, data);
 
@@ -1001,7 +1001,7 @@ contract AccessManagerTest is AccessManagerTestBase {
         vm.expectRevert(abi.encodeWithSelector(IAccessManager.AccessManagerNotReady.selector, opId));
         mgr.execute(diamond, data);
 
-        vm.warp(block.timestamp + 1 days);
+        vm.warp(vm.getBlockTimestamp() + 1 days);
         vm.prank(alice);
         mgr.execute(diamond, data);
         (bool isMember,) = mgr.hasRole(MINTER_ROLE, bob);
@@ -1022,7 +1022,7 @@ contract AccessManagerTest is AccessManagerTestBase {
 
         vm.prank(alice);
         mgr.schedule(diamond, data, 0);
-        vm.warp(block.timestamp + 1 days);
+        vm.warp(vm.getBlockTimestamp() + 1 days);
         vm.prank(alice);
         mgr.revokeRole(MINTER_ROLE, bob);
         (bool isMember,) = mgr.hasRole(MINTER_ROLE, bob);
@@ -1112,7 +1112,7 @@ contract AccessManagerTest is AccessManagerTestBase {
         vm.prank(admin);
         (bytes32 again,) = mgr.schedule(diamond, data, 0);
         assertEq(again, opId);
-        assertEq(mgr.getSchedule(opId), block.timestamp + 1 days);
+        assertEq(mgr.getSchedule(opId), vm.getBlockTimestamp() + 1 days);
     }
 
     function test_Expiry_ValidOneSecondBeforeBoundary() public {
@@ -1134,7 +1134,7 @@ contract AccessManagerTest is AccessManagerTestBase {
     ///         even when the operation id kept a nonce from an earlier consumed schedule.
     function test_Execute_ImmediateEmitsNoOperationExecutedAndReturnsZero() public {
         (bytes memory data, bytes32 opId,) = _scheduleDelayedClose();
-        vm.warp(block.timestamp + 1 days);
+        vm.warp(vm.getBlockTimestamp() + 1 days);
         vm.prank(admin);
         uint32 consumedNonce = mgr.execute(diamond, data);
         assertGt(consumedNonce, 0);
@@ -1143,7 +1143,7 @@ contract AccessManagerTest is AccessManagerTestBase {
         // Drop the admin delay so the same call becomes immediate.
         vm.prank(admin);
         mgr.setTargetAdminDelay(TARGET, 0);
-        vm.warp(block.timestamp + MIN_SETBACK);
+        vm.warp(vm.getBlockTimestamp() + MIN_SETBACK);
         assertEq(mgr.getTargetAdminDelay(TARGET), 0);
 
         vm.recordLogs();
@@ -1212,9 +1212,9 @@ contract AccessManagerTest is AccessManagerTestBase {
     function test_SetGrantDelay_ReplacesPendingChange() public {
         vm.prank(admin);
         mgr.setGrantDelay(MINTER_ROLE, 10 days);
-        vm.warp(block.timestamp + 1 days);
+        vm.warp(vm.getBlockTimestamp() + 1 days);
 
-        uint48 effectAt = uint48(block.timestamp + MIN_SETBACK);
+        uint48 effectAt = uint48(vm.getBlockTimestamp() + MIN_SETBACK);
         vm.expectEmit(true, false, false, true, diamond);
         emit IAccessManager.RoleGrantDelayChanged(MINTER_ROLE, 1 days, effectAt);
         vm.prank(admin);
@@ -1229,10 +1229,10 @@ contract AccessManagerTest is AccessManagerTestBase {
     function test_SetGrantDelay_LargeDecreaseWaitsForTheDifference() public {
         vm.prank(admin);
         mgr.setGrantDelay(MINTER_ROLE, 30 days);
-        vm.warp(block.timestamp + MIN_SETBACK);
+        vm.warp(vm.getBlockTimestamp() + MIN_SETBACK);
         assertEq(mgr.getRoleGrantDelay(MINTER_ROLE), 30 days);
 
-        uint48 effectAt = uint48(block.timestamp + 29 days);
+        uint48 effectAt = uint48(vm.getBlockTimestamp() + 29 days);
         vm.expectEmit(true, false, false, true, diamond);
         emit IAccessManager.RoleGrantDelayChanged(MINTER_ROLE, 1 days, effectAt);
         vm.prank(admin);
@@ -1247,15 +1247,15 @@ contract AccessManagerTest is AccessManagerTestBase {
     /// @notice Re-granting a member updates only the execution delay: `since` is kept, and the event's `since` is
     ///         when the new delay takes effect (now, for an increase), as in OZ.
     function test_GrantRole_RegrantUpdatesDelayKeepsSince() public {
-        uint48 since = uint48(block.timestamp);
+        uint48 since = uint48(vm.getBlockTimestamp());
         vm.expectEmit(true, true, false, true, diamond);
         emit IAccessManager.RoleGranted(MINTER_ROLE, alice, 0, since, true);
         vm.prank(admin);
         mgr.grantRole(MINTER_ROLE, alice, 0);
 
-        vm.warp(block.timestamp + 1 days);
+        vm.warp(vm.getBlockTimestamp() + 1 days);
         vm.expectEmit(true, true, false, true, diamond);
-        emit IAccessManager.RoleGranted(MINTER_ROLE, alice, 2 days, uint48(block.timestamp), false);
+        emit IAccessManager.RoleGranted(MINTER_ROLE, alice, 2 days, uint48(vm.getBlockTimestamp()), false);
         vm.prank(admin);
         mgr.grantRole(MINTER_ROLE, alice, 2 days);
 
@@ -1269,10 +1269,10 @@ contract AccessManagerTest is AccessManagerTestBase {
     function test_GrantRole_RegrantSameDelayEmitsRoleGranted() public {
         vm.prank(admin);
         mgr.grantRole(MINTER_ROLE, alice, 1 days);
-        vm.warp(block.timestamp + 1 hours);
+        vm.warp(vm.getBlockTimestamp() + 1 hours);
 
         vm.expectEmit(true, true, false, true, diamond);
-        emit IAccessManager.RoleGranted(MINTER_ROLE, alice, 1 days, uint48(block.timestamp), false);
+        emit IAccessManager.RoleGranted(MINTER_ROLE, alice, 1 days, uint48(vm.getBlockTimestamp()), false);
         vm.prank(admin);
         mgr.grantRole(MINTER_ROLE, alice, 1 days);
         _assertAccess(alice, 1 days, 0, 0);
@@ -1323,7 +1323,7 @@ contract AccessManagerTest is AccessManagerTestBase {
         vm.prank(alice);
         mgr.cancel(alice, address(sink), data);
 
-        vm.warp(block.timestamp + 1 days);
+        vm.warp(vm.getBlockTimestamp() + 1 days);
         vm.prank(alice);
         vm.expectRevert(abi.encodeWithSelector(IAccessManager.AccessManagerNotScheduled.selector, opId));
         mgr.execute(address(sink), data);
@@ -1352,7 +1352,7 @@ contract AccessManagerTest is AccessManagerTestBase {
         vm.startPrank(alice);
         mgr.schedule(address(sink), data, 0);
         (bytes32 opId2,) = mgr.schedule(address(sink), data2, 0);
-        vm.warp(block.timestamp + 1 days);
+        vm.warp(vm.getBlockTimestamp() + 1 days);
 
         vm.expectEmit(true, true, false, false, diamond);
         emit IAccessManager.OperationExecuted(opId2, 2);
@@ -1405,10 +1405,10 @@ contract AccessManagerTest is AccessManagerTestBase {
     function test_GrantRole_RegrantDecreaseWaitsOutTheDifference() public {
         vm.prank(admin);
         mgr.grantRole(MINTER_ROLE, alice, 7 days);
-        uint48 since = uint48(block.timestamp);
-        vm.warp(block.timestamp + 1 days);
+        uint48 since = uint48(vm.getBlockTimestamp());
+        vm.warp(vm.getBlockTimestamp() + 1 days);
 
-        uint48 effectAt = uint48(block.timestamp + 5 days);
+        uint48 effectAt = uint48(vm.getBlockTimestamp() + 5 days);
         vm.expectEmit(true, true, false, true, diamond);
         emit IAccessManager.RoleGranted(MINTER_ROLE, alice, 2 days, effectAt, false);
         vm.prank(admin);
@@ -1434,10 +1434,10 @@ contract AccessManagerTest is AccessManagerTestBase {
     function test_GrantRole_RegrantIncreaseIsImmediate() public {
         vm.prank(admin);
         mgr.grantRole(MINTER_ROLE, alice, 1 days);
-        vm.warp(block.timestamp + 1 days);
+        vm.warp(vm.getBlockTimestamp() + 1 days);
 
         vm.expectEmit(true, true, false, true, diamond);
-        emit IAccessManager.RoleGranted(MINTER_ROLE, alice, 3 days, uint48(block.timestamp), false);
+        emit IAccessManager.RoleGranted(MINTER_ROLE, alice, 3 days, uint48(vm.getBlockTimestamp()), false);
         vm.prank(admin);
         mgr.grantRole(MINTER_ROLE, alice, 3 days);
 
@@ -1452,10 +1452,10 @@ contract AccessManagerTest is AccessManagerTestBase {
         vm.startPrank(admin);
         mgr.grantRole(MINTER_ROLE, alice, 10 days);
         mgr.grantRole(MINTER_ROLE, alice, 2 days); // pending: 2 days, in force 8 days from now
-        uint48 firstEffect = uint48(block.timestamp + 8 days);
-        vm.warp(block.timestamp + 1 days);
+        uint48 firstEffect = uint48(vm.getBlockTimestamp() + 8 days);
+        vm.warp(vm.getBlockTimestamp() + 1 days);
 
-        uint48 effectAt = uint48(block.timestamp + 5 days);
+        uint48 effectAt = uint48(vm.getBlockTimestamp() + 5 days);
         vm.expectEmit(true, true, false, true, diamond);
         emit IAccessManager.RoleGranted(MINTER_ROLE, alice, 5 days, effectAt, false);
         mgr.grantRole(MINTER_ROLE, alice, 5 days);
@@ -1470,11 +1470,11 @@ contract AccessManagerTest is AccessManagerTestBase {
 
         // A new pending decrease, then a re-grant of the delay in force: nothing stays pending.
         mgr.grantRole(MINTER_ROLE, alice, 1 days);
-        _assertAccess(alice, 5 days, 1 days, uint48(block.timestamp + 4 days));
+        _assertAccess(alice, 5 days, 1 days, uint48(vm.getBlockTimestamp() + 4 days));
         mgr.grantRole(MINTER_ROLE, alice, 5 days);
         vm.stopPrank();
         _assertAccess(alice, 5 days, 0, 0);
-        vm.warp(block.timestamp + 4 days);
+        vm.warp(vm.getBlockTimestamp() + 4 days);
         (, delay) = mgr.hasRole(MINTER_ROLE, alice);
         assertEq(delay, 5 days, "the cancelled decrease never lands");
     }
@@ -1501,7 +1501,7 @@ contract AccessManagerTest is AccessManagerTestBase {
         mgr.grantRole(MINTER_ROLE, alice, 2 days);
         mgr.grantRole(MINTER_ROLE, alice, 0);
         vm.stopPrank();
-        uint48 effectAt = uint48(block.timestamp + 2 days);
+        uint48 effectAt = uint48(vm.getBlockTimestamp() + 2 days);
         bytes memory data = abi.encodeCall(CallSink.ping, (42));
         bytes32 opId = mgr.hashOperation(alice, address(sink), data);
         bytes memory scheduled = abi.encodeCall(CallSink.ping, (43));
@@ -1535,16 +1535,16 @@ contract AccessManagerTest is AccessManagerTestBase {
     function testFuzz_GrantRole_RegrantMatchesWithUpdate(uint32 oldDelay, uint32 newDelay, uint32 gap) public {
         vm.prank(admin);
         mgr.grantRole(MINTER_ROLE, alice, oldDelay);
-        vm.warp(block.timestamp + gap);
+        vm.warp(vm.getBlockTimestamp() + gap);
 
-        uint48 effectAt = uint48(block.timestamp + (oldDelay > newDelay ? oldDelay - newDelay : 0));
+        uint48 effectAt = uint48(vm.getBlockTimestamp() + (oldDelay > newDelay ? oldDelay - newDelay : 0));
         vm.expectEmit(true, true, false, true, diamond);
         emit IAccessManager.RoleGranted(MINTER_ROLE, alice, newDelay, effectAt, false);
         vm.prank(admin);
         mgr.grantRole(MINTER_ROLE, alice, newDelay);
 
         (, uint32 delay) = mgr.hasRole(MINTER_ROLE, alice);
-        if (effectAt > block.timestamp) {
+        if (effectAt > vm.getBlockTimestamp()) {
             _assertAccess(alice, oldDelay, newDelay, effectAt);
             assertEq(delay, oldDelay);
             vm.warp(effectAt - 1);

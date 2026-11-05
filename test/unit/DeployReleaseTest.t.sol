@@ -20,6 +20,15 @@ import {Test} from "forge-std/Test.sol";
 ///         registry sees on `register`/`setLatest` are both this contract — exactly mirroring production,
 ///         where `--sender`/`--account` makes the script's `msg.sender` equal the broadcasting EOA.
 contract DeployReleaseTest is Test, DeployRelease {
+    /// @dev `vm.parseJson` encodes object fields in alphabetical key order.
+    struct ManifestFacet {
+        address deployed;
+        bytes32 codehash;
+        string name;
+        bytes32 salt;
+        bytes32 selectorsHash;
+    }
+
     address internal constant CANONICAL = 0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed;
 
     string internal constant VERSION = "0.1.0";
@@ -367,24 +376,15 @@ contract DeployReleaseTest is Test, DeployRelease {
 
         (string[] memory names,) = FacetInventory.inventory();
         for (uint256 i; i < names.length; ++i) {
-            string memory base = string.concat(".facets.", names[i]);
+            ManifestFacet memory facet =
+                abi.decode(vm.parseJson(json, string.concat(".facets.", names[i])), (ManifestFacet));
+            assertEq(facet.deployed, out.facets[i], string.concat(names[i], ": manifest facet address"));
+            assertEq(facet.name, names[i], string.concat(names[i], ": manifest facet name"));
             assertEq(
-                vm.parseJsonAddress(json, string.concat(base, ".address")),
-                out.facets[i],
-                string.concat(names[i], ": manifest facet address")
+                facet.codehash, out.facets[i].codehash, string.concat(names[i], ": manifest codehash != live codehash")
             );
             assertEq(
-                vm.parseJsonString(json, string.concat(base, ".name")),
-                names[i],
-                string.concat(names[i], ": manifest facet name")
-            );
-            assertEq(
-                vm.parseJsonBytes32(json, string.concat(base, ".codehash")),
-                out.facets[i].codehash,
-                string.concat(names[i], ": manifest codehash != live codehash")
-            );
-            assertEq(
-                vm.parseJsonBytes32(json, string.concat(base, ".selectorsHash")),
+                facet.selectorsHash,
                 keccak256(IERC8153(out.facets[i]).exportSelectors()),
                 string.concat(names[i], ": manifest selectorsHash != live export hash")
             );

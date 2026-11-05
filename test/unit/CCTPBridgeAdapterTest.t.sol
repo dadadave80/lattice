@@ -991,7 +991,7 @@ contract CCTPBridgeAdapterTest is CCTPBridgeAdapterTestBase {
         assertEq(transmitter.calls(), 1, "relay succeeded despite the return bomb");
     }
 
-    /// @notice #216 secondary route: a relayer must not be able to starve a gas-hungry hook (~180k) so that it
+    /// @notice #216 secondary route: a relayer must not be able to starve a gas-hungry hook so that it
     ///         fails while the mint stands and the nonce is burnt. Sweeps the relay's gas limit across the window:
     ///         at EVERY limit the relay either reverts with the mint unwound or completes WITH the hook having
     ///         run. Against a nonce-consuming transmitter, the starved attempts leave the nonce live and an
@@ -999,14 +999,15 @@ contract CCTPBridgeAdapterTest is CCTPBridgeAdapterTestBase {
     function test_RelayMessageWithHookGasStarvedHookRevertsRelay() public {
         MockCCTPMessageTransmitter cctp = new MockCCTPMessageTransmitter(address(usdcToken));
         address d = _deployCCTPBridgeAdapter(admin, address(messenger), address(cctp), address(usdcToken));
-        hookReceiver.setGasBurn(25_000); // + the receiver's own cold writes: the hook needs ~180k in total
+        hookReceiver.setGasBurn(25_000); // In addition to the receiver's own cold writes.
         bytes memory data = abi.encodeCall(
             ICCTPBridgeAdapter.relayMessageWithHook, (_validHookedMessage(address(hookReceiver), hex"01"), hex"01")
         );
 
         uint256 starved;
         uint256 delivered;
-        for (uint256 g = 150_000; g <= 400_000; g += 1_000) {
+        uint256 ampleGas = 1_000_000;
+        for (uint256 g = 150_000; g <= ampleGas; g += 1_000) {
             uint256 snap = vm.snapshotState();
             (bool ok, bytes memory ret) = d.call{gas: g}(data);
             if (ok) {
@@ -1023,7 +1024,7 @@ contract CCTPBridgeAdapterTest is CCTPBridgeAdapterTestBase {
         assertGt(delivered, 0, "ample gas delivers");
 
         // Honest retry with ample gas: the nonce was never consumed.
-        (bool retried,) = d.call{gas: 1_000_000}(data);
+        (bool retried,) = d.call{gas: ampleGas}(data);
         assertTrue(retried, "retry delivers");
         assertEq(hookReceiver.calls(), 1, "hook ran on the retry");
         assertTrue(cctp.usedNonces(NONCE), "nonce consumed by the delivering relay");

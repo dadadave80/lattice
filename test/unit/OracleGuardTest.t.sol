@@ -61,10 +61,10 @@ contract OracleGuardTest is OracleGuardTestBase {
         adapter = IChainlinkAdapter(_deployChainlinkAdapter(admin));
 
         priceFeed = new MockGuardAggregator(8);
-        priceFeed.set(PRICE_8DEC, block.timestamp - 10, block.timestamp - 5);
+        priceFeed.set(PRICE_8DEC, vm.getBlockTimestamp() - 10, vm.getBlockTimestamp() - 5);
         sequencer = new MockGuardAggregator(0);
         // Up since well before the grace period.
-        sequencer.set(0, block.timestamp - 2 * GRACE, block.timestamp - 2 * GRACE);
+        sequencer.set(0, vm.getBlockTimestamp() - 2 * GRACE, vm.getBlockTimestamp() - 2 * GRACE);
 
         vm.startPrank(admin);
         adapter.registerFeed(KEY, address(priceFeed), MAX_STALENESS);
@@ -132,7 +132,7 @@ contract OracleGuardTest is OracleGuardTestBase {
     /// @notice `answer != 0` (down) reverts.
     function test_Sequencer_DownReverts() public {
         _enableSequencer();
-        uint256 startedAt = block.timestamp - 2 * GRACE;
+        uint256 startedAt = vm.getBlockTimestamp() - 2 * GRACE;
         sequencer.set(1, startedAt, startedAt);
 
         vm.expectRevert(abi.encodeWithSelector(IOracleGuard.OracleGuardSequencerDown.selector, int256(1), startedAt));
@@ -153,7 +153,7 @@ contract OracleGuardTest is OracleGuardTestBase {
     /// @notice Inside the grace period (`now - startedAt == gracePeriod`) reverts; one second later passes.
     function test_Sequencer_GracePeriodBoundary() public {
         _enableSequencer();
-        uint256 restartedAt = block.timestamp;
+        uint256 restartedAt = vm.getBlockTimestamp();
         sequencer.set(0, restartedAt, restartedAt);
 
         vm.expectRevert(
@@ -162,7 +162,7 @@ contract OracleGuardTest is OracleGuardTestBase {
         guard.guardedAnswer(KEY);
 
         vm.warp(restartedAt + GRACE);
-        priceFeed.set(PRICE_8DEC, block.timestamp, block.timestamp);
+        priceFeed.set(PRICE_8DEC, vm.getBlockTimestamp(), vm.getBlockTimestamp());
         vm.expectRevert(
             abi.encodeWithSelector(IOracleGuard.OracleGuardGracePeriodNotOver.selector, restartedAt, uint256(GRACE))
         );
@@ -175,7 +175,7 @@ contract OracleGuardTest is OracleGuardTestBase {
     /// @notice A `startedAt` in the future is treated as inside the grace period, not an underflow panic.
     function test_Sequencer_FutureStartedAtReverts() public {
         _enableSequencer();
-        uint256 future = block.timestamp + 1;
+        uint256 future = vm.getBlockTimestamp() + 1;
         sequencer.set(0, future, future);
 
         vm.expectRevert(
@@ -187,11 +187,11 @@ contract OracleGuardTest is OracleGuardTestBase {
     /// @notice A sequencer outage blocks reads even when the last price is still within the adapter's staleness.
     function test_Sequencer_DownBlocksFreshLookingPrice() public {
         _enableSequencer();
-        sequencer.set(1, block.timestamp, block.timestamp);
+        sequencer.set(1, vm.getBlockTimestamp(), vm.getBlockTimestamp());
         assertEq(adapter.latestAnswer(KEY), PRICE_WAD, "adapter alone accepts the pre-outage answer");
 
         vm.expectRevert(
-            abi.encodeWithSelector(IOracleGuard.OracleGuardSequencerDown.selector, int256(1), block.timestamp)
+            abi.encodeWithSelector(IOracleGuard.OracleGuardSequencerDown.selector, int256(1), vm.getBlockTimestamp())
         );
         guard.guardedAnswer(KEY);
     }
@@ -199,7 +199,7 @@ contract OracleGuardTest is OracleGuardTestBase {
     /// @notice Clearing the sequencer feed disables the check again.
     function test_Sequencer_DisableSkipsCheck() public {
         _enableSequencer();
-        sequencer.set(1, block.timestamp, block.timestamp);
+        sequencer.set(1, vm.getBlockTimestamp(), vm.getBlockTimestamp());
 
         vm.prank(admin);
         guard.setSequencerConfig(address(0), 0);
@@ -212,7 +212,7 @@ contract OracleGuardTest is OracleGuardTestBase {
 
     /// @notice A stale adapter answer reverts with the adapter's own error through the guard.
     function test_GuardedAnswer_BubblesAdapterStaleness() public {
-        uint256 staleAt = block.timestamp - MAX_STALENESS - 1;
+        uint256 staleAt = vm.getBlockTimestamp() - MAX_STALENESS - 1;
         priceFeed.set(PRICE_8DEC, staleAt, staleAt);
 
         vm.expectRevert(
@@ -224,7 +224,7 @@ contract OracleGuardTest is OracleGuardTestBase {
     /// @notice A Chainlink feed with more than 18 decimals whose answer truncates to zero reverts in the adapter.
     function test_GuardedAnswer_BubblesTruncatedHighDecimalAnswer() public {
         MockGuardAggregator feed20 = new MockGuardAggregator(20);
-        feed20.set(99, block.timestamp - 10, block.timestamp - 5);
+        feed20.set(99, vm.getBlockTimestamp() - 10, vm.getBlockTimestamp() - 5);
         bytes32 key20 = keccak256("TINY/USD");
         vm.startPrank(admin);
         adapter.registerFeed(key20, address(feed20), MAX_STALENESS);
@@ -277,7 +277,7 @@ contract OracleGuardTest is OracleGuardTestBase {
         int256 maxA = minA + int256(uint256(width));
         vm.assume(maxA != 0);
         _setBounds(minA, maxA);
-        priceFeed.set(int256(uint256(rawPrice)), block.timestamp - 10, block.timestamp - 5);
+        priceFeed.set(int256(uint256(rawPrice)), vm.getBlockTimestamp() - 10, vm.getBlockTimestamp() - 5);
         int256 wad = int256(uint256(rawPrice)) * 1e10;
 
         if (wad < minA || wad > maxA) {
@@ -321,9 +321,9 @@ contract OracleGuardTest is OracleGuardTestBase {
 
         assertEq(IOracleGuard(d).guardedAnswer(KEY), PRICE_WAD);
 
-        sequencer.set(1, block.timestamp, block.timestamp);
+        sequencer.set(1, vm.getBlockTimestamp(), vm.getBlockTimestamp());
         vm.expectRevert(
-            abi.encodeWithSelector(IOracleGuard.OracleGuardSequencerDown.selector, int256(1), block.timestamp)
+            abi.encodeWithSelector(IOracleGuard.OracleGuardSequencerDown.selector, int256(1), vm.getBlockTimestamp())
         );
         IOracleGuard(d).guardedAnswer(KEY);
     }

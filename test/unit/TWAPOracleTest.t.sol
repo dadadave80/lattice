@@ -64,7 +64,7 @@ contract TWAPOracleTest is TWAPOracleTestBase {
 
         pair = new MockUniswapV2Pair();
         // Initial state: cumulatives = 0, timestamp = current block
-        pair.setValues(0, 0, uint32(block.timestamp));
+        pair.setValues(0, 0, uint32(vm.getBlockTimestamp()));
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -98,7 +98,7 @@ contract TWAPOracleTest is TWAPOracleTestBase {
 
         // Initial observation should be recorded.
         ITWAPOracle.Observation memory obs = oracle.getLatestObservation(KEY_ETH_USD);
-        assertEq(obs.timestamp, uint32(block.timestamp));
+        assertEq(obs.timestamp, uint32(vm.getBlockTimestamp()));
         assertEq(obs.price0Cumulative, 0);
         assertEq(obs.price1Cumulative, 0);
     }
@@ -136,14 +136,16 @@ contract TWAPOracleTest is TWAPOracleTestBase {
         oracle.registerPair(KEY_ETH_USD, address(pair));
 
         // Advance 60 seconds and record a second observation.
-        uint32 t0 = uint32(block.timestamp);
-        vm.warp(block.timestamp + 60);
-        pair.setValues(PRICE0_PER_SEC * 60, 0, uint32(block.timestamp));
+        uint32 t0 = uint32(vm.getBlockTimestamp());
+        vm.warp(vm.getBlockTimestamp() + 60);
+        pair.setValues(PRICE0_PER_SEC * 60, 0, uint32(vm.getBlockTimestamp()));
         oracle.recordObservation(KEY_ETH_USD);
 
         // The oldest observation is 60 seconds old; requesting a 300-second window should revert.
         vm.expectRevert(
-            abi.encodeWithSelector(ITWAPOracle.TWAPWindowTooLarge.selector, uint32(300), uint32(block.timestamp) - t0)
+            abi.encodeWithSelector(
+                ITWAPOracle.TWAPWindowTooLarge.selector, uint32(300), uint32(vm.getBlockTimestamp()) - t0
+            )
         );
         oracle.consult(KEY_ETH_USD, 300);
     }
@@ -157,8 +159,8 @@ contract TWAPOracleTest is TWAPOracleTestBase {
         uint32 elapsed = 3600; // 1 hour
         uint256 p0 = PRICE0_PER_SEC * elapsed;
 
-        vm.warp(block.timestamp + elapsed);
-        pair.setValues(p0, 0, uint32(block.timestamp));
+        vm.warp(vm.getBlockTimestamp() + elapsed);
+        pair.setValues(p0, 0, uint32(vm.getBlockTimestamp()));
         oracle.recordObservation(KEY_ETH_USD);
         // Observation 1: timestamp=1_000_000+3600, cumulatives=PRICE*3600
 
@@ -176,11 +178,11 @@ contract TWAPOracleTest is TWAPOracleTestBase {
         uint256 start0 = type(uint256).max - delta0 / 2; // the wrap lands mid-window
         uint256 start1 = type(uint256).max - 1;
 
-        pair.setValues(start0, start1, uint32(block.timestamp));
+        pair.setValues(start0, start1, uint32(vm.getBlockTimestamp()));
         vm.prank(admin);
         oracle.registerPair(KEY_ETH_USD, address(pair));
 
-        vm.warp(block.timestamp + elapsed);
+        vm.warp(vm.getBlockTimestamp() + elapsed);
         uint256 end0;
         uint256 end1;
         unchecked {
@@ -189,7 +191,7 @@ contract TWAPOracleTest is TWAPOracleTestBase {
         }
         assertLt(end0, start0, "cumulative0 wrapped");
         assertLt(end1, start1, "cumulative1 wrapped");
-        pair.setValues(end0, end1, uint32(block.timestamp));
+        pair.setValues(end0, end1, uint32(vm.getBlockTimestamp()));
         oracle.recordObservation(KEY_ETH_USD);
 
         (uint256 twap0, uint256 twap1) = oracle.consult(KEY_ETH_USD, elapsed);
@@ -201,13 +203,13 @@ contract TWAPOracleTest is TWAPOracleTestBase {
     ///         pair's cumulatives with the new pair's (which would wrap to a garbage price under the unchecked
     ///         subtraction) and instead reverts until the new pair has two observations of its own.
     function test_ReRegisterPairResetsHistory() public {
-        pair.setValues(1e40, 1e40, uint32(block.timestamp));
+        pair.setValues(1e40, 1e40, uint32(vm.getBlockTimestamp()));
         vm.prank(admin);
         oracle.registerPair(KEY_ETH_USD, address(pair));
 
-        vm.warp(block.timestamp + 3600);
+        vm.warp(vm.getBlockTimestamp() + 3600);
         MockUniswapV2Pair pairB = new MockUniswapV2Pair();
-        pairB.setValues(5e30, 5e30, uint32(block.timestamp));
+        pairB.setValues(5e30, 5e30, uint32(vm.getBlockTimestamp()));
         vm.prank(admin);
         oracle.registerPair(KEY_ETH_USD, address(pairB));
 
@@ -224,13 +226,13 @@ contract TWAPOracleTest is TWAPOracleTestBase {
         // Obs 0: t=1_000_000, cum=0
 
         // Obs 1: t+300, after 5 minutes
-        vm.warp(block.timestamp + 300);
-        pair.setValues(PRICE0_PER_SEC * 300, 0, uint32(block.timestamp));
+        vm.warp(vm.getBlockTimestamp() + 300);
+        pair.setValues(PRICE0_PER_SEC * 300, 0, uint32(vm.getBlockTimestamp()));
         oracle.recordObservation(KEY_ETH_USD);
 
         // Obs 2: t+600, after 10 minutes total
-        vm.warp(block.timestamp + 300);
-        pair.setValues(PRICE0_PER_SEC * 600, 0, uint32(block.timestamp));
+        vm.warp(vm.getBlockTimestamp() + 300);
+        pair.setValues(PRICE0_PER_SEC * 600, 0, uint32(vm.getBlockTimestamp()));
         oracle.recordObservation(KEY_ETH_USD);
 
         // Request 500-second window: obs1 (300s ago) is too recent, must use obs0 (600s ago).
@@ -288,8 +290,8 @@ contract TWAPOracleTest is TWAPOracleTestBase {
         vm.prank(admin);
         oracle.registerPair(KEY_ETH_USD, address(pair));
 
-        vm.warp(block.timestamp + 60);
-        pair.setValues(PRICE0_PER_SEC * 60, 0, uint32(block.timestamp));
+        vm.warp(vm.getBlockTimestamp() + 60);
+        pair.setValues(PRICE0_PER_SEC * 60, 0, uint32(vm.getBlockTimestamp()));
 
         // Called by non-admin user — should succeed.
         vm.prank(user);
@@ -309,8 +311,8 @@ contract TWAPOracleTest is TWAPOracleTestBase {
         oracle.registerPair(KEY_ETH_USD, address(pair));
 
         // Add a second observation so consult is not stopped by insufficient history.
-        vm.warp(block.timestamp + 60);
-        pair.setValues(PRICE0_PER_SEC * 60, 0, uint32(block.timestamp));
+        vm.warp(vm.getBlockTimestamp() + 60);
+        pair.setValues(PRICE0_PER_SEC * 60, 0, uint32(vm.getBlockTimestamp()));
         oracle.recordObservation(KEY_ETH_USD);
 
         vm.expectRevert(abi.encodeWithSelector(ITWAPOracle.TWAPZeroWindow.selector));
@@ -348,8 +350,8 @@ contract TWAPOracleTest is TWAPOracleTestBase {
         oracle.recordObservation(KEY_ETH_USD);
 
         // Advance block.
-        vm.warp(block.timestamp + 300);
-        pair.setValues(PRICE0_PER_SEC * 300, 0, uint32(block.timestamp));
+        vm.warp(vm.getBlockTimestamp() + 300);
+        pair.setValues(PRICE0_PER_SEC * 300, 0, uint32(vm.getBlockTimestamp()));
         oracle.recordObservation(KEY_ETH_USD);
         // Now we have 2 observations: obs0 and obs1.
 
@@ -368,8 +370,8 @@ contract TWAPOracleTest is TWAPOracleTestBase {
         // Obs 0: t=1_000_000, cum=0
 
         uint32 elapsed = 3600;
-        vm.warp(block.timestamp + elapsed);
-        pair.setValues(PRICE0_PER_SEC * elapsed, 0, uint32(block.timestamp));
+        vm.warp(vm.getBlockTimestamp() + elapsed);
+        pair.setValues(PRICE0_PER_SEC * elapsed, 0, uint32(vm.getBlockTimestamp()));
         oracle.recordObservation(KEY_ETH_USD);
         // Obs 1: t=1_000_000+3600
 
@@ -389,20 +391,20 @@ contract TWAPOracleTest is TWAPOracleTestBase {
         oracle.registerPair(KEY_ETH_USD, address(pair));
 
         // Record a second observation 300s after registration.
-        vm.warp(block.timestamp + 300);
-        uint32 newestTs = uint32(block.timestamp);
+        vm.warp(vm.getBlockTimestamp() + 300);
+        uint32 newestTs = uint32(vm.getBlockTimestamp());
         pair.setValues(PRICE0_PER_SEC * 300, 0, newestTs);
         oracle.recordObservation(KEY_ETH_USD);
         // History now spans 300s (t0 .. newestTs), enough for a 300s window normally.
 
         // Recording stops; a long time passes. The newest observation is now stale.
-        vm.warp(block.timestamp + 10_000);
+        vm.warp(vm.getBlockTimestamp() + 10_000);
 
         // Requesting a 300s window: oldest age (300) satisfies the span, but the
         // newest observation is 10_000s old — far outside the window — so the TWAP
         // would be entirely historical. Must revert as stale.
         vm.expectRevert(
-            abi.encodeWithSelector(ITWAPOracle.TWAPStaleObservation.selector, newestTs, uint32(block.timestamp))
+            abi.encodeWithSelector(ITWAPOracle.TWAPStaleObservation.selector, newestTs, uint32(vm.getBlockTimestamp()))
         );
         oracle.consult(KEY_ETH_USD, 300);
     }
@@ -413,8 +415,8 @@ contract TWAPOracleTest is TWAPOracleTestBase {
         oracle.registerPair(KEY_ETH_USD, address(pair));
 
         uint32 elapsed = 3600;
-        vm.warp(block.timestamp + elapsed);
-        pair.setValues(PRICE0_PER_SEC * elapsed, 0, uint32(block.timestamp));
+        vm.warp(vm.getBlockTimestamp() + elapsed);
+        pair.setValues(PRICE0_PER_SEC * elapsed, 0, uint32(vm.getBlockTimestamp()));
         oracle.recordObservation(KEY_ETH_USD);
 
         // Newest is fresh (recorded this block); a window covering the span works.
@@ -434,7 +436,7 @@ contract TWAPOracleTest is TWAPOracleTestBase {
     ///      newest obs[2] both carry timestamp T (anchored at the current block so
     ///      the freshness guard passes), making elapsed == 0.
     function test_ConsultRevertsOnZeroElapsedSpan() public {
-        uint32 t = uint32(block.timestamp);
+        uint32 t = uint32(vm.getBlockTimestamp());
 
         // obs0 at timestamp T.
         pair.setValues(0, 0, t);

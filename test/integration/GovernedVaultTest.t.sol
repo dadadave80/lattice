@@ -101,7 +101,7 @@ contract GovernedVaultTest is GovernedVaultTestBase {
         vault.deposit(DEPOSIT, alice);
         votes.delegate(alice);
         vm.stopPrank();
-        vm.warp(block.timestamp + 1); // move the delegation checkpoint into the past
+        vm.warp(vm.getBlockTimestamp() + 1); // move the delegation checkpoint into the past
     }
 
     /// @dev The self-referential wiring: the Governor's token + timelock are the diamond, and the diamond holds
@@ -142,14 +142,14 @@ contract GovernedVaultTest is GovernedVaultTestBase {
         uint256 proposalId = gov.propose(targets, values, calldatas, description);
 
         // Voting window.
-        vm.warp(block.timestamp + VOTING_DELAY + 1);
+        vm.warp(vm.getBlockTimestamp() + VOTING_DELAY + 1);
         vm.prank(alice);
         gov.castVote(proposalId, uint8(IGovernor.VoteType.For));
-        vm.warp(block.timestamp + VOTING_PERIOD + 1);
+        vm.warp(vm.getBlockTimestamp() + VOTING_PERIOD + 1);
 
         // Queue into the timelock, then execute after the delay — through the diamond itself.
         gov.queue(targets, values, calldatas, descHash);
-        vm.warp(block.timestamp + MIN_DELAY + 1);
+        vm.warp(vm.getBlockTimestamp() + MIN_DELAY + 1);
         gov.execute(targets, values, calldatas, descHash);
 
         assertEq(vc.strategyManager(), newManager, "share-holder governance set the vault's strategy manager");
@@ -163,10 +163,10 @@ contract GovernedVaultTest is GovernedVaultTestBase {
 
         vm.prank(alice);
         uint256 proposalId = gov.propose(targets, values, calldatas, description);
-        vm.warp(block.timestamp + VOTING_DELAY + 1);
+        vm.warp(vm.getBlockTimestamp() + VOTING_DELAY + 1);
         vm.prank(alice);
         gov.castVote(proposalId, uint8(IGovernor.VoteType.For));
-        vm.warp(block.timestamp + VOTING_PERIOD + 1);
+        vm.warp(vm.getBlockTimestamp() + VOTING_PERIOD + 1);
         gov.queue(targets, values, calldatas, descHash);
 
         // No warp past MIN_DELAY — execution must not be permitted yet.
@@ -182,9 +182,9 @@ contract GovernedVaultTest is GovernedVaultTestBase {
 
         vm.prank(alice);
         gov.propose(targets, values, calldatas, description);
-        vm.warp(block.timestamp + VOTING_DELAY + 1);
+        vm.warp(vm.getBlockTimestamp() + VOTING_DELAY + 1);
         // No vote cast → quorum not met.
-        vm.warp(block.timestamp + VOTING_PERIOD + 1);
+        vm.warp(vm.getBlockTimestamp() + VOTING_PERIOD + 1);
 
         vm.expectRevert(); // Defeated proposals cannot be queued
         gov.queue(targets, values, calldatas, descHash);
@@ -214,7 +214,7 @@ contract GovernedVaultTest is GovernedVaultTestBase {
         vault.deposit(amount, who);
         votes.delegate(who);
         vm.stopPrank();
-        vm.warp(block.timestamp + 1);
+        vm.warp(vm.getBlockTimestamp() + 1);
     }
 
     function _proposeAndActivate() internal returns (uint256 proposalId) {
@@ -222,7 +222,7 @@ contract GovernedVaultTest is GovernedVaultTestBase {
             _buildProposal();
         vm.prank(alice);
         proposalId = gov.propose(targets, values, calldatas, description);
-        vm.warp(block.timestamp + VOTING_DELAY + 1);
+        vm.warp(vm.getBlockTimestamp() + VOTING_DELAY + 1);
     }
 
     function _castVoteBySig(uint256 pk, address voter, uint256 proposalId) internal {
