@@ -59,7 +59,7 @@ contract PythAdapterTest is PythAdapterTestBase {
     }
 
     function _setPrice(int64 price, uint64 conf, int32 expo) internal {
-        pyth.setPrice(PRICE_ID, price, conf, expo, block.timestamp);
+        pyth.setPrice(PRICE_ID, price, conf, expo, vm.getBlockTimestamp());
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -110,7 +110,7 @@ contract PythAdapterTest is PythAdapterTestBase {
         assertEq(price, 2000e8);
         assertEq(expo, -8);
         assertEq(conf, 7);
-        assertEq(publishTime, block.timestamp);
+        assertEq(publishTime, vm.getBlockTimestamp());
     }
 
     function test_ExpoOutOfRangeReverts() public {
@@ -130,8 +130,8 @@ contract PythAdapterTest is PythAdapterTestBase {
 
     function test_StalePriceReverts() public {
         _setPrice(2000e8, 0, -8);
-        uint256 publishTime = block.timestamp;
-        vm.warp(block.timestamp + STALENESS + 1);
+        uint256 publishTime = vm.getBlockTimestamp();
+        vm.warp(vm.getBlockTimestamp() + STALENESS + 1);
         vm.expectRevert(
             abi.encodeWithSelector(IPythAdapter.PythStaleData.selector, KEY, publishTime, uint256(STALENESS))
         );
@@ -139,8 +139,8 @@ contract PythAdapterTest is PythAdapterTestBase {
     }
 
     function test_FuturePriceReverts() public {
-        pyth.setPrice(PRICE_ID, 2000e8, 0, -8, block.timestamp + 1);
-        vm.expectRevert(abi.encodeWithSelector(IPythAdapter.PythFuturePrice.selector, KEY, block.timestamp + 1));
+        pyth.setPrice(PRICE_ID, 2000e8, 0, -8, vm.getBlockTimestamp() + 1);
+        vm.expectRevert(abi.encodeWithSelector(IPythAdapter.PythFuturePrice.selector, KEY, vm.getBlockTimestamp() + 1));
         adapter.latestAnswer(KEY);
     }
 

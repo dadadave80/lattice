@@ -62,7 +62,7 @@ contract ChainlinkAutomationAdapterTest is ChainlinkAutomationAdapterTestBase {
 
         assertEq(automation.getForwarder(), forwarder);
         assertEq(automation.getInterval(), INTERVAL);
-        assertEq(automation.getLastTimeStamp(), block.timestamp);
+        assertEq(automation.getLastTimeStamp(), vm.getBlockTimestamp());
         assertEq(automation.getCounter(), 0);
     }
 
@@ -70,13 +70,13 @@ contract ChainlinkAutomationAdapterTest is ChainlinkAutomationAdapterTestBase {
     function test_SetConfigResetsLastTimeStamp() public {
         vm.prank(admin);
         automation.setConfig(forwarder, INTERVAL);
-        assertEq(automation.getLastTimeStamp(), block.timestamp);
+        assertEq(automation.getLastTimeStamp(), vm.getBlockTimestamp());
 
         // Warp forward and re-configure; lastTimeStamp tracks the new timestamp.
-        vm.warp(block.timestamp + 5000);
+        vm.warp(vm.getBlockTimestamp() + 5000);
         vm.prank(admin);
         automation.setConfig(forwarder, INTERVAL);
-        assertEq(automation.getLastTimeStamp(), block.timestamp);
+        assertEq(automation.getLastTimeStamp(), vm.getBlockTimestamp());
     }
 
     /// @notice setConfig emits ChainlinkAutomationConfigSet.
@@ -106,7 +106,7 @@ contract ChainlinkAutomationAdapterTest is ChainlinkAutomationAdapterTestBase {
         vm.prank(admin);
         automation.setConfig(forwarder, INTERVAL);
 
-        vm.warp(block.timestamp + INTERVAL);
+        vm.warp(vm.getBlockTimestamp() + INTERVAL);
 
         bytes memory checkData = hex"deadbeef";
         (bool upkeepNeeded, bytes memory performData) = automation.checkUpkeep(checkData);
@@ -135,7 +135,7 @@ contract ChainlinkAutomationAdapterTest is ChainlinkAutomationAdapterTestBase {
         vm.prank(admin);
         automation.setConfig(forwarder, INTERVAL);
 
-        vm.warp(block.timestamp + INTERVAL);
+        vm.warp(vm.getBlockTimestamp() + INTERVAL);
 
         vm.prank(user);
         vm.expectRevert(
@@ -160,8 +160,8 @@ contract ChainlinkAutomationAdapterTest is ChainlinkAutomationAdapterTestBase {
         vm.prank(admin);
         automation.setConfig(forwarder, INTERVAL);
 
-        vm.warp(block.timestamp + INTERVAL);
-        uint256 expectedTimestamp = block.timestamp;
+        vm.warp(vm.getBlockTimestamp() + INTERVAL);
+        uint256 expectedTimestamp = vm.getBlockTimestamp();
 
         vm.expectEmit(false, false, false, true);
         emit IChainlinkAutomationAdapter.UpkeepPerformed(1);
@@ -176,7 +176,7 @@ contract ChainlinkAutomationAdapterTest is ChainlinkAutomationAdapterTestBase {
         vm.expectRevert(abi.encodeWithSelector(IChainlinkAutomationAdapter.ChainlinkAutomationConditionNotMet.selector));
         automation.performUpkeep("");
 
-        vm.warp(block.timestamp + INTERVAL);
+        vm.warp(vm.getBlockTimestamp() + INTERVAL);
         vm.expectEmit(false, false, false, true);
         emit IChainlinkAutomationAdapter.UpkeepPerformed(2);
         vm.prank(forwarder);

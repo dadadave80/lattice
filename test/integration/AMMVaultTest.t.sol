@@ -271,7 +271,7 @@ contract AMMVaultTest is Test {
         asset.mint(address(vault), DEPOSIT);
 
         // Advance time by 1 second so the feed update is fresh.
-        vm.warp(block.timestamp + 1);
+        vm.warp(vm.getBlockTimestamp() + 1);
         feed.setPrice(2 * INITIAL_PRICE_8DEC); // price = $2
 
         // totalAssets should now be 2 × DEPOSIT.
@@ -305,7 +305,7 @@ contract AMMVaultTest is Test {
         vm.stopPrank();
 
         // Price doubles.
-        vm.warp(block.timestamp + 1);
+        vm.warp(vm.getBlockTimestamp() + 1);
         feed.setPrice(2 * INITIAL_PRICE_8DEC);
 
         // Bob deposits the same DEPOSIT amount at price = $2.
@@ -339,7 +339,7 @@ contract AMMVaultTest is Test {
         uint256 aliceShares = vault.balanceOf(alice);
 
         // Price halves.
-        vm.warp(block.timestamp + 1);
+        vm.warp(vm.getBlockTimestamp() + 1);
         feed.setPrice(INITIAL_PRICE_8DEC / 2); // $0.50
 
         // Bob deposits at price = $0.50.
@@ -364,9 +364,9 @@ contract AMMVaultTest is Test {
 
     /// @notice latestAnswer reverts when the feed data is stale.
     function test_OracleVault_StaleDataReverts() public {
-        uint256 updatedAt = block.timestamp; // recorded when setUp ran
+        uint256 updatedAt = vm.getBlockTimestamp(); // recorded when setUp ran
         // Warp forward past the max staleness window without updating the feed.
-        vm.warp(block.timestamp + MAX_STALENESS + 1);
+        vm.warp(vm.getBlockTimestamp() + MAX_STALENESS + 1);
 
         vm.expectRevert(
             abi.encodeWithSelector(IChainlinkAdapter.ChainlinkStaleData.selector, PRICE_KEY, updatedAt, MAX_STALENESS)
@@ -376,7 +376,7 @@ contract AMMVaultTest is Test {
 
     /// @notice After staleness, updating the feed makes latestAnswer valid again.
     function test_OracleVault_StaleDataClearedByNewPrice() public {
-        vm.warp(block.timestamp + MAX_STALENESS + 1);
+        vm.warp(vm.getBlockTimestamp() + MAX_STALENESS + 1);
 
         // Feed is stale — update with fresh data.
         feed.setPrice(3 * INITIAL_PRICE_8DEC);
