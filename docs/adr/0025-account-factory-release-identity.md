@@ -14,7 +14,7 @@ arguments; each initializer fixes its trusted EntryPoint in immutable code.
 ## Options considered
 
 1. **Use the existing specialized factories and release their constructor-bound identities.** Chosen:
-   preserves atomic initialization, fallback semantics and existing owner/salt counterfactual addresses.
+   preserves atomic initialization, fallback semantics and the existing owner/salt counterfactual address formula.
 2. **Deploy a specialized proxy directly from each script.** Separate broadcast deployment and
    initialization expose an initialization window; adding another atomic helper duplicates the factories.
 3. **Teach LatticeFactory every proxy kind.** Changes standalone core bytecode and expands its trust

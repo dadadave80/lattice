@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {AccountDeployBase} from "@lattice-script/base/accounts/AccountDeployBase.s.sol";
 import {AccountReleaseInventory} from "@lattice-script/lib/AccountReleaseInventory.sol";
 import {ArachnidDeployer} from "@lattice-script/lib/ArachnidDeployer.sol";
@@ -8,11 +9,11 @@ import {FacetInventory} from "@lattice-script/lib/FacetInventory.sol";
 import {InitInventory} from "@lattice-script/lib/InitInventory.sol";
 import {LibraryInventory} from "@lattice-script/lib/LibraryInventory.sol";
 import {ReleaseVersion} from "@lattice-script/lib/ReleaseVersion.sol";
+import {JsonRecordWriter} from "@lattice-script/release/JsonRecordWriter.sol";
 import {LatticeFactory} from "@lattice/LatticeFactory.sol";
 import {LatticeRegistry} from "@lattice/LatticeRegistry.sol";
 import {LatticeVersion} from "@lattice/LatticeVersion.sol";
 import {ILatticeRegistry} from "@lattice/interfaces/ILatticeRegistry.sol";
-import {IERC8153} from "@lattice/interfaces/external/ercs/IERC8153.sol";
 import {console} from "forge-std/Script.sol";
 
 /// @title DeployRelease
@@ -286,21 +287,11 @@ contract DeployRelease is AccountDeployBase {
     function _writeDeploymentPlan(string memory deploymentsRoot, string memory version, ReleaseOutput memory out)
         internal
     {
-        (string[] memory names,) = FacetInventory.inventory();
-
-        string memory facetsJson;
-        for (uint256 i; i < names.length; ++i) {
-            string memory key = string.concat("facet:", names[i]);
-            vm.serializeString(key, "name", names[i]);
-            vm.serializeAddress(key, "address", out.facets[i]);
-            vm.serializeBytes32(key, "codehash", out.facets[i].codehash);
-            vm.serializeBytes32(key, "selectorsHash", _liveSelectorsHash(out.facets[i]));
-            string memory facetJson = vm.serializeBytes32(key, "salt", facetSalt(names[i], version));
-            facetsJson = vm.serializeString("facets", names[i], facetJson);
-        }
-
-        string memory initsJson = _serializeInits(version, out.inits);
-        string memory librariesJson = _serializeLibraries(out.libraries);
+        // This helper is created after run() stops broadcasting: it is offline serialization only.
+        JsonRecordWriter writer = new JsonRecordWriter();
+        string memory facetsJson = _serializeFacets(version, out.facets, writer);
+        string memory initsJson = _serializeInits(version, out.inits, writer);
+        string memory librariesJson = _serializeLibraries(out.libraries, writer);
 
         string memory root = "manifest";
         vm.serializeString(root, "version", version);
@@ -315,7 +306,7 @@ contract DeployRelease is AccountDeployBase {
         vm.serializeString(root, "facets", facetsJson);
         vm.serializeString(root, "inits", initsJson);
         vm.serializeString(root, "libraries", librariesJson);
-        string memory json = vm.serializeString(root, "accounts", _serializeAccounts(version, out));
+        string memory json = vm.serializeString(root, "accounts", _serializeAccounts(version, out, writer));
 
         string memory dir = string.concat(deploymentsRoot, "/", vm.toString(block.chainid));
         vm.createDir(dir, true);
@@ -359,75 +350,71 @@ contract DeployRelease is AccountDeployBase {
         AccountReleaseInventory.Entry[] memory entries = AccountReleaseInventory.inventory();
         inits = new address[](entries.length);
         factories = new address[](entries.length);
+        FacetCut[][] memory blueprints = _accountBlueprints(version);
         for (uint256 i; i < entries.length; ++i) {
-            (, inits[i], factories[i]) = _accountRelease(entries[i], version);
+            (inits[i], factories[i]) = _accountContracts(entries[i], version, blueprints[entries[i].modular ? 1 : 0]);
             registry.attest(inits[i]);
             // Factories store their blueprint. Runtime codehash alone does not identify that state;
             // select them by the manifest's constructor-bound address, never the Tier-A resolver.
         }
     }
 
-    function _serializeAccounts(string memory version, ReleaseOutput memory out) private returns (string memory json) {
+    function _serializeFacets(string memory version, address[] memory facets, JsonRecordWriter writer)
+        private
+        returns (string memory)
+    {
+        (string[] memory names,) = FacetInventory.inventory();
+        string[] memory records = new string[](names.length);
+        for (uint256 i; i < names.length; ++i) {
+            records[i] = writer.planFacet(names[i], facets[i], facetSalt(names[i], version));
+        }
+        return writer.joinObject(names, records);
+    }
+
+    function _serializeAccounts(string memory version, ReleaseOutput memory out, JsonRecordWriter writer)
+        private
+        returns (string memory)
+    {
         AccountReleaseInventory.Entry[] memory entries = AccountReleaseInventory.inventory();
+        FacetCut[][] memory blueprints = _accountBlueprints(version);
+        string[] memory names = new string[](entries.length * 2);
+        string[] memory records = new string[](names.length);
         for (uint256 i; i < entries.length; ++i) {
             AccountReleaseInventory.Entry memory entry = entries[i];
-            string memory initRecord =
-                _accountPlanRecord(entry, false, out.accountInits[i], version, abi.encode(entry.entryPoint));
-            vm.serializeString("accounts", entry.initializer, initRecord);
-            bytes memory factoryArgs = abi.encode(_accountCuts(entry.modular, version), out.accountInits[i]);
-            string memory factoryRecord = _accountPlanRecord(entry, true, out.accountFactories[i], version, factoryArgs);
-            json = vm.serializeString("accounts", entry.factory, factoryRecord);
+            names[2 * i] = entry.initializer;
+            names[2 * i + 1] = entry.factory;
+            records[2 * i] =
+                writer.accountPlan(entry, false, out.accountInits[i], version, abi.encode(entry.entryPoint));
+            records[2 * i + 1] = writer.accountPlan(
+                entry,
+                true,
+                out.accountFactories[i],
+                version,
+                abi.encode(blueprints[entry.modular ? 1 : 0], out.accountInits[i])
+            );
         }
+        return writer.joinObject(names, records);
     }
 
-    function _accountPlanRecord(
-        AccountReleaseInventory.Entry memory entry,
-        bool factory,
-        address at,
-        string memory version,
-        bytes memory args
-    ) private returns (string memory) {
-        string memory name = factory ? entry.factory : entry.initializer;
-        string memory artifact = factory ? entry.factoryArtifact : entry.initializerArtifact;
-        string memory key = string.concat("account:", name);
-        vm.serializeString(key, "name", name);
-        vm.serializeString(key, "artifact", artifact);
-        vm.serializeAddress(key, "entryPoint", entry.entryPoint);
-        vm.serializeString(key, "entryPointVersion", entry.entryPointVersion);
-        vm.serializeString(key, "proxyKind", entry.proxyKind);
-        vm.serializeBytes32(key, "proxyInitCodeHash", keccak256(vm.getCode(entry.proxyArtifact)));
-        vm.serializeAddress(key, "address", at);
-        vm.serializeBytes32(key, "codehash", at.codehash);
-        vm.serializeBytes(key, "constructorArgs", args);
-        vm.serializeBytes32(key, "initCodeHash", keccak256(abi.encodePacked(vm.getCode(artifact), args)));
-        return vm.serializeBytes32(key, "salt", facetSalt(name, version));
-    }
-
-    function _serializeLibraries(address[] memory deployed) private returns (string memory json) {
+    function _serializeLibraries(address[] memory deployed, JsonRecordWriter writer) private returns (string memory) {
         (string[] memory names, string[] memory artifacts,) = LibraryInventory.inventory();
+        string[] memory records = new string[](names.length);
         for (uint256 i; i < names.length; ++i) {
-            string memory key = string.concat("library:", names[i]);
-            vm.serializeString(key, "name", names[i]);
-            vm.serializeAddress(key, "address", deployed[i]);
-            vm.serializeBytes32(key, "codehash", deployed[i].codehash);
-            vm.serializeBytes32(key, "initCodeHash", keccak256(vm.getCode(artifacts[i])));
-            json = vm.serializeString("libraries", names[i], vm.serializeBytes32(key, "salt", LibraryInventory.SALT));
+            records[i] = writer.planArtifact(names[i], artifacts[i], deployed[i], LibraryInventory.SALT);
         }
+        return writer.joinObject(names, records);
     }
 
-    function _serializeInits(string memory version, address[] memory inits) private returns (string memory initsJson) {
-        (string[] memory initNames, string[] memory initPaths) = InitInventory.inventory();
-        for (uint256 i; i < initNames.length; ++i) {
-            string memory key = string.concat("init:", initNames[i]);
-            vm.serializeString(key, "name", initNames[i]);
-            vm.serializeAddress(key, "address", inits[i]);
-            vm.serializeBytes32(key, "codehash", inits[i].codehash);
-            vm.serializeBytes32(key, "initCodeHash", keccak256(vm.getCode(initPaths[i])));
-            string memory initJson = vm.serializeBytes32(key, "salt", facetSalt(initNames[i], version));
-            initsJson = vm.serializeString("inits", initNames[i], initJson);
+    function _serializeInits(string memory version, address[] memory inits, JsonRecordWriter writer)
+        private
+        returns (string memory)
+    {
+        (string[] memory names, string[] memory paths) = InitInventory.inventory();
+        string[] memory records = new string[](names.length);
+        for (uint256 i; i < names.length; ++i) {
+            records[i] = writer.planArtifact(names[i], paths[i], inits[i], facetSalt(names[i], version));
         }
-
-        return initsJson;
+        return writer.joinObject(names, records);
     }
 
     /// @dev Predict the raw-salt CREATE2 address for `initCode`; deploy only if nothing lives there yet
@@ -442,13 +429,5 @@ contract DeployRelease is AccountDeployBase {
             require(deployed == at, string.concat("DeployRelease: ", label, " deployed != predicted"));
             deployedNow = true;
         }
-    }
-
-    /// @dev `keccak256` of the facet's LIVE ERC-8153 selector blob — the same pin {LatticeRegistry}
-    ///      records, so the manifest can be diffed straight against on-chain state.
-    function _liveSelectorsHash(address facet) private view returns (bytes32 selectorsHash) {
-        (bool ok, bytes memory ret) = facet.staticcall(abi.encodeCall(IERC8153.exportSelectors, ()));
-        require(ok && ret.length >= 64, "DeployRelease: exportSelectors() read failed");
-        selectorsHash = keccak256(abi.decode(ret, (bytes)));
     }
 }

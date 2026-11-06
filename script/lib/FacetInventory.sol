@@ -1,6 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+// Deliberate artifact dependencies: release scripts load these upstream facets dynamically by name.
+// Keep them in the script compilation graph even when every recipe reuses released addresses.
+import {DiamondCutFacet} from "@diamond/facets/DiamondCutFacet.sol";
+import {DiamondLoupeFacet} from "@diamond/facets/DiamondLoupeFacet.sol";
+import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
+import {OwnableFacet} from "@diamond/facets/OwnableFacet.sol";
+
 /// @title FacetInventory
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice THE canonical Lattice release inventory: the single (contract name, `"<file>:<Name>"` artifact

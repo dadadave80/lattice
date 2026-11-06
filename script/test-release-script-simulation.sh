@@ -7,6 +7,8 @@ plan=deployments/31337/plan-99.0.0.json
 [ ! -e "$snapshot" ] && [ ! -e "$plan" ] || { echo 'release simulation: preserve existing output; move it before running this check' >&2; exit 1; }
 trap 'rm -f "$snapshot" "$plan"; rmdir deployments/31337 2>/dev/null || true' EXIT
 export FOUNDRY_PROFILE=ci
+# A full test/ABI build can hide missing dynamic upstream artifact dependencies. Exercise a fresh script graph.
+forge clean
 forge script script/release/GenerateManifest.s.sol:GenerateManifest \
     --sig 'generate(string,address,string)' 99.0.0 0x000000000000000000000000000000000000bEEF "$snapshot" --non-interactive
 forge script script/deploy/DeployRelease.s.sol:DeployRelease \

@@ -25,8 +25,7 @@ source_commit=$(git rev-parse HEAD)
 export FOUNDRY_PROFILE=ci
 forge clean
 forge build --locked --build-info --skip test
-# This re-export has no local definition; force its dynamic inventory artifact on filtered builds.
-forge build --locked --build-info lib/diamond-lib/src/facets/OwnableFacet.sol
+# FacetInventory explicitly imports dynamic upstream core artifacts; no recipe constructor dependency is needed.
 mkdir -p "$(dirname "$destination")"
 snapshot=deployments/.release-identities.tmp.json
 trap 'rm -f "$snapshot"' EXIT
