@@ -31,7 +31,7 @@ struct MessageContext {
 /// @author Vendored minimal subset of ZetaChain's `IGatewayEVM` (https://github.com/zeta-chain/protocol-contracts). Upstream license: MIT.
 /// @notice Minimal vendored subset of the ZetaChain `GatewayEVM` — the DEPLOYED (per-connected-chain) gateway that
 ///         relays a message to a ZEVM universal app (the hub). `call` dispatches an outbound arbitrary-message
-///         call (native `msg.value` is the messaging fee); the ZetaChain TSS/observer set later invokes the
+///         call (the configured deployment determines the exact accepted `msg.value`); the TSS/observer set invokes the
 ///         destination-chain `Callable.onCall` to deliver an inbound message.
 /// @dev VERIFIED minimal ZetaChain interface subset — canonical: `zeta-chain/protocol-contracts`
 ///      `contracts/evm/interfaces/IGatewayEVM.sol` + `contracts/Revert.sol` (both MIT,
@@ -41,7 +41,7 @@ struct MessageContext {
 /// @custom:lattice-source ZetaChain
 interface IGatewayEVM {
     /// @notice Sends an arbitrary-message cross-chain call, routed via ZetaChain to `receiver` (the ZEVM universal
-    ///         app / hub). Any `msg.value` is forwarded as the native messaging fee.
+    ///         app / hub). The configured gateway determines the exact required native fee, which may be zero.
     /// @param receiver      The recipient of the call on ZetaChain (the ZEVM universal app / hub route terminus).
     /// @param payload       The calldata to deliver.
     /// @param revertOptions Options controlling the revert/abort flow on failure.

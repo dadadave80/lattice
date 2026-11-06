@@ -5,14 +5,14 @@ pragma solidity ^0.8.30;
 /// @author Vendored minimal subset of Hyperbridge's ismp-solidity
 ///         (https://github.com/polytope-labs/ismp-solidity). Upstream license: Apache-2.0.
 /// @notice Dispatch surface of the local Hyperbridge `IsmpHost` (upstream `IDispatcher`): POST-request
-///         dispatch plus the two fee views the {HyperbridgeGatewayAdapter} quotes against. Hyperbridge is
+///         dispatch plus the live fee/router views the {HyperbridgeGatewayAdapter} quotes against. Hyperbridge is
 ///         PROOF-VERIFIED interop — consensus + state proofs are aggregated on a Polkadot-secured coprocessor
 ///         and delivered by permissionless proof-carrying relayers; there is NO attestation committee.
 /// @dev Only the POST-request subset the adapter calls is re-declared (no GET requests, no responses, no
 ///      fundRequest) — do NOT add an ismp-solidity dependency. FEES: `dispatch` charges
-///      `perByteFee(dest) * body.length + fee` in the ERC-20 {feeToken} to `msg.sender`; a native-token path
-///      (the host swaps `msg.value` via its local uniswap router) exists upstream but is NOT used by the
-///      adapter in v1.
+///      `perByteFee(dest) * max(body.length, 32) + fee` in the ERC-20 {feeToken} to `msg.sender`, or swaps supplied
+///      native value through {uniswapV2Router}. This is the legacy per-byte-fee host ABI, not the redesigned
+///      fee-only host. Native swap surplus returns to the host, not automatically to the dispatch caller.
 
 /// @notice An object for dispatching POST requests to Hyperbridge.
 struct DispatchPost {
@@ -27,7 +27,7 @@ struct DispatchPost {
     /// @notice The amount put up to be paid to the relayer, charged in `feeToken` to `msg.sender`
     ///         (0 = unfunded/self-relay, valid in ISMP).
     uint256 fee;
-    /// @notice Who pays for this request — the beneficiary of the host-side fee refund if it times out.
+    /// @notice Beneficiary of the host-side relayer-fee refund in feeToken if the request times out.
     address payer;
 }
 
@@ -63,6 +63,9 @@ interface IIsmpDispatcher {
     ///         its dispatch fees in this denomination (typically a stablecoin). The host can migrate it —
     ///         integrators must read it LIVE, never cache it.
     function feeToken() external view returns (address);
+
+    /// @notice The live host-configured native-to-fee-token swap router.
+    function uniswapV2Router() external view returns (address);
 
     /// @notice The per-byte protocol fee configured for the destination state machine `dest`, charged in
     ///         {feeToken} for every byte of the outgoing request body.

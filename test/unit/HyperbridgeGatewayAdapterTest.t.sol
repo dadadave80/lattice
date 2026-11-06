@@ -4,6 +4,7 @@ pragma solidity ^0.8.30;
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {HyperbridgeGatewayAdapterTestBase} from "@lattice-test/base/HyperbridgeGatewayAdapterTestBase.sol";
+import {MockHyperbridgeNativeRouter} from "@lattice-test/mocks/MockHyperbridgeNativeRouter.sol";
 import {MockIsmpHost} from "@lattice-test/mocks/MockIsmpHost.sol";
 import {Lattice} from "@lattice/Lattice.sol";
 import {ChainRegistry} from "@lattice/crosschain/ChainRegistry.sol";
@@ -492,13 +493,42 @@ contract HyperbridgeGatewayAdapterTest is HyperbridgeGatewayAdapterTestBase {
         adapter.sendMessageWithFee(recip, hex"01", 0);
     }
 
-    /// @notice The native-token fee path (host-side uniswap swap of msg.value) is DEFERRED (issue #77 Q13) —
-    ///         stray value reverts instead of being trapped in the diamond.
-    function test_SendRejectsNativeValue() public {
+    function test_NativeFeeDispatchUsesQuotedValueAndPayer() public {
+        uint256 nativeCost = 0.02 ether;
+        MockHyperbridgeNativeRouter router = new MockHyperbridgeNativeRouter(nativeCost);
+        host.setNativeRouter(address(router));
+        vm.deal(user, 1 ether);
+        vm.deal(diamond, 2 ether);
+        vm.deal(address(host), 3 ether);
+        vm.prank(user);
+        bytes32 id = adapter.sendMessage{value: 0.05 ether}(recip, hex"01", new bytes[](0));
+
+        assertEq(id, _sendId(block.chainid, 1));
+        assertEq(host.lastValue(), nativeCost);
+        assertEq(host.lastPayer(), user);
+        assertEq(host.lastBody(), _envelope(user, hex"01", 1));
+        assertEq(router.quoteCalls(), 1, "native quote requires normal CALL");
+        assertEq(feeToken.balanceOf(user), USER_FUNDS, "native path does not pull fee tokens");
+        assertEq(feeToken.balanceOf(address(host)), _total(_envelope(user, hex"01", 1), 0));
+        assertEq(feeToken.allowance(diamond, address(host)), 0);
+        assertEq(user.balance, 1 ether - nativeCost);
+        assertEq(diamond.balance, 2 ether);
+        assertEq(address(host).balance, 3 ether);
+    }
+
+    function test_NativeFeeBudgetCannotUsePrefundedDiamond() public {
+        MockHyperbridgeNativeRouter router = new MockHyperbridgeNativeRouter(2 wei);
+        host.setNativeRouter(address(router));
+        vm.deal(diamond, 1 ether);
         vm.deal(user, 1 ether);
         vm.prank(user);
-        vm.expectRevert(abi.encodeWithSelector(IHyperbridgeGatewayAdapter.HyperbridgeUnexpectedValue.selector, 1 wei));
+        vm.expectRevert(
+            abi.encodeWithSelector(IHyperbridgeGatewayAdapter.HyperbridgeInsufficientNativeFee.selector, 2 wei, 1 wei)
+        );
         adapter.sendMessage{value: 1 wei}(recip, hex"01", new bytes[](0));
+        assertEq(diamond.balance, 1 ether);
+        assertEq(host.dispatches(), 0);
+        assertEq(router.quoteCalls(), 0, "rejected quote rolls back");
     }
 
     //*//////////////////////////////////////////////////////////////////////////

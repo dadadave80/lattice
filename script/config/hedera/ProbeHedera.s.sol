@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {IDiamondLoupe} from "@diamond/interfaces/IDiamondLoupe.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {DeployHTSAdapter} from "@lattice-script/base/tokens/DeployHTSAdapter.s.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
@@ -216,6 +217,13 @@ contract HederaProbeFacet {
 ///      - `HEDERA_TEST_SIG`     probe 7 signature (65 bytes ECDSA, 64 bytes ED25519).
 ///      Probe 7 logs a SKIPPED line unless all three fixtures are present.
 contract ProbeHedera is DeployHTSAdapter {
+    error Probe6WrongChain(uint256 chainId);
+    error Probe6InvalidCorrelation();
+    error Probe6MissingCode(address target);
+    error Probe6RouteMismatch(bytes4 selector, address expected, address actual);
+    error Probe6MissingSchedulerRole(address diamond, address scheduler);
+    error Probe6MalformedRead();
+
     /// @notice The `[rpc_endpoints]` alias every `vm.rpc` read in this script targets. `vm.rpc` is what makes a
     ///         system-contract read really execute: the relay hands it to the mirror node instead of revm.
     string internal constant HEDERA_TESTNET_ALIAS = "hedera-testnet";
@@ -244,6 +252,9 @@ contract ProbeHedera is DeployHTSAdapter {
     /// @notice Gas the network reserves for the scheduled callback (an event emit through diamond dispatch).
     uint256 internal constant SCHEDULE_GAS_LIMIT = 200_000;
 
+    /// @notice Fixed gas requested by the isolated probe6 booking transaction, checked in its dry-run JSON.
+    uint256 internal constant PROBE6_TRANSACTION_GAS_LIMIT = 1_000_000;
+
     /// @notice Correlation id for probe 6's raw callback; also identifies historical tracked probe jobs.
     bytes32 internal constant PROBE_JOB_ID = keccak256("lattice.probe.hedera.selfCall");
 
@@ -255,6 +266,118 @@ contract ProbeHedera is DeployHTSAdapter {
 
     /// @notice One US cent in tinycents — the probe-4 input to `tinycentsToTinybars`.
     uint256 internal constant ONE_CENT_IN_TINYCENTS = 1e8;
+
+    /// @notice Prepares only probe 6 against an existing testnet diamond, without queuing a transaction.
+    /// @dev All preflight reads execute through the relay. The expected route addresses are explicit trust
+    ///      inputs; record their code fingerprints before approving a broadcast. This proves neither the
+    ///      historical facets' source identity nor the native callback sender. No key/environment secret is read.
+    /// @param diamond Existing funded probe diamond, with the ungated HederaProbeFacet callback installed.
+    /// @param scheduler Public CLI sender to verify against HSS_SCHEDULER_ROLE; this does not prove key control.
+    /// @param expectedHssFacet Approved current owner of scheduleCall(address,uint256,uint256,uint64,bytes).
+    /// @param expectedCallbackFacet Approved current owner of probeCallback(bytes32).
+    /// @param correlationId Unique nonzero id for this attempt; unrelated to the tracked scheduleOf mapping.
+    /// @return expiry Wall-clock seconds plus 600, computed after preflight rather than from the fork clock.
+    /// @return callData Exact unsigned zero-value transaction input for the diamond.
+    function planProbe6(
+        address diamond,
+        address scheduler,
+        address expectedHssFacet,
+        address expectedCallbackFacet,
+        bytes32 correlationId
+    ) external returns (uint256 expiry, bytes memory callData) {
+        return _planProbe6(diamond, scheduler, expectedHssFacet, expectedCallbackFacet, correlationId);
+    }
+
+    /// @notice Queues exactly one raw sender-probe call; it deploys, funds and creates no other entity itself.
+    /// @dev Requires separate authorization before --broadcast. Use the shared pinned forge binary with
+    ///      FOUNDRY_PROFILE=hedera, --sender <verified scheduler>, --account <keystore>, --slow,
+    ///      --skip-simulation and --legacy. The call requests 1,000,000 gas; set its legacy price using
+    ///      --with-gas-price and verify the actual transaction gas in the reviewed dry-run JSON.
+    ///      Without --broadcast this records a local dry run only. Native system contracts cannot execute
+    ///      in revm, so its low-level outcome is not a network verdict. Neither this method nor planProbe6
+    ///      reads HEDERA_TESTNET_PK or opens a keystore: signing remains the explicit CLI's responsibility.
+    /// @param diamond Existing funded probe diamond.
+    /// @param expectedHssFacet Approved scheduleCall route.
+    /// @param expectedCallbackFacet Approved ungated callback route.
+    /// @param correlationId Unique nonzero attempt id, later matched in the scheduled transaction's own receipt.
+    /// @return expiry Fresh expiry used by this call; a prior plan's absolute timestamp is not reused.
+    /// @return callData Exact zero-value transaction input queued for the diamond.
+    function probe6(address diamond, address expectedHssFacet, address expectedCallbackFacet, bytes32 correlationId)
+        external
+        returns (uint256 expiry, bytes memory callData)
+    {
+        address scheduler = msg.sender;
+        (expiry, callData) = _planProbe6(diamond, scheduler, expectedHssFacet, expectedCallbackFacet, correlationId);
+        _line("diamond ", vm.toString(diamond), "existing target; no deployment or funding in this entrypoint");
+        _line("scheduler", vm.toString(scheduler), "CLI sender verified by the relay's hasRole read");
+        _line("probe-id", vm.toString(correlationId), "match the scheduled transaction's own callback event");
+        _line("expiry  ", vm.toString(expiry), "wall-clock seconds plus 600, after all preflight reads");
+        vm.startBroadcast(scheduler);
+        _line("calldata", vm.toString(callData), "the single zero-value call; no deployment or funding");
+        (bool ok, bytes memory ret) = diamond.call{gas: PROBE6_TRANSACTION_GAS_LIMIT}(callData);
+        _line(
+            "local   ",
+            string.concat("ok=", vm.toString(ok), " return=", vm.toString(ret)),
+            "revm cannot execute HSS; require the native scheduled transaction's own receipt and correlation"
+        );
+        vm.stopBroadcast();
+    }
+
+    function _planProbe6(
+        address diamond,
+        address scheduler,
+        address expectedHssFacet,
+        address expectedCallbackFacet,
+        bytes32 correlationId
+    ) private returns (uint256 expiry, bytes memory callData) {
+        if (block.chainid != HEDERA_TESTNET_CHAIN_ID) {
+            revert Probe6WrongChain(block.chainid);
+        }
+        if (correlationId == bytes32(0)) revert Probe6InvalidCorrelation();
+        _probe6CheckCode(diamond);
+        _probe6CheckCode(expectedHssFacet);
+        _probe6CheckCode(expectedCallbackFacet);
+        _probe6CheckRoute(diamond, IHSSAdapter.scheduleCall.selector, expectedHssFacet);
+        _probe6CheckRoute(diamond, HederaProbeFacet.probeCallback.selector, expectedCallbackFacet);
+        uint256 role =
+            _probe6Word(_call(diamond, abi.encodeCall(IAccessControl.hasRole, (HSS_SCHEDULER_ROLE, scheduler))));
+        if (role > 1) revert Probe6MalformedRead();
+        if (role == 0) revert Probe6MissingSchedulerRole(diamond, scheduler);
+        expiry = _probe6WallClock() + SCHEDULE_DELAY;
+        callData = abi.encodeCall(
+            IHSSAdapter.scheduleCall,
+            (
+                diamond,
+                expiry,
+                SCHEDULE_GAS_LIMIT,
+                uint64(0),
+                abi.encodeCall(HederaProbeFacet.probeCallback, (correlationId))
+            )
+        );
+    }
+
+    function _probe6CheckCode(address target) private {
+        if (target == address(0)) revert Probe6MissingCode(target);
+        bytes memory code = _rpc("eth_getCode", string.concat('["', vm.toString(target), '","latest"]'));
+        if (code.length == 0) revert Probe6MissingCode(target);
+    }
+
+    function _probe6CheckRoute(address diamond, bytes4 selector, address expected) private {
+        uint256 word = _probe6Word(_call(diamond, abi.encodeCall(IDiamondLoupe.facetAddress, (selector))));
+        if (word > type(uint160).max) revert Probe6MalformedRead();
+        address actual = address(uint160(word));
+        if (actual != expected) revert Probe6RouteMismatch(selector, expected, actual);
+    }
+
+    function _probe6Word(bytes memory raw) private pure returns (uint256 word) {
+        if (raw.length != 32) revert Probe6MalformedRead();
+        word = abi.decode(raw, (uint256));
+    }
+
+    /// @dev A separate wall-clock hook permits deterministic offline tests without changing the fork timestamp.
+    function _probe6WallClock() internal view virtual returns (uint256) {
+        return vm.unixTime() / 1000;
+    }
 
     //*//////////////////////////////////////////////////////////////////////////
     //                                  RECIPE
@@ -682,7 +805,7 @@ contract ProbeHedera is DeployHTSAdapter {
     ///      when word 0 really is the 0x20 offset, and any other shape is handed back verbatim. Every caller
     ///      length-checks what it gets, so a wrong shape degrades to a raw / `<empty>` log line instead of
     ///      reverting the whole report.
-    function _rpc(string memory method, string memory params) private returns (bytes memory payload) {
+    function _rpc(string memory method, string memory params) internal virtual returns (bytes memory payload) {
         // `vm.rpc` hands back the call's result bytes verbatim on Foundry 1.7/1.8 — do NOT try to unwrap
         // them. An earlier version of this helper treated a leading 0x20 word as an `abi.encode(bytes)`
         // envelope and unwrapped it, which silently corrupted EVERY dynamic return type (an `address[]`

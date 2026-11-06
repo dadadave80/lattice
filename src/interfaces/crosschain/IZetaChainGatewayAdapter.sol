@@ -17,8 +17,9 @@ pragma solidity >=0.8.4;
 ///      against the reverse registry (a registered ZEVM app), then recovering its source chainId.
 /// @dev The `GatewayEVM` is a DEPLOYED contract whose address varies per connected chain (NOT a fixed predeploy),
 ///      so it is stored at init and mutable via an admin setter. `sendMessage` forwards `msg.value` as the native
-///      messaging fee (no on-chain quote or refund from the gateway). Per-message ERC-7786 `RevertOptions`
-///      attributes are DEFERRED (tracked in #213): an admin-configured default `onRevertGasLimit` is used.
+///      fee unchanged (no quote or refund); the configured gateway determines the exact value it accepts.
+///      `IZetaChainGatewayAttributes.revertOptions` overrides recovery options for one message. Without it,
+///      recovery addresses are the caller, revert data is empty, and the admin-configured gas default is used.
 interface IZetaChainGatewayAdapter {
     // -------------------------------------------------------------------------
     //                                  Events
@@ -48,6 +49,12 @@ interface IZetaChainGatewayAdapter {
 
     /// @notice The destination chain has no remote ZEVM universal app (hub route) registered.
     error UnknownDestinationChain(uint256 chainId);
+
+    /// @notice Duplicate/noncanonical options, zero recovery addresses, callback enabled, or gas above 2,000,000.
+    error InvalidRevertOptions();
+
+    /// @notice The encoded message plus encoded revert data exceeds the gateway's 2,880-byte limit.
+    error MessageTooLarge(uint256 size, uint256 maximum);
 
     /// @notice The inbound `onCall` was not invoked by the configured ZetaChain `GatewayEVM`.
     error NotGateway(address caller);

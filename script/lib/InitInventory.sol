@@ -6,7 +6,7 @@ pragma solidity ^0.8.30;
 /// @notice Stateless initializer artifacts released and attested by codehash, separate from facet registration.
 library InitInventory {
     function inventory() internal pure returns (string[] memory names, string[] memory paths) {
-        string[109] memory n = [
+        string[110] memory n = [
             "API3AdapterInit",
             "API3QRNGAdapterInit",
             "AccessControlEnumerableInit",
@@ -106,6 +106,7 @@ library InitInventory {
             "SemaphoreInit",
             "ShieldedPoolInit",
             "StargateBridgeAdapterInit",
+            "StargateBusBridgeAdapterInit",
             "StarknetGatewayAdapterInit",
             "StrategyManagerInit",
             "SuperchainETHBridgeAdapterInit",
@@ -117,7 +118,7 @@ library InitInventory {
             "WormholeGatewayAdapterInit",
             "ZetaChainGatewayAdapterInit"
         ];
-        string[109] memory p = [
+        string[110] memory p = [
             "src/oracles/api3/API3AdapterInit.sol:API3AdapterInit",
             "src/oracles/api3/API3QRNGAdapterInit.sol:API3QRNGAdapterInit",
             "src/access/AccessControlEnumerableInit.sol:AccessControlEnumerableInit",
@@ -217,6 +218,7 @@ library InitInventory {
             "src/privacy/SemaphoreInit.sol:SemaphoreInit",
             "src/privacy/ShieldedPoolInit.sol:ShieldedPoolInit",
             "src/crosschain/layerzero/StargateBridgeAdapterInit.sol:StargateBridgeAdapterInit",
+            "src/crosschain/layerzero/StargateBusBridgeAdapterInit.sol:StargateBusBridgeAdapterInit",
             "src/crosschain/starknet/StarknetGatewayAdapterInit.sol:StarknetGatewayAdapterInit",
             "src/defi/StrategyManagerInit.sol:StrategyManagerInit",
             "src/crosschain/optimism/SuperchainETHBridgeAdapterInit.sol:SuperchainETHBridgeAdapterInit",
@@ -228,8 +230,8 @@ library InitInventory {
             "src/crosschain/wormhole/WormholeGatewayAdapterInit.sol:WormholeGatewayAdapterInit",
             "src/crosschain/zetachain/ZetaChainGatewayAdapterInit.sol:ZetaChainGatewayAdapterInit"
         ];
-        names = new string[](109);
-        paths = new string[](109);
+        names = new string[](n.length);
+        paths = new string[](p.length);
         for (uint256 i; i < names.length; ++i) {
             names[i] = n[i];
             paths[i] = p[i];

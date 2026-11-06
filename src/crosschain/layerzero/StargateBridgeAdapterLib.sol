@@ -47,9 +47,9 @@ struct StargateBridgeAdapterStorage {
 ///         what was pulled — the diamond nets zero).
 /// @dev TRUST MODEL / SCOPE: Stargate pools hold unified liquidity; the DESTINATION pool is the LayerZero
 ///      receiver that credits the recipient — no Lattice inbound surface exists (outbound-only for plain
-///      transfers; never routed through OpenBridge, no `receiveId`). DEFERRED (documented, deliberate):
-///      `composeMsg`/`lzCompose` destination hooks and BUS mode (non-empty `oftCmd`; tracked in #213) — every
-///      send here is a taxi (empty `oftCmd`); native-ETH pools (`StargatePoolNative`), whose `msg.value`
+///      transfers; never routed through OpenBridge, no `receiveId`). Bus enqueue lives in a separate optional
+///      companion; every send here remains a taxi (empty `oftCmd`). Destination `composeMsg`/`lzCompose`
+///      hooks and native-ETH pools (`StargatePoolNative`), whose `msg.value`
 ///      mixes fee + amount — v1 is ERC-20 ONLY and `msg.value` is the LayerZero fee EXCLUSIVELY. REFUND
 ///      SAFETY: `refundAddress` is ALWAYS `msg.sender` — excess LayerZero fee refunds go to the USER, never
 ///      the diamond (same stranding class as the Across depositor). Reuses the shared safe-transfer /
@@ -199,12 +199,12 @@ library StargateBridgeAdapterLib {
 
     /// @notice Validates `p` and builds the TAXI-mode `SendParam` both the quote and send paths use: empty
     ///         `extraOptions` (pool default executor options), empty `composeMsg` (no `lzCompose` hook) and
-    ///         empty `oftCmd` (taxi — bus mode deferred, tracked in #213).
+    ///         empty `oftCmd` (taxi). The companion reuses validation, then changes only this memory command.
     /// @dev Check order: pool registered, non-zero amount, non-zero minAmount (mandatory slippage floor —
     ///      pools charge fees so output < input; 0 would mean unlimited slippage), not same-chain, eid
     ///      registered, then the ERC-7930 recipient parse + fail-closed eip-155 cross-check.
     function _buildSendParam(IStargateBridgeAdapter.SendTokenParams calldata p)
-        private
+        internal
         view
         returns (address pool, SendParam memory sendParam)
     {
@@ -226,7 +226,7 @@ library StargateBridgeAdapterLib {
             minAmountLD: p.minAmountLD,
             extraOptions: "",
             composeMsg: "",
-            oftCmd: "" // taxi mode — bus (non-empty oftCmd) deferred
+            oftCmd: "" // The original capability remains taxi-only; bus has its own public API.
         });
     }
 

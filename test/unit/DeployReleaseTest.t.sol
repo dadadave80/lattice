@@ -156,7 +156,7 @@ contract DeployReleaseTest is Test, DeployRelease {
 
         // Every inventory facet: deployed at its predicted address, registered, and flagged latest.
         (string[] memory names,) = FacetInventory.inventory();
-        assertEq(names.length, 138, "inventory count drifted");
+        assertEq(names.length, 139, "inventory count drifted");
         assertEq(out.facets.length, names.length, "release output facet count mismatch");
         for (uint256 i; i < names.length; ++i) {
             assertGt(out.facets[i].code.length, 0, string.concat(names[i], ": no code at released address"));
@@ -427,7 +427,7 @@ contract DeployReleaseTest is Test, DeployRelease {
     ///         duplicate names (duplicate names would collide on nameHash + salt).
     function test_Inventory_NamePathPairingUniqueCount() public pure {
         (string[] memory names, string[] memory paths) = FacetInventory.inventory();
-        assertEq(names.length, 138, "inventory count drifted");
+        assertEq(names.length, 139, "inventory count drifted");
         assertEq(paths.length, names.length, "names/paths length mismatch");
 
         for (uint256 i; i < names.length; ++i) {

@@ -6,6 +6,7 @@ import {BridgeFungibleLib} from "@lattice/crosschain/libraries/BridgeFungibleLib
 import {AdapterBaseLib} from "@lattice/defi/libraries/AdapterBaseLib.sol";
 import {IHyperbridgeGatewayAdapter} from "@lattice/interfaces/crosschain/IHyperbridgeGatewayAdapter.sol";
 import {IERC7786GatewaySource, IERC7786Recipient} from "@lattice/interfaces/external/ercs/IERC7786.sol";
+import {IHyperbridgeNativeFeeRouter} from "@lattice/interfaces/external/hyperbridge/IHyperbridgeNativeFeeRouter.sol";
 import {
     DispatchPost,
     IIsmpDispatcher,
@@ -68,18 +69,20 @@ struct HyperbridgeGatewayAdapterStorage {
 /// @notice Logic + ERC-7201 storage for the Hyperbridge (ISMP) ERC-7786 gateway adapter. `sendMessage` wraps
 ///         the ERC-7930 envelope with a source-minted nonce and dispatches a proof-verified POST request via
 ///         `IIsmpDispatcher.dispatch`, paying the per-byte protocol fee + optional relayer fee in the host's
-///         ERC-20 `feeToken()` (CCTP-style pull/approve/reset hygiene — no `msg.value`); `onAccept` is the
+///         ERC-20 `feeToken()` (pull/approve/reset hygiene), or swapping a bounded positive native budget.
+///         `onAccept` is the
 ///         host-gated delivery callback (source state machine + trusted module auth, (source, protocol-nonce)
-///         dedup, ERC-7930 delivery); `onPostRequestTimeout` is the native timeout notification.
+///         dedup, ERC-7930 delivery); `onPostRequestTimeout` is the timeout notification.
 /// @dev Wire envelope = `abi.encode(senderInteropAddr, recipientInteropAddr, innerPayload, nonce)` (the suite
 ///      4-tuple). State machine ids are BYTES strings: for EVM chains the id is DERIVED as
 ///      `bytes("EVM-" + Strings.toString(chainId))` — upstream `StateMachine.evm` re-implemented here in one
 ///      line rather than vendoring StateMachine.sol; non-EVM ids (POLKADOT-/SUBSTRATE-) are admin-supplied
 ///      raw. REFUND-CRITICAL: `DispatchPost.payer` is ALWAYS the sending user (`msg.sender`), NEVER
-///      `address(this)` — the host refunds timeout fees to the payer, and a diamond payer would strand them.
+///      `address(this)` — the host refunds only the relayer fee in feeToken to the payer on timeout.
 ///      The host's `feeToken()` is read LIVE on every send/quote (the host can migrate it — caching would
-///      charge/approve the wrong token). A native-token fee path (host-side uniswap swap of `msg.value`)
-///      exists upstream but is DEFERRED — stray value reverts in v1 (tracked in #213).
+///      charge/approve the wrong token). Positive msg.value selects the legacy host's native exact-output
+///      swap path; zero value preserves ERC-20 payment. Host-retained native surplus rejects the send;
+///      unused adapter delta is refunded to the caller, whose rejection reverts the complete dispatch.
 library HyperbridgeGatewayAdapterLib {
     function hyperbridgeGatewayAdapterStorage() internal pure returns (HyperbridgeGatewayAdapterStorage storage $) {
         assembly {
@@ -202,23 +205,21 @@ library HyperbridgeGatewayAdapterLib {
 
     /// @notice ERC-7786 source. Delegates to {sendMessageWithFee} with `relayerFee = 0` (unfunded/self-relay,
     ///         valid in ISMP — anyone may still relay the proof permissionlessly).
-    /// @dev No attributes are supported — any attribute reverts {UnsupportedAttribute}. The interface forces
-    ///      `payable`, but the native-token fee path is DEFERRED (tracked in #213) — stray value reverts
-    ///      {HyperbridgeUnexpectedValue} instead of being trapped in the Diamond.
+    /// @dev No attributes are supported. Positive native value selects bounded host-side native fee payment;
+    ///      zero value retains the existing ERC-20 fee-token path.
     function sendMessage(bytes calldata recipient, bytes calldata payload, bytes[] calldata attributes)
         internal
         returns (bytes32)
     {
         if (attributes.length != 0) revert IERC7786GatewaySource.UnsupportedAttribute(bytes4(attributes[0]));
-        if (msg.value != 0) revert IHyperbridgeGatewayAdapter.HyperbridgeUnexpectedValue(msg.value);
         return sendMessageWithFee(recipient, payload, 0);
     }
 
     /// @notice Sends `payload` to the ERC-7930 `recipient`, funding an ISMP relayer fee of `relayerFee` on top
-    ///         of the per-byte protocol fee — both charged in the host's LIVE `feeToken()` and pulled from the
-    ///         caller with CCTP-style hygiene: pull exactly `total`, force-approve the host for exactly
-    ///         `total`, dispatch, reset the allowance to 0, then delta-sweep any leftover back to the caller
-    ///         (defensive — the host should pull exactly `total`).
+    ///         of the per-byte protocol fee, both denominated in the host's LIVE `feeToken()`. Zero native
+    ///         value pulls/approves the exact total, dispatches, resets approval and sweeps the token delta.
+    ///         Positive value is the current call's maximum native budget for a host-side exact-output swap.
+    ///         Only the quote is forwarded and the unused native delta is refunded under the existing guard.
     /// @dev The envelope carries a source-owned monotonic nonce (`++$._lastNonce`) so the delivery id is
     ///      globally unique per (source, nonce) — the ISMP protocol nonce is host-side and unknowable
     ///      pre-dispatch, so the envelope nonce keeps the suite-level identity every sibling adapter uses.
@@ -237,7 +238,12 @@ library HyperbridgeGatewayAdapterLib {
         _dispatch($, recipient, payload, relayerFee, nonce, sendId);
 
         emit IERC7786GatewaySource.MessageSent(
-            sendId, InteroperableAddress.formatEvmV1(block.chainid, msg.sender), recipient, payload, 0, new bytes[](0)
+            sendId,
+            InteroperableAddress.formatEvmV1(block.chainid, msg.sender),
+            recipient,
+            payload,
+            msg.value,
+            new bytes[](0)
         );
     }
 
@@ -296,8 +302,8 @@ library HyperbridgeGatewayAdapterLib {
     }
 
     /// @notice Host timeout callback for a request WE dispatched: decodes the envelope and emits
-    ///         {HyperbridgeRequestTimedOut}. EMIT-ONLY in v1 — the fee refund itself is HOST-SIDE to
-    ///         `DispatchPost.payer` (the original sending user); this hook is the notification surface an
+    ///         {HyperbridgeRequestTimedOut}. EMIT-ONLY in v1 — the relayer fee refund in feeToken is HOST-SIDE
+    ///         to `DispatchPost.payer` (the original sending user); this hook is the notification surface an
     ///         application layer keys compensating actions off (decided in #77, Q8).
     /// @dev A timeout fires on the SOURCE chain for our own dispatch, so `request.source` is OUR state machine
     ///      and `request.from` is OUR module — neither is attacker-controlled once `msg.sender == host` holds,
@@ -381,18 +387,60 @@ library HyperbridgeGatewayAdapterLib {
         bytes32 sendId
     ) private {
         (uint256 destChainId, bytes memory stateMachineId, bytes memory module) = _resolveDestination($, recipient);
-        bytes32 commitment = _pullAndDispatch(
-            $._host,
-            DispatchPost({
-                dest: stateMachineId,
-                to: module,
-                body: _buildEnvelope(recipient, payload, nonce),
-                timeout: $._destTimeout[destChainId],
-                fee: relayerFee,
-                payer: msg.sender // REFUND-CRITICAL: the USER — host-side timeout refunds go to the payer.
-            })
-        );
+        DispatchPost memory post = DispatchPost({
+            dest: stateMachineId,
+            to: module,
+            body: _buildEnvelope(recipient, payload, nonce),
+            timeout: $._destTimeout[destChainId],
+            fee: relayerFee,
+            payer: msg.sender // REFUND-CRITICAL: the USER — host-side timeout refunds go to the payer.
+        });
+        bytes32 commitment = msg.value == 0 ? _pullAndDispatch($._host, post) : _dispatchNative($._host, post);
         emit IHyperbridgeGatewayAdapter.HyperbridgeMessageDispatched(sendId, commitment, destChainId);
+    }
+
+    /// @dev Only the current call funds native dispatch. Exact-output surplus retained by the host is rejected;
+    ///      direct refunds to this diamond are swept as a delta, preserving its standing native balance.
+    function _dispatchNative(address host_, DispatchPost memory post) private returns (bytes32 commitment) {
+        ReentrancyGuardLib.nonReentrantBefore();
+        uint256 nativeBefore = address(this).balance - msg.value;
+        uint256 hostBefore = host_.balance;
+        uint256 needed = _quoteNative(host_, post);
+        if (msg.value < needed) {
+            revert IHyperbridgeGatewayAdapter.HyperbridgeInsufficientNativeFee(needed, msg.value);
+        }
+        commitment = IIsmpDispatcher(host_).dispatch{value: needed}(post);
+        if (host_.balance != hostBefore) {
+            revert IHyperbridgeGatewayAdapter.HyperbridgeHostNativeBalanceChanged(hostBefore, host_.balance);
+        }
+        uint256 leftover = address(this).balance - nativeBefore;
+        if (leftover != 0) {
+            (bool ok,) = msg.sender.call{value: leftover}("");
+            if (!ok) revert IHyperbridgeGatewayAdapter.HyperbridgeNativeRefundFailed();
+        }
+        ReentrancyGuardLib.nonReentrantAfter();
+    }
+
+    /// @dev Uses the compatible host's live configuration. Stateful quote wrappers must run via normal CALL.
+    function _quoteNative(address host_, DispatchPost memory post) private returns (uint256 needed) {
+        IIsmpDispatcher host = IIsmpDispatcher(host_);
+        address token = host.feeToken();
+        if (token == address(0)) revert IHyperbridgeGatewayAdapter.HyperbridgeInvalidNativeQuote();
+        uint256 total = host.perByteFee(post.dest) * post.body.length + post.fee;
+        if (total == 0) return 0;
+        address router = host.uniswapV2Router();
+        if (router == address(0)) revert IHyperbridgeGatewayAdapter.HyperbridgeInvalidNativeQuote();
+        address[] memory path = new address[](2);
+        path[0] = IHyperbridgeNativeFeeRouter(router).WETH();
+        path[1] = token;
+        if (path[0] == address(0) || path[0] == token) {
+            revert IHyperbridgeGatewayAdapter.HyperbridgeInvalidNativeQuote();
+        }
+        uint256[] memory amounts = IHyperbridgeNativeFeeRouter(router).getAmountsIn(total, path);
+        if (amounts.length != 2 || amounts[1] != total || amounts[0] == 0) {
+            revert IHyperbridgeGatewayAdapter.HyperbridgeInvalidNativeQuote();
+        }
+        return amounts[0];
     }
 
     /// @notice The suite 4-tuple wire envelope: `abi.encode(sender7930, recipient7930, payload, nonce)`.

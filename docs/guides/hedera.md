@@ -2,10 +2,11 @@
 
 Mount Hedera's system contracts as Diamond facets: hold and issue HTS tokens, verify ED25519 account
 signatures, read the network exchange rate, draw a native random seed, and schedule your own future calls.
-The contracts are unaudited. **No transaction here has been sent to a live Hedera network** — every
-behaviour below that needs a signed transaction is still an assumption read from consensus-node source.
-Read-only `eth_call`s against the public testnet relay HAVE been run; what they settled is marked confirmed
-in [Verification status](#verification-status).
+The contracts are unaudited. [Verification status](#verification-status) records dated live probes and
+read-only checks, limited to their observed source and toolchain. Behaviours marked **assumed**, including
+probe6's native callback/sender, still need on-chain confirmation; a broadcast on the current shared
+Foundry pin remains unverified. Offline generation-safety tests, unsigned plans and dry runs are separate
+evidence.
 
 ## The five modules
 
@@ -186,6 +187,14 @@ link references and immutable patch positions for all 647 source/library contrac
 artifacts; 407 had nonempty creation/runtime code. This is build parity for that checkpoint, not a
 shared-pin broadcast verification or a promise that later source edits preserve deterministic addresses.
 
+At source checkpoint `e45696b996fa91d4ba02778c9943f285ed9e9aaf`, targeted 1.7.1/1.9.0 builds again
+matched for `HTSAdapter`, `ERC20`, `Lattice`, `HSSAdapter`, `HederaProbeFacet` and `ProbeHedera`,
+including their 86-artifact dependency graph, metadata, links and immutable locations. All 90 input
+files matched that checkpoint. The shared-pin `HTSAdapterFork` tests passed (2 tests). A separate
+`DeployHTSAdapter` simulation failed with a Hashio HTTP 500 / JSON-RPC `-32020` upstream
+“socket hang up”; it was not retried. That failure was not an EIP-1898 rejection, and no transaction
+was signed or broadcast.
+
 Anything that never opens a fork backend works on **both** versions — `forge create`, `cast send` / `call` /
 `mktx`, and `vm.rpc` inside a test. `--legacy` is worth passing as Hedera's native transaction form, but it is
 not what fixes this: `cast mktx` signs cleanly in both legacy and EIP-1559 form. `--slow` helps against rate
@@ -229,16 +238,19 @@ concern does not arise.
   revm; the relay reports `0xfe` as the code of `0x167` and nothing at all for `0x168`/`0x169`/`0x16a`/`0x16b`, so no
   HTS/HAS/HSS call executes on a plain fork — reads included. `test/fork/HTSAdapterFork.t.sol` asserts that
   local shape and uses `vm.rpc("eth_call", …)` to hand anything that must really execute to the relay, where
-  the mirror node simulates it. The one test that forks reaches hashio on the pinned Foundry 1.7.1, but not
-  on the shared pin's defaults, whose EIP-1898 block-hash params the relay rejects. So it sits behind its own
+  the mirror node simulates it. In the September/October measurements, the fork reached hashio on 1.7.1
+  while the then-shared defaults were rejected for EIP-1898 params. The dated 1.9.0 read-only results above
+  update that observation; a shared-pin broadcast remains unverified. The fork stays behind the
   `HEDERA_TEST_FORK=true` opt-in and runs through `script/config/hedera/forge-hedera.sh`. Setting
   `HEDERA_TEST_TOKEN` alone gives you the relay-backed test plus a skip, never a spurious failure.
 
 ## Verification status
 
-Nothing below has been executed on a live Hedera network. The semantics marked **assumed** are read from
-consensus-node source and HIP text but are not yet confirmed on-chain; `script/config/hedera/ProbeHedera.s.sol`
-exists to settle them, and is deliberately not broadcast by CI.
+The table preserves dated historical live executions and read-only checks; these do not verify the
+remaining assumptions or the current release. Probe6's native callback/sender and a current shared-pin
+broadcast remain unverified; offline generation-safety tests do not establish them.
+`script/config/hedera/ProbeHedera.s.sol` exists to settle the native assumptions and is deliberately not
+broadcast by CI.
 
 | # | Behaviour | Status |
 | --- | --- | --- |
@@ -301,3 +313,57 @@ the EVM. It does not establish the behavior of the current node or the callback 
 [#226](https://github.com/dadadave80/lattice/issues/226) still needs a separately authorized successful
 native callback with its sender, schedule ID, date and measured consensus-node version. Offline mock
 coverage and local generation safety do not satisfy that live acceptance.
+
+### Minimal native sender probe
+
+`ProbeHedera.planProbe6` prepares a single raw `scheduleCall` against an **existing** probe diamond.
+`probe6` queues that call using the CLI sender. Neither entrypoint deploys a diamond, funds it, creates
+tokens, reads `HEDERA_TESTNET_PK`, or books a tracked recovery job. Keep the callback ungated: a recovery
+envelope would insert a self-call and conceal the native sender being measured.
+
+Inputs are the existing diamond, its approved `scheduleCall` and `probeCallback` facet addresses, the
+public scheduler address, and a unique nonzero correlation ID for this attempt. Record the target and
+facet code fingerprints before approving the action. The preflight checks chain 296, nonempty live code,
+both exact routes and the scheduler's `HSS_SCHEDULER_ROLE` through relay reads. Route addresses are trust
+inputs; these checks do not verify historical facet source or prove possession of the scheduler's key.
+The expiry is calculated **after** preflight, from wall-clock time plus 600 seconds, rather than from the
+older fork timestamp. The callback has a 200,000 gas allowance and transfers zero value. The booking call explicitly requests
+1,000,000 gas; verify the recorded transaction limit, including intrinsic gas, in the dry-run JSON.
+
+Prepare without a key, keystore or broadcast:
+
+```sh
+FOUNDRY_PROFILE=hedera forge script script/config/hedera/ProbeHedera.s.sol:ProbeHedera \
+    --sig 'planProbe6(address,address,address,address,bytes32)' \
+    <diamond> <scheduler> <hss-facet> <callback-facet> <unique-correlation-id> \
+    --rpc-url hedera-testnet
+```
+
+Use the pinned 1.9.0 binary explicitly when validating #227. A `probe6(address,address,address,bytes32)`
+dry run, with `--sender <scheduler> --skip-simulation --legacy` and **without** `--broadcast` or
+`--account`, records the one planned call. Its local result cannot establish native success: revm does
+not implement HSS. Inspect the dry-run transaction array, target, zero value, gas and exact nested input.
+A later authorized invocation recalculates its expiry; do not submit an old absolute deadline.
+
+Broadcasting requires explicit authorization, a controlled scheduler's keystore, fresh fee limits and
+sufficient balances for the scheduler's booking transaction and the diamond's automatic callback. Use
+`--with-gas-price` for the legacy transaction price; Forge's `--gas-price` configures the local EVM and
+`--gas-limit` configures its block limit. Do not use either as a claimed transaction fee cap. No automatic
+funding, retry, cancellation, `authorizeSchedule`, payer substitution or verification is part of this probe.
+
+Preserve the approved plan and booking transaction/receipt. Require a successful booking with the exact
+target/value/input and `HSSCallScheduled` emitted by the diamond: its target, expiry and gas must match,
+and its indexed job ID is zero. That event gives the schedule address; `scheduleOf(correlationId)` does
+not. Read the schedule entity from the mirror node and retain its payer and execution timestamp.
+An `executed_timestamp` alone is insufficient: historical schedules failed before EVM entry. Require
+the scheduled transaction's own successful result and its `HederaProbeCallback` log, matching the
+diamond emitter and exact correlation ID. An arbitrary direct call can emit the same ungated event,
+so a search for the event alone is not evidence of a network-fired callback.
+
+Record the actual callback sender, event timestamp, schedule ID, date and **consensus-node software
+version**. Keep the relay's `web3_clientVersion` and a mirror block's `hapi_version` as separate facts;
+neither is a measurement of `hederaServicesVersion`. Compare the event sender with both the EVM alias
+and canonical Hedera address, while retaining Solidity's exact `msg.sender == address(this)` question.
+If scheduling or firing fails, preserve the native status and leave #226 open. A successful shared-pin
+booking validates that broadcast path for #227; retirement of the wrapper and its exception requires
+the completed result and a separate reviewed cleanup.

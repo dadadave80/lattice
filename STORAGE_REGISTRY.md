@@ -385,6 +385,7 @@ and [ADR0024](docs/adr/0024-upgrade-initializer-batches.md).
 | ChainRegistry | `lattice.storage.ChainRegistry` | `0x3d04730f387c3a41671abdc91e43582ee4d80e460792f9c401b5acc80eab5b00` | `IChainRegistry` | `0x137e339e` | `0x0a0affa1c3cd17b5e25d35fd719de9756671b9a056876933fee65c04fc5735d3` |
 | HyperlaneGatewayAdapter | `lattice.storage.HyperlaneGatewayAdapter` | `0x8a4b1302312d119abfdb0305131f00457b784ef22f6824db37cbaed84bba5600` | `IERC7786GatewaySource` + `IHyperlaneGatewayAdapter` | `0x11967553` / `0xb4f23f37` | `0x3c75b8ea75c097979221eb9302e2f0f6009b4ffe0a7198db5dc29979e09ea0e3` / `0xda64faf279e491b8914ea1bd5a229e6b869c7ceecd7af74ddf271e5df1381612` |
 | StargateBridgeAdapter | `lattice.storage.StargateBridgeAdapter` | `0x2076bfc799b61fb4ea9b1d4a406060be54015b08cd19ef147b102a3e634c0800` | `IStargateBridgeAdapter` | `0x199fc6b0` | `0x326cc60e86592cbb0d41c91042ab150a4f99ae6dd5d49d392cfc87d10b32650d` |
+| StargateBusBridgeAdapter | `lattice.storage.StargateBridgeAdapter` | (shares StargateBridgeAdapter slot) | `IStargateBusBridgeAdapter` | `0x93e4e11a` | `0xc3f7c678c88a9c7c360b718bb3391b1779ca4fbd1a2bf4d65479d1695e0fbd50` |
 | HyperbridgeGatewayAdapter | `lattice.storage.HyperbridgeGatewayAdapter` | `0x51a6b52d433abb3ae06100272e5ee46754531b734f9cac910997924c61569700` | `IERC7786GatewaySource` + `IHyperbridgeGatewayAdapter` | `0x11967553` / `0x9c48e32e` | `0x3c75b8ea75c097979221eb9302e2f0f6009b4ffe0a7198db5dc29979e09ea0e3` / `0xb7ece225a1d7ee3cb3d032ac79e8edc4e7bc0b80a422071828120db87beadfcb` |
 
 ### Markets
@@ -500,7 +501,9 @@ top of the shared gateway slot; the token bridges and the non-EVM connector regi
 `ICCTPBridgeAdapter` (`0xf5187bdc`), `IAcrossBridgeAdapter` (`0x4615a4f1`), `IStargateBridgeAdapter`
 (`0x199fc6b0`), `IStarknetGatewayAdapter` (`0x7dfd78ca`; NOT an ERC-7786 gateway — it does not register the
 shared `0x11967553` id) — and `ChainRegistry` mints `IChainRegistry` (`0x137e339e`) — so crosschain adds
-eighteen ERC-7201 slots and thirteen new ERC-165 map slots. The randomness/automation adapters — `PythEntropyAdapter`, `GelatoVRFAdapter`,
+eighteen ERC-7201 slots and fourteen new ERC-165 map slots. The optional `StargateBusBridgeAdapter`
+shares the existing Stargate namespace and adds only `IStargateBusBridgeAdapter` (`0x93e4e11a`);
+its library declares no new storage owner or fields. The randomness/automation adapters — `PythEntropyAdapter`, `GelatoVRFAdapter`,
 `API3QRNGAdapter`, `GelatoAutomateAdapter`, `ChainlinkAutomationAdapter` (alongside the existing
 `ChainlinkVRF`) — each add one ERC-7201 storage slot and one unique ERC-165 map slot; the five new modules
 add five ERC-7201 slots and five ERC-165 map slots. Randomness/automation adapters currently live under

@@ -132,6 +132,7 @@ import {
     ERC165_MAP_ISTARGATEBRIDGEADAPTER_SLOT,
     STARGATE_BRIDGE_ADAPTER_STORAGE_SLOT
 } from "@lattice/crosschain/layerzero/StargateBridgeAdapterLib.sol";
+import {ERC165_MAP_ISTARGATEBUSBRIDGEADAPTER_SLOT} from "@lattice/crosschain/layerzero/StargateBusBridgeAdapterLib.sol";
 import {BRIDGE_ERC20_STORAGE_SLOT} from "@lattice/crosschain/libraries/BridgeERC20Lib.sol";
 import {BRIDGE_ERC7802_STORAGE_SLOT} from "@lattice/crosschain/libraries/BridgeERC7802Lib.sol";
 import {ERC165_MAP_IBRIDGEFUNGIBLE_SLOT} from "@lattice/crosschain/libraries/BridgeFungibleLib.sol";
@@ -371,6 +372,7 @@ import {ICrosschainLink} from "@lattice/interfaces/crosschain/ICrosschainLink.so
 import {IHyperbridgeGatewayAdapter} from "@lattice/interfaces/crosschain/IHyperbridgeGatewayAdapter.sol";
 import {IHyperlaneGatewayAdapter} from "@lattice/interfaces/crosschain/IHyperlaneGatewayAdapter.sol";
 import {IStargateBridgeAdapter} from "@lattice/interfaces/crosschain/IStargateBridgeAdapter.sol";
+import {IStargateBusBridgeAdapter} from "@lattice/interfaces/crosschain/IStargateBusBridgeAdapter.sol";
 import {IStarknetGatewayAdapter} from "@lattice/interfaces/crosschain/IStarknetGatewayAdapter.sol";
 import {IAaveV3Adapter} from "@lattice/interfaces/defi/IAaveV3Adapter.sol";
 import {IAggregatorExecAdapter} from "@lattice/interfaces/defi/IAggregatorExecAdapter.sol";
@@ -1984,6 +1986,14 @@ contract StorageSlotVerificationTest is Test {
         );
     }
 
+    function test_Erc165MapIStargateBusBridgeAdapterSlot() public pure {
+        assertEq(type(IStargateBusBridgeAdapter).interfaceId, bytes4(0x93e4e11a));
+        assertEq(
+            ERC165_MAP_ISTARGATEBUSBRIDGEADAPTER_SLOT,
+            _erc165MapSlot(type(IStargateBusBridgeAdapter).interfaceId, ERC165_STORAGE_LOCATION)
+        );
+    }
+
     function test_Erc165MapIStarknetGatewayAdapterSlot() public pure {
         assertEq(
             ERC165_MAP_ISTARKNETGATEWAYADAPTER_SLOT,
@@ -2492,7 +2502,7 @@ contract StorageSlotVerificationTest is Test {
     }
 
     function _allErc165MapSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](116);
+        slots = new bytes32[](117);
         uint256 i;
         // access
         slots[i++] = ERC165_MAP_IACCESSCONTROL_SLOT;
@@ -2601,6 +2611,7 @@ contract StorageSlotVerificationTest is Test {
         // adapter-specific IHyperbridgeGatewayAdapter slot.
         slots[i++] = ERC165_MAP_IHYPERBRIDGEGATEWAYADAPTER_SLOT;
         slots[i++] = ERC165_MAP_ISTARGATEBRIDGEADAPTER_SLOT;
+        slots[i++] = ERC165_MAP_ISTARGATEBUSBRIDGEADAPTER_SLOT;
         slots[i++] = ERC165_MAP_ISUPERCHAINETHBRIDGEADAPTER_SLOT;
         slots[i++] = ERC165_MAP_IANY2EVMMESSAGERECEIVER_SLOT;
         slots[i++] = ERC165_MAP_IANY2EVMMESSAGERECEIVERV2_SLOT;
