@@ -94,7 +94,7 @@ jobs:
           ./script/test-storage-registry.sh
 
   # README catalog vs src/. Not gated on `changes`: a README-only PR (code=false) can drop or misspell a
-  # catalog entry, so this job runs on every PR. It needs only bash and diamond-lib's sources.
+  # catalog entry, so this job runs on every PR. The storage registry also uses the shared cast binary.
   readme:
     name: README catalog
     runs-on: ubuntu-latest
@@ -105,6 +105,7 @@ jobs:
         with:
           submodules: true
           persist-credentials: false
+      - uses: ./.github/actions/foundry-setup
       - name: Check the README module catalog
         run: |
           ./script/test-check-readme-catalog.sh

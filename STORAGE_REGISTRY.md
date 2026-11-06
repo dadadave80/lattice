@@ -23,8 +23,11 @@ ERC-165 map slots are mutually unique**. When you add a module, add its slot con
 and a row here.
 
 The [JSON registry](script/upgrades/storage-registry.json) exports every namespace, slot and struct
-layout, including nested structs, from the existing source-checked layout baseline. `make storage-check`
-checks the source layout, JSON drift and every namespace row in this table; `make storage-update`
+layout, including nested structs, from the existing source-checked layout baseline. It also exports
+source-declared interface IDs and map-slot constants with file provenance, deduplicating shared IDs.
+The 108 exported ID/slot pairs include the 107 Lattice registrations and the existing `IDiamondCut` alias.
+`make storage-check` checks the source layout, recomputes map slots with `cast`, and detects JSON drift
+and incorrect namespace or interface-ID/map-slot pairs in this table; `make storage-update`
 regenerates both the reviewed baseline and JSON. New releases attach both checked files from the exact
 release tag. Historical release layouts are not regenerated from a later source tree.
 
