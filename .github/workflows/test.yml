@@ -155,13 +155,14 @@ jobs:
       - uses: ./.github/actions/foundry-setup
       - name: Check canonical release build
         run: make release-build-check
+      # Expanded source domain: keep its one-unit AST cache separate from older src-only builds.
       - name: Cache forge build (src)
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             out
             cache
-          key: forge-build-${{ runner.os }}-${{ hashFiles('.github/actions/foundry-setup/action.yml', 'foundry.toml', 'foundry.lock', 'remappings.txt', 'src/**/*.sol', 'lib/**/*.sol') }}
+          key: forge-build-catalog-${{ runner.os }}-${{ hashFiles('.github/actions/foundry-setup/action.yml', 'foundry.toml', 'foundry.lock', 'remappings.txt', 'src/**/*.sol', 'lib/**/*.sol') }}
 
       # --sizes gates EIP-170 (24,576 B) on deployable contracts only. Test/script fixtures
       # (e.g. the SelfGovDiamond E2E harness that inherits every facet at once) legitimately
@@ -337,7 +338,7 @@ jobs:
           path: |
             out
             cache
-          key: forge-build-${{ runner.os }}-${{ hashFiles('.github/actions/foundry-setup/action.yml', 'foundry.toml', 'foundry.lock', 'remappings.txt', 'src/**/*.sol', 'lib/**/*.sol') }}
+          key: forge-build-catalog-${{ runner.os }}-${{ hashFiles('.github/actions/foundry-setup/action.yml', 'foundry.toml', 'foundry.lock', 'remappings.txt', 'src/**/*.sol', 'lib/**/*.sol') }}
       - name: Test grant RPC runner
         run: make test-grant-runner
       - name: Run Anvil deployment checks
