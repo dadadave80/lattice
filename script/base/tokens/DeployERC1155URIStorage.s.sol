@@ -23,8 +23,7 @@ import {DiamondIntrospectionInit} from "@lattice/utils/DiamondIntrospectionInit.
 ///      URI storage) and ADDs `setURI`/`setBaseURI`. `AccessControl` is included because both setters are gated
 ///      on `DEFAULT_ADMIN_ROLE` (bootstrapped by {ERC1155URIStorageInit}), so a production deployment can manage
 ///      that admin; `AccessControlDiamondCut` lets the same admin upgrade the diamond.
-///      The `ERC1155URIStorage` facet is the release facet from {BaseDeploy._facet}; the other cuts and the inits
-///      still deploy fresh until every recipe moves to release contracts (#195).
+///      All inventory facets and initializers use the shared release helpers.
 contract DeployERC1155URIStorage is BaseDeploy {
     /// @notice Builds the URI-storage ERC-1155 diamond cuts + ordered initializers (no broadcast, no proxy).
     /// @param uri_ The ERC-1155 URI template, served for ids without a per-token URI.

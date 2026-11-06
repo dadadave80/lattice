@@ -24,8 +24,7 @@ import {DiamondIntrospectionInit} from "@lattice/utils/DiamondIntrospectionInit.
 ///      Under decision D25(a) on #234, {ERC1155Supply} is mutually exclusive with {ERC1155Burnable} and
 ///      {ERC1155Pausable}: do not add either here. The recipe cuts no mint; the app's mint facet must call
 ///      {ERC1155SupplyLib._mint}/{ERC1155SupplyLib._mintBatch}, or the supply falls behind the balances.
-///      The `ERC1155Supply` facet is the release facet from {BaseDeploy._facet}; the base recipe's cuts, the
-///      admin-overload cuts and the inits still deploy fresh until every recipe moves to release contracts (#195).
+///      All inventory facets and initializers use the shared release helpers.
 contract DeployERC1155Supply is BaseDeploy {
     /// @notice Builds the supply-tracked ERC-1155 diamond cuts + initializers (no broadcast, no proxy deploy).
     /// @param uri_ Token URI template.

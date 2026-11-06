@@ -21,8 +21,7 @@ import {DiamondIntrospectionInit} from "@lattice/utils/DiamondIntrospectionInit.
 ///      `run(..., admin)`) for an upgradeable deployment gated on `DEFAULT_ADMIN_ROLE`.
 ///      Do not add ERC20Pausable, ERC20Votes or GovernedVault to this diamond: the `*AndCall` paths bypass their
 ///      `transfer`/`transferFrom` overrides (decision D25 on #234).
-///      The `ERC1363` facet is the release facet from {BaseDeploy._facet}; the base recipe's cuts, the
-///      admin-overload cuts and the inits still deploy fresh until every recipe moves to release contracts (#195).
+///      All inventory facets and initializers use the shared release helpers.
 contract DeployERC1363 is BaseDeploy {
     /// @notice Builds the ERC-1363 diamond cuts + initializers (no broadcast, no proxy deploy).
     /// @param name_ Token name. @param symbol_ Token symbol.

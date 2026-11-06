@@ -24,9 +24,8 @@ import {DiamondIntrospectionInit} from "@lattice/utils/DiamondIntrospectionInit.
 ///      `AccessControlDiamondCut` lets the same admin `diamondCut`. Under decision D25(a) on #234,
 ///      {ERC1155Pausable} is mutually exclusive with {ERC1155Burnable} and {ERC1155Supply}: do not add either here.
 ///      The recipe cuts no mint; the app's mint facet must call {ERC1155PausableLib._mint}/
-///      {ERC1155PausableLib._mintBatch}, or mints ignore the pause. The `ERC1155Pausable` facet is the release
-///      facet from {BaseDeploy._facet}; the other cuts and the inits still deploy fresh until every recipe moves to
-///      release contracts (#195).
+///      {ERC1155PausableLib._mintBatch}, or mints ignore the pause.
+///      All inventory facets and initializers use the shared release helpers.
 contract DeployERC1155Pausable is BaseDeploy {
     /// @notice Builds the pausable ERC-1155 diamond cuts + initializers (no broadcast, no proxy deploy).
     /// @param uri_ Token URI template. @param admin The pause/unpause and upgrade authority.

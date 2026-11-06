@@ -24,8 +24,7 @@ import {DiamondIntrospectionInit} from "@lattice/utils/DiamondIntrospectionInit.
 ///      Mint and burn are app-specific: a minting facet calls {ERC721EnumerableLib._mint}/{_burn}, never
 ///      {ERC721Lib}'s. Do not add {ERC721Burnable}, {ERC721Wrapper}, {ERC721Pausable} or {ERC721Votes} to this
 ///      diamond (see {ERC721Enumerable}); an {ERC721ConsecutiveInit} batch reverts.
-///      The `ERC721Enumerable` facet is the release facet from {BaseDeploy._facet}; the base recipe's cuts, the
-///      admin-overload cuts and the inits still deploy fresh until every recipe moves to release contracts (#195).
+///      All inventory facets and initializers use the shared release helpers.
 contract DeployERC721Enumerable is BaseDeploy {
     /// @notice Builds the enumerable ERC-721 diamond cuts + initializers (no broadcast, no proxy deploy).
     /// @param name_ Token name. @param symbol_ Token symbol.

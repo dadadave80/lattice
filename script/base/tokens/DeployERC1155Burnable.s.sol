@@ -19,8 +19,7 @@ import {DiamondIntrospectionInit} from "@lattice/utils/DiamondIntrospectionInit.
 /// @dev DEFAULT overload: Immutable by design — no cut facet is cut (the inherited base recipe provides the
 ///      loupe); deploy a new diamond to change behavior. Use the ADMIN overload (`buildCuts(..., admin)` /
 ///      `run(..., admin)`) for an upgradeable deployment gated on `DEFAULT_ADMIN_ROLE`.
-///      The `ERC1155Burnable` facet is the release facet from {BaseDeploy._facet}; the base recipe's cuts, the
-///      admin-overload cuts and the inits still deploy fresh until every recipe moves to release contracts (#195).
+///      All inventory facets and initializers use the shared release helpers.
 contract DeployERC1155Burnable is BaseDeploy {
     /// @notice Builds the burnable ERC-1155 diamond cuts + initializers (no broadcast, no proxy deploy).
     /// @param uri_ Token URI template.

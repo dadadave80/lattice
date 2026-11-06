@@ -19,8 +19,7 @@ import {DiamondIntrospectionInit} from "@lattice/utils/DiamondIntrospectionInit.
 ///         All inits run in one initializing window via {BaseDeploy._assembleMulti}.
 /// @dev Admin-only: the pause authority must exist, so there is no immutable overload. The pause gates only the
 ///      three replaced selectors; {ERC721Burnable} or {ERC721Wrapper} cut next to it still burn and wrap while paused.
-///      The `ERC721Pausable` facet is the release facet from {BaseDeploy._facet}; the other cuts and the inits
-///      still deploy fresh until every recipe moves to release contracts (#195).
+///      All inventory facets and initializers use the shared release helpers.
 contract DeployERC721Pausable is BaseDeploy {
     /// @notice Builds the pausable ERC-721 diamond cuts + initializers (no broadcast, no proxy deploy).
     /// @param name_ Token name. @param symbol_ Token symbol. @param admin The pause/unpause and upgrade authority.

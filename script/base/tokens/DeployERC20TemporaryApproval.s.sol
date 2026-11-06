@@ -21,8 +21,7 @@ import {DiamondIntrospectionInit} from "@lattice/utils/DiamondIntrospectionInit.
 ///      `run(..., admin)`) for an upgradeable deployment gated on `DEFAULT_ADMIN_ROLE`.
 ///      Requires EIP-1153 on the execution chain. This recipe changes no balance-movement policy; other
 ///      token extensions retain their documented ADR0009 exclusions. Upgrade custom allowance spenders too.
-///      The `ERC20TemporaryApproval` facet is the release facet from {BaseDeploy._facet}; the base recipe's cuts, the
-///      admin-overload cuts and the inits still deploy fresh until every recipe moves to release contracts (#195).
+///      All inventory facets and initializers use the shared release helpers.
 contract DeployERC20TemporaryApproval is BaseDeploy {
     /// @notice Builds the ERC-7674 diamond cuts + initializers (no broadcast, no proxy deploy).
     /// @param name_ Token name. @param symbol_ Token symbol.
