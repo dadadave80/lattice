@@ -44,6 +44,7 @@ const decisions: Item = {
     { text: '0027 Governor cut topology', link: '/adr/0027-governor-governed-cut-topology' },
     { text: '0028 ZetaChain recovery options', link: '/adr/0028-zetachain-message-recovery-options' },
     { text: '0029 Hyperbridge native fees', link: '/adr/0029-hyperbridge-native-fee-budgets' },
+    { text: '0030 Stargate bus companion', link: '/adr/0030-stargate-bus-companion' },
   ],
 }
 

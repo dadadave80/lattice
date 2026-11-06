@@ -24,6 +24,7 @@ import {
 } from "@lattice-script/base/crosschain/DeployL2ToL2CrossDomainMessengerGatewayAdapter.s.sol";
 import {DeployLayerZeroGatewayAdapter} from "@lattice-script/base/crosschain/DeployLayerZeroGatewayAdapter.s.sol";
 import {DeployStargateBridgeAdapter} from "@lattice-script/base/crosschain/DeployStargateBridgeAdapter.s.sol";
+import {DeployStargateBusBridgeAdapter} from "@lattice-script/base/crosschain/DeployStargateBusBridgeAdapter.s.sol";
 import {DeployStarknetGatewayAdapter} from "@lattice-script/base/crosschain/DeployStarknetGatewayAdapter.s.sol";
 import {DeploySuperchainETHBridgeAdapter} from "@lattice-script/base/crosschain/DeploySuperchainETHBridgeAdapter.s.sol";
 import {DeployWormholeGatewayAdapter} from "@lattice-script/base/crosschain/DeployWormholeGatewayAdapter.s.sol";
@@ -215,6 +216,15 @@ contract RecipeUpgradeabilityCrosschainTest is RecipeConsistencyGuards {
         (FacetCut[] memory cuts, address init, bytes memory cd) = new DeployStargateBridgeAdapter().buildCuts(ADMIN);
         address d = _assemble(cuts, init, cd);
         _assertIntrospectable(d, 5);
+        _assertBareEth(d, false);
+        _assertAdminCanCut(d, ADMIN);
+    }
+
+    function test_Upgradeable_StargateBusBridgeAdapter() public {
+        _expectRecipe(new DeployStargateBusBridgeAdapter().recipeSpec(), 0, "DeployStargateBusBridgeAdapter");
+        (FacetCut[] memory cuts, address init, bytes memory cd) = new DeployStargateBusBridgeAdapter().buildCuts(ADMIN);
+        address d = _assemble(cuts, init, cd);
+        _assertIntrospectable(d, 6);
         _assertBareEth(d, false);
         _assertAdminCanCut(d, ADMIN);
     }

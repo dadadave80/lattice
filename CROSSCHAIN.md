@@ -16,7 +16,7 @@ and re-derived from first principles by `test/unit/StorageSlotVerificationTest.t
 |---|---|---|
 | **Push message gateway** (ERC-7786) | `sendMessage(recipient, payload, attributes)` out; protocol-pushed inbound callback; `chainId ↔ native-id` map; trusted remote per chainId; replay guard; delivers to `CrosschainLink` | CCIP, Axelar, Wormhole, LayerZero v2, Hyperlane, ZetaChain *(hub-routed)*, Hyperbridge *(proof-verified)* |
 | **Inverted-inbound gateway** (OP Stack) | The facet itself is the relayed target; authenticates via the messenger's context, not calldata-encoded source | `L2ToL2CrossDomainMessengerGatewayAdapter`, `L1ToL2CrossDomainMessengerGatewayAdapter` |
-| **Token rail** | Moves value, not messages. Three settlement models — **burn/mint attested** (CCTP), **intent/optimistic** (Across), **pooled-liquidity credits** (Stargate) — plus the gateway-routed `BridgeERC20`/`BridgeERC7802` (`FUNGIBLE_BRIDGE_TAG`) and native-ETH `SuperchainETHBridgeAdapter` | CCTPBridgeAdapter, AcrossBridgeAdapter, StargateBridgeAdapter, BridgeERC20, BridgeERC7802, SuperchainETHBridgeAdapter |
+| **Token rail** | Moves value, not messages. Three settlement models — **burn/mint attested** (CCTP), **intent/optimistic** (Across), **pooled-liquidity credits** (Stargate) — plus the gateway-routed `BridgeERC20`/`BridgeERC7802` (`FUNGIBLE_BRIDGE_TAG`) and native-ETH `SuperchainETHBridgeAdapter` | CCTPBridgeAdapter, AcrossBridgeAdapter, StargateBridgeAdapter (+ optional StargateBusBridgeAdapter), BridgeERC20, BridgeERC7802, SuperchainETHBridgeAdapter |
 | **Execution config** (type-C) | Arbitrary quote-API calldata against an admin allow-listed `(aggregator, selector)` pair; outbound-only; all security is pull-from-caller + exact-approve→0 + delta sweeps | `AggregatorExecAdapter` base; LI.FI + Relay as pure configurations (`script/config/EnableRelay.s.sol`) |
 | **Non-EVM connector** | Bespoke surface where the ERC-7786 contract can't hold (no message id, pull-based consume, non-EVM addressing) | `StarknetGatewayAdapter` (felt252, counter consume, initiator-gated cancellation) |
 | **Composition layer** | M-of-N aggregation, inbound tag routing, one-action chain config | `ERC7786OpenBridge` (+ `minDirectCoverage` gate), `CrosschainLink`, `ChainRegistry` (`addEvmChain` fan-out across all 10 registered adapters) |
@@ -36,6 +36,7 @@ and re-derived from first principles by `test/unit/StorageSlotVerificationTest.t
 | CCTPBridgeAdapter | Circle Iris attesters + denylist | Circle nonce (transmitter) | none at source (full amount burned; fee deducted at destination mint, `maxFee`-capped) | n/a (burn is final) | permissionless `relayMessage` → transmitter verifies attestation |
 | AcrossBridgeAdapter | Relayer fronts + UMA optimistic settlement | no receiveId (intent); refund-after-`fillDeadline` | relayer fee inside `outputAmount` delta | **`depositor = user`** (expired-deposit refunds) | inbound `handleV3AcrossMessage`: SpokePool only, **not** an authenticated message |
 | StargateBridgeAdapter | Stargate pools on LZ rails | LZ `guid` (outbound-only for Lattice) | `msg.value` LZ fee (`quoteSend`) | **`refundAddress = user`**; dust sweep (`amountSentLD` truncation) | n/a (pool is the LZ receiver) |
+| StargateBusBridgeAdapter (optional companion) | Same registered Stargate pools + upstream drivers/LZ | Source queue ticket (zero valid); later upstream `BusDriven` GUID | **exact** quoted native bus fare | no routine surplus; token dust uses the same isolated delta sweep | n/a; enqueue is not delivery |
 | SuperchainETHBridgeAdapter | OP interop predeploys | messenger msgHash | none | n/a | n/a (outbound-only) |
 | AggregatorExecAdapter (LiFi/Relay) | quote APIs + allow-listed routers; solvers (Relay) | none — no completion signal | per-quote (`msg.value` and/or input token) | delta sweeps return every leftover to the caller | n/a (outbound-only; Relay `refundTo`-to-diamond is swept to the user) |
 | StarknetGatewayAdapter | Starknet L1↔L2 core (proofs) | L2→L1 **counter** (N consumes = N sends); msgHash + initiator record | `msg.value` escrowed, **never refunded** (cancel included) | initiator-gated 2-step cancellation (fee still burned) | core contract consumes only messages addressed to the diamond + trusted L2 sender |
@@ -138,7 +139,7 @@ and the [pinned upstream validation](https://github.com/zeta-chain/protocol-cont
 | OP L2↔L2 / L1↔L2 | permissionless `relayMessage` driver (pre-mainnet interop) | sent-but-unrelayed; anyone can relay |
 | CCTP | Circle Iris attestation service (+ any keeper calling `relayMessage`) | burn without mint until attested; `relayMessage` is permissionless once attested |
 | Across | relayer fill + UMA optimistic settlement | no fill → refund to `depositor` after `fillDeadline` |
-| Stargate | LZ infra + (bus mode) bus drivers — taxi-only in v1 | delivery delayed/stuck at LZ layer |
+| Stargate | LZ infrastructure; optional bus companion also needs a bus driver and valid queue prefix | queue delay plus LZ delivery delay; no bounded completion or per-ticket cancellation |
 | LI.FI / Relay | quote APIs; Relay solvers + settlement oracle | **no on-chain completion signal either way** — off-chain reconciliation is mandatory |
 | Starknet | L1→L2: sequencer consumption; L2→L1: a driver calling `consumeMessage` | L1→L2 cancellable after ~5 days (fee burned); L2→L1 sits consumable forever |
 
@@ -146,7 +147,7 @@ and the [pinned upstream validation](https://github.com/zeta-chain/protocol-cont
 
 - LayerZero **OFT token track** (separate rail; Stargate covers pooled OFT-style transfers).
 - Hyperlane **custom ISM** (additive: implement `ISpecifiesInterchainSecurityModule` later; default ISM v1).
-- Stargate **bus mode** (`oftCmd`), **`composeMsg`/`lzCompose`**, and **native pool** (`msg.value` fee/amount mixing).
+- Stargate **`composeMsg`/`lzCompose`**, **native drops**, and **native pools** (`msg.value` fee/amount mixing). The optional bus companion supports plain ERC20 enqueue only.
 - Across inbound consumers: `handleV3AcrossMessage` is emit-only; the event is **not** an
   authenticated message (any party can originate a deposit at the diamond) — consumers must verify
   provenance independently.
@@ -204,3 +205,41 @@ forge test
 export MAINNET_RPC_URL=<url>
 forge test --match-path "test/fork/*Fork.t.sol"
 ```
+
+## Optional Stargate bus enqueue
+
+[`DeployStargateBusBridgeAdapter`](script/base/crosschain/DeployStargateBusBridgeAdapter.s.sol) adds the
+[`StargateBusBridgeAdapter`](src/crosschain/layerzero/StargateBusBridgeAdapter.sol) companion alongside
+the original taxi facet, with the same admin-configured ERC20 pools and chainId/eid map. The original
+`DeployStargateBridgeAdapter` remains taxi-only with five cuts; the optional recipe has six. No new
+namespace, mapping or authority is introduced. An existing configured diamond may add the companion
+and register its separate ERC165 ID via an authorized
+[ReinitMultiInit batch](docs/guides/compose-your-own-diamond.md#initialize-modules-during-an-upgrade).
+Do not seed AccessControl again during that upgrade.
+
+Call `quoteBusFee` with the existing `SendTokenParams`, then supply exactly that native fare to
+`sendTokenBus`. Both paths construct the same single-zero-byte bus command and empty options/compose
+payload. Quote does not reserve queue space, liquidity or a fare. Underpayment and overpayment fail
+before token movement; the pool's charged fare, zero enqueue GUID/nonce and nonempty passenger data
+are checked before success. The pool remains an admin-selected trust boundary. This policy avoids
+Stargate's best-effort surplus refund path; the taxi API's whole-value forwarding is unchanged.
+
+The result is a **queue ticket**, opaque passenger bytes, and the amounts locally settled by the pool.
+Ticket zero is valid. Neither the result nor `StargateBusQueued` proves dispatch or destination receipt.
+Retain passenger bytes and the route. Using the official ABI, resolve `tokenMessaging` from the source
+pool's `getAddressConfig()` and monitor its `busQueues(dstEid).nextTicketId`. For the same
+TokenMessaging contract and destination eid, **`nextTicketId > ticketId`** means that ticket has been
+dispatched, not necessarily delivered; an earlier prefix moving is insufficient. Correlate the later upstream
+`BusDriven` event for the actual LayerZero GUID.
+
+The upstream `quoteDriveBus(dstEid, passengers)` and payable `driveBus` are permissionless, but require
+an authenticated **contiguous prefix** from the current next ticket. A user's own ticket bytes may be
+insufficient when earlier passengers are pending; obtain those bytes from upstream `BusRode` events.
+Call upstream directly if choosing to drive; Lattice has no drive, cancel or refund facade and holds
+no local queue ledger. Queue/planner/driver availability, current pool policy and LayerZero execution
+can delay completion without a time bound. No per-ticket cancellation, expiry or user refund API is
+present in the reviewed queue. Native drops, native pools and compose hooks remain outside this mode.
+
+[ADR0030](docs/adr/0030-stargate-bus-companion.md) records the pinned v12 source and alternatives.
+The independently authored local queue fixture verifies adapter behavior; it is not a claim of an
+upstream deployment, public fork or broadcast test.

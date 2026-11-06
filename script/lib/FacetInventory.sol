@@ -20,11 +20,11 @@ import {OwnableFacet} from "@diamond/facets/OwnableFacet.sol";
 ///      artifact contract names exactly: the registry key is `keccak256("lattice.<name>")` and the facet
 ///      deploy salt is `keccak256("lattice.<name>.<version>")`, so renaming an entry re-derives BOTH.
 library FacetInventory {
-    /// @notice The 138 release facets (134 Lattice + 4 diamond-lib core) as (contract name, `"<file>:<Name>"` deploy path) pairs.
+    /// @notice The 139 release facets (135 Lattice + 4 diamond-lib core) as (contract name, `"<file>:<Name>"` deploy path) pairs.
     /// @return names The facet contract names (registry name = `"lattice." ++ name`).
     /// @return paths The matching `vm.getCode`/`deployCode` artifact paths, index-aligned with `names`.
     function inventory() internal pure returns (string[] memory names, string[] memory paths) {
-        string[138] memory n = [
+        string[139] memory n = [
             "AcrossBridgeAdapter",
             "AxelarGatewayAdapter",
             "BridgeERC20",
@@ -41,6 +41,7 @@ library FacetInventory {
             "L2ToL2CrossDomainMessengerGatewayAdapter",
             "LayerZeroGatewayAdapter",
             "StargateBridgeAdapter",
+            "StargateBusBridgeAdapter",
             "StarknetGatewayAdapter",
             "SuperchainETHBridgeAdapter",
             "WormholeGatewayAdapter",
@@ -167,7 +168,7 @@ library FacetInventory {
             "ERC165Facet",
             "OwnableFacet"
         ];
-        string[138] memory p = [
+        string[139] memory p = [
             "src/crosschain/across/AcrossBridgeAdapter.sol:AcrossBridgeAdapter",
             "src/crosschain/axelar/AxelarGatewayAdapter.sol:AxelarGatewayAdapter",
             "src/crosschain/BridgeERC20.sol:BridgeERC20",
@@ -184,6 +185,7 @@ library FacetInventory {
             "src/crosschain/optimism/L2ToL2CrossDomainMessengerGatewayAdapter.sol:L2ToL2CrossDomainMessengerGatewayAdapter",
             "src/crosschain/layerzero/LayerZeroGatewayAdapter.sol:LayerZeroGatewayAdapter",
             "src/crosschain/layerzero/StargateBridgeAdapter.sol:StargateBridgeAdapter",
+            "src/crosschain/layerzero/StargateBusBridgeAdapter.sol:StargateBusBridgeAdapter",
             "src/crosschain/starknet/StarknetGatewayAdapter.sol:StarknetGatewayAdapter",
             "src/crosschain/optimism/SuperchainETHBridgeAdapter.sol:SuperchainETHBridgeAdapter",
             "src/crosschain/wormhole/WormholeGatewayAdapter.sol:WormholeGatewayAdapter",
@@ -309,9 +311,9 @@ library FacetInventory {
             "ERC165Facet.sol:ERC165Facet",
             "OwnableFacet.sol:OwnableFacet"
         ];
-        names = new string[](138);
-        paths = new string[](138);
-        for (uint256 i; i < 138; ++i) {
+        names = new string[](n.length);
+        paths = new string[](p.length);
+        for (uint256 i; i < names.length; ++i) {
             names[i] = n[i];
             paths[i] = p[i];
         }

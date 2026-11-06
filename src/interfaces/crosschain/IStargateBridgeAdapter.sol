@@ -10,7 +10,7 @@ pragma solidity >=0.8.4;
 ///         DESTINATION pool releases the token to the recipient. OUTBOUND-ONLY for plain transfers: the
 ///         destination-side receiver is Stargate's own pool (the LayerZero OApp), NOT a Lattice facet — there
 ///         is no Lattice inbound surface, no `receiveId`, no source attribution, and this is never routed
-///         through OpenBridge. `composeMsg`/`lzCompose` hooks and bus mode are DEFERRED (see {sendToken}).
+///         through OpenBridge. Compose hooks remain deferred; the optional StargateBusBridgeAdapter supplies bus enqueue.
 /// @dev Stargate rides LayerZero: destinations are keyed by the LayerZero `uint32` eid (admin-registered
 ///      bidirectional chainId ⇄ eid map, never inferred), and `msg.value` is the LayerZero messaging fee
 ///      EXCLUSIVELY — ERC-20 pools only in v1. Native-ETH pools (`StargatePoolNative`, where `msg.value` mixes
@@ -154,9 +154,9 @@ interface IStargateBridgeAdapter {
     /// @notice Sends `p.amountLD` of `p.token` (pulled from `msg.sender`) through its registered Stargate
     ///         pool toward the ERC-7930 `p.recipient` on `p.destinationChainId`. `msg.value` is the LayerZero
     ///         fee EXCLUSIVELY (quoted precheck; excess refunds to `msg.sender`, never the diamond).
-    /// @dev TAXI ONLY (tracked in #213): the send is dispatched with EMPTY `oftCmd` (immediate/taxi mode) and
-    ///      EMPTY `composeMsg`/`extraOptions` — bus mode (deferred batched sends) and `lzCompose` destination
-    ///      hooks are DEFERRED to a future revision. DUST SWEEP: pools truncate `amountLD` to shared decimals,
+    /// @dev TAXI ONLY: the send is dispatched with EMPTY `oftCmd` (immediate/taxi mode) and
+    ///      EMPTY `composeMsg`/`extraOptions`. Bus enqueue is a separate optional companion; `lzCompose`
+    ///      destination hooks remain deferred. DUST SWEEP: pools truncate `amountLD` to shared decimals,
     ///      so the pool may debit less than was pulled; the exact un-debited remainder is returned to
     ///      `msg.sender` in the same call and the diamond nets zero.
     /// @return guid             The LayerZero message guid.

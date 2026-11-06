@@ -35,6 +35,7 @@ the linked issue or pull request; a record is the outcome, not a spec.
 | [0027](0027-governor-governed-cut-topology.md) | Governor validates the declared governed-cut executor topology | Accepted |
 | [0028](0028-zetachain-message-recovery-options.md) | ZetaChain messages accept bounded recovery options without callbacks | Accepted |
 | [0029](0029-hyperbridge-native-fee-budgets.md) | Hyperbridge native fees use bounded exact-output budgets | Accepted |
+| [0030](0030-stargate-bus-companion.md) | Stargate bus enqueue is an optional companion with an exact native fare | Accepted |
 
 ## When to write one
 

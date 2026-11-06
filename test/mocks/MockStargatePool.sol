@@ -7,6 +7,7 @@ import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
 
 /// @title MockStargatePool
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from Stargate (https://github.com/stargate-protocol/stargate-v2)
 /// @notice Test fixture implementing the minimal {IStargate} surface: records every `sendToken` argument
 ///         verbatim (all seven `SendParam` fields, the fee tuple, the refundAddress and `msg.value`, plus the
 ///         allowance it was granted), pulls `amountSentLD = amountLD` truncated to a configurable shared-
@@ -71,14 +72,15 @@ contract MockStargatePool is IStargate {
     }
 
     /// @inheritdoc IStargate
-    function quoteSend(SendParam calldata, bool) external view returns (MessagingFee memory) {
+    function quoteSend(SendParam calldata, bool) public view virtual returns (MessagingFee memory) {
         return MessagingFee({nativeFee: nativeFee, lzTokenFee: 0});
     }
 
     /// @inheritdoc IStargate
     function sendToken(SendParam calldata sendParam, MessagingFee calldata fee, address refundAddress)
-        external
+        public
         payable
+        virtual
         returns (MessagingReceipt memory msgReceipt, OFTReceipt memory oftReceipt, Ticket memory ticket)
     {
         lastDstEid = sendParam.dstEid;

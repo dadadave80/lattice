@@ -12,7 +12,7 @@ import {IStargateBridgeAdapter} from "@lattice/interfaces/crosschain/IStargateBr
 ///         Stargate pool (unified liquidity), which has the DESTINATION pool credit the ERC-7930 recipient.
 ///         OUTBOUND-ONLY for plain transfers: the destination-side LayerZero receiver is Stargate's own pool,
 ///         NOT a Lattice facet — there is no inbound surface, no `receiveId`, no source attribution, and this
-///         facet is never routed through OpenBridge. `composeMsg`/`lzCompose` and bus mode are DEFERRED.
+///         facet is never routed through OpenBridge. Compose hooks remain deferred; bus enqueue is a separate companion.
 /// @dev Stateless delegator — logic/storage live in {StargateBridgeAdapterLib}. The outbound send is
 ///      `nonReentrant` with strict CEI, a quoted fee PRECHECK, exact-amount approval hygiene, and a dust
 ///      sweep (pools truncate to shared decimals — any un-debited remainder returns to the caller in the same

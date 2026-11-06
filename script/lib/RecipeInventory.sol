@@ -30,6 +30,7 @@ import {
 } from "@lattice-script/base/crosschain/DeployL2ToL2CrossDomainMessengerGatewayAdapter.s.sol";
 import {DeployLayerZeroGatewayAdapter} from "@lattice-script/base/crosschain/DeployLayerZeroGatewayAdapter.s.sol";
 import {DeployStargateBridgeAdapter} from "@lattice-script/base/crosschain/DeployStargateBridgeAdapter.s.sol";
+import {DeployStargateBusBridgeAdapter} from "@lattice-script/base/crosschain/DeployStargateBusBridgeAdapter.s.sol";
 import {DeployStarknetGatewayAdapter} from "@lattice-script/base/crosschain/DeployStarknetGatewayAdapter.s.sol";
 import {DeploySuperchainETHBridgeAdapter} from "@lattice-script/base/crosschain/DeploySuperchainETHBridgeAdapter.s.sol";
 import {DeployWormholeGatewayAdapter} from "@lattice-script/base/crosschain/DeployWormholeGatewayAdapter.s.sol";
@@ -116,7 +117,7 @@ import {DeployMulticall} from "@lattice-script/base/utils/DeployMulticall.s.sol"
 /// @dev The compiler/source census rejects omitted recipes or builder signatures. Demonstration contexts are separate.
 library RecipeInventory {
     function inventory() internal pure returns (string[] memory names, string[] memory artifacts) {
-        string[103] memory n = [
+        string[104] memory n = [
             "DeployAccessControl",
             "DeployAccessControlEnumerable",
             "DeployAccessControlTimed",
@@ -141,6 +142,7 @@ library RecipeInventory {
             "DeployL2ToL2CrossDomainMessengerGatewayAdapter",
             "DeployLayerZeroGatewayAdapter",
             "DeployStargateBridgeAdapter",
+            "DeployStargateBusBridgeAdapter",
             "DeployStarknetGatewayAdapter",
             "DeploySuperchainETHBridgeAdapter",
             "DeployWormholeGatewayAdapter",
@@ -221,7 +223,7 @@ library RecipeInventory {
             "DeployMarketplaceZone",
             "DeployMulticall"
         ];
-        string[103] memory p = [
+        string[104] memory p = [
             "script/base/access/DeployAccessControl.s.sol:DeployAccessControl",
             "script/base/access/DeployAccessControlEnumerable.s.sol:DeployAccessControlEnumerable",
             "script/base/access/DeployAccessControlTimed.s.sol:DeployAccessControlTimed",
@@ -246,6 +248,7 @@ library RecipeInventory {
             "script/base/crosschain/DeployL2ToL2CrossDomainMessengerGatewayAdapter.s.sol:DeployL2ToL2CrossDomainMessengerGatewayAdapter",
             "script/base/crosschain/DeployLayerZeroGatewayAdapter.s.sol:DeployLayerZeroGatewayAdapter",
             "script/base/crosschain/DeployStargateBridgeAdapter.s.sol:DeployStargateBridgeAdapter",
+            "script/base/crosschain/DeployStargateBusBridgeAdapter.s.sol:DeployStargateBusBridgeAdapter",
             "script/base/crosschain/DeployStarknetGatewayAdapter.s.sol:DeployStarknetGatewayAdapter",
             "script/base/crosschain/DeploySuperchainETHBridgeAdapter.s.sol:DeploySuperchainETHBridgeAdapter",
             "script/base/crosschain/DeployWormholeGatewayAdapter.s.sol:DeployWormholeGatewayAdapter",

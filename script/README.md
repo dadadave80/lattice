@@ -40,6 +40,11 @@ extensions. Recipe helpers are never deployed during broadcast: they contain scr
 and can exceed the EIP-170 limit. The atomic deployment gate broadcasts both authority variants of
 an ERC-20, ERC-721 and ERC-1155 extension to check this path.
 
+The optional `base/crosschain/DeployStargateBusBridgeAdapter.s.sol` recipe installs both the frozen taxi
+surface and the bus companion, sharing existing pool/eid configuration. Bus sends require the exact
+native fare and return a queue ticket; the [crosschain reference](../CROSSCHAIN.md#optional-stargate-bus-enqueue)
+explains dispatch, liveness and the absence of a cancellation/drive facade. The original taxi recipe is unchanged.
+
 For module initialization during a later authorized upgrade, `InitInventory` releases
 [`ReinitMultiInit`](../src/utils/ReinitMultiInit.sol). Use its address as the cut's `_init` with
 `reinitMulti(version, inits, calldatas)`; the [composition guide](../docs/guides/compose-your-own-diamond.md#initialize-modules-during-an-upgrade)

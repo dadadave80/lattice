@@ -5090,6 +5090,16 @@
       ]
     },
     {
+      "interfaceId": "0x93e4e11a",
+      "slot": "0xc3f7c678c88a9c7c360b718bb3391b1779ca4fbd1a2bf4d65479d1695e0fbd50",
+      "sources": [
+        {
+          "source": "src/crosschain/layerzero/StargateBusBridgeAdapterLib.sol",
+          "constant": "ERC165_MAP_ISTARGATEBUSBRIDGEADAPTER_SLOT"
+        }
+      ]
+    },
+    {
       "interfaceId": "0x942e8b22",
       "slot": "0xc99f0f757c400475fa5e27e7e237b05409e3b11dbfd9a8930fb35692da3f3a3d",
       "sources": [

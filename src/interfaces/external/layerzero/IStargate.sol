@@ -45,7 +45,7 @@ struct OFTReceipt {
 }
 
 /// @notice Stargate bus-ride ticket returned by `sendToken`. Empty (`ticketId` 0, no passenger bytes) in
-///         taxi mode (empty `oftCmd`); populated only for bus-mode sends, which this adapter does not issue.
+///         taxi mode (empty `oftCmd`). Bus mode returns nonempty passenger data; its first valid ticket is zero.
 /// @dev Authored fresh (field names/types per the public ABI) — needed only to declare `sendToken`'s exact
 ///      3-tuple return type.
 struct Ticket {
