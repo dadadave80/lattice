@@ -8,7 +8,7 @@ import {HTSAdapterLib, HTS_MANAGER_ROLE, HTS_OPERATOR_ROLE} from "@lattice/token
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice One-shot initializer for an HTS-account diamond — seeds AccessControl, grants `admin` both HTS roles
 ///         (associations / token creation and treasury operations) and registers the IHTSAdapter interface
-///         (ERC-165). Delegatecalled by {Diamond.initialize} inside the initializing window (so it must NOT open
+///         (ERC-165). Delegatecalled by {Lattice.initialize} inside the initializing window (so it must NOT open
 ///         its own pre/postInitializer). Token associations happen later via `associateToken`, so no external
 ///         reference is needed at init time.
 /// @custom:lattice-kind bundle

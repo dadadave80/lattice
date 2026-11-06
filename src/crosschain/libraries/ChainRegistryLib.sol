@@ -64,7 +64,7 @@ struct ChainRegistryStorage {
 ///         {addEvmChain} — the one-action admin fan-out that registers an EVM chain and pushes its config into
 ///         every enabled gateway adapter LIB directly (internal calls, so `msg.sender` stays the admin and each
 ///         lib's own `checkRole` passes; NEVER external self-calls, which would break AccessControl).
-/// @dev COVERAGE AWARENESS, NOT ROUTING (issue #77 Q5): the registry is the config single-source-of-truth and
+/// @dev COVERAGE AWARENESS, NOT ROUTING (decided in #77, Q5): the registry is the config single-source-of-truth and
 ///      the coverage authority, but adapters keep their own cheap hot-path maps — the registry NEVER sits in
 ///      any adapter send path (the only cross-module reader is the OpenBridge's opt-in
 ///      `minDirectCoverage` gate). Hub-routed coverage (e.g. the ZetaChain adapter reaching connected chains

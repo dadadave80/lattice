@@ -15,7 +15,7 @@ import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
 ///         - {initImmutable}: the recipe cuts ONLY `DiamondLoupeFacet` (immutable-by-design diamonds) —
 ///           registers `IDiamondLoupe` alone, so `supportsInterface(0x1f931c1c)` stays false and tooling
 ///           can SEE the diamond is not upgradeable.
-/// @dev Delegatecalled by {Diamond.initialize} inside the initializing window (stock diamond-lib
+/// @dev Delegatecalled by {Lattice.initialize} inside the initializing window (stock diamond-lib
 ///      `DiamondInit` is NOT usable here: it unconditionally registers both flags AND initializes an
 ///      Ownable owner). Stateless; safe to share one deployed instance across recipes.
 /// @custom:lattice-kind bundle

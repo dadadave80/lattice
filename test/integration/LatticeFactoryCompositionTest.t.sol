@@ -17,7 +17,7 @@ import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
 
 /// @notice One-shot initializer for the factory-composed ERC-20 diamond: seeds name/symbol (registering IERC20
 ///         via ERC-165) and mints an opening balance so the smoke test can exercise a real transfer. Delegatecalled
-///         by {Diamond.initialize} inside the initializing window, so `address(this)` is the diamond.
+///         by {Lattice.initialize} inside the initializing window, so `address(this)` is the diamond.
 contract FactoryErc20Init {
     function init(string memory name_, string memory symbol_, address to, uint256 amount) external {
         ERC20Lib.__ERC20_init(name_, symbol_);

@@ -326,7 +326,7 @@ contract CCTPBridgeAdapterTest is CCTPBridgeAdapterTestBase {
     }
 
     /// @dev Only `d.initialize` is wrapped in `expectRevert` (the `CCTPZeroAddress` revert bubbles up through
-    ///      {Diamond.initialize}); `deployer` was created in `setUp`.
+    ///      {Lattice.initialize}); `deployer` was created in `setUp`.
     function _expectZeroAddressInitRevert(address tm, address mt, address u) internal {
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) = deployer.buildCuts(admin, tm, mt, u);
         Lattice d = new Lattice();

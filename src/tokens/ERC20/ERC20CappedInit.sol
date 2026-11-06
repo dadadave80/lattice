@@ -6,7 +6,7 @@ import {ERC20CappedLib} from "@lattice/tokens/ERC20/libraries/ERC20CappedLib.sol
 /// @title ERC20CappedInit
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice One-shot initializer for the ERC-20 Capped extension — seeds the supply cap and registers IERC20Capped
-///         via ERC-165. Delegatecalled by {Diamond.initialize} (through {MultiInit}) inside the initializing window
+///         via ERC-165. Delegatecalled by {Lattice.initialize} (through {MultiInit}) inside the initializing window
 ///         opened by the diamond, alongside the base {ERC20Init}; it must NOT open its own pre/postInitializer.
 ///         Reverts with {IERC20Capped-ERC20InvalidCap} when `cap_` is zero.
 /// @custom:lattice-kind step

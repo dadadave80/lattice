@@ -9,7 +9,7 @@ import {ChainRegistryLib} from "@lattice/crosschain/libraries/ChainRegistryLib.s
 /// @notice One-shot initializer for a chain-registry diamond — seeds AccessControl (every registry setter and
 ///         the {ChainRegistry.addEvmChain} fan-out are `DEFAULT_ADMIN_ROLE`-gated) and registers the
 ///         IChainRegistry interface via ERC-165. There are NO module config params: the registry starts empty
-///         and is populated post-deploy by the admin. Delegatecalled by {Diamond.initialize} inside the
+///         and is populated post-deploy by the admin. Delegatecalled by {Lattice.initialize} inside the
 ///         initializing window (so it must NOT open its own pre/postInitializer; each `__*_init` guard passes
 ///         because the window is already open).
 /// @custom:lattice-kind bundle

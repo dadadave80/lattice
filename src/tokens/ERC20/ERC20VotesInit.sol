@@ -11,7 +11,7 @@ import {NoncesLib} from "@lattice/utils/libraries/NoncesLib.sol";
 /// @notice One-shot initializer for the ERC-20 Votes extension recipe — seeds the EIP-712 domain (name `name_`,
 ///         version "1") and nonce storage the `delegateBySig` digest reads, the checkpoint/clock state (registering
 ///         IVotes; the error-only IERC20Votes has no ERC-165 id), and grants `admin_` the DEFAULT_ADMIN_ROLE that
-///         gates a consumer's minting authority. Delegatecalled by {Diamond.initialize} (through {MultiInit})
+///         gates a consumer's minting authority. Delegatecalled by {Lattice.initialize} (through {MultiInit})
 ///         inside the initializing window opened by the diamond, alongside the base {ERC20Init}; it must NOT open
 ///         its own pre/postInitializer.
 /// @custom:lattice-kind bundle

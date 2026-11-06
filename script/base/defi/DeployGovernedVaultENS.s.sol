@@ -95,7 +95,7 @@ contract TestnetAsset is IERC20 {
 /// @title DeployGovernedVaultENS
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice Ready-to-deploy recipe for the ENS-NAMED self-governed ERC-4626 vault: the {DeployGovernedVault}
-///         13-cut diamond plus the {ENSReverseClaimer} facet, initialized in ONE shot by
+///         14-cut diamond plus the {ENSReverseClaimer} facet (15 cuts), initialized in ONE shot by
 ///         {GovernedVaultENSInit} — the vault claims its primary ENS name at init (the registrar sees the
 ///         diamond as `msg.sender`), and every future rename passes through share-holder governance
 ///         (`ENS_MANAGER_ROLE` is held by the diamond only).

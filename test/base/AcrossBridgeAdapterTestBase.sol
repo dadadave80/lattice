@@ -16,7 +16,7 @@ import {Test} from "forge-std/Test.sol";
 ///         `delegatecall` dispatch, catching selector/storage/init bugs a mock hides. The external
 ///         `MockSpokePool` stays a test fixture (it is NOT the facet under test). The zero-address init guard
 ///         is exercised by calling `buildCuts` with a zero SpokePool inside `vm.expectRevert` (the
-///         `AcrossZeroAddress` revert bubbles up through {Diamond.initialize}).
+///         `AcrossZeroAddress` revert bubbles up through {Lattice.initialize}).
 abstract contract AcrossBridgeAdapterTestBase is Test, GetSelectors {
     DeployAcrossBridgeAdapter internal deployer;
 

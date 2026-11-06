@@ -9,7 +9,7 @@ import {LayerZeroGatewayAdapterLib} from "@lattice/crosschain/layerzero/LayerZer
 /// @notice One-shot initializer for a LayerZero gateway-adapter diamond — seeds AccessControl so the eid, peer
 ///         and destination setters are admin-gated, and wires the LayerZero v2 EndpointV2 (registering the
 ///         ERC-7786 gateway-source interface via ERC-165). The adapter is its own OApp; `setDelegate` is NOT
-///         called here (only needed to reconfigure LayerZero libs later). Delegatecalled by {Diamond.initialize}
+///         called here (only needed to reconfigure LayerZero libs later). Delegatecalled by {Lattice.initialize}
 ///         inside the initializing window (so it must NOT open its own pre/postInitializer; each `__*_init`
 ///         guard passes because the window is already open). Companion to the {CCIPGatewayAdapterInit} pattern —
 ///         a first-class production deploy artifact.

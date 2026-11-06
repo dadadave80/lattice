@@ -8,7 +8,7 @@ import {ChainlinkCREAdapterLib} from "@lattice/oracles/chainlink/ChainlinkCREAda
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice One-shot initializer for a Chainlink CRE adapter diamond — registers the canonical IReceiver interface
 ///         (ERC-165) so CRE tooling detects the receiver, and seeds AccessControl so `setForwarder`/`setWorkflow`
-///         are admin-gated. Delegatecalled by {Diamond.initialize} inside the initializing window (so it must NOT
+///         are admin-gated. Delegatecalled by {Lattice.initialize} inside the initializing window (so it must NOT
 ///         open its own pre/postInitializer; each `__*_init` guard passes because the window is already open).
 ///         Companion to the {ERC2981Init} pattern — a first-class production deploy artifact.
 ///         The KeystoneForwarder + workflow allowlist are configured post-deploy via the admin-gated setters.

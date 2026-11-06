@@ -9,7 +9,7 @@ import {AcrossBridgeAdapterLib} from "@lattice/crosschain/across/AcrossBridgeAda
 ///         and message-handling paths are `nonReentrant`) and wires the LOCAL chain's canonical SpokePool
 ///         (registering the IAcrossBridgeAdapter interface via ERC-165). NO AccessControl is seeded because the
 ///         adapter has no admin surface (Across chain ids are passed raw by callers; there is no domain table).
-///         Delegatecalled by {Diamond.initialize} inside the initializing window (so it must NOT open its own
+///         Delegatecalled by {Lattice.initialize} inside the initializing window (so it must NOT open its own
 ///         pre/postInitializer; the `__*_init` guard passes because the window is already open). Reverts
 ///         `AcrossZeroAddress` if the SpokePool is zero.
 /// @custom:lattice-kind step

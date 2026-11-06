@@ -8,7 +8,7 @@ import {PausableLib} from "@lattice/security/libraries/PausableLib.sol";
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice One-shot initializer for the ERC-721 Pausable extension recipe — registers IPausable (ERC-165; `_paused`
 ///         starts at the zero default) and grants `admin_` the DEFAULT_ADMIN_ROLE that gates `pause()`/`unpause()`.
-///         Delegatecalled by {Diamond.initialize} (through {MultiInit}) inside the initializing window opened by
+///         Delegatecalled by {Lattice.initialize} (through {MultiInit}) inside the initializing window opened by
 ///         the diamond, alongside the base {ERC721Init}; it must NOT open its own pre/postInitializer.
 /// @custom:lattice-kind bundle
 contract ERC721PausableInit {

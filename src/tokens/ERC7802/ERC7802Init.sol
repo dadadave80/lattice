@@ -9,7 +9,7 @@ import {CROSSCHAIN_BRIDGE_ROLE, ERC7802Lib} from "@lattice/tokens/ERC7802/librar
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice One-shot initializer for a crosschain-native ERC-20 diamond (ERC-7802): seeds `AccessControl`,
 ///         the base `ERC20` (name/symbol + ERC-165), and registers the IERC7802 interface, then grants the
-///         `CROSSCHAIN_BRIDGE_ROLE` to the trusted bridge. Delegatecalled by {Diamond.initialize} inside the
+///         `CROSSCHAIN_BRIDGE_ROLE` to the trusted bridge. Delegatecalled by {Lattice.initialize} inside the
 ///         initializing window (so it must NOT open its own pre/postInitializer; each `__*_init` guard passes
 ///         because the window is already open). Runs the exact `__*_init` sequence the legacy inheritance mock
 ///         performed, but on a REAL diamond. Companion to the {ERC20Init}/{ERC2981Init} patterns.

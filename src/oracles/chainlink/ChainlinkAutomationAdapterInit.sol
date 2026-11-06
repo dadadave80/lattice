@@ -8,7 +8,7 @@ import {ChainlinkAutomationAdapterLib} from "@lattice/oracles/chainlink/Chainlin
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice One-shot initializer for a Chainlink Automation adapter diamond — registers the
 ///         IChainlinkAutomationAdapter interface (ERC-165) and seeds AccessControl so `setConfig` is admin-gated.
-///         Delegatecalled by {Diamond.initialize} inside the initializing window (so it must NOT open its own
+///         Delegatecalled by {Lattice.initialize} inside the initializing window (so it must NOT open its own
 ///         pre/postInitializer; each `__*_init` guard passes because the window is already open). Companion to
 ///         the {ERC2981Init} pattern — a first-class production deploy artifact. The
 ///         Automation forwarder + upkeep interval are configured post-deploy via the admin-gated `setConfig`.

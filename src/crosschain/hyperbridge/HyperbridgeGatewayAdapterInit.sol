@@ -12,7 +12,7 @@ import {HyperbridgeGatewayAdapterLib} from "@lattice/crosschain/hyperbridge/Hype
 ///         (zero reverts), registering BOTH the ERC-7786 gateway-source interface (shared) and the adapter's
 ///         own IHyperbridgeGatewayAdapter interface via ERC-165. Fees are charged in the host's ERC-20
 ///         `feeToken()` — read live at send time, so nothing fee-related is wired here. Delegatecalled by
-///         {Diamond.initialize} inside the initializing window (so it must NOT open its own
+///         {Lattice.initialize} inside the initializing window (so it must NOT open its own
 ///         pre/postInitializer; each `__*_init` guard passes because the window is already open). Companion to
 ///         the {HyperlaneGatewayAdapterInit}/{CCTPBridgeAdapterInit} pattern — a first-class production deploy
 ///         artifact.

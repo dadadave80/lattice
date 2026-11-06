@@ -126,12 +126,13 @@ forge 1.8.1 -> eth_getTransactionCount(addr, {"blockHash": "0x671a…", ...})   
                Invalid parameter 1: The value passed is not valid: [object Object].
 ```
 
-1.7.1 asks for state at a block number (and the sender's first nonce at `"latest"`). 1.8's fork backend sends an
-EIP-1898 block-hash object, `{"blockHash": …, "requireCanonical": false}`. On `eth_getTransactionCount`,
-`eth_getBalance`, `eth_getCode` and `eth_getStorageAt`, Hedera's relay (`hiero-json-rpc-relay`) validates the block
-parameter as a string (a number, a tag or a bare hash), so it rejects every EIP-1898 object with `-32602`, and
-`eth_getCode` also rejects a bare hash (`-39012`). `eth_call` accepts `{"blockHash": …}` and `{"blockNumber": …}`
-but rejects the `requireCanonical` key, so all five methods reject the exact object 1.8 sends. EIP-1898 is standard
+In the 2026-09/10 measurements, 1.7.1 asked for state at a block number (and the sender's first nonce at
+`"latest"`). 1.8's fork backend sent an EIP-1898 block-hash object, `{"blockHash": …, "requireCanonical": false}`.
+On `eth_getTransactionCount`, `eth_getBalance`, `eth_getCode` and `eth_getStorageAt`, the then-deployed Hedera
+relay (`hiero-json-rpc-relay`) validated the block parameter as a string (a number, a tag or a bare hash), so
+it rejected every EIP-1898 object with `-32602`, and `eth_getCode` also rejected a bare hash (`-39012`).
+`eth_call` accepted `{"blockHash": …}` and `{"blockNumber": …}` but rejected the `requireCanonical` key, so all
+five methods rejected the exact object 1.8 sent. EIP-1898 is standard
 Ethereum JSON-RPC, and so is the older form. Measured 2026-09-12 with a script that deploys nothing: on 1.8.1 no
 flag avoids it (`--legacy`, `--slow`, `--skip-simulation` with and without `--broadcast`, `--fork-block-number`,
 `--no-storage-caching`, `--offline`, `--sender-nonce`, `--unlocked`, `--sender`, `--estimate`), and changing relay
@@ -158,7 +159,12 @@ broadcast has been made with it yet, so the wrapper stays the supported route un
 the exception.
 
 The repo's shared pin for CI, builds and tests is v1.9.0. The documented Hedera exception remains until
-#227 verifies a broadcast on the shared pin; the measurements above concern the listed 1.8 releases.
+#227 verifies a broadcast on the shared pin. The historical table above concerns the listed 1.8 releases.
+A read-only recheck on 2026-11-06 against the same endpoint reported `relay/0.80.3`: all 30 requests
+(five state/call methods, each with `latest`, number, bare hash, `{blockHash}`,
+`{blockHash, requireCanonical: false}` and `{blockNumber}`) succeeded. Foundry 1.9.0 (`6056c58`) passed
+`DeployHTSAdapter` simulation and both `HTSAdapterFork` tests on source checkpoint
+`fa606adca0129bedd8dabd54e1392a815234888b`. These checks did not broadcast a transaction.
 Hedera work goes through a wrapper that runs the installed 1.7.1 binary directly under
 `FOUNDRY_PROFILE=hedera`, without touching your active `forge`:
 
@@ -174,7 +180,11 @@ metadata tail stripped and with it included. The same holds for every other `src
 differences are the metadata of three `test/` helpers, which Forge's test-linking preprocessor touches. So an
 Arachnid address or a Sourcify metadata hash computed under one version holds for a deploy made under the
 other. The same check passed for 1.7.1 against 1.8.1 on 2026-09-12.
-Those measurements do not establish parity with the current v1.9.0 pin; #227 tracks that verification.
+Rechecked on 2026-11-06 at the same `fa606adc` source checkpoint: 1.7.1 and 1.9.0 with solc 0.8.36,
+Cancun and `[profile.hedera]` produced identical creation/runtime bytecode (metadata included), library
+link references and immutable patch positions for all 647 source/library contract and interface
+artifacts; 407 had nonempty creation/runtime code. This is build parity for that checkpoint, not a
+shared-pin broadcast verification or a promise that later source edits preserve deterministic addresses.
 
 Anything that never opens a fork backend works on **both** versions — `forge create`, `cast send` / `call` /
 `mktx`, and `vm.rpc` inside a test. `--legacy` is worth passing as Hedera's native transaction form, but it is
@@ -244,7 +254,8 @@ exists to settle them, and is deliberately not broadcast by CI.
 | — | CreateX `0xba5Ed099…ba5Ed` has no code on Hedera mainnet or testnet | **confirmed live, 2026-09-12** |
 | — | The Arachnid proxy `0x4e59b448…956C` has code on Hedera mainnet **and** testnet, byte-identical to `test/helpers/ArachnidProxy.RUNTIME` | **confirmed live, 2026-09-12** |
 | — | `forge script` on Foundry 1.8.1 cannot reach Hedera's relay (its fork backend's EIP-1898 block-hash params are rejected, by hashio and QuickNode alike); Foundry 1.7.1 can, and the probe run was made with it. Whether Foundry or the relay should change is open | **confirmed live, 2026-09-12** |
-| — | The relay (`relay/0.79.0` on hashio) still rejects EIP-1898 objects on `eth_getTransactionCount`, `eth_getBalance`, `eth_getCode` and `eth_getStorageAt` with `-32602` (`eth_call` accepts them but rejects the `requireCanonical` key Foundry adds), and Foundry 1.8.3 and 1.8.5 still send them by default. Foundry 1.8.5's `--fork-state-by-number` reaches it in a `forge script` simulation and the forking `HTSAdapterFork` test; a broadcast under it is unverified (#227) | **confirmed live, 2026-10-08** |
+| — | The relay (`relay/0.79.0` on hashio) rejected EIP-1898 objects on `eth_getTransactionCount`, `eth_getBalance`, `eth_getCode` and `eth_getStorageAt` with `-32602` (`eth_call` accepts them but rejects the `requireCanonical` key Foundry adds), and Foundry 1.8.3 and 1.8.5 still send them by default. Foundry 1.8.5's `--fork-state-by-number` reaches it in a `forge script` simulation and the forking `HTSAdapterFork` test; a broadcast under it is unverified (#227) | **confirmed live, 2026-10-08** |
+| — | Hashio reported `relay/0.80.3`; all 30 state/call request forms above succeeded. The shared Foundry 1.9.0 pin passed `DeployHTSAdapter` simulation and both `HTSAdapterFork` tests; 1.7.1/1.9.0 build parity holds at `fa606adc`. The shared-pin broadcast needed to retire the wrapper is still unverified (#227) | **read-only checks, 2026-11-06** |
 
 To run the probes you need a funded testnet account: set `HEDERA_TESTNET_RPC_URL` and `HEDERA_TESTNET_PK`
 in `.env` and fund the derived address from the Hedera portal faucet. Record each outcome in the relevant

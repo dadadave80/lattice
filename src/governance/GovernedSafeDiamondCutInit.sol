@@ -13,7 +13,7 @@ import {EmergencyStopLib} from "@lattice/security/libraries/EmergencyStopLib.sol
 ///         guardian management + `emergencyResume` are `DEFAULT_ADMIN_ROLE`-gated), EmergencyStop, registers
 ///         the IERC165 + IDiamondLoupe ERC-165 flags, and pins the Safe authority + minimum threshold +
 ///         minimum timelock delay (the module also self-registers its own IGovernedSafeDiamondCut ERC-165
-///         id `0xacb1aeb6`). Delegatecalled by {Diamond.initialize} inside the initializing window (so it
+///         id `0xacb1aeb6`). Delegatecalled by {Lattice.initialize} inside the initializing window (so it
 ///         must NOT open its own pre/postInitializer; each `__*_init` guard passes because the window is
 ///         already open). Mirrors exactly what the old `MockGovernedSafeDiamond.initialize` did, minus the
 ///         redundant pre/postInitializer. Companion to the {ERC2981Init} pattern — a

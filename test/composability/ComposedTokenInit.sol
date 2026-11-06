@@ -12,8 +12,8 @@ import {NoncesLib} from "@lattice/utils/libraries/NoncesLib.sol";
 
 /// @title ComposedTokenInit
 /// @notice One-shot initializer for the composed ERC-20 diamond (mirrors {AccountInit}). Delegatecalled by the
-///         proxy's `diamondCut` during {Diamond.initialize}, so `address(this)` is the diamond and each `__*_init`
-///         runs in its storage. No own pre/postInitializer — {Diamond.initialize} already wraps this in the
+///         proxy's `diamondCut` during {Lattice.initialize}, so `address(this)` is the diamond and each `__*_init`
+///         runs in its storage. No own pre/postInitializer — {Lattice.initialize} already wraps this in the
 ///         initializing window, so the `checkInitializing` guard inside each `__*_init` passes.
 contract ComposedTokenInit {
     function init(uint256 cap) external {

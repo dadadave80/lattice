@@ -6,7 +6,7 @@ import {HASSignatureVerifierLib} from "@lattice/accounts/hedera/HASSignatureVeri
 /// @title HASSignatureVerifierInit
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice One-shot initializer registering the IHASSignatureVerifier interface (ERC-165). Stateless module:
-///         nothing else to seed. Delegatecalled by {Diamond.initialize} inside the initializing window.
+///         nothing else to seed. Delegatecalled by {Lattice.initialize} inside the initializing window.
 /// @custom:lattice-kind step
 contract HASSignatureVerifierInit {
     /// @custom:lattice-initializes HASSignatureVerifier;

@@ -6,7 +6,7 @@ import {ERC20FlashMintLib} from "@lattice/tokens/ERC20/libraries/ERC20FlashMintL
 /// @title ERC20FlashMintInit
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice One-shot initializer for the ERC-20 FlashMint (ERC-3156) extension — registers IERC3156FlashLender via
-///         ERC-165. Delegatecalled by {Diamond.initialize} (through {MultiInit}) inside the initializing window
+///         ERC-165. Delegatecalled by {Lattice.initialize} (through {MultiInit}) inside the initializing window
 ///         opened by the diamond, alongside the base {ERC20Init}; it must NOT open its own pre/postInitializer.
 /// @custom:lattice-kind step
 contract ERC20FlashMintInit {

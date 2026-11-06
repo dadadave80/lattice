@@ -18,7 +18,7 @@ pragma solidity >=0.8.4;
 ///      ({sendMessageWithFee}; the plain `sendMessage` uses relayerFee 0 = unfunded/self-relay, valid in
 ///      ISMP). The dispatch `payer` is ALWAYS the sending user — the host refunds timeout fees to the payer,
 ///      and a diamond payer would strand them. A native-token fee path (host-side uniswap swap of msg.value)
-///      exists upstream but is DEFERRED — the adapter rejects stray value in v1 (issue #77 Q13).
+///      exists upstream but is DEFERRED — the adapter rejects stray value in v1 (tracked in #213).
 interface IHyperbridgeGatewayAdapter {
     // -------------------------------------------------------------------------
     //                                  Events
@@ -42,7 +42,7 @@ interface IHyperbridgeGatewayAdapter {
     /// @notice Emitted when the host notifies the adapter that a request WE dispatched timed out
     ///         (`onPostRequestTimeout`). EMIT-ONLY in v1: the fee refund itself is HOST-SIDE to
     ///         `DispatchPost.payer` (the original sending user); this event is the notification surface an
-    ///         application layer can key compensating actions off (issue #77 Q8).
+    ///         application layer can key compensating actions off (decided in #77, Q8).
     /// @param sendId  The original suite-level sendId (`keccak256(abi.encode(block.chainid, envelopeNonce))` —
     ///                a timeout fires on the SOURCE chain, so `block.chainid` here equals the send-time one).
     /// @param sender  The ERC-7930 interoperable address of the original sender (decoded from the envelope).
@@ -73,7 +73,7 @@ interface IHyperbridgeGatewayAdapter {
     error HyperbridgeUnknownDestinationChain(uint256 chainId);
 
     /// @notice Native value was supplied — the native-token fee path (host-side uniswap swap) is DEFERRED;
-    ///         fees are charged in the host's ERC-20 `feeToken()` only in v1 (issue #77 Q13).
+    ///         fees are charged in the host's ERC-20 `feeToken()` only in v1 (tracked in #213).
     error HyperbridgeUnexpectedValue(uint256 value);
 
     /// @notice The inbound callback was not invoked by the configured IsmpHost.

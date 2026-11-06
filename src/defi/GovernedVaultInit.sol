@@ -33,7 +33,7 @@ struct GovernedVaultParams {
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice One-shot initializer for the self-governed ERC-4626 vault diamond. Runs every module initializer in
 ///         dependency order inside a single initializing window. The SELF-REFERENTIAL wiring is the crux: this
-///         contract is delegatecalled by {Diamond.initialize}, so `address(this)` IS the diamond — the
+///         contract is delegatecalled by {Lattice.initialize}, so `address(this)` IS the diamond — the
 ///         {Governor}'s vote `token` and `timelock` are both set to it, the timelock's sole proposer is it (so
 ///         the Governor can queue), and its `DEFAULT_ADMIN_ROLE` (the vault's strategy-admin gate) is held by it
 ///         (i.e. only reachable through a passed, timelock-executed proposal). Execution is left OPEN

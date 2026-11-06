@@ -8,7 +8,7 @@ import {ENSResolverLib} from "@lattice/ens/libraries/ENSResolverLib.sol";
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice One-shot initializer for an ENS forward-resolution diamond — seeds AccessControl (so the registry
 ///         setter is `ENS_MANAGER_ROLE`-gated), registers the IENSResolver interface (ERC-165), and wires the
-///         external ENS registry the facet reads resolvers from. Delegatecalled by {Diamond.initialize} inside
+///         external ENS registry the facet reads resolvers from. Delegatecalled by {Lattice.initialize} inside
 ///         the initializing window (so it must NOT open its own pre/postInitializer; each `__*_init` guard passes
 ///         because the window is already open). Reverts {ENSResolverZeroRegistry} for a zero registry.
 /// @custom:lattice-kind bundle

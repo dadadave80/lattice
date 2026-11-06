@@ -34,8 +34,9 @@ library directly skips them both.
   extension of its standard.
 - A diamond that needs two behaviours on one path gets one combined facet that applies both, as
   `GovernedVault` does for ERC-20 balances and votes.
-- Option (b) is revisited only with ERC-3643 ([#172](https://github.com/dadadave80/lattice/issues/172)).
-  It would append to the released `ERC20Storage`.
+- ERC-3643 ([#172](https://github.com/dadadave80/lattice/issues/172)) evaluated option (b) and chose the
+  closed immutable composition recorded in [0021](0021-erc3643-closed-immutable-profile.md). It adds no
+  base hook or field to the released `ERC20Storage`; this token-extension decision remains in force.
 
 ## Consequences
 
