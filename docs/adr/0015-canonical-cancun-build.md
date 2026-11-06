@@ -26,8 +26,9 @@ Fuji deployment target. Historical deployments must remain reproducible from the
   pipeline and IPFS/CBOR metadata. The CI profile emits build info.
 - Local work and every CI job share Foundry v1.9.0, the stable release verified on 2026-11-06. The
   composite setup action holds the pin; the build guard checks the running Forge against it.
-- The recorded Hedera 1.7.1 script exception remains until #227 verifies its retirement. Its historical
-  relay and bytecode measurements remain labelled with the versions actually measured.
+- The temporary Hedera toolchain exception was retired after the shared-pin native booking on
+  2026-11-06 ([#227](https://github.com/dadadave80/lattice/issues/227)). Historical relay and bytecode
+  measurements remain labelled with the versions actually measured.
 - `make release-build-check` validates resolved profiles, lockfile paths/revisions and initialized
   recursive submodules before the canonical CI build. Target drift fails this guard directly; a
   Cancun-versus-Cancun bytecode comparison would prove nothing further.

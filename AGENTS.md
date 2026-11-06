@@ -64,16 +64,9 @@ if older documentation conflicts with the development policy below, apply this p
   The shared pin is Foundry 1.9.0; canonical builds use Solidity 0.8.36, Cancun, the legacy pipeline,
   optimizer 1,000,000 runs and IPFS/CBOR metadata. `make release-build-check` guards these settings
   and the submodule lock against drift.
-- Recorded exception (user-approved 2026-09-12, kept 2026-10-08): Hedera `forge script` work runs on
-  Foundry 1.7.1 through `script/config/hedera/forge-hedera.sh`. By default every 1.8 release
-  measured (1.8.1, 1.8.3, 1.8.5) fetched fork state with EIP-1898 block-hash objects, which the measured
-  Hedera relay rejected. Foundry 1.8.5 adds `--fork-state-by-number`, which passed a `forge script`
-  simulation and the forking test on 2026-10-08. On 2026-11-06, the shared 1.9.0 pin passed the
-  simulation and both `HTSAdapterFork` tests against hashio's relay/0.80.3. Under `[profile.hedera]`,
-  1.7.1 and 1.9.0 emitted identical creation/runtime bytecode on the measured source checkpoint
-  (`docs/guides/hedera.md`). A shared-pin broadcast remains unverified. CI and all other work stay
-  on the shared pin. #227 tracks retiring the exception once the shared pin is
-  verified end to end. Do not extend the exception to other chains.
+- Hedera uses the shared Foundry pin with `FOUNDRY_PROFILE=hedera`. The temporary toolchain exception
+  was retired after a successful shared-pin native booking on 2026-11-06. Dated compatibility
+  measurements and the separate native scheduled-payer/callback limits are in `docs/guides/hedera.md`.
 - Adapt the implementation to the shared toolchain and surface compatibility problems. Do not
   silently downgrade an individual job or change unrelated toolchain settings.
 - Improve existing scripts, helpers, and workflows first. Require user approval before replacing

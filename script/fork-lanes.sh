@@ -31,8 +31,8 @@ RPC_ERROR='database error|server returned an error response|HTTP error|error sen
 
 LANES="mainnet sepolia base-sepolia cctp-testnet"
 
-# Suites no lane runs. The Hedera suites need HEDERA_TEST_* values and the Foundry 1.7.1
-# wrapper (script/config/hedera/forge-hedera.sh), so they stay a manual opt-in.
+# Suites no lane runs. The Hedera suites need their public HEDERA_TEST_* fixtures, so they
+# remain manual RPC/fixture-gated suites on the shared Foundry pin.
 UNSCHEDULED="HASSignatureVerifierFork HTSAdapterFork"
 
 suites() {

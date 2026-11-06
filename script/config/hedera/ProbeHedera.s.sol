@@ -161,32 +161,31 @@ contract HederaProbeFacet {
 ///         ({HTSAdapter} + {HSSAdapter} + {HederaExchangeRateAdapter} + {HASSignatureVerifier} + the local
 ///         {HederaProbeFacet}) and drives the eight questions Hedera's semantics leave open and NO offline
 ///         test can answer. Each result is printed with its raw value and what that value settles.
-/// @dev UNVERIFIED UNTIL SOMEONE RUNS IT. Nothing below has been executed against a live network: the
-///      offline suite covers the modules, not Hedera's behaviour, and this script is the instrument that
-///      converts the open questions into evidence. Treat every "expected" in the log lines as a hypothesis.
+/// @dev Native claims are verified only by the dated, scoped results in docs/guides/hedera.md. The offline
+///      suite and local dry runs do not establish Hedera's behaviour. Treat every "expected" in the log
+///      lines as a hypothesis unless a recorded native result settles that specific question.
 ///
-///      WHY THREE ENTRYPOINTS. `forge script` runs the script body in revm against a fork BEFORE it
+///      WHY THE ORIGINAL THREE ENTRYPOINTS. `forge script` runs the script body in revm against a fork BEFORE it
 ///      broadcasts anything, and a Hedera fork cannot execute a system contract at all: the relay reports
 ///      `0xfe` as the code of 0x167 and nothing for 0x168 / 0x169 / 0x16a / 0x16b, so every HTS / HSS frame
 ///      halts locally and every 0x168 / 0x16a frame returns empty. Two consequences shape this script:
 ///      - every probe call is a LOW-LEVEL call whose failure is logged, never propagated. Run with
 ///        `--skip-simulation`. THE LOAD-BEARING ASSUMPTION: Foundry queues a broadcast transaction when the
-///        frame is ENTERED, not when it succeeds, so a probe that halts in revm is still sent. That is
-///        assumed, not verified. FAILURE SIGNATURE: `run()` broadcasts only the deploy / grant / fund
+///        frame is ENTERED, not when it succeeds, so a probe that halts in revm is still sent. The isolated
+///        `probe6` verified this path on 2026-11-06; it does not verify every original `run()` operation.
+///        FAILURE SIGNATURE: `run()` broadcasts only the deploy / grant / fund
 ///        transactions and none of the probes — then this is what broke, and each probe has to be replayed
-///        with `cast send` from the calldata the log prints. `--skip-simulation` also moves gas to the
-///        relay's `eth_estimateGas`, equally unverified: a probe rejected for gas is the other symptom;
+///        with `cast send` from reviewed calldata only after fresh authorization. The original unbounded
+///        calls rely on relay gas estimation; isolated `probe6` instead records its fixed booking budget;
 ///      - a value a probe produces on-chain (a token address, a schedule address) is invisible to the local
 ///        frame, so anything that CONSUMES such a value runs in a later command and reads it back through
 ///        `vm.rpc("eth_call", ...)`, which hands the call to the relay where the mirror node executes it.
 ///
-///      FOUNDRY VERSION — run this through `script/config/hedera/forge-hedera.sh`, which pins Foundry 1.7.1.
-///      By default 1.8.x (1.8.1, 1.8.3 and 1.8.5 measured) asks for the sender's nonce as
-///      `eth_getTransactionCount(addr, {"blockHash": .., ..})`, an EIP-1898 object Hedera's relay rejects
-///      (`-32602 Invalid parameter 1 ... [object Object]`); 1.7.1 sends `"latest"` for the first sender-nonce
-///      read and a block number for the fork-state reads, and works. This script ran against hedera-testnet
-///      on 2026-09-12 under it. 1.8.5's `--fork-state-by-number` also reaches the relay in simulation but is
-///      not yet verified for a broadcast (#227).
+///      FOUNDRY VERSION — use the shared pin with `FOUNDRY_PROFILE=hedera`. The historical 2026-09-12
+///      run used Foundry 1.7.1 because the measured 1.8.x defaults sent EIP-1898 block-hash objects the
+///      relay rejected. Shared Foundry 1.9.0's default backend completed the isolated native booking on
+///      2026-11-06, retiring that toolchain exception (#227). Its scheduled transaction then failed payer
+///      authorization before EVM entry, so the native callback sender remains unmeasured (#226).
 ///
 ///      LIVE RESULTS 2026-09-12 (diamond 0x45634e329053336819550485FC3F4a41b259d781): probe 2 confirmed.
 ///      Probe 3's negative control turned out DEGENERATE — its `contractId(address(this))` supply key is
@@ -195,17 +194,18 @@ contract HederaProbeFacet {
 ///      probe 3 needs a diamond whose account key is not `contractId(self)`. Every outcome, and the
 ///      mechanism, is recorded in docs/guides/hedera.md.
 ///
-///      RUNBOOK — Hedera testnet (chain 296), a funded key, and `script/config/hedera/forge-hedera.sh` throughout (it sets `FOUNDRY_PROFILE=hedera`)
+///      RUNBOOK — from the repository root, shared Foundry, Hedera testnet (chain 296) and separately
+///      authorized funded credentials. Select `FOUNDRY_PROFILE=hedera` for each command.
 ///      (Hedera runs Cancun; the profile also keeps Sourcify verification reproducible).
 ///      `S=script/config/hedera/ProbeHedera.s.sol:ProbeHedera`
 ///       1. deploy + the self-contained probes (2-create, 3, 5, 6):
-///          script/config/hedera/forge-hedera.sh script $S --sig "run()" --rpc-url hedera-testnet \
+///          FOUNDRY_PROFILE=hedera forge script $S --sig "run()" --rpc-url hedera-testnet \
 ///            --account <name> --sender <addr> --broadcast --slow --skip-simulation --legacy
 ///       2. the probes that need the created token (1, 2-mint), read back live first:
-///          script/config/hedera/forge-hedera.sh script $S --sig "follow(address)" <diamond> --rpc-url hedera-testnet \
+///          FOUNDRY_PROFILE=hedera forge script $S --sig "follow(address)" <diamond> --rpc-url hedera-testnet \
 ///            --account <name> --sender <addr> --broadcast --slow --skip-simulation --legacy
 ///       3. the read-only report (probes 1-state, 2-balance, 4, 6-schedule, 7) — broadcast-free, re-runnable:
-///          script/config/hedera/forge-hedera.sh script $S --sig "report(address)" <diamond> --rpc-url hedera-testnet
+///          FOUNDRY_PROFILE=hedera forge script $S --sig "report(address)" <diamond> --rpc-url hedera-testnet
 ///      Step 3 after step 1 shows the pre-association state; after step 2 the post state. Poll the schedule
 ///      address from step 1 on the mirror node (`/api/v1/schedules/<id>`) about a minute after it is created,
 ///      then read the `HederaProbeCallback` log on HashScan.
