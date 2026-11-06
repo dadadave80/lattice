@@ -284,6 +284,8 @@ AccessControl bootstrap identity; on the self-governed vault that identity is th
 
 Choose a uint64 version strictly greater than the current value; skipped numbers are allowed.
 `ReinitMultiInit` opens and closes the window, runs steps in order and bubbles their revert data.
+The [five-step upgrade walkthrough](upgrade-a-diamond.md) covers storage review, version selection,
+governed execution and route/state verification with runnable private Anvil commands.
 Any failure rolls back the cut, earlier initialization effects and version together, so the same
 version can be retried after correction. Equal/lower versions and nested windows revert. Normal
 version-1 deployment still uses `MultiInit` inside `Lattice.initialize`.

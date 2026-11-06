@@ -49,6 +49,7 @@ const guides: Item = {
   items: [
     { text: 'Quickstart', link: '/' },
     { text: 'Integrate a release', link: '/guides/integrate-lattice' },
+    { text: 'Upgrade a diamond', link: '/guides/upgrade-a-diamond' },
     { text: 'Compose your own Diamond', link: '/guides/compose-your-own-diamond' },
     { text: 'Selector compatibility', link: '/guides/selector-compatibility' },
     { text: 'ERC-3643 permissioned token', link: '/guides/erc3643' },

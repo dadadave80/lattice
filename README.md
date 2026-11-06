@@ -96,6 +96,7 @@ walks through a full recipe with `deployAtomic`.
 
 The [integrator guide](docs/guides/integrate-lattice.md) runs a private Anvil example using frozen
 release identities, registry reads, strict factory deployment and released initializer batches.
+Follow [Upgrade a diamond](docs/guides/upgrade-a-diamond.md) for a governed version2 module upgrade and verification.
 
 Every `script/base/**` recipe creates and initializes its diamond in one transaction through
 `LatticeFactory`. By default a run first deploys its own `LatticeRegistry` + `LatticeFactory`. Set

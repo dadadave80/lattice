@@ -246,6 +246,7 @@ there is currently no automatic recipe planner or `out/recipes.json` exporter.
 Governed cuts have a different authority model. Use zero/self timelocks with the canonical Governor
 policy, or explicitly acknowledge and separately validate an external executor design. See
 [the topology guide](compose-your-own-diamond.md#governor-and-governed-cut-executors).
+The [five-step upgrade walkthrough](upgrade-a-diamond.md) runs a version2 batch through an actual governed proposal.
 
 ## Account factories are a separate proxy family
 
