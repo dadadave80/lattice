@@ -34,6 +34,7 @@ docs/*
 !docs/guides/
 docs/guides/*
 !docs/guides/compose-your-own-diamond.md
+!docs/guides/integrate-lattice.md
 !docs/guides/hedera.md
 !docs/guides/quickstart.md
 !docs/guides/selector-compatibility.md
