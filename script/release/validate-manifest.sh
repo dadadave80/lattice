@@ -127,6 +127,7 @@ jq -e --slurpfile release "$release" --arg hash "$release_hash" '
     ([$r.contracts[] | {name,address:(.address|ascii_downcase)}] | sort_by(.name)) and
   all(.contracts[]; . as $c |
     (.verified == (.verifier != null)) and
+    (if has("verificationId") then .verified==false and .codeMatches and .deployed!=null else true end) and
     (if .deployed == null then (.codeMatches == false and .verified == false and .registered == false and .latest == false) else true end) and
     (if .verified or .registered or .latest then .codeMatches else true end) and
     (if .latest then .registered else true end) and
