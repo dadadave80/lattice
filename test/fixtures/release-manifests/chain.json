@@ -1,0 +1,69 @@
+{
+  "chain": {
+    "blockHash": "0x1111111111111111111111111111111111111111111111111111111111111111",
+    "blockNumber": 0,
+    "id": 31337
+  },
+  "contracts": [
+    {
+      "address": "0x0d3806d01c079AeF6C0e9273e4ad9a2519E37a1E",
+      "codeMatches": false,
+      "deployed": null,
+      "latest": false,
+      "name": "LatticeRegistry",
+      "registered": false,
+      "verified": false,
+      "verifier": null
+    },
+    {
+      "address": "0x71173Ec4ef77e503F868a455538329a97008b9e9",
+      "codeMatches": false,
+      "deployed": null,
+      "latest": false,
+      "name": "LatticeFactory",
+      "registered": false,
+      "verified": false,
+      "verifier": null
+    },
+    {
+      "address": "0x30d2c5d909dDFa6CC0E25CeBB378CEF7957E0F96",
+      "codeMatches": false,
+      "deployed": null,
+      "latest": false,
+      "name": "AcrossBridgeAdapter",
+      "registered": false,
+      "verified": false,
+      "verifier": null
+    },
+    {
+      "address": "0x1D2659B4BDc1a38BA75149C253a3c130848588B3",
+      "codeMatches": false,
+      "deployed": null,
+      "latest": false,
+      "name": "API3AdapterInit",
+      "registered": false,
+      "verified": false,
+      "verifier": null
+    },
+    {
+      "address": "0x5f88A615F2916aF0d7C331AEF2e00063fa23d2d0",
+      "codeMatches": false,
+      "deployed": null,
+      "latest": false,
+      "name": "PoseidonT3",
+      "registered": false,
+      "verified": false,
+      "verifier": null
+    }
+  ],
+  "lattice": {
+    "commit": "0000000000000000000000000000000000000000",
+    "tag": "fixture/schema-only",
+    "version": "99.0.0"
+  },
+  "nonCanonicalFactories": [],
+  "publication": "fixture",
+  "registryOwner": "0x0000000000000000000000000000000000000000",
+  "releaseManifestHash": "0x138e4f3d4d51330532f40ded9f60eba433a5aef42e71cd3f464fa2383621de25",
+  "schemaVersion": 1
+}

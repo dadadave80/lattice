@@ -16,8 +16,14 @@ import {ICCTPBridgeAdapter} from "@lattice/interfaces/crosschain/ICCTPBridgeAdap
 ///      (trust roots in Circle's Iris attester set + denylist, not this contract), except that `relayMessage`
 ///      refuses a Lattice hooked burn from anyone but its `mintRecipient` so the hook cannot be skipped. A Lattice
 ///      hooked burn requires the destination domain's `destinationCaller` to be the destination diamond.
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source Circle
+/// @custom:lattice-requires AccessControl|AccessControlEnumerable|AccessControlTimed convention role-management-surface;
+/// @custom:lattice-family none
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches lattice.storage.CCTPBridgeAdapter;
+/// @custom:lattice-touches slot:0x8000000000ab143c06;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init CCTPBridgeAdapterInit
 contract CCTPBridgeAdapter is ICCTPBridgeAdapter {
     /// @inheritdoc ICCTPBridgeAdapter
     function depositForBurn(uint256 amount, bytes calldata recipient) external virtual {

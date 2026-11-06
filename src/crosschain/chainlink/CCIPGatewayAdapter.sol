@@ -18,8 +18,13 @@ import {IERC7786GatewaySource} from "@lattice/interfaces/external/ercs/IERC7786.
 ///      analogue of Wormhole's `receiveWormholeMessages` / Axelar's `execute`. Implements the V2 CCIP
 ///      receiver (`IAny2EVMMessageReceiverV2`): V1 `ccipReceive` delivery plus `getCCVsAndFinalityConfig` so
 ///      CCV-enabled lanes can read the admin-configured Cross-Chain Verifier / finality requirements.
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source Chainlink
+/// @custom:lattice-requires AccessControl|AccessControlEnumerable|AccessControlTimed convention role-management-surface;
+/// @custom:lattice-family gateway
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches lattice.storage.CCIPGatewayAdapter;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init CCIPGatewayAdapterInit
 contract CCIPGatewayAdapter is IERC7786GatewaySource, IAny2EVMMessageReceiverV2, ICCIPGatewayAdapter {
     /// @inheritdoc IERC7786GatewaySource
     function sendMessage(bytes calldata recipient, bytes calldata payload, bytes[] calldata attributes)

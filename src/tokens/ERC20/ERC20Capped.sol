@@ -18,8 +18,13 @@ import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
 ///      {ERC20VotesLib._mint}, and ERC20FlashMint `flashLoan` for the length of the loan. Each is mutually exclusive
 ///      with this facet. A facet that exposes `_mint` is in turn a direct mover for ERC20Pausable and ERC20Votes unless
 ///      it applies their checks too. See docs/guides/selector-compatibility.md#token-extension-hook-model.
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source OpenZeppelin v5.6.1
+/// @custom:lattice-requires ERC20 convention complete-token-surface;
+/// @custom:lattice-family none
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches none;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init ERC20CappedInit
 contract ERC20Capped is IERC20Capped {
     /// @inheritdoc IERC20Capped
     function cap() public view virtual returns (uint256) {

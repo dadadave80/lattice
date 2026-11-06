@@ -10,8 +10,13 @@ import {IHASSignatureVerifier} from "@lattice/interfaces/accounts/IHASSignatureV
 /// @notice Diamond facet exposing HIP-632 native Hedera account signature verification (ED25519 + ECDSA, key
 ///         lists via the protobuf path) as two never-reverting views.
 /// @dev Stateless delegator over HASSignatureVerifierLib. Only meaningful on Hedera.
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source Hedera
+/// @custom:lattice-requires none;
+/// @custom:lattice-family none
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches none;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init HASSignatureVerifierInit
 contract HASSignatureVerifier is IHASSignatureVerifier {
     /// @inheritdoc IHASSignatureVerifier
     function isAuthorizedRaw(address account, bytes32 messageHash, bytes calldata signature)

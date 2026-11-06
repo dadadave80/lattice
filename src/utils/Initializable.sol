@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {IInitializable} from "@lattice/interfaces/utils/IInitializable.sol";
 import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 
 /// @title Initializable
@@ -14,7 +15,7 @@ import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 ///      `preInitializer()` is parameterless and pinned to the default slot, so a custom-slot override could
 ///      not reach it and would silently split state. Stateless — safe to mix into any diamond or
 ///      facet-hosting contract without touching the storage layout.
-abstract contract Initializable {
+abstract contract Initializable is IInitializable {
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                         OPERATIONS                         */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/

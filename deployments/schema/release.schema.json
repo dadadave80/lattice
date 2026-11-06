@@ -1,0 +1,203 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/dadadave80/lattice/deployments/schema/release.schema.json",
+  "title": "Lattice release manifest v1",
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "publication": {
+      "type": "string",
+      "enum": [
+        "fixture",
+        "release"
+      ]
+    },
+    "lattice": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
+        },
+        "tag": {
+          "type": "string",
+          "minLength": 1
+        },
+        "commit": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        }
+      },
+      "required": [
+        "version",
+        "tag",
+        "commit"
+      ],
+      "additionalProperties": false
+    },
+    "initialOwner": {
+      "type": "string",
+      "pattern": "^0x[0-9a-fA-F]{40}$"
+    },
+    "deployer": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "arachnid"
+        },
+        "address": {
+          "const": "0x4e59b44847b379578588920cA78FbF26c0B4956C"
+        },
+        "librarySalt": {
+          "const": "0x0000000000000000000000000000000000000000000000000000000000000000"
+        }
+      },
+      "required": [
+        "kind",
+        "address",
+        "librarySalt"
+      ],
+      "additionalProperties": false
+    },
+    "compiler": {
+      "type": "object",
+      "properties": {
+        "foundry": {
+          "type": "string",
+          "minLength": 1
+        },
+        "solc": {
+          "const": "0.8.36"
+        },
+        "evmVersion": {
+          "const": "cancun"
+        },
+        "optimizerRuns": {
+          "const": 1000000
+        },
+        "viaIR": {
+          "const": false
+        },
+        "bytecodeHash": {
+          "const": "ipfs"
+        },
+        "inputHash": {
+          "type": "string",
+          "pattern": "^0x[0-9a-fA-F]{64}$"
+        },
+        "libraries": {
+          "const": {}
+        }
+      },
+      "required": [
+        "foundry",
+        "solc",
+        "evmVersion",
+        "optimizerRuns",
+        "viaIR",
+        "bytecodeHash",
+        "inputHash",
+        "libraries"
+      ],
+      "additionalProperties": false
+    },
+    "proxy": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "const": "Lattice"
+        },
+        "initCodeHash": {
+          "type": "string",
+          "pattern": "^0x[0-9a-fA-F]{64}$"
+        }
+      },
+      "required": [
+        "name",
+        "initCodeHash"
+      ],
+      "additionalProperties": false
+    },
+    "contracts": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "artifact": {
+            "type": "string",
+            "minLength": 1
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "registry",
+              "factory",
+              "facet",
+              "init",
+              "library"
+            ]
+          },
+          "address": {
+            "type": "string",
+            "pattern": "^0x[0-9a-fA-F]{40}$"
+          },
+          "salt": {
+            "type": "string",
+            "pattern": "^0x[0-9a-fA-F]{64}$"
+          },
+          "initCodeHash": {
+            "type": "string",
+            "pattern": "^0x[0-9a-fA-F]{64}$"
+          },
+          "codehash": {
+            "type": "string",
+            "pattern": "^0x[0-9a-fA-F]{64}$"
+          },
+          "constructorArgs": {
+            "type": "string",
+            "pattern": "^0x([0-9a-fA-F]{2})*$"
+          },
+          "nameHash": {
+            "type": "string",
+            "pattern": "^0x[0-9a-fA-F]{64}$"
+          },
+          "selectorsHash": {
+            "type": "string",
+            "pattern": "^0x[0-9a-fA-F]{64}$"
+          }
+        },
+        "required": [
+          "name",
+          "artifact",
+          "kind",
+          "address",
+          "salt",
+          "initCodeHash",
+          "codehash",
+          "constructorArgs",
+          "nameHash",
+          "selectorsHash"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "publication",
+    "lattice",
+    "initialOwner",
+    "deployer",
+    "compiler",
+    "proxy",
+    "contracts"
+  ],
+  "additionalProperties": false
+}

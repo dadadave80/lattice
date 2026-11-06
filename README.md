@@ -242,6 +242,10 @@ cuts each release from Conventional Commits, and before 1.0 a breaking change bu
 
 ## Live deployments and demos
 
+[Release identities, chain readiness and ownership](REGISTRY_DEPLOYMENTS.md#chain-readiness-and-ownership)
+are tracked separately from demos. No public chain currently has certified schema-v1 release evidence;
+the Sepolia ENS factory is a development instance.
+
 <a name="live-testnet-deployment-sepolia"></a>
 <a name="live-cross-chain-usdc-demos-circle-cctp-v2--arc-testnet"></a>
 
@@ -327,6 +331,7 @@ forge test --match-contract AccessControl -vvv # verbose, by contract
 forge test --match-contract StorageSlotVerificationTest # verify ERC-7201/ERC-165 slots
 forge fmt                                       # format (CI runs `forge fmt --check`)
 make snapshot                                   # regenerate the committed gas snapshots
+make abi-catalog                                # checked error/event catalog in out/errors.json
 ```
 
 The suite currently includes unit, integration, fork, fuzz, invariant, and gas tests. CI

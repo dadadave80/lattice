@@ -13,8 +13,13 @@ import {TellorAdapterLib} from "@lattice/oracles/tellor/TellorAdapterLib.sol";
 /// @dev Stateless delegator — all logic and storage live in {TellorAdapterLib}. Consumers inherit this
 ///      contract and add AccessControl + an initializer. Reads use Tellor's `getDataBefore` at a dispute
 ///      buffer offset so disputed values are removed first.
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source Tellor
+/// @custom:lattice-requires AccessControl|AccessControlEnumerable|AccessControlTimed convention role-management-surface;
+/// @custom:lattice-family price-source
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches lattice.storage.TellorAdapter;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init TellorAdapterInit
 contract TellorAdapter is ITellorAdapter {
     /// @inheritdoc ITellorAdapter
     function tellor() external view virtual override returns (address) {

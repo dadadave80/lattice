@@ -13,6 +13,7 @@ import {StarknetGatewayAdapterLib} from "@lattice/crosschain/starknet/StarknetGa
 ///         {Diamond.initialize} inside the initializing window (so it must NOT open its own pre/postInitializer;
 ///         each `__*_init` guard passes because the window is already open). Reverts `StarknetZeroAddress` on a
 ///         zero core, `StarknetEmptyChainReference` on an empty chain reference.
+/// @custom:lattice-kind bundle
 contract StarknetGatewayAdapterInit {
     /// @notice Runs the access-control + reentrancy-guard + Starknet-adapter initializers. MUST be invoked via
     ///         the diamond's `initialize` `_init` delegatecall.
@@ -20,6 +21,15 @@ contract StarknetGatewayAdapterInit {
     /// @param starknetCore           The Starknet core (`StarknetMessaging`) contract on this chain.
     /// @param expectedChainReference The ERC-7930 chain reference this adapter accepts (UTF-8 chain-id string,
     ///                               e.g. `SN_MAIN` = `0x534e5f4d41494e`).
+    /// @custom:lattice-initializes AccessControl;
+    /// @custom:lattice-initializes StarknetGatewayAdapter;
+    /// @custom:lattice-after none;
+    /// @custom:lattice-same-call Initializable hard enclosing-initializing-window;
+    /// @custom:lattice-sequence AccessControl;StarknetGatewayAdapter;
+    /// @custom:lattice-param admin authority;
+    /// @custom:lattice-param starknetCore;
+    /// @custom:lattice-param expectedChainReference;
+    /// @custom:lattice-registers-interfaces
     function init(address admin, address starknetCore, bytes calldata expectedChainReference) external {
         AccessControlLib.__AccessControl_init(admin);
         StarknetGatewayAdapterLib.__StarknetGatewayAdapter_init(starknetCore, expectedChainReference);

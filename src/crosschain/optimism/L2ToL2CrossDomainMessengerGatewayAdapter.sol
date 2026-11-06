@@ -20,8 +20,13 @@ import {IERC7786GatewaySource} from "@lattice/interfaces/external/ercs/IERC7786.
 ///      `chainId ⇒ remoteAdapter` mapping. INVERTED INBOUND AUTH: the messenger CALLs `receiveCrossChainMessage`
 ///      as the `_target` during `relayMessage`, so `msg.sender` is the messenger predeploy — the remote gateway
 ///      is authenticated out-of-band via `crossDomainMessageContext`, not from `msg.sender`.
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source Optimism
+/// @custom:lattice-requires AccessControl|AccessControlEnumerable|AccessControlTimed convention role-management-surface;
+/// @custom:lattice-family gateway
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches lattice.storage.L2ToL2CrossDomainMessengerGatewayAdapter;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init L2ToL2CrossDomainMessengerGatewayAdapterInit
 contract L2ToL2CrossDomainMessengerGatewayAdapter is IERC7786GatewaySource, IL2ToL2CrossDomainMessengerGatewayAdapter {
     /// @inheritdoc IERC7786GatewaySource
     function sendMessage(bytes calldata recipient, bytes calldata payload, bytes[] calldata attributes)

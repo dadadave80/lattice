@@ -32,8 +32,11 @@ const decisions: Item = {
     { text: '0015 Canonical Cancun build', link: '/adr/0015-canonical-cancun-build' },
     { text: '0016 Shared initialization', link: '/adr/0016-shared-initialization-identity' },
     { text: '0017 HSS generation recovery', link: '/adr/0017-hss-generation-recovery' },
+    { text: '0018 Composition metadata', link: '/adr/0018-compiler-composition-metadata' },
     { text: '0019 Temporary allowances', link: '/adr/0019-shared-temporary-allowances' },
+    { text: '0020 Release source freeze', link: '/adr/0020-source-anchored-release-manifests' },
     { text: '0021 Closed ERC-3643 profile', link: '/adr/0021-erc3643-closed-immutable-profile' },
+    { text: '0022 Native release libraries', link: '/adr/0022-native-create2-release-libraries' },
   ],
 }
 

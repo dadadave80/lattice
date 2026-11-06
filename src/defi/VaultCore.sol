@@ -43,8 +43,29 @@ import {ERC4626Lib} from "@lattice/tokens/ERC4626/libraries/ERC4626Lib.sol";
 ///      those extensions. {DeployGovernedVault} routes the mutators to GovernedVault, which moves voting units.
 ///
 ///      The vault math is {ERC4626Lib}'s, which lists every difference from OpenZeppelin.
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source OpenZeppelin v5.6.1
+/// @custom:lattice-requires AccessControl|AccessControlEnumerable|AccessControlTimed convention role-management-surface;
+/// @custom:lattice-requires ERC4626 convention base-vault-views-and-configuration;
+/// @custom:lattice-family none
+/// @custom:lattice-owns deposit(uint256,address);
+/// @custom:lattice-owns mint(uint256,address);
+/// @custom:lattice-owns withdraw(uint256,address,address);
+/// @custom:lattice-owns redeem(uint256,address,address);
+/// @custom:lattice-owns totalAssets();
+/// @custom:lattice-owns maxDeposit(address);
+/// @custom:lattice-owns maxMint(address);
+/// @custom:lattice-touches lattice.storage.ERC20;
+/// @custom:lattice-touches lattice.storage.VaultCore;
+/// @custom:lattice-touches lattice.storage.VaultCoreRecovery;
+/// @custom:lattice-touches transient:lattice.storage.ERC20TemporaryApproval;
+/// @custom:lattice-seam deposit(uint256,address) when=ERC4626 anyOf=VaultCore strategy-NAV-and-deposit-latches;
+/// @custom:lattice-seam mint(uint256,address) when=ERC4626 anyOf=VaultCore strategy-NAV-and-deposit-latches;
+/// @custom:lattice-seam withdraw(uint256,address,address) when=ERC4626 anyOf=VaultCore strategy-NAV-and-deposit-latches;
+/// @custom:lattice-seam redeem(uint256,address,address) when=ERC4626 anyOf=VaultCore strategy-NAV-and-deposit-latches;
+/// @custom:lattice-seam totalAssets() when=ERC4626 anyOf=VaultCore strategy-NAV-and-deposit-latches;
+/// @custom:lattice-seam maxDeposit(address) when=ERC4626 anyOf=VaultCore strategy-NAV-and-deposit-latches;
+/// @custom:lattice-seam maxMint(address) when=ERC4626 anyOf=VaultCore strategy-NAV-and-deposit-latches;
+/// @custom:lattice-init VaultCoreInit
 contract VaultCore is IVaultCoreRecovery {
     //*//////////////////////////////////////////////////////////////////////////
     //                           ERC-4626 OVERRIDE

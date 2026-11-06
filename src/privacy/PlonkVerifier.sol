@@ -13,9 +13,14 @@ import {PlonkVerifierLib} from "@lattice/privacy/libraries/PlonkVerifierLib.sol"
 /// @dev All logic lives in {PlonkVerifierLib}. Pure verification (view): no state beyond the ERC-165
 ///      registration written at init. The facet does not authenticate the key it is given: consumers
 ///      MUST pin it (see KEY PINNING on {IPlonkVerifier}).
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source Generalized from the snarkjs (iden3) PLONK verifier template (GPL-3.0),
 ///         reimplemented under MIT with the key as a parameter; verification follows eprint 2019/953.
+/// @custom:lattice-requires none;
+/// @custom:lattice-family none
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches none;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init PlonkVerifierInit
 contract PlonkVerifier is IPlonkVerifier {
     /// @inheritdoc IPlonkVerifier
     function verifyProof(VerifyingKey calldata vk, Proof calldata proof, uint256[] calldata input)

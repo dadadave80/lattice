@@ -12,8 +12,13 @@ import {ERC20WrapperLib} from "@lattice/tokens/ERC20/libraries/ERC20WrapperLib.s
 ///      CUSTODY: the internal `recover` mints the diamond's WHOLE underlying balance above total supply, so a
 ///      facet that exposes it also mints any other module's escrow of the underlying (an ERC-4626 vault,
 ///      VestingWallet, BridgeERC20 or ShieldedPool). One custodian per asset per diamond (issue #240).
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source OpenZeppelin v5.6.1
+/// @custom:lattice-requires ERC20 convention complete-token-surface;
+/// @custom:lattice-family none
+/// @custom:lattice-owns decimals();
+/// @custom:lattice-touches lattice.storage.ERC20;
+/// @custom:lattice-seam decimals() when=ERC20 anyOf=ERC20Wrapper underlying-token-decimals;
+/// @custom:lattice-init ERC20WrapperInit
 contract ERC20Wrapper is IERC20Wrapper {
     /// @notice The wrapper decimals, mirroring the underlying token (replaces the base 18).
     function decimals() public view virtual returns (uint8) {

@@ -12,11 +12,20 @@ import {PythAdapterLib} from "@lattice/oracles/pyth/PythAdapterLib.sol";
 ///         window (so it must NOT open its own pre/postInitializer; each `__*_init` guard passes because the
 ///         window is already open). Unlike the registry-only adapters, Pyth's `__PythAdapter_init` takes the
 ///         external Pyth address because reads and the update path both dispatch through it.
+/// @custom:lattice-kind bundle
 contract PythAdapterInit {
     /// @notice Runs the Pyth adapter + access-control module initializers. MUST be invoked via the diamond's
     ///         `initialize` `_init` delegatecall.
     /// @param admin The address granted `DEFAULT_ADMIN_ROLE` (controls the feed registry and `setPyth`).
     /// @param pyth The Pyth contract the adapter reads prices from and forwards update fees to.
+    /// @custom:lattice-initializes AccessControl;
+    /// @custom:lattice-initializes PythAdapter;
+    /// @custom:lattice-after none;
+    /// @custom:lattice-same-call Initializable hard enclosing-initializing-window;
+    /// @custom:lattice-sequence AccessControl;PythAdapter;
+    /// @custom:lattice-param admin authority;
+    /// @custom:lattice-param pyth;
+    /// @custom:lattice-registers-interfaces
     function init(address admin, address pyth) external {
         AccessControlLib.__AccessControl_init(admin);
         PythAdapterLib.__PythAdapter_init(pyth);

@@ -13,9 +13,14 @@ import {Groth16VerifierLib} from "@lattice/privacy/libraries/Groth16VerifierLib.
 /// @dev All logic lives in {Groth16VerifierLib}. Pure verification (view): no state beyond the ERC-165
 ///      registration written at init. The facet does not authenticate the key it is given: consumers
 ///      MUST pin it (see KEY PINNING on {IGroth16Verifier}).
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source Generalized from the snarkjs (iden3) Groth16 verifier template (GPL-3.0),
 ///         reimplemented under MIT with the key as a parameter; pairing math is the standard BN254 check.
+/// @custom:lattice-requires none;
+/// @custom:lattice-family none
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches none;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init Groth16VerifierInit
 contract Groth16Verifier is IGroth16Verifier {
     /// @inheritdoc IGroth16Verifier
     function verifyProof(VerifyingKey calldata vk, Proof calldata proof, uint256[] calldata input)

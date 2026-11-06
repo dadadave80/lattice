@@ -14,8 +14,13 @@ import {IERC7786GatewaySource} from "@lattice/interfaces/external/ercs/IERC7786.
 ///         call + the trusted source gateway, then delivers to the ERC-7786 recipient. EVM chains only.
 /// @dev Stateless delegator — logic/storage live in {AxelarGatewayAdapterLib}. OZ's `immutable` Axelar
 ///      gateway + `Ownable` are converted to ERC-7201 storage + AccessControl for the Diamond.
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source OpenZeppelin
+/// @custom:lattice-requires AccessControl|AccessControlEnumerable|AccessControlTimed convention role-management-surface;
+/// @custom:lattice-family gateway
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches lattice.storage.AxelarGatewayAdapter;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init AxelarGatewayAdapterInit
 contract AxelarGatewayAdapter is IERC7786GatewaySource, IAxelarGatewayAdapter {
     /// @inheritdoc IERC7786GatewaySource
     function sendMessage(bytes calldata recipient, bytes calldata payload, bytes[] calldata attributes)

@@ -12,12 +12,22 @@ import {ConstantProductLib} from "@lattice/amm/libraries/ConstantProductLib.sol"
 ///         Delegatecalled by {Diamond.initialize} inside the initializing window (so it must NOT open its own
 ///         pre/postInitializer; each `__*_init` guard passes because the window is already open). Companion to
 ///         the {ERC2981Init}/{VaultCoreInit} patterns — a first-class production deploy artifact.
+/// @custom:lattice-kind bundle
 contract ConstantProductInit {
     /// @notice Runs the access-control + ConstantProduct module initializers. MUST be invoked via the diamond's
     ///         `initialize` `_init` delegatecall.
     /// @param admin The address granted `DEFAULT_ADMIN_ROLE`.
     /// @param tokenA One of the two pool reserve tokens.
     /// @param tokenB The other pool reserve token.
+    /// @custom:lattice-initializes AccessControl;
+    /// @custom:lattice-initializes ConstantProduct;
+    /// @custom:lattice-after none;
+    /// @custom:lattice-same-call Initializable hard enclosing-initializing-window;
+    /// @custom:lattice-sequence AccessControl;ConstantProduct;
+    /// @custom:lattice-param admin authority;
+    /// @custom:lattice-param tokenA;
+    /// @custom:lattice-param tokenB;
+    /// @custom:lattice-registers-interfaces
     function init(address admin, address tokenA, address tokenB) external {
         AccessControlLib.__AccessControl_init(admin);
         ConstantProductLib.__ConstantProduct_init(tokenA, tokenB);
