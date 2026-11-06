@@ -249,8 +249,9 @@ cuts each release from Conventional Commits, and before 1.0 a breaking change bu
 ## Live deployments and demos
 
 [Release identities, chain readiness and ownership](REGISTRY_DEPLOYMENTS.md#chain-readiness-and-ownership)
-are tracked separately from demos. No public chain currently has certified schema-v1 release evidence;
-the Sepolia ENS factory is a development instance.
+list the selected initial targets (Sepolia, Base Sepolia and Arc Testnet), confirmed initial owner and
+release policy. No canonical version is ready on those targets yet; no public chain currently has
+certified schema-v1 release evidence. The Sepolia ENS factory is a development instance.
 
 <a name="live-testnet-deployment-sepolia"></a>
 <a name="live-cross-chain-usdc-demos-circle-cctp-v2--arc-testnet"></a>

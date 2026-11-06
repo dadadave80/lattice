@@ -2,10 +2,11 @@
 
 Mount Hedera's system contracts as Diamond facets: hold and issue HTS tokens, verify ED25519 account
 signatures, read the network exchange rate, draw a native random seed, and schedule your own future calls.
-The contracts are unaudited. **No transaction here has been sent to a live Hedera network** — every
-behaviour below that needs a signed transaction is still an assumption read from consensus-node source.
-Read-only `eth_call`s against the public testnet relay HAVE been run; what they settled is marked confirmed
-in [Verification status](#verification-status).
+The contracts are unaudited. [Verification status](#verification-status) records dated live probes and
+read-only checks, limited to their observed source and toolchain. Behaviours marked **assumed**, including
+probe6's native callback/sender, still need on-chain confirmation; a broadcast on the current shared
+Foundry pin remains unverified. Offline generation-safety tests, unsigned plans and dry runs are separate
+evidence.
 
 ## The five modules
 
@@ -186,6 +187,14 @@ link references and immutable patch positions for all 647 source/library contrac
 artifacts; 407 had nonempty creation/runtime code. This is build parity for that checkpoint, not a
 shared-pin broadcast verification or a promise that later source edits preserve deterministic addresses.
 
+At source checkpoint `e45696b996fa91d4ba02778c9943f285ed9e9aaf`, targeted 1.7.1/1.9.0 builds again
+matched for `HTSAdapter`, `ERC20`, `Lattice`, `HSSAdapter`, `HederaProbeFacet` and `ProbeHedera`,
+including their 86-artifact dependency graph, metadata, links and immutable locations. All 90 input
+files matched that checkpoint. The shared-pin `HTSAdapterFork` tests passed (2 tests). A separate
+`DeployHTSAdapter` simulation failed with a Hashio HTTP 500 / JSON-RPC `-32020` upstream
+“socket hang up”; it was not retried. That failure was not an EIP-1898 rejection, and no transaction
+was signed or broadcast.
+
 Anything that never opens a fork backend works on **both** versions — `forge create`, `cast send` / `call` /
 `mktx`, and `vm.rpc` inside a test. `--legacy` is worth passing as Hedera's native transaction form, but it is
 not what fixes this: `cast mktx` signs cleanly in both legacy and EIP-1559 form. `--slow` helps against rate
@@ -229,16 +238,19 @@ concern does not arise.
   revm; the relay reports `0xfe` as the code of `0x167` and nothing at all for `0x168`/`0x169`/`0x16a`/`0x16b`, so no
   HTS/HAS/HSS call executes on a plain fork — reads included. `test/fork/HTSAdapterFork.t.sol` asserts that
   local shape and uses `vm.rpc("eth_call", …)` to hand anything that must really execute to the relay, where
-  the mirror node simulates it. The one test that forks reaches hashio on the pinned Foundry 1.7.1, but not
-  on the shared pin's defaults, whose EIP-1898 block-hash params the relay rejects. So it sits behind its own
+  the mirror node simulates it. In the September/October measurements, the fork reached hashio on 1.7.1
+  while the then-shared defaults were rejected for EIP-1898 params. The dated 1.9.0 read-only results above
+  update that observation; a shared-pin broadcast remains unverified. The fork stays behind the
   `HEDERA_TEST_FORK=true` opt-in and runs through `script/config/hedera/forge-hedera.sh`. Setting
   `HEDERA_TEST_TOKEN` alone gives you the relay-backed test plus a skip, never a spurious failure.
 
 ## Verification status
 
-Nothing below has been executed on a live Hedera network. The semantics marked **assumed** are read from
-consensus-node source and HIP text but are not yet confirmed on-chain; `script/config/hedera/ProbeHedera.s.sol`
-exists to settle them, and is deliberately not broadcast by CI.
+The table preserves dated historical live executions and read-only checks; these do not verify the
+remaining assumptions or the current release. Probe6's native callback/sender and a current shared-pin
+broadcast remain unverified; offline generation-safety tests do not establish them.
+`script/config/hedera/ProbeHedera.s.sol` exists to settle the native assumptions and is deliberately not
+broadcast by CI.
 
 | # | Behaviour | Status |
 | --- | --- | --- |

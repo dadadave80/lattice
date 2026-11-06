@@ -272,9 +272,10 @@ make release-manifest VERSION=<version> TAG=v<version> OWNER=<confirmed-initial-
   PUBLICATION=release DESTINATION=deployments/release-<version>.json
 ```
 
-No canonical initial owner has been confirmed in this repository. Do not substitute a broadcaster,
-a development owner or an ENS reverse-record address. Publication remains blocked until the
-maintainer confirms that one address and the release source freeze. The small synthetic examples under
+The maintainer confirmed **dave1**, `0xDAdaDA4E8038641212262Fd94E816d4A57CDC751`, as the
+canonical initial owner for the selected testnets below on 2026-11-06. Use that exact constructor
+argument, not a broadcaster, development owner or ENS reverse-record address. Real publication still
+requires the reviewed release source freeze and actual release version. The small synthetic examples under
 `test/fixtures/release-manifests/` use `publication: fixture`, a `fixture/` tag and an obvious test owner.
 Their source/input hashes and block identifier are test sentinels, not release or chain evidence.
 
@@ -385,17 +386,37 @@ source does not reproduce or replace that release's evidence.
 
 ## Chain readiness and ownership
 
-There are currently **no public chains certified ready by schema-v1 evidence**. RPC aliases in
-`foundry.toml` are configuration options, not support claims. A chain supports a release only when:
+There are currently **no public chains certified ready by schema-v1 evidence**. The maintainer
+selected these initial testnet targets on 2026-11-06; selection is not a deployment or readiness claim:
+
+| Selected target | Chain ID | Read-only snapshot block | Canonical Arachnid proxy | Cancun opcode probes | Canonical version ready |
+| --- | --- | --- | --- | --- | --- |
+| Sepolia | 11155111 | 12077758 | Exact 69-byte runtime | TSTORE/TLOAD and MCOPY passed | None |
+| Base Sepolia | 84532 | 55304287 | Exact 69-byte runtime | TSTORE/TLOAD and MCOPY passed | None |
+| Arc Testnet | 5042002 | 71057020 | Exact 69-byte runtime | TSTORE/TLOAD and MCOPY passed | None |
+
+The snapshots used the [PublicNode Sepolia endpoint](https://ethereum.publicnode.com/?sepolia=),
+[Base's public RPC](https://docs.base.org/get-started/connect-to-base) and
+[Arc's public testnet RPC](https://docs.arc.io/arc/references/connect-to-arc), with all code reads
+pinned to the listed block and its hash rechecked. The proxy runtime hash was
+`0x2fa86add0aed31f33a762c9d88e807c475bd51d0f52bd0955754b2608f7e4989` on all three.
+The canonical EntryPoint 0.7/0.8/0.9 addresses in `AccountReleaseInventory` had code at those blocks;
+that observation does not certify bundler or account-operation readiness. Opcode simulations are
+execution checks, not a complete chain-conformance audit. Arc uses native USDC for gas and retains
+[documented EVM differences](https://docs.arc.io/arc/references/evm-differences).
+
+`foundry.toml` aliases are configuration options, not support claims. A chain supports a release only when:
 
 1. its EVM supports Cancun and the Arachnid proxy is installed at the canonical address;
 2. every shared identity has matching code and actual source verification;
 3. all versioned facets are registered and `latest` points to that version; and
 4. a reviewed block-pinned chain manifest records that state and the current registry owner.
 
-Use the same confirmed **initial owner** on every chain so core CREATE2 predictions agree. Establish
-and verify that address's control on each chain before deployment; a multisig must own the registry
-from the first mainnet release. Later per-chain handovers do not change existing addresses: the
+Use the confirmed **initial owner** above on all selected chains so core CREATE2 predictions agree.
+Establish and verify that address's control on each chain before deployment; code and balance reads
+alone do not prove it. No mainnet is selected: its owner/bootstrap choice must satisfy the multisig
+rule from the first mainnet release. A different constructor owner creates a different core address
+family and must not be presented as the same frozen testnet identities. Later per-chain handovers do not change existing addresses: the
 current owner calls `transferOwnership(newOwner)`, the intended multisig independently checks the
 registry and pending owner, then calls `acceptOwnership()`. Record the resulting owner at a new
 observed block. Passing a new owner to `DeployRelease` derives a different registry, not a handover.
@@ -410,8 +431,11 @@ instance**, deployed by plain CREATE according to the tracked
 [broadcast](broadcast/DeployFactory.s.sol/11155111/run-latest.json). It is not the canonical raw-salt
 factory. Its historical build commit and embedded proxy hash are not established by that log, so no
 schema-v1 `nonCanonicalFactories` entry invents those fields. Add one only with verified source and
-hash evidence. `LatticeVersion` and the release manifest currently agree at 0.5.0; normal release
-promotions back-merge version bumps into dev.
+hash evidence. `LatticeVersion`, `.release-please-manifest.json` and the latest published tag
+[`v0.5.0`](https://github.com/dadadave80/lattice/releases/tag/v0.5.0) currently agree on the version label.
+This does not mean current dev bytecode belongs to that historical release. The next actual Release
+Please version and retained source freeze remain prerequisites for new canonical identities; normal
+release promotions back-merge version bumps into dev.
 
 ## Idempotency and resume
 
