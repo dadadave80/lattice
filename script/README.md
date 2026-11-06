@@ -26,6 +26,11 @@ directly with `forge script` (usage is in its NatSpec header) or it is only impo
 Moving a file breaks README permalinks and the `@lattice-script/` imports in `test/`, so update both
 in the same change.
 
+For module initialization during a later authorized upgrade, `InitInventory` releases
+[`ReinitMultiInit`](../src/utils/ReinitMultiInit.sol). Use its address as the cut's `_init` with
+`reinitMulti(version, inits, calldatas)`; the [composition guide](../docs/guides/compose-your-own-diamond.md#initialize-modules-during-an-upgrade)
+shows the version read and ordered payload.
+
 ## Error and event catalog
 
 `make abi-catalog` builds the canonical source artifacts from scratch and writes `out/errors.json`.
