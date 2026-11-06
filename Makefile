@@ -114,6 +114,18 @@ release-build-check: ## Canonical compiler/EVM/metadata settings and locked depe
 	./script/test-check-release-build.sh
 	./script/check-release-build.sh
 
+.PHONY: release-manifests
+release-manifests: ## Compare two clean current builds, validate schemas/status and rebuild any published goldens
+	./script/check-release-manifests.sh
+
+.PHONY: release-manifest
+release-manifest: ## Offline identities (VERSION, TAG, OWNER, PUBLICATION=fixture|release, DESTINATION required)
+	./script/release-manifest.sh generate "$(VERSION)" "$(TAG)" "$(OWNER)" "$(PUBLICATION)" "$(DESTINATION)"
+
+.PHONY: release-status
+release-status: ## Observe deployed code/curation at a pinned block (MANIFEST, RPC_URL, DESTINATION required)
+	./script/release-status.sh "$(MANIFEST)" "$(RPC_URL)" "$(DESTINATION)"
+
 .PHONY: via-ir
 via-ir: ## IR-pipeline parity build (catches stack-too-deep / IR-only errors)
 	forge build --via-ir --skip test script
@@ -141,6 +153,7 @@ scripts-check: ## Regression tests for the CI helper scripts (closing-keyword pa
 	./script/test-storage-layout.sh
 	./script/test-storage-registry.sh
 	./script/test-error-event-catalog.sh
+	./script/test-release-manifest.sh
 
 .PHONY: abi-catalog
 abi-catalog: ## Clean source build and checked error/event/assembly catalog (out/errors.json)

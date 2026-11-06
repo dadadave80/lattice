@@ -1,0 +1,91 @@
+{
+  "compiler": {
+    "bytecodeHash": "ipfs",
+    "evmVersion": "cancun",
+    "foundry": "v1.9.0",
+    "inputHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+    "libraries": {},
+    "optimizerRuns": 1000000,
+    "solc": "0.8.36",
+    "viaIR": false
+  },
+  "contracts": [
+    {
+      "address": "0x0d3806d01c079AeF6C0e9273e4ad9a2519E37a1E",
+      "artifact": "src/LatticeRegistry.sol:LatticeRegistry",
+      "codehash": "0x51a54e8a18361e2b1cc302962be90be236a027d850dde212661164e7e4256b9f",
+      "constructorArgs": "0x000000000000000000000000000000000000000000000000000000000000beef",
+      "initCodeHash": "0xac0b00583734cd2b497dd86c274f54cf84c09977ff5b22999abfe736f347aede",
+      "kind": "registry",
+      "name": "LatticeRegistry",
+      "nameHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "salt": "0xc78231000c48b308a55c9ed0de492d4ee766bc920c611d52ef984a4d9baa3a9c",
+      "selectorsHash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "address": "0x71173Ec4ef77e503F868a455538329a97008b9e9",
+      "artifact": "src/LatticeFactory.sol:LatticeFactory",
+      "codehash": "0xa34881e6c637df4f4bf81b9979ea285ba1acfaa930f6947ab1c3d088dba2094b",
+      "constructorArgs": "0x0000000000000000000000000d3806d01c079aef6c0e9273e4ad9a2519e37a1e00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      "initCodeHash": "0x5c0f60cd1916eb5f259e84ab80462b8c3dadfb8fb84cd5871a8e4d8d5250787d",
+      "kind": "factory",
+      "name": "LatticeFactory",
+      "nameHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "salt": "0x23ac1297d420218079953740f312f2c5385edfea1f817c984d2e6effea132efe",
+      "selectorsHash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "address": "0x30d2c5d909dDFa6CC0E25CeBB378CEF7957E0F96",
+      "artifact": "src/crosschain/across/AcrossBridgeAdapter.sol:AcrossBridgeAdapter",
+      "codehash": "0x33cf62744a2301055022dc097c43bba695c57fb2240347acbeaaf9e29bf6ba07",
+      "constructorArgs": "0x",
+      "initCodeHash": "0x84249be40dd3a44ef2d4d4c10705b72e61cf631f8bee815f3a674ef2c5fabbf1",
+      "kind": "facet",
+      "name": "AcrossBridgeAdapter",
+      "nameHash": "0xd996e41fdd1f6247369b04be17d78285107b0472353781039ee396558217a85c",
+      "salt": "0x8bee1c3d6f0d7d80c683399d80b1eb53c0a49836b8aaad19ec5e98b09e182c89",
+      "selectorsHash": "0x773673abaed4b05d96a5586d83a7e7ca287157109f2378909e699d61f4a5a35d"
+    },
+    {
+      "address": "0x1D2659B4BDc1a38BA75149C253a3c130848588B3",
+      "artifact": "src/oracles/api3/API3AdapterInit.sol:API3AdapterInit",
+      "codehash": "0xc44a64c8ae1a2b39fd9643c2620c09b910fe68f9187b75ad6fc130b44aebc236",
+      "constructorArgs": "0x",
+      "initCodeHash": "0x89132630620004e72f328a77ce44dd1c77246f55afb1322a525c1a537230fb82",
+      "kind": "init",
+      "name": "API3AdapterInit",
+      "nameHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "salt": "0x76faa72fbe356d51509c2435c34a230934c96f91f3eac3f4fb66dc96efdee2cd",
+      "selectorsHash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "address": "0x5f88A615F2916aF0d7C331AEF2e00063fa23d2d0",
+      "artifact": "lib/poseidon-solidity/PoseidonT3.sol:PoseidonT3",
+      "codehash": "0x32a74bb64de5e3c07563214332d9bd9a7db070346b4f250e510ac7d7d81af732",
+      "constructorArgs": "0x",
+      "initCodeHash": "0x8397e21b8b3fe0f185858e8a9bc443d24c334bfb003e251b00fa235bb36f2a52",
+      "kind": "library",
+      "name": "PoseidonT3",
+      "nameHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "salt": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "selectorsHash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  ],
+  "deployer": {
+    "address": "0x4e59b44847b379578588920cA78FbF26c0B4956C",
+    "kind": "arachnid",
+    "librarySalt": "0x0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "initialOwner": "0x000000000000000000000000000000000000bEEF",
+  "lattice": {
+    "commit": "0000000000000000000000000000000000000000",
+    "tag": "fixture/schema-only",
+    "version": "99.0.0"
+  },
+  "proxy": {
+    "initCodeHash": "0x7048e8c2705bfc651e845de92a5a1247b4ae37c43313ea7fe021c5956b216455",
+    "name": "Lattice"
+  },
+  "publication": "fixture",
+  "schemaVersion": 1
+}
