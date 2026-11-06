@@ -227,7 +227,7 @@ terminator. Alternative facet names within a record use `|`.
 | `lattice-family` | One exclusive alternative group or `none`. Current groups are `upgrade`, `access`, `account-signature`, `account-validation`, `account-modules`, `price-source`, `strategy`, `gateway`, `bridge-handler`, `erc20-transfer`, `erc721-transfer`, `erc1155-burn`. Do not group every related account/token facet together. |
 | `lattice-owns` | Exact exported shared signatures the canonical recipe routes to this facet, one `signature;` per record, or `none;`. `receive()` denotes Receive's special zero selector. Family selection resolves variants; ownership is not permission to bypass another facet's logic. |
 | `lattice-touches` | Exact canonical storage namespace written from this facet's exported entrypoints through first-party code, one `namespace;` per record, or `none;`. Reads and initializer-only writes are excluded (initializers declare their own modules/order). The shared guard uses `slot:0x8000000000ab143c06`; upstream Ownable uses its fixed owner slot and `derived:OwnableHandover`. These explicit non-ERC-7201 records preserve the real layout. Dynamic external calls/delegatecalls can have additional effects. |
-| `lattice-init` | Existing first-party initializer artifact name, or `none` when no standalone initializer is supplied. `none` does not mean the module needs no library initialization; strategy adapters and VestingWallet are examples. Constructor-bound `AccountInit`/`AccountInit6900` remain outside stateless `InitInventory`. |
+| `lattice-init` | An `InitInventory` entry or one of the two explicit constructor-bound account initializers, or `none` when no standalone initializer is supplied. Existing contract/library artifacts alone do not qualify. `none` does not mean the module needs no library initialization; strategy adapters and VestingWallet are examples. Constructor-bound `AccountInit`/`AccountInit6900` remain outside stateless `InitInventory`. |
 | `lattice-seam` | On a reconciling facet: `signature when=Facet[|Facet] anyOf=Owner[|Owner] reason;`, or `none;`. `when` lists participating facets together; `anyOf` lists alternative permitted combined owners (both lists use `|`). Follow the canonical recipe's selector exclusions. This records a supported override, not a general compatibility engine. |
 
 An initializer contract declares `lattice-kind step|bundle`. Each public initializer method declares:
@@ -249,7 +249,7 @@ and returns at a zero address. Review all five records whenever updating the sub
 future inventory entries cannot inherit this exception.
 
 The lint checks required fields, semicolon framing, referenced artifacts/facets/storage namespaces,
-exported ownership/seam signatures and parameter coverage/units. Missing/dangling mutation fixtures prove
+exported ownership/seam signatures and parameter coverage/units. Missing/dangling and existing-but-not-initializer mutation fixtures prove
 rejection. It cannot prove that a declaration captures every semantic prerequisite or external write.
 See [ADR0018](docs/adr/0018-compiler-composition-metadata.md). NatSpec contributes to the compiler metadata
 hash: changing these tags changes codehashes and deterministic deployment addresses, including when

@@ -14,6 +14,7 @@ contract CompositionMetadataTest is Test {
     error MissingTag(string artifact, string tag);
     error InvalidTag(string artifact, string tag, string value);
     error DanglingReference(string artifact, string referenceName);
+    error InvalidInitializerReference(string artifact, string initializerName);
 
     function test_CompilerPreservesRawTagsAndConcatenatesRepeatedRecords() public view {
         string memory artifact = _artifact("MetadataFixtures.sol", "MetadataFoldFixture");
@@ -89,6 +90,28 @@ contract CompositionMetadataTest is Test {
         assertEq(CoreCompositionMetadata.devdoc("HSSRecoveryInit"), "");
     }
 
+    function test_NonInitializerContractReferenceMutationIsRejected() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                InvalidInitializerReference.selector, "MetadataNonInitializerContractFixture", "ERC20"
+            )
+        );
+        this.validateFacet(
+            "MetadataNonInitializerContractFixture", "MetadataFixtures.sol:MetadataNonInitializerContractFixture"
+        );
+    }
+
+    function test_NonInitializerLibraryReferenceMutationIsRejected() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                InvalidInitializerReference.selector, "MetadataNonInitializerLibraryFixture", "ERC20Lib"
+            )
+        );
+        this.validateFacet(
+            "MetadataNonInitializerLibraryFixture", "MetadataFixtures.sol:MetadataNonInitializerLibraryFixture"
+        );
+    }
+
     /// @dev A fresh external frame bounds allocations while scanning all release artifacts.
     function validateFacet(string memory name, string memory path) external view {
         string memory artifact = _readArtifact(path, name);
@@ -101,7 +124,7 @@ contract CompositionMetadataTest is Test {
         string memory init = _tag(raw, prefix, name, "init");
         string memory seams = _tag(raw, prefix, name, "seam");
         _references(name, requires_, true, true);
-        _references(name, init, false, false);
+        _initializerReference(name, init);
         _signatures(name, artifact, owns);
         _namespaces(name, touches);
         _seams(name, artifact, seams);
@@ -248,6 +271,24 @@ contract CompositionMetadataTest is Test {
                 if (!_known(alternatives[j], facetsOnly)) revert DanglingReference(name, alternatives[j]);
             }
         }
+    }
+
+    function _initializerReference(string memory artifact, string memory initializer) private view {
+        if (_eq(initializer, "none")) return;
+        bool listed;
+        (string[] memory names,) = InitInventory.inventory();
+        for (uint256 i; i < names.length; ++i) {
+            if (_eq(initializer, names[i])) {
+                listed = true;
+                break;
+            }
+        }
+        // These two constructor-bound initializers are deliberately released by their account factories.
+        // InitInventory.exclusionReason documents the same narrow exception; ordinary artifacts are not inits.
+        if (_eq(initializer, "AccountInit") || _eq(initializer, "AccountInit6900")) {
+            listed = bytes(InitInventory.exclusionReason(initializer)).length != 0;
+        }
+        if (!listed || !_known(initializer, false)) revert InvalidInitializerReference(artifact, initializer);
     }
 
     function _known(string memory name, bool facetsOnly) private view returns (bool) {

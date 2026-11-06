@@ -17,7 +17,7 @@ import {PackedUserOperation} from "@lattice/interfaces/external/ercs/IAccount.so
 /// @custom:lattice-requires ERC6900ModuleManager convention validation-and-execution-configuration;
 /// @custom:lattice-family account-validation
 /// @custom:lattice-owns none;
-/// @custom:lattice-touches lattice.storage.ERC6900ModuleManager;
+/// @custom:lattice-touches none;
 /// @custom:lattice-seam none;
 /// @custom:lattice-init AccountInit6900
 contract ERC6900Validation {

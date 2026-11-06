@@ -33,6 +33,7 @@ import {SignatureChecker} from "@lattice/utils/libraries/SignatureChecker.sol";
 ///      - BALLOT-NONCE NAMESPACE: `castVoteBySig` draws from {GovernedVaultLib}'s dedicated nonce, leaving the
 ///        ERC-20 `delegateBySig` nonce on {NoncesLib} — see {GovernedVaultLib} for why a shared counter would
 ///        silently invalidate signatures.
+/// @custom:lattice-requires ERC4626|VaultCore hard totalAssets-self-staticcall;
 /// @custom:lattice-requires ERC20Votes convention vote-aware-transfer-and-delegation-surface;
 /// @custom:lattice-requires VaultCore convention strategy-NAV-and-vault-management;
 /// @custom:lattice-requires Governor convention proposal-and-governance-surface;

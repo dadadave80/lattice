@@ -63,3 +63,23 @@ contract MetadataMissingParameterFixture {
         (admin);
     }
 }
+
+/// @title MetadataNonInitializerContractFixture
+/// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @custom:lattice-requires none;
+/// @custom:lattice-family none
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches none;
+/// @custom:lattice-init ERC20
+/// @custom:lattice-seam none;
+contract MetadataNonInitializerContractFixture {}
+
+/// @title MetadataNonInitializerLibraryFixture
+/// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @custom:lattice-requires none;
+/// @custom:lattice-family none
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches none;
+/// @custom:lattice-init ERC20Lib
+/// @custom:lattice-seam none;
+contract MetadataNonInitializerLibraryFixture {}

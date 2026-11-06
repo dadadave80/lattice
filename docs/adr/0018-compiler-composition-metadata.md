@@ -59,7 +59,9 @@ manifests must be generated; old addresses are not advertised as the new bytecod
 
 [`CompositionMetadataTest`](../../test/unit/CompositionMetadataTest.t.sol) checks every inventory entry,
 compiled tag retention/folding, mandatory fields, dangling references, exported ownership/seam signatures,
-namespace names and parameter coverage/units. Missing and dangling mutation fixtures must be rejected.
+namespace names and parameter coverage/units. Facet initializer references must belong to InitInventory
+or its two explicit constructor-bound account exceptions; a contract or library artifact merely existing
+is insufficient. Missing, dangling and wrong-kind mutation fixtures must be rejected.
 Existing selector parity, storage, release-manifest and composition-hazard gates continue to apply.
 
 ## References
