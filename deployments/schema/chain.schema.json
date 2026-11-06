@@ -1,0 +1,179 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/dadadave80/lattice/deployments/schema/chain.schema.json",
+  "title": "Lattice chain manifest v1",
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "publication": {
+      "type": "string",
+      "enum": [
+        "fixture",
+        "release"
+      ]
+    },
+    "lattice": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
+        },
+        "tag": {
+          "type": "string",
+          "minLength": 1
+        },
+        "commit": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        }
+      },
+      "required": [
+        "version",
+        "tag",
+        "commit"
+      ],
+      "additionalProperties": false
+    },
+    "chain": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "blockNumber": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "blockHash": {
+          "type": "string",
+          "pattern": "^0x[0-9a-fA-F]{64}$"
+        }
+      },
+      "required": [
+        "id",
+        "blockNumber",
+        "blockHash"
+      ],
+      "additionalProperties": false
+    },
+    "releaseManifestHash": {
+      "type": "string",
+      "pattern": "^0x[0-9a-fA-F]{64}$"
+    },
+    "registryOwner": {
+      "type": "string",
+      "pattern": "^0x[0-9a-fA-F]{40}$"
+    },
+    "contracts": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "address": {
+            "type": "string",
+            "pattern": "^0x[0-9a-fA-F]{40}$"
+          },
+          "deployed": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "pattern": "^(pre-existing|0x[0-9a-fA-F]{64})$"
+              }
+            ]
+          },
+          "codeMatches": {
+            "type": "boolean"
+          },
+          "verified": {
+            "type": "boolean"
+          },
+          "verifier": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "sourcify",
+                  "etherscan"
+                ]
+              }
+            ]
+          },
+          "registered": {
+            "type": "boolean"
+          },
+          "latest": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "name",
+          "address",
+          "deployed",
+          "codeMatches",
+          "verified",
+          "verifier",
+          "registered",
+          "latest"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "nonCanonicalFactories": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "address": {
+            "type": "string",
+            "pattern": "^0x[0-9a-fA-F]{40}$"
+          },
+          "commit": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{40}$"
+          },
+          "proxyInitCodeHash": {
+            "type": "string",
+            "pattern": "^0x[0-9a-fA-F]{64}$"
+          }
+        },
+        "required": [
+          "name",
+          "address",
+          "commit",
+          "proxyInitCodeHash"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "publication",
+    "lattice",
+    "chain",
+    "releaseManifestHash",
+    "registryOwner",
+    "contracts",
+    "nonCanonicalFactories"
+  ],
+  "additionalProperties": false
+}

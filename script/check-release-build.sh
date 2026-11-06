@@ -17,8 +17,11 @@ for profile in default ci; do
     jq -e '
         .solc == "0.8.36" and .evm_version == "cancun" and
         .optimizer == true and .optimizer_runs == 1000000 and .via_ir == false and
-        .bytecode_hash == "ipfs" and .cbor_metadata == true
-    ' <<<"$config" >/dev/null || fail "$profile must use solc 0.8.36, Cancun, optimizer 1000000, legacy pipeline and IPFS/CBOR metadata"
+        .bytecode_hash == "ipfs" and .cbor_metadata == true and
+        .libraries == [] and
+        .create2_deployer == "0x4e59b44847b379578588920ca78fbf26c0b4956c" and
+        .create2_library_salt == "0x0000000000000000000000000000000000000000000000000000000000000000"
+    ' <<<"$config" >/dev/null || fail "$profile must use solc 0.8.36, Cancun, optimizer 1000000, legacy pipeline, IPFS/CBOR metadata and canonical native CREATE2 library linking"
     if [ "$profile" = ci ]; then
         jq -e '.build_info == true' <<<"$config" >/dev/null || fail "ci must emit build info"
     fi
