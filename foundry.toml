@@ -3,6 +3,8 @@ solc = "0.8.36"
 evm_version = "cancun"
 src = "src"
 out = "out"
+# Recipe interface coverage derives ERC-165 IDs from compiler declarations.
+ast = true
 libs = ["lib"]
 # Selector extraction for non-ERC-8153 test fixtures uses `forge inspect` over FFI (the VENDORED
 # test/helpers/GetSelectors.sol — diamond-lib shipped it through v0.1.4 and deleted it in v0.2.0).
@@ -17,6 +19,8 @@ ffi = true
 fs_permissions = [
     { access = "read-write", path = "deployments" },
     { access = "read", path = "out" },
+    # InitInventoryParityTest checks every source initializer against the release inventory.
+    { access = "read", path = "src" },
     { access = "read", path = "test/fixtures" },
 ]
 remappings = [

@@ -14,6 +14,7 @@ contract MockNoncesContract is Nonces, Initializable {
     /// @notice Initializes the Nonces module.
     function initialize() external initializer {
         NoncesLib.__Nonces_init();
+        NoncesLib.registerInterface(); // Inherited view dispatch has no diamond selector map.
     }
 
     /// @notice Test helper that exposes NoncesLib.useNonce.
