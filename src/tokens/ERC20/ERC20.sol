@@ -17,6 +17,7 @@ import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
 /// @custom:lattice-family none
 /// @custom:lattice-owns none;
 /// @custom:lattice-touches lattice.storage.ERC20;
+/// @custom:lattice-touches transient:lattice.storage.ERC20TemporaryApproval;
 /// @custom:lattice-seam none;
 /// @custom:lattice-init ERC20Init
 contract ERC20 is IERC20 {

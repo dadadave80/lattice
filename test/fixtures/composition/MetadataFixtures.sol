@@ -83,3 +83,23 @@ contract MetadataNonInitializerContractFixture {}
 /// @custom:lattice-init ERC20Lib
 /// @custom:lattice-seam none;
 contract MetadataNonInitializerLibraryFixture {}
+
+/// @title MetadataTransientNamespaceFixture
+/// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @custom:lattice-requires none;
+/// @custom:lattice-family none
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches transient:lattice.storage.ERC20TemporaryApproval;
+/// @custom:lattice-init none
+/// @custom:lattice-seam none;
+contract MetadataTransientNamespaceFixture {}
+
+/// @title MetadataWrongTransientRootFixture
+/// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @custom:lattice-requires none;
+/// @custom:lattice-family none
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches transient:lattice.storage.ERC20;
+/// @custom:lattice-init none
+/// @custom:lattice-seam none;
+contract MetadataWrongTransientRootFixture {}

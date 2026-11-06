@@ -18,6 +18,7 @@ import {ERC1363Lib} from "@lattice/tokens/ERC20/libraries/ERC1363Lib.sol";
 /// @custom:lattice-family none
 /// @custom:lattice-owns none;
 /// @custom:lattice-touches lattice.storage.ERC20;
+/// @custom:lattice-touches transient:lattice.storage.ERC20TemporaryApproval;
 /// @custom:lattice-seam none;
 /// @custom:lattice-init ERC1363Init
 contract ERC1363 is IERC1363 {

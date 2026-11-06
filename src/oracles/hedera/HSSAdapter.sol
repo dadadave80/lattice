@@ -11,6 +11,7 @@ import {HSSAdapterLib} from "@lattice/oracles/hedera/HSSAdapterLib.sol";
 ///         plus contract-key signatures on native scheduled transactions.
 /// @dev Stateless delegator over HSSAdapterLib. Only meaningful on Hedera.
 /// @custom:lattice-source Hedera
+/// @custom:lattice-requires HSSAdapterRecovery hard executeSelfCall-and-cancelSelfCall-routes-checked;
 /// @custom:lattice-requires AccessControl|AccessControlEnumerable|AccessControlTimed convention role-management-surface;
 /// @custom:lattice-family none
 /// @custom:lattice-owns none;

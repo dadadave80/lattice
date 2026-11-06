@@ -22,7 +22,9 @@ the linked issue or pull request; a record is the outcome, not a spec.
 | [0014](0014-arachnid-shared-release-deployer.md) | Shared releases use only the Arachnid deterministic-deployment proxy | Accepted |
 | [0015](0015-canonical-cancun-build.md) | Canonical releases target Cancun with one pinned build configuration | Accepted |
 | [0016](0016-shared-initialization-identity.md) | Shared bootstrap identity is consistent and interface claims follow routed selectors | Accepted |
+| [0017](0017-hss-generation-recovery.md) | HSS job recovery invalidates generations before native deletion | Accepted locally; native sender unverified |
 | [0018](0018-compiler-composition-metadata.md) | Composition facts live in raw compiler NatSpec metadata with native artifact lint | Accepted |
+| [0019](0019-shared-temporary-allowances.md) | ERC-7674 allowances share the base allowance path | Accepted |
 
 ## When to write one
 

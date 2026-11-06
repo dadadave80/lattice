@@ -25,6 +25,7 @@ import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
 /// @custom:lattice-owns transfer(address,uint256);
 /// @custom:lattice-owns transferFrom(address,address,uint256);
 /// @custom:lattice-touches lattice.storage.ERC20;
+/// @custom:lattice-touches transient:lattice.storage.ERC20TemporaryApproval;
 /// @custom:lattice-seam transfer(address,uint256) when=ERC20 anyOf=ERC20Pausable replace-base-movement;
 /// @custom:lattice-seam transferFrom(address,address,uint256) when=ERC20 anyOf=ERC20Pausable replace-base-movement;
 /// @custom:lattice-init ERC20PausableInit

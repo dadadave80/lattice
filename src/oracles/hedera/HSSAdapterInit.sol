@@ -8,7 +8,7 @@ import {HSSAdapterLib, HSS_SCHEDULER_ROLE} from "@lattice/oracles/hedera/HSSAdap
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice One-shot initializer for a Hedera Schedule Service diamond — seeds AccessControl, grants `admin`
 ///         the scheduler role (scheduling, deleting and authorizing schedules the diamond pays for) and
-///         registers the IHSSAdapter interface (ERC-165). Delegatecalled by {Diamond.initialize} inside the
+///         registers IHSSAdapter and IHSSAdapterRecovery (ERC-165). Both matching facets must be cut before init. Delegatecalled by {Diamond.initialize} inside the
 ///         initializing window (so it must NOT open its own pre/postInitializer). Schedules are created later
 ///         via `scheduleCall`, so no schedule reference is needed at init time.
 /// @custom:lattice-kind bundle
@@ -18,7 +18,7 @@ contract HSSAdapterInit {
     /// @param admin The address granted `DEFAULT_ADMIN_ROLE` and `HSS_SCHEDULER_ROLE`.
     /// @custom:lattice-initializes AccessControl;
     /// @custom:lattice-initializes HSSAdapter;
-    /// @custom:lattice-after none;
+    /// @custom:lattice-after HSSAdapterRecovery hard recovery-routes-installed-before-init;
     /// @custom:lattice-same-call Initializable hard enclosing-initializing-window;
     /// @custom:lattice-sequence AccessControl;HSSAdapter;
     /// @custom:lattice-param admin authority;

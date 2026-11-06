@@ -53,6 +53,7 @@ import {Checkpoints} from "@lattice/utils/libraries/Checkpoints.sol";
 /// @custom:lattice-touches lattice.storage.ERC20;
 /// @custom:lattice-touches lattice.storage.Nonces;
 /// @custom:lattice-touches lattice.storage.Votes;
+/// @custom:lattice-touches transient:lattice.storage.ERC20TemporaryApproval;
 /// @custom:lattice-seam transfer(address,uint256) when=ERC20 anyOf=ERC20Votes replace-base-movement;
 /// @custom:lattice-seam transferFrom(address,address,uint256) when=ERC20 anyOf=ERC20Votes replace-base-movement;
 /// @custom:lattice-seam delegate(address) when=Votes anyOf=ERC20Votes read-correct-token-voting-units;

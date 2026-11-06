@@ -57,6 +57,7 @@ import {ERC4626Lib} from "@lattice/tokens/ERC4626/libraries/ERC4626Lib.sol";
 /// @custom:lattice-touches lattice.storage.ERC20;
 /// @custom:lattice-touches lattice.storage.VaultCore;
 /// @custom:lattice-touches lattice.storage.VaultCoreRecovery;
+/// @custom:lattice-touches transient:lattice.storage.ERC20TemporaryApproval;
 /// @custom:lattice-seam deposit(uint256,address) when=ERC4626 anyOf=VaultCore strategy-NAV-and-deposit-latches;
 /// @custom:lattice-seam mint(uint256,address) when=ERC4626 anyOf=VaultCore strategy-NAV-and-deposit-latches;
 /// @custom:lattice-seam withdraw(uint256,address,address) when=ERC4626 anyOf=VaultCore strategy-NAV-and-deposit-latches;

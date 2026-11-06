@@ -53,6 +53,7 @@ import {SignatureChecker} from "@lattice/utils/libraries/SignatureChecker.sol";
 /// @custom:lattice-touches lattice.storage.GovernedVault;
 /// @custom:lattice-touches lattice.storage.Governor;
 /// @custom:lattice-touches lattice.storage.Votes;
+/// @custom:lattice-touches transient:lattice.storage.ERC20TemporaryApproval;
 /// @custom:lattice-seam deposit(uint256,address) when=ERC20Votes|ERC4626|VaultCore anyOf=GovernedVault combined-vault-and-vote-accounting;
 /// @custom:lattice-seam mint(uint256,address) when=ERC20Votes|ERC4626|VaultCore anyOf=GovernedVault combined-vault-and-vote-accounting;
 /// @custom:lattice-seam withdraw(uint256,address,address) when=ERC20Votes|ERC4626|VaultCore anyOf=GovernedVault combined-vault-and-vote-accounting;

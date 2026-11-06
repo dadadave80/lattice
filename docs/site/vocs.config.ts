@@ -31,7 +31,9 @@ const decisions: Item = {
     { text: '0014 Shared release deployer', link: '/adr/0014-arachnid-shared-release-deployer' },
     { text: '0015 Canonical Cancun build', link: '/adr/0015-canonical-cancun-build' },
     { text: '0016 Shared initialization', link: '/adr/0016-shared-initialization-identity' },
+    { text: '0017 HSS generation recovery', link: '/adr/0017-hss-generation-recovery' },
     { text: '0018 Composition metadata', link: '/adr/0018-compiler-composition-metadata' },
+    { text: '0019 Temporary allowances', link: '/adr/0019-shared-temporary-allowances' },
   ],
 }
 

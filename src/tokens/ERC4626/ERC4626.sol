@@ -30,6 +30,7 @@ import {ERC4626Lib} from "@lattice/tokens/ERC4626/libraries/ERC4626Lib.sol";
 /// @custom:lattice-family none
 /// @custom:lattice-owns decimals();
 /// @custom:lattice-touches lattice.storage.ERC20;
+/// @custom:lattice-touches transient:lattice.storage.ERC20TemporaryApproval;
 /// @custom:lattice-seam decimals() when=ERC20 anyOf=ERC4626 asset-decimals-plus-offset;
 /// @custom:lattice-init ERC4626Init
 contract ERC4626 {

@@ -138,7 +138,7 @@ contract HederaProbeFacet {
     /// @dev Ungated by design (see the contract header): the whole question is whether a network-fired
     ///      schedule arrives with `msg.sender == address(this)`, which is what
     ///      `HSSAdapterLib.checkScheduledSelfCall` assumes. Emitting keeps the probe storage-free.
-    /// @param jobId The {IHSSAdapter-scheduleSelfCall} job id the schedule was created under.
+    /// @param jobId Correlation id emitted by the raw sender probe; it is not a booked self-call job.
     function probeCallback(bytes32 jobId) external virtual {
         emit HederaProbeCallback(msg.sender, block.timestamp, jobId);
     }
@@ -244,7 +244,7 @@ contract ProbeHedera is DeployHTSAdapter {
     /// @notice Gas the network reserves for the scheduled callback (an event emit through diamond dispatch).
     uint256 internal constant SCHEDULE_GAS_LIMIT = 200_000;
 
-    /// @notice The {IHSSAdapter-scheduleSelfCall} job id probe 6 books, and the key `scheduleOf` reads back.
+    /// @notice Correlation id for probe 6's raw callback; also identifies historical tracked probe jobs.
     bytes32 internal constant PROBE_JOB_ID = keccak256("lattice.probe.hedera.selfCall");
 
     /// @notice Probe 2 / probe 3 token parameters, and the amount each probe mints to the treasury.
@@ -397,9 +397,9 @@ contract ProbeHedera is DeployHTSAdapter {
             " redirectForAccount be added to the vendored IHederaAccountService subset"
         );
 
-        // --- PROBE 6: scheduleSelfCall at the probe callback --------------------------------------------
+        // --- PROBE 6: raw scheduleCall at the ungated sender probe --------------------------------------------
         console2.log("");
-        console2.log("--- PROBE 6: scheduleSelfCall ~60s out at the probe callback -------------------");
+        console2.log("--- PROBE 6: raw self-call ~60s out at the ungated callback --------------------");
         // Wall clock, NOT `block.timestamp`: the fork clock is pinned to the block the backend forked at
         // and runs behind consensus time, and HSS rejects an expiry at or below consensus time.
         uint256 expiry = (vm.unixTime() / 1000) + SCHEDULE_DELAY;
@@ -407,19 +407,24 @@ contract ProbeHedera is DeployHTSAdapter {
             diamond,
             0,
             abi.encodeCall(
-                IHSSAdapter.scheduleSelfCall,
+                IHSSAdapter.scheduleCall,
                 (
-                    PROBE_JOB_ID,
+                    diamond,
                     expiry,
                     SCHEDULE_GAS_LIMIT,
+                    uint64(0),
                     abi.encodeCall(HederaProbeFacet.probeCallback, (PROBE_JOB_ID))
                 )
             ),
-            "report() reads scheduleOf(jobId) - poll that address on the mirror node"
+            "read the schedule address from HSSCallScheduled in the receipt, then poll the mirror node"
             " (/api/v1/schedules/<id>) ~60s out, then read HederaProbeCallback on HashScan: sender == the"
             " diamond confirms HSSAdapterLib.checkScheduledSelfCall's msg.sender assumption"
         );
-        _line("job-id  ", vm.toString(PROBE_JOB_ID), "the scheduleOf key report(address) reads back");
+        _line(
+            "job-id  ",
+            vm.toString(PROBE_JOB_ID),
+            "sender-probe correlation id; generic scheduleCall does not book scheduleOf(jobId)"
+        );
         _line(
             "expiry  ", vm.toString(expiry), "fork-clock seconds; the relay rejects an expiry at/below consensus time"
         );
@@ -582,10 +587,10 @@ contract ProbeHedera is DeployHTSAdapter {
         console2.log("--- PROBE 6: the scheduled self-call -------------------------------------------");
         raw = _call(diamond, abi.encodeCall(IHSSAdapter.scheduleOf, (PROBE_JOB_ID)));
         _line(
-            "schedule",
+            "legacy-job",
             raw.length == 0 ? "<empty>" : vm.toString(abi.decode(raw, (address))),
-            "poll /api/v1/schedules/<id> on the testnet mirror node: `executed_timestamp` set => the network"
-            " fired it; then read HederaProbeCallback on HashScan for the sender it presented"
+            "historical scheduleSelfCall mapping only. The current raw sender probe uses scheduleCall; read"
+            " its HSSCallScheduled receipt for the schedule address and HederaProbeCallback for the sender"
         );
 
         // --- PROBE 7: isAuthorizedRaw through HASSignatureVerifier ---------------------------------------

@@ -16,6 +16,7 @@ import {ERC20FlashMintLib} from "@lattice/tokens/ERC20/libraries/ERC20FlashMintL
 /// @custom:lattice-family none
 /// @custom:lattice-owns none;
 /// @custom:lattice-touches lattice.storage.ERC20;
+/// @custom:lattice-touches transient:lattice.storage.ERC20TemporaryApproval;
 /// @custom:lattice-seam none;
 /// @custom:lattice-init ERC20FlashMintInit
 contract ERC20FlashMint is IERC20FlashMint {

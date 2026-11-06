@@ -37,6 +37,11 @@ reads do not imply that their public facets must be cut. Conventional management
 ordering are labeled as such. Touches describes first-party writes reachable from exported facet entrypoints, including transitive
 writes; initializer-only writes are represented by their own module/sequence records; the shared reentrancy lock and upstream Ownable slots have explicit non-ERC-7201 names.
 
+The explicitly registered temporary-allowance transient namespace is checked against the source root and
+its ERC-7201-shaped derivation without inventing a persistent layout. Exported allowance consumers
+(including indirect wrappers) declare conditional transient writes; view/approve-only paths do not.
+Unknown transient roots are rejected.
+
 The four diamond-lib core facets and MultiInit remain unmodified. A five-entry
 [provenance overlay](../../script/lib/CoreCompositionMetadata.sol) records their actual behavior at the
 pinned upstream commit. MultiInit's sequence is caller-defined, not a claimed fixed bundle. No future

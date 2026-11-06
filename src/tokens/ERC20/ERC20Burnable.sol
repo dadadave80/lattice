@@ -14,6 +14,7 @@ import {ERC20BurnableLib} from "@lattice/tokens/ERC20/libraries/ERC20BurnableLib
 /// @custom:lattice-family none
 /// @custom:lattice-owns none;
 /// @custom:lattice-touches lattice.storage.ERC20;
+/// @custom:lattice-touches transient:lattice.storage.ERC20TemporaryApproval;
 /// @custom:lattice-seam none;
 /// @custom:lattice-init ERC20BurnableInit
 contract ERC20Burnable is IERC20Burnable {
