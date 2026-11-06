@@ -87,11 +87,12 @@ hold HBAR. That is why `Receive` is in the `DeployHTSAdapter` recipe.
 ## Build with the Hedera profile
 
 Hedera mainnet and testnet run **Cancun** (consensus node v0.76, `contracts.evm.version = v0.67`). Prague
-arrives with v0.77, planned for October 2026. Solidity 0.8.36 and the shared Foundry pin default to `osaka`.
+arrives with v0.77, planned for October 2026. Lattice explicitly pins Cancun for its default, CI and Hedera
+profiles; it does not inherit Solidity 0.8.36's newer default target.
 
-In practice 0.8.36 never emits a CLZ opcode unless you write one in Yul, so the runtime bytecode is the same
-either way — but the **metadata is not**, so source verification on HashScan/Sourcify only reproduces if you
-pin the setting. Build and deploy everything Hedera-bound under the dedicated profile:
+Earlier releases compiled the default profile for Osaka. Switching to Cancun changes compiler metadata
+and deterministic addresses, even where executable code is identical. Reproduce a historical deployment
+from its release tag and settings. Build and deploy everything Hedera-bound under the dedicated profile:
 
 ```sh
 script/config/hedera/forge-hedera.sh build --skip test script
@@ -109,8 +110,8 @@ script/config/hedera/forge-hedera.sh script script/base/tokens/DeployHTSAdapter.
 That command without `--broadcast` simulates cleanly against hedera-testnet (checked 2026-09-12 and 2026-10-08).
 Sourcify verification under the pin is still unconfirmed — probe 8 in the table below.
 
-The default profile is untouched and still targets `osaka`. Switch `[profile.hedera]`'s `evm_version` to
-`"prague"` once v0.77 is live.
+Keep `[profile.hedera]` on the canonical Cancun target. A future target change needs a coordinated
+release-build decision and updated reproducibility checks, rather than a chain-local compiler override.
 
 `hedera` (295) and `hedera-testnet` (296) are already named RPC aliases in `foundry.toml`; set
 `HEDERA_RPC_URL` / `HEDERA_TESTNET_RPC_URL` in `.env`.
@@ -156,22 +157,24 @@ reorganizes and skip the disk state cache, and that transaction replay still nee
 broadcast has been made with it yet, so the wrapper stays the supported route until #227 verifies one and retires
 the exception.
 
-The repo's shared pin for CI, builds and tests is a 1.8 release (v1.8.5 at the time of writing), so Hedera work
-goes through a wrapper that runs the installed 1.7.1 binary directly under `FOUNDRY_PROFILE=hedera`, without
-touching your active `forge`:
+The repo's shared pin for CI, builds and tests is v1.9.0. The documented Hedera exception remains until
+#227 verifies a broadcast on the shared pin; the measurements above concern the listed 1.8 releases.
+Hedera work goes through a wrapper that runs the installed 1.7.1 binary directly under
+`FOUNDRY_PROFILE=hedera`, without touching your active `forge`:
 
 ```sh
 foundryup --install v1.7.1    # once; then `foundryup --use <your usual version>` if foundryup switched to it
 script/config/hedera/forge-hedera.sh <forge args…>
 ```
 
-The pin does not change what gets deployed. Under `[profile.hedera]`, Foundry 1.7.1 (`4072e48`) and 1.8.5
+Historical parity check: under `[profile.hedera]`, Foundry 1.7.1 (`4072e48`) and 1.8.5
 (`51a52c5`) resolve the same compiler settings and both build with solc `0.8.36+commit.8a079791`. Re-checked
 2026-10-08: `HTSAdapter`, `ERC20` and `Lattice` have identical creation and runtime bytecode, with the CBOR
 metadata tail stripped and with it included. The same holds for every other `src/` and `lib/` artifact. The only
 differences are the metadata of three `test/` helpers, which Forge's test-linking preprocessor touches. So an
 Arachnid address or a Sourcify metadata hash computed under one version holds for a deploy made under the
 other. The same check passed for 1.7.1 against 1.8.1 on 2026-09-12.
+Those measurements do not establish parity with the current v1.9.0 pin; #227 tracks that verification.
 
 Anything that never opens a fork backend works on **both** versions — `forge create`, `cast send` / `call` /
 `mktx`, and `vm.rpc` inside a test. `--legacy` is worth passing as Hedera's native transaction form, but it is

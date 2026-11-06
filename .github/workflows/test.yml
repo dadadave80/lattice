@@ -130,13 +130,15 @@ jobs:
           submodules: recursive
           persist-credentials: false
       - uses: ./.github/actions/foundry-setup
+      - name: Check canonical release build
+        run: make release-build-check
       - name: Cache forge build (src)
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             out
             cache
-          key: forge-build-${{ runner.os }}-${{ hashFiles('foundry.toml', 'remappings.txt', 'src/**/*.sol', 'lib/**/*.sol') }}
+          key: forge-build-${{ runner.os }}-${{ hashFiles('.github/actions/foundry-setup/action.yml', 'foundry.toml', 'foundry.lock', 'remappings.txt', 'src/**/*.sol', 'lib/**/*.sol') }}
 
       # --sizes gates EIP-170 (24,576 B) on deployable contracts only. Test/script fixtures
       # (e.g. the SelfGovDiamond E2E harness that inherits every facet at once) legitimately
@@ -144,7 +146,7 @@ jobs:
       # still compiled by the `test` job, so compile errors there remain caught. On a cache hit
       # this is a near-instant no-op compile that still runs the size gate.
       # --locked fails the build when a submodule gitlink drifts from foundry.lock; without it,
-      # forge (v1.8.5) builds against the checked-out submodule and passes silently.
+      # forge builds against the checked-out submodule and passes silently.
       - name: Build src (--sizes)
         run: forge build --locked --sizes --skip test script
 
@@ -169,7 +171,7 @@ jobs:
           path: |
             out
             cache
-          key: forge-viair-${{ runner.os }}-${{ hashFiles('foundry.toml', 'remappings.txt', 'src/**/*.sol', 'lib/**/*.sol') }}
+          key: forge-viair-${{ runner.os }}-${{ hashFiles('.github/actions/foundry-setup/action.yml', 'foundry.toml', 'foundry.lock', 'remappings.txt', 'src/**/*.sol', 'lib/**/*.sol') }}
 
       # IR-pipeline parity + EIP-170 under via_ir. The size gate still applies to every
       # contract; the ONE exemption is the vendored, gas-optimized PoseidonT3, which is
@@ -310,7 +312,7 @@ jobs:
           path: |
             out
             cache
-          key: forge-build-${{ runner.os }}-${{ hashFiles('foundry.toml', 'remappings.txt', 'src/**/*.sol', 'lib/**/*.sol') }}
+          key: forge-build-${{ runner.os }}-${{ hashFiles('.github/actions/foundry-setup/action.yml', 'foundry.toml', 'foundry.lock', 'remappings.txt', 'src/**/*.sol', 'lib/**/*.sol') }}
       - name: Test grant RPC runner
         run: make test-grant-runner
       - name: Run Anvil deployment checks

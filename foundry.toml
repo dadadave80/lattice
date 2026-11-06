@@ -1,5 +1,6 @@
 [profile.default]
 solc = "0.8.36"
+evm_version = "cancun"
 src = "src"
 out = "out"
 libs = ["lib"]
@@ -23,9 +24,14 @@ remappings = [
     '@lattice-script/=script/',
     '@lattice-test/=test/',
 ]
+optimizer = true
 optimizer_runs = 1_000_000
+via_ir = false
+bytecode_hash = "ipfs"
+cbor_metadata = true
 
 [profile.ci]
+evm_version = "cancun"
 optimizer_runs = 1_000_000
 via_ir = false
 build_info = true

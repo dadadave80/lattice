@@ -70,7 +70,8 @@ and re-derived from first principles by `test/unit/StorageSlotVerificationTest.t
 - **Storage discipline** — ERC-7201 namespaces registered in `STORAGE_REGISTRY.md`, guarded
   append-only by `script/upgrades/check-storage-layout.sh` (fails loudly on vacuous sections),
   slot-verified + uniqueness-swept in `StorageSlotVerificationTest`.
-- **EIP-170 awareness** — `ChainRegistry` carries 10 inlined fan-out libs at 262 B margin;
+- **EIP-170 awareness** — `ChainRegistry` carries 10 inlined fan-out libs in 18,838 runtime bytes,
+  a 5,738 B margin (Foundry 1.9.0, solc 0.8.36, Cancun, CI profile);
   `test_ChainRegistryFacetFitsEip170` guards the ceiling in CI, and the documented plan for an
   11th adapter is a dedicated `ChainFanOut` facet split.
 

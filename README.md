@@ -40,8 +40,14 @@ git add lib/lattice .gitmodules foundry.lock && git commit -m "Install lattice"
 These steps assume a git repository (`forge init` creates one). In a `--no-git` project, run
 `forge install --no-git dadadave80/lattice@<tag>` instead and skip the commit step above and the
 `git describe` check below: Forge records no gitlink, so check the pin from `VERSION` in
-`lib/lattice/src/LatticeVersion.sol`. CI builds with Foundry v1.8.5 and Solidity 0.8.36, and these steps
-were checked on Forge v1.8.5.
+`lib/lattice/src/LatticeVersion.sol`. CI and local development use Foundry v1.9.0 and Solidity 0.8.36,
+targeting Cancun. Install that shared toolchain with `foundryup --install v1.9.0`; `make release-build-check`
+checks the resolved compiler, metadata settings and dependency pins. The v0.5.0 install steps were
+originally checked on Forge v1.8.5.
+
+Cancun is the compiler floor, not a guarantee that every optional protocol feature exists on every
+chain. EIP-7702 accounts need Prague delegation support. P256/WebAuthn signers need the native P256
+precompile (Osaka on Ethereum, or RIP-7212 on another chain) or Solady's deployed software verifier.
 
 `forge install` checks out the tag and its nested `diamond-lib` and `forge-std` submodules. Commit the
 install straight away, as shown: some Forge releases stage the default branch's commit rather than the

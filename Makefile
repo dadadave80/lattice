@@ -108,6 +108,11 @@ fmt-check: ## Formatting gate (what CI runs)
 sizes: ## EIP-170 size gate under the CI profile (skips test/script)
 	FOUNDRY_PROFILE=ci forge build --locked --sizes --skip test script
 
+.PHONY: release-build-check
+release-build-check: ## Canonical compiler/EVM/metadata settings and locked dependency identity
+	./script/test-check-release-build.sh
+	./script/check-release-build.sh
+
 .PHONY: via-ir
 via-ir: ## IR-pipeline parity build (catches stack-too-deep / IR-only errors)
 	forge build --via-ir --skip test script
@@ -145,7 +150,7 @@ test-ci: ## Full test suite under the CI profile (snapshots/ is left to snapshot
 	FOUNDRY_PROFILE=ci FORGE_SNAPSHOT_EMIT=false forge test
 
 .PHONY: ci
-ci: fmt-check license-check scripts-check readme-check sizes via-ir storage-check test-ci snapshot-check ## All CI gates, locally, in CI order
+ci: fmt-check license-check scripts-check readme-check release-build-check sizes via-ir storage-check test-ci snapshot-check ## All CI gates, locally, in CI order
 
 .PHONY: slither
 slither: ## Static analysis gate, as CI runs it (slither.config.json + triaged slither.db.json; fails on High)

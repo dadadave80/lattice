@@ -20,6 +20,7 @@ the linked issue or pull request; a record is the outcome, not a spec.
 | [0012](0012-storage-checker-bash-jq.md) | The storage-layout checker stays in Bash and jq | Accepted |
 | [0013](0013-colocated-timelock-enforces-governor-grace.md) | A timelock in the Governor's diamond enforces the proposal grace period | Accepted |
 | [0014](0014-arachnid-shared-release-deployer.md) | Shared releases use only the Arachnid deterministic-deployment proxy | Accepted |
+| [0015](0015-canonical-cancun-build.md) | Canonical releases target Cancun with one pinned build configuration | Accepted |
 
 ## When to write one
 

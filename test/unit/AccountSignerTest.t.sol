@@ -112,6 +112,8 @@ contract AccountSignerTest is AccountBlueprintHelper {
         if (uint256(s) > P256_N / 2) s = bytes32(P256_N - uint256(s)); // mandatory low-S normalization
     }
 
+    /// @dev Native P256 execution; this test's bytecode still compiles for canonical Cancun.
+    /// forge-config: default.hardfork = "osaka"
     function test_P256_Valid() public {
         (uint256 x, uint256 y) = vm.publicKeyP256(PASSKEY_PK);
         vm.expectEmit(false, false, false, true, address(signer));
@@ -124,12 +126,24 @@ contract AccountSignerTest is AccountBlueprintHelper {
         assertTrue(signer.rawValidate(digest, abi.encodePacked(r, s)), "valid P256 sig rejected");
     }
 
+    /// forge-config: default.hardfork = "osaka"
     function test_P256_TamperedRejected() public {
         (uint256 x, uint256 y) = vm.publicKeyP256(PASSKEY_PK);
         vm.prank(admin);
         signer.setP256Signer(bytes32(x), bytes32(y));
         (bytes32 r, bytes32 s) = _signP256Low(PASSKEY_PK, keccak256("p256 message"));
         assertFalse(signer.rawValidate(keccak256("other digest"), abi.encodePacked(r, s)), "tampered accepted");
+    }
+
+    function test_P256_CancunWithoutVerifierFailsClosed() public {
+        vm.setEvmVersion("cancun");
+        vm.etch(0x000000000000D01eA45F9eFD5c54f037Fa57Ea1a, hex""); // Solady's optional software verifier.
+        (uint256 x, uint256 y) = vm.publicKeyP256(PASSKEY_PK);
+        vm.prank(admin);
+        signer.setP256Signer(bytes32(x), bytes32(y));
+        bytes32 digest = keccak256("p256 message");
+        (bytes32 r, bytes32 s) = _signP256Low(PASSKEY_PK, digest);
+        assertFalse(signer.rawValidate(digest, abi.encodePacked(r, s)), "accepted without a P256 verifier");
     }
 
     function test_P256_BadLengthRejected() public {
@@ -189,6 +203,7 @@ contract AccountSignerTest is AccountBlueprintHelper {
         );
     }
 
+    /// forge-config: default.hardfork = "osaka"
     function test_WebAuthn_Valid() public {
         (uint256 x, uint256 y) = vm.publicKeyP256(PASSKEY_PK);
         vm.expectEmit(false, false, false, true, address(signer));
@@ -200,6 +215,7 @@ contract AccountSignerTest is AccountBlueprintHelper {
         assertTrue(signer.rawValidate(challenge, _webauthnSig(PASSKEY_PK, challenge, false)), "valid passkey rejected");
     }
 
+    /// forge-config: default.hardfork = "osaka"
     function test_WebAuthn_RequireUserVerification() public {
         (uint256 x, uint256 y) = vm.publicKeyP256(PASSKEY_PK);
         vm.prank(admin);

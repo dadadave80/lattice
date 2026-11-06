@@ -32,6 +32,7 @@ contract Target {
 ///         self-initializes its OWN storage (owner = the EOA), then validates and executes in the EOA context.
 ///         Also pins the 7702-specific hardening (self-owner signature path must not recurse) and the
 ///         storage-collision safety (residual EOA storage cannot corrupt the namespaced account slots).
+/// forge-config: default.hardfork = "prague"
 contract Account7702Test is AccountBlueprintHelper {
     Lattice diamondImpl; // shared delegate code; each EOA uses its own storage
     Account7702Diamond diamond7702; // optional hardened delegate (signed onboarding)

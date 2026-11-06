@@ -116,6 +116,10 @@ same address everywhere, anyone may finish the job".
   metadata). A release therefore only reproduces across machines/chains when built with the pinned
   compiler config — build with this repo's `foundry.toml` profile at the release tag, never a locally
   drifted toolchain.
+  Canonical builds now use solc 0.8.36, Cancun, optimizer 1,000,000 runs, the legacy pipeline and
+  IPFS/CBOR metadata under Foundry v1.9.0 (`make release-build-check`). This intentionally rotates
+  addresses from earlier Osaka builds, including metadata-derived addresses of unchanged contracts.
+  Existing deployments retain their historical release configuration; a new build is a fresh release.
 - **The registry's `owner` constructor arg.** It is ABI-encoded into the registry's initcode, so the
   registry only lands at the same address on every chain if the **same owner address** is passed on
   every chain — the mainnet multisig must exist at one address on all target chains (or the

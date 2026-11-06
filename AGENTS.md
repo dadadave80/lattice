@@ -61,12 +61,16 @@ if older documentation conflicts with the development policy below, apply this p
 - Pin one current latest stable Foundry release uniformly across local development and CI,
   including builds, tests, formatting, and documentation. Verify the current release when setting
   or updating the pin; do not use a floating release or split versions to work around incompatibility.
+  The shared pin is Foundry 1.9.0; canonical builds use Solidity 0.8.36, Cancun, the legacy pipeline,
+  optimizer 1,000,000 runs and IPFS/CBOR metadata. `make release-build-check` guards these settings
+  and the submodule lock against drift.
 - Recorded exception (user-approved 2026-09-12, kept 2026-10-08): Hedera `forge script` work runs on
   Foundry 1.7.1 through `script/config/hedera/forge-hedera.sh`. By default every 1.8 release
   measured (1.8.1, 1.8.3, 1.8.5) fetches fork state with EIP-1898 block-hash objects, which Hedera's
   JSON-RPC relay rejects. Foundry 1.8.5 adds `--fork-state-by-number`, which passed a `forge script`
   simulation and the forking test on 2026-10-08 but is not yet verified for a broadcast. Under
-  `[profile.hedera]` both versions emit identical bytecode (`docs/guides/hedera.md`). CI and all
+  `[profile.hedera]` the measured 1.7.1 and 1.8.5 versions emit identical bytecode
+  (`docs/guides/hedera.md`). CI and all
   other work stay on the shared pin. #227 tracks retiring the exception once the shared pin is
   verified end to end. Do not extend the exception to other chains.
 - Adapt the implementation to the shared toolchain and surface compatibility problems. Do not
@@ -107,7 +111,7 @@ Adding a module touches more than its three source files: follow the
 | `make storage-check` / `make storage-update` | Verify / regenerate the storage-layout baseline (`BASE_REF=origin/dev` also checks append-only, as CI does against the PR base) |
 | `make doc` / `make doc-serve` | Build and link-check / serve the docs site (Node.js; not part of `make ci`) |
 | `make test-ci` | Full suite under `FOUNDRY_PROFILE=ci` |
-| `make ci` | CI's Solidity gates in CI order (`fmt-check license-check scripts-check readme-check sizes via-ir storage-check test-ci snapshot-check`); CI also runs a via-ir size gate, Slither (`make slither`) and Anvil deploy checks (`make check-atomic-deploy` needs `make anvil`) |
+| `make ci` | CI's Solidity gates in CI order (`fmt-check license-check scripts-check readme-check release-build-check sizes via-ir storage-check test-ci snapshot-check`); CI also runs a via-ir size gate, Slither (`make slither`) and Anvil deploy checks (`make check-atomic-deploy` needs `make anvil`) |
 | `make clean` | `forge clean`; run it before trusting gates after tools touched the tree |
 | `make help` | Every target, including deploy and demo targets |
 
