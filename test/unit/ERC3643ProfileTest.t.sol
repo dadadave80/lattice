@@ -7,6 +7,7 @@ import {Lattice} from "@lattice/Lattice.sol";
 import {RecipeEntry} from "@lattice/interfaces/ILatticeFactory.sol";
 import {IERC8153} from "@lattice/interfaces/external/ercs/IERC8153.sol";
 import {ERC3643Init} from "@lattice/tokens/ERC3643/ERC3643Init.sol";
+import {ERC3643Params} from "@lattice/tokens/ERC3643/ERC3643Params.sol";
 import {
     ERC3643MissingRoutes,
     ERC3643UnexpectedFacet,
@@ -15,6 +16,18 @@ import {
 
 contract ERC3643UnknownMover {
     function unreviewedMovement(address, uint256) external {}
+}
+
+contract ERC3643BindingSentinel {
+    error BindingReached();
+
+    function getTokenBound() external pure returns (address) {
+        return address(0);
+    }
+
+    function bindToken(address) external pure {
+        revert BindingReached();
+    }
 }
 
 contract ERC3643NativeExecutionHost is Lattice {
@@ -61,9 +74,19 @@ contract ERC3643ProfileTest is ERC3643TestBase {
         _reject(cuts, init, data, ERC3643UnexpectedFacet.selector);
     }
 
+    function test_AdmissionRunsBeforeExternalBinding() public {
+        ERC3643Params memory config = _config(false);
+        config.compliance = address(new ERC3643BindingSentinel());
+        (FacetCut[] memory cuts, address init, bytes memory data) = recipe.buildCuts(config);
+        bytes4[] memory one = new bytes4[](1);
+        one[0] = ERC3643UnknownMover.unreviewedMovement.selector;
+        cuts = _append(cuts, FacetCut(address(new ERC3643UnknownMover()), FacetCutAction.Add, one));
+        _reject(cuts, init, data, ERC3643UnexpectedFacet.selector);
+    }
+
     function test_MissingRequiredFacetRejected() public {
         (FacetCut[] memory cuts, address init, bytes memory data) = recipe.buildCuts(_config(false));
-        // ERC165 is not called by initialization; the final mandatory-route check detects its absence.
+        // Mandatory-route admission detects an absent ERC165 facet independently of initializer calls.
         FacetCut[] memory all = new FacetCut[](cuts.length - 1);
         uint256 n;
         for (uint256 i; i < cuts.length; ++i) {

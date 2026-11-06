@@ -24,6 +24,7 @@ the linked issue or pull request; a record is the outcome, not a spec.
 | [0016](0016-shared-initialization-identity.md) | Shared bootstrap identity is consistent and interface claims follow routed selectors | Accepted |
 | [0017](0017-hss-generation-recovery.md) | HSS job recovery invalidates generations before native deletion | Accepted locally; native sender unverified |
 | [0019](0019-shared-temporary-allowances.md) | ERC-7674 allowances share the base allowance path | Accepted |
+| [0021](0021-erc3643-closed-immutable-profile.md) | ERC-3643 admits one closed immutable composition | Accepted |
 
 ## When to write one
 

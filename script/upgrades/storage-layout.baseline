@@ -218,6 +218,35 @@
 0	0	_defaultRoyaltyInfo	t_struct(RoyaltyInfo)_storage
 1	0	_tokenRoyaltyInfo	t_mapping(t_uint256,t_struct(RoyaltyInfo)_storage)
 
+### ERC3643ClaimTopicsRegistryData @ erc7201:lattice.storage.ERC3643ClaimTopicsRegistry (slot 0x75becd3dc46851ccd9a9e74ae984f7607b7dfc21e393161cc0a3246962eb1100)
+0	0	_topics	t_struct(UintSet)_storage
+
+### ERC3643ComplianceData @ erc7201:lattice.storage.ERC3643Compliance (slot 0xcfb462e7546f5454efc8beb4ff0c622b5b0701cba309faa31474042e507a7600)
+0	0	_boundToken	t_address
+
+### ERC3643IdentityRegistryData @ erc7201:lattice.storage.ERC3643IdentityRegistry (slot 0x0ea0b7136671cc454d4dbd6846eb4555e21642d317fda5e88aa0aa0398c0ed00)
+0	0	_identityStorage	t_address
+1	0	_issuersRegistry	t_address
+2	0	_topicsRegistry	t_address
+
+### ERC3643IdentityRegistryStorageData @ erc7201:lattice.storage.ERC3643IdentityRegistryStorage (slot 0xe887ffba65a77a04a49755f77f35ff689ea1d47eb3c26a4ae93fc39e1696fb00)
+0	0	_identities	t_mapping(t_address,t_struct(ERC3643IdentityRecord)_storage)
+1	0	_registries	t_struct(AddressSet)_storage
+
+### ERC3643Storage @ erc7201:lattice.storage.ERC3643 (slot 0xd2596bdadf56df9c4b979459dbbea8fd215833aab674547a3f07281f92ff8400)
+0	0	_identityRegistry	t_address
+1	0	_compliance	t_address
+2	0	_onchainID	t_address
+2	20	_decimals	t_uint8
+2	21	_paused	t_bool
+3	0	_frozen	t_mapping(t_address,t_bool)
+4	0	_frozenTokens	t_mapping(t_address,t_uint256)
+
+### ERC3643TrustedIssuersRegistryData @ erc7201:lattice.storage.ERC3643TrustedIssuersRegistry (slot 0x5378a9ff2d49f0b9d9a96809a7b737e6b13fb211786455938311f4d4d34ee500)
+0	0	_issuers	t_struct(AddressSet)_storage
+2	0	_topics	t_mapping(t_address,t_struct(UintSet)_storage)
+3	0	_topicIssuers	t_mapping(t_uint256,t_struct(AddressSet)_storage)
+
 ### ERC4337ValidationStorage @ erc7201:lattice.storage.ERC4337Validation (slot 0x63f3a16063eb3400d0c49a9883f78e71c0740febe009dfe0af21003612fc2a00)
 0	0	_entryPoint	t_address
 
@@ -630,6 +659,10 @@
 0	0	maxFee	t_uint256
 1	0	minFinalityThreshold	t_uint32
 2	0	destinationCaller	t_bytes32
+
+### ERC3643IdentityRecord (nested)
+0	0	identity	t_contract(IERC3643Identity)
+0	20	country	t_uint16
 
 ### ExecutionStorage (nested)
 0	0	module	t_address

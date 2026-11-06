@@ -20,7 +20,7 @@ jq -e '
   and all(.facets[]; (.name | test("^[A-Za-z][A-Za-z0-9_]*$")) and (.artifact | test("^[A-Za-z0-9_./-]+:[A-Za-z][A-Za-z0-9_]*$")) and (.optional | type == "boolean"))
 ' "$CONFIG" >/dev/null || fail 'invalid reviewed profile configuration'
 # Cached builds are safe; source changes must be compiled before comparing hashes.
-if ! FOUNDRY_PROFILE=ci forge build --locked --skip test script >"$PROFILE_TMP/build.log" 2>&1; then
+if ! FOUNDRY_PROFILE=ci forge build src lib/diamond-lib/src --locked --skip test script >"$PROFILE_TMP/build.log" 2>&1; then
   tail -n 100 "$PROFILE_TMP/build.log" >&2
   fail 'canonical source build failed'
 fi

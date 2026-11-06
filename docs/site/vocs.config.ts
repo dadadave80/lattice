@@ -33,6 +33,7 @@ const decisions: Item = {
     { text: '0016 Shared initialization', link: '/adr/0016-shared-initialization-identity' },
     { text: '0017 HSS generation recovery', link: '/adr/0017-hss-generation-recovery' },
     { text: '0019 Temporary allowances', link: '/adr/0019-shared-temporary-allowances' },
+    { text: '0021 Closed ERC-3643 profile', link: '/adr/0021-erc3643-closed-immutable-profile' },
   ],
 }
 
@@ -42,6 +43,7 @@ const guides: Item = {
     { text: 'Quickstart', link: '/' },
     { text: 'Compose your own Diamond', link: '/guides/compose-your-own-diamond' },
     { text: 'Selector compatibility', link: '/guides/selector-compatibility' },
+    { text: 'ERC-3643 permissioned token', link: '/guides/erc3643' },
     { text: 'ShieldedPool circuit requirements', link: '/guides/shielded-pool-circuit' },
     { text: 'Storage-safety Action', link: '/guides/storage-action' },
     { text: 'Hedera', link: '/guides/hedera' },

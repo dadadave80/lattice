@@ -26,6 +26,7 @@ contract ERC3643TokenTest is ERC3643TestBase {
         assertTrue(IAgentRole(address(fresh)).isAgent(address(this)));
         assertTrue(ERC165Facet(address(fresh)).supportsInterface(type(IERC3643).interfaceId));
         assertTrue(ERC165Facet(address(fresh)).supportsInterface(type(IERC20).interfaceId));
+        assertTrue(ERC165Facet(address(fresh)).supportsInterface(bytes4(0x7f5828d0)), "routed ERC173 ownership");
         assertFalse(ERC165Facet(address(fresh)).supportsInterface(bytes4(0x1f931c1c)));
         vm.prank(alice);
         vm.expectRevert(IERC3643.ERC3643TokenPaused.selector);

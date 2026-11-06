@@ -31,7 +31,7 @@ lock root `0x7ec596ba3a239053ac1cb6c6ad11931467488f3fa0022f65c88f71add3b23800`
 The [JSON registry](script/upgrades/storage-registry.json) exports every namespace, slot and struct
 layout, including nested structs, from the existing source-checked layout baseline. It also exports
 source-declared interface IDs and map-slot constants with file provenance, deduplicating shared IDs.
-The 116 exported ID/slot pairs include the 115 Lattice registrations and the existing `IDiamondCut` alias.
+The 117 exported ID/slot pairs include the 116 Lattice registrations and the existing `IDiamondCut` alias.
 `make storage-check` checks the source layout, recomputes map slots with `cast`, and detects JSON drift
 and incorrect namespace or interface-ID/map-slot pairs in this table; `make storage-update`
 regenerates both the reviewed baseline and JSON. New releases attach both checked files from the exact
@@ -423,7 +423,7 @@ release tag. Historical release layouts are not regenerated from a later source 
 
 ---
 
-**Counts:** 97 unique ERC-7201 slots and 107 ERC-165 interface map slots — the entry counts of
+**Counts:** 103 unique persistent ERC-7201 slots and 116 ERC-165 interface map slots — the entry counts of
 `StorageSlotVerificationTest`'s `_allStorageSlots` and `_allErc165MapSlots`, which pin them. A module can hold
 more than one slot (VaultCore keeps its frozen `lattice.storage.VaultCore` namespace plus
 `lattice.storage.VaultCoreRecovery`, #305), so slots outnumber modules. (The privacy track adds the stateful `ERC6538Registry` — one ERC-7201 slot and one

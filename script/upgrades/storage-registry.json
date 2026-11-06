@@ -1117,6 +1117,150 @@
       ]
     },
     {
+      "struct": "ERC3643ClaimTopicsRegistryData",
+      "namespace": "lattice.storage.ERC3643ClaimTopicsRegistry",
+      "slot": "0x75becd3dc46851ccd9a9e74ae984f7607b7dfc21e393161cc0a3246962eb1100",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_topics",
+          "type": "t_struct(UintSet)_storage"
+        }
+      ]
+    },
+    {
+      "struct": "ERC3643ComplianceData",
+      "namespace": "lattice.storage.ERC3643Compliance",
+      "slot": "0xcfb462e7546f5454efc8beb4ff0c622b5b0701cba309faa31474042e507a7600",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_boundToken",
+          "type": "t_address"
+        }
+      ]
+    },
+    {
+      "struct": "ERC3643IdentityRegistryData",
+      "namespace": "lattice.storage.ERC3643IdentityRegistry",
+      "slot": "0x0ea0b7136671cc454d4dbd6846eb4555e21642d317fda5e88aa0aa0398c0ed00",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_identityStorage",
+          "type": "t_address"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "_issuersRegistry",
+          "type": "t_address"
+        },
+        {
+          "slot": "2",
+          "offset": 0,
+          "name": "_topicsRegistry",
+          "type": "t_address"
+        }
+      ]
+    },
+    {
+      "struct": "ERC3643IdentityRegistryStorageData",
+      "namespace": "lattice.storage.ERC3643IdentityRegistryStorage",
+      "slot": "0xe887ffba65a77a04a49755f77f35ff689ea1d47eb3c26a4ae93fc39e1696fb00",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_identities",
+          "type": "t_mapping(t_address,t_struct(ERC3643IdentityRecord)_storage)"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "_registries",
+          "type": "t_struct(AddressSet)_storage"
+        }
+      ]
+    },
+    {
+      "struct": "ERC3643Storage",
+      "namespace": "lattice.storage.ERC3643",
+      "slot": "0xd2596bdadf56df9c4b979459dbbea8fd215833aab674547a3f07281f92ff8400",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_identityRegistry",
+          "type": "t_address"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "_compliance",
+          "type": "t_address"
+        },
+        {
+          "slot": "2",
+          "offset": 0,
+          "name": "_onchainID",
+          "type": "t_address"
+        },
+        {
+          "slot": "2",
+          "offset": 20,
+          "name": "_decimals",
+          "type": "t_uint8"
+        },
+        {
+          "slot": "2",
+          "offset": 21,
+          "name": "_paused",
+          "type": "t_bool"
+        },
+        {
+          "slot": "3",
+          "offset": 0,
+          "name": "_frozen",
+          "type": "t_mapping(t_address,t_bool)"
+        },
+        {
+          "slot": "4",
+          "offset": 0,
+          "name": "_frozenTokens",
+          "type": "t_mapping(t_address,t_uint256)"
+        }
+      ]
+    },
+    {
+      "struct": "ERC3643TrustedIssuersRegistryData",
+      "namespace": "lattice.storage.ERC3643TrustedIssuersRegistry",
+      "slot": "0x5378a9ff2d49f0b9d9a96809a7b737e6b13fb211786455938311f4d4d34ee500",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_issuers",
+          "type": "t_struct(AddressSet)_storage"
+        },
+        {
+          "slot": "2",
+          "offset": 0,
+          "name": "_topics",
+          "type": "t_mapping(t_address,t_struct(UintSet)_storage)"
+        },
+        {
+          "slot": "3",
+          "offset": 0,
+          "name": "_topicIssuers",
+          "type": "t_mapping(t_uint256,t_struct(AddressSet)_storage)"
+        }
+      ]
+    },
+    {
       "struct": "ERC4337ValidationStorage",
       "namespace": "lattice.storage.ERC4337Validation",
       "slot": "0x63f3a16063eb3400d0c49a9883f78e71c0740febe009dfe0af21003612fc2a00",
@@ -3220,6 +3364,25 @@
       ]
     },
     {
+      "struct": "ERC3643IdentityRecord",
+      "namespace": null,
+      "slot": null,
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "identity",
+          "type": "t_contract(IERC3643Identity)"
+        },
+        {
+          "slot": "0",
+          "offset": 20,
+          "name": "country",
+          "type": "t_uint16"
+        }
+      ]
+    },
+    {
       "struct": "ExecutionStorage",
       "namespace": null,
       "slot": null,
@@ -4171,12 +4334,32 @@
       ]
     },
     {
+      "interfaceId": "0x0cba0fa8",
+      "slot": "0x5e0e61fcfafd9757a5e1c80a17dd186de8f76529f91d051782b2ee9d958f98cf",
+      "sources": [
+        {
+          "source": "src/tokens/ERC3643/libraries/ERC3643AgentRoleLib.sol",
+          "constant": "ERC165_MAP_IAGENTROLE_SLOT"
+        }
+      ]
+    },
+    {
       "interfaceId": "0x0e89341c",
       "slot": "0x16223e323116e54e339612437d2478d553a51948c039066bf3354fac71c5ef6c",
       "sources": [
         {
           "source": "src/tokens/ERC1155/libraries/ERC1155Lib.sol",
           "constant": "ERC165_MAP_IERC1155METADATAURI_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x10928b13",
+      "slot": "0xfb0800521a41e28960f7a406ade656c595694178bf7b582791143ed7dc6ec311",
+      "sources": [
+        {
+          "source": "src/tokens/ERC3643/libraries/ERC3643ClaimTopicsRegistryLib.sol",
+          "constant": "ERC165_MAP_ICLAIMTOPICSREGISTRY_SLOT"
         }
       ]
     },
@@ -4595,6 +4778,16 @@
       ]
     },
     {
+      "interfaceId": "0x57defe0d",
+      "slot": "0x76c31b23f779d640712776c8fc2183ef2248d79a58156d6e4ba36486cb057f27",
+      "sources": [
+        {
+          "source": "src/tokens/ERC3643/libraries/ERC3643IdentityRegistryStorageLib.sol",
+          "constant": "ERC165_MAP_IIDENTITYREGISTRYSTORAGE_SLOT"
+        }
+      ]
+    },
+    {
       "interfaceId": "0x5b5e139f",
       "slot": "0xdec0fb77ff71ebf00e30e78bd255149ae2525d6ff9925bff1ddd9a569813231d",
       "sources": [
@@ -4875,6 +5068,16 @@
       ]
     },
     {
+      "interfaceId": "0x8ff89f73",
+      "slot": "0x1432554cd2aff9b2bdec5e9b776ed6f1cb4c1249efb6e06e0d30d4d2282073f8",
+      "sources": [
+        {
+          "source": "src/tokens/ERC3643/libraries/ERC3643IdentityRegistryLib.sol",
+          "constant": "ERC165_MAP_IIDENTITYREGISTRY_SLOT"
+        }
+      ]
+    },
+    {
       "interfaceId": "0x942e8b22",
       "slot": "0xc99f0f757c400475fa5e27e7e237b05409e3b11dbfd9a8930fb35692da3f3a3d",
       "sources": [
@@ -4985,6 +5188,16 @@
       ]
     },
     {
+      "interfaceId": "0xa87a1289",
+      "slot": "0x65ca2e039e0fba3681e69e0c954d898b4065522cde366f6f0a523370719acc0d",
+      "sources": [
+        {
+          "source": "src/tokens/ERC3643/libraries/ERC3643ComplianceLib.sol",
+          "constant": "ERC165_MAP_ICOMPLIANCE_SLOT"
+        }
+      ]
+    },
+    {
       "interfaceId": "0xacb1aeb6",
       "slot": "0xe71618ea5c7977b34866901ace6d6c6585c16253798f12024e30133e7fb7b675",
       "sources": [
@@ -5015,12 +5228,32 @@
       ]
     },
     {
+      "interfaceId": "0xb0f773b8",
+      "slot": "0x1581f45088ce8cd867e9eb74d20ba9c1676b618fa0eca24f95a10e1e759db18a",
+      "sources": [
+        {
+          "source": "src/tokens/ERC3643/libraries/ERC3643TrustedIssuersRegistryLib.sol",
+          "constant": "ERC165_MAP_ITRUSTEDISSUERSREGISTRY_SLOT"
+        }
+      ]
+    },
+    {
       "interfaceId": "0xb4f23f37",
       "slot": "0xda64faf279e491b8914ea1bd5a229e6b869c7ceecd7af74ddf271e5df1381612",
       "sources": [
         {
           "source": "src/crosschain/hyperlane/HyperlaneGatewayAdapterLib.sol",
           "constant": "ERC165_MAP_IHYPERLANEGATEWAYADAPTER_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0xb97d944c",
+      "slot": "0xcc87e7afa96fdc55152180e6574a08d5c0d5b11e49e549f6bafca01a76c4354f",
+      "sources": [
+        {
+          "source": "src/tokens/ERC3643/libraries/ERC3643Lib.sol",
+          "constant": "ERC165_MAP_IERC3643_SLOT"
         }
       ]
     },

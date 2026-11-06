@@ -49,8 +49,11 @@ contract ERC3643Init {
     function init(ERC3643Params calldata config) external {
         InitializableLib.checkInitializing(InitializableLib.initializableSlot());
         ERC3643ExecutionLib.enter();
+        // Admission must precede external component binding callbacks.
+        ERC3643ProfileLib.validate(config.temporaryApproval);
         if (config.owner == address(0)) revert ERC3643InvalidOwner();
         OwnableLib.initializeOwner(config.owner);
+        OwnableLib.registerInterface();
         ERC3643AgentRoleLib.__ERC3643AgentRole_init(config.agents);
         ERC3643ClaimTopicsRegistryLib.__ERC3643ClaimTopicsRegistry_init();
         ERC3643TrustedIssuersRegistryLib.__ERC3643TrustedIssuersRegistry_init();
@@ -64,7 +67,7 @@ contract ERC3643Init {
         if (config.temporaryApproval) ERC20TemporaryApprovalLib.__ERC20TemporaryApproval_init();
         ERC165Lib.registerInterface();
         assembly ("memory-safe") { sstore(ERC165_MAP_ILOUPE_SLOT, true) }
-        // Final admission is after every initialization effect and external binding call.
+        // Recheck the installed profile after component initialization and binding.
         ERC3643ProfileLib.validate(config.temporaryApproval);
         ERC3643ExecutionLib.exit();
     }
