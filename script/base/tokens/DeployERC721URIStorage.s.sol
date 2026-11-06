@@ -36,22 +36,22 @@ contract DeployERC721URIStorage is BaseDeploy {
         public
         returns (FacetCut[] memory cuts, address[] memory inits, bytes[] memory initCalldatas)
     {
-        address uriFacet = address(new ERC721URIStorage());
+        address uriFacet = _facet("ERC721URIStorage");
 
         cuts = new FacetCut[](7);
-        cuts[0] = _cut(address(new ERC165Facet()));
-        cuts[1] = _cut(address(new ERC721()));
+        cuts[0] = _cut(_facet("ERC165Facet"));
+        cuts[1] = _cut(_facet("ERC721"));
         // `setTokenURI` is new — ADD it; `tokenURI` already exists on the base ERC-721 facet — REPLACE it.
         cuts[2] = FacetCut({facetAddress: uriFacet, action: FacetCutAction.Add, functionSelectors: _setTokenURI()});
         cuts[3] = FacetCut({facetAddress: uriFacet, action: FacetCutAction.Replace, functionSelectors: _tokenURI()});
-        cuts[4] = _cut(address(new AccessControl()));
-        cuts[5] = _cut(address(new DiamondLoupeFacet()));
-        cuts[6] = _cut(address(new AccessControlDiamondCut()));
+        cuts[4] = _cut(_facet("AccessControl"));
+        cuts[5] = _cut(_facet("DiamondLoupeFacet"));
+        cuts[6] = _cut(_facet("AccessControlDiamondCut"));
 
         inits = new address[](3);
-        inits[0] = address(new ERC721Init());
-        inits[1] = address(new ERC721URIStorageInit());
-        inits[2] = address(new DiamondIntrospectionInit());
+        inits[0] = _init("ERC721Init");
+        inits[1] = _init("ERC721URIStorageInit");
+        inits[2] = _init("DiamondIntrospectionInit");
 
         initCalldatas = new bytes[](3);
         initCalldatas[0] = abi.encodeCall(ERC721Init.init, (name_, symbol_));

@@ -2,8 +2,8 @@
 pragma solidity ^0.8.30;
 
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
-import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
 import {DeployERC1155} from "@lattice-script/base/tokens/DeployERC1155.s.sol";
+import {TokenDeployBase} from "@lattice-script/base/tokens/TokenDeployBase.s.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlInit} from "@lattice/access/AccessControlInit.sol";
 import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
@@ -24,9 +24,8 @@ import {DiamondIntrospectionInit} from "@lattice/utils/DiamondIntrospectionInit.
 ///      Under decision D25(a) on #234, {ERC1155Supply} is mutually exclusive with {ERC1155Burnable} and
 ///      {ERC1155Pausable}: do not add either here. The recipe cuts no mint; the app's mint facet must call
 ///      {ERC1155SupplyLib._mint}/{ERC1155SupplyLib._mintBatch}, or the supply falls behind the balances.
-///      The `ERC1155Supply` facet is the release facet from {BaseDeploy._facet}; the base recipe's cuts, the
-///      admin-overload cuts and the inits still deploy fresh until every recipe moves to release contracts (#195).
-contract DeployERC1155Supply is BaseDeploy {
+///      All inventory facets and initializers use the shared release helpers.
+contract DeployERC1155Supply is TokenDeployBase {
     /// @notice Builds the supply-tracked ERC-1155 diamond cuts + initializers (no broadcast, no proxy deploy).
     /// @param uri_ Token URI template.
     /// @return cuts The facet cuts (ERC165 + ERC1155 + DiamondLoupeFacet + ERC1155Supply).
@@ -37,7 +36,7 @@ contract DeployERC1155Supply is BaseDeploy {
         public
         returns (FacetCut[] memory cuts, address[] memory inits, bytes[] memory initCalldatas)
     {
-        (FacetCut[] memory baseCuts, address baseInit, bytes memory baseCalldata) = new DeployERC1155().buildCuts(uri_);
+        (FacetCut[] memory baseCuts, address baseInit, bytes memory baseCalldata) = _erc1155Base(uri_);
 
         cuts = new FacetCut[](baseCuts.length + 1);
         for (uint256 i; i < baseCuts.length; ++i) {
@@ -47,8 +46,8 @@ contract DeployERC1155Supply is BaseDeploy {
 
         inits = new address[](3);
         inits[0] = baseInit;
-        inits[1] = address(new ERC1155SupplyInit());
-        inits[2] = address(new ERC1155BurnableInit());
+        inits[1] = _init("ERC1155SupplyInit");
+        inits[2] = _init("ERC1155BurnableInit");
 
         initCalldatas = new bytes[](3);
         initCalldatas[0] = baseCalldata;
@@ -76,15 +75,15 @@ contract DeployERC1155Supply is BaseDeploy {
         for (uint256 i; i < defCuts.length; ++i) {
             cuts[i] = defCuts[i];
         }
-        cuts[defCuts.length] = _cut(address(new AccessControl()));
-        cuts[defCuts.length + 1] = _cut(address(new AccessControlDiamondCut()));
+        cuts[defCuts.length] = _cut(_facet("AccessControl"));
+        cuts[defCuts.length + 1] = _cut(_facet("AccessControlDiamondCut"));
 
         inits = new address[](defInits.length + 2);
         for (uint256 i; i < defInits.length; ++i) {
             inits[i] = defInits[i];
         }
-        inits[defInits.length] = address(new AccessControlInit());
-        inits[defInits.length + 1] = address(new DiamondIntrospectionInit());
+        inits[defInits.length] = _init("AccessControlInit");
+        inits[defInits.length + 1] = _init("DiamondIntrospectionInit");
 
         initCalldatas = new bytes[](defCalldatas.length + 2);
         for (uint256 i; i < defCalldatas.length; ++i) {

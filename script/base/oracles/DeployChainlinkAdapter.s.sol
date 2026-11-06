@@ -25,13 +25,13 @@ contract DeployChainlinkAdapter is BaseDeploy {
     /// @return initCalldata The matching `multiInit` calldata.
     function buildCuts(address admin) public returns (FacetCut[] memory cuts, address init, bytes memory initCalldata) {
         cuts = new FacetCut[](5);
-        cuts[0] = _cut(address(new ERC165Facet()));
-        cuts[1] = _cut(address(new AccessControl()));
-        cuts[2] = _cut(address(new ChainlinkAdapter()));
-        cuts[3] = _cut(address(new DiamondLoupeFacet()));
-        cuts[4] = _cut(address(new AccessControlDiamondCut()));
+        cuts[0] = _cut(_facet("ERC165Facet"));
+        cuts[1] = _cut(_facet("AccessControl"));
+        cuts[2] = _cut(_facet("ChainlinkAdapter"));
+        cuts[3] = _cut(_facet("DiamondLoupeFacet"));
+        cuts[4] = _cut(_facet("AccessControlDiamondCut"));
         (init, initCalldata) = _withUpgradeableIntrospection(
-            address(new ChainlinkAdapterInit()), abi.encodeCall(ChainlinkAdapterInit.init, (admin))
+            _init("ChainlinkAdapterInit"), abi.encodeCall(ChainlinkAdapterInit.init, (admin))
         );
     }
 

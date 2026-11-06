@@ -28,6 +28,17 @@ directly with `forge script` (usage is in its NatSpec header) or it is only impo
 Moving a file breaks README permalinks and the `@lattice-script/` imports in `test/`, so update both
 in the same change.
 
+Canonical builders resolve inventory facets with `BaseDeploy._facet(name)` and stateless initializers
+with `_init(name)`. When the Arachnid proxy is installed, these reuse or deploy the exact release
+identities for the current `LatticeVersion`; a proxy-free local test falls back to CREATE. Account
+initializers additionally bind their EntryPoint through `AccountReleaseInventory`. The recipe guard
+suites check every cut and recursively inspect nested `MultiInit` calls against these identities before
+assembling each diamond. Their separate local fallback tests exercise the proxy-free path.
+`base/tokens/TokenDeployBase.s.sol` shares the three typed base-token builders internally with their
+extensions. Recipe helpers are never deployed during broadcast: they contain script-only cheatcodes
+and can exceed the EIP-170 limit. The atomic deployment gate broadcasts both authority variants of
+an ERC-20, ERC-721 and ERC-1155 extension to check this path.
+
 For module initialization during a later authorized upgrade, `InitInventory` releases
 [`ReinitMultiInit`](../src/utils/ReinitMultiInit.sol). Use its address as the cut's `_init` with
 `reinitMulti(version, inits, calldatas)`; the [composition guide](../docs/guides/compose-your-own-diamond.md#initialize-modules-during-an-upgrade)

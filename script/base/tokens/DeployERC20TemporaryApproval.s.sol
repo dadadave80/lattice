@@ -2,8 +2,8 @@
 pragma solidity ^0.8.30;
 
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
-import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
 import {DeployERC20} from "@lattice-script/base/tokens/DeployERC20.s.sol";
+import {TokenDeployBase} from "@lattice-script/base/tokens/TokenDeployBase.s.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlInit} from "@lattice/access/AccessControlInit.sol";
 import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
@@ -21,9 +21,8 @@ import {DiamondIntrospectionInit} from "@lattice/utils/DiamondIntrospectionInit.
 ///      `run(..., admin)`) for an upgradeable deployment gated on `DEFAULT_ADMIN_ROLE`.
 ///      Requires EIP-1153 on the execution chain. This recipe changes no balance-movement policy; other
 ///      token extensions retain their documented ADR0009 exclusions. Upgrade custom allowance spenders too.
-///      The `ERC20TemporaryApproval` facet is the release facet from {BaseDeploy._facet}; the base recipe's cuts, the
-///      admin-overload cuts and the inits still deploy fresh until every recipe moves to release contracts (#195).
-contract DeployERC20TemporaryApproval is BaseDeploy {
+///      All inventory facets and initializers use the shared release helpers.
+contract DeployERC20TemporaryApproval is TokenDeployBase {
     /// @notice Builds the ERC-7674 diamond cuts + initializers (no broadcast, no proxy deploy).
     /// @param name_ Token name. @param symbol_ Token symbol.
     /// @return cuts The facet cuts (ERC165 + ERC20 + DiamondLoupeFacet + ERC20TemporaryApproval).
@@ -33,8 +32,7 @@ contract DeployERC20TemporaryApproval is BaseDeploy {
         public
         returns (FacetCut[] memory cuts, address[] memory inits, bytes[] memory initCalldatas)
     {
-        (FacetCut[] memory baseCuts, address baseInit, bytes memory baseCalldata) =
-            new DeployERC20().buildCuts(name_, symbol_);
+        (FacetCut[] memory baseCuts, address baseInit, bytes memory baseCalldata) = _erc20Base(name_, symbol_);
 
         cuts = new FacetCut[](baseCuts.length + 1);
         for (uint256 i; i < baseCuts.length; ++i) {
@@ -44,7 +42,7 @@ contract DeployERC20TemporaryApproval is BaseDeploy {
 
         inits = new address[](2);
         inits[0] = baseInit;
-        inits[1] = address(new ERC20TemporaryApprovalInit());
+        inits[1] = _init("ERC20TemporaryApprovalInit");
 
         initCalldatas = new bytes[](2);
         initCalldatas[0] = baseCalldata;
@@ -71,15 +69,15 @@ contract DeployERC20TemporaryApproval is BaseDeploy {
         for (uint256 i; i < defCuts.length; ++i) {
             cuts[i] = defCuts[i];
         }
-        cuts[defCuts.length] = _cut(address(new AccessControl()));
-        cuts[defCuts.length + 1] = _cut(address(new AccessControlDiamondCut()));
+        cuts[defCuts.length] = _cut(_facet("AccessControl"));
+        cuts[defCuts.length + 1] = _cut(_facet("AccessControlDiamondCut"));
 
         inits = new address[](defInits.length + 2);
         for (uint256 i; i < defInits.length; ++i) {
             inits[i] = defInits[i];
         }
-        inits[defInits.length] = address(new AccessControlInit());
-        inits[defInits.length + 1] = address(new DiamondIntrospectionInit());
+        inits[defInits.length] = _init("AccessControlInit");
+        inits[defInits.length + 1] = _init("DiamondIntrospectionInit");
 
         initCalldatas = new bytes[](defCalldatas.length + 2);
         for (uint256 i; i < defCalldatas.length; ++i) {

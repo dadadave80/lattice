@@ -2,8 +2,8 @@
 pragma solidity ^0.8.30;
 
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
-import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
 import {DeployERC20} from "@lattice-script/base/tokens/DeployERC20.s.sol";
+import {TokenDeployBase} from "@lattice-script/base/tokens/TokenDeployBase.s.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
 import {Votes} from "@lattice/governance/Votes.sol";
@@ -23,7 +23,7 @@ import {DiamondIntrospectionInit} from "@lattice/utils/DiamondIntrospectionInit.
 ///         variants (so vote weight moves with balances), while `numCheckpoints`/`checkpoints` are ADDED.
 ///         {ERC20VotesInit} seeds the EIP-712 domain, nonce, checkpoint, and role state. Both inits run in one
 ///         initializing window via {BaseDeploy._assembleMulti}.
-contract DeployERC20Votes is BaseDeploy {
+contract DeployERC20Votes is TokenDeployBase {
     /// @notice Builds the votes ERC-20 diamond cuts + initializers (no broadcast, no proxy deploy).
     /// @param name_ Token name (also the EIP-712 domain name). @param symbol_ Token symbol.
     /// @param admin The address granted DEFAULT_ADMIN_ROLE.
@@ -37,10 +37,9 @@ contract DeployERC20Votes is BaseDeploy {
         public
         returns (FacetCut[] memory cuts, address[] memory inits, bytes[] memory initCalldatas)
     {
-        (FacetCut[] memory baseCuts, address baseInit, bytes memory baseCalldata) =
-            new DeployERC20().buildCuts(name_, symbol_);
+        (FacetCut[] memory baseCuts, address baseInit, bytes memory baseCalldata) = _erc20Base(name_, symbol_);
 
-        address votesFacet = address(new ERC20Votes());
+        address votesFacet = _facet("ERC20Votes");
 
         // `transfer`/`transferFrom` (base ERC-20) and `delegate`/`delegateBySig` (base {Votes}) already exist —
         // replace them with the checkpoint/balance-aware variants so voting power tracks balance movement.
@@ -60,18 +59,18 @@ contract DeployERC20Votes is BaseDeploy {
             cuts[i] = baseCuts[i];
         }
         // The ERC-5805 delegation + ERC-6372 clock surface comes from the standalone {Votes} facet.
-        cuts[baseCuts.length] = _cut(address(new Votes()));
+        cuts[baseCuts.length] = _cut(_facet("Votes"));
         cuts[baseCuts.length + 1] =
             FacetCut({facetAddress: votesFacet, action: FacetCutAction.Add, functionSelectors: addSelectors});
         cuts[baseCuts.length + 2] =
             FacetCut({facetAddress: votesFacet, action: FacetCutAction.Replace, functionSelectors: replaceSelectors});
-        cuts[baseCuts.length + 3] = _cut(address(new AccessControl()));
-        cuts[baseCuts.length + 4] = _cut(address(new AccessControlDiamondCut()));
+        cuts[baseCuts.length + 3] = _cut(_facet("AccessControl"));
+        cuts[baseCuts.length + 4] = _cut(_facet("AccessControlDiamondCut"));
 
         inits = new address[](3);
         inits[0] = baseInit;
-        inits[1] = address(new ERC20VotesInit());
-        inits[2] = address(new DiamondIntrospectionInit());
+        inits[1] = _init("ERC20VotesInit");
+        inits[2] = _init("DiamondIntrospectionInit");
 
         initCalldatas = new bytes[](3);
         initCalldatas[0] = baseCalldata;

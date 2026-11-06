@@ -26,9 +26,8 @@ contract DeployERC5564Announcer is BaseDeploy {
     /// @return initCalldata The matching `multiInit` calldata.
     function buildCuts() public returns (FacetCut[] memory cuts, address init, bytes memory initCalldata) {
         cuts = _coreCuts();
-        (init, initCalldata) = _withImmutableIntrospection(
-            address(new ERC5564AnnouncerInit()), abi.encodeCall(ERC5564AnnouncerInit.init, ())
-        );
+        (init, initCalldata) =
+            _withImmutableIntrospection(_init("ERC5564AnnouncerInit"), abi.encodeCall(ERC5564AnnouncerInit.init, ()));
     }
 
     /// @notice ADMIN OVERLOAD: the immutable default plus `AccessControl` + `AccessControlDiamondCut`, so
@@ -39,19 +38,19 @@ contract DeployERC5564Announcer is BaseDeploy {
         for (uint256 i; i < base.length; ++i) {
             cuts[i] = base[i];
         }
-        cuts[base.length] = _cut(address(new AccessControl()));
-        cuts[base.length + 1] = _cut(address(new AccessControlDiamondCut()));
+        cuts[base.length] = _cut(_facet("AccessControl"));
+        cuts[base.length + 1] = _cut(_facet("AccessControlDiamondCut"));
         (init, initCalldata) = _withAdminUpgradeableIntrospection(
-            address(new ERC5564AnnouncerInit()), abi.encodeCall(ERC5564AnnouncerInit.init, ()), admin
+            _init("ERC5564AnnouncerInit"), abi.encodeCall(ERC5564AnnouncerInit.init, ()), admin
         );
     }
 
     /// @dev The shared cut set of both overloads: the module facets plus {DiamondLoupeFacet} (introspection).
     function _coreCuts() internal returns (FacetCut[] memory cuts) {
         cuts = new FacetCut[](3);
-        cuts[0] = _cut(address(new ERC165Facet()));
-        cuts[1] = _cut(address(new ERC5564Announcer()));
-        cuts[2] = _cut(address(new DiamondLoupeFacet()));
+        cuts[0] = _cut(_facet("ERC165Facet"));
+        cuts[1] = _cut(_facet("ERC5564Announcer"));
+        cuts[2] = _cut(_facet("DiamondLoupeFacet"));
     }
 
     /// @notice Deploys an ERC-5564 announcer diamond (broadcasting entrypoint for `forge script ... --broadcast`).

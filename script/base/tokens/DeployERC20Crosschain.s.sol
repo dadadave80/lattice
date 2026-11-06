@@ -2,8 +2,8 @@
 pragma solidity ^0.8.30;
 
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
-import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
 import {DeployERC20} from "@lattice-script/base/tokens/DeployERC20.s.sol";
+import {TokenDeployBase} from "@lattice-script/base/tokens/TokenDeployBase.s.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {CrosschainLink} from "@lattice/crosschain/CrosschainLink.sol";
 import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
@@ -17,12 +17,11 @@ import {ERC20CrosschainInit} from "@lattice/tokens/ERC20/ERC20CrosschainInit.sol
 ///         sealed by a combined {ERC20CrosschainInit}. The ONE source of truth for what a self-bridging ERC-20
 ///         diamond is, shared by production (`run --broadcast`) and the facet tests (which build on {buildCuts}).
 ///         `AccessControl` is part of the base recipe because the crosschain-link setters are admin-gated.
-contract DeployERC20Crosschain is BaseDeploy {
+contract DeployERC20Crosschain is TokenDeployBase {
     /// @notice Builds the self-bridging ERC-20 diamond cuts + combined initializer (no broadcast, no deploy).
-    /// @dev Reuses {DeployERC20.buildCuts} for the base `[ERC165, ERC20]` cuts, then appends the
-    ///      `AccessControl` + `CrosschainLink` + `ERC20Crosschain` facets. The base `ERC20Init` is discarded in
-    ///      favor of the combined {ERC20CrosschainInit}, which runs the full `__*_init` sequence in the single
-    ///      initializing window.
+    /// @dev Reuses the shared base-token cuts, then appends `AccessControl` + `CrosschainLink` +
+    ///      `ERC20Crosschain`. The combined {ERC20CrosschainInit} runs the full `__*_init` sequence in the
+    ///      single initializing window; no discarded base initializer is deployed.
     /// @param admin The address granted `DEFAULT_ADMIN_ROLE`.
     /// @param name_ Token name.
     /// @param symbol_ Token symbol.
@@ -33,19 +32,19 @@ contract DeployERC20Crosschain is BaseDeploy {
         public
         returns (FacetCut[] memory cuts, address init, bytes memory initCalldata)
     {
-        (FacetCut[] memory base,,) = new DeployERC20().buildCuts(name_, symbol_);
+        FacetCut[] memory base = _baseTokenCuts("ERC20");
 
         cuts = new FacetCut[](base.length + 4);
         for (uint256 i; i < base.length; ++i) {
             cuts[i] = base[i];
         }
-        cuts[base.length] = _cut(address(new AccessControl()));
-        cuts[base.length + 1] = _cut(address(new CrosschainLink()));
-        cuts[base.length + 2] = _cut(address(new ERC20Crosschain()));
-        cuts[base.length + 3] = _cut(address(new AccessControlDiamondCut()));
+        cuts[base.length] = _cut(_facet("AccessControl"));
+        cuts[base.length + 1] = _cut(_facet("CrosschainLink"));
+        cuts[base.length + 2] = _cut(_facet("ERC20Crosschain"));
+        cuts[base.length + 3] = _cut(_facet("AccessControlDiamondCut"));
 
         (init, initCalldata) = _withUpgradeableIntrospection(
-            address(new ERC20CrosschainInit()), abi.encodeCall(ERC20CrosschainInit.init, (admin, name_, symbol_))
+            _init("ERC20CrosschainInit"), abi.encodeCall(ERC20CrosschainInit.init, (admin, name_, symbol_))
         );
     }
 

@@ -10,7 +10,7 @@ import {DeployGovernedDiamondCut} from "@lattice-script/base/governance/DeployGo
 import {DeployGovernedSafeDiamondCut} from "@lattice-script/base/governance/DeployGovernedSafeDiamondCut.s.sol";
 import {DeploySafeDiamondCut} from "@lattice-script/base/governance/DeploySafeDiamondCut.s.sol";
 import {MockSafe} from "@lattice-test/base/SafeDiamondCutTestBase.sol";
-import {RecipeGuards} from "@lattice-test/composability/RecipeGuards.sol";
+import {ReleasedRecipeGuards} from "@lattice-test/composability/ReleasedRecipeGuards.sol";
 import {AccountFactory6900} from "@lattice/accounts/erc6900/AccountFactory6900.sol";
 import {AccountInit6900} from "@lattice/accounts/erc6900/AccountInit6900.sol";
 import {AccountFactory} from "@lattice/accounts/erc7579/AccountFactory.sol";
@@ -34,7 +34,7 @@ contract GuardReverseRegistrar is IReverseRegistrar {
 /// @notice Introspection guards for the recipes whose upgrade paths are covered by their own dedicated
 ///         suites (accounts, governance cut variants, self-governed vaults): the loupe must answer with the
 ///         expected facet census on every one of them.
-contract RecipeUpgradeabilityCoreTest is RecipeGuards {
+contract RecipeUpgradeabilityCoreTest is ReleasedRecipeGuards {
     address internal entryPoint = address(0xE117);
 
     function _mockSafe() internal returns (address) {
@@ -45,6 +45,7 @@ contract RecipeUpgradeabilityCoreTest is RecipeGuards {
 
     function test_Introspectable_Account() public {
         (FacetCut[] memory cuts, AccountInit init) = new DeployAccount().buildCuts(entryPoint);
+        _assertReleasedAccount(false, entryPoint, cuts, address(init));
         address d = new AccountFactory(cuts, address(init)).createAccount(address(this), bytes32(0));
         _assertIntrospectable(d, 9);
         _assertBareEth(d, true);
@@ -52,6 +53,7 @@ contract RecipeUpgradeabilityCoreTest is RecipeGuards {
 
     function test_Introspectable_Account6900() public {
         (FacetCut[] memory cuts, AccountInit6900 init) = new DeployAccount6900().buildCuts(entryPoint);
+        _assertReleasedAccount(true, entryPoint, cuts, address(init));
         address d = new AccountFactory6900(cuts, address(init)).createAccount(address(this), bytes32(0));
         _assertIntrospectable(d, 10);
         _assertBareEth(d, true);
@@ -107,6 +109,14 @@ contract RecipeUpgradeabilityCoreTest is RecipeGuards {
         (FacetCut[] memory cuts, address init, bytes memory cd) = new DeployGovernedVaultENS().buildCutsWithENS(p);
         address d = _assemble(cuts, init, cd);
         _assertIntrospectable(d, 15);
+        _assertBareEth(d, true);
+    }
+
+    function test_Introspectable_GovernedVaultENSInheritedBase() public {
+        vm.warp(1_000_000);
+        (FacetCut[] memory cuts, address init, bytes memory cd) = new DeployGovernedVaultENS().buildCuts(_vaultParams());
+        address d = _assemble(cuts, init, cd);
+        _assertIntrospectable(d, 14);
         _assertBareEth(d, true);
     }
 }

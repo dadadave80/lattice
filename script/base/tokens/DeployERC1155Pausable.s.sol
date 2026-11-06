@@ -2,8 +2,8 @@
 pragma solidity ^0.8.30;
 
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
-import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
 import {DeployERC1155} from "@lattice-script/base/tokens/DeployERC1155.s.sol";
+import {TokenDeployBase} from "@lattice-script/base/tokens/TokenDeployBase.s.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
 import {Pausable} from "@lattice/security/Pausable.sol";
@@ -24,10 +24,9 @@ import {DiamondIntrospectionInit} from "@lattice/utils/DiamondIntrospectionInit.
 ///      `AccessControlDiamondCut` lets the same admin `diamondCut`. Under decision D25(a) on #234,
 ///      {ERC1155Pausable} is mutually exclusive with {ERC1155Burnable} and {ERC1155Supply}: do not add either here.
 ///      The recipe cuts no mint; the app's mint facet must call {ERC1155PausableLib._mint}/
-///      {ERC1155PausableLib._mintBatch}, or mints ignore the pause. The `ERC1155Pausable` facet is the release
-///      facet from {BaseDeploy._facet}; the other cuts and the inits still deploy fresh until every recipe moves to
-///      release contracts (#195).
-contract DeployERC1155Pausable is BaseDeploy {
+///      {ERC1155PausableLib._mintBatch}, or mints ignore the pause.
+///      All inventory facets and initializers use the shared release helpers.
+contract DeployERC1155Pausable is TokenDeployBase {
     /// @notice Builds the pausable ERC-1155 diamond cuts + initializers (no broadcast, no proxy deploy).
     /// @param uri_ Token URI template. @param admin The pause/unpause and upgrade authority.
     /// @return cuts The facet cuts (ERC165 + ERC1155 + DiamondLoupeFacet [base] + Pausable [Add] +
@@ -39,7 +38,7 @@ contract DeployERC1155Pausable is BaseDeploy {
         public
         returns (FacetCut[] memory cuts, address[] memory inits, bytes[] memory initCalldatas)
     {
-        (FacetCut[] memory baseCuts, address baseInit, bytes memory baseCalldata) = new DeployERC1155().buildCuts(uri_);
+        (FacetCut[] memory baseCuts, address baseInit, bytes memory baseCalldata) = _erc1155Base(uri_);
         address pausableFacet = _facet("ERC1155Pausable");
 
         cuts = new FacetCut[](baseCuts.length + 5);
@@ -47,21 +46,21 @@ contract DeployERC1155Pausable is BaseDeploy {
             cuts[i] = baseCuts[i];
         }
         // Additive pause/unpause/paused control.
-        cuts[baseCuts.length] = _cut(address(new Pausable()));
+        cuts[baseCuts.length] = _cut(_facet("Pausable"));
         // The transfers already exist on the base ERC-1155 facet — REPLACE them; the burns are new — ADD them.
         cuts[baseCuts.length + 1] =
             FacetCut({facetAddress: pausableFacet, action: FacetCutAction.Replace, functionSelectors: _transfers()});
         cuts[baseCuts.length + 2] =
             FacetCut({facetAddress: pausableFacet, action: FacetCutAction.Add, functionSelectors: _burns()});
         // The pause/upgrade authority must be inspectable and rotatable on-chain: cut the role surface too.
-        cuts[baseCuts.length + 3] = _cut(address(new AccessControl()));
-        cuts[baseCuts.length + 4] = _cut(address(new AccessControlDiamondCut()));
+        cuts[baseCuts.length + 3] = _cut(_facet("AccessControl"));
+        cuts[baseCuts.length + 4] = _cut(_facet("AccessControlDiamondCut"));
 
         inits = new address[](4);
         inits[0] = baseInit;
-        inits[1] = address(new ERC1155PausableInit());
-        inits[2] = address(new ERC1155BurnableInit());
-        inits[3] = address(new DiamondIntrospectionInit());
+        inits[1] = _init("ERC1155PausableInit");
+        inits[2] = _init("ERC1155BurnableInit");
+        inits[3] = _init("DiamondIntrospectionInit");
 
         initCalldatas = new bytes[](4);
         initCalldatas[0] = baseCalldata;

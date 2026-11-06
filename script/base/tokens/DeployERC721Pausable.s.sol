@@ -2,8 +2,8 @@
 pragma solidity ^0.8.30;
 
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
-import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
 import {DeployERC721} from "@lattice-script/base/tokens/DeployERC721.s.sol";
+import {TokenDeployBase} from "@lattice-script/base/tokens/TokenDeployBase.s.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
 import {Pausable} from "@lattice/security/Pausable.sol";
@@ -19,9 +19,8 @@ import {DiamondIntrospectionInit} from "@lattice/utils/DiamondIntrospectionInit.
 ///         All inits run in one initializing window via {BaseDeploy._assembleMulti}.
 /// @dev Admin-only: the pause authority must exist, so there is no immutable overload. The pause gates only the
 ///      three replaced selectors; {ERC721Burnable} or {ERC721Wrapper} cut next to it still burn and wrap while paused.
-///      The `ERC721Pausable` facet is the release facet from {BaseDeploy._facet}; the other cuts and the inits
-///      still deploy fresh until every recipe moves to release contracts (#195).
-contract DeployERC721Pausable is BaseDeploy {
+///      All inventory facets and initializers use the shared release helpers.
+contract DeployERC721Pausable is TokenDeployBase {
     /// @notice Builds the pausable ERC-721 diamond cuts + initializers (no broadcast, no proxy deploy).
     /// @param name_ Token name. @param symbol_ Token symbol. @param admin The pause/unpause and upgrade authority.
     /// @return cuts The facet cuts (ERC165 + ERC721 + DiamondLoupeFacet [base] + Pausable [Add] + ERC721Pausable
@@ -33,25 +32,24 @@ contract DeployERC721Pausable is BaseDeploy {
         public
         returns (FacetCut[] memory cuts, address[] memory inits, bytes[] memory initCalldatas)
     {
-        (FacetCut[] memory baseCuts, address baseInit, bytes memory baseCalldata) =
-            new DeployERC721().buildCuts(name_, symbol_);
+        (FacetCut[] memory baseCuts, address baseInit, bytes memory baseCalldata) = _erc721Base(name_, symbol_);
 
         cuts = new FacetCut[](baseCuts.length + 4);
         for (uint256 i; i < baseCuts.length; ++i) {
             cuts[i] = baseCuts[i];
         }
         // Additive pause/unpause/paused control.
-        cuts[baseCuts.length] = _cut(address(new Pausable()));
+        cuts[baseCuts.length] = _cut(_facet("Pausable"));
         // Override the base transferFrom/safeTransferFrom with pause-gated variants.
         cuts[baseCuts.length + 1] = _replace(_facet("ERC721Pausable"));
         // The pause/upgrade authority must be inspectable and rotatable on-chain: cut the role surface too.
-        cuts[baseCuts.length + 2] = _cut(address(new AccessControl()));
-        cuts[baseCuts.length + 3] = _cut(address(new AccessControlDiamondCut()));
+        cuts[baseCuts.length + 2] = _cut(_facet("AccessControl"));
+        cuts[baseCuts.length + 3] = _cut(_facet("AccessControlDiamondCut"));
 
         inits = new address[](3);
         inits[0] = baseInit;
-        inits[1] = address(new ERC721PausableInit());
-        inits[2] = address(new DiamondIntrospectionInit());
+        inits[1] = _init("ERC721PausableInit");
+        inits[2] = _init("DiamondIntrospectionInit");
 
         initCalldatas = new bytes[](3);
         initCalldatas[0] = baseCalldata;

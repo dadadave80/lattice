@@ -35,7 +35,7 @@ import {DeployERC721Wrapper} from "@lattice-script/base/tokens/DeployERC721Wrapp
 import {DeployERC7802} from "@lattice-script/base/tokens/DeployERC7802.s.sol";
 import {DeployHTSAdapter} from "@lattice-script/base/tokens/DeployHTSAdapter.s.sol";
 import {DeployMarketplaceZone} from "@lattice-script/base/tokens/DeployMarketplaceZone.s.sol";
-import {RecipeGuards} from "@lattice-test/composability/RecipeGuards.sol";
+import {ReleasedRecipeGuards} from "@lattice-test/composability/ReleasedRecipeGuards.sol";
 import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
 import {ERC1155} from "@lattice/tokens/ERC1155/ERC1155.sol";
 import {ERC20Wrapper} from "@lattice/tokens/ERC20/ERC20Wrapper.sol";
@@ -48,7 +48,7 @@ import {ERC721Wrapper} from "@lattice/tokens/ERC721/ERC721Wrapper.sol";
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice Tokens-family recipe guards: every diamond these recipes assemble must be introspectable and
 ///         either admin-upgradeable or immutable BY DESIGN (never silently frozen).
-contract RecipeUpgradeabilityTokensTest is RecipeGuards {
+contract RecipeUpgradeabilityTokensTest is ReleasedRecipeGuards {
     TestnetAsset internal asset;
 
     function setUp() public {
@@ -64,15 +64,24 @@ contract RecipeUpgradeabilityTokensTest is RecipeGuards {
     }
 
     function test_Immutable_ERC3643() public {
+        _assertERC3643Recipe(false);
+    }
+
+    function test_Immutable_ERC3643TemporaryApproval() public {
+        _assertERC3643Recipe(true);
+    }
+
+    function _assertERC3643Recipe(bool temporaryApproval) private {
         ERC3643Params memory config;
         config.owner = address(this);
         config.agents = new address[](0);
         config.name = "Permissioned";
         config.symbol = "PERM";
         config.decimals = 6;
+        config.temporaryApproval = temporaryApproval;
         (FacetCut[] memory cuts, address init, bytes memory cd) = new DeployERC3643().buildCuts(config);
         address d = _assemble(cuts, init, cd);
-        _assertIntrospectable(d, 10);
+        _assertIntrospectable(d, temporaryApproval ? 11 : 10);
         _assertBareEth(d, false);
         _assertImmutableByDesign(d);
     }

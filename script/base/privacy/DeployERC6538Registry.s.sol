@@ -29,9 +29,8 @@ contract DeployERC6538Registry is BaseDeploy {
     /// @return initCalldata The matching `multiInit` calldata.
     function buildCuts() public returns (FacetCut[] memory cuts, address init, bytes memory initCalldata) {
         cuts = _coreCuts();
-        (init, initCalldata) = _withImmutableIntrospection(
-            address(new ERC6538RegistryInit()), abi.encodeCall(ERC6538RegistryInit.init, ())
-        );
+        (init, initCalldata) =
+            _withImmutableIntrospection(_init("ERC6538RegistryInit"), abi.encodeCall(ERC6538RegistryInit.init, ()));
     }
 
     /// @notice ADMIN OVERLOAD: the immutable default plus `AccessControl` + `AccessControlDiamondCut`, so
@@ -42,20 +41,20 @@ contract DeployERC6538Registry is BaseDeploy {
         for (uint256 i; i < base.length; ++i) {
             cuts[i] = base[i];
         }
-        cuts[base.length] = _cut(address(new AccessControl()));
-        cuts[base.length + 1] = _cut(address(new AccessControlDiamondCut()));
+        cuts[base.length] = _cut(_facet("AccessControl"));
+        cuts[base.length + 1] = _cut(_facet("AccessControlDiamondCut"));
         (init, initCalldata) = _withAdminUpgradeableIntrospection(
-            address(new ERC6538RegistryInit()), abi.encodeCall(ERC6538RegistryInit.init, ()), admin
+            _init("ERC6538RegistryInit"), abi.encodeCall(ERC6538RegistryInit.init, ()), admin
         );
     }
 
     /// @dev The shared cut set of both overloads: the module facets plus {DiamondLoupeFacet} (introspection).
     function _coreCuts() internal returns (FacetCut[] memory cuts) {
         cuts = new FacetCut[](4);
-        cuts[0] = _cut(address(new ERC165Facet()));
-        cuts[1] = _cut(address(new EIP712()));
-        cuts[2] = _cut(address(new ERC6538Registry()));
-        cuts[3] = _cut(address(new DiamondLoupeFacet()));
+        cuts[0] = _cut(_facet("ERC165Facet"));
+        cuts[1] = _cut(_facet("EIP712"));
+        cuts[2] = _cut(_facet("ERC6538Registry"));
+        cuts[3] = _cut(_facet("DiamondLoupeFacet"));
     }
 
     /// @notice Deploys an ERC-6538 registry diamond (broadcasting entrypoint for `forge script ... --broadcast`).

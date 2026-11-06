@@ -19,15 +19,15 @@ import {HSSAdapterRecovery} from "@lattice/oracles/hedera/HSSAdapterRecovery.sol
 contract DeployHSSAdapter is BaseDeploy {
     function buildCuts(address admin) public returns (FacetCut[] memory cuts, address init, bytes memory data) {
         cuts = new FacetCut[](7);
-        cuts[0] = _cut(address(new ERC165Facet()));
-        cuts[1] = _cut(address(new AccessControl()));
-        cuts[2] = _cut(address(new HSSAdapter()));
-        cuts[3] = _cut(address(new HSSAdapterRecovery()));
-        cuts[4] = _cut(address(new DiamondLoupeFacet()));
-        cuts[5] = _cut(address(new AccessControlDiamondCut()));
-        cuts[6] = _cut(address(new LatticeReceive()));
+        cuts[0] = _cut(_facet("ERC165Facet"));
+        cuts[1] = _cut(_facet("AccessControl"));
+        cuts[2] = _cut(_facet("HSSAdapter"));
+        cuts[3] = _cut(_facet("HSSAdapterRecovery"));
+        cuts[4] = _cut(_facet("DiamondLoupeFacet"));
+        cuts[5] = _cut(_facet("AccessControlDiamondCut"));
+        cuts[6] = _cut(_facet("Receive"));
         (init, data) =
-            _withUpgradeableIntrospection(address(new HSSAdapterInit()), abi.encodeCall(HSSAdapterInit.init, (admin)));
+            _withUpgradeableIntrospection(_init("HSSAdapterInit"), abi.encodeCall(HSSAdapterInit.init, (admin)));
     }
 
     function run(address admin) external returns (address diamond) {

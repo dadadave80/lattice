@@ -33,16 +33,16 @@ contract DeployCrosschainTimelockHandler is BaseDeploy {
         returns (FacetCut[] memory cuts, address init, bytes memory initCalldata)
     {
         cuts = new FacetCut[](8);
-        cuts[0] = _cut(address(new ERC165Facet()));
-        cuts[1] = _cut(address(new AccessControl()));
-        cuts[2] = _cut(address(new CrosschainLink()));
-        cuts[3] = _cut(address(new TimelockController()));
-        cuts[4] = _cut(address(new CrosschainTimelockHandler()));
-        cuts[5] = _cut(address(new DiamondLoupeFacet()));
-        cuts[6] = _cut(address(new AccessControlDiamondCut()));
-        cuts[7] = _cut(address(new Receive()));
+        cuts[0] = _cut(_facet("ERC165Facet"));
+        cuts[1] = _cut(_facet("AccessControl"));
+        cuts[2] = _cut(_facet("CrosschainLink"));
+        cuts[3] = _cut(_facet("TimelockController"));
+        cuts[4] = _cut(_facet("CrosschainTimelockHandler"));
+        cuts[5] = _cut(_facet("DiamondLoupeFacet"));
+        cuts[6] = _cut(_facet("AccessControlDiamondCut"));
+        cuts[7] = _cut(_facet("Receive"));
         (init, initCalldata) = _withUpgradeableIntrospection(
-            address(new CrosschainTimelockHandlerInit()),
+            _init("CrosschainTimelockHandlerInit"),
             abi.encodeCall(CrosschainTimelockHandlerInit.init, (admin, minDelay))
         );
     }
