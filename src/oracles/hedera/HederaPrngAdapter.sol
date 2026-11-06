@@ -9,8 +9,13 @@ import {HederaPrngAdapterLib} from "@lattice/oracles/hedera/HederaPrngAdapterLib
 /// @author Modified from hiero-ledger/hiero-contracts (https://github.com/hiero-ledger/hiero-contracts)
 /// @notice Diamond facet exposing Hedera's PRNG system contract (0x169) as synchronous randomness.
 /// @dev Stateless delegator over HederaPrngAdapterLib. Only meaningful on Hedera.
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source Hedera
+/// @custom:lattice-requires none;
+/// @custom:lattice-family none
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches none;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init HederaPrngAdapterInit
 contract HederaPrngAdapter is IHederaPrngAdapter {
     /// @inheritdoc IHederaPrngAdapter
     function drawSeed() external virtual override returns (bytes32 seed) {

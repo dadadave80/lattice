@@ -30,8 +30,15 @@ import {IUpgradeRegistry} from "@lattice/interfaces/governance/IUpgradeRegistry.
 ///      it trusts solely that `msg.sender == the pinned Safe`. The Safe MUST dispatch with
 ///      `operation = Call` (NEVER DelegateCall): a DelegateCall would run this code in the Safe's own
 ///      context, where `msg.sender` is whoever called the Safe, defeating the gate.
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source Lattice original
+/// @custom:lattice-requires AccessControl|AccessControlEnumerable|AccessControlTimed convention role-management-surface;
+/// @custom:lattice-requires EmergencyStop convention guardian-management-and-resume-surface;
+/// @custom:lattice-family upgrade
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches diamond.lib.storage;
+/// @custom:lattice-touches lattice.storage.GovernedSafeDiamondCut;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init GovernedSafeDiamondCutInit
 contract GovernedSafeDiamondCut is
     IGovernedSafeDiamondCut,
     ISafeAuthority,

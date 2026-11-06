@@ -15,6 +15,7 @@ import {DeployChronicleAdapter} from "@lattice-script/base/oracles/DeployChronic
 import {DeployDIAAdapter} from "@lattice-script/base/oracles/DeployDIAAdapter.s.sol";
 import {DeployGelatoAutomateAdapter} from "@lattice-script/base/oracles/DeployGelatoAutomateAdapter.s.sol";
 import {DeployGelatoVRFAdapter} from "@lattice-script/base/oracles/DeployGelatoVRFAdapter.s.sol";
+import {DeployHSSAdapter} from "@lattice-script/base/oracles/DeployHSSAdapter.s.sol";
 import {DeployOracleGuard} from "@lattice-script/base/oracles/DeployOracleGuard.s.sol";
 import {DeployPythAdapter} from "@lattice-script/base/oracles/DeployPythAdapter.s.sol";
 import {DeployPythEntropyAdapter} from "@lattice-script/base/oracles/DeployPythEntropyAdapter.s.sol";
@@ -39,6 +40,14 @@ contract RecipeUpgradeabilityOraclesTest is RecipeGuards {
         address d = _assemble(cuts, init, cd);
         _assertIntrospectable(d, 5);
         _assertBareEth(d, false);
+        _assertAdminCanCut(d, ADMIN);
+    }
+
+    function test_Upgradeable_HSSAdapter() public {
+        (FacetCut[] memory cuts, address init, bytes memory cd) = new DeployHSSAdapter().buildCuts(ADMIN);
+        address d = _assemble(cuts, init, cd);
+        _assertIntrospectable(d, 7);
+        _assertBareEth(d, true);
         _assertAdminCanCut(d, ADMIN);
     }
 

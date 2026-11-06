@@ -12,8 +12,13 @@ import {IENSSubnameIssuer} from "@lattice/interfaces/ens/IENSSubnameIssuer.sol";
 ///         (e.g. `treasury.myproto.eth`) via the ENS NameWrapper.
 /// @dev All logic lives in {ENSSubnameIssuerLib}. Issuance is gated on `ENS_SUBNAME_ISSUER_ROLE`; the
 ///      NameWrapper is supplied at init and rotated per chain via {setNameWrapper}.
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source Lattice original
+/// @custom:lattice-requires AccessControl|AccessControlEnumerable|AccessControlTimed convention role-management-surface;
+/// @custom:lattice-family none
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches lattice.storage.ENSSubnameIssuer;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init ENSSubnameIssuerInit
 contract ENSSubnameIssuer is IENSSubnameIssuer {
     /// @inheritdoc IENSSubnameIssuer
     function issueSubname(

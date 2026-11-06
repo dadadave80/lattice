@@ -10,7 +10,14 @@ import {ERC721Lib} from "@lattice/tokens/ERC721/libraries/ERC721Lib.sol";
 ///         window (so it must NOT open its own pre/postInitializer; the `__ERC721_init` guard passes because
 ///         the window is already open). Mirrors the {ERC20Init} pattern — a first-class production deploy
 ///         artifact shared by `run --broadcast` and the facet tests.
+/// @custom:lattice-kind step
 contract ERC721Init {
+    /// @custom:lattice-initializes ERC721;
+    /// @custom:lattice-after none;
+    /// @custom:lattice-same-call Initializable hard enclosing-initializing-window;
+    /// @custom:lattice-param name_;
+    /// @custom:lattice-param symbol_;
+    /// @custom:lattice-registers-interfaces
     function init(string memory name_, string memory symbol_) external {
         ERC721Lib.__ERC721_init(name_, symbol_);
     }

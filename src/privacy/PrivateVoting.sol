@@ -12,8 +12,13 @@ import {PrivateVotingLib} from "@lattice/privacy/libraries/PrivateVotingLib.sol"
 ///         and the scope-bound nullifier gives each member exactly one vote per poll.
 /// @dev All logic lives in {PrivateVotingLib}. Composes the {ISemaphore} module (must be present in the
 ///      same diamond). 1-person-1-vote, not token-weighted.
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source Lattice original (composes Semaphore v4)
+/// @custom:lattice-requires Semaphore convention group-management-and-shared-verifier-state;
+/// @custom:lattice-family none
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches lattice.storage.PrivateVoting;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init PrivateVotingInit
 contract PrivateVoting is IPrivateVoting {
     /// @inheritdoc IPrivateVoting
     function createPoll(uint256 groupId, uint32 numChoices, uint64 startTime, uint64 endTime)

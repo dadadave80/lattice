@@ -14,7 +14,18 @@ import {NoncesLib} from "@lattice/utils/libraries/NoncesLib.sol";
 ///         gates a consumer's minting authority. Delegatecalled by {Diamond.initialize} (through {MultiInit})
 ///         inside the initializing window opened by the diamond, alongside the base {ERC20Init}; it must NOT open
 ///         its own pre/postInitializer.
+/// @custom:lattice-kind bundle
 contract ERC20VotesInit {
+    /// @custom:lattice-initializes EIP712 with version=1;
+    /// @custom:lattice-initializes Nonces;
+    /// @custom:lattice-initializes Votes;
+    /// @custom:lattice-initializes AccessControl;
+    /// @custom:lattice-after ERC20 convention domain-name-matches-token-name;
+    /// @custom:lattice-same-call Initializable hard enclosing-initializing-window;
+    /// @custom:lattice-sequence EIP712;Nonces;Votes;AccessControl;
+    /// @custom:lattice-param name_;
+    /// @custom:lattice-param admin_ authority;
+    /// @custom:lattice-registers-interfaces
     function init(string memory name_, address admin_) external {
         EIP712Lib.__EIP712_init(name_, "1");
         NoncesLib.__Nonces_init();

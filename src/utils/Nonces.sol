@@ -8,8 +8,13 @@ import {NoncesLib} from "@lattice/utils/libraries/NoncesLib.sol";
 /// @notice Thin facet exposing the `nonces(address)` view for per-account nonce tracking.
 /// @dev Other nonce operations (useNonce, useCheckedNonce) are internal helpers consumed
 ///      by other modules (e.g. ERC20Permit). Only the query function needs a public entry point.
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source OpenZeppelin v5.1.0
+/// @custom:lattice-requires none;
+/// @custom:lattice-family none
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches none;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init none
 contract Nonces {
     /// @notice Returns the current nonce for the given owner.
     /// @param owner The address to query.

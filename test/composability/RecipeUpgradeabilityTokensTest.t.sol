@@ -17,6 +17,7 @@ import {DeployERC20Crosschain} from "@lattice-script/base/tokens/DeployERC20Cros
 import {DeployERC20FlashMint} from "@lattice-script/base/tokens/DeployERC20FlashMint.s.sol";
 import {DeployERC20Pausable} from "@lattice-script/base/tokens/DeployERC20Pausable.s.sol";
 import {DeployERC20Permit} from "@lattice-script/base/tokens/DeployERC20Permit.s.sol";
+import {DeployERC20TemporaryApproval} from "@lattice-script/base/tokens/DeployERC20TemporaryApproval.s.sol";
 import {DeployERC20Votes} from "@lattice-script/base/tokens/DeployERC20Votes.s.sol";
 import {DeployERC20Wrapper} from "@lattice-script/base/tokens/DeployERC20Wrapper.s.sol";
 import {DeployERC2981} from "@lattice-script/base/tokens/DeployERC2981.s.sol";
@@ -192,6 +193,25 @@ contract RecipeUpgradeabilityTokensTest is RecipeGuards {
     function test_Upgradeable_ERC1363() public {
         (FacetCut[] memory cuts, address[] memory inits, bytes[] memory cds) =
             new DeployERC1363().buildCuts("Tok", "TOK", ADMIN);
+        address d = _assembleMulti(cuts, inits, cds);
+        _assertIntrospectable(d, 6);
+        _assertBareEth(d, false);
+        assertEq(IERC20(d).name(), "Tok", "module init chain: ERC20 name");
+        _assertAdminCanCut(d, ADMIN);
+    }
+
+    function test_Immutable_ERC20TemporaryApproval() public {
+        (FacetCut[] memory cuts, address[] memory inits, bytes[] memory cds) =
+            new DeployERC20TemporaryApproval().buildCuts("Tok", "TOK");
+        address d = _assembleMulti(cuts, inits, cds);
+        _assertIntrospectable(d, 4);
+        _assertBareEth(d, false);
+        _assertImmutableByDesign(d);
+    }
+
+    function test_Upgradeable_ERC20TemporaryApproval() public {
+        (FacetCut[] memory cuts, address[] memory inits, bytes[] memory cds) =
+            new DeployERC20TemporaryApproval().buildCuts("Tok", "TOK", ADMIN);
         address d = _assembleMulti(cuts, inits, cds);
         _assertIntrospectable(d, 6);
         _assertBareEth(d, false);

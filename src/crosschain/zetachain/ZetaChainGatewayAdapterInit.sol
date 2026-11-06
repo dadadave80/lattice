@@ -13,6 +13,7 @@ import {ZetaChainGatewayAdapterLib} from "@lattice/crosschain/zetachain/ZetaChai
 ///         Delegatecalled by {Diamond.initialize} inside the initializing window (so it must NOT open its own
 ///         pre/postInitializer; each `__*_init` guard passes because the window is already open). Companion to the
 ///         {LayerZeroGatewayAdapterInit} pattern — a first-class production deploy artifact.
+/// @custom:lattice-kind bundle
 contract ZetaChainGatewayAdapterInit {
     /// @notice Runs the access-control + ZetaChain-adapter module initializers. MUST be invoked via the diamond's
     ///         `initialize` `_init` delegatecall.
@@ -21,6 +22,17 @@ contract ZetaChainGatewayAdapterInit {
     /// @param hubChainId The hub chainId whose ZEVM universal app terminates the route.
     /// @param hubRemoteApp The trusted ZEVM universal app (hub) for `hubChainId`.
     /// @param defaultOnRevertGasLimit The default `onRevertGasLimit` used to build per-message `RevertOptions`.
+    /// @custom:lattice-initializes AccessControl;
+    /// @custom:lattice-initializes ZetaChainGatewayAdapter;
+    /// @custom:lattice-after none;
+    /// @custom:lattice-same-call Initializable hard enclosing-initializing-window;
+    /// @custom:lattice-sequence AccessControl;ZetaChainGatewayAdapter;
+    /// @custom:lattice-param admin authority;
+    /// @custom:lattice-param gateway;
+    /// @custom:lattice-param hubChainId;
+    /// @custom:lattice-param hubRemoteApp;
+    /// @custom:lattice-param defaultOnRevertGasLimit;
+    /// @custom:lattice-registers-interfaces
     function init(
         address admin,
         address gateway,

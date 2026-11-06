@@ -10,8 +10,13 @@ import {ERC721Lib} from "@lattice/tokens/ERC721/libraries/ERC721Lib.sol";
 /// @dev All logic lives in ERC721Lib. This contract is a pure delegator.
 ///      `transferFrom` and both `safeTransferFrom` overloads are the movement selectors a movement-replacing
 ///      extension replaces; only one such extension per diamond (D25, #234).
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source OpenZeppelin v5.6.1
+/// @custom:lattice-requires none;
+/// @custom:lattice-family none
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches lattice.storage.ERC721;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init ERC721Init
 contract ERC721 is IERC721 {
     /// @inheritdoc IERC721
     function name() public view virtual returns (string memory) {

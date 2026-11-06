@@ -23,8 +23,13 @@ import {ChainlinkCREAdapterLib} from "@lattice/oracles/chainlink/ChainlinkCREAda
 ///      constructor-based `ReceiverTemplate` (incompatible with the stateless facet + ERC-7201 model);
 ///      the `virtual onReport` override is the Lattice analogue of `ReceiverTemplate._processReport`.
 ///      See `ChainlinkCREAdapterLib` for the full mapping.
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source Chainlink
+/// @custom:lattice-requires AccessControl|AccessControlEnumerable|AccessControlTimed convention role-management-surface;
+/// @custom:lattice-family none
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches lattice.storage.ChainlinkCREAdapter;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init ChainlinkCREAdapterInit
 contract ChainlinkCREAdapter is IChainlinkCREAdapter {
     /// @inheritdoc IChainlinkCREAdapter
     function getForwarder() external view virtual override returns (address) {

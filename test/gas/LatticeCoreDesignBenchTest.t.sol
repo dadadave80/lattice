@@ -4,7 +4,7 @@ pragma solidity ^0.8.30;
 import {DiamondLoupeFacet} from "@diamond/facets/DiamondLoupeFacet.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {DeployGovernedVault} from "@lattice-script/base/defi/DeployGovernedVault.s.sol";
-import {RawCode} from "@lattice-test/helpers/LatticeCoreMocks.sol";
+import {CoreLoopExporter, CoreReturnBombExporter, RawCode} from "@lattice-test/helpers/LatticeCoreMocks.sol";
 import {LatticeFactory} from "@lattice/LatticeFactory.sol";
 import {LatticeRegistry} from "@lattice/LatticeRegistry.sol";
 import {GovernedVaultParams} from "@lattice/defi/GovernedVaultInit.sol";
@@ -39,8 +39,10 @@ abstract contract SelectorStoreProto {
     event Registered(
         bytes32 indexed nameHash, uint64 indexed version, address facet, bytes32 codehash, bytes32 selectorsHash
     );
+    event Attested(bytes32 indexed codehash, address indexed deployed);
 
-    address public immutable owner;
+    address public owner;
+    address public pendingOwner;
     mapping(bytes32 codehash => address deployed) internal _resolver;
     mapping(bytes32 recordKey => Record record) internal _records;
 
@@ -57,9 +59,7 @@ abstract contract SelectorStoreProto {
         bytes32 codehash = facet.codehash;
         if (codehash == 0 || codehash == keccak256("")) revert EmptyCode();
 
-        (bool ok, bytes memory ret) = facet.staticcall(abi.encodeWithSelector(0x0ef22643));
-        if (!ok || ret.length < 64) revert NotERC8153();
-        bytes memory blob = abi.decode(ret, (bytes));
+        bytes memory blob = _exportedBlob(facet);
         uint256 len = blob.length;
         if (len == 0 || len % 4 != 0) revert NotERC8153();
         bytes4[] memory selectors = _unpack(blob);
@@ -78,7 +78,10 @@ abstract contract SelectorStoreProto {
         r.pointer = _store(key, blob);
         r.codehash = codehash;
         r.selectorsHash = selectorsHash;
-        if (_resolver[codehash] == address(0)) _resolver[codehash] = facet;
+        if (_resolver[codehash] == address(0)) {
+            _resolver[codehash] = facet;
+            emit Attested(codehash, facet);
+        }
         emit Registered(nameHash, version, facet, codehash, selectorsHash);
     }
 
@@ -94,6 +97,30 @@ abstract contract SelectorStoreProto {
     function _store(bytes32 key, bytes memory blob) internal virtual returns (address pointer);
 
     function _read(bytes32 key, Record storage r) internal view virtual returns (bytes4[] memory);
+
+    // Match LatticeRegistry's registration-time resource bounds and ABI acceptance rule.
+    function _exportedBlob(address facet) private view returns (bytes memory blob) {
+        assembly ("memory-safe") {
+            blob := 0x60
+            mstore(0x00, shl(224, 0x0ef22643))
+            let ok := staticcall(100000, facet, 0x00, 0x04, 0x00, 0x00)
+            let size := returndatasize()
+            if and(ok, and(gt(size, 0x3f), iszero(gt(size, 8192)))) {
+                returndatacopy(0x00, 0x00, 0x20)
+                let offset := mload(0x00)
+                if iszero(gt(offset, sub(size, 0x20))) {
+                    returndatacopy(0x00, offset, 0x20)
+                    let len := mload(0x00)
+                    if iszero(gt(len, sub(sub(size, offset), 0x20))) {
+                        blob := mload(0x40)
+                        mstore(blob, len)
+                        returndatacopy(add(blob, 0x20), add(offset, 0x20), len)
+                        mstore(0x40, add(add(blob, 0x20), and(add(len, 0x1f), not(0x1f))))
+                    }
+                }
+            }
+        }
+    }
 
     function _unpack(bytes memory blob) internal pure returns (bytes4[] memory selectors) {
         uint256 n = blob.length / 4;
@@ -157,6 +184,47 @@ interface ISelectorReader {
 ///         returns the EXECUTION gas of one operation, taken with `gasleft()` inside a single call, so all
 ///         candidates are measured the same way.
 contract DesignBench {
+    function measureReadPair(ISelectorReader registry, bytes32 name, uint64 version)
+        external
+        view
+        returns (uint256 cold, uint256 warm)
+    {
+        uint256 g = gasleft();
+        bytes4[] memory first = registry.getSelectors(name, version);
+        cold = g - gasleft();
+        g = gasleft();
+        bytes4[] memory second = registry.getSelectors(name, version);
+        warm = g - gasleft();
+        require(keccak256(abi.encode(first)) == keccak256(abi.encode(second)), "read mismatch");
+    }
+
+    function measureDeployPair(address factory, bytes calldata encoded, bool reuse)
+        external
+        returns (uint256 cold, uint256 warm)
+    {
+        bytes memory first = encoded;
+        bytes memory second = first;
+        if (!reuse) {
+            (RecipeEntry[] memory entries, FacetCut[] memory cuts, address init, bytes memory data, bytes32 salt) =
+                abi.decode(encoded[4:], (RecipeEntry[], FacetCut[], address, bytes, bytes32));
+            second = abi.encodeCall(ILatticeFactory.deploy, (entries, cuts, init, data, keccak256(abi.encode(salt))));
+        }
+        uint256 g = gasleft();
+        (bool ok, bytes memory result) = factory.call(first);
+        cold = g - gasleft();
+        require(ok, "first deployment failed");
+        address firstDiamond = abi.decode(result, (address));
+        g = gasleft();
+        (ok, result) = factory.call(second);
+        warm = g - gasleft();
+        require(ok, "second deployment failed");
+        address secondDiamond = abi.decode(result, (address));
+        require(
+            (firstDiamond == secondDiamond) == reuse && firstDiamond.code.length != 0, "unexpected deployment reuse"
+        );
+        require(firstDiamond.codehash == secondDiamond.codehash, "runtime mismatch");
+    }
+
     // ------------------------------------------------------------------ selector reads, whole path
 
     /// @dev Execution gas of one `getSelectors` read, including the cold call into the registry, the record
@@ -248,6 +316,30 @@ contract LatticeCoreDesignBenchTest is Test {
         }
     }
 
+    function test_SelectorPrototypesPreserveExporterBounds() public {
+        address[3] memory regs = [
+            address(new LatticeRegistry(address(this))),
+            address(new BlobRegistryProto(address(this))),
+            address(new ArrayRegistryProto(address(this)))
+        ];
+        address[4] memory hostile = [
+            RawCode.deploy(abi.encode(type(uint256).max)),
+            RawCode.exporter(hex""),
+            address(new CoreLoopExporter()),
+            address(new CoreReturnBombExporter(1_000_000))
+        ];
+        for (uint256 d; d < regs.length; ++d) {
+            for (uint256 i; i < hostile.length; ++i) {
+                bytes memory callData =
+                    abi.encodeWithSelector(SelectorStoreProto.register.selector, bytes32(i), uint64(1), hostile[i]);
+                uint256 g = gasleft();
+                (bool ok,) = regs[d].call{gas: 500_000}(callData);
+                assertFalse(ok, "hostile export accepted");
+                assertLt(g - gasleft(), 300_000, "export resource bounds lost");
+            }
+        }
+    }
+
     /// @dev `regs` = live, blob, array.
     function _compareRepresentations(ISelectorReader[3] memory regs, uint256 n) internal {
         address facet = RawCode.exporter(_sorted(n));
@@ -269,6 +361,12 @@ contract LatticeCoreDesignBenchTest is Test {
         console2.log("n", n);
         console2.log("  register live / blob / array", writes[0], writes[1], writes[2]);
         console2.log("  read     live / blob / array", reads[0], reads[1], reads[2]);
+        for (uint256 d; d < 3; ++d) {
+            (uint256 cold, uint256 warm) = bench.measureReadPair(regs[d], key, 1);
+            assertGt(warm, 0);
+            assertLt(warm, cold);
+            console2.log("  paired read design / cold / warm", d, cold, warm);
+        }
 
         if (n >= 16) assertLt(writes[1], writes[2], "from 16 selectors a code blob registers cheaper");
         if (n >= 16) assertLt(reads[1], reads[2], "from 16 selectors a code blob reads cheaper than an array");

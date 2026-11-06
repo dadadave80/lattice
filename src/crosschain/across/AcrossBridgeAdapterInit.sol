@@ -12,10 +12,16 @@ import {AcrossBridgeAdapterLib} from "@lattice/crosschain/across/AcrossBridgeAda
 ///         Delegatecalled by {Diamond.initialize} inside the initializing window (so it must NOT open its own
 ///         pre/postInitializer; the `__*_init` guard passes because the window is already open). Reverts
 ///         `AcrossZeroAddress` if the SpokePool is zero.
+/// @custom:lattice-kind step
 contract AcrossBridgeAdapterInit {
     /// @notice Runs the reentrancy-guard + Across-adapter initializers. MUST be invoked via the diamond's
     ///         `initialize` `_init` delegatecall.
     /// @param spokePool The LOCAL chain's canonical Across v3 SpokePool.
+    /// @custom:lattice-initializes AcrossBridgeAdapter;
+    /// @custom:lattice-after none;
+    /// @custom:lattice-same-call Initializable hard enclosing-initializing-window;
+    /// @custom:lattice-param spokePool;
+    /// @custom:lattice-registers-interfaces
     function init(address spokePool) external {
         AcrossBridgeAdapterLib.__AcrossBridgeAdapter_init(spokePool);
     }

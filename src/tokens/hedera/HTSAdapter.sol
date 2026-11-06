@@ -11,8 +11,13 @@ import {HTSAdapterLib} from "@lattice/tokens/hedera/HTSAdapterLib.sol";
 ///         treasury transfers, and creation / mint / burn of tokens keyed to the diamond.
 /// @dev Stateless delegator — all logic and storage live in HTSAdapterLib. Consumers inherit this contract
 ///      and add AccessControl + an initializer. Only meaningful on Hedera (chain ids 295 / 296 / 297 / 298).
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source Hedera
+/// @custom:lattice-requires AccessControl|AccessControlEnumerable|AccessControlTimed convention role-management-surface;
+/// @custom:lattice-family none
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches lattice.storage.HTSAdapter;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init HTSAdapterInit
 contract HTSAdapter is IHTSAdapter {
     /// @inheritdoc IHTSAdapter
     function isAssociated(address token) external view virtual override returns (bool associated) {

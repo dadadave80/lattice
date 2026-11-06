@@ -18,8 +18,14 @@ import {IStargateBridgeAdapter} from "@lattice/interfaces/crosschain/IStargateBr
 ///      sweep (pools truncate to shared decimals — any un-debited remainder returns to the caller in the same
 ///      call). `msg.value` is the LayerZero fee EXCLUSIVELY (ERC-20 pools only in v1; `StargatePoolNative` is
 ///      deferred); excess fee refunds go to the calling user, never the diamond.
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source Stargate
+/// @custom:lattice-requires AccessControl|AccessControlEnumerable|AccessControlTimed convention role-management-surface;
+/// @custom:lattice-family none
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches lattice.storage.StargateBridgeAdapter;
+/// @custom:lattice-touches slot:0x8000000000ab143c06;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init StargateBridgeAdapterInit
 contract StargateBridgeAdapter is IStargateBridgeAdapter {
     /// @inheritdoc IStargateBridgeAdapter
     function sendToken(SendTokenParams calldata p)
