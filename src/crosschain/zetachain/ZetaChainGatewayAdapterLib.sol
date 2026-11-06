@@ -3,6 +3,7 @@ pragma solidity ^0.8.30;
 
 import {AccessControlLib, DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
 import {IZetaChainGatewayAdapter} from "@lattice/interfaces/crosschain/IZetaChainGatewayAdapter.sol";
+import {IZetaChainGatewayAttributes} from "@lattice/interfaces/crosschain/IZetaChainGatewayAttributes.sol";
 import {IERC7786GatewaySource, IERC7786Recipient} from "@lattice/interfaces/external/ercs/IERC7786.sol";
 import {IGatewayEVM, MessageContext, RevertOptions} from "@lattice/interfaces/external/zetachain/IGatewayEVM.sol";
 import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
@@ -114,10 +115,8 @@ library ZetaChainGatewayAdapterLib {
         return zetaChainGatewayAdapterStorage()._defaultOnRevertGasLimit;
     }
 
-    /// @notice No `sendMessage` attributes are supported: surfacing `RevertOptions` as a per-message ERC-7786
-    ///         attribute is DEFERRED (tracked in #213) — an admin-configured default is used instead.
-    function supportsAttribute(bytes4) internal pure returns (bool) {
-        return false;
+    function supportsAttribute(bytes4 selector) internal pure returns (bool) {
+        return selector == IZetaChainGatewayAttributes.revertOptions.selector;
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -162,18 +161,15 @@ library ZetaChainGatewayAdapterLib {
     /// @notice ERC-7786 source. Parses the ERC-7930 `recipient` into `(destChainId, target)`, resolves the
     ///         destination's trusted ZEVM universal app (the hub route terminus), wraps the ERC-7930 envelope with
     ///         a source-minted monotonic nonce, and dispatches it via `gateway.call`. Forwards `msg.value` as the
-    ///         native messaging fee (there is NO on-chain quote or refund from the gateway). Returns the
+    ///         fee unchanged (the configured gateway determines the exact accepted amount). Returns the
     ///         globally-unique `keccak256(abi.encode(block.chainid, nonce))` as the ERC-7786 `sendId`.
-    /// @dev No attributes are supported — any attribute reverts {UnsupportedAttribute}. The `RevertOptions` are an
-    ///      admin-configured default (`revertAddress = msg.sender`, `callOnRevert = false`); surfacing them
-    ///      per-message is DEFERRED (tracked in #213). `remote = forward[destChainId]` is the ZEVM universal
-    ///      app / hub-terminated route; an unset route reverts {UnknownDestinationChain}.
+    /// @dev Accepts one canonical `revertOptions` attribute; the protocol's plain-call path forbids callbacks.
+    ///      Recovery data is wrapped with the actual sender, recipient and nonce. No attribute keeps the existing
+    ///      defaults. The combined encoded message/revert data must fit the gateway's 2,880-byte limit.
     function sendMessage(bytes calldata recipient, bytes calldata payload, bytes[] calldata attributes)
         internal
         returns (bytes32)
     {
-        if (attributes.length != 0) revert IERC7786GatewaySource.UnsupportedAttribute(bytes4(attributes[0]));
-
         // Envelope carries a source-owned monotonic nonce (`$._outboundNonce++`) so the delivery id is globally
         // unique per (source, nonce) rather than envelope content — otherwise two byte-identical-but-distinct
         // messages would collide on delivery (one permanently dropped) and the recipient would see a non-unique id.
@@ -186,17 +182,13 @@ library ZetaChainGatewayAdapterLib {
             if (remote == address(0)) revert IZetaChainGatewayAdapter.UnknownDestinationChain(destChainId);
 
             nonce = $._outboundNonce++;
-            RevertOptions memory revertOptions = RevertOptions({
-                revertAddress: msg.sender,
-                callOnRevert: false,
-                // Direct funds on ZetaChain's terminal abort path back to the caller (not address(0), which burns).
-                abortAddress: msg.sender,
-                revertMessage: "",
-                onRevertGasLimit: $._defaultOnRevertGasLimit
-            });
+            RevertOptions memory revertOptions =
+                _revertOptions(attributes, recipient, nonce, $._defaultOnRevertGasLimit);
             bytes memory envelope =
                 abi.encode(InteroperableAddress.formatEvmV1(block.chainid, msg.sender), recipient, payload, nonce);
-            // Forward msg.value as the native messaging fee (no on-chain quote/refund from the gateway).
+            uint256 size = envelope.length + revertOptions.revertMessage.length;
+            if (size > 2880) revert IZetaChainGatewayAdapter.MessageTooLarge(size, 2880);
+            // The configured gateway decides the required fee; an upstream rejection rolls back the nonce.
             IGatewayEVM($._gateway).call{value: msg.value}(remote, envelope, revertOptions);
         }
 
@@ -205,6 +197,31 @@ library ZetaChainGatewayAdapterLib {
             id, InteroperableAddress.formatEvmV1(block.chainid, msg.sender), recipient, payload, msg.value, attributes
         );
         return id;
+    }
+
+    function _revertOptions(bytes[] calldata attributes, bytes calldata recipient, uint256 nonce, uint256 defaultGas)
+        private
+        view
+        returns (RevertOptions memory options)
+    {
+        options = RevertOptions(msg.sender, false, msg.sender, "", defaultGas);
+        if (attributes.length != 0) {
+            bytes4 selector = bytes4(attributes[0]);
+            if (!supportsAttribute(selector)) revert IERC7786GatewaySource.UnsupportedAttribute(selector);
+            if (attributes.length != 1) revert IZetaChainGatewayAdapter.InvalidRevertOptions();
+            options = abi.decode(attributes[0][4:], (RevertOptions));
+            if (keccak256(attributes[0][4:]) != keccak256(abi.encode(options))) {
+                revert IZetaChainGatewayAdapter.InvalidRevertOptions();
+            }
+            options.revertMessage = abi.encode(
+                InteroperableAddress.formatEvmV1(block.chainid, msg.sender), recipient, options.revertMessage, nonce
+            );
+        }
+        // Match GatewayEVM's plain-call restrictions; zero gas remains a valid upstream option.
+        if (
+            options.revertAddress == address(0) || options.abortAddress == address(0) || options.callOnRevert
+                || options.onRevertGasLimit > 2_000_000
+        ) revert IZetaChainGatewayAdapter.InvalidRevertOptions();
     }
 
     //*//////////////////////////////////////////////////////////////////////////

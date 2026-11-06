@@ -30,7 +30,7 @@ and re-derived from first principles by `test/unit/StorageSlotVerificationTest.t
 | WormholeGatewayAdapter | Guardian set | source-minted `sendId`; `_executed[chainId][sendId]` | `msg.value` relayer quote | relayer refund address | `msg.sender == relayer` + trusted source gateway |
 | LayerZeroGatewayAdapter | Endpoint + DVN config | LZ `guid`; `_executed[chainId][guid]` | `msg.value` (`quote`); ZRO flag hardcoded off | refund to `msg.sender` (user) | dual-auth: endpoint + `peers[srcEid]` |
 | L2ToL2 / L1ToL2 (OP) | OP protocol messengers | `keccak(chainid, nonce)` delivery ids (L2ToL2's sendId is the messenger msgHash); messenger self-dedup | none — both reject `msg.value` (`minGasLimit` is a stored relay tunable, L1↔L2) | n/a | `crossDomainMessageContext()` / counterpart + messenger |
-| ZetaChainGatewayAdapter | ZetaChain TSS/observers (hub) | `keccak(chainid, nonce)` ids; source-chain cross-check in `onCall`; registered app map | `msg.value` | `RevertOptions.abortAddress = msg.sender` | `msg.sender == gateway` + registered app + fail-closed source check |
+| ZetaChainGatewayAdapter | ZetaChain TSS/observers (hub) | `keccak(chainid, nonce)` ids; source-chain cross-check in `onCall`; registered app map | exact `msg.value` accepted by configured gateway (may be zero) | caller addresses by default; per-message explicit nonzero recovery addresses | `msg.sender == gateway` + registered app + fail-closed source check |
 | HyperlaneGatewayAdapter | Mailbox + ISM (default ISM v1) | envelope nonce `sendId` (no protocol id in `handle`); Mailbox `delivered()` protocol guard | `msg.value` (`quoteDispatch`), synthesized `StandardHookMetadata` | IGP refund to the **user** | dual-auth: mailbox + `trustedRemotes[domainToChainId[origin]]` |
 | HyperbridgeGatewayAdapter | **Consensus/state proofs** (ISMP coprocessor); permissionless relayers | protocol nonce dedup `keccak(source, nonce)`; envelope `sendId` | **ERC-20 `feeToken`** (`perByteFee × body + relayerFee`), live-read, pull/approve/reset/sweep | `DispatchPost.payer = user` (timeout refunds); `onPostRequestTimeout` notification | host + known source machine + trusted origin module; 4 unused hooks revert |
 | CCTPBridgeAdapter | Circle Iris attesters + denylist | Circle nonce (transmitter) | none at source (full amount burned; fee deducted at destination mint, `maxFee`-capped) | n/a (burn is final) | permissionless `relayMessage` → transmitter verifies attestation |
@@ -75,6 +75,29 @@ and re-derived from first principles by `test/unit/StorageSlotVerificationTest.t
   `test_ChainRegistryFacetFitsEip170` guards the ceiling in CI, and the documented plan for an
   11th adapter is a dedicated `ChainFanOut` facet split.
 
+### ZetaChain per-message recovery options
+
+Pass a single `abi.encodeCall(IZetaChainGatewayAttributes.revertOptions, (options))` in `attributes`.
+The adapter accepts canonical ABI encoding only, rejects duplicate or unknown attributes, requires
+nonzero `revertAddress` and `abortAddress`, and caps `onRevertGasLimit` at 2,000,000 (zero is valid).
+`GatewayEVM.call` forbids `callOnRevert=true`, so these options do **not** request an `onRevert` callback.
+Without an attribute, both addresses remain `msg.sender`, revert data is empty, and the configured
+default gas applies. The attribute is an encoding interface, not an extra selector on the diamond.
+
+For an override, `options.revertMessage` becomes
+`abi.encode(senderInterop, recipientInterop, userRevertData, outboundNonce)` using the actual caller.
+The normal wire message keeps its existing format. Their combined encoded length must not exceed
+2,880 bytes. A terminal abort consumer must authenticate its protocol caller and the protocol's
+source adapter and chain context **before** trusting this envelope; decoding it alone provides no
+authentication. The caller is responsible for choosing recovery addresses it controls on the
+appropriate chains. Lattice provides no recovery hook or promise of refund delivery.
+
+The adapter forwards exactly the current call's `msg.value`; pre-existing diamond funds are untouched.
+It does not quote or refund fees. The pinned upstream gateway makes the first action free and rejects
+positive value for it; other deployments or later actions may differ. A fee or gateway rejection
+reverts the entire send, including the nonce. See [ADR 0028](docs/adr/0028-zetachain-message-recovery-options.md)
+and the [pinned upstream validation](https://github.com/zeta-chain/protocol-contracts/blob/48ecdbcc4c30a8e8a7f2f5756b6a544b316670a0/contracts/evm/libraries/GatewayEVMValidations.sol).
+
 ## 4. Composition: OpenBridge, CrosschainLink, ChainRegistry
 
 - **`ERC7786OpenBridge`** fans one message across M enrolled gateways and executes at N-of-M
@@ -110,7 +133,7 @@ and re-derived from first principles by `test/unit/StorageSlotVerificationTest.t
 | Wormhole | guardians + delivery relayer | VAA never delivered |
 | LayerZero | DVNs + executor (per-dest gas config) | blocked verification / undelivered |
 | Hyperlane | validators (ISM) + permissionless relayer | unverified / undelivered; **self-relay possible** |
-| ZetaChain | TSS signers + observer set (hub liveness) | hub never forwards; `onRevert` path also depends on it |
+| ZetaChain | TSS signers + observer set (hub liveness) | hub never forwards; recovery also depends on it; plain-message calls disable `onRevert` |
 | Hyperbridge | coprocessor consensus + permissionless proof relayers | proofs never submitted; **self-relay possible**; timeouts refund `payer` |
 | OP L2↔L2 / L1↔L2 | permissionless `relayMessage` driver (pre-mainnet interop) | sent-but-unrelayed; anyone can relay |
 | CCTP | Circle Iris attestation service (+ any keeper calling `relayMessage`) | burn without mint until attested; `relayMessage` is permissionless once attested |
@@ -129,8 +152,9 @@ and re-derived from first principles by `test/unit/StorageSlotVerificationTest.t
   provenance independently.
 - Hyperbridge **GET requests** (proof-verified cross-chain state reads — a new primitive), and the
   **native-with-swap** fee path (Q13).
-- ZetaChain universal-app hop standardization + a suite-wide revert/refund ERC-7786 attribute (Q8;
-  `onPostRequestTimeout` and `RevertOptions` are the two live inputs to that design).
+- ZetaChain universal-app hop standardization + a **suite-wide** revert/refund ERC-7786 attribute (Q8;
+  the Zeta-specific per-message `RevertOptions` encoding above is available; Hyperbridge timeout
+  semantics remain distinct).
 - NEAR native via Rainbow Bridge (GPL-3.0; separate connector).
 
 ## 7. Testing

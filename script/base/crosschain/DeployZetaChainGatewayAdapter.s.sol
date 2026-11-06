@@ -140,7 +140,7 @@ contract DeployZetaChainGatewayAdapter is BaseDeploy {
             "uint256",
             "gas",
             "200000",
-            "initialization accepts zero; caller chooses a suitable default revert gas limit"
+            "initialization accepts any value; sending without an override requires a default at most 2000000"
         );
         RecipeParameter[] memory parameters = new RecipeParameter[](5);
         parameters[0] = variant.inputs[0];
@@ -180,7 +180,7 @@ contract DeployZetaChainGatewayAdapter is BaseDeploy {
         variant.conditions[0] =
             "caller: authenticate the configured gateway and hub remote app; initialization registers exactly the supplied hub route";
         variant.conditions[1] =
-            "per-message RevertOptions are not exposed; the configured default gas limit is used with callOnRevert=false";
+            "sendMessage accepts one canonical revertOptions attribute; both recovery addresses must be nonzero, callOnRevert=false, gas<=2000000, combined encoded message/revert data<=2880 bytes; no attribute uses caller addresses, empty revert data and the configured default gas";
         result.variants[0] = variant;
         result.deploymentContexts[0] = RecipeSpecLib.deploymentContext(
             "DeployZetaChainGatewayAdapter",

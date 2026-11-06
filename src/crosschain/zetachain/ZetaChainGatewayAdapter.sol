@@ -18,6 +18,7 @@ import {Callable, MessageContext} from "@lattice/interfaces/external/zetachain/I
 ///      trusted-remote registry is a forward (`chainId ⇒ app`) + reverse (`app ⇒ chainId`) map of ZEVM universal
 ///      apps; the gateway-gated `onCall` is the inbound analogue of CCIP's `ccipReceive` / LayerZero's `lzReceive`.
 ///      Implements {Callable} (`onCall`) so the ZetaChain `GatewayEVM` can deliver inbound messages.
+///      `sendMessage` accepts one `IZetaChainGatewayAttributes.revertOptions` attribute, with callbacks disabled.
 /// @custom:lattice-source ZetaChain
 /// @custom:lattice-requires AccessControl|AccessControlEnumerable|AccessControlTimed convention role-management-surface;
 /// @custom:lattice-family gateway

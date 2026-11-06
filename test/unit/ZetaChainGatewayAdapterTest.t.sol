@@ -5,10 +5,14 @@ import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {ZetaChainGatewayAdapterTestBase} from "@lattice-test/base/ZetaChainGatewayAdapterTestBase.sol";
 import {ZetaChainGatewayAdapter} from "@lattice/crosschain/zetachain/ZetaChainGatewayAdapter.sol";
 import {IZetaChainGatewayAdapter} from "@lattice/interfaces/crosschain/IZetaChainGatewayAdapter.sol";
+import {IZetaChainGatewayAttributes} from "@lattice/interfaces/crosschain/IZetaChainGatewayAttributes.sol";
 import {IERC7786GatewaySource, IERC7786Recipient} from "@lattice/interfaces/external/ercs/IERC7786.sol";
 import {IGatewayEVM, MessageContext, RevertOptions} from "@lattice/interfaces/external/zetachain/IGatewayEVM.sol";
 import {InteroperableAddress} from "@lattice/utils/libraries/InteroperableAddress.sol";
 
+/// @title MockGatewayEVM
+/// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
+/// @author Modified from ZetaChain (https://github.com/zeta-chain/protocol-contracts)
 /// @notice Minimal ZetaChain `GatewayEVM` mock. `call` records `(receiver, payload)` + the revert address / gas /
 ///         forwarded value the outbound test asserts on. The harness drives inbound delivery by pranking AS this
 ///         gateway (passed as the adapter's ctor arg) and handing `onCall` a settable `MessageContext.sender`.
@@ -16,16 +20,29 @@ contract MockGatewayEVM is IGatewayEVM {
     address public lastReceiver;
     bytes public lastPayload;
     address public lastRevertAddress;
+    address public lastAbortAddress;
     bool public lastCallOnRevert;
+    bytes public lastRevertMessage;
     uint256 public lastOnRevertGasLimit;
     uint256 public lastValue;
     uint256 public calls;
+    bool public requireZeroFee;
+
+    error ExcessETHProvided(uint256 required, uint256 provided);
+
+    function setRequireZeroFee() external {
+        requireZeroFee = true;
+    }
 
     function call(address receiver, bytes calldata payload, RevertOptions calldata revertOptions) external payable {
+        // Pinned GatewayEVM's first action charges zero and rejects any excess native value.
+        if (requireZeroFee && msg.value != 0) revert ExcessETHProvided(0, msg.value);
         lastReceiver = receiver;
         lastPayload = payload;
         lastRevertAddress = revertOptions.revertAddress;
+        lastAbortAddress = revertOptions.abortAddress;
         lastCallOnRevert = revertOptions.callOnRevert;
+        lastRevertMessage = revertOptions.revertMessage;
         lastOnRevertGasLimit = revertOptions.onRevertGasLimit;
         lastValue = msg.value;
         ++calls;
@@ -63,6 +80,7 @@ contract ZetaChainGatewayAdapterTest is ZetaChainGatewayAdapterTestBase {
 
     uint256 constant REMOTE_CHAIN = 7000; // ZetaChain-ish hub chainId
     uint256 constant DEFAULT_REVERT_GAS = 200_000;
+    bytes4 constant REVERT_OPTIONS_ATTRIBUTE = bytes4(keccak256("revertOptions((address,bool,address,bytes,uint256))"));
 
     bytes recip; // dest recipient (ERC-7930)
     bytes4 constant UNAUTHORIZED_ACCOUNT = bytes4(keccak256("AccessControlUnauthorizedAccount(address,bytes32)"));
@@ -165,9 +183,14 @@ contract ZetaChainGatewayAdapterTest is ZetaChainGatewayAdapterTestBase {
         adapter.setDefaultOnRevertGasLimit(500_000);
     }
 
-    function test_SupportsAttributeAlwaysFalse() public view {
+    function test_UnsupportedAttributeSelectors() public view {
         assertFalse(adapter.supportsAttribute(bytes4(0x12345678)));
         assertFalse(adapter.supportsAttribute(bytes4(0)));
+    }
+
+    function test_SupportsRevertAttribute() public view {
+        assertEq(IZetaChainGatewayAttributes.revertOptions.selector, REVERT_OPTIONS_ATTRIBUTE);
+        assertTrue(adapter.supportsAttribute(REVERT_OPTIONS_ATTRIBUTE));
     }
 
     function test_SupportsInterfaceGatewaySource() public view {
@@ -194,6 +217,8 @@ contract ZetaChainGatewayAdapterTest is ZetaChainGatewayAdapterTestBase {
             gateway.lastPayload(), _envelope(user, hex"deadbeef", 0), "wire envelope = (sender, recip, payload, nonce)"
         );
         assertEq(gateway.lastRevertAddress(), user, "default RevertOptions.revertAddress = msg.sender");
+        assertEq(gateway.lastAbortAddress(), user);
+        assertEq(gateway.lastRevertMessage(), "");
         assertFalse(gateway.lastCallOnRevert(), "default RevertOptions.callOnRevert = false");
         assertEq(gateway.lastOnRevertGasLimit(), DEFAULT_REVERT_GAS, "default RevertOptions.onRevertGasLimit");
     }
@@ -235,6 +260,240 @@ contract ZetaChainGatewayAdapterTest is ZetaChainGatewayAdapterTestBase {
         vm.prank(user);
         vm.expectRevert(abi.encodeWithSelector(IERC7786GatewaySource.UnsupportedAttribute.selector, bytes4(0xaabbccdd)));
         adapter.sendMessage(recip, hex"01", attrs);
+    }
+
+    function test_PerMessageRevertOptionsBindActualSenderAndNonce() public {
+        RevertOptions memory options = RevertOptions({
+            revertAddress: address(0xBEEF),
+            callOnRevert: false,
+            abortAddress: address(0xAB07),
+            revertMessage: abi.encode(remoteSender, "caller-supplied recovery data"),
+            onRevertGasLimit: 450_000
+        });
+        bytes[] memory attrs = new bytes[](1);
+        attrs[0] = abi.encodeWithSelector(REVERT_OPTIONS_ATTRIBUTE, options);
+        vm.deal(user, 1 ether);
+        vm.prank(user);
+        bytes32 id = adapter.sendMessage{value: 0.1 ether}(recip, hex"01", attrs);
+
+        assertEq(id, keccak256(abi.encode(block.chainid, uint256(0))));
+        assertEq(gateway.calls(), 1);
+        assertEq(gateway.lastValue(), 0.1 ether);
+        assertEq(gateway.lastRevertAddress(), options.revertAddress);
+        assertEq(gateway.lastAbortAddress(), options.abortAddress);
+        assertFalse(gateway.lastCallOnRevert());
+        assertEq(gateway.lastOnRevertGasLimit(), options.onRevertGasLimit);
+        assertEq(gateway.lastRevertMessage(), _envelope(user, options.revertMessage, 0));
+        assertEq(gateway.lastPayload(), _envelope(user, hex"01", 0));
+        assertEq(adapter.defaultOnRevertGasLimit(), DEFAULT_REVERT_GAS);
+    }
+
+    function _options() internal view returns (RevertOptions memory) {
+        return RevertOptions(user, false, user, "", DEFAULT_REVERT_GAS);
+    }
+
+    function _attributes(RevertOptions memory options) internal pure returns (bytes[] memory attrs) {
+        attrs = new bytes[](1);
+        attrs[0] = abi.encodeCall(IZetaChainGatewayAttributes.revertOptions, (options));
+    }
+
+    function test_PerMessageGatewayFeeRejectionRollsBackNonceAndFunds() public {
+        gateway.setRequireZeroFee();
+        vm.deal(user, 1 ether);
+        vm.deal(diamond, 2 ether);
+        bytes[] memory attrs = _attributes(_options());
+        vm.prank(user);
+        vm.expectRevert(abi.encodeWithSelector(MockGatewayEVM.ExcessETHProvided.selector, 0, 0.1 ether));
+        adapter.sendMessage{value: 0.1 ether}(recip, hex"01", attrs);
+        assertEq(gateway.calls(), 0);
+        assertEq(user.balance, 1 ether);
+        assertEq(diamond.balance, 2 ether);
+
+        vm.prank(user);
+        assertEq(adapter.sendMessage(recip, hex"01", attrs), keccak256(abi.encode(block.chainid, uint256(0))));
+        assertEq(gateway.lastRevertMessage(), _envelope(user, "", 0));
+        assertEq(gateway.lastValue(), 0);
+        assertEq(diamond.balance, 2 ether);
+    }
+
+    function test_PerMessageFeeUsesOnlyCurrentCallValue() public {
+        vm.deal(user, 1 ether);
+        vm.deal(diamond, 2 ether);
+        bytes[] memory attrs = _attributes(_options());
+        vm.prank(user);
+        adapter.sendMessage{value: 0.1 ether}(recip, "", attrs);
+        assertEq(gateway.lastValue(), 0.1 ether);
+        assertEq(diamond.balance, 2 ether);
+    }
+
+    function test_PerMessageRejectsCallback() public {
+        RevertOptions memory options = _options();
+        options.callOnRevert = true;
+        _expectInvalidOptions(options);
+    }
+
+    function test_PerMessageRejectsZeroRecoveryAddresses() public {
+        RevertOptions memory options = _options();
+        options.revertAddress = address(0);
+        _expectInvalidOptions(options);
+        options = _options();
+        options.abortAddress = address(0);
+        _expectInvalidOptions(options);
+    }
+
+    function test_PerMessageGasBoundsAndDefaultIsolation() public {
+        RevertOptions memory options = _options();
+        options.onRevertGasLimit = 2_000_001;
+        _expectInvalidOptions(options);
+        options.onRevertGasLimit = 2_000_000;
+        bytes[] memory attrs = _attributes(options);
+        vm.prank(user);
+        adapter.sendMessage(recip, "", attrs);
+        assertEq(gateway.lastOnRevertGasLimit(), 2_000_000);
+        options.onRevertGasLimit = 0;
+        attrs = _attributes(options);
+        vm.prank(user);
+        adapter.sendMessage(recip, "", attrs);
+        assertEq(gateway.lastOnRevertGasLimit(), 0);
+        vm.prank(user);
+        adapter.sendMessage(recip, "", new bytes[](0));
+        assertEq(gateway.lastOnRevertGasLimit(), DEFAULT_REVERT_GAS);
+        assertEq(gateway.lastRevertMessage(), "");
+    }
+
+    function _expectInvalidOptions(RevertOptions memory options) internal {
+        bytes[] memory attrs = _attributes(options);
+        vm.prank(user);
+        vm.expectRevert(IZetaChainGatewayAdapter.InvalidRevertOptions.selector);
+        adapter.sendMessage(recip, "", attrs);
+        assertEq(gateway.calls(), 0);
+    }
+
+    function test_DefaultGasAboveGatewayMaximumRejectedAtSend() public {
+        vm.prank(admin);
+        adapter.setDefaultOnRevertGasLimit(2_000_001);
+        vm.prank(user);
+        vm.expectRevert(IZetaChainGatewayAdapter.InvalidRevertOptions.selector);
+        adapter.sendMessage(recip, "", new bytes[](0));
+        // A valid per-message override remains usable without changing admin configuration.
+        bytes[] memory attrs = _attributes(_options());
+        vm.prank(user);
+        adapter.sendMessage(recip, "", attrs);
+    }
+
+    function test_PerMessageRejectsDuplicateAndTrailingData() public {
+        bytes[] memory attrs = new bytes[](2);
+        attrs[0] = abi.encodeCall(IZetaChainGatewayAttributes.revertOptions, (_options()));
+        attrs[1] = attrs[0];
+        vm.prank(user);
+        vm.expectRevert(IZetaChainGatewayAdapter.InvalidRevertOptions.selector);
+        adapter.sendMessage(recip, "", attrs);
+        attrs = _attributes(_options());
+        attrs[0] = bytes.concat(attrs[0], hex"00");
+        vm.prank(user);
+        vm.expectRevert(IZetaChainGatewayAdapter.InvalidRevertOptions.selector);
+        adapter.sendMessage(recip, "", attrs);
+        assertEq(gateway.calls(), 0);
+    }
+
+    function test_PerMessageRejectsTruncatedAndDirtyABI() public {
+        bytes[] memory attrs = new bytes[](1);
+        attrs[0] = abi.encodePacked(REVERT_OPTIONS_ATTRIBUTE);
+        vm.prank(user);
+        vm.expectRevert();
+        adapter.sendMessage(recip, "", attrs);
+        bytes memory attr = abi.encodeCall(IZetaChainGatewayAttributes.revertOptions, (_options()));
+        // Dirty bool word: selector + tuple offset + address.
+        assembly ("memory-safe") {
+            mstore(add(attr, 100), 2)
+        }
+        attrs[0] = attr;
+        vm.prank(user);
+        vm.expectRevert();
+        adapter.sendMessage(recip, "", attrs);
+        assertEq(gateway.calls(), 0);
+    }
+
+    function test_PerMessageRejectsDecodableNoncanonicalOffsetAndPadding() public {
+        RevertOptions memory options = _options();
+        options.revertMessage = hex"01";
+        bytes[] memory attrs = _attributes(options);
+        bytes memory attr = attrs[0];
+        // A nonzero byte in dynamic padding is accepted by abi.decode, but is not canonical.
+        attr[attr.length - 1] = 0x01;
+        vm.prank(user);
+        vm.expectRevert(IZetaChainGatewayAdapter.InvalidRevertOptions.selector);
+        adapter.sendMessage(recip, "", attrs);
+
+        // Move the tuple from offset 32 to 64 while retaining the same decoded values.
+        bytes memory tuple = abi.encode(options);
+        bytes memory shifted = new bytes(tuple.length + 32);
+        assembly ("memory-safe") {
+            mstore(add(shifted, 32), 64)
+        }
+        for (uint256 i = 32; i < tuple.length; ++i) {
+            shifted[i + 32] = tuple[i];
+        }
+        attrs[0] = abi.encodePacked(REVERT_OPTIONS_ATTRIBUTE, shifted);
+        vm.prank(user);
+        vm.expectRevert(IZetaChainGatewayAdapter.InvalidRevertOptions.selector);
+        adapter.sendMessage(recip, "", attrs);
+        assertEq(gateway.calls(), 0);
+    }
+
+    function test_DefaultAndCustomCombinedMessageSizeBounds() public {
+        uint256 overhead = _envelope(user, "", 0).length;
+        bytes memory payload = new bytes(2880 - overhead);
+        vm.prank(user);
+        adapter.sendMessage(recip, payload, new bytes[](0));
+        assertEq(gateway.lastPayload().length, 2880);
+        payload = bytes.concat(payload, hex"00");
+        vm.prank(user);
+        vm.expectRevert(abi.encodeWithSelector(IZetaChainGatewayAdapter.MessageTooLarge.selector, 2912, 2880));
+        adapter.sendMessage(recip, payload, new bytes[](0));
+
+        bytes[] memory attrs = _attributes(_options());
+        payload = new bytes(2880 - 2 * overhead);
+        vm.prank(user);
+        bytes32 id = adapter.sendMessage(recip, payload, attrs);
+        assertEq(id, keccak256(abi.encode(block.chainid, uint256(1))), "rejected send did not consume a nonce");
+        assertEq(gateway.lastPayload().length + gateway.lastRevertMessage().length, 2880);
+        payload = bytes.concat(payload, hex"00");
+        vm.prank(user);
+        vm.expectRevert(abi.encodeWithSelector(IZetaChainGatewayAdapter.MessageTooLarge.selector, 2912, 2880));
+        adapter.sendMessage(recip, payload, attrs);
+        assertEq(gateway.calls(), 2);
+    }
+
+    function test_PerMessageRecoveryDataSharesTheSizeBudget() public {
+        uint256 overhead = _envelope(user, "", 0).length;
+        RevertOptions memory options = _options();
+        options.revertMessage = new bytes(2880 - 2 * overhead);
+        bytes[] memory attrs = _attributes(options);
+        vm.prank(user);
+        adapter.sendMessage(recip, "", attrs);
+        assertEq(gateway.lastPayload().length + gateway.lastRevertMessage().length, 2880);
+        options.revertMessage = bytes.concat(options.revertMessage, hex"00");
+        attrs = _attributes(options);
+        vm.prank(user);
+        vm.expectRevert(abi.encodeWithSelector(IZetaChainGatewayAdapter.MessageTooLarge.selector, 2912, 2880));
+        adapter.sendMessage(recip, "", attrs);
+        assertEq(gateway.calls(), 1);
+    }
+
+    function testFuzz_PerMessageRecoveryEnvelopePreservesCaller(bytes memory userData, uint64 gasLimit) public {
+        vm.assume(userData.length <= 512);
+        RevertOptions memory options = _options();
+        options.revertMessage = userData;
+        options.onRevertGasLimit = bound(gasLimit, 0, 2_000_000);
+        bytes[] memory attrs = _attributes(options);
+        vm.startPrank(user);
+        adapter.sendMessage(recip, hex"01", attrs);
+        adapter.sendMessage(recip, hex"01", attrs);
+        vm.stopPrank();
+        assertEq(gateway.lastRevertMessage(), _envelope(user, userData, 1));
+        assertEq(gateway.lastOnRevertGasLimit(), options.onRevertGasLimit);
+        assertEq(adapter.defaultOnRevertGasLimit(), DEFAULT_REVERT_GAS);
     }
 
     //*//////////////////////////////////////////////////////////////////////////

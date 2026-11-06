@@ -33,6 +33,7 @@ the linked issue or pull request; a record is the outcome, not a spec.
 | [0025](0025-account-factory-release-identity.md) | Account recipes use specialized atomic factories with EntryPoint-specific release identities | Accepted |
 | [0026](0026-checked-recipe-data-and-seams.md) | Recipes share checked cut plans and export descriptive composition data | Accepted |
 | [0027](0027-governor-governed-cut-topology.md) | Governor validates the declared governed-cut executor topology | Accepted |
+| [0028](0028-zetachain-message-recovery-options.md) | ZetaChain messages accept bounded recovery options without callbacks | Accepted |
 
 ## When to write one
 

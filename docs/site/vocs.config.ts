@@ -42,6 +42,7 @@ const decisions: Item = {
     { text: '0025 Account factory identities', link: '/adr/0025-account-factory-release-identity' },
     { text: '0026 Recipe data and seams', link: '/adr/0026-checked-recipe-data-and-seams' },
     { text: '0027 Governor cut topology', link: '/adr/0027-governor-governed-cut-topology' },
+    { text: '0028 ZetaChain recovery options', link: '/adr/0028-zetachain-message-recovery-options' },
   ],
 }
 
