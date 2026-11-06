@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {MultiInitErrors} from "@lattice-test/helpers/MultiInitErrors.sol";
+
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {AccessManagerTestBase} from "@lattice-test/base/AccessManagerTestBase.sol";
@@ -129,7 +131,11 @@ contract AccessManagerTest is AccessManagerTestBase {
     function test_InvalidInitialAdminReverts() public {
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) = deployer.buildCuts(address(0));
         Lattice d = new Lattice();
-        vm.expectRevert(IAccessManager.AccessManagerInvalidInitialAdmin.selector);
+        vm.expectRevert(
+            MultiInitErrors.at(
+                0, initCalldata, abi.encodePacked(IAccessManager.AccessManagerInvalidInitialAdmin.selector)
+            )
+        );
         d.initialize(cuts, init, initCalldata);
     }
 

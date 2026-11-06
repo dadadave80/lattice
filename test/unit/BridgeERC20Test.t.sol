@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {MultiInitErrors} from "@lattice-test/helpers/MultiInitErrors.sol";
+
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {BridgeERC20TestBase} from "@lattice-test/base/BridgeERC20TestBase.sol";
@@ -250,7 +252,7 @@ contract BridgeERC20Test is BridgeERC20TestBase {
     function test_InitRevertsZeroToken() public {
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) = deployer.buildCuts(admin, address(0));
         Lattice d = new Lattice();
-        vm.expectRevert(IBridgeFungible.BridgeZeroToken.selector);
+        vm.expectRevert(MultiInitErrors.at(0, initCalldata, abi.encodePacked(IBridgeFungible.BridgeZeroToken.selector)));
         d.initialize(cuts, init, initCalldata);
     }
 

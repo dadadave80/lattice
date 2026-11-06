@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {MultiInitErrors} from "@lattice-test/helpers/MultiInitErrors.sol";
+
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {AcrossBridgeAdapterTestBase} from "@lattice-test/base/AcrossBridgeAdapterTestBase.sol";
@@ -161,13 +163,15 @@ contract AcrossBridgeAdapterTest is AcrossBridgeAdapterTestBase {
         assertEq(adapter.spokePool(), address(pool));
     }
 
-    /// @dev Only `d.initialize` is wrapped in `expectRevert` (the `AcrossZeroAddress` revert bubbles up through
-    ///      {Lattice.initialize}); `deployer` was created in `setUp`. An unconfigured module is impossible:
+    /// @dev Only `d.initialize` is wrapped in `expectRevert` (the indexed batch error retains
+    ///      `AcrossZeroAddress`); `deployer` was created in `setUp`. An unconfigured module is impossible:
     ///      this zero-SpokePool init revert is the guarantee.
     function test_InitRejectsZeroSpokePool() public {
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) = deployer.buildCuts(address(0));
         Lattice d = new Lattice();
-        vm.expectRevert(IAcrossBridgeAdapter.AcrossZeroAddress.selector);
+        vm.expectRevert(
+            MultiInitErrors.at(0, initCalldata, abi.encodePacked(IAcrossBridgeAdapter.AcrossZeroAddress.selector))
+        );
         d.initialize(cuts, init, initCalldata);
     }
 

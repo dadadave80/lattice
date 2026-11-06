@@ -14,6 +14,13 @@
     "reason": "False positive: WETHUnwrapper is stateless and permissionless by design; it returns its own unwrapped WETH balance to msg.sender in the same call, and callers transfer-then-unwrap atomically. Triaged here, not with a comment, because LidoAdapterLib CREATE2-deploys it from its creation code, so a source comment would move every diamond's unwrapper address."
   },
   {
+    "check": "controlled-delegatecall",
+    "impact": "High",
+    "id": "fd988e2c5df2261c07d0c95aef46dbd2d03882d6607aba8b161384799c198314",
+    "description": "ReinitMultiInit.reinitMulti(uint64,address[],bytes[]) (src/utils/ReinitMultiInit.sol#30-42) uses delegatecall to a input-controlled function id\n\t- (success,reason) = target.delegatecall(calldatas[i]) (src/utils/ReinitMultiInit.sol#39)\n",
+    "reason": "Intentional initializer-only bundle: ReinitMultiInit is in InitInventory, not FacetInventory, and has no exportSelectors or canonical facet route. On an initialized canonical diamond it runs as the cut initializer after the existing ACL/Safe/governed-cut authorization; that executor already may select arbitrary _init delegatecall code. The reinitializer modifier is replay protection, not authorization. Direct calls execute in the helper own context, so the helper must not hold funds, token spending approvals, or privileged roles. Real proxy regressions reject unauthorized cuts, assert the reinit selector is unrouted, isolate direct-helper version state, and exercise governed cut rollback/retry. Reassess if routing or helper authority/custody changes."
+  },
+  {
     "check": "incorrect-exp",
     "impact": "High",
     "id": "606f20709bd07ebda56b473be1fbed46ae6b4648f7686caee016a0a5e70500e2",

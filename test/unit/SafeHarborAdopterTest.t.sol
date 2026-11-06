@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {MultiInitErrors} from "@lattice-test/helpers/MultiInitErrors.sol";
+
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {SafeHarborAdopterTestBase} from "@lattice-test/base/SafeHarborAdopterTestBase.sol";
@@ -263,7 +265,11 @@ contract SafeHarborAdopterTest is SafeHarborAdopterTestBase {
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) =
             _buildCuts(admin, address(0), address(factory));
         Lattice d = new Lattice();
-        vm.expectRevert(ISafeHarborAdopter.SafeHarborAdopterZeroRegistry.selector);
+        vm.expectRevert(
+            MultiInitErrors.at(
+                0, initCalldata, abi.encodePacked(ISafeHarborAdopter.SafeHarborAdopterZeroRegistry.selector)
+            )
+        );
         d.initialize(cuts, init, initCalldata);
     }
 

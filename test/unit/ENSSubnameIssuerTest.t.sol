@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {MultiInitErrors} from "@lattice-test/helpers/MultiInitErrors.sol";
+
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {ENSSubnameIssuerTestBase} from "@lattice-test/base/ENSSubnameIssuerTestBase.sol";
@@ -152,7 +154,11 @@ contract ENSSubnameIssuerTest is ENSSubnameIssuerTestBase {
     function test_InitZeroNameWrapperReverts() public {
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) = deployer.buildCuts(admin, address(0));
         Lattice d = new Lattice();
-        vm.expectRevert(IENSSubnameIssuer.ENSSubnameIssuerZeroNameWrapper.selector);
+        vm.expectRevert(
+            MultiInitErrors.at(
+                0, initCalldata, abi.encodePacked(IENSSubnameIssuer.ENSSubnameIssuerZeroNameWrapper.selector)
+            )
+        );
         d.initialize(cuts, init, initCalldata);
     }
 

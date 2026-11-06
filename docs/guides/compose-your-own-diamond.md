@@ -283,17 +283,23 @@ put the same `_init` and calldata in the governance proposal instead. `admin` mu
 AccessControl bootstrap identity; on the self-governed vault that identity is the diamond itself.
 
 Choose a uint64 version strictly greater than the current value; skipped numbers are allowed.
-`ReinitMultiInit` opens and closes the window, runs steps in order and bubbles their revert data.
+`ReinitMultiInit` opens and closes the window and runs steps in order. A failed step reverts
+`MultiInit__StepFailed(index, init, reason)` with its zero-based index, target and unchanged inner
+revert bytes; nested batches retain each outer and inner step in that error path.
 The [five-step upgrade walkthrough](upgrade-a-diamond.md) covers storage review, version selection,
 governed execution and route/state verification with runnable private Anvil commands.
 Any failure rolls back the cut, earlier initialization effects and version together, so the same
 version can be retried after correction. Equal/lower versions and nested windows revert. Normal
 version-1 deployment still uses `MultiInit` inside `Lattice.initialize`.
 
-Like `MultiInit`, a zero target terminates the batch. Empty and zero-terminated successful batches
-still advance the version. `type(uint64).max` is terminal. Never install `reinitMulti` as a routed
-facet selector: the helper is initialization code and obtains its authority from the authorized cut.
-Calling its standalone address affects only that helper address's storage.
+Like `MultiInit`, zero targets revert `MultiInit__ZeroInit(index)` and missing code reverts
+`NoBytecodeAtAddress(index, initAddress)`. Pass exactly sized arrays without zero sentinels. An empty
+successful batch still advances the version. `type(uint64).max` is terminal. Never install
+`reinitMulti` as a routed facet selector: the helper is initialization code and obtains its authority
+from the authorized cut.
+Direct calls execute in the helper's own account context, including storage, assets and external
+calls. Keep shared helpers free of custody, token spending approvals and external roles. The indexed
+error policy follows [diamond-lib v0.4.0 and ADR0031](../adr/0031-indexed-initializer-batch-failures.md).
 
 Tools can read the current version without installing a getter:
 

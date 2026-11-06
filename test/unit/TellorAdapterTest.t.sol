@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {MultiInitErrors} from "@lattice-test/helpers/MultiInitErrors.sol";
+
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {DeployTellorAdapter} from "@lattice-script/base/oracles/DeployTellorAdapter.s.sol";
@@ -83,7 +85,9 @@ contract TellorAdapterTest is TellorAdapterTestBase {
         DeployTellorAdapter d = new DeployTellorAdapter();
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) = d.buildCuts(admin, address(0));
         Lattice diamond_ = new Lattice();
-        vm.expectRevert(ITellorAdapter.TellorContractIsZero.selector);
+        vm.expectRevert(
+            MultiInitErrors.at(0, initCalldata, abi.encodePacked(ITellorAdapter.TellorContractIsZero.selector))
+        );
         diamond_.initialize(cuts, init, initCalldata);
     }
 

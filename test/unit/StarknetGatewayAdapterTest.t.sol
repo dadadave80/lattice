@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {MultiInitErrors} from "@lattice-test/helpers/MultiInitErrors.sol";
+
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {StarknetGatewayAdapterTestBase} from "@lattice-test/base/StarknetGatewayAdapterTestBase.sol";
@@ -96,12 +98,12 @@ contract StarknetGatewayAdapterTest is StarknetGatewayAdapterTestBase {
         assertEq(adapter.expectedChainReference(), SN_MAIN);
     }
 
-    /// @dev Only `d.initialize` is wrapped in `expectRevert` (the init revert bubbles up through
-    ///      {Lattice.initialize}); `deployer` was created in `setUp`.
+    /// @dev Only `d.initialize` is wrapped in `expectRevert` (the indexed batch error retains
+    ///      the exact init reason); `deployer` was created in `setUp`.
     function _expectInitRevert(address core_, bytes memory chainRef, bytes4 err) internal {
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) = deployer.buildCuts(admin, core_, chainRef);
         Lattice d = new Lattice();
-        vm.expectRevert(err);
+        vm.expectRevert(MultiInitErrors.at(0, initCalldata, abi.encodePacked(err)));
         d.initialize(cuts, init, initCalldata);
     }
 

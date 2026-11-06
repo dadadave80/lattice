@@ -1,6 +1,6 @@
 # 0024. Upgrade batches open one reinitializer window
 
-- **Status:** Accepted
+- **Status:** Accepted for window, version read, storage and authority; zero-target and step-error policy superseded by [0031](0031-indexed-initializer-batch-failures.md)
 - **Date:** 2026-11-06; implementation decision for [#207](https://github.com/dadadave80/lattice/issues/207)
 
 ## Context

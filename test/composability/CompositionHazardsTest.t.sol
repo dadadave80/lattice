@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {MultiInit} from "@diamond/initializers/MultiInit.sol";
+import {MultiInit, MultiInit__StepFailed} from "@diamond/initializers/MultiInit.sol";
 import {IDiamondCut} from "@diamond/interfaces/IDiamondCut.sol";
 import {IDiamondLoupe} from "@diamond/interfaces/IDiamondLoupe.sol";
 import {CannotAddFunctionToDiamondThatAlreadyExists, FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
@@ -726,7 +726,14 @@ contract CompositionHazardsTest is Test {
         (address[] memory allInits, bytes[] memory allDatas) = _withConsecutiveInit(inits, datas, alice, 3);
         (address init, bytes memory data) = _multi(allInits, allDatas);
         Lattice d = new Lattice();
-        vm.expectRevert(IERC721Consecutive.ERC721VotesForbiddenBatchMint.selector);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                MultiInit__StepFailed.selector,
+                allInits.length - 1,
+                allInits[allInits.length - 1],
+                abi.encodePacked(IERC721Consecutive.ERC721VotesForbiddenBatchMint.selector)
+            )
+        );
         d.initialize(base, init, data);
 
         // Batch first ({DeployERC721}'s chain, then the batch), votes last.
@@ -738,7 +745,14 @@ contract CompositionHazardsTest is Test {
         (reordered[2], reorderedData[2]) = (inits[inits.length - 1], datas[datas.length - 1]);
         (init, data) = _multi(reordered, reorderedData);
         d = new Lattice();
-        vm.expectRevert(IERC721Consecutive.ERC721VotesForbiddenBatchMint.selector);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                MultiInit__StepFailed.selector,
+                2,
+                reordered[2],
+                abi.encodePacked(IERC721Consecutive.ERC721VotesForbiddenBatchMint.selector)
+            )
+        );
         d.initialize(base, init, data);
     }
 
@@ -750,7 +764,14 @@ contract CompositionHazardsTest is Test {
         (address[] memory allInits, bytes[] memory allDatas) = _withConsecutiveInit(inits, datas, alice, 3);
         (address init, bytes memory data) = _multi(allInits, allDatas);
         Lattice d = new Lattice();
-        vm.expectRevert(IERC721Enumerable.ERC721EnumerableForbiddenBatchMint.selector);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                MultiInit__StepFailed.selector,
+                allInits.length - 1,
+                allInits[allInits.length - 1],
+                abi.encodePacked(IERC721Enumerable.ERC721EnumerableForbiddenBatchMint.selector)
+            )
+        );
         d.initialize(base, init, data);
 
         // Batch first ({DeployERC721}'s chain, then the batch), enumeration last.
@@ -762,7 +783,14 @@ contract CompositionHazardsTest is Test {
         (reordered[2], reorderedData[2]) = (inits[inits.length - 1], datas[datas.length - 1]);
         (init, data) = _multi(reordered, reorderedData);
         d = new Lattice();
-        vm.expectRevert(IERC721Enumerable.ERC721EnumerableForbiddenBatchMint.selector);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                MultiInit__StepFailed.selector,
+                2,
+                reordered[2],
+                abi.encodePacked(IERC721Enumerable.ERC721EnumerableForbiddenBatchMint.selector)
+            )
+        );
         d.initialize(base, init, data);
     }
 

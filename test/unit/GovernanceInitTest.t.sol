@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
-import {MultiInit} from "@diamond/initializers/MultiInit.sol";
+import {MultiInit, MultiInit__StepFailed} from "@diamond/initializers/MultiInit.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
 import {Lattice} from "@lattice/Lattice.sol";
@@ -132,9 +132,24 @@ contract GovernanceInitTest is Test, BaseDeploy {
 
     function test_GovernorStepPreservesInvalidParameterGuards() public {
         Lattice diamond = new Lattice();
-        vm.expectRevert(abi.encodeWithSelector(IGovernor.GovernorInvalidVotingPeriod.selector, 0));
+        address governorInit = _init("GovernorInit");
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                MultiInit__StepFailed.selector,
+                1,
+                governorInit,
+                abi.encodeWithSelector(IGovernor.GovernorInvalidVotingPeriod.selector, 0)
+            )
+        );
         this.initializeGovernor(diamond, 0, 4);
-        vm.expectRevert(abi.encodeWithSelector(IGovernor.GovernorInvalidQuorumFraction.selector, 101, 100));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                MultiInit__StepFailed.selector,
+                1,
+                governorInit,
+                abi.encodeWithSelector(IGovernor.GovernorInvalidQuorumFraction.selector, 101, 100)
+            )
+        );
         this.initializeGovernor(diamond, 10, 101);
         _initializeGovernor(diamond, 10, 4);
         assertEq(Governor(payable(address(diamond))).votingPeriod(), 10, "failed init could not be retried");

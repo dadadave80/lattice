@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
-import {MultiInit} from "@diamond/initializers/MultiInit.sol";
+import {MultiInit, MultiInit__StepFailed} from "@diamond/initializers/MultiInit.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {DeployERC20Wrapper} from "@lattice-script/base/tokens/DeployERC20Wrapper.s.sol";
 import {ERC20TestBase} from "@lattice-test/base/ERC20TestBase.sol";
@@ -118,7 +118,14 @@ contract ERC20WrapperTest is ERC20TestBase {
         cuts[prodCuts.length] = _helperCut();
 
         MultiInit mi = new MultiInit();
-        vm.expectRevert(abi.encodeWithSelector(IERC20Wrapper.ERC20InvalidUnderlying.selector, address(d)));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                MultiInit__StepFailed.selector,
+                1,
+                inits[1],
+                abi.encodeWithSelector(IERC20Wrapper.ERC20InvalidUnderlying.selector, address(d))
+            )
+        );
         d.initialize(cuts, address(mi), abi.encodeCall(MultiInit.multiInit, (inits, initCalldatas)));
     }
 }

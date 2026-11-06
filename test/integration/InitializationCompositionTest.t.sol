@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
-import {MultiInit} from "@diamond/initializers/MultiInit.sol";
+import {MultiInit, MultiInit__StepFailed} from "@diamond/initializers/MultiInit.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {DeployAccessControl} from "@lattice-script/base/access/DeployAccessControl.s.sol";
 import {DeployERC20Permit} from "@lattice-script/base/tokens/DeployERC20Permit.s.sol";
@@ -94,7 +94,11 @@ contract InitializationCompositionTest is Test {
         inits[1] = address(new AccessControlInit());
         calls[1] = abi.encodeCall(AccessControlInit.init, (OTHER));
         MultiInit multi = new MultiInit();
-        vm.expectRevert(abi.encodeWithSelector(CONFLICTING_ADMIN, ADMIN, OTHER));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                MultiInit__StepFailed.selector, 1, inits[1], abi.encodeWithSelector(CONFLICTING_ADMIN, ADMIN, OTHER)
+            )
+        );
         diamond.initialize(cuts, address(multi), abi.encodeCall(MultiInit.multiInit, (inits, calls)));
         // Rollback includes the proxy initialization guard: a valid retry still succeeds.
         diamond.initialize(cuts, init, data);
@@ -185,7 +189,14 @@ contract InitializationCompositionTest is Test {
         inits[permitInits.length] = address(new ERC6538RegistryInit());
         calls[permitCalls.length] = abi.encodeCall(ERC6538RegistryInit.init, ());
         MultiInit multi = new MultiInit();
-        vm.expectRevert(CONFLICTING_DOMAIN);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                MultiInit__StepFailed.selector,
+                permitInits.length,
+                inits[permitInits.length],
+                abi.encodePacked(CONFLICTING_DOMAIN)
+            )
+        );
         diamond.initialize(cuts, address(multi), abi.encodeCall(MultiInit.multiInit, (inits, calls)));
     }
 

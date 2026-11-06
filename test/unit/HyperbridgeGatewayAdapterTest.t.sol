@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {MultiInitErrors} from "@lattice-test/helpers/MultiInitErrors.sol";
+
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {HyperbridgeGatewayAdapterTestBase} from "@lattice-test/base/HyperbridgeGatewayAdapterTestBase.sol";
@@ -309,12 +311,16 @@ contract HyperbridgeGatewayAdapterTest is HyperbridgeGatewayAdapterTestBase {
         assertTrue(ERC165Facet(diamond).supportsInterface(type(IHyperbridgeGatewayAdapter).interfaceId));
     }
 
-    /// @dev Only `d.initialize` is wrapped in `expectRevert` (the `HyperbridgeZeroHost` revert bubbles up
-    ///      through {Lattice.initialize}); `deployer` was created in `setUp`.
+    /// @dev Only `d.initialize` is wrapped in `expectRevert` (the indexed batch error retains
+    ///      `HyperbridgeZeroHost`); `deployer` was created in `setUp`.
     function test_InitRejectsZeroHost() public {
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) = deployer.buildCuts(admin, address(0));
         Lattice d = new Lattice();
-        vm.expectRevert(IHyperbridgeGatewayAdapter.HyperbridgeZeroHost.selector);
+        vm.expectRevert(
+            MultiInitErrors.at(
+                0, initCalldata, abi.encodePacked(IHyperbridgeGatewayAdapter.HyperbridgeZeroHost.selector)
+            )
+        );
         d.initialize(cuts, init, initCalldata);
     }
 

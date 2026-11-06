@@ -29,13 +29,14 @@ the linked issue or pull request; a record is the outcome, not a spec.
 | [0021](0021-erc3643-closed-immutable-profile.md) | ERC-3643 admits one closed immutable composition | Accepted |
 | [0022](0022-native-create2-release-libraries.md) | Shared external libraries use native CREATE2 linking and trusted runtime checks | Accepted |
 | [0023](0023-frozen-input-source-verification.md) | Source verification submits the frozen compiler witness and requires exact bytecode matches | Accepted |
-| [0024](0024-upgrade-initializer-batches.md) | Upgrade initializer batches share one replay-protected window and a stable version read | Accepted |
+| [0024](0024-upgrade-initializer-batches.md) | Upgrade initializer batches share one replay-protected window and a stable version read | Accepted; zero/error policy superseded by [0031](0031-indexed-initializer-batch-failures.md) |
 | [0025](0025-account-factory-release-identity.md) | Account recipes use specialized atomic factories with EntryPoint-specific release identities | Accepted |
 | [0026](0026-checked-recipe-data-and-seams.md) | Recipes share checked cut plans and export descriptive composition data | Accepted |
 | [0027](0027-governor-governed-cut-topology.md) | Governor validates the declared governed-cut executor topology | Accepted |
 | [0028](0028-zetachain-message-recovery-options.md) | ZetaChain messages accept bounded recovery options without callbacks | Accepted |
 | [0029](0029-hyperbridge-native-fee-budgets.md) | Hyperbridge native fees use bounded exact-output budgets | Accepted |
 | [0030](0030-stargate-bus-companion.md) | Stargate bus enqueue is an optional companion with an exact native fare | Accepted |
+| [0031](0031-indexed-initializer-batch-failures.md) | Initializer batches reject zero entries and retain indexed failures | Accepted |
 
 ## When to write one
 

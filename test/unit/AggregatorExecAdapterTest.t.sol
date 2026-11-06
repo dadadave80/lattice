@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {MultiInitErrors} from "@lattice-test/helpers/MultiInitErrors.sol";
+
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {AggregatorExecAdapterTestBase} from "@lattice-test/base/AggregatorExecAdapterTestBase.sol";
@@ -198,7 +200,11 @@ contract AggregatorExecAdapterTest is AggregatorExecAdapterTestBase {
     function test_InitRejectsZeroAdmin() public {
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) = deployer.buildCuts(address(0));
         Lattice d = new Lattice();
-        vm.expectRevert(IAggregatorExecAdapter.AggregatorExecZeroAdmin.selector);
+        vm.expectRevert(
+            MultiInitErrors.at(
+                0, initCalldata, abi.encodePacked(IAggregatorExecAdapter.AggregatorExecZeroAdmin.selector)
+            )
+        );
         d.initialize(cuts, init, initCalldata);
     }
 
