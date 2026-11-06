@@ -15,7 +15,6 @@ on:
       - "assets/**"
       - "docs/**"
       - "broadcast/**"
-      - "deployments/**"
       - "CHANGELOG.md"
       - "LICENSE"
       - "CODE_OF_CONDUCT.md"
@@ -59,11 +58,34 @@ jobs:
           fi
           files=$(git diff --name-only "$BASE...$HEAD")
           code=false
-          if [ -z "$files" ] || grep -qvE '^[^/]+\.md$|^LICENSE$|^(assets|docs|broadcast|deployments)/' <<< "$files"; then
+          if [ -z "$files" ] || grep -qvE '^[^/]+\.md$|^LICENSE$|^(assets|docs|broadcast)/' <<< "$files"; then
             code=true
           fi
           echo "code=$code" >> "$GITHUB_OUTPUT"
           echo "code=$code"; echo "$files"
+
+  # Clean-build reproducibility and any published goldens run for deployment-only PRs too.
+  manifests:
+    name: Release manifests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          submodules: recursive
+          persist-credentials: false
+      - uses: ./.github/actions/foundry-setup
+      - name: Check clean builds and published release identities
+        run: ./script/check-release-manifests.sh
+      - name: Check current identities, schemas and observation regressions
+        run: |
+          forge build --locked
+          forge build --locked lib/diamond-lib/src/facets/OwnableFacet.sol
+          forge test --match-contract ReleaseManifestTest
+          ./script/test-release-manifest.sh
+          ./script/test-release-script-simulation.sh
 
   # Formatting needs no compilation, so it runs standalone and fails fast.
   fmt:
@@ -92,6 +114,7 @@ jobs:
           ./script/fork-lanes.sh check
           ./script/test-storage-layout.sh
           ./script/test-storage-registry.sh
+          ./script/test-error-event-catalog.sh
 
   # README catalog vs src/. Not gated on `changes`: a README-only PR (code=false) can drop or misspell a
   # catalog entry, so this job runs on every PR. The storage registry also uses the shared cast binary.
@@ -132,13 +155,14 @@ jobs:
       - uses: ./.github/actions/foundry-setup
       - name: Check canonical release build
         run: make release-build-check
+      # Expanded source domain: keep its one-unit AST cache separate from older src-only builds.
       - name: Cache forge build (src)
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             out
             cache
-          key: forge-build-${{ runner.os }}-${{ hashFiles('.github/actions/foundry-setup/action.yml', 'foundry.toml', 'foundry.lock', 'remappings.txt', 'src/**/*.sol', 'lib/**/*.sol') }}
+          key: forge-build-catalog-${{ runner.os }}-${{ hashFiles('.github/actions/foundry-setup/action.yml', 'foundry.toml', 'foundry.lock', 'remappings.txt', 'src/**/*.sol', 'lib/**/*.sol') }}
 
       # --sizes gates EIP-170 (24,576 B) on deployable contracts only. Test/script fixtures
       # (e.g. the SelfGovDiamond E2E harness that inherits every facet at once) legitimately
@@ -148,7 +172,9 @@ jobs:
       # --locked fails the build when a submodule gitlink drifts from foundry.lock; without it,
       # forge builds against the checked-out submodule and passes silently.
       - name: Build src (--sizes)
-        run: forge build --locked --sizes --skip test script
+        run: forge build src lib/diamond-lib/src --locked --sizes --skip test script
+      - name: Check error, event and assembly coverage
+        run: ./script/error-event-catalog.sh
 
   # IR-pipeline parity is a SEPARATE compiler configuration (via_ir), so it cannot reuse the
   # legacy build cache -- it runs standalone, in parallel, and does not block `test`.
@@ -312,7 +338,7 @@ jobs:
           path: |
             out
             cache
-          key: forge-build-${{ runner.os }}-${{ hashFiles('.github/actions/foundry-setup/action.yml', 'foundry.toml', 'foundry.lock', 'remappings.txt', 'src/**/*.sol', 'lib/**/*.sol') }}
+          key: forge-build-catalog-${{ runner.os }}-${{ hashFiles('.github/actions/foundry-setup/action.yml', 'foundry.toml', 'foundry.lock', 'remappings.txt', 'src/**/*.sol', 'lib/**/*.sol') }}
       - name: Test grant RPC runner
         run: make test-grant-runner
       - name: Run Anvil deployment checks

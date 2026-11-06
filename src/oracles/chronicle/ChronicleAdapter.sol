@@ -12,8 +12,13 @@ import {ChronicleAdapterLib} from "@lattice/oracles/chronicle/ChronicleAdapterLi
 /// @dev Stateless delegator — all logic and storage live in {ChronicleAdapterLib}. Consumers inherit this
 ///      contract and add AccessControl + an initializer. Chronicle feeds are Schnorr-signed and toll-gated:
 ///      the deployed adapter contract must be `kiss`ed by the oracle operator before reads will succeed.
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source Chronicle
+/// @custom:lattice-requires AccessControl|AccessControlEnumerable|AccessControlTimed convention role-management-surface;
+/// @custom:lattice-family price-source
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches lattice.storage.ChronicleAdapter;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init ChronicleAdapterInit
 contract ChronicleAdapter is IChronicleAdapter {
     /// @inheritdoc IChronicleAdapter
     function getFeed(bytes32 key) external view virtual override returns (address chronicle, uint48 maxStaleness) {

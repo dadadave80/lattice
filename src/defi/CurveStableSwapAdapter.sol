@@ -27,8 +27,14 @@ import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib
 ///      release probes the pool for that reentrancy (#221), and `addStrategy` does not reject the adapter:
 ///      keeping it out of a vault is the integrator's responsibility. Its single-coin exit fee also makes a
 ///      rebalance recall lose value, which the StrategyManager rejects beyond its fixed rounding tolerance.
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source Lattice original
+/// @custom:lattice-requires AccessControl|AccessControlEnumerable|AccessControlTimed convention role-management-surface;
+/// @custom:lattice-family strategy
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches lattice.storage.CurveStableSwapAdapter;
+/// @custom:lattice-touches slot:0x8000000000ab143c06;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init none
 contract CurveStableSwapAdapter is IStrategy, IProtocolAdapter, IAdapterOperator, ICurveStableSwapAdapter {
     //*//////////////////////////////////////////////////////////////////////////
     //                              IStrategy

@@ -14,8 +14,14 @@ import {IAggregatorExecAdapter} from "@lattice/interfaces/defi/IAggregatorExecAd
 /// @dev Stateless delegator — logic/storage live in {AggregatorExecAdapterLib}. {execute} is `nonReentrant` with
 ///      strict CEI: funds come only from `msg.sender`, the aggregator gets an EXACT, immediately-reset approval,
 ///      and every leftover (unspent input, output delta, unspent native) is swept back to the caller.
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source LI.FI
+/// @custom:lattice-requires AccessControl|AccessControlEnumerable|AccessControlTimed convention role-management-surface;
+/// @custom:lattice-family none
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches lattice.storage.AggregatorExecAdapter;
+/// @custom:lattice-touches slot:0x8000000000ab143c06;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init AggregatorExecAdapterInit
 contract AggregatorExecAdapter is IAggregatorExecAdapter {
     /// @inheritdoc IAggregatorExecAdapter
     function setAllowedCall(address aggregator, bytes4 selector, bool allowed) external virtual {

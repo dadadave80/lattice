@@ -17,7 +17,22 @@ import {IChainRegistry} from "@lattice/interfaces/crosschain/IChainRegistry.sol"
 ///      facet still works — the libs write to ERC-7201 slots that simply go unread until that facet is cut;
 ///      leaving a section for an un-hosted adapter disabled is the admin's responsibility (see
 ///      {IChainRegistry.AddEvmChainConfig}).
-/// @custom:lattice-version 0.1.0
+/// @custom:lattice-requires AccessControl|AccessControlEnumerable|AccessControlTimed convention role-management-surface;
+/// @custom:lattice-family none
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches lattice.storage.AxelarGatewayAdapter;
+/// @custom:lattice-touches lattice.storage.CCIPGatewayAdapter;
+/// @custom:lattice-touches lattice.storage.CCTPBridgeAdapter;
+/// @custom:lattice-touches lattice.storage.ChainRegistry;
+/// @custom:lattice-touches lattice.storage.HyperbridgeGatewayAdapter;
+/// @custom:lattice-touches lattice.storage.HyperlaneGatewayAdapter;
+/// @custom:lattice-touches lattice.storage.L2ToL2CrossDomainMessengerGatewayAdapter;
+/// @custom:lattice-touches lattice.storage.LayerZeroGatewayAdapter;
+/// @custom:lattice-touches lattice.storage.StargateBridgeAdapter;
+/// @custom:lattice-touches lattice.storage.WormholeGatewayAdapter;
+/// @custom:lattice-touches lattice.storage.ZetaChainGatewayAdapter;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init ChainRegistryInit
 contract ChainRegistry is IChainRegistry {
     /// @inheritdoc IChainRegistry
     function chainKeyEvm(uint256 chainId) external pure virtual returns (bytes32) {

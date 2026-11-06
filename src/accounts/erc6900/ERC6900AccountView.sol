@@ -18,8 +18,13 @@ import {
 ///         validation/execution hooks, and permitted selectors.
 /// @dev Stateless delegator — logic/storage live in {ERC6900ModuleManagerLib}. Part of the ERC-6900 account
 ///      blueprint (an alternative to the ERC-7579 `DiamondLoupe`).
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source ERC-6900
+/// @custom:lattice-requires ERC6900ModuleManager convention validation-and-execution-configuration;
+/// @custom:lattice-family none
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches none;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init AccountInit6900
 contract ERC6900AccountView is IERC6900AccountView {
     /// @inheritdoc IERC6900AccountView
     function getExecutionData(bytes4 selector) external view virtual returns (ExecutionDataView memory) {

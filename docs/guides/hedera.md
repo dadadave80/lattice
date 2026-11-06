@@ -253,8 +253,40 @@ v0.77 changes gas accounting.
 
 ## Out of scope for now
 
-HSS, exchange-rate and PRNG recipes and tests (Phase 2, gated on probe 6 — and note the known
-`scheduleSelfCall` job-stranding limitation documented on `IHSSAdapter`: do not build a recurring job on it
-until that is fixed); custom fees, KYC/freeze/pause/wipe,
-HIP-904 airdrops, `hedera-forking` facade tests and a Solo local-node CI job (Phase 3). The skeleton files for
-the Phase 2 modules compile and are inventoried, but they have no recipes or tests yet.
+Exchange-rate and PRNG recipes and tests (Phase 2), plus native HSS callback verification (probe6);
+custom fees, KYC/freeze/pause/wipe,
+HIP-904 airdrops, `hedera-forking` facade tests and a Solo local-node CI job (Phase 3). The exchange-rate and PRNG skeletons compile and are inventoried; HSS now has a recipe and offline
+recovery tests, with native sender verification still outstanding.
+
+## Recovering scheduled self-call jobs
+
+The HSS recipe (`DeployHSSAdapter`) now pairs the frozen seven-selector `HSSAdapter` interface
+(`0xd07095cf`) with `HSSAdapterRecovery` (`0x4d10dd54`). The latter wraps new `scheduleSelfCall` bookings
+in a job-and-generation envelope. The original callback still calls `completeSelfCall(jobId)` before
+rescheduling, and the diamond needs `HSS_SCHEDULER_ROLE` itself if it schedules its next occurrence.
+Budget `gasLimit` for the envelope's context writes and self-call as well as the callback.
+
+A scheduler-role holder can call `cancelSelfCall(jobId)` after deletion, an unfired expiry, a failed
+callback, or missing HBAR. Local state and its generation are invalidated before a best-effort native
+`deleteSchedule` call. Its return/event flag reports native deletion success; the native attempt is
+capped at 100,000 gas, copies only one return word, and may be skipped when the call needs to reserve
+event/return gas. An unsuccessful native deletion cannot retain the local reservation. A stale wrapped
+callback is rejected before business logic executes.
+
+Upgrade both facets together and run `HSSAdapterRecoveryInit` inside the upgrade's initialization
+window to register the additional interface. Storage is append-only. Existing unwrapped jobs have no
+generation context: cancel and reschedule them. Their raw payload can still execute if native deletion
+fails, although `completeSelfCall` cannot clear a replacement. Review those legacy payloads before
+reusing the same business operation; local recovery cannot retroactively wrap or veto them.
+
+Self-call authority remains a trust boundary. Do not install unrestricted public self-call executors.
+The network-fired payer/sender assumption is still **unverified**: probe6 now uses raw `scheduleCall`
+to its ungated callback, so the envelope's extra self-call cannot manufacture the measured sender.
+Read `HSSCallScheduled` in that transaction's receipt for its schedule address; `scheduleOf` describes
+tracked jobs, not this raw probe. The existing
+[upstream payer-signature report](https://github.com/hiero-ledger/hiero-consensus-node/issues/27263)
+records two testnet schedules created on 2026-09-12 that failed `INVALID_PAYER_SIGNATURE` before entering
+the EVM. It does not establish the behavior of the current node or the callback sender. Issue
+[#226](https://github.com/dadadave80/lattice/issues/226) still needs a separately authorized successful
+native callback with its sender, schedule ID, date and measured consensus-node version. Offline mock
+coverage and local generation safety do not satisfy that live acceptance.

@@ -15,8 +15,14 @@ import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib
 ///         vault strategy. Implements `IStrategy` (funds routing), `IProtocolAdapter` (sidecar),
 ///         and `ICompoundV3Adapter` (Comet config). Supply-only (no leverage); 1:1 base accounting,
 ///         no oracle. All logic lives in CompoundV3AdapterLib.
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source Lattice original
+/// @custom:lattice-requires AccessControl|AccessControlEnumerable|AccessControlTimed convention role-management-surface;
+/// @custom:lattice-family strategy
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches lattice.storage.CompoundV3Adapter;
+/// @custom:lattice-touches slot:0x8000000000ab143c06;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init none
 contract CompoundV3Adapter is IStrategy, IProtocolAdapter, IAdapterOperator, ICompoundV3Adapter {
     //*//////////////////////////////////////////////////////////////////////////
     //                              IStrategy

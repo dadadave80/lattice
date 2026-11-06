@@ -10,9 +10,15 @@ import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
 ///         the initializing window (so it must NOT open its own pre/postInitializer; the `__AccessControl_init`
 ///         guard passes because the window is already open). Companion to the {ERC20Init}/{ERC2981Init} patterns
 ///         — a first-class production deploy artifact.
+/// @custom:lattice-kind step
 contract AccessControlInit {
     /// @notice Seeds the AccessControl module. MUST be invoked via the diamond's `initialize` `_init` delegatecall.
     /// @param admin The address granted `DEFAULT_ADMIN_ROLE`.
+    /// @custom:lattice-initializes AccessControl;
+    /// @custom:lattice-after none;
+    /// @custom:lattice-same-call Initializable hard enclosing-initializing-window;
+    /// @custom:lattice-param admin authority;
+    /// @custom:lattice-registers-interfaces
     function init(address admin) external {
         AccessControlLib.__AccessControl_init(admin);
     }

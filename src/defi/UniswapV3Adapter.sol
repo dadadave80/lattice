@@ -26,8 +26,14 @@ import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib
 /// @dev Provenance: Uniswap V3 core (https://github.com/Uniswap/v3-core) + periphery
 ///      NonfungiblePositionManager (https://github.com/Uniswap/v3-periphery). The facet implements
 ///      `onERC721Received` so the NFPM can safe-mint the position NFT to it.
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source Lattice original
+/// @custom:lattice-requires AccessControl|AccessControlEnumerable|AccessControlTimed convention role-management-surface;
+/// @custom:lattice-family strategy
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches lattice.storage.UniswapV3Adapter;
+/// @custom:lattice-touches slot:0x8000000000ab143c06;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init none
 contract UniswapV3Adapter is IStrategy, IProtocolAdapter, IAdapterOperator, IUniswapV3Adapter {
     //*//////////////////////////////////////////////////////////////////////////
     //                              IStrategy

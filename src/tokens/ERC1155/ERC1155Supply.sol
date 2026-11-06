@@ -17,8 +17,15 @@ import {ERC1155SupplyLib} from "@lattice/tokens/ERC1155/libraries/ERC1155SupplyL
 ///      through {ERC1155SupplyLib._mint}/{ERC1155SupplyLib._mintBatch}. To track supply without burning, cut this
 ///      facet without its `burn`/`burnBatch` selectors. {DeployERC1155Supply} composes it with the base facet.
 ///      See {ERC1155SupplyLib} for every difference from OpenZeppelin v5.6.1. Pure delegator.
-/// @custom:lattice-version 0.5.0
 /// @custom:lattice-source OpenZeppelin v5.6.1
+/// @custom:lattice-requires ERC1155 convention complete-token-surface;
+/// @custom:lattice-family erc1155-burn
+/// @custom:lattice-owns burn(address,uint256,uint256);
+/// @custom:lattice-owns burnBatch(address,uint256[],uint256[]);
+/// @custom:lattice-touches lattice.storage.ERC1155;
+/// @custom:lattice-touches lattice.storage.ERC1155Supply;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init ERC1155SupplyInit
 contract ERC1155Supply is IERC1155Supply, IERC1155Burnable {
     /// @inheritdoc IERC1155Supply
     function totalSupply(uint256 id) public view virtual returns (uint256) {

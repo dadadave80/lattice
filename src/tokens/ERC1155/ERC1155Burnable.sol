@@ -14,8 +14,13 @@ import {ERC1155BurnableLib} from "@lattice/tokens/ERC1155/libraries/ERC1155Burna
 ///      `burn`/`burnBatch` selectors: cut exactly one of the three. Its burns go through {ERC1155Lib} directly, so on a
 ///      diamond that tracks supply through {ERC1155SupplyLib} they would desync the supply counters, and on a pausable
 ///      diamond they would ignore the pause.
-/// @custom:lattice-version 0.5.0
 /// @custom:lattice-source OpenZeppelin v5.6.1
+/// @custom:lattice-requires ERC1155 convention complete-token-surface;
+/// @custom:lattice-family erc1155-burn
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches lattice.storage.ERC1155;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init ERC1155BurnableInit
 contract ERC1155Burnable is IERC1155Burnable {
     /// @inheritdoc IERC1155Burnable
     function burn(address account, uint256 id, uint256 value) public virtual {

@@ -42,8 +42,23 @@ import {Checkpoints} from "@lattice/utils/libraries/Checkpoints.sol";
 ///        checkpoints are unreachable.
 ///      - {ERC20VotesInit} registers {IVotes} for ERC-165 (through {VotesLib.__Votes_init}); OpenZeppelin's
 ///        extension has no ERC-165.
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source OpenZeppelin v5.6.1
+/// @custom:lattice-requires ERC20 convention complete-token-surface;
+/// @custom:lattice-requires Votes convention checkpoint-and-clock-views;
+/// @custom:lattice-family erc20-transfer
+/// @custom:lattice-owns transfer(address,uint256);
+/// @custom:lattice-owns transferFrom(address,address,uint256);
+/// @custom:lattice-owns delegate(address);
+/// @custom:lattice-owns delegateBySig(address,uint256,uint256,uint8,bytes32,bytes32);
+/// @custom:lattice-touches lattice.storage.ERC20;
+/// @custom:lattice-touches lattice.storage.Nonces;
+/// @custom:lattice-touches lattice.storage.Votes;
+/// @custom:lattice-touches transient:lattice.storage.ERC20TemporaryApproval;
+/// @custom:lattice-seam transfer(address,uint256) when=ERC20 anyOf=ERC20Votes replace-base-movement;
+/// @custom:lattice-seam transferFrom(address,address,uint256) when=ERC20 anyOf=ERC20Votes replace-base-movement;
+/// @custom:lattice-seam delegate(address) when=Votes anyOf=ERC20Votes read-correct-token-voting-units;
+/// @custom:lattice-seam delegateBySig(address,uint256,uint256,uint8,bytes32,bytes32) when=Votes anyOf=ERC20Votes read-correct-token-voting-units;
+/// @custom:lattice-init ERC20VotesInit
 contract ERC20Votes is IERC20Votes {
     //*//////////////////////////////////////////////////////////////////////////
     //                        IERC20 — TRANSFER OVERRIDES

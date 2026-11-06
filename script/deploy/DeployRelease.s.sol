@@ -4,6 +4,8 @@ pragma solidity ^0.8.30;
 import {ArachnidDeployer} from "@lattice-script/lib/ArachnidDeployer.sol";
 import {FacetInventory} from "@lattice-script/lib/FacetInventory.sol";
 import {InitInventory} from "@lattice-script/lib/InitInventory.sol";
+import {LibraryInventory} from "@lattice-script/lib/LibraryInventory.sol";
+import {ReleaseVersion} from "@lattice-script/lib/ReleaseVersion.sol";
 import {LatticeFactory} from "@lattice/LatticeFactory.sol";
 import {LatticeRegistry} from "@lattice/LatticeRegistry.sol";
 import {LatticeVersion} from "@lattice/LatticeVersion.sol";
@@ -17,7 +19,7 @@ import {Script, console} from "forge-std/Script.sol";
 ///         {LatticeRegistry} singleton, the {LatticeFactory}, and every {FacetInventory} facet through
 ///         Arachnid CREATE2 at raw protocol salts, then registers each facet under
 ///         `keccak256("lattice.<Name>")` at the semver-packed version and points `latest` at it, and
-///         attests every stateless InitInventory initializer in Tier A, and writes a per-chain JSON manifest.
+///         attests every stateless InitInventory initializer in Tier A, and writes a per-chain simulation deployment plan.
 ///
 /// Usage (one release, one chain):
 ///   forge script script/deploy/DeployRelease.s.sol \
@@ -73,6 +75,7 @@ contract DeployRelease is Script {
         address factory;
         address[] facets;
         address[] inits;
+        address[] libraries;
     }
 
     /// @notice Thrown when `version` is not a well-formed "MAJOR.MINOR.PATCH" semver string (all-digit,
@@ -107,7 +110,7 @@ contract DeployRelease is Script {
     //                                ENTRY POINT
     //////////////////////////////////////////////////////////////////////////*//
 
-    /// @notice Broadcasts a full release and writes `deployments/<chainid>/release-<version>.json`.
+    /// @notice Broadcasts a full release and writes a simulation plan to `deployments/<chainid>/plan-<version>.json`.
     /// @param version The release semver string, e.g. `"0.1.0"`.
     /// @param owner The {LatticeRegistry} initial owner (multisig on mainnet). Part of the registry's
     ///        CREATE2 identity — pass the SAME owner on every chain and every resume (see the
@@ -116,7 +119,7 @@ contract DeployRelease is Script {
         vm.startBroadcast();
         ReleaseOutput memory out = release(version, owner);
         vm.stopBroadcast();
-        _writeManifest("deployments", version, out);
+        _writeDeploymentPlan("deployments", version, out);
     }
 
     /// @notice {run} pinned to the library's own {LatticeVersion.VERSION} — the Release-Please-bumped
@@ -127,7 +130,7 @@ contract DeployRelease is Script {
         vm.startBroadcast();
         ReleaseOutput memory out = release(owner);
         vm.stopBroadcast();
-        _writeManifest("deployments", LatticeVersion.VERSION, out);
+        _writeDeploymentPlan("deployments", LatticeVersion.VERSION, out);
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -155,6 +158,9 @@ contract DeployRelease is Script {
         );
 
         uint64 packed = packVersion(version);
+
+        // Native linking predeploys this dependency; also verify it from trusted artifact runtime before any core work.
+        out.libraries = _releaseLibraries();
 
         // --- Phase 1: core singletons -------------------------------------------------------------
         bool deployedNow;
@@ -200,6 +206,9 @@ contract DeployRelease is Script {
 
         // --- Phase 3: shared inits (permissionless Tier A attestation, no facet registration) -------
         ILatticeRegistry registry = ILatticeRegistry(out.registry);
+        for (uint256 i; i < out.libraries.length; ++i) {
+            registry.attest(out.libraries[i]);
+        }
         out.inits = _releaseInits(version, registry);
 
         // --- Phase 4: facet registration (broadcaster must own the registry) -----------------------
@@ -255,46 +264,23 @@ contract DeployRelease is Script {
     /// @param version The semver string; multi-digit components supported.
     /// @return packed The semver-packed `uint64` registry version key.
     function packVersion(string memory version) public pure returns (uint64 packed) {
-        bytes memory b = bytes(version);
-        uint256[3] memory parts;
-        uint256 component;
-        uint256 digits;
-        for (uint256 i; i < b.length; ++i) {
-            bytes1 c = b[i];
-            if (c == ".") {
-                if (digits == 0 || component == 2) revert DeployRelease__MalformedVersion(version);
-                ++component;
-                digits = 0;
-            } else if (c >= "0" && c <= "9") {
-                // Leading zeros are refused: "0.01.0" would pack identically to "0.1.0" while deriving
-                // DIFFERENT facet salts — a duplicate facet set the registry would never serve.
-                if (digits != 0 && parts[component] == 0) revert DeployRelease__MalformedVersion(version);
-                parts[component] = parts[component] * 10 + (uint8(c) - 48);
-                if (parts[component] > type(uint24).max) revert DeployRelease__MalformedVersion(version);
-                ++digits;
-            } else {
-                revert DeployRelease__MalformedVersion(version);
-            }
-        }
-        if (component != 2 || digits == 0 || parts[0] > type(uint16).max) {
-            revert DeployRelease__MalformedVersion(version);
-        }
-        packed = (uint64(parts[0]) << 48) | (uint64(parts[1]) << 24) | uint64(parts[2]);
-        if (packed == 0) revert DeployRelease__MalformedVersion(version);
+        return ReleaseVersion.packVersion(version);
     }
 
     //*//////////////////////////////////////////////////////////////////////////
     //                                 MANIFEST
     //////////////////////////////////////////////////////////////////////////*//
 
-    /// @dev Serializes the release to `<deploymentsRoot>/<chainid>/release-<version>.json`: top-level
+    /// @dev Serializes the simulation plan to `<deploymentsRoot>/<chainid>/plan-<version>.json`: top-level
     ///      version / chainid / deployer / registry / factory / owner (read live off the registry) /
     ///      timestamp, plus initializer name/address/salt/runtime and creation hashes, and one entry per facet
     ///      with its name, address, codehash, live
     ///      `keccak256(exportSelectors())`, and salt. `run` passes `"deployments"`; the unit test passes an
     ///      isolated root so a real committed manifest is never touched. Internal (not private) so the unit
     ///      test can drive it directly.
-    function _writeManifest(string memory deploymentsRoot, string memory version, ReleaseOutput memory out) internal {
+    function _writeDeploymentPlan(string memory deploymentsRoot, string memory version, ReleaseOutput memory out)
+        internal
+    {
         (string[] memory names,) = FacetInventory.inventory();
 
         string memory facetsJson;
@@ -309,6 +295,7 @@ contract DeployRelease is Script {
         }
 
         string memory initsJson = _serializeInits(version, out.inits);
+        string memory librariesJson = _serializeLibraries(out.libraries);
 
         string memory root = "manifest";
         vm.serializeString(root, "version", version);
@@ -321,11 +308,12 @@ contract DeployRelease is Script {
         vm.serializeAddress(root, "owner", ILatticeRegistry(out.registry).owner());
         vm.serializeUint(root, "timestamp", block.timestamp);
         vm.serializeString(root, "facets", facetsJson);
-        string memory json = vm.serializeString(root, "inits", initsJson);
+        vm.serializeString(root, "inits", initsJson);
+        string memory json = vm.serializeString(root, "libraries", librariesJson);
 
         string memory dir = string.concat(deploymentsRoot, "/", vm.toString(block.chainid));
         vm.createDir(dir, true);
-        string memory path = string.concat(dir, "/release-", version, ".json");
+        string memory path = string.concat(dir, "/plan-", version, ".json");
         vm.writeJson(json, path);
         console.log("Manifest written:", path);
     }
@@ -334,12 +322,39 @@ contract DeployRelease is Script {
     //                             PRIVATE HELPERS
     //////////////////////////////////////////////////////////////////////////*//
 
+    function _releaseLibraries() private returns (address[] memory deployed) {
+        (string[] memory names, string[] memory artifacts, address[] memory linked) = LibraryInventory.inventory();
+        deployed = new address[](names.length);
+        for (uint256 i; i < names.length; ++i) {
+            bytes memory initCode = vm.getCode(artifacts[i]);
+            address predicted = ArachnidDeployer.predict(LibraryInventory.SALT, keccak256(initCode));
+            require(linked[i] == predicted, "release library: noncanonical native link address");
+            (deployed[i],) = _deployOrSkip(LibraryInventory.SALT, initCode, names[i]);
+            require(
+                deployed[i].codehash == LibraryInventory.runtimeHash(vm, artifacts[i], predicted),
+                "release library: runtime code mismatch"
+            );
+        }
+    }
+
     function _releaseInits(string memory version, ILatticeRegistry registry) private returns (address[] memory inits) {
         (string[] memory names, string[] memory paths) = InitInventory.inventory();
         inits = new address[](names.length);
         for (uint256 i; i < names.length; ++i) {
             (inits[i],) = _deployOrSkip(facetSalt(names[i], version), vm.getCode(paths[i]), names[i]);
             registry.attest(inits[i]);
+        }
+    }
+
+    function _serializeLibraries(address[] memory deployed) private returns (string memory json) {
+        (string[] memory names, string[] memory artifacts,) = LibraryInventory.inventory();
+        for (uint256 i; i < names.length; ++i) {
+            string memory key = string.concat("library:", names[i]);
+            vm.serializeString(key, "name", names[i]);
+            vm.serializeAddress(key, "address", deployed[i]);
+            vm.serializeBytes32(key, "codehash", deployed[i].codehash);
+            vm.serializeBytes32(key, "initCodeHash", keccak256(vm.getCode(artifacts[i])));
+            json = vm.serializeString("libraries", names[i], vm.serializeBytes32(key, "salt", LibraryInventory.SALT));
         }
     }
 

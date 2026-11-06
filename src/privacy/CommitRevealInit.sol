@@ -9,9 +9,15 @@ import {CommitRevealLib} from "@lattice/privacy/libraries/CommitRevealLib.sol";
 ///         The primitive is permissionless (anyone may commit/reveal their own), so there is NO AccessControl in
 ///         the recipe. Delegatecalled by {Diamond.initialize} inside the initializing window (so it must NOT open
 ///         its own pre/postInitializer; the `__CommitReveal_init` guard passes because the window is already open).
+/// @custom:lattice-kind step
 contract CommitRevealInit {
     /// @notice Runs the commit-reveal module initializer. MUST be invoked via the diamond's `initialize`
     ///         `_init` delegatecall.
+    /// @custom:lattice-initializes CommitReveal;
+    /// @custom:lattice-after none;
+    /// @custom:lattice-same-call Initializable hard enclosing-initializing-window;
+    /// @custom:lattice-param none;
+    /// @custom:lattice-registers-interfaces
     function init() external {
         CommitRevealLib.__CommitReveal_init();
     }
