@@ -2,8 +2,8 @@
 pragma solidity ^0.8.30;
 
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
-import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
 import {DeployERC721} from "@lattice-script/base/tokens/DeployERC721.s.sol";
+import {TokenDeployBase} from "@lattice-script/base/tokens/TokenDeployBase.s.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlInit} from "@lattice/access/AccessControlInit.sol";
 import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
@@ -23,7 +23,7 @@ import {DiamondIntrospectionInit} from "@lattice/utils/DiamondIntrospectionInit.
 ///      Do not add {ERC721Enumerable} or {ERC721Votes}: either init order reverts. {ERC721Pausable},
 ///      {ERC721Burnable}, {ERC721URIStorage}, {ERC721Wrapper} and {ERC2981} compose. Add no init that single-mints:
 ///      mint after the diamond is initialized.
-contract DeployERC721Consecutive is BaseDeploy {
+contract DeployERC721Consecutive is TokenDeployBase {
     /// @notice Builds the batch-minted ERC-721 diamond cuts + initializers (no broadcast, no proxy deploy).
     /// @param name_ Token name. @param symbol_ Token symbol.
     /// @param firstId The first batch-minted id. @param receivers Each batch's owner.
@@ -41,7 +41,7 @@ contract DeployERC721Consecutive is BaseDeploy {
     ) public returns (FacetCut[] memory cuts, address[] memory inits, bytes[] memory initCalldatas) {
         address baseInit;
         bytes memory baseCalldata;
-        (cuts, baseInit, baseCalldata) = new DeployERC721().buildCuts(name_, symbol_);
+        (cuts, baseInit, baseCalldata) = _erc721Base(name_, symbol_);
 
         inits = new address[](2);
         inits[0] = baseInit;

@@ -34,6 +34,10 @@ identities for the current `LatticeVersion`; a proxy-free local test falls back 
 initializers additionally bind their EntryPoint through `AccountReleaseInventory`. The recipe guard
 suites check every cut and recursively inspect nested `MultiInit` calls against these identities before
 assembling each diamond. Their separate local fallback tests exercise the proxy-free path.
+`base/tokens/TokenDeployBase.s.sol` shares the three typed base-token builders internally with their
+extensions. Recipe helpers are never deployed during broadcast: they contain script-only cheatcodes
+and can exceed the EIP-170 limit. The atomic deployment gate broadcasts both authority variants of
+an ERC-20, ERC-721 and ERC-1155 extension to check this path.
 
 For module initialization during a later authorized upgrade, `InitInventory` releases
 [`ReinitMultiInit`](../src/utils/ReinitMultiInit.sol). Use its address as the cut's `_init` with

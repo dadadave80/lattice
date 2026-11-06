@@ -2,8 +2,8 @@
 pragma solidity ^0.8.30;
 
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
-import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
 import {DeployERC20} from "@lattice-script/base/tokens/DeployERC20.s.sol";
+import {TokenDeployBase} from "@lattice-script/base/tokens/TokenDeployBase.s.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
 import {Pausable} from "@lattice/security/Pausable.sol";
@@ -18,7 +18,7 @@ import {DiamondIntrospectionInit} from "@lattice/utils/DiamondIntrospectionInit.
 ///         {ERC20Pausable} facet which REPLACES the base `transfer`/`transferFrom` with pause-gated variants.
 ///         {ERC20PausableInit} registers IPausable (ERC-165) and grants `admin` the DEFAULT_ADMIN_ROLE. Both
 ///         inits run in one initializing window via {BaseDeploy._assembleMulti}.
-contract DeployERC20Pausable is BaseDeploy {
+contract DeployERC20Pausable is TokenDeployBase {
     /// @notice Builds the pausable ERC-20 diamond cuts + initializers (no broadcast, no proxy deploy).
     /// @param name_ Token name. @param symbol_ Token symbol. @param admin The pause/unpause authority.
     /// @return cuts The facet cuts (ERC165 + ERC20 + DiamondLoupeFacet [base] + Pausable [Add] + ERC20Pausable [Replace] + AccessControl + AccessControlDiamondCut).
@@ -28,8 +28,7 @@ contract DeployERC20Pausable is BaseDeploy {
         public
         returns (FacetCut[] memory cuts, address[] memory inits, bytes[] memory initCalldatas)
     {
-        (FacetCut[] memory baseCuts, address baseInit, bytes memory baseCalldata) =
-            new DeployERC20().buildCuts(name_, symbol_);
+        (FacetCut[] memory baseCuts, address baseInit, bytes memory baseCalldata) = _erc20Base(name_, symbol_);
 
         cuts = new FacetCut[](baseCuts.length + 4);
         for (uint256 i; i < baseCuts.length; ++i) {

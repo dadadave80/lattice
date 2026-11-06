@@ -2,8 +2,8 @@
 pragma solidity ^0.8.30;
 
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
-import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
 import {DeployERC20} from "@lattice-script/base/tokens/DeployERC20.s.sol";
+import {TokenDeployBase} from "@lattice-script/base/tokens/TokenDeployBase.s.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
 import {ERC7802} from "@lattice/tokens/ERC7802/ERC7802.sol";
@@ -16,11 +16,11 @@ import {ERC7802Init} from "@lattice/tokens/ERC7802/ERC7802Init.sol";
 ///         {ERC7802Init}. The ONE source of truth for what an ERC-7802 token diamond is, shared by production
 ///         (`run --broadcast`) and the facet tests (which build on {buildCuts}). `AccessControl` is part of the
 ///         base recipe because `crosschainMint`/`crosschainBurn` are `CROSSCHAIN_BRIDGE_ROLE`-gated.
-contract DeployERC7802 is BaseDeploy {
+contract DeployERC7802 is TokenDeployBase {
     /// @notice Builds the ERC-7802 diamond cuts + combined initializer (no broadcast, no proxy deploy).
-    /// @dev Reuses {DeployERC20.buildCuts} for the base `[ERC165, ERC20]` cuts, then appends the
-    ///      `AccessControl` + `ERC7802` facets. The base `ERC20Init` is discarded in favor of the combined
-    ///      {ERC7802Init}, which runs the full `__*_init` sequence in the single initializing window.
+    /// @dev Reuses the shared base-token cuts, then appends `AccessControl` + `ERC7802`. The combined
+    ///      {ERC7802Init} runs the full `__*_init` sequence in the single initializing window; no discarded
+    ///      base initializer is deployed.
     /// @param admin The address granted `DEFAULT_ADMIN_ROLE`.
     /// @param bridge The trusted bridge granted `CROSSCHAIN_BRIDGE_ROLE`.
     /// @param name_ Token name.
@@ -32,7 +32,7 @@ contract DeployERC7802 is BaseDeploy {
         public
         returns (FacetCut[] memory cuts, address init, bytes memory initCalldata)
     {
-        (FacetCut[] memory base,,) = new DeployERC20().buildCuts(name_, symbol_);
+        FacetCut[] memory base = _baseTokenCuts("ERC20");
 
         cuts = new FacetCut[](base.length + 3);
         for (uint256 i; i < base.length; ++i) {

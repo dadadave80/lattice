@@ -11,6 +11,9 @@ LOG=broadcast/DeployAccessControl.s.sol/31337/run-latest.json
 if grep -rnE 'new Lattice[({]|\.initialize\(' script --include='*.sol'; then
   fail 'create proxies with BaseDeploy._assemble (LatticeFactory), never a separate initialize'
 fi
+if grep -rnE 'new[[:space:]]+Deploy[A-Za-z0-9_]*[[:space:]]*\(' script/base --include='*.sol'; then
+  fail 'compose recipes with internal builders, never deploy cheatcode-dependent recipe helpers'
+fi
 
 [[ "$(cast chain-id --rpc-url "$RPC_URL")" == 31337 ]] || fail 'requires a local Anvil (chain 31337)'
 [[ ! -f .env ]] || ! grep -qE '^(LATTICE_FACTORY|LATTICE_SALT)=' .env || fail 'remove LATTICE_FACTORY/LATTICE_SALT from .env'
@@ -56,4 +59,42 @@ for flavor in DeployAccount DeployAccount6900; do
   [[ "$actual_runtime" = "$expected_runtime" ]] || fail "$flavor created the wrong proxy runtime"
   [[ "$(cast call "$account" 'facetAddress(bytes4)(address)' 0x01ffc9a7 --rpc-url "$RPC_URL")" != 0x0000000000000000000000000000000000000000 ]] || fail "$flavor account is uninitialized"
   echo "Atomic account deployment verified: $account via $flavor"
+done
+
+for family in ERC20 ERC721 ERC1155; do
+  flavor="Deploy${family}Burnable"
+  SCRIPT="script/base/tokens/$flavor.s.sol:$flavor"
+  LOG="broadcast/$flavor.s.sol/31337/run-latest.json"
+  for authority in immutable admin; do
+    if [ "$family" = ERC1155 ]; then
+      args=('ipfs://atomic/{id}.json')
+      signature='run(string)'
+      [ "$authority" = immutable ] || { args+=("$ACCOUNT"); signature='run(string,address)'; }
+    else
+      args=("Atomic $family" "A$family")
+      signature='run(string,string)'
+      [ "$authority" = immutable ] || { args+=("$ACCOUNT"); signature='run(string,string,address)'; }
+    fi
+    forge script "$SCRIPT" --sig "$signature" "${args[@]}" \
+      --rpc-url "$RPC_URL" --unlocked --sender "$ACCOUNT" --broadcast --slow > /dev/null
+    [[ "$(count '(.function // "") | startswith("initialize(")')" == 0 ]] || fail "$flavor separately initialized a proxy"
+    [[ "$(count '.contractName == "LatticeFactory" and ((.function // "") | startswith("deploy("))')" == 1 ]] || fail "$flavor skipped LatticeFactory.deploy"
+    [[ "$(count '.transactionType == "CREATE" and ((.contractName // "") | startswith("Deploy"))')" == 0 ]] || fail "$flavor deployed a recipe helper"
+    token=$(jq -r '.returns.token.value' "$LOG")
+    [[ "$(cast call "$token" 'facetAddress(bytes4)(address)' 0x01ffc9a7 --rpc-url "$RPC_URL")" != 0x0000000000000000000000000000000000000000 ]] || fail "$flavor token is uninitialized"
+    if [ "$family" = ERC1155 ]; then
+      metadata=$(cast call "$token" 'uri(uint256)(string)' 0 --json --rpc-url "$RPC_URL" | jq -r '.[0]')
+    else
+      metadata=$(cast call "$token" 'name()(string)' --json --rpc-url "$RPC_URL" | jq -r '.[0]')
+    fi
+    [[ "$metadata" = "${args[0]}" ]] || fail "$flavor lost its typed base initialization"
+    cut_owner=$(cast call "$token" 'facetAddress(bytes4)(address)' 0x1f931c1c --rpc-url "$RPC_URL")
+    if [ "$authority" = admin ]; then
+      [[ "$cut_owner" != 0x0000000000000000000000000000000000000000 ]] || fail "$flavor omitted the admin cut route"
+      [[ "$(cast call "$token" 'hasRole(bytes32,address)(bool)' "0x$(printf '%064d' 0)" "$ACCOUNT" --rpc-url "$RPC_URL")" = true ]] || fail "$flavor lost its admin grant"
+    else
+      [[ "$cut_owner" = 0x0000000000000000000000000000000000000000 ]] || fail "$flavor immutable variant exposes a cut route"
+    fi
+    echo "Atomic $family extension verified: $token ($authority)"
+  done
 done

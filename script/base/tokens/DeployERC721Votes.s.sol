@@ -2,8 +2,8 @@
 pragma solidity ^0.8.30;
 
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
-import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
 import {DeployERC721} from "@lattice-script/base/tokens/DeployERC721.s.sol";
+import {TokenDeployBase} from "@lattice-script/base/tokens/TokenDeployBase.s.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlInit} from "@lattice/access/AccessControlInit.sol";
 import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
@@ -26,7 +26,7 @@ import {DiamondIntrospectionInit} from "@lattice/utils/DiamondIntrospectionInit.
 ///      Do not add {ERC721Burnable}, {ERC721Wrapper}, {ERC721Pausable} or {ERC721Enumerable} to this diamond, nor
 ///      batch mints through {ERC721ConsecutiveInit} (see {ERC721Votes}).
 ///      All inventory facets and initializers use the shared release helpers.
-contract DeployERC721Votes is BaseDeploy {
+contract DeployERC721Votes is TokenDeployBase {
     /// @notice Builds the votes ERC-721 diamond cuts + initializers (no broadcast, no proxy deploy).
     /// @param name_ Token name (also the EIP-712 domain name). @param symbol_ Token symbol.
     /// @return cuts The facet cuts (ERC165 + ERC721 + DiamondLoupeFacet + Votes + ERC721Votes [Replace]).
@@ -36,8 +36,7 @@ contract DeployERC721Votes is BaseDeploy {
         public
         returns (FacetCut[] memory cuts, address[] memory inits, bytes[] memory initCalldatas)
     {
-        (FacetCut[] memory baseCuts, address baseInit, bytes memory baseCalldata) =
-            new DeployERC721().buildCuts(name_, symbol_);
+        (FacetCut[] memory baseCuts, address baseInit, bytes memory baseCalldata) = _erc721Base(name_, symbol_);
 
         cuts = new FacetCut[](baseCuts.length + 2);
         for (uint256 i; i < baseCuts.length; ++i) {

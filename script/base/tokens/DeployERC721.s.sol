@@ -4,7 +4,7 @@ pragma solidity ^0.8.30;
 import {DiamondLoupeFacet} from "@diamond/facets/DiamondLoupeFacet.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
-import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
+import {TokenDeployBase} from "@lattice-script/base/tokens/TokenDeployBase.s.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
 import {ERC721} from "@lattice/tokens/ERC721/ERC721.sol";
@@ -20,7 +20,7 @@ import {ERC721Init} from "@lattice/tokens/ERC721/ERC721Init.sol";
 /// @dev DEFAULT overload: Immutable by design — no cut facet is cut; deploy a new diamond to change
 ///      behavior. Use the ADMIN overload (`buildCuts(..., admin)` / `run(..., admin)`) for an upgradeable
 ///      deployment gated on `DEFAULT_ADMIN_ROLE`.
-contract DeployERC721 is BaseDeploy {
+contract DeployERC721 is TokenDeployBase {
     /// @notice Builds the base ERC-721 diamond cuts + initializer (no broadcast, no proxy deploy).
     /// @param name_ Token name.
     /// @param symbol_ Token symbol.
@@ -31,9 +31,7 @@ contract DeployERC721 is BaseDeploy {
         public
         returns (FacetCut[] memory cuts, address init, bytes memory initCalldata)
     {
-        cuts = _coreCuts();
-        (init, initCalldata) =
-            _withImmutableIntrospection(_init("ERC721Init"), abi.encodeCall(ERC721Init.init, (name_, symbol_)));
+        (cuts, init, initCalldata) = _erc721Base(name_, symbol_);
     }
 
     /// @notice ADMIN OVERLOAD: the immutable default plus `AccessControl` + `AccessControlDiamondCut`, so
@@ -42,7 +40,7 @@ contract DeployERC721 is BaseDeploy {
         public
         returns (FacetCut[] memory cuts, address init, bytes memory initCalldata)
     {
-        FacetCut[] memory base = _coreCuts();
+        FacetCut[] memory base = _baseTokenCuts("ERC721");
         cuts = new FacetCut[](base.length + 2);
         for (uint256 i; i < base.length; ++i) {
             cuts[i] = base[i];
@@ -52,14 +50,6 @@ contract DeployERC721 is BaseDeploy {
         (init, initCalldata) = _withAdminUpgradeableIntrospection(
             _init("ERC721Init"), abi.encodeCall(ERC721Init.init, (name_, symbol_)), admin
         );
-    }
-
-    /// @dev The shared cut set of both overloads: the module facets plus {DiamondLoupeFacet} (introspection).
-    function _coreCuts() internal returns (FacetCut[] memory cuts) {
-        cuts = new FacetCut[](3);
-        cuts[0] = _cut(_facet("ERC165Facet"));
-        cuts[1] = _cut(_facet("ERC721"));
-        cuts[2] = _cut(_facet("DiamondLoupeFacet"));
     }
 
     /// @notice Deploys a base ERC-721 token diamond (broadcasting entrypoint for `forge script ... --broadcast`).

@@ -2,8 +2,8 @@
 pragma solidity ^0.8.30;
 
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
-import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
 import {DeployERC1155} from "@lattice-script/base/tokens/DeployERC1155.s.sol";
+import {TokenDeployBase} from "@lattice-script/base/tokens/TokenDeployBase.s.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
 import {Pausable} from "@lattice/security/Pausable.sol";
@@ -26,7 +26,7 @@ import {DiamondIntrospectionInit} from "@lattice/utils/DiamondIntrospectionInit.
 ///      The recipe cuts no mint; the app's mint facet must call {ERC1155PausableLib._mint}/
 ///      {ERC1155PausableLib._mintBatch}, or mints ignore the pause.
 ///      All inventory facets and initializers use the shared release helpers.
-contract DeployERC1155Pausable is BaseDeploy {
+contract DeployERC1155Pausable is TokenDeployBase {
     /// @notice Builds the pausable ERC-1155 diamond cuts + initializers (no broadcast, no proxy deploy).
     /// @param uri_ Token URI template. @param admin The pause/unpause and upgrade authority.
     /// @return cuts The facet cuts (ERC165 + ERC1155 + DiamondLoupeFacet [base] + Pausable [Add] +
@@ -38,7 +38,7 @@ contract DeployERC1155Pausable is BaseDeploy {
         public
         returns (FacetCut[] memory cuts, address[] memory inits, bytes[] memory initCalldatas)
     {
-        (FacetCut[] memory baseCuts, address baseInit, bytes memory baseCalldata) = new DeployERC1155().buildCuts(uri_);
+        (FacetCut[] memory baseCuts, address baseInit, bytes memory baseCalldata) = _erc1155Base(uri_);
         address pausableFacet = _facet("ERC1155Pausable");
 
         cuts = new FacetCut[](baseCuts.length + 5);

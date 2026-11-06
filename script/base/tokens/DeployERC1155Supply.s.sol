@@ -2,8 +2,8 @@
 pragma solidity ^0.8.30;
 
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
-import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
 import {DeployERC1155} from "@lattice-script/base/tokens/DeployERC1155.s.sol";
+import {TokenDeployBase} from "@lattice-script/base/tokens/TokenDeployBase.s.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlInit} from "@lattice/access/AccessControlInit.sol";
 import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
@@ -25,7 +25,7 @@ import {DiamondIntrospectionInit} from "@lattice/utils/DiamondIntrospectionInit.
 ///      {ERC1155Pausable}: do not add either here. The recipe cuts no mint; the app's mint facet must call
 ///      {ERC1155SupplyLib._mint}/{ERC1155SupplyLib._mintBatch}, or the supply falls behind the balances.
 ///      All inventory facets and initializers use the shared release helpers.
-contract DeployERC1155Supply is BaseDeploy {
+contract DeployERC1155Supply is TokenDeployBase {
     /// @notice Builds the supply-tracked ERC-1155 diamond cuts + initializers (no broadcast, no proxy deploy).
     /// @param uri_ Token URI template.
     /// @return cuts The facet cuts (ERC165 + ERC1155 + DiamondLoupeFacet + ERC1155Supply).
@@ -36,7 +36,7 @@ contract DeployERC1155Supply is BaseDeploy {
         public
         returns (FacetCut[] memory cuts, address[] memory inits, bytes[] memory initCalldatas)
     {
-        (FacetCut[] memory baseCuts, address baseInit, bytes memory baseCalldata) = new DeployERC1155().buildCuts(uri_);
+        (FacetCut[] memory baseCuts, address baseInit, bytes memory baseCalldata) = _erc1155Base(uri_);
 
         cuts = new FacetCut[](baseCuts.length + 1);
         for (uint256 i; i < baseCuts.length; ++i) {

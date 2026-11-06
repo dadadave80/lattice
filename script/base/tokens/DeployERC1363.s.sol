@@ -2,8 +2,8 @@
 pragma solidity ^0.8.30;
 
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
-import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
 import {DeployERC20} from "@lattice-script/base/tokens/DeployERC20.s.sol";
+import {TokenDeployBase} from "@lattice-script/base/tokens/TokenDeployBase.s.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlInit} from "@lattice/access/AccessControlInit.sol";
 import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
@@ -22,7 +22,7 @@ import {DiamondIntrospectionInit} from "@lattice/utils/DiamondIntrospectionInit.
 ///      Do not add ERC20Pausable, ERC20Votes or GovernedVault to this diamond: the `*AndCall` paths bypass their
 ///      `transfer`/`transferFrom` overrides (decision D25 on #234).
 ///      All inventory facets and initializers use the shared release helpers.
-contract DeployERC1363 is BaseDeploy {
+contract DeployERC1363 is TokenDeployBase {
     /// @notice Builds the ERC-1363 diamond cuts + initializers (no broadcast, no proxy deploy).
     /// @param name_ Token name. @param symbol_ Token symbol.
     /// @return cuts The facet cuts (ERC165 + ERC20 + DiamondLoupeFacet + ERC1363).
@@ -32,8 +32,7 @@ contract DeployERC1363 is BaseDeploy {
         public
         returns (FacetCut[] memory cuts, address[] memory inits, bytes[] memory initCalldatas)
     {
-        (FacetCut[] memory baseCuts, address baseInit, bytes memory baseCalldata) =
-            new DeployERC20().buildCuts(name_, symbol_);
+        (FacetCut[] memory baseCuts, address baseInit, bytes memory baseCalldata) = _erc20Base(name_, symbol_);
 
         cuts = new FacetCut[](baseCuts.length + 1);
         for (uint256 i; i < baseCuts.length; ++i) {
