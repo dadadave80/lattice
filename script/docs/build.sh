@@ -46,6 +46,7 @@ COMMIT="$(git rev-parse HEAD)"
 ROUTES="docs/guides/quickstart.md /
 docs/guides/compose-your-own-diamond.md /guides/compose-your-own-diamond
 docs/guides/selector-compatibility.md /guides/selector-compatibility
+docs/guides/shielded-pool-circuit.md /guides/shielded-pool-circuit
 docs/guides/hedera.md /guides/hedera
 .github/actions/storage-layout/README.md /guides/storage-action
 PROGRESS.md /grants
