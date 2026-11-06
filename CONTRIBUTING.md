@@ -103,6 +103,7 @@ Run `make ci`. It runs CI's Solidity gates, in CI's order:
 | `make storage-check` | ERC-7201 storage-layout baseline |
 | `make test-ci` | full test suite under `FOUNDRY_PROFILE=ci` |
 | `make snapshot-check` | gas snapshots in `snapshots/` match the committed files (`make snapshot` regenerates them) |
+| `make abi-catalog` | clean canonical build; error/event ABI coverage, assembly selectors and collision checks (`out/errors.json`) |
 
 CI also runs checks that `make ci` leaves out:
 

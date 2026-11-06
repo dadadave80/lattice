@@ -6,7 +6,7 @@ directly with `forge script` (usage is in its NatSpec header) or it is only impo
 
 | Folder | Purpose | Entry point | Makefile target |
 | --- | --- | --- | --- |
-| `script/` (root) | CI guard helpers | `check-licenses.sh` and its fixture test `test-check-licenses.sh`; `check-readme-catalog.sh` and its fixture test `test-check-readme-catalog.sh`; `check-release-build.sh` and its mutation fixtures `test-check-release-build.sh`; `closing-issues.sh` and `test-closing-issues.sh`; `test-storage-layout.sh` tests the storage-layout checker on the Action's fixture project; `fork-lanes.sh` assigns each fork suite to a lane of the weekly fork job and runs a lane (with one whole-lane retry on an RPC error), and `test-fork-lanes.sh` tests it; `slither-db.py` normalizes `slither.db.json` | `license-check`; `readme-check`; `release-build-check`; `scripts-check`; `slither`, `slither-triage` |
+| `script/` (root) | CI guard helpers | `check-licenses.sh` and its fixture test `test-check-licenses.sh`; `check-readme-catalog.sh` and its fixture test `test-check-readme-catalog.sh`; `check-release-build.sh` and its mutation fixtures `test-check-release-build.sh`; `closing-issues.sh` and `test-closing-issues.sh`; `test-storage-layout.sh` tests the storage-layout checker on the Action's fixture project; `fork-lanes.sh` assigns each fork suite to a lane of the weekly fork job and runs a lane (with one whole-lane retry on an RPC error), and `test-fork-lanes.sh` tests it; `error-event-catalog.sh` validates native ABI/AST coverage and writes `errors.json`, with `test-error-event-catalog.sh` fixtures; `slither-db.py` normalizes `slither.db.json` | `license-check`; `readme-check`; `release-build-check`; `scripts-check`; `abi-catalog`; `slither`, `slither-triage` |
 | `base/` | Deploy recipes: each `Deploy<Module>.s.sol` builds its cuts (`buildCuts`) and creates and initializes the diamond in one transaction through `LatticeFactory`. Shared by deploys and tests | `BaseDeploy.s.sol` (shared primitive); `<area>/Deploy<Module>.s.sol` | `deploy-local SCRIPT=…`; `check-atomic-deploy` |
 | `base/<area>/` | One subfolder per `src/` area: `access`, `accounts`, `amm`, `crosschain`, `defi`, `ens`, `governance`, `oracles`, `privacy`, `security`, `tokens`, `utils` | `Deploy<Module>.s.sol` | as `base/` |
 | `base/crosschain/` (demos) | Live CCTP demo contracts, kept beside the recipes they extend | `CCTPHookDemo.s.sol`, `CCTPHookReceiptDemo.s.sol`, `CCTPUSDCDemo.s.sol` (driven by the `config/cctp-*.sh` scripts) | `deploy-cctp`, `demo-cctp-hook`, `demo-cctp-roundtrip`, `deploy-cctp-receipt`, `demo-cctp-receipt`, `demo-cctp`, `demo` |
@@ -23,3 +23,29 @@ directly with `forge script` (usage is in its NatSpec header) or it is only impo
 
 Moving a file breaks README permalinks and the `@lattice-script/` imports in `test/`, so update both
 in the same change.
+
+## Error and event catalog
+
+`make abi-catalog` builds the canonical source artifacts from scratch and writes `out/errors.json`.
+CI checks the same catalog, and tagged releases attach it alongside the storage registry. Set
+`ABI_CATALOG_OUTPUT=/absolute/path/errors.json` to keep the output outside Forge's cleaned artifact
+directory, as the release workflow does.
+
+The schema has three collections:
+
+| Key | Contents |
+| --- | --- |
+| `errors` | Four-byte selector → canonical signature and declaration source paths |
+| `events` | Full signature hash → canonical signature and definitions, including indexed/anonymous encoding |
+| `assembly` | Custom-error selector, declaration source file and assembly revert position (`byte-offset:length`) |
+
+For example, `.errors["0xd7e6bcf8"]` describes `NotInitializing()` and its declarations. Anonymous
+events retain their signature hash as a catalog key, although they emit no signature topic. Repeated
+declarations of the same signature share a key; different event encodings remain separate definitions.
+
+The checker reads native compiler ASTs and ABIs for every `src/` and `lib/diamond-lib/src/` declaration.
+It rejects declarations absent from all ABIs, distinct signatures with the same selector, and assembly
+error selectors missing from the catalog. The supported local assembly convention is adjacent literal
+`mstore(0, selector)` / `revert(28, 4)`; another four-byte encoding fails until the checker is extended.
+Dynamic revert-data bubbling and Solidity's built-in `Panic(uint256)` are not local custom errors.
+`script/test-error-event-catalog.sh` covers these guards with positive and negative fixtures.

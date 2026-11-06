@@ -327,6 +327,7 @@ forge test --match-contract AccessControl -vvv # verbose, by contract
 forge test --match-contract StorageSlotVerificationTest # verify ERC-7201/ERC-165 slots
 forge fmt                                       # format (CI runs `forge fmt --check`)
 make snapshot                                   # regenerate the committed gas snapshots
+make abi-catalog                                # checked error/event catalog in out/errors.json
 ```
 
 The suite currently includes unit, integration, fork, fuzz, invariant, and gas tests. CI

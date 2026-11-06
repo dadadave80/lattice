@@ -20,6 +20,7 @@ PATH_GLOB ?=
 BASE_REF ?=
 ARGS ?=
 SCRIPT ?=
+ABI_CATALOG_OUTPUT ?= out/errors.json
 SIG ?= run()
 # Script target contract; defaults to the file's basename (DeployX.s.sol -> DeployX). Needed because
 # recipe files also hold their recipe-local '*RecipeInit' contract, so forge cannot infer the target.
@@ -139,6 +140,12 @@ scripts-check: ## Regression tests for the CI helper scripts (closing-keyword pa
 	./script/fork-lanes.sh check
 	./script/test-storage-layout.sh
 	./script/test-storage-registry.sh
+	./script/test-error-event-catalog.sh
+
+.PHONY: abi-catalog
+abi-catalog: ## Clean source build and checked error/event/assembly catalog (out/errors.json)
+	FOUNDRY_PROFILE=ci forge build --locked --force --skip test script
+	./script/error-event-catalog.sh out '$(ABI_CATALOG_OUTPUT)'
 
 .PHONY: storage-update
 storage-update: ## Regenerate the storage-layout baseline (review the diff: appends only for live namespaces; see CONTRIBUTING.md)
@@ -150,7 +157,7 @@ test-ci: ## Full test suite under the CI profile (snapshots/ is left to snapshot
 	FOUNDRY_PROFILE=ci FORGE_SNAPSHOT_EMIT=false forge test
 
 .PHONY: ci
-ci: fmt-check license-check scripts-check readme-check release-build-check sizes via-ir storage-check test-ci snapshot-check ## All CI gates, locally, in CI order
+ci: fmt-check license-check scripts-check readme-check release-build-check sizes via-ir storage-check test-ci snapshot-check abi-catalog ## All CI gates, locally, in CI order
 
 .PHONY: slither
 slither: ## Static analysis gate, as CI runs it (slither.config.json + triaged slither.db.json; fails on High)

@@ -92,6 +92,7 @@ jobs:
           ./script/fork-lanes.sh check
           ./script/test-storage-layout.sh
           ./script/test-storage-registry.sh
+          ./script/test-error-event-catalog.sh
 
   # README catalog vs src/. Not gated on `changes`: a README-only PR (code=false) can drop or misspell a
   # catalog entry, so this job runs on every PR. The storage registry also uses the shared cast binary.
@@ -149,6 +150,8 @@ jobs:
       # forge builds against the checked-out submodule and passes silently.
       - name: Build src (--sizes)
         run: forge build --locked --sizes --skip test script
+      - name: Check error, event and assembly coverage
+        run: ./script/error-event-catalog.sh
 
   # IR-pipeline parity is a SEPARATE compiler configuration (via_ir), so it cannot reuse the
   # legacy build cache -- it runs standalone, in parallel, and does not block `test`.
