@@ -33,8 +33,8 @@ import {HTS_MANAGER_ROLE, HTS_OPERATOR_ROLE} from "@lattice/tokens/hedera/HTSAda
 ///         `AccessControl` is part of the base recipe because every association, creation and treasury
 ///         mutator is role-gated (`HTS_MANAGER_ROLE` / `HTS_OPERATOR_ROLE`). `Receive` is part of it because
 ///         the diamond is the treasury AND the auto-renew account of every token it creates, so it must be
-///         able to hold HBAR — a plain transfer is how it gets funded for the auto-renewal the network
-///         charges it and for the creation fees it forwards as `msg.value`.
+///         able to hold HBAR for native auto-renew/network charges. A plain transfer through Receive funds
+///         that standing balance; callers attach creation fees as current `msg.value` on payable create* calls.
 contract DeployHTSAdapter is BaseDeploy {
     /// @notice Builds the HTS diamond cuts + initializer (no broadcast, no proxy deploy).
     /// @param admin The address granted `DEFAULT_ADMIN_ROLE`, `HTS_MANAGER_ROLE` and `HTS_OPERATOR_ROLE`.
@@ -115,7 +115,7 @@ contract DeployHTSAdapter is BaseDeploy {
         variant.conditions[1] =
             "caller: use a target network providing the compatible Hedera HTS system contract at 0x0000000000000000000000000000000000000167; this native address has no bytecode, and initialization performs no HTS availability check";
         variant.conditions[2] =
-            "caller: fund the diamond with HBAR through Receive for forwarded creation fees and native auto-renew charges; initialization does not fund it";
+            "caller: attach the creation fee as msg.value on payable create* calls; Receive funds the diamond standing balance for native auto-renew/network charges; initialization does not fund it";
         variant.conditions[3] =
             "HTS validates the diamond's associations, balances, allowances and token keys; the library calls it normally from the diamond and assigns delegatableContractId diamond keys to created tokens";
         result.variants[0] = variant;

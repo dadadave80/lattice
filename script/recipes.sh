@@ -87,5 +87,6 @@ jq -S -s --slurpfile inventory "$inventory" --arg commit "$source_commit" --argj
       {recipes:$recipes,sourceCommit:$commit,sourceDirty:$dirty} end
 ' "${records[@]}" > "$temporary/catalog.json"
 [ ! -d out/recipes.json ] || fail 'out/recipes.json must be a file, not a directory'
+./script/recipes/check-catalog.sh "$temporary/catalog.json"
 mv "$temporary/catalog.json" out/recipes.json
 echo "recipes: wrote out/recipes.json (${#records[@]} recipes; source $source_commit; dirty=$source_dirty)"

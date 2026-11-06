@@ -94,6 +94,8 @@ anyone who sees the deployment can initialize it first with their own cut and ta
 [Compose your own Diamond](docs/guides/compose-your-own-diamond.md#initialize-in-one-transaction) guide
 walks through a full recipe with `deployAtomic`.
 
+`make recipes` exports the compiler-checked [recipe catalog](script/README.md#recipe-data-and-checked-composition) to `out/recipes.json`, including variants, initializer trees, units, authorities and explicit selector seams.
+
 Every `script/base/**` recipe creates and initializes its diamond in one transaction through
 `LatticeFactory`. By default a run first deploys its own `LatticeRegistry` + `LatticeFactory`. Set
 `LATTICE_FACTORY=<address>` to reuse a deployed factory, such as a release factory (a committed per-chain

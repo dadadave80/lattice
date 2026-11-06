@@ -21,6 +21,16 @@ set -euo pipefail
 printf 'guard\n' >> "$FIXTURE_EVENTS"
 [ "$SCENARIO" != guard-fails ]
 BASH
+cat > "$fixture/script/recipes/check-catalog.sh" <<'BASH'
+#!/usr/bin/env bash
+set -euo pipefail
+[ "$#" = 1 ]
+case "$1" in deployments/.recipes-export.*/catalog.json) ;; *) exit 1 ;; esac
+[ -f "$1" ]
+jq -e '(.recipes|length)==3' "$1" >/dev/null
+printf 'catalog\n' >> "$FIXTURE_EVENTS"
+[ "$SCENARIO" != catalog-fails ]
+BASH
 cat > "$fixture/bin/git" <<'BASH'
 #!/usr/bin/env bash
 set -euo pipefail
@@ -105,7 +115,7 @@ case "$signature" in
     *) printf 'unexpected forge fixture command\n' >&2; exit 1 ;;
 esac
 BASH
-chmod +x "$fixture/bin/forge" "$fixture/bin/git" "$fixture/script/check-release-build.sh"
+chmod +x "$fixture/bin/forge" "$fixture/bin/git" "$fixture/script/check-release-build.sh" "$fixture/script/recipes/check-catalog.sh"
 export FIXTURE_EVENTS=$temporary/events FIXTURE_INVENTORY=$temporary/inventory.json
 export PATH="$fixture/bin:$PATH"
 passed=0
@@ -160,6 +170,10 @@ reject() {
             ! grep -q '^generate:DeployAlpha$' "$FIXTURE_EVENTS"
             ;;
     esac
+    if [ "$scenario" = catalog-fails ]; then
+        grep -q '^catalog$' "$FIXTURE_EVENTS"
+        [ "$(grep -c '^generate:' "$FIXTURE_EVENTS")" = 3 ]
+    fi
     check_cleanup
     passed=$((passed+1))
 }
@@ -167,7 +181,7 @@ for scenario in git-fails guard-fails build-fails inventory-fails missing-invent
     multiple-inventory wrong-count duplicate-name duplicate-artifact empty-inventory bad-fqn class-name-mismatch \
     wrong-description wrong-schema missing-abi missing-method impure-method method-input wrong-output-type \
     wrong-output-field duplicate-method malformed-abi record-fails missing-record partial-output malformed-record \
-    wrong-name wrong-source partial-record empty-variants multiple-record output-directory; do
+    wrong-name wrong-source partial-record empty-variants multiple-record output-directory catalog-fails; do
     reject "$scenario"
 done
 for scenario in success dirty-source; do
@@ -185,7 +199,7 @@ for scenario in success dirty-source; do
         [.recipes[].name]==["DeployZeta","DeployAlpha","DeployMiddle"] and
         all(.recipes[]; .variants[0].initPlan[0].parent==$maximum and (.variants[0].initPlan[0].parent|type)=="string")
     ' "$fixture/out/recipes.json" >/dev/null
-    printf 'git:commit\ngit:status\nguard\nbuild\ninventory\ngenerate:DeployZeta\ngenerate:DeployAlpha\ngenerate:DeployMiddle\n' > "$temporary/expected-events"
+    printf 'git:commit\ngit:status\nguard\nbuild\ninventory\ngenerate:DeployZeta\ngenerate:DeployAlpha\ngenerate:DeployMiddle\ncatalog\n' > "$temporary/expected-events"
     cmp "$temporary/expected-events" "$FIXTURE_EVENTS"
     check_cleanup
     passed=$((passed+1))
