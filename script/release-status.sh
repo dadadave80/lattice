@@ -7,10 +7,11 @@ fail() { echo "release-status: $*" >&2; exit 1; }
 release=$1 rpc=$2 destination=$3
 [[ "$destination" == deployments/* ]] && [[ "$destination" != *..* ]] || fail 'destination must be below deployments/'
 ./script/release/validate-manifest.sh "$release"
-observed=$(cast block latest --rpc-url "$rpc" --json)
-number=$(jq -r '.number' <<< "$observed")
-if [[ "$number" == 0x* ]]; then number=$(cast to-dec "$number"); fi
-hash=$(jq -r '.hash' <<< "$observed")
+# cast block --json has a versioned CLI envelope; use the stable JSON-RPC block result directly.
+observed=$(cast rpc --rpc-url "$rpc" eth_getBlockByNumber latest false)
+block_id=$(jq -er '.number | select(type == "string" and test("^0x[0-9a-fA-F]+$"))' <<< "$observed")
+number=$(cast to-dec "$block_id")
+hash=$(jq -er '.hash | select(type == "string" and test("^0x[0-9a-fA-F]{64}$"))' <<< "$observed")
 chain=$(cast chain-id --rpc-url "$rpc")
 [[ "$destination" == "deployments/$chain/release-"* || "$destination" == deployments/fixtures/* ]] || fail 'destination must identify the observed chain'
 mkdir -p "$(dirname "$destination")"
@@ -20,7 +21,7 @@ FOUNDRY_PROFILE=ci forge script script/release/ObserveManifest.s.sol:ObserveMani
     --sig 'run(string,bytes32,string)' "$release" "$hash" "$raw" \
     --rpc-url "$rpc" --fork-block-number "$number" --non-interactive
 # Detect a reorg or inconsistent endpoint rather than claiming the wrong block's state.
-[ "$(cast block "$number" --rpc-url "$rpc" --json | jq -r '.hash')" = "$hash" ] || fail 'observed block changed; retry'
+[ "$(cast rpc --rpc-url "$rpc" eth_getBlockByNumber "$block_id" false | jq -r '.hash')" = "$hash" ] || fail 'observed block changed; retry'
 release_hash=$(jq -cS . "$release" | tr -d '\n' | cast keccak)
 jq -S --arg hash "$release_hash" '. + {releaseManifestHash:$hash}' "$raw" > "$destination"
 ./script/release/validate-manifest.sh "$release" "$destination"

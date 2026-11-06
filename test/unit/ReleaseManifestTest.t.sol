@@ -146,6 +146,21 @@ contract ReleaseManifestTest is Test, GenerateManifest {
         assertEq(vm.parseJsonKeys(json, ".").length, required.length);
     }
 
+    function test_ObserverHasNoLinkedLibraryDependencies() public view {
+        assertEq(
+            vm.parseJsonKeys(vm.readFile("out/ObserveManifest.s.sol/ObserveManifest.json"), ".bytecode.linkReferences")
+            .length,
+            0
+        );
+        assertEq(
+            vm.parseJsonKeys(
+                vm.readFile("out/ObserveManifest.s.sol/StatusRecordWriter.json"), ".bytecode.linkReferences"
+            )
+            .length,
+            0
+        );
+    }
+
     function test_ObservedStatusSeparatesPresenceCurationAndVerification() public {
         string memory releaseJson = _envelope(this.snapshot("99.0.0", address(this)));
         vm.serializeJson("test:owner", releaseJson);

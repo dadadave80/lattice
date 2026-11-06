@@ -196,8 +196,8 @@ come from local constructor execution, including its immutable registry and prox
 `deployer.librarySalt` records the pinned native Foundry library salt (zero), and
 `compiler.libraries` is the actual empty solc map. The external library records supply the post-link
 address map. Foundry native CREATE2 linking keeps that map identical in tests and release scripts;
-it does not inject a global solc metadata map. PoseidonT3 is deployed/verified as a shared Tier-A
-library; its actual runtime includes Solidity's patched self address. See
+it does not inject a global solc metadata map. PoseidonT3 is a shared Tier-A library and must be
+included in release deployment and verification; its actual runtime includes Solidity's patched self address. See
 [ADR 0022](docs/adr/0022-native-create2-release-libraries.md).
 `AccountInit` and `AccountInit6900` remain constructor-bound recipe instances, outside this catalog.
 
