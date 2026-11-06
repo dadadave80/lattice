@@ -33,6 +33,7 @@ const decisions: Item = {
     { text: '0016 Shared initialization', link: '/adr/0016-shared-initialization-identity' },
     { text: '0020 Release source freeze', link: '/adr/0020-source-anchored-release-manifests' },
     { text: '0022 Native release libraries', link: '/adr/0022-native-create2-release-libraries' },
+    { text: '0023 Frozen source verification', link: '/adr/0023-frozen-input-source-verification' },
   ],
 }
 

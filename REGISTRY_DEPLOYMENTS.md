@@ -246,8 +246,46 @@ means absent; `pre-existing` means code observed at that block without asserting
 `codeMatches` compares runtime hashes; `registered` and `latest` additionally compare the exact
 version, address, runtime and selector pins. Verification starts `false` with a null verifier and
 must be updated only from actual verification results. Re-observation resets verification to
-unknown; it does not infer a Sourcify match from code presence. A future verification command is
-tracked in [#198](https://github.com/dadadave80/lattice/issues/198).
+unknown; it does not infer a Sourcify match from code presence.
+
+Verify every shared contract, including external libraries, from the release's archived compiler
+inputs after collecting that chain observation:
+
+```bash
+make release-verify MANIFEST=deployments/release-<version>.json \
+  CHAIN_MANIFEST=deployments/<chainid>/release-<version>.json \
+  BUILD_INPUTS=<extracted-release-asset>/build-inputs-<version>.json RPC_URL=<rpc-url-or-alias>
+```
+
+This operational command publishes the archived sources to the official Sourcify v2 service. It
+requires a real release manifest, retained frozen source, the recorded toolchain and RPC access to
+the observation's historical block. It rebuilds that source in a temporary checkout, compares every
+identity and the exact compiler-input witness, resolves fully qualified targets and compiler builds
+from compiler output, then rechecks all deployed runtime hashes at the recorded block. Supplied
+deployment transaction hashes must be successful canonical direct Arachnid calls with the exact salt
+and full initcode; otherwise keep the truthful `pre-existing` marker and let Sourcify find creation
+evidence. A missing contract, wrong code or changed block prevents submission.
+
+Re-running is safe: each contract is looked up first and an exact creation/runtime match with both
+manifest bytecode hashes skips submission. A pending `verificationId` is saved atomically in the chain
+manifest and resumed; it never means verified. Only a fresh exact lookup sets `verified: true` and
+`verifier: sourcify`. Partial matches, malformed responses and completed jobs without an exact match
+remain unverified. Progress survives interruption; pending work or errors return a nonzero exit code.
+Bounded requests respect rate limits; retry the same command after the indicated wait. A concurrent
+run holds `<chain-manifest>.verify.lock`; after a killed process, confirm it has stopped before removing
+its stale lock. Verification does not register facets or update `latest`.
+
+To reproduce and inspect inputs without any verifier requests, use a fresh directory outside the
+checkout:
+
+```bash
+./script/release-verify.sh --prepare <release.json> <build-inputs-version.json> <temporary-output-directory>
+```
+
+This offline mode also accepts clearly labelled fixture material. The command needs no verifier API
+key; the HTTP transport disables curl configuration and excludes ambient verifier/RPC credentials.
+Authenticated RPC configuration stays confined to the native RPC tools. See
+[ADR 0023](docs/adr/0023-frozen-input-source-verification.md) for the source-verification boundary.
 
 The tagged release asset job requires the matching real release manifest, rebuilds it and attaches
 `lattice-build-info-v<version>.tar.gz` with standard-JSON compiler inputs, compiler versions, manifest

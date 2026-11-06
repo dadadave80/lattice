@@ -24,6 +24,7 @@ the linked issue or pull request; a record is the outcome, not a spec.
 | [0016](0016-shared-initialization-identity.md) | Shared bootstrap identity is consistent and interface claims follow routed selectors | Accepted |
 | [0020](0020-source-anchored-release-manifests.md) | Release identities freeze an existing source commit; chain observations stay separate | Accepted |
 | [0022](0022-native-create2-release-libraries.md) | Shared external libraries use native CREATE2 linking and trusted runtime checks | Accepted |
+| [0023](0023-frozen-input-source-verification.md) | Source verification submits the frozen compiler witness and requires exact bytecode matches | Accepted |
 
 ## When to write one
 

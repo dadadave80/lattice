@@ -85,6 +85,7 @@ jobs:
           forge build --locked lib/diamond-lib/src/facets/OwnableFacet.sol
           forge test --match-contract ReleaseManifestTest
           ./script/test-release-manifest.sh
+          ./script/test-release-verification.sh
           ./script/test-release-script-simulation.sh
 
   # Formatting needs no compilation, so it runs standalone and fails fast.
