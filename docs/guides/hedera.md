@@ -301,3 +301,57 @@ the EVM. It does not establish the behavior of the current node or the callback 
 [#226](https://github.com/dadadave80/lattice/issues/226) still needs a separately authorized successful
 native callback with its sender, schedule ID, date and measured consensus-node version. Offline mock
 coverage and local generation safety do not satisfy that live acceptance.
+
+### Minimal native sender probe
+
+`ProbeHedera.planProbe6` prepares a single raw `scheduleCall` against an **existing** probe diamond.
+`probe6` queues that call using the CLI sender. Neither entrypoint deploys a diamond, funds it, creates
+tokens, reads `HEDERA_TESTNET_PK`, or books a tracked recovery job. Keep the callback ungated: a recovery
+envelope would insert a self-call and conceal the native sender being measured.
+
+Inputs are the existing diamond, its approved `scheduleCall` and `probeCallback` facet addresses, the
+public scheduler address, and a unique nonzero correlation ID for this attempt. Record the target and
+facet code fingerprints before approving the action. The preflight checks chain 296, nonempty live code,
+both exact routes and the scheduler's `HSS_SCHEDULER_ROLE` through relay reads. Route addresses are trust
+inputs; these checks do not verify historical facet source or prove possession of the scheduler's key.
+The expiry is calculated **after** preflight, from wall-clock time plus 600 seconds, rather than from the
+older fork timestamp. The callback has a 200,000 gas allowance and transfers zero value. The booking call explicitly requests
+1,000,000 gas; verify the recorded transaction limit, including intrinsic gas, in the dry-run JSON.
+
+Prepare without a key, keystore or broadcast:
+
+```sh
+FOUNDRY_PROFILE=hedera forge script script/config/hedera/ProbeHedera.s.sol:ProbeHedera \
+    --sig 'planProbe6(address,address,address,address,bytes32)' \
+    <diamond> <scheduler> <hss-facet> <callback-facet> <unique-correlation-id> \
+    --rpc-url hedera-testnet
+```
+
+Use the pinned 1.9.0 binary explicitly when validating #227. A `probe6(address,address,address,bytes32)`
+dry run, with `--sender <scheduler> --skip-simulation --legacy` and **without** `--broadcast` or
+`--account`, records the one planned call. Its local result cannot establish native success: revm does
+not implement HSS. Inspect the dry-run transaction array, target, zero value, gas and exact nested input.
+A later authorized invocation recalculates its expiry; do not submit an old absolute deadline.
+
+Broadcasting requires explicit authorization, a controlled scheduler's keystore, fresh fee limits and
+sufficient balances for the scheduler's booking transaction and the diamond's automatic callback. Use
+`--with-gas-price` for the legacy transaction price; Forge's `--gas-price` configures the local EVM and
+`--gas-limit` configures its block limit. Do not use either as a claimed transaction fee cap. No automatic
+funding, retry, cancellation, `authorizeSchedule`, payer substitution or verification is part of this probe.
+
+Preserve the approved plan and booking transaction/receipt. Require a successful booking with the exact
+target/value/input and `HSSCallScheduled` emitted by the diamond: its target, expiry and gas must match,
+and its indexed job ID is zero. That event gives the schedule address; `scheduleOf(correlationId)` does
+not. Read the schedule entity from the mirror node and retain its payer and execution timestamp.
+An `executed_timestamp` alone is insufficient: historical schedules failed before EVM entry. Require
+the scheduled transaction's own successful result and its `HederaProbeCallback` log, matching the
+diamond emitter and exact correlation ID. An arbitrary direct call can emit the same ungated event,
+so a search for the event alone is not evidence of a network-fired callback.
+
+Record the actual callback sender, event timestamp, schedule ID, date and **consensus-node software
+version**. Keep the relay's `web3_clientVersion` and a mirror block's `hapi_version` as separate facts;
+neither is a measurement of `hederaServicesVersion`. Compare the event sender with both the EVM alias
+and canonical Hedera address, while retaining Solidity's exact `msg.sender == address(this)` question.
+If scheduling or firing fails, preserve the native status and leave #226 open. A successful shared-pin
+booking validates that broadcast path for #227; retirement of the wrapper and its exception requires
+the completed result and a separate reviewed cleanup.
