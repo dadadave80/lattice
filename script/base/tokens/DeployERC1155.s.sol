@@ -22,7 +22,7 @@ import {ERC1155Init} from "@lattice/tokens/ERC1155/ERC1155Init.sol";
 contract DeployERC1155 is TokenDeployBase {
     /// @notice Builds the base ERC-1155 diamond cuts + initializer (no broadcast, no proxy deploy).
     /// @param uri_ Token URI template.
-    /// @return cuts The facet cuts (ERC165 + ERC1155).
+    /// @return cuts The facet cuts (ERC165 + ERC1155 + DiamondLoupeFacet).
     /// @return init The {MultiInit} running {ERC1155Init} then {DiamondIntrospectionInit.initImmutable}.
     /// @return initCalldata The matching `multiInit` calldata.
     function buildCuts(string memory uri_)

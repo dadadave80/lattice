@@ -24,7 +24,7 @@ contract DeployERC721 is TokenDeployBase {
     /// @notice Builds the base ERC-721 diamond cuts + initializer (no broadcast, no proxy deploy).
     /// @param name_ Token name.
     /// @param symbol_ Token symbol.
-    /// @return cuts The facet cuts (ERC165 + ERC721).
+    /// @return cuts The facet cuts (ERC165 + ERC721 + DiamondLoupeFacet).
     /// @return init The {MultiInit} running {ERC721Init} then {DiamondIntrospectionInit.initImmutable}.
     /// @return initCalldata The matching `multiInit` calldata.
     function buildCuts(string memory name_, string memory symbol_)
