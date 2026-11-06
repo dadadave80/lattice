@@ -3,7 +3,8 @@
 This file is the **canonical reference** for how Lattice releases land on-chain: the deterministic
 address scheme of the [`LatticeRegistry`](src/LatticeRegistry.sol), the
 [`LatticeFactory`](src/LatticeFactory.sol), and every
-[`FacetInventory`](script/lib/FacetInventory.sol) facet, all deployed through the **Arachnid
+[`FacetInventory`](script/lib/FacetInventory.sol) facet and
+[`InitInventory`](script/lib/InitInventory.sol) stateless initializer, all deployed through the **Arachnid
 deterministic-deployment proxy** by
 [`script/deploy/DeployRelease.s.sol`](script/deploy/DeployRelease.s.sol). The same salt, initcode and
 constructor arguments give the same address on every chain with that proxy. Broadcasting accounts and
@@ -49,15 +50,44 @@ deployer address and no chain id:
 | `LatticeRegistry` | `keccak256("lattice.LatticeRegistry")` (deploy-once singleton, versionless) | `0xc78231000c48b308a55c9ed0de492d4ee766bc920c611d52ef984a4d9baa3a9c` |
 | `LatticeFactory` | `keccak256("lattice.LatticeFactory")` (versionless) | `0x23ac1297d420218079953740f312f2c5385edfea1f817c984d2e6effea132efe` |
 | every facet | `keccak256("lattice.<Name>.<version>")`, e.g. `keccak256("lattice.ERC20.0.1.0")` | per facet/version (ERC20 0.1.0: `0x938c2ea7277871ff5f71c989637ac4c6733ed43924e245cd91bc1e7363db2078`) |
+| every stateless init | `keccak256("lattice.<InitName>.<version>")`, e.g. `keccak256("lattice.ERC20Init.0.1.0")` | per initializer/version |
 
 `<Name>` is the facet's contract name exactly as listed in
 [`FacetInventory`](script/lib/FacetInventory.sol) (also the source of the parity gate — the same
 string, prefixed `lattice.`, is the facet's registry name key). `<version>` is the release semver
 string (`"0.1.0"`), the same value that packs to the registry's `uint64` version key
-(`major<<48 | minor<<24 | patch`). The inventory's 129 entries include the four **diamond-lib core
+(`major<<48 | minor<<24 | patch`). The facet inventory includes the four **diamond-lib core
 facets** (`DiamondCutFacet`, `DiamondLoupeFacet`, `ERC165Facet`, `OwnableFacet` — ERC-8153 since
 diamond-lib v0.2.0); they are release-versioned by the same `lattice.<Name>.<version>` scheme as
 every Lattice facet, so e.g. the loupe's registry key is `keccak256("lattice.DiamondLoupeFacet")`.
+
+## Released initializers
+
+`InitInventory` lists the stateless `*Init` contracts in `src/` and diamond-lib's `MultiInit`, pairing
+each unique name with its compiled artifact path. The source parity test rejects missing/extra entries,
+duplicates and constructors requiring arguments. `AccountInit` and `AccountInit6900` are explicitly
+excluded because their EntryPoint constructor argument belongs to a specific account factory.
+
+The release deploys each initializer through Arachnid and calls the registry's permissionless Tier A
+`attest`. Initializers are **not facets**: they are not registered in Tier B, have no `latest` pointer,
+and do not need `exportSelectors()`. A codehash resolver keeps its first attester, so identical runtime
+code at a later version's new salt may still resolve to the earlier address. Consumers pin the
+initializer's release manifest address when they need version identity.
+
+`BaseDeploy._init(name)` reuses those same versioned addresses. Its MultiInit, AccessControlInit and
+DiamondIntrospectionInit helpers no longer deploy new copies per recipe. The security recipes likewise
+use released CircuitBreakerInit, EmergencyStopInit, InvariantCheckerInit, PausableInit and RateLimiterInit.
+Other per-recipe initializer migrations are tracked separately in
+[#195](https://github.com/dadadave80/lattice/issues/195).
+
+An init step is delegatecalled inside the diamond's initialization window; it does not open a window
+or install facets itself. Compose the steps with MultiInit, initialize AccessControl before the
+TimelockController/Governor role wiring, and initialize ERC20, EIP712, Nonces and Votes in the same call
+for ERC20Votes. The standalone governance steps preserve their library semantics: VotesInit supplies
+neither token accounting nor a signing domain, GovernorInit grants no roles, and TimelockControllerInit
+expects any external admin to have been seeded by the preceding AccessControl step. The timelock still
+grants its diamond its own admin role. These are composition preconditions; the steps do not introduce
+a new ordering marker or infer an admin from the broadcasting account.
 
 **Factory loupe requirement.** `LatticeFactory.deploy` and `deployStrict` refuse to assemble an
 un-introspectable diamond: every fresh deploy's cuts must cover the four EIP-2535 loupe selectors (`facets()`,
@@ -160,6 +190,16 @@ Every `run(version, owner)` writes `deployments/<chainid>/release-<version>.json
   "factory": "0x...",
   "owner": "0x...",            // read live off the registry
   "timestamp": 1780000000,
+  "inits": {
+    "ERC20Init": {
+      "name": "ERC20Init",
+      "address": "0x...",
+      "salt": "0x...",
+      "codehash": "0x...",
+      "initCodeHash": "0x..."    // creation bytecode hash; no constructor arguments
+    }
+    // ... one entry per InitInventory initializer
+  },
   "facets": {
     "ERC20": {
       "name": "ERC20",
@@ -175,14 +215,15 @@ Every `run(version, owner)` writes `deployments/<chainid>/release-<version>.json
 
 `codehash` and `selectorsHash` are exactly the two pins `LatticeRegistry.register` records and its
 live-read views re-verify, so the manifest diffs directly against on-chain state. The `deployer`
-entry names the actual release proxy on every chain. Legacy manifests with a `createx` field describe
+entry names the actual release proxy on every chain. The `inits` records include both the runtime
+codehash and creation initCodeHash, alongside the exact predicted/deployed address and salt. Legacy manifests with a `createx` field describe
 the earlier deployment policy and require its historical source/configuration to reproduce.
 
 ## Idempotency and resume
 
 `release()` is **predict-then-skip**: every deploy first computes the deterministic address and skips
-deployment if code already lives there; registration skips `(name, version)` records that already
-exist and only moves `latest` when it isn't already pointing at this version. Consequences:
+deployment if code already lives there. Init codehashes are attested in Tier A; facet registration skips
+`(name, version)` records that already exist and only moves `latest` when it isn't already pointing at this version. Consequences:
 
 - A run that died halfway is finished by **re-running the same command** — completed pieces are
   adopted, missing pieces are deployed.

@@ -19,6 +19,8 @@ ffi = true
 fs_permissions = [
     { access = "read-write", path = "deployments" },
     { access = "read", path = "out" },
+    # InitInventoryParityTest checks every source initializer against the release inventory.
+    { access = "read", path = "src" },
     { access = "read", path = "test/fixtures" },
 ]
 remappings = [

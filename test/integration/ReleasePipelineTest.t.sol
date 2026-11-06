@@ -8,6 +8,7 @@ import {IFacet} from "@diamond/interfaces/IFacet.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {DeployGovernedVault} from "@lattice-script/base/defi/DeployGovernedVault.s.sol";
 import {DeployRelease} from "@lattice-script/deploy/DeployRelease.s.sol";
+import {InitInventory} from "@lattice-script/lib/InitInventory.sol";
 import {ArachnidProxy} from "@lattice-test/helpers/ArachnidProxy.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
 import {LatticeFactory} from "@lattice/LatticeFactory.sol";
@@ -15,7 +16,9 @@ import {LatticeVersion} from "@lattice/LatticeVersion.sol";
 import {GovernedVaultParams} from "@lattice/defi/GovernedVaultInit.sol";
 import {RecipeEntry} from "@lattice/interfaces/ILatticeFactory.sol";
 import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
+import {ERC20Init} from "@lattice/tokens/ERC20/ERC20Init.sol";
 import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
+import {NotInitializing} from "@lattice/utils/libraries/InitializableLib.sol";
 
 /// @notice One-shot initializer for the release-composed ERC-20 diamond: seeds name/symbol (registering
 ///         IERC20 via ERC-165) and mints an opening balance so the pipeline test can exercise a real
@@ -106,6 +109,35 @@ contract ReleasePipelineTest is GetSelectors, DeployRelease {
         //    ERC165Facet as the custom cut) — the flagship pipeline diamond is INTROSPECTABLE.
         assertEq(IDiamondLoupe(diamond).facetAddresses().length, 3, "loupe census");
         assertTrue(IDiamondLoupe(diamond).facetAddress(bytes4(0x7a0ed627)) != address(0), "loupe self-routed");
+    }
+
+    function test_ReleasedInitializerBuildsIsolatedDiamonds() public {
+        DeployRelease.ReleaseOutput memory out = this.release(LatticeVersion.VERSION, address(this));
+        (string[] memory names,) = InitInventory.inventory();
+        address init;
+        for (uint256 i; i < names.length; ++i) {
+            if (keccak256(bytes(names[i])) == keccak256("ERC20Init")) init = out.inits[i];
+        }
+        assertTrue(init != address(0), "ERC20Init missing from release");
+        RecipeEntry[] memory entries = new RecipeEntry[](3);
+        entries[0] = RecipeEntry(ERC20_NAME, 0, new bytes4[](0));
+        entries[1] = RecipeEntry(keccak256("lattice.DiamondLoupeFacet"), 0, new bytes4[](0));
+        entries[2] = RecipeEntry(keccak256("lattice.ERC165Facet"), 0, new bytes4[](0));
+        LatticeFactory factory = LatticeFactory(out.factory);
+        address first = factory.deploy(
+            entries, new FacetCut[](0), init, abi.encodeCall(ERC20Init.init, ("First", "ONE")), keccak256("first")
+        );
+        address second = factory.deploy(
+            entries, new FacetCut[](0), init, abi.encodeCall(ERC20Init.init, ("Second", "TWO")), keccak256("second")
+        );
+        assertEq(IERC20(first).name(), "First");
+        assertEq(IERC20(second).name(), "Second");
+        assertEq(IERC20(first).symbol(), "ONE");
+        assertEq(IERC20(second).symbol(), "TWO");
+        assertTrue(ERC165Facet(first).supportsInterface(type(IERC20).interfaceId));
+        vm.expectRevert(NotInitializing.selector);
+        ERC20Init(init).init("Poison", "BAD");
+        assertEq(IERC20(first).name(), "First");
     }
 
     /// @notice The governed-vault recipe cuts the RELEASED facets instead of deploying its own.
