@@ -17,7 +17,6 @@ import {IERC7786MessageHandler} from "@lattice/interfaces/crosschain/IERC7786Mes
 /// @custom:lattice-requires CrosschainLink convention authenticated-inbound-dispatch;
 /// @custom:lattice-family bridge-handler
 /// @custom:lattice-owns none;
-/// @custom:lattice-touches lattice.storage.BridgeERC7802;
 /// @custom:lattice-touches slot:0x8000000000ab143c06;
 /// @custom:lattice-seam none;
 /// @custom:lattice-init BridgeERC7802Init

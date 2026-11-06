@@ -28,7 +28,6 @@ import {ERC721Lib} from "@lattice/tokens/ERC721/libraries/ERC721Lib.sol";
 /// @custom:lattice-owns safeTransferFrom(address,address,uint256);
 /// @custom:lattice-owns safeTransferFrom(address,address,uint256,bytes);
 /// @custom:lattice-touches lattice.storage.ERC721;
-/// @custom:lattice-touches lattice.storage.ERC721Consecutive;
 /// @custom:lattice-seam transferFrom(address,address,uint256) when=ERC721 anyOf=ERC721Pausable replace-base-movement;
 /// @custom:lattice-seam safeTransferFrom(address,address,uint256) when=ERC721 anyOf=ERC721Pausable replace-base-movement;
 /// @custom:lattice-seam safeTransferFrom(address,address,uint256,bytes) when=ERC721 anyOf=ERC721Pausable replace-base-movement;

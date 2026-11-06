@@ -23,7 +23,6 @@ import {AcrossMessageHandler} from "@lattice/interfaces/external/across/AcrossMe
 /// @custom:lattice-requires none;
 /// @custom:lattice-family none
 /// @custom:lattice-owns none;
-/// @custom:lattice-touches lattice.storage.AcrossBridgeAdapter;
 /// @custom:lattice-touches slot:0x8000000000ab143c06;
 /// @custom:lattice-seam none;
 /// @custom:lattice-init AcrossBridgeAdapterInit

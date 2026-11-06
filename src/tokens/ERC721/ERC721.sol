@@ -15,7 +15,6 @@ import {ERC721Lib} from "@lattice/tokens/ERC721/libraries/ERC721Lib.sol";
 /// @custom:lattice-family none
 /// @custom:lattice-owns none;
 /// @custom:lattice-touches lattice.storage.ERC721;
-/// @custom:lattice-touches lattice.storage.ERC721Consecutive;
 /// @custom:lattice-seam none;
 /// @custom:lattice-init ERC721Init
 contract ERC721 is IERC721 {

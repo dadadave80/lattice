@@ -30,7 +30,6 @@ import {ERC721VotesLib} from "@lattice/tokens/ERC721/libraries/ERC721VotesLib.so
 /// @custom:lattice-owns safeTransferFrom(address,address,uint256);
 /// @custom:lattice-owns safeTransferFrom(address,address,uint256,bytes);
 /// @custom:lattice-touches lattice.storage.ERC721;
-/// @custom:lattice-touches lattice.storage.ERC721Consecutive;
 /// @custom:lattice-touches lattice.storage.Nonces;
 /// @custom:lattice-touches lattice.storage.Votes;
 /// @custom:lattice-seam delegate(address) when=Votes anyOf=ERC721Votes read-correct-token-voting-units;

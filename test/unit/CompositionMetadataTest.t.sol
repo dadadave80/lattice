@@ -194,7 +194,7 @@ contract CompositionMetadataTest is Test {
 
     function _abiSignature(string memory artifact, string memory key, string memory name)
         private
-        pure
+        view
         returns (string memory signature)
     {
         signature = string.concat(name, "(");
@@ -206,7 +206,7 @@ contract CompositionMetadataTest is Test {
         return string.concat(signature, ")");
     }
 
-    function _abiType(string memory artifact, string memory key) private pure returns (string memory canonical) {
+    function _abiType(string memory artifact, string memory key) private view returns (string memory canonical) {
         string memory type_ = vm.parseJsonString(artifact, string.concat(key, ".type"));
         if (!_starts(type_, "tuple")) return type_;
         canonical = "(";
