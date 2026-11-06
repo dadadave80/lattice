@@ -8,7 +8,7 @@ import {ERC2981Lib} from "@lattice/tokens/ERC2981/libraries/ERC2981Lib.sol";
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice One-shot initializer for an ERC-2981 royalty diamond — registers the IERC2981 interface (ERC-165)
 ///         and seeds AccessControl so the royalty setters are admin-gated. Delegatecalled by
-///         {Diamond.initialize} inside the initializing window (so it must NOT open its own pre/postInitializer;
+///         {Lattice.initialize} inside the initializing window (so it must NOT open its own pre/postInitializer;
 ///         each `__*_init` guard passes because the window is already open). Companion to the {AccountInit} and
 ///         {ERC20Init} patterns — a first-class production deploy artifact.
 /// @custom:lattice-kind bundle

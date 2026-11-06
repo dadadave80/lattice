@@ -8,7 +8,7 @@ import {SemaphoreLib} from "@lattice/privacy/libraries/SemaphoreLib.sol";
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice One-shot initializer for a Semaphore diamond — seeds AccessControl (so the `setVerifier` admin setter
 ///         is `DEFAULT_ADMIN_ROLE`-gated) and registers the ISemaphore interface (ERC-165) with its off-chain
-///         proof verifier. Delegatecalled by {Diamond.initialize} inside the initializing window (so it must NOT
+///         proof verifier. Delegatecalled by {Lattice.initialize} inside the initializing window (so it must NOT
 ///         open its own pre/postInitializer; each `__*_init` guard passes because the window is already open).
 /// @custom:lattice-kind bundle
 contract SemaphoreInit {

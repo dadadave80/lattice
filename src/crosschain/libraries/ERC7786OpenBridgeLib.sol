@@ -125,7 +125,7 @@ library ERC7786OpenBridgeLib {
         emit IERC7786OpenBridge.ThresholdUpdated(threshold);
     }
 
-    /// @notice Sets the M-of-N coverage-awareness knob (issue #77 Q5): when non-zero, {sendMessage} refuses
+    /// @notice Sets the M-of-N coverage-awareness knob (decided in #77, Q5): when non-zero, {sendMessage} refuses
     ///         destinations whose DIRECT registry coverage is below it (set 2+ to hard-refuse M=1 routes; 0 —
     ///         the default — disables the check entirely, so a diamond without a chain registry keeps working).
     function setMinDirectCoverage(uint8 minDirectCoverage_) internal {
@@ -156,7 +156,7 @@ library ERC7786OpenBridgeLib {
 
     /// @notice ERC-7786 source: wraps the message and fans it out across all gateways to the matching
     ///         remote bridge. Rejects value + attributes. `sendId` = keccak of the per-gateway ids (or 0).
-    /// @dev COVERAGE GATE (issue #77 Q5): when the admin has set `_minDirectCoverage` non-zero, the parsed
+    /// @dev COVERAGE GATE (decided in #77, Q5): when the admin has set `_minDirectCoverage` non-zero, the parsed
     ///      destination chain must have at least that many DIRECT (non-hub-routed) gateways recorded in the
     ///      chain registry — {OpenBridgeInsufficientCoverage} otherwise. The default 0 skips the registry
     ///      read entirely, so a diamond without a chain registry record (or facet) behaves exactly as before.

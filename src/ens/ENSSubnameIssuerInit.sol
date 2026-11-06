@@ -9,7 +9,7 @@ import {ENSSubnameIssuerLib} from "@lattice/ens/libraries/ENSSubnameIssuerLib.so
 /// @notice One-shot initializer for an ENS subname-issuer diamond — seeds AccessControl (so `issueSubname` and the
 ///         wrapper setter are `ENS_SUBNAME_ISSUER_ROLE`-gated), registers the IENSSubnameIssuer interface
 ///         (ERC-165), and wires the external ENS NameWrapper the facet forwards `setSubnodeRecord` to.
-///         Delegatecalled by {Diamond.initialize} inside the initializing window (so it must NOT open its own
+///         Delegatecalled by {Lattice.initialize} inside the initializing window (so it must NOT open its own
 ///         pre/postInitializer; each `__*_init` guard passes because the window is already open). Reverts
 ///         {ENSSubnameIssuerZeroNameWrapper} for a zero wrapper.
 /// @custom:lattice-kind bundle

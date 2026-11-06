@@ -8,7 +8,7 @@ import {HederaPrngAdapterLib} from "@lattice/oracles/hedera/HederaPrngAdapterLib
 /// @notice One-shot initializer for a PRNG diamond — registers the IHederaPrngAdapter interface (ERC-165) and
 ///         nothing else: the module is stateless (the seed comes straight from the system contract at call
 ///         time, so there is no subscription, no keeper and no request book to seed). Delegatecalled by
-///         {Diamond.initialize} inside the initializing window (so it must NOT open its own
+///         {Lattice.initialize} inside the initializing window (so it must NOT open its own
 ///         pre/postInitializer).
 /// @custom:lattice-kind step
 contract HederaPrngAdapterInit {

@@ -10,7 +10,7 @@ import {ZetaChainGatewayAdapterLib} from "@lattice/crosschain/zetachain/ZetaChai
 ///         gateway/remote/revert-gas setters are admin-gated, wires the DEPLOYED `GatewayEVM` (address varies per
 ///         connected chain), registers the hub route (ZEVM universal app) in BOTH the forward and reverse maps,
 ///         seeds the default `onRevertGasLimit`, and registers the ERC-7786 gateway-source interface via ERC-165.
-///         Delegatecalled by {Diamond.initialize} inside the initializing window (so it must NOT open its own
+///         Delegatecalled by {Lattice.initialize} inside the initializing window (so it must NOT open its own
 ///         pre/postInitializer; each `__*_init` guard passes because the window is already open). Companion to the
 ///         {LayerZeroGatewayAdapterInit} pattern — a first-class production deploy artifact.
 /// @custom:lattice-kind bundle

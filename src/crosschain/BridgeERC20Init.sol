@@ -9,7 +9,7 @@ import {CrosschainLinkLib} from "@lattice/crosschain/libraries/CrosschainLinkLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice One-shot initializer for a custody-bridge diamond over a legacy ERC-20 — seeds AccessControl, the
 ///         reentrancy guard (the lock/release path is `nonReentrant`), the {CrosschainLink} messaging registry,
-///         and configures the bridged token. Delegatecalled by {Diamond.initialize} inside the initializing
+///         and configures the bridged token. Delegatecalled by {Lattice.initialize} inside the initializing
 ///         window (so it must NOT open its own pre/postInitializer; each `__*_init` guard passes because the
 ///         window is already open). Reverts `BridgeZeroToken` if `token` is the zero address.
 /// @custom:lattice-kind bundle

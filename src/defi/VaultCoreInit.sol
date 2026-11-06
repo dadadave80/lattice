@@ -12,7 +12,7 @@ import {ERC4626Lib} from "@lattice/tokens/ERC4626/libraries/ERC4626Lib.sol";
 ///         the module initializers in dependency order inside a single initializing window: AccessControl
 ///         (grants `DEFAULT_ADMIN_ROLE` to `admin`, gating strategy-manager changes), ERC-20 (share metadata),
 ///         ERC-4626 (underlying asset + offset), then VaultCore (registers IVaultCore and IVaultCoreRecovery via ERC-165).
-///         Delegatecalled by {Diamond.initialize} inside the initializing window — it must NOT open its own
+///         Delegatecalled by {Lattice.initialize} inside the initializing window — it must NOT open its own
 ///         pre/postInitializer; each `__*_init` guard passes because the window is already open.
 /// @custom:lattice-kind bundle
 contract VaultCoreInit {

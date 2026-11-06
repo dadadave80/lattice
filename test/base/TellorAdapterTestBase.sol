@@ -16,7 +16,7 @@ import {Test} from "forge-std/Test.sol";
 ///         `adapter` handle — so every read routes through the diamond's `delegatecall` dispatch, catching
 ///         selector/storage/init bugs a mock hides. The external `MockTellor` stays a test fixture (it is NOT the
 ///         facet under test). `deployer` is exposed so the zero-address init-revert test can build cuts and drive
-///         {Diamond.initialize} directly.
+///         {Lattice.initialize} directly.
 abstract contract TellorAdapterTestBase is Test, GetSelectors {
     DeployTellorAdapter internal deployer;
     address internal diamond; // the assembled Tellor adapter diamond

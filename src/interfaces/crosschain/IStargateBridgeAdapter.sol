@@ -154,7 +154,7 @@ interface IStargateBridgeAdapter {
     /// @notice Sends `p.amountLD` of `p.token` (pulled from `msg.sender`) through its registered Stargate
     ///         pool toward the ERC-7930 `p.recipient` on `p.destinationChainId`. `msg.value` is the LayerZero
     ///         fee EXCLUSIVELY (quoted precheck; excess refunds to `msg.sender`, never the diamond).
-    /// @dev TAXI ONLY (issue #77 Q11): the send is dispatched with EMPTY `oftCmd` (immediate/taxi mode) and
+    /// @dev TAXI ONLY (tracked in #213): the send is dispatched with EMPTY `oftCmd` (immediate/taxi mode) and
     ///      EMPTY `composeMsg`/`extraOptions` — bus mode (deferred batched sends) and `lzCompose` destination
     ///      hooks are DEFERRED to a future revision. DUST SWEEP: pools truncate `amountLD` to shared decimals,
     ///      so the pool may debit less than was pulled; the exact un-debited remainder is returned to

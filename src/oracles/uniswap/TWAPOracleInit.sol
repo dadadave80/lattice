@@ -8,7 +8,7 @@ import {TWAPOracleLib} from "@lattice/oracles/uniswap/TWAPOracleLib.sol";
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice One-shot initializer for a TWAPOracle diamond — grants `DEFAULT_ADMIN_ROLE` to `admin` (pair
 ///         registration is admin-gated; observation recording is permissionless) and registers ITWAPOracle via
-///         ERC-165. Delegatecalled by {Diamond.initialize} inside the initializing window (so it must NOT open
+///         ERC-165. Delegatecalled by {Lattice.initialize} inside the initializing window (so it must NOT open
 ///         its own pre/postInitializer; each `__*_init` guard passes because the window is already open).
 ///         Companion to the {ERC2981Init}/{VaultCoreInit} patterns — a first-class production deploy artifact.
 /// @custom:lattice-kind bundle

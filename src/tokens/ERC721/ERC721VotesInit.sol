@@ -11,7 +11,7 @@ import {NoncesLib} from "@lattice/utils/libraries/NoncesLib.sol";
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice One-shot initializer for the ERC-721 Votes extension recipe — seeds the EIP-712 domain (name `name_`,
 ///         version "1") and nonce storage the `delegateBySig` digest reads, and the checkpoint/clock state (which
-///         registers IVotes). Delegatecalled by {Diamond.initialize} (through {MultiInit}) inside the initializing
+///         registers IVotes). Delegatecalled by {Lattice.initialize} (through {MultiInit}) inside the initializing
 ///         window opened by the diamond, alongside the base {ERC721Init}; it must NOT open its own
 ///         pre/postInitializer. Reverts `ERC721VotesForbiddenBatchMint` on a diamond that initialized batch minting
 ///         ({ERC721ConsecutiveLib}), whose batches the vote checkpoints would miss, including in a later upgrade cut.

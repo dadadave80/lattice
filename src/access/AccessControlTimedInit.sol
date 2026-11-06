@@ -8,7 +8,7 @@ import {AccessControlTimedLib} from "@lattice/access/libraries/AccessControlTime
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice One-shot initializer for an AccessControlTimed diamond — seeds the base role storage
 ///         (`DEFAULT_ADMIN_ROLE` to `admin`, IAccessControl ERC-165) AND registers the IAccessControlTimed
-///         interface, both inside the ONE initializing window {Diamond.initialize} opens (no pre/postInitializer).
+///         interface, both inside the ONE initializing window {Lattice.initialize} opens (no pre/postInitializer).
 /// @custom:lattice-kind bundle
 contract AccessControlTimedInit {
     /// @notice Seeds the AccessControl + timed-role modules.

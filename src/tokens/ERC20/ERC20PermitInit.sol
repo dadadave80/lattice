@@ -9,7 +9,7 @@ import {NoncesLib} from "@lattice/utils/libraries/NoncesLib.sol";
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice One-shot initializer for the ERC-20 Permit (ERC-2612) extension — seeds the EIP-712 domain and nonce
 ///         storage {ERC20Permit} builds its digest over, then registers IERC20Permit via ERC-165. The EIP-712
-///         domain uses the token `name_` and version "1". Delegatecalled by {Diamond.initialize} (through
+///         domain uses the token `name_` and version "1". Delegatecalled by {Lattice.initialize} (through
 ///         {MultiInit}) inside the initializing window opened by the diamond, alongside the base {ERC20Init}; it
 ///         must NOT open its own pre/postInitializer.
 /// @custom:lattice-kind bundle

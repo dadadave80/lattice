@@ -22,7 +22,7 @@ import {NotInitializing} from "@lattice/utils/libraries/InitializableLib.sol";
 
 /// @notice One-shot initializer for the release-composed ERC-20 diamond: seeds name/symbol (registering
 ///         IERC20 via ERC-165) and mints an opening balance so the pipeline test can exercise a real
-///         transfer. Delegatecalled by {Diamond.initialize} inside the initializing window, so
+///         transfer. Delegatecalled by {Lattice.initialize} inside the initializing window, so
 ///         `address(this)` is the diamond.
 contract ReleaseErc20Init {
     function init(string memory name_, string memory symbol_, address to, uint256 amount) external {

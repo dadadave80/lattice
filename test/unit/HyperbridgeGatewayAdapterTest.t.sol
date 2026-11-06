@@ -309,7 +309,7 @@ contract HyperbridgeGatewayAdapterTest is HyperbridgeGatewayAdapterTestBase {
     }
 
     /// @dev Only `d.initialize` is wrapped in `expectRevert` (the `HyperbridgeZeroHost` revert bubbles up
-    ///      through {Diamond.initialize}); `deployer` was created in `setUp`.
+    ///      through {Lattice.initialize}); `deployer` was created in `setUp`.
     function test_InitRejectsZeroHost() public {
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) = deployer.buildCuts(admin, address(0));
         Lattice d = new Lattice();

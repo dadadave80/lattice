@@ -79,7 +79,7 @@ struct HyperbridgeGatewayAdapterStorage {
 ///      `address(this)` — the host refunds timeout fees to the payer, and a diamond payer would strand them.
 ///      The host's `feeToken()` is read LIVE on every send/quote (the host can migrate it — caching would
 ///      charge/approve the wrong token). A native-token fee path (host-side uniswap swap of `msg.value`)
-///      exists upstream but is DEFERRED — stray value reverts in v1 (issue #77 Q13).
+///      exists upstream but is DEFERRED — stray value reverts in v1 (tracked in #213).
 library HyperbridgeGatewayAdapterLib {
     function hyperbridgeGatewayAdapterStorage() internal pure returns (HyperbridgeGatewayAdapterStorage storage $) {
         assembly {
@@ -203,7 +203,7 @@ library HyperbridgeGatewayAdapterLib {
     /// @notice ERC-7786 source. Delegates to {sendMessageWithFee} with `relayerFee = 0` (unfunded/self-relay,
     ///         valid in ISMP — anyone may still relay the proof permissionlessly).
     /// @dev No attributes are supported — any attribute reverts {UnsupportedAttribute}. The interface forces
-    ///      `payable`, but the native-token fee path is DEFERRED (issue #77 Q13) — stray value reverts
+    ///      `payable`, but the native-token fee path is DEFERRED (tracked in #213) — stray value reverts
     ///      {HyperbridgeUnexpectedValue} instead of being trapped in the Diamond.
     function sendMessage(bytes calldata recipient, bytes calldata payload, bytes[] calldata attributes)
         internal
@@ -298,7 +298,7 @@ library HyperbridgeGatewayAdapterLib {
     /// @notice Host timeout callback for a request WE dispatched: decodes the envelope and emits
     ///         {HyperbridgeRequestTimedOut}. EMIT-ONLY in v1 — the fee refund itself is HOST-SIDE to
     ///         `DispatchPost.payer` (the original sending user); this hook is the notification surface an
-    ///         application layer keys compensating actions off (issue #77 Q8).
+    ///         application layer keys compensating actions off (decided in #77, Q8).
     /// @dev A timeout fires on the SOURCE chain for our own dispatch, so `request.source` is OUR state machine
     ///      and `request.from` is OUR module — neither is attacker-controlled once `msg.sender == host` holds,
     ///      which is the REAL auth here (the host only ever times out commitments it stored at dispatch).

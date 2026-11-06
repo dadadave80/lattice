@@ -183,8 +183,10 @@ hardening change, as corroboration on a node. With the current ABI the `deploy` 
 - **`deploy` alongside `deployStrict`.** `deploy` keeps the idempotent return for scripts that pre-check
   the address (`BaseDeploy._assemble`); user interfaces should call `deployStrict`.
 - **Every facet exports and ships.** All 13 facets the #176 research comment listed now carry
-  `exportSelectors()`, so none is custom-cut only, and all 13 join `FacetInventory` (129 entries), which
-  deploys and registers them in each release. That includes CurveStableSwapAdapter. The README still marks it
+  `exportSelectors()`, so none is custom-cut only, and all 13 joined the 129-entry `FacetInventory` in
+  the 2026-10-09 measurement below. The current [release inventory](../../script/lib/FacetInventory.sol)
+  also includes later additions and deploys and registers every listed facet in each release. That includes
+  CurveStableSwapAdapter. The README still marks it
   unsupported as a vault strategy (its spot `get_virtual_price()` NAV is exposed to read-only reentrancy), but
   that caveat is about registering it with a vault's `StrategyManager`, not about listing the facet in the
   registry. The export is never cut into a diamond and is not part of any registered ERC-165 interface, so

@@ -95,7 +95,7 @@ contract TestnetAsset is IERC20 {
 /// @title DeployGovernedVaultENS
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice Ready-to-deploy recipe for the ENS-NAMED self-governed ERC-4626 vault: the {DeployGovernedVault}
-///         13-cut diamond plus the {ENSReverseClaimer} facet, initialized in ONE shot by
+///         14-cut diamond plus the {ENSReverseClaimer} facet (15 cuts), initialized in ONE shot by
 ///         {GovernedVaultENSInit} — the vault claims its primary ENS name at init (the registrar sees the
 ///         diamond as `msg.sender`), and every future rename passes through share-holder governance
 ///         (`ENS_MANAGER_ROLE` is held by the diamond only).
@@ -129,7 +129,7 @@ contract DeployGovernedVaultENS is DeployGovernedVault {
     /// @param asset The vault underlying that failed the faucet probe.
     error DeployGovernedVaultENS__AssetNotOpenFaucet(address asset);
 
-    /// @notice Builds the 14 cuts + combined initializer for the ENS-named self-governed vault (no broadcast,
+    /// @notice Builds the 15 cuts + combined initializer for the ENS-named self-governed vault (no broadcast,
     ///         no proxy deploy): the inherited 14 base cuts plus the {ENSReverseClaimer} facet, initialized by
     ///         the combined {GovernedVaultENSInit} (which replays the base init sequence exactly).
     function buildCutsWithENS(GovernedVaultENSParams memory p)

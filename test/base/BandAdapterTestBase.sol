@@ -16,7 +16,7 @@ import {Test} from "forge-std/Test.sol";
 ///         — so every read routes through the diamond's `delegatecall` dispatch, catching selector/storage/init
 ///         bugs a mock hides. The external `MockStdReference` stays a test fixture (it is NOT the facet under
 ///         test). `deployer` is exposed so the zero-reference init-revert test can build cuts and drive
-///         {Diamond.initialize} directly.
+///         {Lattice.initialize} directly.
 abstract contract BandAdapterTestBase is Test, GetSelectors {
     DeployBandAdapter internal deployer;
     address internal diamond; // the assembled Band adapter diamond

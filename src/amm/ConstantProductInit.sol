@@ -9,7 +9,7 @@ import {ConstantProductLib} from "@lattice/amm/libraries/ConstantProductLib.sol"
 /// @notice One-shot initializer for a ConstantProduct AMM diamond — seeds AccessControl (so any admin-gated
 ///         operation is `DEFAULT_ADMIN_ROLE`-gated) and binds the pool to its two ERC-20 reserve tokens
 ///         (sorted token0 < token1), registering IConstantProduct via ERC-165 and arming the reentrancy guard.
-///         Delegatecalled by {Diamond.initialize} inside the initializing window (so it must NOT open its own
+///         Delegatecalled by {Lattice.initialize} inside the initializing window (so it must NOT open its own
 ///         pre/postInitializer; each `__*_init` guard passes because the window is already open). Companion to
 ///         the {ERC2981Init}/{VaultCoreInit} patterns — a first-class production deploy artifact.
 /// @custom:lattice-kind bundle

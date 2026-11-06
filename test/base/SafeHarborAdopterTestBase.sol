@@ -21,7 +21,7 @@ abstract contract SafeHarborAdopterTestBase is Test, GetSelectors {
     DeploySafeHarborAdopter internal deployer;
 
     /// @notice Builds the production SafeHarborAdopter cuts + initializer without assembling a diamond, so a
-    ///         test can drive `Diamond.initialize` directly and assert an init-time revert.
+    ///         test can drive `Lattice.initialize` directly and assert an init-time revert.
     /// @param admin The address granted `DEFAULT_ADMIN_ROLE`.
     /// @param registry The SEAL SafeHarborRegistry (zero to trigger the init revert path).
     /// @param factory The SEAL AgreementFactory (zero allowed).

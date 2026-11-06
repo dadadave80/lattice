@@ -8,7 +8,7 @@ import {CrosschainLinkLib} from "@lattice/crosschain/libraries/CrosschainLinkLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice One-shot initializer for an ERC-7786 messaging diamond — seeds AccessControl (so the link/handler
 ///         setters are admin-gated) and registers the ICrosschainLink interface (ERC-165). Delegatecalled by
-///         {Diamond.initialize} inside the initializing window (so it must NOT open its own pre/postInitializer;
+///         {Lattice.initialize} inside the initializing window (so it must NOT open its own pre/postInitializer;
 ///         each `__*_init` guard passes because the window is already open). Companion to the
 ///         {AccessControlInit}/{ERC2981Init} patterns — a first-class production deploy artifact.
 /// @custom:lattice-kind bundle

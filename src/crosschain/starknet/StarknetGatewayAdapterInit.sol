@@ -10,7 +10,7 @@ import {StarknetGatewayAdapterLib} from "@lattice/crosschain/starknet/StarknetGa
 ///         handler / trusted-sender setters are `DEFAULT_ADMIN_ROLE`-gated), the reentrancy guard (the
 ///         send/cancel/consume paths are `nonReentrant`), and wires the Starknet core + expected ERC-7930
 ///         chain reference (registering the IStarknetGatewayAdapter interface via ERC-165). Delegatecalled by
-///         {Diamond.initialize} inside the initializing window (so it must NOT open its own pre/postInitializer;
+///         {Lattice.initialize} inside the initializing window (so it must NOT open its own pre/postInitializer;
 ///         each `__*_init` guard passes because the window is already open). Reverts `StarknetZeroAddress` on a
 ///         zero core, `StarknetEmptyChainReference` on an empty chain reference.
 /// @custom:lattice-kind bundle

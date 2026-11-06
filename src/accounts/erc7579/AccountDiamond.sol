@@ -17,7 +17,7 @@ import {IModuleConfig} from "@lattice/interfaces/accounts/IModuleConfig.sol";
 ///         and only an otherwise-unhandled selector falls through to an installed fallback handler. `diamondCut`
 ///         thus remains the sole selector authority; 7579 fallbacks extend the account's reach without shadowing
 ///         facets (install reverts {FallbackShadowsFacet} for an owned selector). A selector neither a facet nor
-///         a handler claims reverts {NoFallbackHandler} (vs. the base Diamond's silent empty return).
+///         a handler claims reverts {NoFallbackHandler}; the base {Diamond} instead reverts {FunctionDoesNotExist}.
 /// @dev Forwards to the handler via CALL — with the original caller appended ERC-2771-style — or DELEGATECALL,
 ///      per the handler's registered call type. This is the proxy the `AccountFactory` deploys and that
 ///      `Account7702Diamond` extends, so factory- and 7702-onboarded accounts both get fallback support.

@@ -97,7 +97,7 @@ contract StarknetGatewayAdapterTest is StarknetGatewayAdapterTestBase {
     }
 
     /// @dev Only `d.initialize` is wrapped in `expectRevert` (the init revert bubbles up through
-    ///      {Diamond.initialize}); `deployer` was created in `setUp`.
+    ///      {Lattice.initialize}); `deployer` was created in `setUp`.
     function _expectInitRevert(address core_, bytes memory chainRef, bytes4 err) internal {
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) = deployer.buildCuts(admin, core_, chainRef);
         Lattice d = new Lattice();

@@ -35,7 +35,7 @@ struct GovernedVaultENSParams {
 ///         the reverse registrar is stored, `ENS_MANAGER_ROLE` is granted to the DIAMOND ONLY (so renames pass
 ///         exclusively through a passed, timelock-executed governance proposal), and, when `ensName` is
 ///         non-empty, the reverse name is claimed inline. The claim works because this contract is
-///         delegatecalled by {Diamond.initialize}: `address(this)` IS the diamond, so the registrar sees the
+///         delegatecalled by {Lattice.initialize}: `address(this)` IS the diamond, so the registrar sees the
 ///         DIAMOND as `msg.sender` — exactly the self-claim that makes the diamond's `addr.reverse` record
 ///         resolve to `ensName`.
 /// @dev Delegatecalled inside the diamond's initializing window — each `__*_init` guard passes because the

@@ -10,7 +10,7 @@ import {CCTPBridgeAdapterLib} from "@lattice/crosschain/circle/CCTPBridgeAdapter
 ///         chain-domain and per-domain config setters are `DEFAULT_ADMIN_ROLE`-gated), the reentrancy guard
 ///         (the burn path is `nonReentrant`), and wires the deployed CCTP TokenMessenger + MessageTransmitter +
 ///         USDC (registering the ICCTPBridgeAdapter interface via ERC-165). Delegatecalled by
-///         {Diamond.initialize} inside the initializing window (so it must NOT open its own pre/postInitializer;
+///         {Lattice.initialize} inside the initializing window (so it must NOT open its own pre/postInitializer;
 ///         each `__*_init` guard passes because the window is already open). Reverts `CCTPZeroAddress` if any of
 ///         the three CCTP addresses is zero.
 /// @custom:lattice-kind bundle

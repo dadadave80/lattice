@@ -12,7 +12,7 @@ import {
 ///         AccessControl so the remote-adapter setter is admin-gated, and registers the ERC-7786 gateway-source
 ///         interface via ERC-165. Unlike the {LayerZeroGatewayAdapterInit} / {CCIPGatewayAdapterInit} siblings
 ///         there is NO endpoint/router ctor arg: the messenger is the fixed predeploy constant
-///         (`0x4200000000000000000000000000000000000023`). Delegatecalled by {Diamond.initialize} inside the
+///         (`0x4200000000000000000000000000000000000023`). Delegatecalled by {Lattice.initialize} inside the
 ///         initializing window (so it must NOT open its own pre/postInitializer; each `__*_init` guard passes
 ///         because the window is already open). A first-class production deploy artifact.
 /// @custom:lattice-kind bundle

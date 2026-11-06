@@ -8,7 +8,7 @@ import {GelatoAutomateAdapterLib} from "@lattice/oracles/gelato/GelatoAutomateAd
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice One-shot initializer for a Gelato Automate adapter diamond — registers the IGelatoAutomateAdapter
 ///         interface (ERC-165) and seeds AccessControl so `setConfig`/`createTask`/`cancelTask` are admin-gated.
-///         Delegatecalled by {Diamond.initialize} inside the initializing window (so it must NOT open its own
+///         Delegatecalled by {Lattice.initialize} inside the initializing window (so it must NOT open its own
 ///         pre/postInitializer; each `__*_init` guard passes because the window is already open). Companion to
 ///         the {ERC2981Init} pattern — a first-class production deploy artifact. The Gelato
 ///         Automate contract + dedicated msg.sender are configured post-deploy via the admin-gated `setConfig`.

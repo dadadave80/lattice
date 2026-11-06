@@ -115,7 +115,7 @@ library ZetaChainGatewayAdapterLib {
     }
 
     /// @notice No `sendMessage` attributes are supported: surfacing `RevertOptions` as a per-message ERC-7786
-    ///         attribute is #77 open question #8 (DEFERRED) — an admin-configured default is used instead.
+    ///         attribute is DEFERRED (tracked in #213) — an admin-configured default is used instead.
     function supportsAttribute(bytes4) internal pure returns (bool) {
         return false;
     }
@@ -166,7 +166,7 @@ library ZetaChainGatewayAdapterLib {
     ///         globally-unique `keccak256(abi.encode(block.chainid, nonce))` as the ERC-7786 `sendId`.
     /// @dev No attributes are supported — any attribute reverts {UnsupportedAttribute}. The `RevertOptions` are an
     ///      admin-configured default (`revertAddress = msg.sender`, `callOnRevert = false`); surfacing them
-    ///      per-message is #77 open question #8 (DEFERRED). `remote = forward[destChainId]` is the ZEVM universal
+    ///      per-message is DEFERRED (tracked in #213). `remote = forward[destChainId]` is the ZEVM universal
     ///      app / hub-terminated route; an unset route reverts {UnknownDestinationChain}.
     function sendMessage(bytes calldata recipient, bytes calldata payload, bytes[] calldata attributes)
         internal

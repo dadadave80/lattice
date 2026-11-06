@@ -8,7 +8,7 @@ import {ChainlinkVRFLib} from "@lattice/oracles/chainlink/ChainlinkVRFLib.sol";
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice One-shot initializer for a Chainlink VRF randomness diamond — seeds AccessControl so the VRF
 ///         config + request setters are admin-gated, and registers the IChainlinkVRF interface (ERC-165).
-///         Delegatecalled by {Diamond.initialize} inside the initializing window (so it must NOT open its own
+///         Delegatecalled by {Lattice.initialize} inside the initializing window (so it must NOT open its own
 ///         pre/postInitializer; each `__*_init` guard passes because the window is already open). Companion to
 ///         the {ERC2981Init} pattern — a first-class production deploy artifact.
 /// @custom:lattice-kind bundle

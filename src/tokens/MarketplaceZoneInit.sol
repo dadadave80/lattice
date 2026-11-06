@@ -8,7 +8,7 @@ import {MarketplaceZoneLib} from "@lattice/tokens/libraries/MarketplaceZoneLib.s
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice One-shot initializer for the Seaport {MarketplaceZone} recipe — grants `admin_` the DEFAULT_ADMIN_ROLE
 ///         that gates `setPaused`/`setRoyaltyRequired` and the `MARKETPLACE_BLOCKED_ROLE` grants, then registers
-///         the Seaport `ZoneInterface` via ERC-165. Delegatecalled by {Diamond.initialize} inside the
+///         the Seaport `ZoneInterface` via ERC-165. Delegatecalled by {Lattice.initialize} inside the
 ///         initializing window (so it must NOT open its own pre/postInitializer; the `__*_init` guards pass
 ///         because the window is already open).
 /// @custom:lattice-kind bundle

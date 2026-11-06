@@ -8,7 +8,7 @@ import {ShieldedPoolLib} from "@lattice/privacy/libraries/ShieldedPoolLib.sol";
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice One-shot initializer for a ShieldedPool diamond — seeds AccessControl (so `createPool` is
 ///         `DEFAULT_ADMIN_ROLE`-gated) and registers the IShieldedPool interface (ERC-165). Delegatecalled by
-///         {Diamond.initialize} inside the initializing window (so it must NOT open its own pre/postInitializer;
+///         {Lattice.initialize} inside the initializing window (so it must NOT open its own pre/postInitializer;
 ///         each `__*_init` guard passes because the window is already open).
 /// @custom:lattice-kind bundle
 contract ShieldedPoolInit {

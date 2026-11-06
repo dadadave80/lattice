@@ -9,7 +9,7 @@ import {CCIPGatewayAdapterLib} from "@lattice/crosschain/chainlink/CCIPGatewayAd
 /// @notice One-shot initializer for a CCIP gateway-adapter diamond — seeds AccessControl so the chain-selector,
 ///         remote-gateway, destination and fee-token setters are admin-gated, and wires the CCIP router plus the
 ///         initial fee token (registering the ERC-7786 / CCIP-receiver interfaces via ERC-165). Delegatecalled by
-///         {Diamond.initialize} inside the initializing window (so it must NOT open its own pre/postInitializer;
+///         {Lattice.initialize} inside the initializing window (so it must NOT open its own pre/postInitializer;
 ///         each `__*_init` guard passes because the window is already open). Companion to the {ERC2981Init} and
 ///         {ChainlinkAdapterInit} patterns — a first-class production deploy artifact.
 /// @custom:lattice-kind bundle

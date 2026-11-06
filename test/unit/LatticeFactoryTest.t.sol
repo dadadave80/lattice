@@ -546,7 +546,7 @@ contract LatticeFactoryTest is Test {
         address predicted = factory.predict(address(this), SALT);
         address revertingInit = address(new MockRevertingInit());
 
-        // The init delegatecall reverts inside {Diamond.initialize}; DiamondLib bubbles the raw reason and
+        // The init delegatecall reverts inside {Lattice.initialize}; DiamondLib bubbles the raw reason and
         // the whole deploy — CREATE2 included — unwinds.
         FacetCut[] memory loupeCut = _loupeCut(); // hoisted: the CREATE must not consume the expectRevert
         vm.expectRevert("init failed");

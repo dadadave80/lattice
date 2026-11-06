@@ -19,7 +19,7 @@ import {Test} from "forge-std/Test.sol";
 ///         bugs a mock hides. `_deployMintableERC20` spins up a real base ERC-20 diamond (production
 ///         {DeployERC20} + the test-only {TokenTestFacet} for ungated minting) to use as a pair token, mirroring
 ///         how the ERC-4626 wave uses a real underlying asset. `_buildPoolCuts` is exposed separately so
-///         init-revert tests can target the `Diamond.initialize` call directly. Shared by
+///         init-revert tests can target the `Lattice.initialize` call directly. Shared by
 ///         {ConstantProductTest} and {ConstantProductFeeOnTransferTest}.
 abstract contract ConstantProductTestBase is Test, GetSelectors {
     DeployConstantProduct internal poolDeployer;

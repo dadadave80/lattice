@@ -9,7 +9,7 @@ import {ERC4626Lib} from "@lattice/tokens/ERC4626/libraries/ERC4626Lib.sol";
 /// @notice One-shot initializer for an ERC-4626 tokenized-vault diamond. The vault's shares ARE an ERC-20
 ///         token, so this seeds BOTH modules in a single initializing window: `__ERC20_init` (share
 ///         name/symbol) then `__ERC4626_init` (underlying asset + virtual-share decimals offset, which also
-///         registers IERC4626 via ERC-165). Delegatecalled by {Diamond.initialize} inside the initializing
+///         registers IERC4626 via ERC-165). Delegatecalled by {Lattice.initialize} inside the initializing
 ///         window — it must NOT open its own pre/postInitializer; each `__*_init` guard passes because the
 ///         window is already open. Companion to the {ERC20Init} pattern — a first-class production deploy
 ///         artifact shared by `run --broadcast` and the facet tests.

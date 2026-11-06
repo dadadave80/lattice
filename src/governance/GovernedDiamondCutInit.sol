@@ -12,7 +12,7 @@ import {EmergencyStopLib} from "@lattice/security/libraries/EmergencyStopLib.sol
 /// @notice One-shot initializer for a governed diamond-cut diamond — seeds AccessControl (so guardian
 ///         management + `emergencyResume` are `DEFAULT_ADMIN_ROLE`-gated), EmergencyStop, registers the
 ///         IERC165 + IDiamondCut + IDiamondLoupe ERC-165 flags, and pins `UPGRADE_EXECUTOR_ROLE` to itself (granted
-///         to `address(this)`). Delegatecalled by {Diamond.initialize} inside the initializing window (so
+///         to `address(this)`). Delegatecalled by {Lattice.initialize} inside the initializing window (so
 ///         it must NOT open its own pre/postInitializer; each `__*_init` guard passes because the window is
 ///         already open). Mirrors exactly what the old `MockGovernedDiamond.initialize` did, minus the
 ///         redundant pre/postInitializer. Companion to the {ERC2981Init} pattern — a

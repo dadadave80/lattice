@@ -542,5 +542,5 @@ account state, and the namespaced slots cannot alias each other (the per-module 
 self-owner signature path uses ECDSA-only recovery (`AccountSignerLib`) to avoid recursing into the EOA's own
 ERC-1271 entry point now that the delegated EOA carries code. Onboarding must be **atomic** — the 7702
 authorization bundled into the first UserOp's transaction (the standard 4337+7702 flow) — since the bare
-`Diamond.initialize` is ungated; integrators that cannot guarantee atomicity delegate to `Account7702Diamond`
+`Lattice.initialize` is ungated; integrators that cannot guarantee atomicity delegate to `Account7702Diamond`
 instead, whose `initializeAuthorized` requires the EOA's signature over the exact onboarding.

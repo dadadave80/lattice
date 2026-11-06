@@ -10,7 +10,7 @@ import {TimelockControllerLib} from "@lattice/governance/libraries/TimelockContr
 /// @notice One-shot initializer for a cross-chain governance diamond — seeds AccessControl, a
 ///         {TimelockController} whose sole proposer is the Diamond itself (so only the authenticated cross-chain
 ///         handler can schedule operations) with open execution, and the {CrosschainLink} messaging registry.
-///         Delegatecalled by {Diamond.initialize} inside the initializing window, so `address(this)` is the
+///         Delegatecalled by {Lattice.initialize} inside the initializing window, so `address(this)` is the
 ///         Diamond and it must NOT open its own pre/postInitializer (each `__*_init` guard passes because the
 ///         window is already open).
 /// @custom:lattice-kind bundle

@@ -9,7 +9,7 @@ import {SemaphoreLib} from "@lattice/privacy/libraries/SemaphoreLib.sol";
 /// @notice One-shot initializer for a PrivateVoting diamond — seeds the underlying Semaphore module with its
 ///         off-chain proof verifier and registers both the ISemaphore and IPrivateVoting interfaces (ERC-165).
 ///         Poll and group admin are per-group (set by `createGroup`), so there is NO AccessControl in the recipe.
-///         Delegatecalled by {Diamond.initialize} inside the initializing window (so it must NOT open its own
+///         Delegatecalled by {Lattice.initialize} inside the initializing window (so it must NOT open its own
 ///         pre/postInitializer; each `__*_init` guard passes because the window is already open).
 /// @custom:lattice-kind bundle
 contract PrivateVotingInit {

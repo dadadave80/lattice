@@ -66,12 +66,13 @@ if older documentation conflicts with the development policy below, apply this p
   and the submodule lock against drift.
 - Recorded exception (user-approved 2026-09-12, kept 2026-10-08): Hedera `forge script` work runs on
   Foundry 1.7.1 through `script/config/hedera/forge-hedera.sh`. By default every 1.8 release
-  measured (1.8.1, 1.8.3, 1.8.5) fetches fork state with EIP-1898 block-hash objects, which Hedera's
-  JSON-RPC relay rejects. Foundry 1.8.5 adds `--fork-state-by-number`, which passed a `forge script`
-  simulation and the forking test on 2026-10-08 but is not yet verified for a broadcast. Under
-  `[profile.hedera]` the measured 1.7.1 and 1.8.5 versions emit identical bytecode
-  (`docs/guides/hedera.md`). CI and all
-  other work stay on the shared pin. #227 tracks retiring the exception once the shared pin is
+  measured (1.8.1, 1.8.3, 1.8.5) fetched fork state with EIP-1898 block-hash objects, which the measured
+  Hedera relay rejected. Foundry 1.8.5 adds `--fork-state-by-number`, which passed a `forge script`
+  simulation and the forking test on 2026-10-08. On 2026-11-06, the shared 1.9.0 pin passed the
+  simulation and both `HTSAdapterFork` tests against hashio's relay/0.80.3. Under `[profile.hedera]`,
+  1.7.1 and 1.9.0 emitted identical creation/runtime bytecode on the measured source checkpoint
+  (`docs/guides/hedera.md`). A shared-pin broadcast remains unverified. CI and all other work stay
+  on the shared pin. #227 tracks retiring the exception once the shared pin is
   verified end to end. Do not extend the exception to other chains.
 - Adapt the implementation to the shared toolchain and surface compatibility problems. Do not
   silently downgrade an individual job or change unrelated toolchain settings.
