@@ -131,7 +131,9 @@ cast call "$REGISTRY" 'getCut(bytes32,uint64)((address,uint8,bytes4[]))' "$NAME_
 
 Versions pack as `(major << 48) | (minor << 24) | patch`, with 16/24/24-bit components.
 Use a full-width unsigned integer in clients; the bounded fixture above is `99.0.0`.
-Version zero means the curator's movable `latest` pointer, not a version pin.
+Version zero in non-strict factory entries and `getMany` keys means the curator's movable `latest`
+pointer, not a version pin. Direct `get`, `getCut` and `getSelectors` reads require a concrete version;
+use `latest` to obtain the pointer's record.
 `get` returns stored evidence; `getCut` and `getSelectors` recheck live code and selector commitments.
 Their exporter reads are bounded. A reported selector surface still does not prove correct behavior.
 
@@ -292,8 +294,8 @@ jq '{chain,registryOwner,verified:([.contracts[].verified]|unique),present:([.co
 ```
 
 The offline file contains source/compiler commitments, addresses, constructors, selectors and account
-bindings ([release schema](../../deployments/schema/release.schema.json)). The chain file records a
-specific block, runtime matches, verification and curation state
+bindings ([release schema](../../deployments/schema/release.schema.json)). Its separate observation at
+`deployments/<chain-id>/release-<version>.json` records a specific block, runtime matches, verification and curation state
 ([chain schema](../../deployments/schema/chain.schema.json)). `pre-existing` means observed code
 without a transaction claim; `verified: false` is unknown verification. Observation resets positive
 verification flags. This partial fixture leaves many shared contracts absent and is not a ready chain.
@@ -308,6 +310,13 @@ Cancun is the minimum EVM target for canonical artifacts. RPC aliases are config
 no public chain is currently certified ready by schema-v1 evidence. Do not silently rebuild for an older
 EVM or change metadata and call the result the same release. Initialization authority, custom code,
 upgrade storage compatibility and external protocol assumptions still need review.
+
+Matching ERC20 allowance readers and spenders require EIP-1153 even when the public temporary-approval
+facet is absent. Adding that facet to an older diamond requires upgrading every allowance reader/spender,
+including custom code compiled against the old shared library; adding the facet alone cannot change them.
+Temporary grants cover grant and spend within one transaction, and ordinary approve/permit changes do not
+revoke a temporary grant already live in that transaction. See
+[the temporary-allowance composition limits](selector-compatibility.md#erc-7674-temporary-allowances).
 
 Clean up only the example's files and owned node:
 
