@@ -22,10 +22,14 @@ the module library, and proves that **all storage slots are mutually unique** an
 ERC-165 map slots are mutually unique**. When you add a module, add its slot constants there
 and a row here.
 
+Transient allowance mapping roots are listed separately from persistent layouts: ERC20TemporaryApproval
+uses TLOAD/TSTORE at its derived root and adds no persistent fields. The JSON layout export
+therefore has no separate TemporaryApproval struct.
+
 The [JSON registry](script/upgrades/storage-registry.json) exports every namespace, slot and struct
 layout, including nested structs, from the existing source-checked layout baseline. It also exports
 source-declared interface IDs and map-slot constants with file provenance, deduplicating shared IDs.
-The 108 exported ID/slot pairs include the 107 Lattice registrations and the existing `IDiamondCut` alias.
+The 109 exported ID/slot pairs include the 108 Lattice registrations and the existing `IDiamondCut` alias.
 `make storage-check` checks the source layout, recomputes map slots with `cast`, and detects JSON drift
 and incorrect namespace or interface-ID/map-slot pairs in this table; `make storage-update`
 regenerates both the reviewed baseline and JSON. New releases attach both checked files from the exact
@@ -258,6 +262,7 @@ release tag. Historical release layouts are not regenerated from a later source 
 | ERC1155Supply | `lattice.storage.ERC1155Supply` | `0x587745c63b1b33029f813b403978fa83db2954e4dd333c28aeae4b4e067ade00` | `IERC1155Supply` (supply views only; `burn`/`burnBatch` stay under `IERC1155Burnable`) | `0xeac6339d` | `0x1c1760c9fb8bc6a2feef129121ee2d30637b318349bcc0156b579ab5b5af6f16` |
 | ERC1155URIStorage | `lattice.storage.ERC1155URIStorage` | `0x410b28ad7d410d71a721debe93a5796847f0aba6b82f9b5e65108eff17bfbc00` | `IERC1155URIStorage` (setters only; `uri` stays under `IERC1155MetadataURI`) | `0xd3dc4451` | `0xd822e48b513c28ab47f256a8e46baad1ce902e38e6cae6a58b04347a1a191de1` |
 | ERC1363 | — (no own storage; moves the ERC20 balances and allowances) | — | `IERC1363` (EIP-1363) | `0xb0202a11` | `0x0ebeb7a78f222e08be2c2d80a20fcc22cbe5dd2ddf53005dc602c88dd66185a1` |
+| ERC20TemporaryApproval | `lattice.storage.ERC20TemporaryApproval` (transient mapping only; no persistent fields) | `0xaa382fcf0bf54b576b3f55eb526cf1114e476579e700b2c0450079831fe05700` | `IERC20TemporaryApproval` (ERC-7674) | `0x42232a4c` | `0xac7c974adc1627494c05d38379885274843f8308973f1cb430861ef9696b24b5` |
 | ERC2981 | `lattice.storage.ERC2981` | `0xf01000cac811e850d05bb5588943b621fb762a575809c98a87e3540df4e97a00` | `IERC2981` | `0x2a55205a` | `0x0b6e5f3aef2b5db6c8b7f9a90550b00e1bcf3efa09341feda1a90dabdea92899` |
 | ERC4626 | `lattice.storage.ERC4626` | `0x748f49bc653df23655f3b413e3d5c91c1b4c965af17a32d743e995b145325100` | `IERC4626` | `0x87dfe5a0` | `0xdad016fc8af4f826152a6bfdd6ece63fb81a66a94f522cc8a79db8d6838e2732` |
 | HTSAdapter | `lattice.storage.HTSAdapter` | `0x91b64afeea686e80e2bda212862c0850ed3389288ac3f914b1109537d6e3f500` | `IHTSAdapter` | `0x37ae8968` | `0x0785670462ca582bde40afa31cf7989a7c25557d842b1003652c1ca6b4044d81` |

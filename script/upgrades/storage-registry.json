@@ -4485,6 +4485,16 @@
       ]
     },
     {
+      "interfaceId": "0x42232a4c",
+      "slot": "0xac7c974adc1627494c05d38379885274843f8308973f1cb430861ef9696b24b5",
+      "sources": [
+        {
+          "source": "src/tokens/ERC20/libraries/ERC20TemporaryApprovalLib.sol",
+          "constant": "ERC165_MAP_IERC20TEMPORARYAPPROVAL_SLOT"
+        }
+      ]
+    },
+    {
       "interfaceId": "0x42966c68",
       "slot": "0x9eb38abe883a9d9203f59f04d3952f6b497989121d4c2afe4ca6d5038b9dfc43",
       "sources": [
