@@ -6,7 +6,7 @@ directly with `forge script` (usage is in its NatSpec header) or it is only impo
 
 | Folder | Purpose | Entry point | Makefile target |
 | --- | --- | --- | --- |
-| `script/` (root) | CI guard helpers | `check-licenses.sh` and its fixture test `test-check-licenses.sh`; `check-readme-catalog.sh` and its fixture test `test-check-readme-catalog.sh`; `check-release-build.sh` and its mutation fixtures `test-check-release-build.sh`; `closing-issues.sh` and `test-closing-issues.sh`; `test-storage-layout.sh` tests the storage-layout checker on the Action's fixture project; `fork-lanes.sh` assigns each fork suite to a lane of the weekly fork job and runs a lane (with one whole-lane retry on an RPC error), and `test-fork-lanes.sh` tests it; `error-event-catalog.sh` validates native ABI/AST coverage and writes `errors.json`, with `test-error-event-catalog.sh` fixtures; `erc3643-profile.sh` binds the closed ERC-3643 initializer to canonical host/facet code and selectors, with `test-erc3643-profile.sh` mutation fixtures; `slither-db.py` normalizes `slither.db.json` | `license-check`; `readme-check`; `release-build-check`; `scripts-check`; `erc3643-profile-check`; `erc3643-profile-update`; `abi-catalog`; `slither`, `slither-triage` |
+| `script/` (root) | CI guard helpers | `check-licenses.sh` and its fixture test `test-check-licenses.sh`; `check-readme-catalog.sh` and its fixture test `test-check-readme-catalog.sh`; `check-release-build.sh` and its mutation fixtures `test-check-release-build.sh`; `closing-issues.sh` and `test-closing-issues.sh`; `test-storage-layout.sh` tests the storage-layout checker on the Action's fixture project; `fork-lanes.sh` assigns each fork suite to a lane of the weekly fork job and runs a lane (with one whole-lane retry on an RPC error), and `test-fork-lanes.sh` tests it; `error-event-catalog.sh` validates native ABI/AST coverage and writes `errors.json`, with `test-error-event-catalog.sh` fixtures; `erc3643-profile.sh` binds the closed ERC-3643 initializer to canonical host/facet code and selectors, with `test-erc3643-profile.sh` mutation fixtures; `slither-db.py` normalizes `slither.db.json`; `test-coverage.sh` checks the shared native/instrumented coverage phases | `license-check`; `readme-check`; `release-build-check`; `scripts-check`; `erc3643-profile-check`; `erc3643-profile-update`; `abi-catalog`; `slither`, `slither-triage` |
 | `base/` | Deploy recipes: each `Deploy<Module>.s.sol` builds its cuts (`buildCuts`) and creates and initializes the diamond in one transaction through `LatticeFactory`. Shared by deploys and tests | `BaseDeploy.s.sol` (shared primitive); `<area>/Deploy<Module>.s.sol` | `deploy-local SCRIPT=…`; `check-atomic-deploy` |
 | `base/<area>/` | One subfolder per `src/` area: `access`, `accounts`, `amm`, `crosschain`, `defi`, `ens`, `governance`, `oracles`, `privacy`, `security`, `tokens`, `utils` | `Deploy<Module>.s.sol` | as `base/` |
 | `base/tokens/` (permissioned token) | Closed immutable ERC-3643 suite with initial pause, owner/agent administration, the five standard registry/compliance components, and optional ERC-7674 | `DeployERC3643.s.sol` with `ERC3643Params`; no upgradeable overload | as `base/` |
@@ -106,3 +106,20 @@ separate fixed selector-owner oracle detects correlated mistakes in plans and al
 The checked builder rejects ERC1363 together with ERC20Pausable, ERC20Votes or GovernedVault under
 ADR0009. Arbitrary authorized diamond cuts can bypass this script policy. External assets/providers,
 EntryPoints, verifiers/circuits and existing-state migration requirements remain caller obligations.
+
+## Coverage prerequisites and native checks
+
+`make coverage` first validates the pinned canonical build and persists its complete compiler artifacts,
+including test fixtures and scripts. Metadata, initializer ABI and serializer tests read those artifacts
+while coverage executes without optimization.
+
+The exact bytecode-sensitive ERC3643 fixture suites and three mixed-suite hash/size methods run natively
+before instrumentation. The same anchored selectors exclude only those tests from the instrumented phase;
+independent ERC3643 registry/component suites and the other token recipes retain measured coverage.
+Production fingerprint and EIP-170 assertions remain enabled, and a native failure stops the command.
+Native test results are separate validation, not coverage hits. The report retains every `src/` entry,
+including unmeasured closed-profile lines, with the existing test/script source filter unchanged.
+
+Scheduled uses this same entrypoint with `ARGS='--md --report lcov'`. Every phase suppresses gas snapshot
+writes; the ordinary test and CI targets continue to run all native tests. `script/test-coverage.sh`
+checks the phase order, exact filter complement, report flags and fail-closed behavior with fake Forge.

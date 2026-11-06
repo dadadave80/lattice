@@ -86,17 +86,19 @@ jobs:
           submodules: recursive
           persist-credentials: false
       - uses: ./.github/actions/foundry-setup
-      # `make coverage`, plus lcov.info for the artifact below. Coverage builds without the optimizer, so FORGE_SNAPSHOT_EMIT=false
-      # keeps the gas tests from rewriting snapshots/ with unoptimized numbers.
+      # The shared entrypoint persists canonical artifacts and runs hash/size-sensitive tests natively
+      # before instrumenting their exact complement. Both phases suppress gas snapshot writes.
       - name: Coverage summary
         env:
           FORGE_SNAPSHOT_EMIT: "false"
         run: |
           set -euo pipefail
-          forge coverage --report summary --md --report lcov --no-match-path 'test/fork/*' \
-            --no-match-coverage '(test|script)/' | tee coverage.md
+          make coverage ARGS='--md --report lcov' | tee coverage.md
           {
             echo "## Coverage of src/ (fork suites excluded) at $(git rev-parse --short HEAD)"
+            echo
+            echo "Canonical bytecode-hash/size-sensitive tests ran natively first; their results are validation, not coverage hits."
+            echo "The instrumented report retains every src/ entry, including unmeasured closed-profile lines."
             echo
             sed -n '/^| File /,$p' coverage.md | grep -E '^\| (File|Total) |^\|-'
             echo

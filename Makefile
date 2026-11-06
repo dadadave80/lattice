@@ -174,6 +174,7 @@ scripts-check: ## Regression tests for the CI helper scripts (closing-keyword pa
 	./script/test-release-verification.sh
 	./script/recipes/test-export.sh
 	./script/recipes/test-catalog.sh
+	./script/test-coverage.sh
 
 .PHONY: recipes
 recipes: ## Export all checked canonical recipe data to out/recipes.json, locally without RPC
@@ -218,10 +219,26 @@ doc: ## Build and link-check the docs site (forge doc + Vocs -> docs/site/dist/p
 doc-serve: ## Stage the docs site and serve it on the Vocs dev server (pages under /lattice/)
 	./script/docs/build.sh --serve
 
+# Coverage uses unoptimized/instrumented bytecode. Keep deployed-code identity and size assertions native,
+# and use the exact same literal selectors for the native partition and instrumented complement.
+COVERAGE_NATIVE_CONTRACTS := ^(ERC3643GasTest|ERC3643TemporaryGasTest|ERC3643AccountingInvariant|ERC3643ProfileTest|ERC3643RecoveryTest|ERC3643TemporaryApprovalTest|ERC3643TokenBoundsTest|ERC3643TokenEventsTest|ERC3643TokenTest)$$
+COVERAGE_NATIVE_TESTS := ^(test_Immutable_ERC3643|test_Immutable_ERC3643TemporaryApproval|test_AllFacetsUnderEip170Limit)\(\)$$
+
 .PHONY: coverage
-coverage: ## Coverage summary for src/, fork suites excluded (add --ir-minimum via ARGS if a suite hits stack-too-deep)
-	FORGE_SNAPSHOT_EMIT=false forge coverage --report summary --no-match-path 'test/fork/*' \
-		--no-match-coverage '(test|script)/' $(ARGS)
+coverage: ## Canonical hash/size tests, then src/ coverage of their exact complement (fork suites excluded; ARGS adds reports)
+	@echo "coverage: validate and persist the canonical compiler artifacts before instrumentation"
+	FOUNDRY_PROFILE=ci FORGE_SNAPSHOT_EMIT=false ./script/check-release-build.sh
+	FOUNDRY_PROFILE=ci FORGE_SNAPSHOT_EMIT=false forge build --locked
+	@echo "coverage: run bytecode-sensitive suites natively, preserving production hash checks"
+	FOUNDRY_PROFILE=ci FORGE_SNAPSHOT_EMIT=false forge test --no-match-path 'test/fork/*' \
+		--match-contract '$(COVERAGE_NATIVE_CONTRACTS)'
+	@echo "coverage: run the disjoint bytecode-sensitive mixed-suite methods natively"
+	FOUNDRY_PROFILE=ci FORGE_SNAPSHOT_EMIT=false forge test --no-match-path 'test/fork/*' \
+		--no-match-contract '$(COVERAGE_NATIVE_CONTRACTS)' --match-test '$(COVERAGE_NATIVE_TESTS)'
+	@echo "coverage: instrument the exact remaining tests; all src/ lines remain in the denominator"
+	FOUNDRY_PROFILE=ci FORGE_SNAPSHOT_EMIT=false forge coverage --report summary --no-match-path 'test/fork/*' \
+		--no-match-coverage '(test|script)/' --no-match-contract '$(COVERAGE_NATIVE_CONTRACTS)' \
+		--no-match-test '$(COVERAGE_NATIVE_TESTS)' $(ARGS)
 
 # --------------------------------------------------------------------- local node
 # `deploy-local` signs with the well-known Anvil key (ANVIL_KEY) against the local

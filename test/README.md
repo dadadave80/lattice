@@ -184,3 +184,11 @@ On the #287 source, all 76 mutants in the changed functions (`getAccess`, `setGr
 The 8 survivors are the setter-zeroing equivalents listed above.
 
 The pilot stays out of CI, as decided for #245. The kill rates above are the input for revisiting that.
+
+## Coverage
+
+`make coverage` persists the canonical compiler artifacts, runs the exact bytecode-hash/size-sensitive
+subset natively, then instruments its complement. Native results are strict test validation with no
+coverage attribution. All `src/` entries remain in the report denominator, including unmeasured
+closed-profile lines; independent component and registry tests retain measured coverage. Ordinary
+`make test` and CI still run every native test. Add report formats with `ARGS`, as Scheduled does.

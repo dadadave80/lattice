@@ -138,6 +138,7 @@ jobs:
           ./script/test-error-event-catalog.sh
           ./script/recipes/test-export.sh
           ./script/recipes/test-catalog.sh
+          ./script/test-coverage.sh
 
   # README catalog vs src/. Not gated on `changes`: a README-only PR (code=false) can drop or misspell a
   # catalog entry, so this job runs on every PR. The storage registry also uses the shared cast binary.
