@@ -240,8 +240,10 @@ The closed version-2 example is `4`. General tooling decodes with a full-width i
 [stable read definition](../../STORAGE_REGISTRY.md#initialization-version-read).
 Successful empty batches and a zero-address terminator still advance the version; uint64 maximum
 is terminal. Read each init's raw compiler metadata and library preconditions, preserve the original
-bootstrap identity where required, and order steps deliberately. Metadata describes code facts;
-there is currently no automatic recipe planner or `out/recipes.json` exporter.
+bootstrap identity where required, and order steps deliberately. Metadata describes code facts.
+Use `make recipes` to generate `out/recipes.json`, the
+[descriptive recipe catalog](../../script/README.md#recipe-data-and-checked-composition)
+checked against compiler ABIs. There is no automatic recipe planner.
 
 Governed cuts have a different authority model. Use zero/self timelocks with the canonical Governor
 policy, or explicitly acknowledge and separately validate an external executor design. See

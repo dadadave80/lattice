@@ -39,7 +39,9 @@ guarded initializer registers a separately precomputed ERC-165 slot. No activati
 
 This is an allowance integration, not a change to [0009](0009-token-extension-hook-model.md)'s movement model.
 The pinned OpenZeppelin parity baseline is 5.6.1; the 5.7 additions in #234 are deferred. The separate #235
-ERC1363/incompatible-movement-pair acceptance condition remains unresolved by this change.
+ERC1363/incompatible-movement-pair acceptance condition was completed by the checked-recipe follow-up in
+[0026](0026-checked-recipe-data-and-seams.md). That restriction applies to checked script composition;
+arbitrary authorized diamond cuts can bypass it. The shared allowance policy remains unchanged.
 
 ## Consequences
 

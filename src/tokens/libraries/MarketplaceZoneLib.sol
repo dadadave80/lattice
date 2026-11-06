@@ -46,8 +46,9 @@ struct MarketplaceZoneStorage {
 ///         opt-in collections receive their ERC-2981 royalty in the order's consideration. Each returns its
 ///         own selector as Seaport's magic value, else reverts (Seaport then rejects the order).
 /// @dev v1 royalty enforcement assumes a single fungible payment currency per order: `salePrice` is the sum of
-///      the fungible consideration the zone sees (never an externally-supplied value), and `royaltyInfo` is
-///      consulted best-effort (a non-ERC-2981 token whose `royaltyInfo` reverts is not enforceable → skipped).
+///      the fungible consideration the zone sees (never an externally-supplied value). An opted-in collection's
+///      `royaltyInfo` must succeed: a revert rejects the order with {IMarketplaceZone.RoyaltyInfoUnavailable};
+///      a returned zero royalty amount owes nothing.
 library MarketplaceZoneLib {
     function marketplaceZoneStorage() internal pure returns (MarketplaceZoneStorage storage $) {
         assembly {
