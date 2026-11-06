@@ -32,6 +32,12 @@ grep -q 'Added.*API3AdapterInit' "$temporary/reverse.md"
 ./script/release-notes.sh - "$baseline" > "$temporary/first.md"
 grep -q 'First canonical manifest' "$temporary/first.md"
 [ "$(grep -c '^- Added ' "$temporary/first.md")" = 5 ]
+jq '.contracts[4].name="[click](https://example.invalid)_*"' "$baseline" > "$temporary/markdown-name.json"
+./script/release-notes.sh - "$temporary/markdown-name.json" > "$temporary/markdown-name.md"
+grep -Fq '&#91;click&#93;&#40;https:&#47;&#47;example.invalid&#41;&#95;&#42;' "$temporary/markdown-name.md"
+if grep -Fq '[click]' "$temporary/markdown-name.md"; then
+    echo 'release notes rendered an untrusted Markdown link' >&2; exit 1
+fi
 # Registry/factory order is part of the native schema; reorder only the remaining catalog.
 jq '.contracts = (.contracts[0:2] + (.contracts[2:] | reverse))' "$temporary/new.json" > "$temporary/reordered.json"
 ./script/release-notes.sh "$baseline" "$temporary/reordered.json" > "$temporary/reordered.md"

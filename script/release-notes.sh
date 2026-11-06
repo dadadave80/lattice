@@ -8,7 +8,8 @@ previous=$1 current=$2
 if [ "$previous" != - ]; then ./script/release/validate-manifest.sh "$previous"; fi
 jq -nr --slurpfile current "$current" \
     --slurpfile previous "$([ "$previous" = - ] && printf /dev/null || printf '%s' "$previous")" '
-  def display: @html | gsub("`"; "&#96;") | gsub("[\r\n]"; " ");
+  def display: gsub("[\r\n]"; " ") | split("") |
+    map(if test("^[A-Za-z0-9 .:-]$") then . else "&#\((explode)[0]);" end) | join("");
   def id: .kind+"/"+.name;
   def selectors: .selectors | ascii_downcase | .[2:] | [scan(".{8}") | "0x"+.] | sort;
   def codes: map("`"+.+"`") | join(", ");
