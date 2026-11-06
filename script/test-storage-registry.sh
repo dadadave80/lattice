@@ -27,7 +27,9 @@ bytes32 constant ERC165_MAP_ICCTPBRIDGEADAPTER_SLOT =
 struct ExampleStorage { address owner; }
 EOF
 cp "${TMP}/source" "${TMP}/src/ExampleLib.sol"
-printf '| Example | `lattice.storage.Example` | `0x0000000000000000000000000000000000000000000000000000000000000100` | `ICCTPBridgeAdapter` | `0xf5187bdc` | `0x04cddf593d633f3c8537926f8f726adaafc298a0f78a2bfd4848abb0191103e1` |\n' >"${TMP}/STORAGE_REGISTRY.md"
+cat >"${TMP}/STORAGE_REGISTRY.md" <<'EOF'
+| Example | `lattice.storage.Example` | `0x0000000000000000000000000000000000000000000000000000000000000100` | `ICCTPBridgeAdapter` | `0xf5187bdc` | `0x04cddf593d633f3c8537926f8f726adaafc298a0f78a2bfd4848abb0191103e1` |
+EOF
 "${CHECK}" --update "${TMP}"
 "${CHECK}" --check "${TMP}"
 jq -e '.schemaVersion == 1 and (.layouts | length) == 2 and .layouts[0].namespace == "lattice.storage.Example" and .layouts[1].namespace == null and .layouts[0].fields[1].name == "_nested" and (.interfaces | length) == 1 and .interfaces[0].interfaceId == "0xf5187bdc" and .interfaces[0].sources[0].source == "src/ExampleLib.sol"' "${REGISTRY}" >/dev/null
@@ -51,7 +53,9 @@ expect_failure "duplicate sections"
 cp "${TMP}/valid" "${BASELINE}"
 "${CHECK}" --update "${TMP}"
 cp "${TMP}/STORAGE_REGISTRY.md" "${TMP}/valid-table"
-printf '| Example | `lattice.storage.Example` | `0x00` |\n' >"${TMP}/STORAGE_REGISTRY.md"
+cat >"${TMP}/STORAGE_REGISTRY.md" <<'EOF'
+| Example | `lattice.storage.Example` | `0x00` |
+EOF
 expect_failure "incorrect Markdown namespace row"
 cp "${TMP}/valid-table" "${TMP}/STORAGE_REGISTRY.md"
 sed 's/0xf5187bdc/0x9868b584/' "${TMP}/valid-table" >"${TMP}/STORAGE_REGISTRY.md"
@@ -93,7 +97,10 @@ bytes32 constant ERC165_MAP_IERC7579ACCOUNTCONFIG_SLOT =
 /// `keccak256(abi.encode(bytes4(0x80ac58cd), 0x9ca7f3e2e2bfb15fdf072b85dde92837cddacee6cf2f6b38cd06c9457c1c4200))`.
 bytes32 constant ERC165_MAP_IERC721_SLOT = 0x741e8246930c2bfc93c4e7042569e8d7f42e535e31e366398006f597e42d38fb;
 EOF
-printf '| ERC721 | — | — | `IERC721` | `0x80ac58cd` | `0x741e8246930c2bfc93c4e7042569e8d7f42e535e31e366398006f597e42d38fb` |\n| ErrorsOnly | — | — | no functions | `0x00000000` | — |\n' >>"${TMP}/STORAGE_REGISTRY.md"
+cat >>"${TMP}/STORAGE_REGISTRY.md" <<'EOF'
+| ERC721 | — | — | `IERC721` | `0x80ac58cd` | `0x741e8246930c2bfc93c4e7042569e8d7f42e535e31e366398006f597e42d38fb` |
+| ErrorsOnly | — | — | no functions | `0x00000000` | — |
+EOF
 "${CHECK}" --update "${TMP}"
 "${CHECK}" --check "${TMP}"
 jq -e '(.interfaces | length) == 6 and any(.interfaces[]; .interfaceId == "0x80ac58cd") and all(.interfaces[]; .interfaceId != "0xdbf24b52")' "${REGISTRY}" >/dev/null

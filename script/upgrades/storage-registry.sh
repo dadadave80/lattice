@@ -42,8 +42,8 @@ jq -Rn '
 ' <"${BASELINE}" >"${TMP}/registry.json"
 
 while IFS=$'\t' read -r namespace slot; do
-    awk -v namespace="${namespace}" -v slot="${slot}" '
-        /^\|/ && index($0, "`" namespace "`") && index($0, "`" slot "`") { found = 1 }
+    awk -v ns="${namespace}" -v slot="${slot}" '
+        /^\|/ && index($0, "`" ns "`") && index($0, "`" slot "`") { found = 1 }
         END { exit !found }
     ' "${ROOT}/STORAGE_REGISTRY.md" || {
         echo "Storage registry row missing or incorrect: ${namespace} ${slot}" >&2
