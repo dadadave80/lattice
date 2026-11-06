@@ -91,6 +91,7 @@ jobs:
           ./script/test-fork-lanes.sh
           ./script/fork-lanes.sh check
           ./script/test-storage-layout.sh
+          ./script/test-storage-registry.sh
 
   # README catalog vs src/. Not gated on `changes`: a README-only PR (code=false) can drop or misspell a
   # catalog entry, so this job runs on every PR. It needs only bash and diamond-lib's sources.
@@ -108,6 +109,8 @@ jobs:
         run: |
           ./script/test-check-readme-catalog.sh
           ./script/check-readme-catalog.sh
+      - name: Check the storage registry table and JSON
+        run: ./script/upgrades/storage-registry.sh --check
 
   # Single source-of-truth compile (legacy/ci profile). Gates EIP-170 and populates the shared
   # forge cache (out/ + cache/, keyed on src + lib content) so the `test` and `storage-layout`
@@ -221,6 +224,8 @@ jobs:
           resets: script/upgrades/storage-layout.resets
           src: src
           foundry-profile: ci
+      - name: Check storage registry export and table
+        run: ./script/upgrades/storage-registry.sh --check
 
   # Self-test of the storage-safety Action as a consumer calls it: the fixture project is committed into
   # a fresh repository under a path with a space, the Action passes on it, and then must fail on a

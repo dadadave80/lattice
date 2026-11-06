@@ -23,6 +23,9 @@ jobs:
     name: Release Please
     runs-on: ubuntu-latest
     permissions: {} # the app token below does the writing (contents, pull requests, issues for labels)
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
     steps:
       # A GitHub App token, not a PAT: GitHub signs commits an app makes through the API, which main's
       # required-signatures rule needs, and the app's pushes still trigger CI on the release PR.
@@ -32,6 +35,30 @@ jobs:
           client-id: ${{ vars.RELEASE_PLEASE_APP_CLIENT_ID }}
           private-key: ${{ secrets.RELEASE_PLEASE_APP_PRIVATE_KEY }}
       # Manifest-driven mode: reads release-please-config.json + .release-please-manifest.json from the repo.
-      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+      - id: release
+        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
         with:
           token: ${{ steps.app-token.outputs.token }}
+
+  storage-assets:
+    name: Publish release storage layouts
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.release-please.outputs.tag_name }}
+          submodules: recursive
+          persist-credentials: false
+      - uses: ./.github/actions/foundry-setup
+      - name: Validate tagged source and storage registry
+        run: make storage-check
+      - name: Attach the checked layouts
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ needs.release-please.outputs.tag_name }}
+        run: gh release upload "$RELEASE_TAG" script/upgrades/storage-registry.json script/upgrades/storage-layout.baseline --clobber

@@ -115,6 +115,7 @@ via-ir: ## IR-pipeline parity build (catches stack-too-deep / IR-only errors)
 .PHONY: storage-check
 storage-check: ## ERC-7201 storage-layout guard: every annotated struct vs the committed baseline (BASE_REF=origin/dev also checks append-only vs that ref, as CI does vs the PR base)
 	./script/upgrades/check-storage-layout.sh $(if $(BASE_REF),--baseline-ref '$(BASE_REF)')
+	./script/upgrades/storage-registry.sh --check
 
 .PHONY: license-check
 license-check: ## License notices: SPDX on every .sol, license texts present, external interfaces attributed + listed in lib/VENDORED.md
@@ -132,10 +133,12 @@ scripts-check: ## Regression tests for the CI helper scripts (closing-keyword pa
 	./script/test-fork-lanes.sh
 	./script/fork-lanes.sh check
 	./script/test-storage-layout.sh
+	./script/test-storage-registry.sh
 
 .PHONY: storage-update
 storage-update: ## Regenerate the storage-layout baseline (review the diff: appends only for live namespaces; see CONTRIBUTING.md)
 	./script/upgrades/check-storage-layout.sh --update
+	./script/upgrades/storage-registry.sh --update
 
 .PHONY: test-ci
 test-ci: ## Full test suite under the CI profile (snapshots/ is left to snapshot-check, as in CI)

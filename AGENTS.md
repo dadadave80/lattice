@@ -196,10 +196,10 @@ never a runtime keccak, never a bare hex literal in the `sstore`, and never a lo
 storage root (`0x9ca7f3e2e2bfb15fdf072b85dde92837cddacee6cf2f6b38cd06c9457c1c4200`):
 
 ```solidity
-/// @dev 0xa777cf1b is `type(ICCTPBridgeAdapter).interfaceId`.
-/// `keccak256(abi.encode(bytes4(0xa777cf1b), 0x9ca7f3e2e2bfb15fdf072b85dde92837cddacee6cf2f6b38cd06c9457c1c4200))`.
+/// @dev 0xf5187bdc is `type(ICCTPBridgeAdapter).interfaceId`.
+/// `keccak256(abi.encode(bytes4(0xf5187bdc), 0x9ca7f3e2e2bfb15fdf072b85dde92837cddacee6cf2f6b38cd06c9457c1c4200))`.
 bytes32 constant ERC165_MAP_ICCTPBRIDGEADAPTER_SLOT =
-    0x30c377002135d1e8af7caedae6ec2adb3221e5a36ce695d62defb43a35cd29eb;
+    0x04cddf593d633f3c8537926f8f726adaafc298a0f78a2bfd4848abb0191103e1;
 
 function registerInterface() internal {
     assembly ("memory-safe") {
