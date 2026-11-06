@@ -95,8 +95,11 @@ The release includes both proxy kinds for each pinned EntryPoint:
 
 For example, `AccountInitV09` ABI-encodes v0.9 in its constructor; `AccountFactoryV09` ABI-encodes the
 ordered released facet cuts and that initializer's address. The 6900 labels add `6900` before the
-suffix. These twelve identities are permissionless Tier-A attestations, without curated facet names
-or `latest` pointers. Their blueprint facet names have one definition shared by the recipes and release.
+suffix. The six initializers receive permissionless Tier-A attestations, without curated facet names
+or `latest` pointers. Factories remain manifest-only: their runtime hash binds the immutable initializer
+and proxy hash, but omits the stored blueprint. Another factory can share that runtime hash with different
+cuts, so a Tier-A lookup cannot select the canonical factory. Use its exact manifest address and constructor
+arguments. Blueprint facet names have one definition shared by the recipes and release.
 Changing the EntryPoint, blueprint, build or version can change their predictions.
 
 `DeployAccount.run(entryPoint, owner, salt)` and `DeployAccount6900.run(entryPoint, owner, salt)` use

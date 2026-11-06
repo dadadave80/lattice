@@ -13,6 +13,7 @@ import {FacetInventory} from "@lattice-script/lib/FacetInventory.sol";
 import {ArachnidProxy} from "@lattice-test/helpers/ArachnidProxy.sol";
 import {LatticeVersion} from "@lattice/LatticeVersion.sol";
 import {AccountInit6900} from "@lattice/accounts/erc6900/AccountInit6900.sol";
+import {AccountFactory} from "@lattice/accounts/erc7579/AccountFactory.sol";
 import {AccountInit} from "@lattice/accounts/erc7579/AccountInit.sol";
 import {ERC4337_VALIDATION_STORAGE_SLOT} from "@lattice/accounts/libraries/ERC4337ValidationLib.sol";
 import {ILatticeRegistry} from "@lattice/interfaces/ILatticeRegistry.sol";
@@ -27,7 +28,7 @@ contract AccountReleaseTest is Test, DeployRelease {
         vm.etch(ArachnidProxy.PROXY, ArachnidProxy.RUNTIME);
     }
 
-    function test_AllCanonicalAccountPairsArePredictedAttestedAndCreateCorrectProxies() public {
+    function test_AllCanonicalAccountPairsHavePredictedFactoriesAndAttestedInits() public {
         ReleaseOutput memory out = this.release(LatticeVersion.VERSION, address(this));
         AccountReleaseInventory.Entry[] memory entries = AccountReleaseInventory.inventory();
         assertEq(out.accountInits.length, entries.length);
@@ -54,7 +55,7 @@ contract AccountReleaseTest is Test, DeployRelease {
             );
             assertEq(IAccountFactory(factory).accountInit(), init);
             assertEq(ILatticeRegistry(out.registry).resolve(init.codehash), init);
-            assertEq(ILatticeRegistry(out.registry).resolve(factory.codehash), factory);
+            assertEq(ILatticeRegistry(out.registry).resolve(factory.codehash), address(0));
             address owner = address(uint160(0xA1100 + i));
             address predicted = IAccountFactory(factory).getAddress(owner, bytes32(i));
             address account = IAccountFactory(factory).createAccount(owner, bytes32(i));
@@ -120,6 +121,33 @@ contract AccountReleaseTest is Test, DeployRelease {
         for (uint256 i; i < entries.length; ++i) {
             assertTrue(entries[i].entryPoint != address(0xE117));
         }
+    }
+
+    function test_RuntimeCodehashDoesNotIdentifyAFactoryBlueprint() public {
+        ReleaseOutput memory out = this.release(LatticeVersion.VERSION, address(this));
+        FacetCut[] memory full = _canonicalCuts(false, out.facets);
+        // Receive is optional for a custom account. Both blueprints are usable, with different ETH behavior.
+        FacetCut[] memory withoutReceive = new FacetCut[](full.length - 1);
+        for (uint256 i; i < withoutReceive.length; ++i) {
+            withoutReceive[i] = full[i];
+        }
+        AccountFactory other = new AccountFactory(withoutReceive, out.accountInits[0]);
+        address canonical = out.accountFactories[0];
+        assertEq(address(other).codehash, canonical.codehash, "runtime omits the stored blueprint");
+        address expectedAccount = IAccountFactory(canonical).createAccount(address(this), bytes32(0));
+        address otherAccount = other.createAccount(address(this), bytes32(0));
+        assertTrue(expectedAccount != otherAccount);
+        assertEq(expectedAccount.codehash, otherAccount.codehash);
+        assertTrue(IDiamondLoupe(expectedAccount).facetAddress(bytes4(0)) != address(0));
+        assertEq(IDiamondLoupe(otherAccount).facetAddress(bytes4(0)), address(0));
+        ILatticeRegistry registry = ILatticeRegistry(out.registry);
+        assertEq(registry.resolve(canonical.codehash), address(0), "factory identity requires full constructor state");
+        // Anyone may attest another same-codehash factory. Release selection must still use the exact manifest.
+        registry.attest(address(other));
+        assertEq(registry.resolve(canonical.codehash), address(other));
+        ReleaseOutput memory resumed = this.release(LatticeVersion.VERSION, address(this));
+        assertEq(resumed.accountFactories[0], canonical);
+        assertEq(registry.resolve(canonical.codehash), address(other));
     }
 
     function test_CanonicalRunBindsOwnerAndSaltAndCanResumeAcrossScriptInstances() public {

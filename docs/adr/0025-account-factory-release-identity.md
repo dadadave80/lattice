@@ -32,7 +32,9 @@ arguments; each initializer fixes its trusted EntryPoint in immutable code.
   default. Each pair has an initializer whose constructor encodes the EntryPoint and a factory whose
   constructor encodes the complete ordered released cuts plus that initializer address.
 - Use Arachnid with `keccak256("lattice.<identity-name>.<version>")` salts. Initcode hashes bind all
-  constructor arguments. Both artifacts are Tier-A attestations, without curated facet registrations.
+  constructor arguments. Initializers receive Tier-A attestations, without curated facet registrations.
+  Factories remain manifest-only, following LatticeFactory: runtime codehash does not commit to their
+  stored blueprint, so a permissionless resolver result cannot identify the canonical factory instance.
 - Keep constructor-bound account initializers outside stateless InitInventory. Custom EntryPoints
   remain an explicit noncanonical profile. Local execution without Arachnid may CREATE the supporting
   contracts, while still creating accounts through the correct specialized factory.
@@ -58,7 +60,9 @@ EIP-7702 support on a target chain. Module and EntryPoint trust assumptions stil
 
 Tests call the real script run entrypoints, install a 7579 fallback handler through validated execution,
 and exercise 6900 external-module dispatch. Release tests cover all pairs' constructor immutables,
-predictions, routing, attestation, nonowner completion, resumability and local/custom profiles. Manifest
+predictions, routing, initializer attestation, nonowner completion, resumability and local/custom profiles.
+A regression constructs usable eight/nine-facet factories with identical runtime hashes and distinct
+blueprints, then proves permissionless attestation of the alternate factory cannot change release selection. Manifest
 tests compare trusted proxy artifacts and exact constructors; native fixtures reject missing/dangling
 bindings and valid-ABI constructor conflicts. Filtered release simulation, source reproducibility and
 local Anvil atomic-deployment checks exercise the real tooling path.

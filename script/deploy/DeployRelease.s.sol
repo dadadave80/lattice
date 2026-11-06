@@ -362,7 +362,8 @@ contract DeployRelease is AccountDeployBase {
         for (uint256 i; i < entries.length; ++i) {
             (, inits[i], factories[i]) = _accountRelease(entries[i], version);
             registry.attest(inits[i]);
-            registry.attest(factories[i]);
+            // Factories store their blueprint. Runtime codehash alone does not identify that state;
+            // select them by the manifest's constructor-bound address, never the Tier-A resolver.
         }
     }
 
