@@ -6,7 +6,7 @@ pragma solidity ^0.8.30;
 /// @notice Stateless initializer artifacts released and attested by codehash, separate from facet registration.
 library InitInventory {
     function inventory() internal pure returns (string[] memory names, string[] memory paths) {
-        string[106] memory n = [
+        string[107] memory n = [
             "API3AdapterInit",
             "API3QRNGAdapterInit",
             "AccessControlEnumerableInit",
@@ -79,6 +79,7 @@ library InitInventory {
             "Groth16VerifierInit",
             "HASSignatureVerifierInit",
             "HSSAdapterInit",
+            "HSSAdapterRecoveryInit",
             "HTSAdapterInit",
             "HederaExchangeRateAdapterInit",
             "HederaPrngAdapterInit",
@@ -114,7 +115,7 @@ library InitInventory {
             "WormholeGatewayAdapterInit",
             "ZetaChainGatewayAdapterInit"
         ];
-        string[106] memory p = [
+        string[107] memory p = [
             "src/oracles/api3/API3AdapterInit.sol:API3AdapterInit",
             "src/oracles/api3/API3QRNGAdapterInit.sol:API3QRNGAdapterInit",
             "src/access/AccessControlEnumerableInit.sol:AccessControlEnumerableInit",
@@ -187,6 +188,7 @@ library InitInventory {
             "src/privacy/Groth16VerifierInit.sol:Groth16VerifierInit",
             "src/accounts/hedera/HASSignatureVerifierInit.sol:HASSignatureVerifierInit",
             "src/oracles/hedera/HSSAdapterInit.sol:HSSAdapterInit",
+            "src/oracles/hedera/HSSAdapterRecoveryInit.sol:HSSAdapterRecoveryInit",
             "src/tokens/hedera/HTSAdapterInit.sol:HTSAdapterInit",
             "src/oracles/hedera/HederaExchangeRateAdapterInit.sol:HederaExchangeRateAdapterInit",
             "src/oracles/hedera/HederaPrngAdapterInit.sol:HederaPrngAdapterInit",
@@ -222,8 +224,8 @@ library InitInventory {
             "src/crosschain/wormhole/WormholeGatewayAdapterInit.sol:WormholeGatewayAdapterInit",
             "src/crosschain/zetachain/ZetaChainGatewayAdapterInit.sol:ZetaChainGatewayAdapterInit"
         ];
-        names = new string[](106);
-        paths = new string[](106);
+        names = new string[](107);
+        paths = new string[](107);
         for (uint256 i; i < names.length; ++i) {
             names[i] = n[i];
             paths[i] = p[i];
