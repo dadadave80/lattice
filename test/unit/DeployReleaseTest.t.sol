@@ -4,6 +4,7 @@ pragma solidity ^0.8.30;
 import {DeployRelease} from "@lattice-script/deploy/DeployRelease.s.sol";
 import {ArachnidDeployer} from "@lattice-script/lib/ArachnidDeployer.sol";
 import {FacetInventory} from "@lattice-script/lib/FacetInventory.sol";
+import {InitInventory} from "@lattice-script/lib/InitInventory.sol";
 import {ArachnidProxy} from "@lattice-test/helpers/ArachnidProxy.sol";
 import {MockCreateX} from "@lattice-test/helpers/MockCreateX.sol";
 import {LatticeFactory} from "@lattice/LatticeFactory.sol";
@@ -27,6 +28,15 @@ contract DeployReleaseTest is Test, DeployRelease {
         string name;
         bytes32 salt;
         bytes32 selectorsHash;
+    }
+
+    /// @dev JSON record keys sort as address, codehash, initCodeHash, name, salt.
+    struct ManifestInit {
+        address deployed;
+        bytes32 codehash;
+        bytes32 initCodeHash;
+        string name;
+        bytes32 salt;
     }
 
     address internal constant CANONICAL = 0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed;
@@ -118,6 +128,45 @@ contract DeployReleaseTest is Test, DeployRelease {
         }
     }
 
+    function test_Release_DeploysAndAttestsEveryInit() public {
+        DeployRelease.ReleaseOutput memory out = this.release(VERSION, address(this));
+        (string[] memory names, string[] memory paths) = InitInventory.inventory();
+        assertEq(out.inits.length, names.length);
+        ILatticeRegistry registry = ILatticeRegistry(out.registry);
+        for (uint256 i; i < names.length; ++i) {
+            assertEq(
+                out.inits[i], _proxyAddress(facetSalt(names[i], VERSION), keccak256(vm.getCode(paths[i]))), names[i]
+            );
+            assertGt(out.inits[i].code.length, 0, names[i]);
+            assertEq(out.inits[i].codehash, keccak256(vm.getDeployedCode(paths[i])), names[i]);
+            assertEq(registry.resolve(out.inits[i].codehash), out.inits[i], names[i]);
+            bytes32 nameHash = keccak256(abi.encodePacked("lattice.", names[i]));
+            vm.expectRevert(
+                abi.encodeWithSelector(ILatticeRegistry.LatticeRegistry__RecordNotFound.selector, nameHash, PACKED)
+            );
+            registry.get(nameHash, PACKED);
+        }
+    }
+
+    function test_Release_AdoptsPredeployedInit() public {
+        (string[] memory names, string[] memory paths) = InitInventory.inventory();
+        uint256 index = _nameIndex(names, "ERC20Init");
+        address existing = ArachnidDeployer.deploy(facetSalt(names[index], VERSION), vm.getCode(paths[index]));
+        DeployRelease.ReleaseOutput memory out = this.release(VERSION, address(this));
+        assertEq(out.inits[index], existing);
+        assertEq(ILatticeRegistry(out.registry).resolve(existing.codehash), existing);
+    }
+
+    function test_InitAttestationPreservesFirstAddressAcrossVersions() public {
+        DeployRelease.ReleaseOutput memory first = this.release("0.1.0", address(this));
+        DeployRelease.ReleaseOutput memory second = this.release("0.2.0", address(this));
+        for (uint256 i; i < first.inits.length; ++i) {
+            assertTrue(first.inits[i] != second.inits[i]);
+            assertEq(first.inits[i].codehash, second.inits[i].codehash);
+            assertEq(ILatticeRegistry(second.registry).resolve(second.inits[i].codehash), first.inits[i]);
+        }
+    }
+
     /// @notice The version-less release() overload pins the release to the library's own
     ///         {LatticeVersion.VERSION} — the Release-Please-bumped single source of truth — so an
     ///         operator-passed string cannot drift from the code actually being released. Assertions
@@ -144,6 +193,9 @@ contract DeployReleaseTest is Test, DeployRelease {
 
         assertEq(second.registry, first.registry, "registry address changed on resume");
         assertEq(second.factory, first.factory, "factory address changed on resume");
+        for (uint256 i; i < first.inits.length; ++i) {
+            assertEq(second.inits[i], first.inits[i], "init changed on resume");
+        }
         for (uint256 i; i < first.facets.length; ++i) {
             assertEq(second.facets[i], first.facets[i], "facet address changed on resume");
         }
@@ -249,6 +301,13 @@ contract DeployReleaseTest is Test, DeployRelease {
         DeployRelease.ReleaseOutput memory out = this.release(VERSION, multisig);
 
         assertEq(ILatticeRegistry(out.registry).owner(), multisig, "registry owner not the multisig");
+        for (uint256 i; i < out.inits.length; ++i) {
+            assertEq(
+                ILatticeRegistry(out.registry).resolve(out.inits[i].codehash),
+                out.inits[i],
+                "nonowner init attestation skipped"
+            );
+        }
         for (uint256 i; i < out.facets.length; ++i) {
             assertGt(out.facets[i].code.length, 0, "facet not deployed under non-owner broadcaster");
         }
@@ -399,27 +458,63 @@ contract DeployReleaseTest is Test, DeployRelease {
         assertEq(vm.parseJsonAddress(json, ".factory"), out.factory, "manifest factory");
         assertEq(vm.parseJsonAddress(json, ".owner"), address(this), "manifest owner");
 
-        (string[] memory names,) = FacetInventory.inventory();
-        for (uint256 i; i < names.length; ++i) {
-            ManifestFacet memory facet =
-                abi.decode(vm.parseJson(json, string.concat(".facets.", names[i])), (ManifestFacet));
-            assertEq(facet.deployed, out.facets[i], string.concat(names[i], ": manifest facet address"));
-            assertEq(facet.name, names[i], string.concat(names[i], ": manifest facet name"));
-            assertEq(
-                facet.codehash, out.facets[i].codehash, string.concat(names[i], ": manifest codehash != live codehash")
-            );
-            assertEq(
-                facet.selectorsHash,
-                keccak256(IERC8153(out.facets[i]).exportSelectors()),
-                string.concat(names[i], ": manifest selectorsHash != live export hash")
-            );
-        }
+        _assertFacetManifest(json, out);
+        _assertInitManifest(json, out);
         assertEq(vm.parseJsonBytes32(json, ".facets.ERC20.salt"), facetSalt("ERC20", VERSION), "manifest facet salt");
 
         // Remove ONLY the isolated test tree — never the real deployments root or its manifests.
         vm.removeFile(path);
         vm.removeDir(dir, false);
         vm.removeDir(testRoot, false);
+    }
+
+    function _assertFacetManifest(string memory json, ReleaseOutput memory out) private {
+        (string[] memory names,) = FacetInventory.inventory();
+        string[] memory keys = vm.parseJsonKeys(json, ".facets");
+        ManifestFacet[] memory records = abi.decode(vm.parseJson(json, ".facets.*"), (ManifestFacet[]));
+        assertEq(records.length, names.length);
+        assertEq(keys.length, names.length);
+        for (uint256 i; i < records.length; ++i) {
+            ManifestFacet memory facet = records[i];
+            uint256 index = _nameIndex(names, keys[i]);
+            assertEq(facet.deployed, out.facets[index], string.concat(names[index], ": manifest facet address"));
+            assertEq(facet.name, names[index], string.concat(names[index], ": manifest facet name"));
+            assertEq(
+                facet.codehash,
+                out.facets[index].codehash,
+                string.concat(names[index], ": manifest codehash != live codehash")
+            );
+            assertEq(
+                facet.selectorsHash,
+                keccak256(IERC8153(out.facets[index]).exportSelectors()),
+                string.concat(names[index], ": manifest selectorsHash != live export hash")
+            );
+            assertEq(facet.salt, facetSalt(names[index], VERSION));
+        }
+    }
+
+    function _assertInitManifest(string memory json, ReleaseOutput memory out) private {
+        (string[] memory names, string[] memory paths) = InitInventory.inventory();
+        string[] memory keys = vm.parseJsonKeys(json, ".inits");
+        ManifestInit[] memory records = abi.decode(vm.parseJson(json, ".inits.*"), (ManifestInit[]));
+        assertEq(records.length, names.length);
+        assertEq(keys.length, names.length);
+        for (uint256 i; i < records.length; ++i) {
+            ManifestInit memory init = records[i];
+            uint256 index = _nameIndex(names, keys[i]);
+            assertEq(init.deployed, out.inits[index], names[index]);
+            assertEq(init.name, names[index]);
+            assertEq(init.codehash, out.inits[index].codehash, names[index]);
+            assertEq(init.initCodeHash, keccak256(vm.getCode(paths[index])), names[index]);
+            assertEq(init.salt, facetSalt(names[index], VERSION), names[index]);
+        }
+    }
+
+    function _nameIndex(string[] memory names, string memory name) private pure returns (uint256) {
+        for (uint256 i; i < names.length; ++i) {
+            if (keccak256(bytes(names[i])) == keccak256(bytes(name))) return i;
+        }
+        revert(string.concat("Missing inventory name: ", name));
     }
 }
 

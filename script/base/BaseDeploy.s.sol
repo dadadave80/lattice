@@ -5,6 +5,7 @@ import {MultiInit} from "@diamond/initializers/MultiInit.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {ArachnidDeployer} from "@lattice-script/lib/ArachnidDeployer.sol";
 import {FacetInventory} from "@lattice-script/lib/FacetInventory.sol";
+import {InitInventory} from "@lattice-script/lib/InitInventory.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
 import {LatticeFactory} from "@lattice/LatticeFactory.sol";
 import {LatticeRegistry} from "@lattice/LatticeRegistry.sol";
@@ -172,6 +173,21 @@ abstract contract BaseDeploy is Script, GetSelectors {
         }
     }
 
+    /// @notice A released stateless initializer, reused by name with the same proxy policy as facets.
+    function _init(string memory name) internal returns (address init) {
+        (string[] memory names, string[] memory paths) = InitInventory.inventory();
+        for (uint256 i; i < names.length; ++i) {
+            if (keccak256(bytes(names[i])) != keccak256(bytes(name))) continue;
+            if (ArachnidDeployer.PROXY.code.length == 0) return deployCode(paths[i]);
+            bytes memory initCode = vm.getCode(paths[i]);
+            bytes32 salt = keccak256(abi.encodePacked("lattice.", name, ".", LatticeVersion.VERSION));
+            init = ArachnidDeployer.predict(salt, keccak256(initCode));
+            if (init.code.length == 0) ArachnidDeployer.deploy(salt, initCode);
+            return init;
+        }
+        revert(string.concat("BaseDeploy: ", name, " is not in InitInventory"));
+    }
+
     /// @dev The `vm.getCode` artifact path of {FacetInventory} entry `name`.
     function _inventoryPath(string memory name) private pure returns (string memory) {
         (string[] memory names, string[] memory paths) = FacetInventory.inventory();
@@ -241,7 +257,7 @@ abstract contract BaseDeploy is Script, GetSelectors {
         internal
         returns (address diamond)
     {
-        MultiInit multiInit = new MultiInit();
+        MultiInit multiInit = MultiInit(_init("MultiInit"));
         diamond = _assemble(cuts, address(multiInit), abi.encodeCall(MultiInit.multiInit, (inits, initCalldatas)));
     }
 
@@ -287,30 +303,30 @@ abstract contract BaseDeploy is Script, GetSelectors {
     {
         address[] memory inits = new address[](3);
         inits[0] = moduleInit;
-        inits[1] = address(new AccessControlInit());
-        inits[2] = address(new DiamondIntrospectionInit());
+        inits[1] = _init("AccessControlInit");
+        inits[2] = _init("DiamondIntrospectionInit");
         bytes[] memory calldatas = new bytes[](3);
         calldatas[0] = moduleCalldata;
         calldatas[1] = abi.encodeCall(AccessControlInit.init, (admin));
         calldatas[2] = abi.encodeCall(DiamondIntrospectionInit.initUpgradeable, ());
-        init = address(new MultiInit());
+        init = _init("MultiInit");
         initCalldata = abi.encodeCall(MultiInit.multiInit, (inits, calldatas));
     }
 
-    /// @dev Shared body: wraps `[moduleInit, DiamondIntrospectionInit]` in a fresh {MultiInit}.
+    /// @dev Shared body: wraps `[moduleInit, DiamondIntrospectionInit]` in the released {MultiInit}.
     function _withIntrospection(address moduleInit, bytes memory moduleCalldata, bool upgradeable)
         private
         returns (address init, bytes memory initCalldata)
     {
         address[] memory inits = new address[](2);
         inits[0] = moduleInit;
-        inits[1] = address(new DiamondIntrospectionInit());
+        inits[1] = _init("DiamondIntrospectionInit");
         bytes[] memory calldatas = new bytes[](2);
         calldatas[0] = moduleCalldata;
         calldatas[1] = upgradeable
             ? abi.encodeCall(DiamondIntrospectionInit.initUpgradeable, ())
             : abi.encodeCall(DiamondIntrospectionInit.initImmutable, ());
-        init = address(new MultiInit());
+        init = _init("MultiInit");
         initCalldata = abi.encodeCall(MultiInit.multiInit, (inits, calldatas));
     }
 }

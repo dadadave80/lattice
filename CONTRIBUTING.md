@@ -202,3 +202,8 @@ fail silently when missed, so do every one.
 - [ ] **Docs**: add the module to the README Modules table, backticked (`make readme-check` fails without
       it), and the `src/` layout comment.
 - [ ] **Gates**: `make fmt` (it also sorts imports), then `make ci`.
+
+Stateless `*Init.sol` production contracts also belong in `script/lib/InitInventory.sol`. The parity test
+checks the source tree and rejects missing entries and constructor arguments. Constructor-bound account
+initializers have explicit exclusion reasons and are released with their EntryPoint-specific factories.
+Run `forge test --match-contract InitInventoryParityTest` when adding or moving an initializer.

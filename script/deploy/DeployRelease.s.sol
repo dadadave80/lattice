@@ -3,6 +3,7 @@ pragma solidity ^0.8.30;
 
 import {ArachnidDeployer} from "@lattice-script/lib/ArachnidDeployer.sol";
 import {FacetInventory} from "@lattice-script/lib/FacetInventory.sol";
+import {InitInventory} from "@lattice-script/lib/InitInventory.sol";
 import {LatticeFactory} from "@lattice/LatticeFactory.sol";
 import {LatticeRegistry} from "@lattice/LatticeRegistry.sol";
 import {LatticeVersion} from "@lattice/LatticeVersion.sol";
@@ -16,7 +17,7 @@ import {Script, console} from "forge-std/Script.sol";
 ///         {LatticeRegistry} singleton, the {LatticeFactory}, and every {FacetInventory} facet through
 ///         Arachnid CREATE2 at raw protocol salts, then registers each facet under
 ///         `keccak256("lattice.<Name>")` at the semver-packed version and points `latest` at it, and
-///         finally writes a per-chain JSON manifest.
+///         attests every stateless InitInventory initializer in Tier A, and writes a per-chain JSON manifest.
 ///
 /// Usage (one release, one chain):
 ///   forge script script/deploy/DeployRelease.s.sol \
@@ -62,14 +63,16 @@ contract DeployRelease is Script {
     //                              TYPES / ERRORS
     //////////////////////////////////////////////////////////////////////////*//
 
-    /// @notice Everything a release run produces (all addresses are the deterministic raw-salt ones).
+    /// @notice Everything a release run produces (facets and inits use deterministic versioned raw salts).
     /// @param registry The {LatticeRegistry} singleton.
     /// @param factory The {LatticeFactory} bound to `registry`.
     /// @param facets The released facet addresses, index-aligned with {FacetInventory.inventory} names.
+    /// @param inits The stateless init addresses, index-aligned with {InitInventory.inventory} names.
     struct ReleaseOutput {
         address registry;
         address factory;
         address[] facets;
+        address[] inits;
     }
 
     /// @notice Thrown when `version` is not a well-formed "MAJOR.MINOR.PATCH" semver string (all-digit,
@@ -195,8 +198,11 @@ contract DeployRelease is Script {
             console.log("  -> if a prior release used a DIFFERENT owner, this run created a PARALLEL registry");
         }
 
-        // --- Phase 3: registration (broadcaster must own the registry) -----------------------------
+        // --- Phase 3: shared inits (permissionless Tier A attestation, no facet registration) -------
         ILatticeRegistry registry = ILatticeRegistry(out.registry);
+        out.inits = _releaseInits(version, registry);
+
+        // --- Phase 4: facet registration (broadcaster must own the registry) -----------------------
         if (registry.owner() != msg.sender) {
             console.log("Registration SKIPPED: broadcaster is not the registry owner", registry.owner());
             console.log("  -> the owner (e.g. the mainnet multisig) registers this release out-of-band");
@@ -234,8 +240,8 @@ contract DeployRelease is Script {
     //                              SALT / VERSION MATH
     //////////////////////////////////////////////////////////////////////////*//
 
-    /// @notice The raw CREATE2 salt of a released facet: `keccak256("lattice.<name>.<version>")`.
-    /// @param name The facet contract name from {FacetInventory}, e.g. `"ERC20"`.
+    /// @notice The raw CREATE2 salt of a released facet or stateless initializer: `keccak256("lattice.<name>.<version>")`.
+    /// @param name The contract name from FacetInventory or InitInventory, e.g. `"ERC20"` or `"ERC20Init"`.
     /// @param version The release semver string, e.g. `"0.1.0"`.
     /// @return salt The raw protocol salt to pass to {ArachnidDeployer.deploy}/{predict}.
     function facetSalt(string memory name, string memory version) public pure returns (bytes32 salt) {
@@ -283,7 +289,8 @@ contract DeployRelease is Script {
 
     /// @dev Serializes the release to `<deploymentsRoot>/<chainid>/release-<version>.json`: top-level
     ///      version / chainid / deployer / registry / factory / owner (read live off the registry) /
-    ///      timestamp, plus one entry per facet with its name, address, codehash, live
+    ///      timestamp, plus initializer name/address/salt/runtime and creation hashes, and one entry per facet
+    ///      with its name, address, codehash, live
     ///      `keccak256(exportSelectors())`, and salt. `run` passes `"deployments"`; the unit test passes an
     ///      isolated root so a real committed manifest is never touched. Internal (not private) so the unit
     ///      test can drive it directly.
@@ -301,6 +308,8 @@ contract DeployRelease is Script {
             facetsJson = vm.serializeString("facets", names[i], facetJson);
         }
 
+        string memory initsJson = _serializeInits(version, out.inits);
+
         string memory root = "manifest";
         vm.serializeString(root, "version", version);
         vm.serializeUint(root, "chainid", block.chainid);
@@ -311,7 +320,8 @@ contract DeployRelease is Script {
         vm.serializeAddress(root, "factory", out.factory);
         vm.serializeAddress(root, "owner", ILatticeRegistry(out.registry).owner());
         vm.serializeUint(root, "timestamp", block.timestamp);
-        string memory json = vm.serializeString(root, "facets", facetsJson);
+        vm.serializeString(root, "facets", facetsJson);
+        string memory json = vm.serializeString(root, "inits", initsJson);
 
         string memory dir = string.concat(deploymentsRoot, "/", vm.toString(block.chainid));
         vm.createDir(dir, true);
@@ -323,6 +333,30 @@ contract DeployRelease is Script {
     //*//////////////////////////////////////////////////////////////////////////
     //                             PRIVATE HELPERS
     //////////////////////////////////////////////////////////////////////////*//
+
+    function _releaseInits(string memory version, ILatticeRegistry registry) private returns (address[] memory inits) {
+        (string[] memory names, string[] memory paths) = InitInventory.inventory();
+        inits = new address[](names.length);
+        for (uint256 i; i < names.length; ++i) {
+            (inits[i],) = _deployOrSkip(facetSalt(names[i], version), vm.getCode(paths[i]), names[i]);
+            registry.attest(inits[i]);
+        }
+    }
+
+    function _serializeInits(string memory version, address[] memory inits) private returns (string memory initsJson) {
+        (string[] memory initNames, string[] memory initPaths) = InitInventory.inventory();
+        for (uint256 i; i < initNames.length; ++i) {
+            string memory key = string.concat("init:", initNames[i]);
+            vm.serializeString(key, "name", initNames[i]);
+            vm.serializeAddress(key, "address", inits[i]);
+            vm.serializeBytes32(key, "codehash", inits[i].codehash);
+            vm.serializeBytes32(key, "initCodeHash", keccak256(vm.getCode(initPaths[i])));
+            string memory initJson = vm.serializeBytes32(key, "salt", facetSalt(initNames[i], version));
+            initsJson = vm.serializeString("inits", initNames[i], initJson);
+        }
+
+        return initsJson;
+    }
 
     /// @dev Predict the raw-salt CREATE2 address for `initCode`; deploy only if nothing lives there yet
     ///      (idempotent resume + permissionless completion both land on identical addresses).
