@@ -1,36 +1,43 @@
 # Registry Deployments
 
 This file is the **canonical reference** for how Lattice releases land on-chain: the deterministic
-address scheme of the [`LatticeRegistry`](src/LatticeRegistry.sol) singleton, the
+address scheme of the [`LatticeRegistry`](src/LatticeRegistry.sol), the
 [`LatticeFactory`](src/LatticeFactory.sol), and every
-[`FacetInventory`](script/lib/FacetInventory.sol) facet, all deployed through the canonical
-**CreateX** singleton — or, on a chain CreateX never reached, through the [Arachnid
-proxy](#chains-without-createx-the-arachnid-fallback) — by
-[`script/deploy/DeployRelease.s.sol`](script/deploy/DeployRelease.s.sol). Every address below is
-reproducible offline from a salt string and an initcode hash — nothing depends on who broadcasts or
-what nonce they are at. The one thing that does vary per chain is **which** of the two deterministic
-deployers that chain has.
+[`FacetInventory`](script/lib/FacetInventory.sol) facet, all deployed through the **Arachnid
+deterministic-deployment proxy** by
+[`script/deploy/DeployRelease.s.sol`](script/deploy/DeployRelease.s.sol). The same salt, initcode and
+constructor arguments give the same address on every chain with that proxy. Broadcasting accounts and
+nonces do not enter the derivation.
 
-The decisions behind this scheme are recorded in
-[ADR 0004](docs/adr/0004-release-deployer-and-salts.md) (deployer and salts) and
-[ADR 0007](docs/adr/0007-registry-trust-model.md) (the registry's trust model).
+[ADR 0004](docs/adr/0004-release-deployer-and-salts.md) records the salt scheme,
+[ADR 0014](docs/adr/0014-arachnid-shared-release-deployer.md) selects the proxy, and
+[ADR 0007](docs/adr/0007-registry-trust-model.md) describes the registry's trust model.
 
-## The CreateX singleton
+## The Arachnid proxy
 
-Release deployments go through **CreateX**
-([pcaversaccio/createx](https://github.com/pcaversaccio/createx)), deployed as a singleton at the
-**same address on every supported chain**:
+Release deployments call the [Arachnid deterministic-deployment
+proxy](https://github.com/Arachnid/deterministic-deployment-proxy) explicitly at:
 
 ```
-0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed
+0x4e59b44847b379578588920cA78FbF26c0B4956C
 ```
 
-Where that address has no code, the release falls back to the [Arachnid
-proxy](#chains-without-createx-the-arachnid-fallback); `DeployRelease.release()` refuses to run only
-on a chain that has **neither** deployer. For local/test runs, etch
-[`test/helpers/MockCreateX.sol`](test/helpers/MockCreateX.sol) — a faithful mock of the `_guard`
-transform and the CREATE2/CREATE3 derivations — at the CreateX address first (see
-[`test/unit/DeployReleaseTest.t.sol`](test/unit/DeployReleaseTest.t.sol)).
+The proxy takes raw `salt (32 bytes) ++ initCode` calldata, applies CREATE2 without hashing the salt,
+and returns the raw 20-byte deployed address. [`ArachnidDeployer`](script/lib/ArachnidDeployer.sol)
+checks that the call succeeds, the return is exactly 20 bytes, the address matches its prediction and
+code exists there. Calling explicitly gives scripts and non-broadcast tests identical semantics.
+
+`DeployRelease.release()` refuses to run without the proxy, even when CreateX is present. Install the
+proxy using the upstream project's chain bootstrap instructions before a release. Chains that accept
+only EIP-155 replay-protected transactions cannot use the upstream keyless deployment transaction;
+they need a chain-supported installation or preinstall at this address. A missing proxy is a release
+prerequisite to resolve, rather than a reason to choose another address family.
+
+Anvil and Foundry's test EVM pre-deploy the proxy. Tests can restore its runtime with
+`vm.etch(ArachnidProxy.PROXY, ArachnidProxy.RUNTIME)` from
+[`test/helpers/ArachnidProxy.sol`](test/helpers/ArachnidProxy.sol). Local recipes can still use plain
+CREATE when the proxy is missing ([`BaseDeploy._facet`](script/base/BaseDeploy.s.sol)); that fallback
+has no canonical release address.
 
 ## Salt formulas
 
@@ -69,69 +76,17 @@ with it.
 
 ## Address derivation
 
-CreateX **guards** every salt before use. A raw salt — one whose first 20 bytes are neither the
-caller nor zero, which every keccak-derived salt above is (up to a negligible 2^-160 accident) —
-takes the deployer- and chain-independent branch:
-
-```
-guardedSalt = keccak256(abi.encode(salt))
-```
-
-and the deployed address is the standard CREATE2 derivation **from the CreateX singleton**:
-
-```
-address = keccak256(0xff ++ 0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed ++ guardedSalt ++ keccak256(initCode))[12:]
-```
-
-So an address depends on exactly three things: the CreateX singleton (constant everywhere), the salt
-string, and the **initcode**. Same salt + same initcode ⇒ same address on every chain.
-[`CreateXDeployer.deployRaw`/`predictRaw`](script/lib/CreateXDeployer.sol) implement the deploy and
-the guard-reproducing prediction (CreateX's public `computeCreate2Address` does **not** re-guard the
-salt it is given — `predictRaw` applies `keccak256(abi.encode(salt))` itself).
-
-## Chains without CreateX: the Arachnid fallback
-
-CreateX is not everywhere. **Hedera** is the motivating case: the singleton is deployed on neither
-Hedera mainnet nor testnet. What those chains do have is the **Arachnid deterministic-deployment
-proxy** ([Arachnid/deterministic-deployment-proxy](https://github.com/Arachnid/deterministic-deployment-proxy),
-Hedera mainnet entity `0.0.6264020`, testnet `0.0.4283707`), itself at one address everywhere:
-
-```
-0x4e59b44847b379578588920cA78FbF26c0B4956C
-```
-
-So on a chain where CreateX has no code and that proxy does,
-[`CreateXDeployer.deployRaw`/`predictRaw`](script/lib/CreateXDeployer.sol) route the raw-salt path
-through the proxy instead: its 69-byte runtime takes `salt ++ initCode` as raw calldata, CREATE2-deploys,
-and returns the bare 20-byte address. CreateX wins wherever both have code, so **no existing chain's
-addresses move**. The fallback covers the raw-salt release path only — there is no CREATE3 equivalent,
-so the adapters' `deploy`/`predict` still require CreateX itself.
-
-The proxy applies **no guard** to the salt it is handed, so its derivation is the plain EIP-1014 form
-over the **raw, unguarded** salt, with the proxy as deployer:
+The address is the plain EIP-1014 derivation over the **raw, unguarded** salt:
 
 ```
 address = keccak256(0xff ++ 0x4e59b44847b379578588920cA78FbF26c0B4956C ++ salt ++ keccak256(initCode))[12:]
 ```
 
-Compare with the CreateX form above, which hashes the salt first (`keccak256(abi.encode(salt))`) and
-uses the CreateX singleton as the deployer. **Two deployers, two address families**: the same facet,
-built from the same source at the same version, lands at one address on every CreateX chain and at a
-different one on every Arachnid-only chain. That second address is no weaker — it is equally
-deterministic, equally deployer-independent, equally permissionless to complete, and equally committed
-to `keccak256(initCode)`, so everything the sections above claim still holds of it. What is lost is
-only the symmetry *between* the families: `lattice.ERC20.0.1.0` has one address on
-Ethereum/Base/Arbitrum/… and another on Hedera. Read a release's addresses off that chain's manifest
-rather than assuming the CreateX ones.
-
-A chain with **neither** deployer has no deterministic path at all. `DeployRelease.release()` keeps
-refusing it (naming both addresses), and the `script/base/` recipes fall back to plain `CREATE` there
-([`BaseDeploy._facet`](script/base/BaseDeploy.s.sol)) — a working diamond at an address nobody can
-predict, which is fine for a throwaway local deployment and useless for a release. Note that Anvil and
-Foundry's test EVM **pre-deploy** the Arachnid proxy (it is Foundry's own default CREATE2 deployer), so
-a local run takes the proxy path unless that address is etched empty;
-[`test/helpers/ArachnidProxy.sol`](test/helpers/ArachnidProxy.sol) carries the fetched runtime for
-tests that need to put it somewhere it is missing.
+[`ArachnidDeployer.deploy`/`predict`](script/lib/ArachnidDeployer.sol) implement this derivation.
+CreateX's presence never changes a canonical release prediction. Older development releases used
+CreateX first, hashing the salt as `keccak256(abi.encode(salt))` and using CreateX as the CREATE2
+sender. Those releases remain historical instances; they are not adopted as deployments at the new
+proxy-derived addresses. The change intentionally moves every former CreateX release address.
 
 ## Why CREATE2 here (and CREATE3 for the adapters)
 
@@ -156,9 +111,6 @@ same address everywhere, anyone may finish the job".
 
 ## What changes an address
 
-- **Which deterministic deployer the chain has.** CreateX and the Arachnid proxy derive different
-  addresses from identical inputs (see [the fallback](#chains-without-createx-the-arachnid-fallback)).
-  This is the only input that varies by chain rather than by release.
 - **The initcode.** `initCode = creationCode ++ abi.encode(constructor args)`, and `creationCode` is
   a function of the source **and the compiler configuration** (solc version, optimizer settings,
   metadata). A release therefore only reproduces across machines/chains when built with the pinned
@@ -175,36 +127,21 @@ same address everywhere, anyone may finish the job".
 ## Recomputing / verifying an address with cast
 
 ```bash
-# 1. the raw salt
+# Build from the release tag and its pinned compiler configuration.
 SALT=$(cast keccak "lattice.ERC20.0.1.0")
-
-# 2. CreateX's raw-salt guard: keccak256(abi.encode(salt))
-GUARDED=$(cast keccak $(cast abi-encode "f(bytes32)" $SALT))
-
-# 3. the initcode hash (facets have no constructor args; append abi-encoded args otherwise)
-INITHASH=$(cast keccak $(forge inspect src/tokens/ERC20/ERC20.sol:ERC20 bytecode))
-
-# 4. the CREATE2 address, deployed by the CreateX singleton
-cast create2 --deployer 0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed --salt $GUARDED --init-code-hash $INITHASH
+INITHASH=$(cast keccak "$(forge inspect src/tokens/ERC20/ERC20.sol:ERC20 bytecode)")
+cast create2 --deployer 0x4e59b44847b379578588920cA78FbF26c0B4956C --salt "$SALT" --init-code-hash "$INITHASH"
 ```
 
-For the registry/factory, step 3 appends the constructor arg:
-`cast keccak $(cast concat-hex $(forge inspect src/LatticeRegistry.sol:LatticeRegistry bytecode) $(cast abi-encode "f(address)" $OWNER))`.
-
-On an [Arachnid-only chain](#chains-without-createx-the-arachnid-fallback) the same facet is two steps
-instead of four — the proxy guards nothing, so the raw salt goes straight in:
+For the registry, append its owner constructor argument before hashing the initcode:
 
 ```bash
-SALT=$(cast keccak "lattice.ERC20.0.1.0")
-
-# Hedera builds under [profile.hedera] (evm_version = cancun). The profile changes the metadata hash, so
-# the initcode hash — and therefore the address — differs from a default-profile build. Reproduce with the
-# SAME profile the facet was deployed under, or the address will not match what is on chain.
-INITHASH=$(FOUNDRY_PROFILE=hedera cast keccak $(FOUNDRY_PROFILE=hedera forge inspect src/tokens/ERC20/ERC20.sol:ERC20 bytecode))
-
-# no guard step, and the PROXY is the deployer
-cast create2 --deployer 0x4e59b44847b379578588920cA78FbF26c0B4956C --salt $SALT --init-code-hash $INITHASH
+INITHASH=$(cast keccak "$(cast concat-hex "$(forge inspect src/LatticeRegistry.sol:LatticeRegistry bytecode)" "$(cast abi-encode 'f(address)' "$OWNER")")")
 ```
+
+The factory similarly appends `abi.encode(registry, address(0), address(0))`. Its registry argument must
+be the predicted registry for that same build and owner. Use one release build profile across chains;
+a different EVM target or metadata hash can change the initcode and addresses.
 
 ## The release manifest
 
@@ -214,7 +151,7 @@ Every `run(version, owner)` writes `deployments/<chainid>/release-<version>.json
 {
   "version": "0.1.0",
   "chainid": 1,
-  "createx": "0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed",
+  "deployer": { "kind": "arachnid", "address": "0x4e59b44847b379578588920cA78FbF26c0B4956C" },
   "registry": "0x...",
   "factory": "0x...",
   "owner": "0x...",            // read live off the registry
@@ -233,11 +170,9 @@ Every `run(version, owner)` writes `deployments/<chainid>/release-<version>.json
 ```
 
 `codehash` and `selectorsHash` are exactly the two pins `LatticeRegistry.register` records and its
-live-read views re-verify, so the manifest diffs directly against on-chain state. The `createx` field
-records the CreateX singleton address; on an
-[Arachnid-only chain](#chains-without-createx-the-arachnid-fallback) the deployer the addresses
-actually derive from is the proxy, and the manifest's own `registry`/`factory`/`facets` entries — not
-that field — are the authority on where the release landed.
+live-read views re-verify, so the manifest diffs directly against on-chain state. The `deployer`
+entry names the actual release proxy on every chain. Legacy manifests with a `createx` field describe
+the earlier deployment policy and require its historical source/configuration to reproduce.
 
 ## Idempotency and resume
 

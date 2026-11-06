@@ -156,6 +156,21 @@ contract CreateXDeployerTest is Test {
         assertEq(harness.facet("ERC20"), facet, "_facet redeployed instead of reusing the released facet");
     }
 
+    function test_FacetUsesArachnidWhenCreateXAlsoExists() public {
+        vm.etch(ArachnidProxy.PROXY, ArachnidProxy.RUNTIME);
+        FacetHarness harness = new FacetHarness();
+        bytes32 salt = keccak256(abi.encodePacked("lattice.ERC20.", LatticeVersion.VERSION));
+        address expected = arachnidAddress(salt, keccak256(vm.getCode("src/tokens/ERC20/ERC20.sol:ERC20")));
+        assertEq(harness.facet("ERC20"), expected, "_facet still prefers CreateX");
+    }
+
+    function test_FacetWithoutProxyFallsBackToCreateEvenWhenCreateXExists() public {
+        vm.etch(ArachnidProxy.PROXY, "");
+        FacetHarness harness = new FacetHarness();
+        address expected = vm.computeCreateAddress(address(harness), vm.getNonce(address(harness)));
+        assertEq(harness.facet("ERC20"), expected, "_facet used CreateX instead of its local fallback");
+    }
+
     //*//////////////////////////////////////////////////////////////////////////
     //                         NO DETERMINISTIC DEPLOYER
     //////////////////////////////////////////////////////////////////////////*//
@@ -181,8 +196,8 @@ contract CreateXDeployerTest is Test {
     //                            DEPLOYER PRECEDENCE
     //////////////////////////////////////////////////////////////////////////*//
 
-    /// @notice CreateX wins wherever it has code: etching the proxy ALONGSIDE it must not move a single
-    ///         release address — predictRaw stays the CreateX-guarded derivation and deployRaw lands there.
+    /// @notice The retained legacy raw helper keeps its CreateX-first policy; canonical releases use
+    ///         ArachnidDeployer directly instead.
     function test_CreateXTakesPrecedenceOverTheArachnidProxy() public {
         vm.etch(ArachnidProxy.PROXY, ArachnidProxy.RUNTIME);
 

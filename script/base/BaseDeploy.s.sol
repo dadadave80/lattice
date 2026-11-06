@@ -3,7 +3,7 @@ pragma solidity ^0.8.30;
 
 import {MultiInit} from "@diamond/initializers/MultiInit.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
-import {CreateXDeployer} from "@lattice-script/lib/CreateXDeployer.sol";
+import {ArachnidDeployer} from "@lattice-script/lib/ArachnidDeployer.sol";
 import {FacetInventory} from "@lattice-script/lib/FacetInventory.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
 import {LatticeFactory} from "@lattice/LatticeFactory.sol";
@@ -154,23 +154,21 @@ abstract contract BaseDeploy is Script, GetSelectors {
     //                            RELEASED FACETS
     //////////////////////////////////////////////////////////////////////////*//
 
-    /// @notice The {FacetInventory} facet `name` at its release address (see {DeployRelease}): reused when code
-    ///         already lives there, otherwise deployed there through CreateX — or, on a chain CreateX never
-    ///         reached, through the {CreateXDeployer.ARACHNID_PROXY} fallback at that chain's own release
-    ///         address. Only a chain with NEITHER deployer gets a plain CREATE instead — rarer than it sounds,
-    ///         since Anvil and Foundry's test EVM both pre-deploy that proxy as their default CREATE2 deployer.
+    /// @notice The {FacetInventory} facet `name` at its Arachnid release address: reused when code already
+    ///         lives there, otherwise deployed through the proxy. Without the proxy a local recipe falls
+    ///         back to plain CREATE, even when CreateX is present; canonical releases require the proxy.
     /// @dev The address commits to the initcode, so a facet compiled from code that differs from the release
     ///      at {LatticeVersion.VERSION} lands at an unrelated address instead of colliding with it. Anyone may
     ///      deploy a missing facet; {DeployRelease} later skips it and registers it.
     /// @param name The facet contract name exactly as listed in {FacetInventory}.
     function _facet(string memory name) internal returns (address facet) {
         string memory path = _inventoryPath(name);
-        if (!CreateXDeployer.hasRawDeployer()) return deployCode(path);
+        if (ArachnidDeployer.PROXY.code.length == 0) return deployCode(path);
         bytes memory initCode = vm.getCode(path);
         bytes32 salt = keccak256(abi.encodePacked("lattice.", name, ".", LatticeVersion.VERSION));
-        facet = CreateXDeployer.predictRaw(salt, keccak256(initCode));
+        facet = ArachnidDeployer.predict(salt, keccak256(initCode));
         if (facet.code.length == 0) {
-            require(CreateXDeployer.deployRaw(salt, initCode) == facet, "BaseDeploy: facet deployed != predicted");
+            require(ArachnidDeployer.deploy(salt, initCode) == facet, "BaseDeploy: facet deployed != predicted");
         }
     }
 

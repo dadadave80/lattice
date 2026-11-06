@@ -18,7 +18,7 @@ directly with `forge script` (usage is in its NatSpec header) or it is only impo
 | `deploy/` | Canonical release and singleton deploys | `DeployRelease.s.sol` (every facet plus registry and factory), `DeployFactory.s.sol` (replacement factory), `DeployAdapters.s.sol`; `check-atomic-deploy.sh` | `check-atomic-deploy` |
 | `docs/` | Documentation site build: stages forge doc output and the guides into `docs/site`, builds it with Vocs and checks its links | `build.sh`, `check-links.sh` | `doc`, `doc-serve` |
 | `governance/` | Upgrade tooling for live diamonds | `UpgradeDiamond.s.sol` (CreateX deploy plus governed-cut proposal); `ProposeGovernedCut.s.sol` (OpenZeppelin Defender payload for a one-selector cut, smoke-tested in `test/unit/ProposeGovernedCutScriptTest.t.sol`) | none |
-| `lib/` | Imported helpers, not run directly | `CreateXDeployer.sol`, `FacetInventory.sol` (release inventory; drives `ExportSelectorsParityTest`) | none |
+| `lib/` | Imported helpers, not run directly | `ArachnidDeployer.sol` (shared release CREATE2), `CreateXDeployer.sol` (CREATE3 and legacy raw CREATE2), `FacetInventory.sol` (release inventory; drives `ExportSelectorsParityTest`) | none |
 | `upgrades/` | ERC-7201 storage-layout guard: `check-storage-layout.sh` runs the storage-safety Action's checker (`.github/actions/storage-layout/`) with Lattice's probe, baseline and optional reviewed resets file (`storage-layout.resets`) | `check-storage-layout.sh`, `StorageLayoutProbe.sol`, `storage-layout.baseline` | `storage-check`, `storage-update` |
 
 Moving a file breaks README permalinks and the `@lattice-script/` imports in `test/`, so update both

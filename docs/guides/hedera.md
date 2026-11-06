@@ -181,14 +181,14 @@ limits.
 ## Deterministic deployment: Arachnid, not CreateX
 
 CreateX (`0xba5Ed099…ba5Ed`) is **not** deployed on Hedera. The Arachnid deterministic-deployment proxy
-`0x4e59b44847b379578588920cA78FbF26c0B4956C` **is** (mainnet `0.0.6264020`, testnet `0.0.4283707`), so
-`CreateXDeployer` routes `deployRaw`/`predictRaw` through it when CreateX is absent, and `BaseDeploy._facet`
-prefers that path over plain CREATE.
+`0x4e59b44847b379578588920cA78FbF26c0B4956C` **is** (mainnet `0.0.6264020`, testnet `0.0.4283707`).
+`ArachnidDeployer` is the canonical release path on every chain, and `BaseDeploy._facet` reuses or
+deploys facets through that proxy even where CreateX is also present.
 
-Release facets on Hedera are therefore still deterministic and still permissionless, but they land at
-**different addresses** than on CreateX chains: the Arachnid path is plain EIP-1014 with the proxy as deployer
-and the raw salt, where CreateX additionally applies `keccak256(abi.encode(salt))`. See
-`REGISTRY_DEPLOYMENTS.md`.
+Release addresses use plain EIP-1014 with the proxy as deployer and the unguarded salt. The same build,
+salt and constructor arguments therefore give the same addresses on Hedera and other chains. Older
+CreateX-first development deployments remain historical instances; reproduce them from their original
+source and configuration. See [the release reference](../../REGISTRY_DEPLOYMENTS.md).
 
 `LatticeFactory.deploy` uses a native `new Lattice{salt}()`, which is standard EIP-1014 (HIP-329) and works
 unmodified. Hedera's EIP-6780 semantics never delete a pre-existing contract, so the metamorphic-redeploy
