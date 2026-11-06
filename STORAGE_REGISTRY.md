@@ -41,6 +41,27 @@ release tag. Historical release layouts are not regenerated from a later source 
 > (`forge test --match-contract StorageSlotVerificationTest`). A failure means a slot constant
 > is wrong (would collide with another module) and is a release blocker.
 
+## Initialization version read
+
+Lattice's existing initialization word uses the fixed non-ERC-7201 slot
+`0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffbf601132` from
+`InitializableLib.initializableSlot()`. This address and encoding are a stable read for tools:
+bit 0 is `initializing`; bits 1–64 are the unsigned initialization version. Version 0 means never
+initialized, version 1 is normal initial setup, and `2**64 - 1` prevents later initialization.
+Remaining bits are reserved. Read this word with `eth_getStorageAt` at the same block used for
+the rest of an upgrade inspection, and decode with full-width integers:
+
+```javascript
+const word = BigInt(storageHex); // eth_getStorageAt's 32-byte hex result
+const initializing = (word & 1n) !== 0n;
+const initializedVersion = (word >> 1n) & 0xffffffffffffffffn;
+```
+
+`ReinitMultiInit` uses this same word when authorized upgrades initialize additional modules.
+It adds no storage namespace or routed view selector. See
+[upgrade initialization](docs/guides/compose-your-own-diamond.md#initialize-modules-during-an-upgrade)
+and [ADR0024](docs/adr/0024-upgrade-initializer-batches.md).
+
 ## Notes on interface IDs
 
 - `interfaceId` is `type(I<Module>).interfaceId` computed from the Lattice interface, **except**

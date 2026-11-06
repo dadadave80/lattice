@@ -126,6 +126,10 @@ release-manifest: ## Offline identities (VERSION, TAG, OWNER, PUBLICATION=fixtur
 release-status: ## Observe deployed code/curation at a pinned block (MANIFEST, RPC_URL, DESTINATION required)
 	./script/release-status.sh "$(MANIFEST)" "$(RPC_URL)" "$(DESTINATION)"
 
+.PHONY: release-verify
+release-verify: ## Verify frozen shared sources on Sourcify (MANIFEST, CHAIN_MANIFEST, BUILD_INPUTS, RPC_URL required)
+	./script/release-verify.sh "$(MANIFEST)" "$(CHAIN_MANIFEST)" "$(BUILD_INPUTS)" "$(RPC_URL)"
+
 .PHONY: via-ir
 via-ir: ## IR-pipeline parity build (catches stack-too-deep / IR-only errors)
 	forge build --via-ir --skip test script
@@ -162,6 +166,7 @@ scripts-check: ## Regression tests for the CI helper scripts (closing-keyword pa
 	./script/test-storage-registry.sh
 	./script/test-error-event-catalog.sh
 	./script/test-release-manifest.sh
+	./script/test-release-verification.sh
 
 .PHONY: abi-catalog
 abi-catalog: ## Clean source build and checked error/event/assembly catalog (out/errors.json)

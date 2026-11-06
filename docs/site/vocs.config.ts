@@ -37,6 +37,8 @@ const decisions: Item = {
     { text: '0020 Release source freeze', link: '/adr/0020-source-anchored-release-manifests' },
     { text: '0021 Closed ERC-3643 profile', link: '/adr/0021-erc3643-closed-immutable-profile' },
     { text: '0022 Native release libraries', link: '/adr/0022-native-create2-release-libraries' },
+    { text: '0023 Frozen source verification', link: '/adr/0023-frozen-input-source-verification' },
+    { text: '0024 Upgrade initializer batches', link: '/adr/0024-upgrade-initializer-batches' },
   ],
 }
 

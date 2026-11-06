@@ -6,7 +6,7 @@ pragma solidity ^0.8.30;
 /// @notice Stateless initializer artifacts released and attested by codehash, separate from facet registration.
 library InitInventory {
     function inventory() internal pure returns (string[] memory names, string[] memory paths) {
-        string[108] memory n = [
+        string[109] memory n = [
             "API3AdapterInit",
             "API3QRNGAdapterInit",
             "AccessControlEnumerableInit",
@@ -100,6 +100,7 @@ library InitInventory {
             "PythEntropyAdapterInit",
             "RateLimiterInit",
             "RedStoneAdapterInit",
+            "ReinitMultiInit",
             "SafeDiamondCutInit",
             "SafeHarborAdopterInit",
             "SemaphoreInit",
@@ -116,7 +117,7 @@ library InitInventory {
             "WormholeGatewayAdapterInit",
             "ZetaChainGatewayAdapterInit"
         ];
-        string[108] memory p = [
+        string[109] memory p = [
             "src/oracles/api3/API3AdapterInit.sol:API3AdapterInit",
             "src/oracles/api3/API3QRNGAdapterInit.sol:API3QRNGAdapterInit",
             "src/access/AccessControlEnumerableInit.sol:AccessControlEnumerableInit",
@@ -210,6 +211,7 @@ library InitInventory {
             "src/oracles/pyth/PythEntropyAdapterInit.sol:PythEntropyAdapterInit",
             "src/security/RateLimiterInit.sol:RateLimiterInit",
             "src/oracles/redstone/RedStoneAdapterInit.sol:RedStoneAdapterInit",
+            "src/utils/ReinitMultiInit.sol:ReinitMultiInit",
             "src/governance/SafeDiamondCutInit.sol:SafeDiamondCutInit",
             "src/governance/SafeHarborAdopterInit.sol:SafeHarborAdopterInit",
             "src/privacy/SemaphoreInit.sol:SemaphoreInit",
@@ -226,8 +228,8 @@ library InitInventory {
             "src/crosschain/wormhole/WormholeGatewayAdapterInit.sol:WormholeGatewayAdapterInit",
             "src/crosschain/zetachain/ZetaChainGatewayAdapterInit.sol:ZetaChainGatewayAdapterInit"
         ];
-        names = new string[](108);
-        paths = new string[](108);
+        names = new string[](109);
+        paths = new string[](109);
         for (uint256 i; i < names.length; ++i) {
             names[i] = n[i];
             paths[i] = p[i];

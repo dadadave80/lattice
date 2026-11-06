@@ -238,16 +238,19 @@ An initializer contract declares `lattice-kind step|bundle`. Each public initial
 | `lattice-initializes` | Actual module initialization/registration, one `Module[ with k=v];` per record. |
 | `lattice-after` | `Module hard\|convention reason;`, or `none;`, for prerequisites outside this initializer. A prose recommendation is not a checked initialization marker. |
 | `lattice-same-call` | Same syntax; `Initializable hard enclosing-initializing-window;` only if reachable code really checks it. ERC721Consecutive checks the initializing flag **and version 1**; registration-only DiamondIntrospection has no such guard. |
-| `lattice-sequence` | Bundles only: concrete ordered `Module;Module;` records. This includes registration steps and is not an unordered dependency set. |
+| `lattice-sequence` | Bundles only: concrete ordered `Module;Module;` records, including registration steps. Only `MultiInit` and `ReinitMultiInit` use `caller-defined;` for their supplied address/calldata arrays. |
 | `lattice-registers-interfaces` | Bare positive marker when an entrypoint can register ERC-165 flags; omitted otherwise. Conditional view-facet registration remains conditional (ADR0016). Put this bare marker **last** in its comment block: otherwise solc consumes the next custom tag as its value. It compiles to an empty string, so consumers check presence. |
 | `lattice-param` | One record per ABI input: `name [unit=seconds\|percent\|wei] [rule=text] [example=value] [authority];`, or `none;` for no parameters. Flags are optional source-backed facts. Generic Governor delays use token clock ticks, not necessarily seconds; token amounts use smallest units, not wei. Struct rules refer to the declared struct fields. Timelock's current `admin` parameter is ignored by its library; it does not grant an extra admin. |
 
 The only upstream overlay is [`CoreCompositionMetadata`](script/lib/CoreCompositionMetadata.sol): four
 unmodified diamond-lib facets and MultiInit at the documented pinned commit. Its records are explicitly
-curated rather than represented as compiler-emitted tags. MultiInit's `caller-defined;` module/sequence
-sentinel means the supplied address/calldata arrays choose the steps; it opens no initialization window
-and returns at a zero address. Review all five records whenever updating the submodule. First-party and
-future inventory entries cannot inherit this exception.
+curated rather than represented as compiler-emitted tags. Review all five records whenever updating the
+submodule. First-party and future inventory entries must emit their own NatSpec and cannot inherit the overlay.
+
+The `caller-defined;` module/sequence sentinel is allowed only for the two explicit batch helpers:
+`MultiInit` opens no initialization window; first-party `ReinitMultiInit` opens a strictly increasing
+reinitializer window. Both run the supplied steps in order and terminate at a zero target. Successful
+empty/terminated reinitializer batches still advance their version. Other bundles declare concrete modules.
 
 The ERC-3643 suite also declares its source-bound
 `transient:lattice.storage.ERC3643Execution` lock. Its precomputed root and derivation are checked
