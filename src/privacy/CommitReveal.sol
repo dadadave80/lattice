@@ -10,8 +10,13 @@ import {CommitRevealLib} from "@lattice/privacy/libraries/CommitRevealLib.sol";
 ///         for sealed-bid auctions, commit–reveal voting, and MEV mitigation. No ZK / circuits.
 /// @dev All logic lives in {CommitRevealLib}. Permissionless: anyone may commit and reveal their own.
 ///      The commitment binds the committer's address, so reveal is front-run-proof.
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source Lattice original
+/// @custom:lattice-requires none;
+/// @custom:lattice-family none
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches lattice.storage.CommitReveal;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init CommitRevealInit
 contract CommitReveal is ICommitReveal {
     /// @inheritdoc ICommitReveal
     function commit(bytes32 commitment) external virtual {

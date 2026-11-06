@@ -14,7 +14,6 @@ import {Initializable} from "@lattice/utils/Initializable.sol";
 ///         {AccessControl}; the constructor is guarded by the {Initializable} `initializer` modifier.
 /// @dev Consumers who need a Diamond-proxy deployment should use {TimelockController} as a
 ///      facet and call initializers separately.
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source OpenZeppelin v5.1.0
 contract TimelockControllerStandalone is TimelockController, AccessControl, Initializable {
     /// @dev ERC-8153 clash resolver: this composite inherits multiple facets that each declare

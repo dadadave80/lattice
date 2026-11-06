@@ -35,7 +35,7 @@ struct GovernedVaultENSParams {
 ///         the reverse registrar is stored, `ENS_MANAGER_ROLE` is granted to the DIAMOND ONLY (so renames pass
 ///         exclusively through a passed, timelock-executed governance proposal), and, when `ensName` is
 ///         non-empty, the reverse name is claimed inline. The claim works because this contract is
-///         delegatecalled by {Diamond.initialize}: `address(this)` IS the diamond, so the registrar sees the
+///         delegatecalled by {Lattice.initialize}: `address(this)` IS the diamond, so the registrar sees the
 ///         DIAMOND as `msg.sender` — exactly the self-claim that makes the diamond's `addr.reverse` record
 ///         resolve to `ensName`.
 /// @dev Delegatecalled inside the diamond's initializing window — each `__*_init` guard passes because the
@@ -44,7 +44,29 @@ struct GovernedVaultENSParams {
 ///      deployer during init, deliberately NOT a role holder): cache the name (CEI), forward `setName` to the
 ///      registrar, emit {IENSReverseClaimer.EnsNameSet}. Initializes ENS directly so the shared authority
 ///      bootstrap remains explicit; module initializers cannot replace the original AccessControl admin.
+/// @custom:lattice-kind bundle
 contract GovernedVaultENSInit {
+    /// @custom:lattice-initializes AccessControl;
+    /// @custom:lattice-initializes EmergencyStop;
+    /// @custom:lattice-initializes ERC165;
+    /// @custom:lattice-initializes Diamond;
+    /// @custom:lattice-initializes Governor with policy=governed-cut-route;
+    /// @custom:lattice-initializes GovernedDiamondCut;
+    /// @custom:lattice-initializes ERC20;
+    /// @custom:lattice-initializes ERC4626;
+    /// @custom:lattice-initializes EIP712 with version=1;
+    /// @custom:lattice-initializes Nonces;
+    /// @custom:lattice-initializes Votes;
+    /// @custom:lattice-initializes VaultCore;
+    /// @custom:lattice-initializes TimelockController;
+    /// @custom:lattice-initializes Governor;
+    /// @custom:lattice-initializes GovernedVault;
+    /// @custom:lattice-initializes ENSReverseClaimer;
+    /// @custom:lattice-after none;
+    /// @custom:lattice-same-call Initializable hard enclosing-initializing-window;
+    /// @custom:lattice-sequence AccessControl;EmergencyStop;ERC165;Diamond;Governor with policy=governed-cut-route;GovernedDiamondCut;ERC20;ERC4626;EIP712;Nonces;Votes;VaultCore;TimelockController;Governor;GovernedVault;ENSReverseClaimer;
+    /// @custom:lattice-param p rule=GovernedVaultParams-voting-times-in-seconds-quorum-0-to-100;
+    /// @custom:lattice-registers-interfaces
     function init(GovernedVaultENSParams calldata p) external {
         address self = address(this); // the diamond (delegatecall context)
 

@@ -13,8 +13,13 @@ import {Call} from "@lattice/interfaces/external/ercs/IERC6900.sol";
 ///         the ERC-6900 execution surface of `IERC6900Account`.
 /// @dev Stateless delegator — logic lives in {ERC6900ExecutorLib}; it reads the registries owned by
 ///      {ERC6900ModuleManagerLib}. Part of the ERC-6900 account blueprint (alternative to the ERC-7579 stack).
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source ERC-6900
+/// @custom:lattice-requires ERC6900ModuleManager convention validation-and-execution-configuration;
+/// @custom:lattice-family none
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches none;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init AccountInit6900
 contract ERC6900Executor {
     /// @notice Executes a single call to `target` with `value`, gated by the caller's runtime validation.
     function execute(address target, uint256 value, bytes calldata data)

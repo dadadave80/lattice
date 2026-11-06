@@ -10,13 +10,21 @@ import {IAggregatorExecAdapter} from "@lattice/interfaces/defi/IAggregatorExecAd
 /// @notice One-shot initializer for a generic swap/bridge execution diamond — seeds AccessControl (so the
 ///         `(aggregator, selector)` allow-list setter is `DEFAULT_ADMIN_ROLE`-gated), the reentrancy guard (the
 ///         exec path is `nonReentrant`), and registers the IAggregatorExecAdapter interface via ERC-165.
-///         Delegatecalled by {Diamond.initialize} inside the initializing window (so it must NOT open its own
+///         Delegatecalled by {Lattice.initialize} inside the initializing window (so it must NOT open its own
 ///         pre/postInitializer; each `__*_init` guard passes because the window is already open). Reverts
 ///         {AggregatorExecZeroAdmin} if `admin` is the zero address.
+/// @custom:lattice-kind bundle
 contract AggregatorExecAdapterInit {
     /// @notice Runs the access-control + reentrancy-guard + adapter initializers. MUST be invoked via the
     ///         diamond's `initialize` `_init` delegatecall.
     /// @param admin The address granted `DEFAULT_ADMIN_ROLE` (controls the allow-list setter).
+    /// @custom:lattice-initializes AccessControl;
+    /// @custom:lattice-initializes AggregatorExecAdapter;
+    /// @custom:lattice-after none;
+    /// @custom:lattice-same-call Initializable hard enclosing-initializing-window;
+    /// @custom:lattice-sequence AccessControl;AggregatorExecAdapter;
+    /// @custom:lattice-param admin authority;
+    /// @custom:lattice-registers-interfaces
     function init(address admin) external {
         if (admin == address(0)) revert IAggregatorExecAdapter.AggregatorExecZeroAdmin();
         AccessControlLib.__AccessControl_init(admin);

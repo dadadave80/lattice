@@ -11,8 +11,13 @@ import {OracleGuardLib} from "@lattice/oracles/libraries/OracleGuardLib.sol";
 ///         sequencer-uptime check with a grace period, plus per-key WAD bounds.
 /// @dev Stateless delegator — all logic and storage live in OracleGuardLib. Its selectors do not overlap the
 ///      adapters', so it can be cut next to an adapter (reading its own diamond) or into a separate diamond.
-/// @custom:lattice-version 0.5.0
 /// @custom:lattice-source Chainlink
+/// @custom:lattice-requires AccessControl|AccessControlEnumerable|AccessControlTimed convention role-management-surface;
+/// @custom:lattice-family none
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches lattice.storage.OracleGuard;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init OracleGuardInit
 contract OracleGuard is IOracleGuard {
     /// @inheritdoc IOracleGuard
     function guardedAnswer(bytes32 key) external view virtual override returns (int256 answerWad) {

@@ -55,6 +55,7 @@ abstract contract RecipeGuards is Test {
     ///      recipe passes the factory's production checks (loupe coverage, no export selector) in one call.
     function _assemble(FacetCut[] memory cuts, address init, bytes memory initCalldata)
         internal
+        virtual
         returns (address diamond)
     {
         if (address(_factory) == address(0)) {
@@ -66,6 +67,7 @@ abstract contract RecipeGuards is Test {
     /// @dev Mirrors {BaseDeploy._assembleMulti} for recipes returning (cuts, inits[], calldatas[]).
     function _assembleMulti(FacetCut[] memory cuts, address[] memory inits, bytes[] memory initCalldatas)
         internal
+        virtual
         returns (address diamond)
     {
         MultiInit multiInit = new MultiInit();

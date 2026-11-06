@@ -23,8 +23,14 @@ import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib
 ///      canonical WETH9 (https://github.com/gnosis/canonical-weth). The facet's own payable
 ///      `receive()` serves STANDALONE hosting only — behind a diamond, empty-calldata ETH routes to the
 ///      cut {Receive} facet, and the WETH unwrap goes through the stipend-safe {WETHUnwrapper}.
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source Lattice original
+/// @custom:lattice-requires AccessControl|AccessControlEnumerable|AccessControlTimed convention role-management-surface;
+/// @custom:lattice-family strategy
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches lattice.storage.LidoAdapter;
+/// @custom:lattice-touches slot:0x8000000000ab143c06;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init none
 contract LidoAdapter is IStrategy, IProtocolAdapter, IAdapterOperator, ILidoAdapter {
     //*//////////////////////////////////////////////////////////////////////////
     //                              IStrategy

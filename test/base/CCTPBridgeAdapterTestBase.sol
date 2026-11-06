@@ -18,7 +18,7 @@ import {Test} from "forge-std/Test.sol";
 ///         a mock hides. The external `MockTokenMessenger`, `MockMessageTransmitter` and `MockUSDC` stay test
 ///         fixtures (they are NOT the facet under test). The zero-address init guard is exercised by calling
 ///         `_deployCCTPBridgeAdapter` with a zero address inside `vm.expectRevert` (the `CCTPZeroAddress` revert
-///         bubbles up through {Diamond.initialize}).
+///         bubbles up through {Lattice.initialize}).
 abstract contract CCTPBridgeAdapterTestBase is Test, GetSelectors {
     DeployCCTPBridgeAdapter internal deployer;
 

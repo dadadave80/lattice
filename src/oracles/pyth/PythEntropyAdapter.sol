@@ -13,8 +13,13 @@ import {PythEntropyAdapterLib} from "@lattice/oracles/pyth/PythEntropyAdapterLib
 ///      This facet handles the request/track layer only. Consumer facets that inherit this contract
 ///      should override `entropyCallback` to act on delivered randomness after calling
 ///      `super.entropyCallback`.
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source Pyth
+/// @custom:lattice-requires AccessControl|AccessControlEnumerable|AccessControlTimed convention role-management-surface;
+/// @custom:lattice-family none
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches lattice.storage.PythEntropyAdapter;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init PythEntropyAdapterInit
 contract PythEntropyAdapter is IPythEntropyAdapter {
     /// @inheritdoc IPythEntropyAdapter
     function getConfig() external view virtual override returns (EntropyConfig memory) {

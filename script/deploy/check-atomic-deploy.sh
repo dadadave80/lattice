@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Proves recipe scripts create and initialize Lattice proxies in ONE transaction (through LatticeFactory).
+# Proves generic and specialized account recipes create and initialize proxies in one factory transaction.
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/../.."
 fail() { echo "atomic-deploy: $*" >&2; exit 1; }
@@ -10,6 +10,9 @@ LOG=broadcast/DeployAccessControl.s.sol/31337/run-latest.json
 
 if grep -rnE 'new Lattice[({]|\.initialize\(' script --include='*.sol'; then
   fail 'create proxies with BaseDeploy._assemble (LatticeFactory), never a separate initialize'
+fi
+if grep -rnE 'new[[:space:]]+Deploy[A-Za-z0-9_]*[[:space:]]*\(' script/base --include='*.sol'; then
+  fail 'compose recipes with internal builders, never deploy cheatcode-dependent recipe helpers'
 fi
 
 [[ "$(cast chain-id --rpc-url "$RPC_URL")" == 31337 ]] || fail 'requires a local Anvil (chain 31337)'
@@ -34,3 +37,64 @@ grep -q 'set a new LATTICE_SALT' <<< "$OUT" || fail "unexpected failure: $OUT"
 LATTICE_FACTORY=$FACTORY LATTICE_SALT=0x0000000000000000000000000000000000000000000000000000000000000001 deploy > /dev/null
 [[ "$(count '.contractName == "LatticeFactory" and .transactionType == "CREATE"')" == 0 ]] || fail 'LATTICE_FACTORY was ignored'
 echo "Atomic recipe deployment verified: $DIAMOND via $FACTORY"
+
+for flavor in DeployAccount DeployAccount6900; do
+  SCRIPT="script/base/accounts/$flavor.s.sol:$flavor"
+  LOG="broadcast/$flavor.s.sol/31337/run-latest.json"
+  # The block advances after each broadcast, so repeated local gates test a fresh counterfactual account.
+  salt=$(cast keccak "lattice.atomic.$flavor.$(cast block-number --rpc-url "$RPC_URL")")
+  forge script "$SCRIPT" --sig 'run(address,address,bytes32)' \
+    0x433709009B8330FDa32311DF1C2AFA402eD8D009 "$ACCOUNT" "$salt" \
+    --rpc-url "$RPC_URL" --unlocked --sender "$ACCOUNT" --broadcast --slow > /dev/null
+  [[ "$(count '(.function // "") | startswith("initialize(")')" == 0 ]] || fail "$flavor separately initialized a proxy"
+  [[ "$(count '(.function // "") | startswith("createAccount(")')" == 1 ]] || fail "$flavor skipped its account factory"
+  account=$(jq -r '.returns.account.value' "$LOG")
+  if [ "$flavor" = DeployAccount ]; then
+    proxy=src/accounts/erc7579/AccountDiamond.sol:AccountDiamond
+  else
+    proxy=src/accounts/erc6900/ModularAccount6900.sol:ModularAccount6900
+  fi
+  expected_runtime=$(forge inspect "$proxy" deployedBytecode)
+  actual_runtime=$(cast code "$account" --rpc-url "$RPC_URL")
+  [[ "$actual_runtime" = "$expected_runtime" ]] || fail "$flavor created the wrong proxy runtime"
+  [[ "$(cast call "$account" 'facetAddress(bytes4)(address)' 0x01ffc9a7 --rpc-url "$RPC_URL")" != 0x0000000000000000000000000000000000000000 ]] || fail "$flavor account is uninitialized"
+  echo "Atomic account deployment verified: $account via $flavor"
+done
+
+for family in ERC20 ERC721 ERC1155; do
+  flavor="Deploy${family}Burnable"
+  SCRIPT="script/base/tokens/$flavor.s.sol:$flavor"
+  LOG="broadcast/$flavor.s.sol/31337/run-latest.json"
+  for authority in immutable admin; do
+    if [ "$family" = ERC1155 ]; then
+      args=('ipfs://atomic/{id}.json')
+      signature='run(string)'
+      [ "$authority" = immutable ] || { args+=("$ACCOUNT"); signature='run(string,address)'; }
+    else
+      args=("Atomic $family" "A$family")
+      signature='run(string,string)'
+      [ "$authority" = immutable ] || { args+=("$ACCOUNT"); signature='run(string,string,address)'; }
+    fi
+    forge script "$SCRIPT" --sig "$signature" "${args[@]}" \
+      --rpc-url "$RPC_URL" --unlocked --sender "$ACCOUNT" --broadcast --slow > /dev/null
+    [[ "$(count '(.function // "") | startswith("initialize(")')" == 0 ]] || fail "$flavor separately initialized a proxy"
+    [[ "$(count '.contractName == "LatticeFactory" and ((.function // "") | startswith("deploy("))')" == 1 ]] || fail "$flavor skipped LatticeFactory.deploy"
+    [[ "$(count '.transactionType == "CREATE" and ((.contractName // "") | startswith("Deploy"))')" == 0 ]] || fail "$flavor deployed a recipe helper"
+    token=$(jq -r '.returns.token.value' "$LOG")
+    [[ "$(cast call "$token" 'facetAddress(bytes4)(address)' 0x01ffc9a7 --rpc-url "$RPC_URL")" != 0x0000000000000000000000000000000000000000 ]] || fail "$flavor token is uninitialized"
+    if [ "$family" = ERC1155 ]; then
+      metadata=$(cast call "$token" 'uri(uint256)(string)' 0 --json --rpc-url "$RPC_URL" | jq -r '.[0]')
+    else
+      metadata=$(cast call "$token" 'name()(string)' --json --rpc-url "$RPC_URL" | jq -r '.[0]')
+    fi
+    [[ "$metadata" = "${args[0]}" ]] || fail "$flavor lost its typed base initialization"
+    cut_owner=$(cast call "$token" 'facetAddress(bytes4)(address)' 0x1f931c1c --rpc-url "$RPC_URL")
+    if [ "$authority" = admin ]; then
+      [[ "$cut_owner" != 0x0000000000000000000000000000000000000000 ]] || fail "$flavor omitted the admin cut route"
+      [[ "$(cast call "$token" 'hasRole(bytes32,address)(bool)' "0x$(printf '%064d' 0)" "$ACCOUNT" --rpc-url "$RPC_URL")" = true ]] || fail "$flavor lost its admin grant"
+    else
+      [[ "$cut_owner" = 0x0000000000000000000000000000000000000000 ]] || fail "$flavor immutable variant exposes a cut route"
+    fi
+    echo "Atomic $family extension verified: $token ($authority)"
+  done
+done

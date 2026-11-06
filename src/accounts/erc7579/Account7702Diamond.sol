@@ -7,7 +7,7 @@ import {ECDSA} from "@lattice/utils/libraries/ECDSA.sol";
 
 /// @title Account7702Diamond
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
-/// @notice Optional hardened EIP-7702 delegate (#58 item 7). The bare {Diamond}'s ungated `initialize` is safe
+/// @notice Optional hardened EIP-7702 delegate (#58 item 7). The inherited {Lattice.initialize} entry point is safe
 ///         only when onboarding is ATOMIC — the 7702 authorization bundled into the same transaction as the
 ///         first UserOp, which is the standard 4337+7702 flow. An EOA that instead applies the delegation in a
 ///         separate, earlier transaction and leaves itself uninitialized is exposed to a front-runner who can
@@ -24,7 +24,7 @@ import {ECDSA} from "@lattice/utils/libraries/ECDSA.sol";
 ///      `InvalidInitialization` (the constructor-only exemption needs empty code, and a delegated EOA has
 ///      the delegation designator) or `AlreadyInitialized` (from `AccountInit`'s `initializeOwner`). Clear
 ///      both slots first, via a delegate that zeroes them. Lattice's values likewise remain for the next
-///      delegate. Namespacing these slots is deferred to a coordinated 1.0 change (#247).
+///      delegate. This preset retains those legacy slots; #247 records this compatibility constraint.
 contract Account7702Diamond is AccountDiamond {
     /// @notice The provided onboarding signature did not recover to this account (the delegating EOA).
     error UnauthorizedOnboarding();

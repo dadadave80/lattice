@@ -6,7 +6,7 @@ pragma solidity ^0.8.30;
 /// @notice Stateless initializer artifacts released and attested by codehash, separate from facet registration.
 library InitInventory {
     function inventory() internal pure returns (string[] memory names, string[] memory paths) {
-        string[105] memory n = [
+        string[109] memory n = [
             "API3AdapterInit",
             "API3QRNGAdapterInit",
             "AccessControlEnumerableInit",
@@ -51,9 +51,11 @@ library InitInventory {
             "ERC20Init",
             "ERC20PausableInit",
             "ERC20PermitInit",
+            "ERC20TemporaryApprovalInit",
             "ERC20VotesInit",
             "ERC20WrapperInit",
             "ERC2981Init",
+            "ERC3643Init",
             "ERC4626Init",
             "ERC5564AnnouncerInit",
             "ERC6538RegistryInit",
@@ -78,6 +80,7 @@ library InitInventory {
             "Groth16VerifierInit",
             "HASSignatureVerifierInit",
             "HSSAdapterInit",
+            "HSSAdapterRecoveryInit",
             "HTSAdapterInit",
             "HederaExchangeRateAdapterInit",
             "HederaPrngAdapterInit",
@@ -97,6 +100,7 @@ library InitInventory {
             "PythEntropyAdapterInit",
             "RateLimiterInit",
             "RedStoneAdapterInit",
+            "ReinitMultiInit",
             "SafeDiamondCutInit",
             "SafeHarborAdopterInit",
             "SemaphoreInit",
@@ -113,7 +117,7 @@ library InitInventory {
             "WormholeGatewayAdapterInit",
             "ZetaChainGatewayAdapterInit"
         ];
-        string[105] memory p = [
+        string[109] memory p = [
             "src/oracles/api3/API3AdapterInit.sol:API3AdapterInit",
             "src/oracles/api3/API3QRNGAdapterInit.sol:API3QRNGAdapterInit",
             "src/access/AccessControlEnumerableInit.sol:AccessControlEnumerableInit",
@@ -158,9 +162,11 @@ library InitInventory {
             "src/tokens/ERC20/ERC20Init.sol:ERC20Init",
             "src/tokens/ERC20/ERC20PausableInit.sol:ERC20PausableInit",
             "src/tokens/ERC20/ERC20PermitInit.sol:ERC20PermitInit",
+            "src/tokens/ERC20/ERC20TemporaryApprovalInit.sol:ERC20TemporaryApprovalInit",
             "src/tokens/ERC20/ERC20VotesInit.sol:ERC20VotesInit",
             "src/tokens/ERC20/ERC20WrapperInit.sol:ERC20WrapperInit",
             "src/tokens/ERC2981/ERC2981Init.sol:ERC2981Init",
+            "src/tokens/ERC3643/ERC3643Init.sol:ERC3643Init",
             "src/tokens/ERC4626/ERC4626Init.sol:ERC4626Init",
             "src/privacy/ERC5564AnnouncerInit.sol:ERC5564AnnouncerInit",
             "src/privacy/ERC6538RegistryInit.sol:ERC6538RegistryInit",
@@ -185,6 +191,7 @@ library InitInventory {
             "src/privacy/Groth16VerifierInit.sol:Groth16VerifierInit",
             "src/accounts/hedera/HASSignatureVerifierInit.sol:HASSignatureVerifierInit",
             "src/oracles/hedera/HSSAdapterInit.sol:HSSAdapterInit",
+            "src/oracles/hedera/HSSAdapterRecoveryInit.sol:HSSAdapterRecoveryInit",
             "src/tokens/hedera/HTSAdapterInit.sol:HTSAdapterInit",
             "src/oracles/hedera/HederaExchangeRateAdapterInit.sol:HederaExchangeRateAdapterInit",
             "src/oracles/hedera/HederaPrngAdapterInit.sol:HederaPrngAdapterInit",
@@ -204,6 +211,7 @@ library InitInventory {
             "src/oracles/pyth/PythEntropyAdapterInit.sol:PythEntropyAdapterInit",
             "src/security/RateLimiterInit.sol:RateLimiterInit",
             "src/oracles/redstone/RedStoneAdapterInit.sol:RedStoneAdapterInit",
+            "src/utils/ReinitMultiInit.sol:ReinitMultiInit",
             "src/governance/SafeDiamondCutInit.sol:SafeDiamondCutInit",
             "src/governance/SafeHarborAdopterInit.sol:SafeHarborAdopterInit",
             "src/privacy/SemaphoreInit.sol:SemaphoreInit",
@@ -220,8 +228,8 @@ library InitInventory {
             "src/crosschain/wormhole/WormholeGatewayAdapterInit.sol:WormholeGatewayAdapterInit",
             "src/crosschain/zetachain/ZetaChainGatewayAdapterInit.sol:ZetaChainGatewayAdapterInit"
         ];
-        names = new string[](105);
-        paths = new string[](105);
+        names = new string[](109);
+        paths = new string[](109);
         for (uint256 i; i < names.length; ++i) {
             names[i] = n[i];
             paths[i] = p[i];

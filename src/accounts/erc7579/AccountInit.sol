@@ -13,7 +13,7 @@ import {ERC4337ValidationLib} from "@lattice/accounts/libraries/ERC4337Validatio
 /// @title AccountInit
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice One-shot initializer for a single-owner ERC-4337 Diamond account. Delegatecalled by the proxy's
-///         `diamondCut` during {Diamond.initialize} (so `address(this)` is the account), it seeds the owner,
+///         `diamondCut` during {Lattice.initialize} (so `address(this)` is the account), it seeds the owner,
 ///         the trusted EntryPoint, and registers the account interfaces.
 /// @dev The EntryPoint is fixed per factory deployment (immutable, read from this contract's own code even
 ///      under delegatecall). The account administers itself — `DEFAULT_ADMIN_ROLE` is granted to the account

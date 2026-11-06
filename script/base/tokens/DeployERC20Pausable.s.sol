@@ -1,9 +1,25 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {RecipePlanLib} from "@lattice-script/lib/RecipePlanLib.sol";
+import {
+    RecipeAuthority,
+    RecipeDeploymentContext,
+    RecipeFacet,
+    RecipeInitOutputKind,
+    RecipeInitStep,
+    RecipeParameter,
+    RecipeProxyKind,
+    RecipeSeam,
+    RecipeSpec,
+    RecipeVariant
+} from "@lattice-script/lib/RecipeSpec.sol";
+import {RecipeSpecLib} from "@lattice-script/lib/RecipeSpecLib.sol";
+import {TokenRecipePlans} from "@lattice-script/lib/TokenRecipePlans.sol";
+
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
-import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
 import {DeployERC20} from "@lattice-script/base/tokens/DeployERC20.s.sol";
+import {TokenDeployBase} from "@lattice-script/base/tokens/TokenDeployBase.s.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
 import {Pausable} from "@lattice/security/Pausable.sol";
@@ -18,7 +34,7 @@ import {DiamondIntrospectionInit} from "@lattice/utils/DiamondIntrospectionInit.
 ///         {ERC20Pausable} facet which REPLACES the base `transfer`/`transferFrom` with pause-gated variants.
 ///         {ERC20PausableInit} registers IPausable (ERC-165) and grants `admin` the DEFAULT_ADMIN_ROLE. Both
 ///         inits run in one initializing window via {BaseDeploy._assembleMulti}.
-contract DeployERC20Pausable is BaseDeploy {
+contract DeployERC20Pausable is TokenDeployBase {
     /// @notice Builds the pausable ERC-20 diamond cuts + initializers (no broadcast, no proxy deploy).
     /// @param name_ Token name. @param symbol_ Token symbol. @param admin The pause/unpause authority.
     /// @return cuts The facet cuts (ERC165 + ERC20 + DiamondLoupeFacet [base] + Pausable [Add] + ERC20Pausable [Replace] + AccessControl + AccessControlDiamondCut).
@@ -28,31 +44,85 @@ contract DeployERC20Pausable is BaseDeploy {
         public
         returns (FacetCut[] memory cuts, address[] memory inits, bytes[] memory initCalldatas)
     {
-        (FacetCut[] memory baseCuts, address baseInit, bytes memory baseCalldata) =
-            new DeployERC20().buildCuts(name_, symbol_);
-
-        cuts = new FacetCut[](baseCuts.length + 4);
-        for (uint256 i; i < baseCuts.length; ++i) {
-            cuts[i] = baseCuts[i];
-        }
-        // Additive pause/unpause/paused control.
-        cuts[baseCuts.length] = _cut(address(new Pausable()));
-        // Override the base transfer/transferFrom with pause-gated variants.
-        cuts[baseCuts.length + 1] = _replace(address(new ERC20Pausable()));
-        // The pause/upgrade authority must be inspectable and rotatable on-chain: cut the role surface too.
-        cuts[baseCuts.length + 2] = _cut(address(new AccessControl()));
-        cuts[baseCuts.length + 3] = _cut(address(new AccessControlDiamondCut()));
+        cuts = _materialize(_cutPlan(0), _recipeSeams(0));
+        (address baseInit, bytes memory baseCalldata) = _erc20BaseInit(name_, symbol_);
 
         inits = new address[](3);
         inits[0] = baseInit;
-        inits[1] = address(new ERC20PausableInit());
-        inits[2] = address(new DiamondIntrospectionInit());
+        inits[1] = _init("ERC20PausableInit");
+        inits[2] = _init("DiamondIntrospectionInit");
 
         initCalldatas = new bytes[](3);
         initCalldatas[0] = baseCalldata;
         initCalldatas[1] = abi.encodeCall(ERC20PausableInit.init, (admin));
         // The base chain registered the loupe flag; the cut facet is live too — advertise both.
         initCalldatas[2] = abi.encodeCall(DiamondIntrospectionInit.initUpgradeable, ());
+    }
+
+    function _cutPlan(uint256 variant) internal pure virtual returns (RecipeFacet[] memory) {
+        require(variant == 0, "DeployERC20Pausable: unknown variant");
+        RecipeFacet[] memory extension = new RecipeFacet[](4);
+        extension[0] = RecipePlanLib.all("Pausable");
+        extension[1] = RecipePlanLib.replaceAll("ERC20Pausable");
+        extension[2] = RecipePlanLib.all("AccessControl");
+        extension[3] = RecipePlanLib.all("AccessControlDiamondCut");
+        return RecipePlanLib.append(TokenRecipePlans.erc20(false), extension);
+    }
+
+    function _recipeSeams(uint256) internal pure virtual returns (RecipeSeam[] memory seams) {
+        seams = new RecipeSeam[](2);
+        seams[0] = RecipePlanLib.seam2(
+            "ERC20Pausable.transfer(address,uint256)",
+            bytes4(keccak256("transfer(address,uint256)")),
+            "ERC20",
+            "ERC20Pausable",
+            "ERC20Pausable",
+            "pause-gated movement"
+        );
+        seams[1] = RecipePlanLib.seam2(
+            "ERC20Pausable.transferFrom(address,address,uint256)",
+            bytes4(keccak256("transferFrom(address,address,uint256)")),
+            "ERC20",
+            "ERC20Pausable",
+            "ERC20Pausable",
+            "pause-gated movement"
+        );
+    }
+
+    function recipeSpec() public pure returns (RecipeSpec memory result) {
+        result = RecipeSpecLib.spec("DeployERC20Pausable", "script/base/tokens/DeployERC20Pausable.s.sol", 1);
+        RecipeVariant memory variant;
+        variant.id = "DeployERC20Pausable:buildCuts(string,string,address)";
+        variant.buildSignature = "buildCuts(string,string,address)";
+        variant.proxyKind = RecipeProxyKind.Lattice;
+        variant.initOutputKind = RecipeInitOutputKind.Parallel;
+        variant.facets = _cutPlan(0);
+        variant.seams = _recipeSeams(0);
+        variant.inputs = new RecipeParameter[](3);
+        variant.inputs[0] = RecipeParameter("name_", "string", "metadata", "Example Token", "no length constraint");
+        variant.inputs[1] = RecipeParameter("symbol_", "string", "metadata", "EXM", "no length constraint");
+        variant.inputs[2] = RecipeSpecLib.aclAdministrator("admin");
+        RecipeInitStep[][] memory children = new RecipeInitStep[][](3);
+        children[0] = RecipeSpecLib.tokenBase("ERC20Init", "name_", "symbol_");
+        RecipeParameter[] memory parameters = new RecipeParameter[](1);
+        parameters[0] = RecipeSpecLib.aclAdministrator("admin_");
+        string[] memory bindings = new string[](1);
+        bindings[0] = "admin";
+        children[1] = RecipeSpecLib.leaf("ERC20PausableInit", "init(address)", parameters, bindings);
+        children[2] = RecipeSpecLib.emptyLeaf("DiamondIntrospectionInit", "initUpgradeable()");
+        variant.initPlan = RecipeSpecLib.wrap(children);
+        variant.authorities = new RecipeAuthority[](1);
+        variant.authorities[0] = RecipeSpecLib.role(
+            "AccessControl", "DEFAULT_ADMIN_ROLE", "bytes32", bytes32(0), "admin", "pause management and diamondCut"
+        );
+        variant.conditions = new string[](1);
+        variant.conditions[0] =
+        "Checked script rejects ERC1363; other token movement combinations require the reviewed ADR0009 policy";
+        result.variants[0] = variant;
+        result.deploymentContexts = new RecipeDeploymentContext[](1);
+        result.deploymentContexts[0] = RecipeSpecLib.deploymentContext(
+            "DeployERC20Pausable", "run(string,string,address)", variant, "buildCuts(name_,symbol_,admin)"
+        );
     }
 
     /// @notice Deploys a pausable ERC-20 token diamond (broadcasting entrypoint for `forge script ... --broadcast`).

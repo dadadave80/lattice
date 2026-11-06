@@ -3,20 +3,21 @@ pragma solidity ^0.8.30;
 
 /// @title LatticeVersion
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
-/// @notice Canonical, library-wide version of the Lattice contract modules. This is the single
-///         source of truth that every facet's lattice-version NatSpec tag mirrors.
+/// @notice Canonical library-wide release version, used by registry keys and release manifests.
+///         Module composition tags describe code facts; they deliberately carry no duplicate version.
 /// @dev INTENTIONALLY SELECTOR-FREE. Lattice modules are EIP-2535 Diamond facets, and any
 ///      public/external VERSION() getter would register selector 0xffa1ad74, which would
 ///      collide the instant two facets are mounted in the same Diamond. These values are therefore
-///      exposed only as internal constants (inlined at the call site, no public selector) and the
-///      version itself MUST never be re-exposed as an external/public function on any facet.
+///      exposed as internal constants, with no generic VERSION() facet selector. ERC-3643's required
+///      `version()` method is an explicit exception in its closed profile. Version changes affect its
+///      runtime and require regenerating that profile's build-bound fingerprints.
 ///
 ///      Lattice is unaudited and pre-1.0; the semantic version starts at 0.1.0.
 ///
-///      DO NOT bump these values by hand: Release Please rewrites the annotated lines on every
-///      release PR (this file is an `extra-files` generic-updater target in
-///      release-please-config.json), and {DeployRelease} defaults to {VERSION} — so the released
-///      registry keys, this library, and the git tag stay in lockstep with zero manual edits.
+///      Release Please chooses the next version and rewrites these annotated lines (`extra-files`
+///      in release-please-config.json). Import its generated version change into reviewed source
+///      preparation, regenerate affected profiles, then freeze release inputs before tagging.
+///      {DeployRelease} defaults to {VERSION}; see REGISTRY_DEPLOYMENTS.md for that release sequence.
 library LatticeVersion {
     /// @notice The full semantic version string of the Lattice library (e.g. "0.1.0").
     string internal constant VERSION = "0.5.0"; // x-release-please-version

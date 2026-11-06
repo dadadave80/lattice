@@ -12,13 +12,11 @@ import {Script, console} from "forge-std/Script.sol";
 ///         `(CreateX, deployer, block.chainid, salt)` and NOT from the adapter's initcode, so it is
 ///         stable across bytecode/compiler changes but DIFFERS per chain — the `0x01` protection
 ///         byte folds `block.chainid` into CreateX's guarded salt (cross-chain redeploy protection).
-/// @dev Reuses `script/lib/CreateXDeployer.sol` and `src/interfaces/external/createx/ICreateX.sol` from the
-///      upgrade plan (Task 1). If running this DeFi plan standalone, vendor those two files first
-///      (see the cross-plan dependency note in Task 15). `_guardedSalt` pins the salt to the
-///      broadcasting deployer (first 20 bytes) and enables cross-chain redeploy protection (21st
-///      byte == 0x01).
+/// @dev Reuses this repository's `script/lib/CreateXDeployer.sol` and
+///      `src/interfaces/external/createx/ICreateX.sol`. `_guardedSalt` pins the salt to the broadcasting
+///      deployer (first 20 bytes) and enables cross-chain redeploy protection (21st byte == 0x01).
 ///
-/// Usage (predict an adapter's cross-chain address):
+/// Usage (predict an adapter's address on the selected chain):
 ///   forge script script/deploy/DeployAdapters.s.sol --sig "predictAdapter(bytes11)" <ENTROPY>
 ///
 /// Usage (deploy one adapter; add --broadcast + --sender):
@@ -32,7 +30,7 @@ contract DeployAdapters is Script {
     function predictAdapter(bytes11 entropy) external view returns (address adapter) {
         bytes32 salt = CreateXDeployer._guardedSalt(msg.sender, entropy);
         adapter = CreateXDeployer.predict(salt);
-        console.log("Predicted adapter (all chains):", adapter);
+        console.log("Predicted adapter (this chain):", adapter);
     }
 
     /// @notice Deploys one adapter deterministically via CreateX CREATE3 at its predicted address.
@@ -45,7 +43,7 @@ contract DeployAdapters is Script {
         address predicted = CreateXDeployer.predict(salt);
         adapter = CreateXDeployer.deploy(salt, initCode);
         require(adapter == predicted, "DeployAdapters: deployed != predicted");
-        console.log("Deployed adapter (deterministic, all chains):", adapter);
+        console.log("Deployed adapter (deterministic, this chain):", adapter);
     }
 
     /// @notice Convenience: deterministically deploy all three adapters in one broadcast.

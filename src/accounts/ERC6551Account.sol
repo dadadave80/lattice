@@ -11,8 +11,13 @@ import {IERC6551Account, IERC6551Executable} from "@lattice/interfaces/external/
 ///         token; the token's current owner is the sole valid signer and the only caller of `execute`.
 /// @dev Stateless delegator — logic/storage live in {ERC6551AccountLib}. v1 supports `operation == 0` (CALL)
 ///      and resolves ownership only on the token's home chain. The bound token is set once at initialization.
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source ERC-6551
+/// @custom:lattice-requires none;
+/// @custom:lattice-family none
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches lattice.storage.ERC6551Account;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init none
 contract ERC6551Account is IERC6551Account, IERC6551Executable {
     /// @inheritdoc IERC6551Account
     receive() external payable virtual {}

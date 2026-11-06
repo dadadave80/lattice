@@ -32,8 +32,13 @@ import {ISafeHarborAdopter} from "@lattice/interfaces/governance/ISafeHarborAdop
 ///         {adoptSafeHarbor}) must be that same authority too: after adoption the owner alone can change
 ///         the agreement's chains, accounts, asset-recovery addresses and bounty terms.
 ///      Lattice itself has not adopted Safe Harbor; see the Safe Harbor section of SECURITY.md.
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source Lattice original
+/// @custom:lattice-requires AccessControl|AccessControlEnumerable|AccessControlTimed convention role-management-surface;
+/// @custom:lattice-family none
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches lattice.storage.SafeHarborAdopter;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init SafeHarborAdopterInit
 contract SafeHarborAdopter is ISafeHarborAdopter {
     /// @inheritdoc ISafeHarborAdopter
     function adoptSafeHarbor(address agreement) external virtual {

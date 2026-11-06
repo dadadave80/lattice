@@ -18,7 +18,7 @@ pragma solidity >=0.8.4;
 /// @dev The `GatewayEVM` is a DEPLOYED contract whose address varies per connected chain (NOT a fixed predeploy),
 ///      so it is stored at init and mutable via an admin setter. `sendMessage` forwards `msg.value` as the native
 ///      messaging fee (no on-chain quote or refund from the gateway). Per-message ERC-7786 `RevertOptions`
-///      attributes are DEFERRED (#77 open question #8): an admin-configured default `onRevertGasLimit` is used.
+///      attributes are DEFERRED (tracked in #213): an admin-configured default `onRevertGasLimit` is used.
 interface IZetaChainGatewayAdapter {
     // -------------------------------------------------------------------------
     //                                  Events

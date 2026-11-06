@@ -22,7 +22,13 @@ import {IERC7786MessageHandler} from "@lattice/interfaces/crosschain/IERC7786Mes
 ///      including grants on the Diamond's own roles (the timelock self-administers DEFAULT_ADMIN_ROLE).
 ///      The only safety net is the timelock delay plus a CANCELLER_ROLE held by a LOCAL guardian that is
 ///      NOT reachable through this same cross-chain channel. Deploy accordingly.
-/// @custom:lattice-version 0.1.0
+/// @custom:lattice-requires AccessControl|AccessControlEnumerable|AccessControlTimed convention role-management-surface;
+/// @custom:lattice-requires CrosschainLink convention authenticated-inbound-dispatch;
+/// @custom:lattice-family bridge-handler
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches lattice.storage.TimelockController;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init CrosschainTimelockHandlerInit
 contract CrosschainTimelockHandler is IERC7786MessageHandler {
     /// @inheritdoc IERC7786MessageHandler
     function processMessage(

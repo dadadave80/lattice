@@ -13,7 +13,7 @@ import {EIP712Lib} from "@lattice/utils/libraries/EIP712Lib.sol";
 /// @title AccountInit6900
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice One-shot initializer for an ERC-6900 modular Diamond account. Delegatecalled by the proxy's
-///         `diamondCut` during {Diamond.initialize} (so `address(this)` is the account), it seeds the admin, the
+///         `diamondCut` during {Lattice.initialize} (so `address(this)` is the account), it seeds the admin, the
 ///         EIP-712 domain (for ERC-7739 signature binding), the trusted EntryPoint, and the account's ERC-165
 ///         interface ids.
 /// @dev Unlike the single-owner ERC-7579 `AccountInit` (which self-administers and bootstraps via `AccountSigner`),

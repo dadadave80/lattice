@@ -12,15 +12,30 @@ import {EmergencyStopLib} from "@lattice/security/libraries/EmergencyStopLib.sol
 /// @notice One-shot initializer for a governed diamond-cut diamond — seeds AccessControl (so guardian
 ///         management + `emergencyResume` are `DEFAULT_ADMIN_ROLE`-gated), EmergencyStop, registers the
 ///         IERC165 + IDiamondCut + IDiamondLoupe ERC-165 flags, and pins `UPGRADE_EXECUTOR_ROLE` to itself (granted
-///         to `address(this)`). Delegatecalled by {Diamond.initialize} inside the initializing window (so
+///         to `address(this)`). Delegatecalled by {Lattice.initialize} inside the initializing window (so
 ///         it must NOT open its own pre/postInitializer; each `__*_init` guard passes because the window is
 ///         already open). Mirrors exactly what the old `MockGovernedDiamond.initialize` did, minus the
 ///         redundant pre/postInitializer. Companion to the {ERC2981Init} pattern — a
 ///         first-class production deploy artifact.
+/// @dev Requires a nonzero installed diamondCut owner and declares it as the governed-cut policy for Governor
+///      topology checks. Pair this initializer only with its matching cut flavor; this is a trusted declaration,
+///      not runtime classification. Legacy policy-only backfills use GovernorInit.registerGovernedCutTopology.
+/// @custom:lattice-kind bundle
 contract GovernedDiamondCutInit {
     /// @notice Runs the access-control + emergency-stop + governed-cut module initializers. MUST be invoked
     ///         via the diamond's `initialize` `_init` delegatecall.
     /// @param admin The address granted `DEFAULT_ADMIN_ROLE` (manages guardians and resumes operation).
+    /// @custom:lattice-initializes AccessControl;
+    /// @custom:lattice-initializes EmergencyStop;
+    /// @custom:lattice-initializes ERC165;
+    /// @custom:lattice-initializes Diamond;
+    /// @custom:lattice-initializes Governor with policy=governed-cut-route;
+    /// @custom:lattice-initializes GovernedDiamondCut;
+    /// @custom:lattice-after none;
+    /// @custom:lattice-same-call Initializable hard enclosing-initializing-window;
+    /// @custom:lattice-sequence AccessControl;EmergencyStop;ERC165;Diamond;Governor with policy=governed-cut-route;GovernedDiamondCut;
+    /// @custom:lattice-param admin authority;
+    /// @custom:lattice-registers-interfaces
     function init(address admin) external {
         AccessControlLib.__AccessControl_init(admin);
         EmergencyStopLib.__EmergencyStop_init();

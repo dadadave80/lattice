@@ -17,8 +17,13 @@ import {IAccessControlDiamondCut} from "@lattice/interfaces/governance/IAccessCo
 ///      ({GovernedDiamondCut}, {SafeDiamondCut}, diamond-lib's `DiamondCutFacet`) into the same
 ///      diamond — they all own selector `0x1f931c1c`. For governance-held diamonds (upgrade registry,
 ///      frozen selectors, guardian escape hatch) cut {GovernedDiamondCut} instead.
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source Lattice original
+/// @custom:lattice-requires AccessControl|AccessControlEnumerable|AccessControlTimed convention role-management-surface;
+/// @custom:lattice-family upgrade
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches diamond.lib.storage;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init none
 contract AccessControlDiamondCut is IAccessControlDiamondCut {
     /// @inheritdoc IAccessControlDiamondCut
     function diamondCut(FacetCut[] calldata _diamondCut, address _init, bytes calldata _calldata)

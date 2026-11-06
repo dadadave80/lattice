@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {Selectors} from "@diamond-test/helpers/Selectors.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {IDiamondLoupe} from "@diamond/interfaces/IDiamondLoupe.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
@@ -10,6 +11,7 @@ import {GovernedVaultTestBase} from "@lattice-test/base/GovernedVaultTestBase.so
 import {Lattice} from "@lattice/Lattice.sol";
 import {LatticeFactory} from "@lattice/LatticeFactory.sol";
 import {LatticeRegistry} from "@lattice/LatticeRegistry.sol";
+import {AccessControlInit} from "@lattice/access/AccessControlInit.sol";
 import {DEFAULT_ADMIN_ROLE} from "@lattice/access/libraries/AccessControlLib.sol";
 import {GovernedVaultParams} from "@lattice/defi/GovernedVaultInit.sol";
 import {Governor} from "@lattice/governance/Governor.sol";
@@ -25,8 +27,13 @@ import {ITimelockController} from "@lattice/interfaces/governance/ITimelockContr
 import {IUpgradeRegistry} from "@lattice/interfaces/governance/IUpgradeRegistry.sol";
 import {IVotes} from "@lattice/interfaces/governance/IVotes.sol";
 import {IEmergencyStop} from "@lattice/interfaces/security/IEmergencyStop.sol";
+import {IRateLimiter} from "@lattice/interfaces/security/IRateLimiter.sol";
 import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
 import {IERC4626} from "@lattice/interfaces/tokens/IERC4626.sol";
+import {RateLimiter} from "@lattice/security/RateLimiter.sol";
+import {RateLimiterInit} from "@lattice/security/RateLimiterInit.sol";
+import {RATE_LIMITER_STORAGE_SLOT} from "@lattice/security/libraries/RateLimiterLib.sol";
+import {ReinitMultiInit} from "@lattice/utils/ReinitMultiInit.sol";
 import {InitializableLib, InvalidInitialization} from "@lattice/utils/libraries/InitializableLib.sol";
 import {Vm} from "forge-std/Vm.sol";
 
@@ -55,6 +62,16 @@ contract GovernedVaultUpgradeTest is GovernedVaultTestBase {
     address internal stranger = address(0xC3);
 
     uint256 internal constant DEPOSIT = 1_000 ether;
+    bytes32 internal constant RATE_KEY = keccak256("governed-upgrade-example");
+    bytes32 internal constant INIT_SLOT = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffbf601132;
+
+    struct QueuedProposal {
+        address[] targets;
+        uint256[] values;
+        bytes[] calldatas;
+        bytes32 descriptionHash;
+        uint256 id;
+    }
 
     function setUp() public {
         vm.warp(1_000_000); // non-zero timestamp clock so checkpoints have room behind them
@@ -87,32 +104,47 @@ contract GovernedVaultUpgradeTest is GovernedVaultTestBase {
         vm.warp(block.timestamp + 1);
     }
 
+    function _queueProposal(bytes memory call, string memory description) internal returns (QueuedProposal memory p) {
+        p.targets = new address[](1);
+        p.targets[0] = vault;
+        p.values = new uint256[](1);
+        p.calldatas = new bytes[](1);
+        p.calldatas[0] = call;
+        p.descriptionHash = keccak256(bytes(description));
+
+        vm.prank(alice);
+        p.id = gov.propose(p.targets, p.values, p.calldatas, description);
+
+        vm.warp(gov.proposalSnapshot(p.id) + 1);
+        vm.prank(alice);
+        gov.castVote(p.id, 1); // For
+
+        vm.warp(gov.proposalDeadline(p.id) + 1);
+        gov.queue(p.targets, p.values, p.calldatas, p.descriptionHash);
+    }
+
     /// @dev Full lifecycle against the vault's own governor: propose -> vote -> queue -> delay -> execute.
     function _govern(bytes memory call, string memory description) internal {
-        address[] memory targets = new address[](1);
-        targets[0] = vault;
-        uint256[] memory values = new uint256[](1);
-        bytes[] memory calldatas = new bytes[](1);
-        calldatas[0] = call;
-        bytes32 descriptionHash = keccak256(bytes(description));
-
-        vm.prank(alice);
-        uint256 proposalId = gov.propose(targets, values, calldatas, description);
-
-        vm.warp(gov.proposalSnapshot(proposalId) + 1);
-        vm.prank(alice);
-        gov.castVote(proposalId, 1); // For
-
-        vm.warp(gov.proposalDeadline(proposalId) + 1);
-        gov.queue(targets, values, calldatas, descriptionHash);
+        QueuedProposal memory p = _queueProposal(call, description);
 
         vm.expectRevert();
-        gov.execute(targets, values, calldatas, descriptionHash);
-        vm.warp(gov.proposalEta(proposalId) + 1);
-        gov.execute(targets, values, calldatas, descriptionHash);
-        assertEq(uint8(gov.state(proposalId)), uint8(IGovernor.ProposalState.Executed));
+        gov.execute(p.targets, p.values, p.calldatas, p.descriptionHash);
+        vm.warp(gov.proposalEta(p.id) + 1);
+        gov.execute(p.targets, p.values, p.calldatas, p.descriptionHash);
+        assertEq(uint8(gov.state(p.id)), uint8(IGovernor.ProposalState.Executed));
         vm.expectRevert();
-        gov.execute(targets, values, calldatas, descriptionHash);
+        gov.execute(p.targets, p.values, p.calldatas, p.descriptionHash);
+    }
+
+    function _governRejected(bytes memory call, string memory description, bytes memory reason) internal {
+        QueuedProposal memory p = _queueProposal(call, description);
+        vm.warp(gov.proposalEta(p.id) + 1);
+        vm.expectRevert(reason);
+        gov.execute(p.targets, p.values, p.calldatas, p.descriptionHash);
+        assertEq(uint8(gov.state(p.id)), uint8(IGovernor.ProposalState.Queued), "failed execution stays queued");
+        bytes32 operation =
+            ITimelockController(vault).hashOperationBatch(p.targets, p.values, p.calldatas, bytes32(0), bytes32(p.id));
+        assertTrue(ITimelockController(vault).isOperationReady(operation), "timelock execution rolled back");
     }
 
     function _probeCuts() internal returns (FacetCut[] memory cuts) {
@@ -185,6 +217,165 @@ contract GovernedVaultUpgradeTest is GovernedVaultTestBase {
         assertEq(IERC20(vault).totalSupply(), supply, "share supply unchanged");
         assertEq(IVotes(vault).getVotes(alice), currentVotes, "current voting power unchanged");
         assertEq(IVotes(vault).delegates(alice), alice, "delegation unchanged");
+    }
+
+    function _rateLimiterCut(address limiter) internal view returns (FacetCut[] memory cuts) {
+        cuts = new FacetCut[](1);
+        cuts[0] = FacetCut(limiter, FacetCutAction.Add, Selectors.decode(RateLimiter(limiter).exportSelectors()));
+    }
+
+    function _rateLimiterBatch(uint64 version, address limiter, address moduleInit, bool fail)
+        internal
+        returns (bytes memory)
+    {
+        address[] memory inits = new address[](fail ? 3 : 2);
+        bytes[] memory data = new bytes[](inits.length);
+        inits[0] = moduleInit;
+        data[0] = abi.encodeCall(RateLimiterInit.init, (vault));
+        inits[1] = limiter;
+        data[1] = abi.encodeCall(IRateLimiter.configure, (RATE_KEY, 100, 1));
+        if (fail) {
+            inits[2] = address(new AccessControlInit());
+            data[2] = abi.encodeCall(AccessControlInit.init, (stranger));
+        }
+        return abi.encodeCall(ReinitMultiInit.reinitMulti, (version, inits, data));
+    }
+
+    function _assertReinitVersion(uint64 expected) internal view {
+        assertEq(InitializableLib.initializableSlot(), INIT_SLOT, "stable tooling slot");
+        assertEq(uint256(vm.load(vault, INIT_SLOT)), uint256(expected) << 1, "version and closed window");
+    }
+
+    function _vaultStateHash() internal view returns (bytes32) {
+        return keccak256(
+            abi.encode(
+                IERC20(vault).totalSupply(),
+                IERC20(vault).balanceOf(alice),
+                IERC20(vault).allowance(alice, stranger),
+                IERC4626(vault).totalAssets(),
+                IVotes(vault).getVotes(alice),
+                IVotes(vault).delegates(alice),
+                gov.token(),
+                gov.timelock()
+            )
+        );
+    }
+
+    /// @notice A real proposal adds a module, opens version2, then configures its new persistent state.
+    function test_GovernanceProposalAddsAndInitializesModuleAtVersion2() public {
+        _armAlice();
+        vm.prank(alice);
+        IERC20(vault).approve(stranger, 123);
+        bytes32 previous = _vaultStateHash();
+        RateLimiter limiter = new RateLimiter();
+        RateLimiterInit moduleInit = new RateLimiterInit();
+        ReinitMultiInit batch = new ReinitMultiInit();
+        _assertReinitVersion(1);
+
+        _govern(
+            abi.encodeCall(
+                IGovernedDiamondCut.diamondCut,
+                (
+                    _rateLimiterCut(address(limiter)),
+                    address(batch),
+                    _rateLimiterBatch(2, address(limiter), address(moduleInit), false)
+                )
+            ),
+            "upgrade: add and initialize RateLimiter"
+        );
+
+        _assertReinitVersion(2);
+        assertEq(IDiamondLoupe(vault).facetAddress(IRateLimiter.configure.selector), address(limiter));
+        assertEq(
+            abi.encode(IDiamondLoupe(vault).facetFunctionSelectors(address(limiter))),
+            abi.encode(Selectors.decode(limiter.exportSelectors()))
+        );
+        assertTrue(ERC165Facet(vault).supportsInterface(type(IRateLimiter).interfaceId));
+        (uint256 capacity, uint256 refillRate) = IRateLimiter(vault).getConfig(RATE_KEY);
+        assertEq(capacity, 100);
+        assertEq(refillRate, 1);
+        assertEq(IRateLimiter(vault).getAvailable(RATE_KEY), 100);
+        assertEq(IDiamondLoupe(vault).facetAddress(ReinitMultiInit.reinitMulti.selector), address(0));
+        assertEq(IUpgradeRegistry(vault).cutCount(), 1);
+        assertEq(IUpgradeRegistry(vault).getCutRecord(1).executor, vault);
+        assertTrue(IAccessControl(vault).hasRole(DEFAULT_ADMIN_ROLE, vault));
+        assertFalse(IAccessControl(vault).hasRole(DEFAULT_ADMIN_ROLE, alice));
+        assertEq(_vaultStateHash(), previous, "original vault state preserved");
+    }
+
+    /// @notice Distinct passed proposals reach the reinitializer guard, not the Governor proposal-replay guard.
+    function test_GovernedReinitRejectsSameAndLowerVersions() public {
+        _armAlice();
+        RateLimiter limiter = new RateLimiter();
+        RateLimiterInit moduleInit = new RateLimiterInit();
+        ReinitMultiInit batch = new ReinitMultiInit();
+        _govern(
+            abi.encodeCall(
+                IGovernedDiamondCut.diamondCut,
+                (
+                    _rateLimiterCut(address(limiter)),
+                    address(batch),
+                    _rateLimiterBatch(2, address(limiter), address(moduleInit), false)
+                )
+            ),
+            "upgrade: version2"
+        );
+        for (uint64 version = 2; version > 0; --version) {
+            _governRejected(
+                abi.encodeCall(
+                    IGovernedDiamondCut.diamondCut,
+                    (
+                        new FacetCut[](0),
+                        address(batch),
+                        _rateLimiterBatch(version, address(limiter), address(moduleInit), false)
+                    )
+                ),
+                version == 2 ? "upgrade: same version rejected" : "upgrade: lower version rejected",
+                abi.encodeWithSelector(InvalidInitialization.selector)
+            );
+        }
+        _assertReinitVersion(2);
+        assertEq(IUpgradeRegistry(vault).cutCount(), 1, "rejected cuts are not recorded");
+        (uint256 capacity, uint256 refillRate) = IRateLimiter(vault).getConfig(RATE_KEY);
+        assertEq(capacity, 100);
+        assertEq(refillRate, 1);
+    }
+
+    /// @notice A later failed init rolls back the earlier config, cut, version and governance execution writes.
+    function test_GovernedReinitLateFailureRollsBackAndVersionCanBeRetried() public {
+        _armAlice();
+        bytes32 previous = _vaultStateHash();
+        RateLimiter limiter = new RateLimiter();
+        RateLimiterInit moduleInit = new RateLimiterInit();
+        ReinitMultiInit batch = new ReinitMultiInit();
+        FacetCut[] memory cuts = _rateLimiterCut(address(limiter));
+        bytes32 bucket = keccak256(abi.encode(RATE_KEY, RATE_LIMITER_STORAGE_SLOT));
+        _governRejected(
+            abi.encodeCall(
+                IGovernedDiamondCut.diamondCut,
+                (cuts, address(batch), _rateLimiterBatch(2, address(limiter), address(moduleInit), true))
+            ),
+            "upgrade: conflicting final bootstrap rejected",
+            abi.encodeWithSelector(IAccessControl.AccessControlConflictingInitialization.selector, vault, stranger)
+        );
+        _assertReinitVersion(1);
+        assertEq(vm.load(vault, bucket), bytes32(0), "earlier capacity write rolled back");
+        assertEq(IDiamondLoupe(vault).facetAddress(IRateLimiter.configure.selector), address(0));
+        assertFalse(ERC165Facet(vault).supportsInterface(type(IRateLimiter).interfaceId));
+        assertEq(IUpgradeRegistry(vault).cutCount(), 0);
+        assertEq(_vaultStateHash(), previous, "old vault state preserved after failure");
+
+        _govern(
+            abi.encodeCall(
+                IGovernedDiamondCut.diamondCut,
+                (cuts, address(batch), _rateLimiterBatch(2, address(limiter), address(moduleInit), false))
+            ),
+            "upgrade: retry version2 with valid final step"
+        );
+        _assertReinitVersion(2);
+        assertEq(uint256(vm.load(vault, bucket)), 100, "successful retry persists capacity");
+        assertEq(IUpgradeRegistry(vault).cutCount(), 1);
+        assertEq(_vaultStateHash(), previous, "old vault state preserved after retry");
     }
 
     /// @notice The declared composition rejects an accidental duplicated storage owner.

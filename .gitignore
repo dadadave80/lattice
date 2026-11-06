@@ -34,9 +34,12 @@ docs/*
 !docs/guides/
 docs/guides/*
 !docs/guides/compose-your-own-diamond.md
+!docs/guides/integrate-lattice.md
+!docs/guides/upgrade-a-diamond.md
 !docs/guides/hedera.md
 !docs/guides/quickstart.md
 !docs/guides/selector-compatibility.md
+!docs/guides/erc3643.md
 !docs/guides/shielded-pool-circuit.md
 !docs/site/
 docs/site/*

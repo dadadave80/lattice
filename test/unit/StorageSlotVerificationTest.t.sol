@@ -32,6 +32,7 @@ import {
 } from "@lattice/access/libraries/AccessManagerLib.sol";
 
 // tokens
+import {IERC20TemporaryApproval} from "@lattice/interfaces/tokens/IERC20TemporaryApproval.sol";
 import {ERC165_MAP_IERC1155BURNABLE_SLOT} from "@lattice/tokens/ERC1155/libraries/ERC1155BurnableLib.sol";
 import {
     ERC1155_STORAGE_SLOT,
@@ -55,6 +56,10 @@ import {
 import {ERC165_MAP_IERC3156FLASHLENDER_SLOT} from "@lattice/tokens/ERC20/libraries/ERC20FlashMintLib.sol";
 import {ERC165_MAP_IERC20_SLOT, ERC20_STORAGE_SLOT} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
 import {ERC165_MAP_IERC20PERMIT_SLOT} from "@lattice/tokens/ERC20/libraries/ERC20PermitLib.sol";
+import {
+    ERC165_MAP_IERC20TEMPORARYAPPROVAL_SLOT,
+    ERC20_TEMPORARY_APPROVAL_STORAGE_SLOT
+} from "@lattice/tokens/ERC20/libraries/ERC20TemporaryApprovalLib.sol";
 import {
     ERC165_MAP_IERC20WRAPPER_SLOT,
     ERC20WRAPPER_STORAGE_SLOT
@@ -403,6 +408,7 @@ import {IDIAAdapter} from "@lattice/interfaces/oracles/IDIAAdapter.sol";
 import {IGelatoAutomateAdapter} from "@lattice/interfaces/oracles/IGelatoAutomateAdapter.sol";
 import {IGelatoVRFAdapter} from "@lattice/interfaces/oracles/IGelatoVRFAdapter.sol";
 import {IHSSAdapter} from "@lattice/interfaces/oracles/IHSSAdapter.sol";
+import {IHSSAdapterRecovery} from "@lattice/interfaces/oracles/IHSSAdapterRecovery.sol";
 import {IHederaExchangeRateAdapter} from "@lattice/interfaces/oracles/IHederaExchangeRateAdapter.sol";
 import {IHederaPrngAdapter} from "@lattice/interfaces/oracles/IHederaPrngAdapter.sol";
 import {IOracleGuard} from "@lattice/interfaces/oracles/IOracleGuard.sol";
@@ -435,7 +441,11 @@ import {IHTSAdapter} from "@lattice/interfaces/tokens/IHTSAdapter.sol";
 import {IEIP712} from "@lattice/interfaces/utils/IEIP712.sol";
 import {INonces} from "@lattice/interfaces/utils/INonces.sol";
 import {IVestingWallet} from "@lattice/interfaces/utils/IVestingWallet.sol";
-import {ERC165_MAP_IHSSADAPTER_SLOT, HSS_ADAPTER_STORAGE_SLOT} from "@lattice/oracles/hedera/HSSAdapterLib.sol";
+import {
+    ERC165_MAP_IHSSADAPTERRECOVERY_SLOT,
+    ERC165_MAP_IHSSADAPTER_SLOT,
+    HSS_ADAPTER_STORAGE_SLOT
+} from "@lattice/oracles/hedera/HSSAdapterLib.sol";
 import {ERC165_MAP_IHEDERAEXCHANGERATEADAPTER_SLOT} from "@lattice/oracles/hedera/HederaExchangeRateAdapterLib.sol";
 import {ERC165_MAP_IHEDERAPRNGADAPTER_SLOT} from "@lattice/oracles/hedera/HederaPrngAdapterLib.sol";
 import {ERC165_MAP_IHTSADAPTER_SLOT, HTS_ADAPTER_STORAGE_SLOT} from "@lattice/tokens/hedera/HTSAdapterLib.sol";
@@ -473,6 +483,30 @@ import {ERC165_MAP_IERC7802_SLOT} from "@lattice/tokens/ERC7802/libraries/ERC780
 ///      module must have (a) a `test_<Module>StorageSlot` derivation check, (b) a
 ///      `test_Erc165Map<Module>Slot` derivation check if it registers an interface, and (c) an entry
 ///      in both the global uniqueness arrays below. CI runs this contract on every change.
+import {ERC165_MAP_IAGENTROLE_SLOT} from "@lattice/tokens/ERC3643/libraries/ERC3643AgentRoleLib.sol";
+import {
+    ERC165_MAP_ICLAIMTOPICSREGISTRY_SLOT,
+    ERC3643_CLAIM_TOPICS_REGISTRY_STORAGE_SLOT
+} from "@lattice/tokens/ERC3643/libraries/ERC3643ClaimTopicsRegistryLib.sol";
+import {
+    ERC165_MAP_ICOMPLIANCE_SLOT,
+    ERC3643_COMPLIANCE_STORAGE_SLOT
+} from "@lattice/tokens/ERC3643/libraries/ERC3643ComplianceLib.sol";
+import {ERC3643_EXECUTION_SLOT} from "@lattice/tokens/ERC3643/libraries/ERC3643ExecutionLib.sol";
+import {
+    ERC165_MAP_IIDENTITYREGISTRY_SLOT,
+    ERC3643_IDENTITY_REGISTRY_STORAGE_ROOT
+} from "@lattice/tokens/ERC3643/libraries/ERC3643IdentityRegistryLib.sol";
+import {
+    ERC165_MAP_IIDENTITYREGISTRYSTORAGE_SLOT,
+    ERC3643_IDENTITY_REGISTRY_STORAGE_SLOT
+} from "@lattice/tokens/ERC3643/libraries/ERC3643IdentityRegistryStorageLib.sol";
+import {ERC165_MAP_IERC3643_SLOT, ERC3643_STORAGE_SLOT} from "@lattice/tokens/ERC3643/libraries/ERC3643Lib.sol";
+import {
+    ERC165_MAP_ITRUSTEDISSUERSREGISTRY_SLOT,
+    ERC3643_TRUSTED_ISSUERS_REGISTRY_STORAGE_SLOT
+} from "@lattice/tokens/ERC3643/libraries/ERC3643TrustedIssuersRegistryLib.sol";
+
 contract StorageSlotVerificationTest is Test {
     // Canonical EIP interface IDs registered by the token modules. These are intentionally NOT
     // `type(I...).interfaceId` of the Lattice interfaces: the Lattice `IERC721`/`IERC1155` interfaces
@@ -544,6 +578,22 @@ contract StorageSlotVerificationTest is Test {
     }
 
     // ---- tokens ----
+
+    function test_ERC20TemporaryApprovalTransientSlot() public pure {
+        assertEq(ERC20_TEMPORARY_APPROVAL_STORAGE_SLOT, _erc7201Slot("lattice.storage.ERC20TemporaryApproval"));
+        bytes32[] memory persistent = _allStorageSlots();
+        for (uint256 i; i < persistent.length; ++i) {
+            assertTrue(persistent[i] != ERC20_TEMPORARY_APPROVAL_STORAGE_SLOT);
+        }
+    }
+
+    function test_Erc165MapIERC20TemporaryApprovalSlot() public pure {
+        assertEq(type(IERC20TemporaryApproval).interfaceId, bytes4(0x42232a4c));
+        assertEq(
+            ERC165_MAP_IERC20TEMPORARYAPPROVAL_SLOT,
+            _erc165MapSlot(type(IERC20TemporaryApproval).interfaceId, ERC165_STORAGE_LOCATION)
+        );
+    }
 
     function test_ERC20StorageSlot() public pure {
         assertEq(ERC20_STORAGE_SLOT, _erc7201Slot("lattice.storage.ERC20"), "ERC20 storage slot mismatch");
@@ -1753,6 +1803,15 @@ contract StorageSlotVerificationTest is Test {
         );
     }
 
+    function test_Erc165MapIHSSAdapterRecoverySlot() public pure {
+        assertEq(type(IHSSAdapter).interfaceId, bytes4(0xd07095cf), "live HSS interface changed");
+        assertEq(type(IHSSAdapterRecovery).interfaceId, bytes4(0x4d10dd54));
+        assertEq(
+            ERC165_MAP_IHSSADAPTERRECOVERY_SLOT,
+            _erc165MapSlot(type(IHSSAdapterRecovery).interfaceId, ERC165_STORAGE_LOCATION)
+        );
+    }
+
     function test_Erc165MapIHSSAdapterSlot() public pure {
         assertEq(
             ERC165_MAP_IHSSADAPTER_SLOT,
@@ -2258,6 +2317,17 @@ contract StorageSlotVerificationTest is Test {
         );
     }
 
+    function test_ERC3643TokenAndTransientExecutionRoots() public pure {
+        assertEq(ERC3643_STORAGE_SLOT, _erc7201Slot("lattice.storage.ERC3643"));
+        assertEq(ERC3643_EXECUTION_SLOT, _erc7201Slot("lattice.storage.ERC3643Execution"));
+        bytes32[] memory persistent = _allStorageSlots();
+        for (uint256 i; i < persistent.length; ++i) {
+            assertTrue(persistent[i] != ERC3643_EXECUTION_SLOT);
+        }
+        assertTrue(ERC3643_EXECUTION_SLOT != ERC20_TEMPORARY_APPROVAL_STORAGE_SLOT);
+        assertEq(ERC165_MAP_IERC3643_SLOT, _erc165MapSlot(bytes4(0xb97d944c), ERC165_STORAGE_LOCATION));
+    }
+
     // ======================== Uniqueness Checks ========================
 
     function test_ERC6900ModuleManagerIsIncludedInUniquenessCheck() public pure {
@@ -2298,7 +2368,7 @@ contract StorageSlotVerificationTest is Test {
     // ======================== Slot inventories ========================
 
     function _allStorageSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](97);
+        slots = new bytes32[](103);
         uint256 i;
         // access
         slots[i++] = ACCESS_CONTROL_STORAGE_SLOT;
@@ -2307,6 +2377,12 @@ contract StorageSlotVerificationTest is Test {
         slots[i++] = ACCESS_MANAGER_STORAGE_SLOT;
         slots[i++] = ACCESS_MANAGED_STORAGE_SLOT;
         // tokens
+        slots[i++] = ERC3643_STORAGE_SLOT;
+        slots[i++] = ERC3643_IDENTITY_REGISTRY_STORAGE_ROOT;
+        slots[i++] = ERC3643_IDENTITY_REGISTRY_STORAGE_SLOT;
+        slots[i++] = ERC3643_TRUSTED_ISSUERS_REGISTRY_STORAGE_SLOT;
+        slots[i++] = ERC3643_CLAIM_TOPICS_REGISTRY_STORAGE_SLOT;
+        slots[i++] = ERC3643_COMPLIANCE_STORAGE_SLOT;
         slots[i++] = ERC20_STORAGE_SLOT;
         slots[i++] = ERC20CAPPED_STORAGE_SLOT;
         slots[i++] = ERC20WRAPPER_STORAGE_SLOT;
@@ -2416,7 +2492,7 @@ contract StorageSlotVerificationTest is Test {
     }
 
     function _allErc165MapSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](107);
+        slots = new bytes32[](116);
         uint256 i;
         // access
         slots[i++] = ERC165_MAP_IACCESSCONTROL_SLOT;
@@ -2425,7 +2501,15 @@ contract StorageSlotVerificationTest is Test {
         slots[i++] = ERC165_MAP_IACCESSMANAGER_SLOT;
         slots[i++] = ERC165_MAP_IACCESSMANAGED_SLOT;
         // tokens
+        slots[i++] = ERC165_MAP_IERC3643_SLOT;
+        slots[i++] = ERC165_MAP_IIDENTITYREGISTRY_SLOT;
+        slots[i++] = ERC165_MAP_IIDENTITYREGISTRYSTORAGE_SLOT;
+        slots[i++] = ERC165_MAP_ITRUSTEDISSUERSREGISTRY_SLOT;
+        slots[i++] = ERC165_MAP_ICLAIMTOPICSREGISTRY_SLOT;
+        slots[i++] = ERC165_MAP_ICOMPLIANCE_SLOT;
+        slots[i++] = ERC165_MAP_IAGENTROLE_SLOT;
         slots[i++] = ERC165_MAP_IERC20_SLOT;
+        slots[i++] = ERC165_MAP_IERC20TEMPORARYAPPROVAL_SLOT;
         slots[i++] = ERC165_MAP_IERC20CAPPED_SLOT;
         slots[i++] = ERC165_MAP_IERC721_SLOT;
         slots[i++] = ERC165_MAP_IERC721METADATA_SLOT;
@@ -2558,6 +2642,7 @@ contract StorageSlotVerificationTest is Test {
         // HederaPrngAdapter are stateless — one map slot each, no ERC-7201 row above)
         slots[i++] = ERC165_MAP_IHTSADAPTER_SLOT;
         slots[i++] = ERC165_MAP_IHSSADAPTER_SLOT;
+        slots[i++] = ERC165_MAP_IHSSADAPTERRECOVERY_SLOT;
         slots[i++] = ERC165_MAP_IHASSIGNATUREVERIFIER_SLOT;
         slots[i++] = ERC165_MAP_IHEDERAEXCHANGERATEADAPTER_SLOT;
         slots[i++] = ERC165_MAP_IHEDERAPRNGADAPTER_SLOT;

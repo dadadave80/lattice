@@ -24,6 +24,7 @@ contract ComposabilityInvariant is GetSelectors {
         checked += _noReExport("ERC20Capped", base, _none());
         checked += _noReExport("ERC20FlashMint", base, _none());
         checked += _noReExport("ERC20Permit", base, _none());
+        checked += _noReExport("ERC20TemporaryApproval", base, _none());
         checked += _noReExport("ERC20Crosschain", base, _none());
         checked += _noReExport("ERC1363", base, _none());
         // Override extensions: may own ONLY the base selectors they Replace.

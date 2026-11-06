@@ -20,6 +20,7 @@ PATH_GLOB ?=
 BASE_REF ?=
 ARGS ?=
 SCRIPT ?=
+ABI_CATALOG_OUTPUT ?= out/errors.json
 SIG ?= run()
 # Script target contract; defaults to the file's basename (DeployX.s.sol -> DeployX). Needed because
 # recipe files also hold their recipe-local '*RecipeInit' contract, so forge cannot infer the target.
@@ -113,9 +114,37 @@ release-build-check: ## Canonical compiler/EVM/metadata settings and locked depe
 	./script/test-check-release-build.sh
 	./script/check-release-build.sh
 
+.PHONY: release-manifests
+release-manifests: ## Compare two clean current builds, validate schemas/status and rebuild any published goldens
+	./script/check-release-manifests.sh
+
+.PHONY: release-notes
+release-notes: ## Markdown shared-contract diff (PREVIOUS=<manifest|->, CURRENT=<manifest>)
+	./script/release-notes.sh "$(PREVIOUS)" "$(CURRENT)"
+
+.PHONY: release-manifest
+release-manifest: ## Offline identities (VERSION, TAG, OWNER, PUBLICATION=fixture|release, DESTINATION required)
+	./script/release-manifest.sh generate "$(VERSION)" "$(TAG)" "$(OWNER)" "$(PUBLICATION)" "$(DESTINATION)"
+
+.PHONY: release-status
+release-status: ## Observe deployed code/curation at a pinned block (MANIFEST, RPC_URL, DESTINATION required)
+	./script/release-status.sh "$(MANIFEST)" "$(RPC_URL)" "$(DESTINATION)"
+
+.PHONY: release-verify
+release-verify: ## Verify frozen shared sources on Sourcify (MANIFEST, CHAIN_MANIFEST, BUILD_INPUTS, RPC_URL required)
+	./script/release-verify.sh "$(MANIFEST)" "$(CHAIN_MANIFEST)" "$(BUILD_INPUTS)" "$(RPC_URL)"
+
 .PHONY: via-ir
 via-ir: ## IR-pipeline parity build (catches stack-too-deep / IR-only errors)
 	forge build --via-ir --skip test script
+
+.PHONY: erc3643-profile-check erc3643-profile-update
+erc3643-profile-check: ## Build and check closed ERC-3643 admission fingerprints, then exercise mutation fixtures
+	./script/erc3643-profile.sh --check
+	./script/test-erc3643-profile.sh
+
+erc3643-profile-update: ## Regenerate the reviewed ERC-3643 host/facet/route fingerprints after source changes
+	./script/erc3643-profile.sh --update
 
 .PHONY: storage-check
 storage-check: ## ERC-7201 storage-layout guard: every annotated struct vs the committed baseline (BASE_REF=origin/dev also checks append-only vs that ref, as CI does vs the PR base)
@@ -139,6 +168,22 @@ scripts-check: ## Regression tests for the CI helper scripts (closing-keyword pa
 	./script/fork-lanes.sh check
 	./script/test-storage-layout.sh
 	./script/test-storage-registry.sh
+	./script/test-error-event-catalog.sh
+	./script/test-release-manifest.sh
+	./script/test-release-notes.sh
+	./script/test-release-verification.sh
+	./script/recipes/test-export.sh
+	./script/recipes/test-catalog.sh
+	./script/test-coverage.sh
+
+.PHONY: recipes
+recipes: ## Export all checked canonical recipe data to out/recipes.json, locally without RPC
+	./script/recipes.sh
+
+.PHONY: abi-catalog
+abi-catalog: ## Clean source build and checked error/event/assembly catalog (out/errors.json)
+	FOUNDRY_PROFILE=ci forge build src lib/diamond-lib/src --locked --force --skip test script
+	./script/error-event-catalog.sh out '$(ABI_CATALOG_OUTPUT)'
 
 .PHONY: storage-update
 storage-update: ## Regenerate the storage-layout baseline (review the diff: appends only for live namespaces; see CONTRIBUTING.md)
@@ -150,7 +195,7 @@ test-ci: ## Full test suite under the CI profile (snapshots/ is left to snapshot
 	FOUNDRY_PROFILE=ci FORGE_SNAPSHOT_EMIT=false forge test
 
 .PHONY: ci
-ci: fmt-check license-check scripts-check readme-check release-build-check sizes via-ir storage-check test-ci snapshot-check ## All CI gates, locally, in CI order
+ci: fmt-check license-check scripts-check readme-check release-build-check sizes erc3643-profile-check via-ir storage-check test-ci snapshot-check abi-catalog recipes ## All CI gates, locally, in CI order
 
 .PHONY: slither
 slither: ## Static analysis gate, as CI runs it (slither.config.json + triaged slither.db.json; fails on High)
@@ -174,10 +219,26 @@ doc: ## Build and link-check the docs site (forge doc + Vocs -> docs/site/dist/p
 doc-serve: ## Stage the docs site and serve it on the Vocs dev server (pages under /lattice/)
 	./script/docs/build.sh --serve
 
+# Coverage uses unoptimized/instrumented bytecode. Keep deployed-code identity and size assertions native,
+# and use the exact same literal selectors for the native partition and instrumented complement.
+COVERAGE_NATIVE_CONTRACTS := ^(ERC3643GasTest|ERC3643TemporaryGasTest|ERC3643AccountingInvariant|ERC3643ProfileTest|ERC3643RecoveryTest|ERC3643TemporaryApprovalTest|ERC3643TokenBoundsTest|ERC3643TokenEventsTest|ERC3643TokenTest)$$
+COVERAGE_NATIVE_TESTS := ^(test_Immutable_ERC3643|test_Immutable_ERC3643TemporaryApproval|test_AllFacetsUnderEip170Limit)\(\)$$
+
 .PHONY: coverage
-coverage: ## Coverage summary for src/, fork suites excluded (add --ir-minimum via ARGS if a suite hits stack-too-deep)
-	FORGE_SNAPSHOT_EMIT=false forge coverage --report summary --no-match-path 'test/fork/*' \
-		--no-match-coverage '(test|script)/' $(ARGS)
+coverage: ## Canonical hash/size tests, then src/ coverage of their exact complement (fork suites excluded; ARGS adds reports)
+	@echo "coverage: validate and persist the canonical compiler artifacts before instrumentation"
+	FOUNDRY_PROFILE=ci FORGE_SNAPSHOT_EMIT=false ./script/check-release-build.sh
+	FOUNDRY_PROFILE=ci FORGE_SNAPSHOT_EMIT=false forge build --locked
+	@echo "coverage: run bytecode-sensitive suites natively, preserving production hash checks"
+	FOUNDRY_PROFILE=ci FORGE_SNAPSHOT_EMIT=false forge test --no-match-path 'test/fork/*' \
+		--match-contract '$(COVERAGE_NATIVE_CONTRACTS)'
+	@echo "coverage: run the disjoint bytecode-sensitive mixed-suite methods natively"
+	FOUNDRY_PROFILE=ci FORGE_SNAPSHOT_EMIT=false forge test --no-match-path 'test/fork/*' \
+		--no-match-contract '$(COVERAGE_NATIVE_CONTRACTS)' --match-test '$(COVERAGE_NATIVE_TESTS)'
+	@echo "coverage: instrument the exact remaining tests; all src/ lines remain in the denominator"
+	FOUNDRY_PROFILE=ci FORGE_SNAPSHOT_EMIT=false forge coverage --report summary --no-match-path 'test/fork/*' \
+		--no-match-coverage '(test|script)/' --no-match-contract '$(COVERAGE_NATIVE_CONTRACTS)' \
+		--no-match-test '$(COVERAGE_NATIVE_TESTS)' $(ARGS)
 
 # --------------------------------------------------------------------- local node
 # `deploy-local` signs with the well-known Anvil key (ANVIL_KEY) against the local

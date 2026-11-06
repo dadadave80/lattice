@@ -14,8 +14,9 @@ import {Script, console} from "forge-std/Script.sol";
 ///
 /// Deterministic deploy: facets and the Diamond are deployed through {CreateXDeployer} (CreateX
 /// CREATE3). The resulting address depends only on `(CreateX, guardedSalt)` — NOT on the contract
-/// initcode — so the Diamond proxy and every facet land at the SAME address on every chain and
-/// survive bytecode/compiler changes. `predict()` pre-computes the Diamond address before broadcast.
+/// initcode. The guarded salt includes the deployer and `block.chainid`, so each chain gets a different
+/// address. Changing bytecode leaves that chain's prediction unchanged; an occupied address cannot be
+/// deployed again. {predictDiamond} pre-computes the address on the selected chain before broadcast.
 ///
 /// A governed cut is just a normal governance proposal whose single action calls the diamond's own
 /// `diamondCut(0x1f931c1c)`:
@@ -25,9 +26,10 @@ import {Script, console} from "forge-std/Script.sol";
 ///   calldatas = [abi.encodeWithSelector(IGovernedDiamondCut.diamondCut.selector, cuts, init, initCalldata)]
 ///
 /// The proposal then follows the normal lifecycle: propose -> vote -> queue -> timelock delay ->
-/// execute, at which point the timelock relays the call back into the diamond, the
-/// EmergencyStop + UPGRADE_EXECUTOR_ROLE guard passes (caller == timelock == executor, role held by
-/// the diamond), and `DiamondLib.diamondCut` applies the cut.
+/// execute. With a co-located TimelockController, its external call back to the diamond makes the caller
+/// the diamond itself, which holds UPGRADE_EXECUTOR_ROLE; the unstopped GovernedDiamondCut then applies
+/// the cut. Governor's zero/self timelock topologies support this route. An external timelock requires
+/// the explicit topology opt-out and deliberate external executor setup; the opt-out grants no role.
 ///
 /// Usage (predict the deterministic Diamond address for an entropy tag):
 ///   forge script script/governance/UpgradeDiamond.s.sol \
@@ -44,21 +46,21 @@ contract UpgradeDiamond is Script {
     //                     DETERMINISTIC DEPLOY (CreateX CREATE3)
     //////////////////////////////////////////////////////////////////////////*//
 
-    /// @notice Pre-computes the deterministic CREATE3 address the Diamond will occupy on EVERY chain
+    /// @notice Pre-computes the deterministic CREATE3 address the Diamond will occupy on this chain
     ///         for a given entropy tag, broadcast by `msg.sender` (the script's deployer).
-    /// @dev Pure prediction — no broadcast. The same `(deployer, entropy)` yields the same address on
-    ///      every chain because CREATE3 ignores initcode.
+    /// @dev Prediction only — no broadcast. The same `(deployer, entropy, block.chainid)` yields the
+    ///      same address independent of initcode; the guarded salt makes it differ across chains.
     /// @param entropy 11 bytes distinguishing this Diamond deployment from others by the same deployer.
     /// @return diamond The deterministic Diamond address.
     function predictDiamond(bytes11 entropy) external view returns (address diamond) {
         bytes32 salt = CreateXDeployer._guardedSalt(msg.sender, entropy);
         diamond = CreateXDeployer.predict(salt);
-        console.log("Predicted Diamond (all chains):", diamond);
+        console.log("Predicted Diamond (this chain):", diamond);
     }
 
     /// @notice Deploys one facet deterministically via CreateX CREATE3.
-    /// @dev Same `(deployer, entropy, _)` ⇒ same facet address on every chain, independent of the
-    ///      facet's bytecode (so a recompiled facet keeps its address — upgrade-stable).
+    /// @dev The same `(deployer, entropy, block.chainid)` yields the same prediction independent of
+    ///      facet bytecode. Recompilation does not replace code already deployed at that address.
     /// @param entropy 11 bytes of per-facet entropy (distinct per facet to avoid salt collisions).
     /// @param creationCode The facet's full creation bytecode (`type(Facet).creationCode`, no args —
     ///        facets are stateless and constructor-less in Lattice's three-layer model).
@@ -70,10 +72,10 @@ contract UpgradeDiamond is Script {
     }
 
     /// @notice Deploys the Diamond deterministically via CreateX CREATE3 at the predicted address.
-    /// @dev The Diamond's initcode embeds its constructor args (owner + initial DiamondCutFacet, or
-    ///      the GovernedDiamondCut facet for a governed deployment). Because CREATE3 ignores initcode,
-    ///      the Diamond address is identical on every chain regardless of those args. Asserts the
-    ///      deployed address equals {predictDiamond} to catch any deployer/entropy mismatch.
+    /// @dev `diamondInitCode` contains creation code and any constructor args required by the chosen
+    ///      host. Lattice itself is configured through its atomic initializer, not constructor args.
+    ///      CREATE3 ignores initcode, while the guarded salt binds the selected chain and deployer.
+    ///      Asserts the deployed address equals {predictDiamond} to catch a deployer/entropy mismatch.
     /// @param entropy 11 bytes identifying this Diamond deployment.
     /// @param diamondInitCode The Diamond's full creation bytecode incl. ABI-encoded constructor args.
     /// @return diamond The deterministic Diamond address (== predicted).
@@ -82,7 +84,7 @@ contract UpgradeDiamond is Script {
         address predicted = CreateXDeployer.predict(salt);
         diamond = CreateXDeployer.deploy(salt, diamondInitCode);
         require(diamond == predicted, "UpgradeDiamond: deployed != predicted");
-        console.log("Deployed Diamond (deterministic, all chains):", diamond);
+        console.log("Deployed Diamond (deterministic, this chain):", diamond);
     }
 
     /// @notice Example end-to-end deterministic deploy: deploy a facet then the Diamond, both via

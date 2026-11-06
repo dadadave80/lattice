@@ -44,8 +44,11 @@ mkdir -p "${PAGES}/guides" "${PAGES}/adr"
 COMMIT="$(git rev-parse HEAD)"
 # "<source> <route>" for every copied page. Links to these sources become routes.
 ROUTES="docs/guides/quickstart.md /
+docs/guides/integrate-lattice.md /guides/integrate-lattice
+docs/guides/upgrade-a-diamond.md /guides/upgrade-a-diamond
 docs/guides/compose-your-own-diamond.md /guides/compose-your-own-diamond
 docs/guides/selector-compatibility.md /guides/selector-compatibility
+docs/guides/erc3643.md /guides/erc3643
 docs/guides/shielded-pool-circuit.md /guides/shielded-pool-circuit
 docs/guides/hedera.md /guides/hedera
 .github/actions/storage-layout/README.md /guides/storage-action

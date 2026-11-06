@@ -15,7 +15,7 @@ import {Test} from "forge-std/Test.sol";
 ///         through the diamond's `delegatecall` dispatch, catching selector/storage/init bugs a mock hides. The
 ///         external ERC-7786 gateway + ERC-7802 token mocks stay test fixtures (they are NOT the facet under
 ///         test). The zero-token init guard is exercised by calling `_deployBridgeERC7802(admin, address(0))`
-///         inside `vm.expectRevert` (the `BridgeZeroToken` revert bubbles up through {Diamond.initialize}).
+///         inside `vm.expectRevert` (the `BridgeZeroToken` revert bubbles up through {Lattice.initialize}).
 abstract contract BridgeERC7802TestBase is Test, GetSelectors {
     DeployBridgeERC7802 internal deployer;
 

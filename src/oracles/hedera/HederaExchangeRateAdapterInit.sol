@@ -8,11 +8,17 @@ import {HederaExchangeRateAdapterLib} from "@lattice/oracles/hedera/HederaExchan
 /// @notice One-shot initializer for an exchange-rate diamond — registers the IHederaExchangeRateAdapter
 ///         interface (ERC-165) and nothing else: the module is stateless (the network itself keeps the rate
 ///         fresh, so there is no feed address, no admin and no staleness window to seed). Delegatecalled by
-///         {Diamond.initialize} inside the initializing window (so it must NOT open its own
+///         {Lattice.initialize} inside the initializing window (so it must NOT open its own
 ///         pre/postInitializer).
+/// @custom:lattice-kind step
 contract HederaExchangeRateAdapterInit {
     /// @notice Runs the exchange-rate module initializer. MUST be invoked via the diamond's `initialize`
     ///         `_init` delegatecall.
+    /// @custom:lattice-initializes HederaExchangeRateAdapter;
+    /// @custom:lattice-after none;
+    /// @custom:lattice-same-call Initializable hard enclosing-initializing-window;
+    /// @custom:lattice-param none;
+    /// @custom:lattice-registers-interfaces
     function init() external {
         HederaExchangeRateAdapterLib.__HederaExchangeRateAdapter_init();
     }

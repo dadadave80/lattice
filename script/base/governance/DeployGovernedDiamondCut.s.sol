@@ -5,9 +5,23 @@ import {DiamondLoupeFacet} from "@diamond/facets/DiamondLoupeFacet.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
+import {RecipePlanLib} from "@lattice-script/lib/RecipePlanLib.sol";
+import {
+    RecipeAuthority,
+    RecipeDeploymentContext,
+    RecipeFacet,
+    RecipeInitOutputKind,
+    RecipeParameter,
+    RecipeProxyKind,
+    RecipeSeam,
+    RecipeSpec,
+    RecipeVariant
+} from "@lattice-script/lib/RecipeSpec.sol";
+import {RecipeSpecLib} from "@lattice-script/lib/RecipeSpecLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {GovernedDiamondCut} from "@lattice/governance/GovernedDiamondCut.sol";
 import {GovernedDiamondCutInit} from "@lattice/governance/GovernedDiamondCutInit.sol";
+import {UPGRADE_EXECUTOR_ROLE} from "@lattice/governance/libraries/GovernedDiamondCutLib.sol";
 import {EmergencyStop} from "@lattice/security/EmergencyStop.sol";
 
 /// @title DeployGovernedDiamondCut
@@ -26,14 +40,77 @@ contract DeployGovernedDiamondCut is BaseDeploy {
     /// @return init The {GovernedDiamondCutInit} initializer address.
     /// @return initCalldata The `init(admin)` calldata.
     function buildCuts(address admin) public returns (FacetCut[] memory cuts, address init, bytes memory initCalldata) {
-        cuts = new FacetCut[](5);
-        cuts[0] = _cut(address(new ERC165Facet()), "ERC165Facet");
-        cuts[1] = _cut(address(new DiamondLoupeFacet()), "DiamondLoupeFacet");
-        cuts[2] = _cut(address(new AccessControl()));
-        cuts[3] = _cut(address(new EmergencyStop()));
-        cuts[4] = _cut(address(new GovernedDiamondCut()));
-        init = address(new GovernedDiamondCutInit());
+        cuts = _materialize(_cutPlan(0), _recipeSeams(0));
+        init = _init("GovernedDiamondCutInit");
         initCalldata = abi.encodeCall(GovernedDiamondCutInit.init, (admin));
+    }
+
+    function _cutPlan(uint256) internal pure returns (RecipeFacet[] memory facets) {
+        facets = new RecipeFacet[](5);
+        facets[0] = RecipePlanLib.all("ERC165Facet");
+        facets[1] = RecipePlanLib.all("DiamondLoupeFacet");
+        facets[2] = RecipePlanLib.all("AccessControl");
+        facets[3] = RecipePlanLib.all("EmergencyStop");
+        facets[4] = RecipePlanLib.all("GovernedDiamondCut");
+    }
+
+    function _recipeSeams(uint256) internal pure returns (RecipeSeam[] memory) {
+        return new RecipeSeam[](0);
+    }
+
+    /// @notice Exact cut topology, initializer and assigned authority; no full voting system is implied.
+    function recipeSpec() public pure returns (RecipeSpec memory result) {
+        result =
+            RecipeSpecLib.spec("DeployGovernedDiamondCut", "script/base/governance/DeployGovernedDiamondCut.s.sol", 1);
+        RecipeVariant memory variant;
+        variant.id = "DeployGovernedDiamondCut:buildCuts(address)";
+        variant.buildSignature = "buildCuts(address)";
+        variant.proxyKind = RecipeProxyKind.Lattice;
+        variant.initOutputKind = RecipeInitOutputKind.Single;
+        variant.facets = _cutPlan(0);
+        variant.seams = _recipeSeams(0);
+        variant.inputs = new RecipeParameter[](1);
+        variant.inputs[0] = RecipeParameter(
+            "admin",
+            "address",
+            "account",
+            "0x00000000000000000000000000000000000000ad",
+            "caller: choose a usable guardian/role administrator; AccessControl initialization permits the zero address"
+        );
+        string[] memory bindings = new string[](1);
+        bindings[0] = "admin";
+        variant.initPlan = RecipeSpecLib.leaf("GovernedDiamondCutInit", "init(address)", variant.inputs, bindings);
+        variant.authorities = new RecipeAuthority[](2);
+        variant.authorities[0] = RecipeSpecLib.role(
+            "AccessControl",
+            "DEFAULT_ADMIN_ROLE",
+            "bytes32",
+            bytes32(0),
+            "admin",
+            "guardian management, emergency resume and role administration; this role alone does not authorize ordinary cuts"
+        );
+        variant.authorities[1] = RecipeSpecLib.role(
+            "GovernedDiamondCut",
+            "UPGRADE_EXECUTOR_ROLE",
+            "bytes32",
+            UPGRADE_EXECUTOR_ROLE,
+            "address(this)",
+            "the bundle grants the diamond its cut-executor role and makes that role self-administered"
+        );
+        variant.conditions = new string[](5);
+        variant.conditions[0] =
+            "the bundle declares Governor with policy=governed-cut-route only; it does not initialize full Governor voting state, a vote token or a timelock";
+        variant.conditions[1] =
+            "enforced: the synchronous cut route has an installed nonzero owner; caller pairs this trusted policy declaration with the matching GovernedDiamondCut implementation";
+        variant.conditions[2] = "UPGRADE_EXECUTOR_ROLE administers itself; DEFAULT_ADMIN_ROLE cannot grant or revoke it";
+        variant.conditions[3] =
+            "caller: compose a reviewed reachable self-execution path; this standalone cut recipe supplies no Governor/Timelock path and must not be paired with an unrestricted external self-call relay";
+        variant.conditions[4] =
+            "the initializer grants no guardian role and freezes no selector; the admin manages guardians and emergency resume separately";
+        result.variants[0] = variant;
+        result.deploymentContexts = new RecipeDeploymentContext[](1);
+        result.deploymentContexts[0] =
+            RecipeSpecLib.deploymentContext("DeployGovernedDiamondCut", "run(address)", variant, "buildCuts(admin)");
     }
 
     /// @notice Deploys a governed-cut diamond (broadcasting entrypoint for `forge script ... --broadcast`).

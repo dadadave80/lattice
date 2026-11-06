@@ -13,7 +13,7 @@ Structured per the **Testing** and **Deployment** sections of the Cyfrin Solidit
 | `test/fuzz/` | Stateless fuzz tests. |
 | `test/fork/` | Mainnet/testnet fork tests (RPC-gated; skip without an RPC). |
 | `test/gas/` | Gas snapshots, committed under `snapshots/`. Record snapshots only here. CI fails when a run changes them; regenerate with `make snapshot`. |
-| `test/composability/` | Diamond composability guard (extensions never re-export base selectors; real-diamond cut proofs). |
+| `test/composability/` | Selector-surface and real-proxy composition guards; every canonical recipe spec vs actual cuts/init trees, independent seam oracles and mutation controls. |
 | `test/helpers/` | Test mixins — the blueprint helpers delegate to `script/base/` so setup never diverges from the deploy path. |
 | `test/fixtures/` | ZK proving-system fixtures (groth16 / plonk / semaphore / …). |
 
@@ -184,3 +184,11 @@ On the #287 source, all 76 mutants in the changed functions (`getAccess`, `setGr
 The 8 survivors are the setter-zeroing equivalents listed above.
 
 The pilot stays out of CI, as decided for #245. The kill rates above are the input for revisiting that.
+
+## Coverage
+
+`make coverage` persists the canonical compiler artifacts, runs the exact bytecode-hash/size-sensitive
+subset natively, then instruments its complement. Native results are strict test validation with no
+coverage attribution. All `src/` entries remain in the report denominator, including unmeasured
+closed-profile lines; independent component and registry tests retain measured coverage. Ordinary
+`make test` and CI still run every native test. Add report formats with `ARGS`, as Scheduled does.

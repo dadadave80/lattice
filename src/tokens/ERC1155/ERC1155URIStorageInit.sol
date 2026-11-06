@@ -12,7 +12,15 @@ import {ERC1155URIStorageLib} from "@lattice/tokens/ERC1155/libraries/ERC1155URI
 ///         {BaseDeploy._assembleMulti}); it must NOT open its own pre/postInitializer.
 /// @dev The setters on the {ERC1155URIStorage} facet are gated on `DEFAULT_ADMIN_ROLE`, so seeding that admin is
 ///      intrinsic to deploying a usable per-token-URI token — hence AccessControl is bootstrapped here.
+/// @custom:lattice-kind bundle
 contract ERC1155URIStorageInit {
+    /// @custom:lattice-initializes ERC1155URIStorage;
+    /// @custom:lattice-initializes AccessControl;
+    /// @custom:lattice-after none;
+    /// @custom:lattice-same-call Initializable hard enclosing-initializing-window;
+    /// @custom:lattice-sequence ERC1155URIStorage;AccessControl;
+    /// @custom:lattice-param admin_ authority;
+    /// @custom:lattice-registers-interfaces
     function init(address admin_) external {
         ERC1155URIStorageLib.__ERC1155URIStorage_init();
         AccessControlLib.__AccessControl_init(admin_);

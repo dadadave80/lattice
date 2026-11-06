@@ -2,8 +2,23 @@
 pragma solidity ^0.8.30;
 
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
-import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
 import {DeployERC721} from "@lattice-script/base/tokens/DeployERC721.s.sol";
+import {TokenDeployBase} from "@lattice-script/base/tokens/TokenDeployBase.s.sol";
+import {RecipePlanLib} from "@lattice-script/lib/RecipePlanLib.sol";
+import {
+    RecipeAuthority,
+    RecipeDeploymentContext,
+    RecipeFacet,
+    RecipeInitOutputKind,
+    RecipeInitStep,
+    RecipeParameter,
+    RecipeProxyKind,
+    RecipeSeam,
+    RecipeSpec,
+    RecipeVariant
+} from "@lattice-script/lib/RecipeSpec.sol";
+import {RecipeSpecLib} from "@lattice-script/lib/RecipeSpecLib.sol";
+import {TokenRecipePlans} from "@lattice-script/lib/TokenRecipePlans.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlInit} from "@lattice/access/AccessControlInit.sol";
 import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
@@ -25,9 +40,8 @@ import {DiamondIntrospectionInit} from "@lattice/utils/DiamondIntrospectionInit.
 ///      Mint and burn are app-specific: a minting facet calls {ERC721VotesLib._mint}/{_burn}, never {ERC721Lib}'s.
 ///      Do not add {ERC721Burnable}, {ERC721Wrapper}, {ERC721Pausable} or {ERC721Enumerable} to this diamond, nor
 ///      batch mints through {ERC721ConsecutiveInit} (see {ERC721Votes}).
-///      The `ERC721Votes` facet is the release facet from {BaseDeploy._facet}; the other cuts and the inits still
-///      deploy fresh until every recipe moves to release contracts (#195).
-contract DeployERC721Votes is BaseDeploy {
+///      All inventory facets and initializers use the shared release helpers.
+contract DeployERC721Votes is TokenDeployBase {
     /// @notice Builds the votes ERC-721 diamond cuts + initializers (no broadcast, no proxy deploy).
     /// @param name_ Token name (also the EIP-712 domain name). @param symbol_ Token symbol.
     /// @return cuts The facet cuts (ERC165 + ERC721 + DiamondLoupeFacet + Votes + ERC721Votes [Replace]).
@@ -37,25 +51,8 @@ contract DeployERC721Votes is BaseDeploy {
         public
         returns (FacetCut[] memory cuts, address[] memory inits, bytes[] memory initCalldatas)
     {
-        (FacetCut[] memory baseCuts, address baseInit, bytes memory baseCalldata) =
-            new DeployERC721().buildCuts(name_, symbol_);
-
-        cuts = new FacetCut[](baseCuts.length + 2);
-        for (uint256 i; i < baseCuts.length; ++i) {
-            cuts[i] = baseCuts[i];
-        }
-        // The ERC-5805 delegation + ERC-6372 clock surface comes from the standalone {Votes} facet.
-        cuts[baseCuts.length] = _cut(address(new Votes()));
-        // Every ERC721Votes selector already exists: the transfers on {ERC721}, the delegations on {Votes}.
-        cuts[baseCuts.length + 1] = _replace(_facet("ERC721Votes"));
-
-        inits = new address[](2);
-        inits[0] = baseInit;
-        inits[1] = address(new ERC721VotesInit());
-
-        initCalldatas = new bytes[](2);
-        initCalldatas[0] = baseCalldata;
-        initCalldatas[1] = abi.encodeCall(ERC721VotesInit.init, (name_));
+        cuts = _materialize(_cutPlan(0), _recipeSeams(0));
+        (inits, initCalldatas) = _buildInitializers(name_, symbol_);
     }
 
     /// @notice Deploys a votes ERC-721 token diamond (broadcasting entrypoint for `forge script ... --broadcast`).
@@ -72,21 +69,14 @@ contract DeployERC721Votes is BaseDeploy {
         public
         returns (FacetCut[] memory cuts, address[] memory inits, bytes[] memory initCalldatas)
     {
-        (FacetCut[] memory defCuts, address[] memory defInits, bytes[] memory defCalldatas) = buildCuts(name_, symbol_);
-
-        cuts = new FacetCut[](defCuts.length + 2);
-        for (uint256 i; i < defCuts.length; ++i) {
-            cuts[i] = defCuts[i];
-        }
-        cuts[defCuts.length] = _cut(address(new AccessControl()));
-        cuts[defCuts.length + 1] = _cut(address(new AccessControlDiamondCut()));
-
+        cuts = _materialize(_cutPlan(1), _recipeSeams(1));
+        (address[] memory defInits, bytes[] memory defCalldatas) = _buildInitializers(name_, symbol_);
         inits = new address[](defInits.length + 2);
         for (uint256 i; i < defInits.length; ++i) {
             inits[i] = defInits[i];
         }
-        inits[defInits.length] = address(new AccessControlInit());
-        inits[defInits.length + 1] = address(new DiamondIntrospectionInit());
+        inits[defInits.length] = _init("AccessControlInit");
+        inits[defInits.length + 1] = _init("DiamondIntrospectionInit");
 
         initCalldatas = new bytes[](defCalldatas.length + 2);
         for (uint256 i; i < defCalldatas.length; ++i) {
@@ -104,5 +94,188 @@ contract DeployERC721Votes is BaseDeploy {
             buildCuts(name_, symbol_, admin);
         token = _assembleMulti(cuts, inits, initCalldatas);
         vm.stopBroadcast();
+    }
+
+    /// @dev Resolves only the original ordered initializer sequence after complete-plan validation.
+    function _buildInitializers(string memory name_, string memory symbol_)
+        internal
+        returns (address[] memory inits, bytes[] memory initCalldatas)
+    {
+        (address baseInit, bytes memory baseCalldata) = _erc721BaseInit(name_, symbol_);
+        inits = new address[](2);
+        inits[0] = baseInit;
+        inits[1] = _init("ERC721VotesInit");
+
+        initCalldatas = new bytes[](2);
+        initCalldatas[0] = baseCalldata;
+        initCalldatas[1] = abi.encodeCall(ERC721VotesInit.init, (name_));
+    }
+
+    function _cutPlan(uint256 variant) internal pure returns (RecipeFacet[] memory facets) {
+        require(variant < 2, "DeployERC721Votes: unknown variant");
+        RecipeFacet[] memory extension = new RecipeFacet[](variant == 0 ? 2 : 4);
+        extension[0] = RecipePlanLib.all("Votes");
+        extension[1] = RecipePlanLib.replaceAll("ERC721Votes");
+        if (variant == 1) {
+            extension[2] = RecipePlanLib.all("AccessControl");
+            extension[3] = RecipePlanLib.all("AccessControlDiamondCut");
+        }
+        return RecipePlanLib.append(TokenRecipePlans.erc721(false), extension);
+    }
+
+    function _recipeSeams(uint256) internal pure returns (RecipeSeam[] memory seams) {
+        seams = new RecipeSeam[](5);
+        seams[0] = RecipePlanLib.seam2(
+            "DeployERC721Votes:transferFrom(address,address,uint256)",
+            bytes4(keccak256("transferFrom(address,address,uint256)")),
+            "ERC721",
+            "ERC721Votes",
+            "ERC721Votes",
+            "the NFT mover must update voting units on base transfers"
+        );
+        seams[1] = RecipePlanLib.seam2(
+            "DeployERC721Votes:safeTransferFrom(address,address,uint256)",
+            bytes4(keccak256("safeTransferFrom(address,address,uint256)")),
+            "ERC721",
+            "ERC721Votes",
+            "ERC721Votes",
+            "the NFT mover must update voting units on base transfers"
+        );
+        seams[2] = RecipePlanLib.seam2(
+            "DeployERC721Votes:safeTransferFrom(address,address,uint256,bytes)",
+            bytes4(keccak256("safeTransferFrom(address,address,uint256,bytes)")),
+            "ERC721",
+            "ERC721Votes",
+            "ERC721Votes",
+            "the NFT mover must update voting units on base transfers"
+        );
+        seams[3] = RecipePlanLib.seam2(
+            "DeployERC721Votes:delegate(address)",
+            bytes4(keccak256("delegate(address)")),
+            "Votes",
+            "ERC721Votes",
+            "ERC721Votes",
+            "delegation must read ERC721 balances rather than ERC20 voting units"
+        );
+        seams[4] = RecipePlanLib.seam2(
+            "DeployERC721Votes:delegateBySig(address,uint256,uint256,uint8,bytes32,bytes32)",
+            bytes4(keccak256("delegateBySig(address,uint256,uint256,uint8,bytes32,bytes32)")),
+            "Votes",
+            "ERC721Votes",
+            "ERC721Votes",
+            "delegation must read ERC721 balances rather than ERC20 voting units"
+        );
+    }
+
+    function _recipeInitPlan(uint256 variant, RecipeParameter[] memory inputs)
+        private
+        pure
+        returns (RecipeInitStep[] memory)
+    {
+        RecipeInitStep[] memory baseModule;
+        {
+            RecipeParameter[] memory baseModuleParameters = new RecipeParameter[](2);
+            string[] memory baseModuleBindings = new string[](2);
+            baseModuleParameters[0] =
+                RecipeParameter("name_", "string", inputs[0].unit, inputs[0].example, "no length constraint");
+            baseModuleBindings[0] = "name_";
+            baseModuleParameters[1] =
+                RecipeParameter("symbol_", "string", inputs[1].unit, inputs[1].example, inputs[1].rule);
+            baseModuleBindings[1] = "symbol_";
+            baseModule =
+                RecipeSpecLib.leaf("ERC721Init", "init(string,string)", baseModuleParameters, baseModuleBindings);
+        }
+        RecipeInitStep[] memory base = RecipeSpecLib.introspected(baseModule, false);
+        RecipeInitStep[] memory module;
+        {
+            RecipeParameter[] memory moduleParameters = new RecipeParameter[](1);
+            string[] memory moduleBindings = new string[](1);
+            moduleParameters[0] = RecipeParameter("name_", "string", inputs[0].unit, inputs[0].example, inputs[0].rule);
+            moduleBindings[0] = "name_";
+            module = RecipeSpecLib.leaf("ERC721VotesInit", "init(string)", moduleParameters, moduleBindings);
+        }
+        RecipeInitStep[][] memory children = new RecipeInitStep[][](variant == 0 ? 2 : 4);
+        children[0] = base;
+        children[1] = module;
+        if (variant == 1) {
+            RecipeInitStep[] memory adminStep;
+            {
+                RecipeParameter[] memory adminStepParameters = new RecipeParameter[](1);
+                string[] memory adminStepBindings = new string[](1);
+                adminStepParameters[0] =
+                    RecipeParameter("admin", "address", inputs[2].unit, inputs[2].example, inputs[2].rule);
+                adminStepBindings[0] = "admin";
+                adminStep =
+                    RecipeSpecLib.leaf("AccessControlInit", "init(address)", adminStepParameters, adminStepBindings);
+            }
+            children[2] = adminStep;
+            children[3] = RecipeSpecLib.emptyLeaf("DiamondIntrospectionInit", "initUpgradeable()");
+        }
+        return RecipeSpecLib.wrap(children);
+    }
+
+    /// @notice Canonical cut/seam plans, exact initializer tree and deployment arguments as script-only data.
+    function recipeSpec() public pure returns (RecipeSpec memory result) {
+        result = RecipeSpecLib.spec("DeployERC721Votes", "script/base/tokens/DeployERC721Votes.s.sol", 2);
+        result.deploymentContexts = new RecipeDeploymentContext[](2);
+        for (uint256 i; i < 2; ++i) {
+            RecipeVariant memory variant;
+            variant.id = i == 0
+                ? "DeployERC721Votes:buildCuts(string,string)"
+                : "DeployERC721Votes:buildCuts(string,string,address)";
+            variant.buildSignature = i == 0 ? "buildCuts(string,string)" : "buildCuts(string,string,address)";
+            variant.proxyKind = RecipeProxyKind.Lattice;
+            variant.initOutputKind = RecipeInitOutputKind.Parallel;
+            variant.facets = _cutPlan(i);
+            variant.seams = _recipeSeams(i);
+            variant.inputs = new RecipeParameter[](i == 0 ? 2 : 3);
+            variant.inputs[0] = RecipeParameter(
+                "name_",
+                "string",
+                "metadata",
+                "Example NFT",
+                "enforced: nonempty EIP712 domain name; no upper length constraint"
+            );
+            variant.inputs[1] = RecipeParameter("symbol_", "string", "metadata", "EXNFT", "no length constraint");
+            if (i == 1) {
+                variant.inputs[2] = RecipeParameter(
+                    "admin",
+                    "address",
+                    "account",
+                    "0x00000000000000000000000000000000000000ad",
+                    "caller: choose a usable role and upgrade administrator; initialization permits the zero address"
+                );
+            }
+            variant.initPlan = _recipeInitPlan(i, variant.inputs);
+            variant.authorities = new RecipeAuthority[](i == 0 ? 0 : 1);
+            if (i == 1) {
+                variant.authorities[0] = RecipeSpecLib.role(
+                    "AccessControl",
+                    "DEFAULT_ADMIN_ROLE",
+                    "bytes32",
+                    bytes32(0),
+                    "admin",
+                    "role administration and diamondCut; no automatic mint authority or NFT ownership"
+                );
+            }
+            variant.conditions = new string[](5);
+            variant.conditions[0] =
+                "the bundle initializes EIP712 with name=name_ and version=1, Nonces and Votes; these are internal bundle phases rather than extra external initializer calls";
+            variant.conditions[1] =
+                "caller: mint and burn through ERC721VotesLib hooks; do not add Burnable, Wrapper, Pausable or Enumerable paths that bypass vote accounting";
+            variant.conditions[2] =
+                "enforced: the initializer rejects enabled Consecutive batch minting; voting units are one per token and require delegation";
+            variant.conditions[3] =
+            "the optional upgrade administrator receives no automatic mint authority or NFT voting units";
+            variant.conditions[4] =
+                "caller: initialize before NFT balances and voting history exist, or use a separately designed migration; the initializer does not reconstruct voting units, total supply or checkpoints for existing NFTs";
+            result.variants[i] = variant;
+            result.deploymentContexts[i] = RecipeSpecLib.deploymentContext(
+                "DeployERC721Votes",
+                i == 0 ? "run(string,string)" : "run(string,string,address)",
+                variant,
+                i == 0 ? "buildCuts(name_,symbol_)" : "buildCuts(name_,symbol_,admin)"
+            );
+        }
     }
 }

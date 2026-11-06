@@ -9,7 +9,7 @@ pragma solidity >=0.8.4;
 ///         ecosystem, a per-chain gateway COVERAGE map (which local gateway adapters can reach the chain, and
 ///         whether only via an intermediate hub), and {addEvmChain} — the one-action admin fan-out that
 ///         registers an EVM chain and pushes its config into every enabled gateway adapter in a single call.
-/// @dev COVERAGE AWARENESS, NOT ROUTING (issue #77 Q5): the registry is the config single-source-of-truth and
+/// @dev COVERAGE AWARENESS, NOT ROUTING (decided in #77, Q5): the registry is the config single-source-of-truth and
 ///      the authority for M-of-N coverage math, but every adapter keeps its own cheap hot-path maps — the
 ///      registry NEVER sits in any adapter send path. Enforcement is opt-in on the OpenBridge side
 ///      (`setMinDirectCoverage`); hub-routed coverage (e.g. ZetaChain reaching connected chains only via the

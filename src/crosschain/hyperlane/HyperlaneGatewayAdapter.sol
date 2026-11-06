@@ -19,8 +19,13 @@ import {IMessageRecipient} from "@lattice/interfaces/external/hyperlane/IMessage
 ///      deliver messages at `process` time. v1 uses the Mailbox DEFAULT ISM — the facet deliberately does NOT
 ///      implement `ISpecifiesInterchainSecurityModule`; pinning a Lattice-custom ISM by adding
 ///      `interchainSecurityModule()` later is a compatible additive follow-up.
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source Hyperlane
+/// @custom:lattice-requires AccessControl|AccessControlEnumerable|AccessControlTimed convention role-management-surface;
+/// @custom:lattice-family gateway
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches lattice.storage.HyperlaneGatewayAdapter;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init HyperlaneGatewayAdapterInit
 contract HyperlaneGatewayAdapter is IERC7786GatewaySource, IMessageRecipient, IHyperlaneGatewayAdapter {
     /// @inheritdoc IERC7786GatewaySource
     function sendMessage(bytes calldata recipient, bytes calldata payload, bytes[] calldata attributes)

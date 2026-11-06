@@ -94,6 +94,12 @@ anyone who sees the deployment can initialize it first with their own cut and ta
 [Compose your own Diamond](docs/guides/compose-your-own-diamond.md#initialize-in-one-transaction) guide
 walks through a full recipe with `deployAtomic`.
 
+The [integrator guide](docs/guides/integrate-lattice.md) runs a private Anvil example using frozen
+release identities, registry reads, strict factory deployment and released initializer batches.
+Follow [Upgrade a diamond](docs/guides/upgrade-a-diamond.md) for a governed version2 module upgrade and verification.
+
+`make recipes` exports the compiler-checked [recipe catalog](script/README.md#recipe-data-and-checked-composition) to `out/recipes.json`, including variants, initializer trees, units, authorities and explicit selector seams.
+
 Every `script/base/**` recipe creates and initializes its diamond in one transaction through
 `LatticeFactory`. By default a run first deploys its own `LatticeRegistry` + `LatticeFactory`. Set
 `LATTICE_FACTORY=<address>` to reuse a deployed factory, such as a release factory (a committed per-chain
@@ -127,11 +133,11 @@ project's established caller-resolution pattern consistently through the library
 | `defi/` | `AaveV3Adapter`, `AggregatorExecAdapter`, `CompoundV3Adapter`, `CurveStableSwapAdapter` (**unsupported in 0.5.0**: its spot `get_virtual_price()` NAV is exposed to read-only reentrancy, so do not register it with a vault's `StrategyManager`), `ERC4626Adapter`, `GovernedVault`, `LidoAdapter`, `StrategyManager`, `UniswapV3Adapter` (swap-free, and its NAV counts token0 only: `rebalance()` can allocate into the position but never recall from it, recalling only idle token0, so capital allocated there reaches redeemers only after the admin's `emergencyWithdraw`, which retiring it also needs before `removeStrategy`; size its target with that in mind. The token1 lands in the vault outside NAV), `VaultCore`, `WETHUnwrapper` |
 | `ens/` | `ENSResolver`, `ENSReverseClaimer`, `ENSSubnameIssuer` |
 | `governance/` | `Governor` (+ `GovernorStandalone`), `TimelockController` (+ `TimelockControllerStandalone`), `Votes`, `AccessControlDiamondCut`, `GovernedDiamondCut`, `SafeDiamondCut`, `GovernedSafeDiamondCut`, `SafeHarborAdopter` |
-| `oracles/` | `API3Adapter`, `API3QRNGAdapter`, `BandAdapter`, `ChainlinkAdapter`, `ChainlinkAutomationAdapter`, `ChainlinkCREAdapter`, `ChainlinkVRF`, `ChronicleAdapter`, `DIAAdapter`, `GelatoAutomateAdapter`, `GelatoVRFAdapter`, `HSSAdapter`, `HederaExchangeRateAdapter`, `HederaPrngAdapter`, `PythAdapter`, `PythEntropyAdapter`, `RedStoneAdapter`, `TWAPOracle`, `TellorAdapter`. **Guard:** `OracleGuard` (opt-in L2 sequencer-uptime check and per-key answer bounds over any price adapter) |
+| `oracles/` | `API3Adapter`, `API3QRNGAdapter`, `BandAdapter`, `ChainlinkAdapter`, `ChainlinkAutomationAdapter`, `ChainlinkCREAdapter`, `ChainlinkVRF`, `ChronicleAdapter`, `DIAAdapter`, `GelatoAutomateAdapter`, `GelatoVRFAdapter`, `HSSAdapter`, `HSSAdapterRecovery`, `HederaExchangeRateAdapter`, `HederaPrngAdapter`, `PythAdapter`, `PythEntropyAdapter`, `RedStoneAdapter`, `TWAPOracle`, `TellorAdapter`. **Guard:** `OracleGuard` (opt-in L2 sequencer-uptime check and per-key answer bounds over any price adapter) |
 | `privacy/` | `CommitReveal`, `ERC5564Announcer`, `ERC6538Registry`, `Groth16Verifier`, `PlonkVerifier`, `PrivateVoting` (anonymous, one person one vote; token-weighted private voting is deferred), `Semaphore`, `ShieldedPool` (requires a consumer-supplied audited circuit; [withdraw-circuit requirements](docs/guides/shielded-pool-circuit.md)) |
 | `security/` | `Pausable`, `ReentrancyGuard`, `RateLimiter`, `CircuitBreaker`, `EmergencyStop`, `InvariantChecker` |
-| `tokens/` | One subfolder per standard (base + extensions flat inside, `<std>/libraries/` for logic). **`tokens/ERC20/`:** `ERC20` plus the extensions `ERC1363`, `ERC20Burnable`, `ERC20Capped`, `ERC20Crosschain`, `ERC20FlashMint`, `ERC20Pausable`, `ERC20Permit`, `ERC20Votes`, `ERC20Wrapper`. **`tokens/ERC721/`:** `ERC721` plus the extensions `ERC721Burnable`, `ERC721Enumerable`, `ERC721Pausable`, `ERC721URIStorage`, `ERC721Votes`, `ERC721Wrapper` (`ERC721Enumerable`, `ERC721Pausable` and `ERC721Votes` each replace the base transfer selectors, so a diamond takes at most one of them; `ERC721Enumerable` and `ERC721Votes` also exclude `ERC721Burnable` and `ERC721Wrapper`, and a pause does not gate their burns and wraps; an ERC-721 with royalties cuts `ERC721` and `ERC2981` together; see the royalty recipe in `script/base/tokens/`), plus ERC-2309 batch mints through `ERC721ConsecutiveInit`, which adds no facet and mints only in the diamond's first initialization (it excludes `ERC721Enumerable` and `ERC721Votes`). **`tokens/ERC1155/`:** `ERC1155` plus the extensions `ERC1155Burnable`, `ERC1155Pausable`, `ERC1155Supply`, `ERC1155URIStorage` (`ERC1155Burnable`, `ERC1155Pausable` and `ERC1155Supply` each serve `burn`/`burnBatch`: cut one). **`tokens/ERC2981/`:** `ERC2981`. **`tokens/ERC4626/`:** `ERC4626`. **`tokens/ERC7802/`:** `ERC7802`. **`tokens/hedera/`:** `HTSAdapter` (the diamond as a Hedera Token Service account). `MarketplaceZone` sits at the `tokens/` root (a Seaport zone enforcing the issuer's own token policy, not a token standard) |
-| `utils/` | `EIP712`, `Initializable` (modifier mixin over `InitializableLib`), `Multicall`, `Nonces`, `VestingWallet` (+ `VestingWalletStandalone`) |
+| `tokens/` | One subfolder per standard (base + extensions flat inside, `<std>/libraries/` for logic). **`tokens/ERC20/`:** `ERC20` plus the extensions `ERC1363`, `ERC20Burnable`, `ERC20Capped`, `ERC20Crosschain`, `ERC20FlashMint`, `ERC20Pausable`, `ERC20Permit`, `ERC20TemporaryApproval` (ERC-7674 transaction-scoped allowances), `ERC20Votes`, `ERC20Wrapper`. **`tokens/ERC721/`:** `ERC721` plus the extensions `ERC721Burnable`, `ERC721Enumerable`, `ERC721Pausable`, `ERC721URIStorage`, `ERC721Votes`, `ERC721Wrapper` (`ERC721Enumerable`, `ERC721Pausable` and `ERC721Votes` each replace the base transfer selectors, so a diamond takes at most one of them; `ERC721Enumerable` and `ERC721Votes` also exclude `ERC721Burnable` and `ERC721Wrapper`, and a pause does not gate their burns and wraps; an ERC-721 with royalties cuts `ERC721` and `ERC2981` together; see the royalty recipe in `script/base/tokens/`), plus ERC-2309 batch mints through `ERC721ConsecutiveInit`, which adds no facet and mints only in the diamond's first initialization (it excludes `ERC721Enumerable` and `ERC721Votes`). **`tokens/ERC1155/`:** `ERC1155` plus the extensions `ERC1155Burnable`, `ERC1155Pausable`, `ERC1155Supply`, `ERC1155URIStorage` (`ERC1155Burnable`, `ERC1155Pausable` and `ERC1155Supply` each serve `burn`/`burnBatch`: cut one). **`tokens/ERC2981/`:** `ERC2981`. **`tokens/ERC3643/`:** `ERC3643`, `ERC3643AgentRole`, `ERC3643ClaimTopicsRegistry`, `ERC3643Compliance`, `ERC3643IdentityRegistry`, `ERC3643IdentityRegistryStorage`, `ERC3643TrustedIssuersRegistry`, and the `ERC3643Params` configuration struct. This permissioned token uses a [closed immutable profile](docs/guides/erc3643.md), with optional transaction-scoped approval; the canonical initializer checks the actual host, facet code hashes and every required route. **`tokens/ERC4626/`:** `ERC4626`. **`tokens/ERC7802/`:** `ERC7802`. **`tokens/hedera/`:** `HTSAdapter` (the diamond as a Hedera Token Service account). `MarketplaceZone` sits at the `tokens/` root (a Seaport zone enforcing the issuer's own token policy, not a token standard) |
+| `utils/` | `EIP712`, `Initializable` (modifier mixin over `InitializableLib`), `ReinitMultiInit`, `Multicall`, `Nonces`, `VestingWallet` (+ `VestingWalletStandalone`) |
 
 **Utility libraries** (`src/utils/libraries/`) — pure logic with no own storage, facet,
 or interface: `Base64`, `Bytes`, `Calldata`, `Checkpoints`, `ECDSA`, `EnumerableSet`,
@@ -242,6 +248,10 @@ cuts each release from Conventional Commits, and before 1.0 a breaking change bu
 
 ## Live deployments and demos
 
+[Release identities, chain readiness and ownership](REGISTRY_DEPLOYMENTS.md#chain-readiness-and-ownership)
+are tracked separately from demos. No public chain currently has certified schema-v1 release evidence;
+the Sepolia ENS factory is a development instance.
+
 <a name="live-testnet-deployment-sepolia"></a>
 <a name="live-cross-chain-usdc-demos-circle-cctp-v2--arc-testnet"></a>
 
@@ -327,6 +337,7 @@ forge test --match-contract AccessControl -vvv # verbose, by contract
 forge test --match-contract StorageSlotVerificationTest # verify ERC-7201/ERC-165 slots
 forge fmt                                       # format (CI runs `forge fmt --check`)
 make snapshot                                   # regenerate the committed gas snapshots
+make abi-catalog                                # checked error/event catalog in out/errors.json
 ```
 
 The suite currently includes unit, integration, fork, fuzz, invariant, and gas tests. CI

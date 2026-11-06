@@ -2,6 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
+import {ERC20TemporaryApprovalLib} from "@lattice/tokens/ERC20/libraries/ERC20TemporaryApprovalLib.sol";
 import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 
 //*//////////////////////////////////////////////////////////////////////////
@@ -40,7 +41,10 @@ struct ERC20Storage {
 ///        (decision D25 on #234). Every other {ERC20Lib} caller (ERC20Burnable, ERC20FlashMint, ERC20Wrapper,
 ///        ERC20Crosschain, ERC7802, ERC1363, ERC4626, VaultCore, GovernedVault) skips that replacement, so those extensions are mutually
 ///        exclusive with ERC20Pausable and ERC20Votes where they move tokens.
-///      - `_spendAllowance` reads the allowance from storage, not through an overridable `allowance()`. It keeps
+///      - The shared allowance/spend paths include ERC-7674 transient grants; every library caller consumes
+///        temporary allowance first. An absent grant reads zero. This requires the canonical Cancun minimum
+///        and is independent of the balance-movement replacement model above.
+///      - `_spendAllowance` reads persistent allowance directly after any temporary spend. It keeps
 ///        the `!= type(uint256).max` test that OpenZeppelin v5.2 rewrote as `<`: the two agree for every
 ///        `uint256`, and `!=` measured 3 gas cheaper per `transferFrom`.
 ///      - `decimals` is fixed at 18; a facet that needs another value replaces the `decimals()` selector
@@ -105,7 +109,13 @@ library ERC20Lib {
 
     /// @notice Returns the remaining allowance of `spender` over `owner`'s tokens.
     function allowance(address owner, address spender) internal view returns (uint256) {
-        return erc20Storage()._allowances[owner][spender];
+        ERC20Storage storage $ = erc20Storage();
+        uint256 persistent = $._allowances[owner][spender];
+        uint256 temporary = ERC20TemporaryApprovalLib.temporaryAllowance(owner, spender);
+        unchecked {
+            uint256 combined = persistent + temporary;
+            return combined < persistent ? type(uint256).max : combined;
+        }
     }
 
     /// @notice Returns the token name.
@@ -231,7 +241,9 @@ library ERC20Lib {
     /// @notice Decreases the allowance of `spender` over `owner`'s tokens by `value`.
     /// @dev Skips decrement when allowance is type(uint256).max (infinite allowance).
     function _spendAllowance(address owner, address spender, uint256 value) internal {
-        uint256 currentAllowance = allowance(owner, spender);
+        value = ERC20TemporaryApprovalLib.spendTemporaryAllowance(owner, spender, value);
+        if (value == 0) return;
+        uint256 currentAllowance = erc20Storage()._allowances[owner][spender];
         if (currentAllowance != type(uint256).max) {
             if (currentAllowance < value) {
                 revert IERC20.ERC20InsufficientAllowance(spender, currentAllowance, value);

@@ -9,10 +9,11 @@ import {CROSSCHAIN_BRIDGE_ROLE, ERC7802Lib} from "@lattice/tokens/ERC7802/librar
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice One-shot initializer for a crosschain-native ERC-20 diamond (ERC-7802): seeds `AccessControl`,
 ///         the base `ERC20` (name/symbol + ERC-165), and registers the IERC7802 interface, then grants the
-///         `CROSSCHAIN_BRIDGE_ROLE` to the trusted bridge. Delegatecalled by {Diamond.initialize} inside the
+///         `CROSSCHAIN_BRIDGE_ROLE` to the trusted bridge. Delegatecalled by {Lattice.initialize} inside the
 ///         initializing window (so it must NOT open its own pre/postInitializer; each `__*_init` guard passes
 ///         because the window is already open). Runs the exact `__*_init` sequence the legacy inheritance mock
 ///         performed, but on a REAL diamond. Companion to the {ERC20Init}/{ERC2981Init} patterns.
+/// @custom:lattice-kind bundle
 contract ERC7802Init {
     /// @notice Runs the access-control + ERC-20 + ERC-7802 module initializers and grants the bridge role.
     ///         MUST be invoked via the diamond's `initialize` `_init` delegatecall.
@@ -20,6 +21,17 @@ contract ERC7802Init {
     /// @param bridge The trusted bridge granted `CROSSCHAIN_BRIDGE_ROLE` (mints/burns crosschain supply).
     /// @param name_ Token name.
     /// @param symbol_ Token symbol.
+    /// @custom:lattice-initializes AccessControl;
+    /// @custom:lattice-initializes ERC20;
+    /// @custom:lattice-initializes ERC7802;
+    /// @custom:lattice-after none;
+    /// @custom:lattice-same-call Initializable hard enclosing-initializing-window;
+    /// @custom:lattice-sequence AccessControl;ERC20;ERC7802;
+    /// @custom:lattice-param admin authority;
+    /// @custom:lattice-param bridge;
+    /// @custom:lattice-param name_;
+    /// @custom:lattice-param symbol_;
+    /// @custom:lattice-registers-interfaces
     function init(address admin, address bridge, string memory name_, string memory symbol_) external {
         AccessControlLib.__AccessControl_init(admin);
         ERC20Lib.__ERC20_init(name_, symbol_);

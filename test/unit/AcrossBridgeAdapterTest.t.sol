@@ -162,7 +162,7 @@ contract AcrossBridgeAdapterTest is AcrossBridgeAdapterTestBase {
     }
 
     /// @dev Only `d.initialize` is wrapped in `expectRevert` (the `AcrossZeroAddress` revert bubbles up through
-    ///      {Diamond.initialize}); `deployer` was created in `setUp`. An unconfigured module is impossible:
+    ///      {Lattice.initialize}); `deployer` was created in `setUp`. An unconfigured module is impossible:
     ///      this zero-SpokePool init revert is the guarantee.
     function test_InitRejectsZeroSpokePool() public {
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) = deployer.buildCuts(address(0));

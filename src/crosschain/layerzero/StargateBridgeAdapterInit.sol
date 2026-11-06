@@ -11,13 +11,21 @@ import {StargateBridgeAdapterLib} from "@lattice/crosschain/layerzero/StargateBr
 ///         guard (the send path is `nonReentrant`), and registers the IStargateBridgeAdapter interface via
 ///         ERC-165. No protocol addresses are wired at init: Stargate is per-token pools, all registered by
 ///         the admin AFTER deploy ({registerEid}/{registerPool}, or via the ChainRegistry `addEvmChain`
-///         fan-out for the eid map). Delegatecalled by {Diamond.initialize} inside the initializing window
+///         fan-out for the eid map). Delegatecalled by {Lattice.initialize} inside the initializing window
 ///         (so it must NOT open its own pre/postInitializer; each `__*_init` guard passes because the window
 ///         is already open).
+/// @custom:lattice-kind bundle
 contract StargateBridgeAdapterInit {
     /// @notice Runs the access-control + reentrancy-guard + Stargate-adapter initializers. MUST be invoked
     ///         via the diamond's `initialize` `_init` delegatecall.
     /// @param admin The address granted `DEFAULT_ADMIN_ROLE` (controls every adapter setter).
+    /// @custom:lattice-initializes AccessControl;
+    /// @custom:lattice-initializes StargateBridgeAdapter;
+    /// @custom:lattice-after none;
+    /// @custom:lattice-same-call Initializable hard enclosing-initializing-window;
+    /// @custom:lattice-sequence AccessControl;StargateBridgeAdapter;
+    /// @custom:lattice-param admin authority;
+    /// @custom:lattice-registers-interfaces
     function init(address admin) external {
         AccessControlLib.__AccessControl_init(admin);
         StargateBridgeAdapterLib.__StargateBridgeAdapter_init();

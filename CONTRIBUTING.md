@@ -103,6 +103,7 @@ Run `make ci`. It runs CI's Solidity gates, in CI's order:
 | `make storage-check` | ERC-7201 storage-layout baseline |
 | `make test-ci` | full test suite under `FOUNDRY_PROFILE=ci` |
 | `make snapshot-check` | gas snapshots in `snapshots/` match the committed files (`make snapshot` regenerates them) |
+| `make abi-catalog` | clean canonical build; error/event ABI coverage, assembly selectors and collision checks (`out/errors.json`) |
 
 CI also runs checks that `make ci` leaves out:
 
@@ -156,10 +157,10 @@ fail silently when missed, so do every one.
   slot test and a registry row.
 - [ ] **Facet** `src/<area>/<Module>.sol`: one-line forwards to the library, plus `exportSelectors()`
       returning the packed selectors from `forge inspect <Module> methodIdentifiers`, in that order, without
-      `exportSelectors()` itself (`0x0ef22643`). Add `@custom:lattice-version` set to the release that
-      first ships the facet, and `@custom:lattice-source` set to `Lattice original` or, for ported code,
-      the upstream and its version (`OpenZeppelin v5.6.1`).
-      [#200](https://github.com/dadadave80/lattice/issues/200) may replace the version tag.
+      `exportSelectors()` itself (`0x0ef22643`). Add the [composition tags](#composition-metadata) and
+      `@custom:lattice-source` set to `Lattice original` or, for ported code, the upstream and its
+      version (`OpenZeppelin v5.6.1`). The release manifest and `LatticeVersion` carry the version;
+      do not duplicate it in a `lattice-version` tag.
 - [ ] **NatSpec**: `@author` on each new file, plus the
       [attribution line](AGENTS.md#external-source-attribution-always) if the code is ported or adapted.
 - [ ] **Init**: compose `__<Module>_init` in the recipe's local `<Module>RecipeInit` (EmergencyStop does).
@@ -207,3 +208,57 @@ Stateless `*Init.sol` production contracts also belong in `script/lib/InitInvent
 checks the source tree and rejects missing entries and constructor arguments. Constructor-bound account
 initializers have explicit exclusion reasons and are released with their EntryPoint-specific factories.
 Run `forge test --match-contract InitInventoryParityTest` when adding or moving an initializer.
+
+## Composition metadata
+
+Every first-party `FacetInventory` and `InitInventory` entry carries compiler-emitted composition facts.
+Run `forge test --match-contract CompositionMetadataTest` after a full build. New inventory entries fail
+until tagged. These tags describe existing code; they do not run a composition solver or prove that an
+arbitrary combination is safe. Source review, canonical recipes and the selector/hazard tests still apply.
+
+Read contract tags from JSON-decoded `artifact.rawMetadata.output.devdoc`, and initializer entrypoint tags
+from its `methods[signature]`. Foundry's normalized `artifact.metadata` drops contract tags. solc concatenates
+repeated tags with **no separator**, so every record/list below ends in `;`, including `none;`. Signatures
+retain their commas; repeated records use semicolons. Single `family`, `init` and `kind` values have no
+terminator. Alternative facet names within a record use `|`.
+
+| Facet contract tag | Value and meaning |
+| --- | --- |
+| `lattice-requires` | `Facet[\|Alternative] hard\|convention reason;`, or `none;`. `hard` requires an actual public route/precondition; internal library calls and reads of shared role state alone are not hard facet dependencies. `convention` identifies the standard management/completion surface. |
+| `lattice-family` | One exclusive alternative group or `none`. Current groups are `upgrade`, `access`, `account-signature`, `account-validation`, `account-modules`, `price-source`, `strategy`, `gateway`, `bridge-handler`, `erc20-transfer`, `erc721-transfer`, `erc1155-burn`. Do not group every related account/token facet together. |
+| `lattice-owns` | Exact exported shared signatures the canonical recipe routes to this facet, one `signature;` per record, or `none;`. `receive()` denotes Receive's special zero selector. Family selection resolves variants; ownership is not permission to bypass another facet's logic. |
+| `lattice-touches` | Exact canonical storage namespace written from this facet's exported entrypoints through first-party code, one `namespace;` per record, or `none;`. Reads and initializer-only writes are excluded (initializers declare their own modules/order). The explicitly registered `transient:lattice.storage.ERC20TemporaryApproval` names the actual ERC-1153 mapping root and is verified against its source constant/derivation; it is not a persistent layout. Shared allowance consumers can write it conditionally, even without the public grant facet. Approve-only and allowance-view paths do not write it. The shared guard uses `slot:0x8000000000ab143c06`; upstream Ownable uses its fixed owner slot and `derived:OwnableHandover`. These explicit non-ERC-7201 records preserve the real layout. Dynamic external calls/delegatecalls can have additional effects. |
+| `lattice-init` | An `InitInventory` entry or one of the two explicit constructor-bound account initializers, or `none` when no standalone initializer is supplied. Existing contract/library artifacts alone do not qualify. `none` does not mean the module needs no library initialization; strategy adapters and VestingWallet are examples. Constructor-bound `AccountInit`/`AccountInit6900` remain outside stateless `InitInventory`. |
+| `lattice-seam` | On a reconciling facet: `signature when=Facet[\|Facet] anyOf=Owner[\|Owner] reason;`, or `none;`. `when` lists participating facets together; `anyOf` lists alternative permitted combined owners (both lists use `\|`). Follow the canonical recipe's selector exclusions. This records a supported override, not a general compatibility engine. |
+
+An initializer contract declares `lattice-kind step|bundle`. Each public initializer method declares:
+
+| Entrypoint tag | Value and meaning |
+| --- | --- |
+| `lattice-initializes` | Actual module initialization/registration, one `Module[ with k=v];` per record. |
+| `lattice-after` | `Module hard\|convention reason;`, or `none;`, for prerequisites outside this initializer. A prose recommendation is not a checked initialization marker. |
+| `lattice-same-call` | Same syntax; `Initializable hard enclosing-initializing-window;` only if reachable code really checks it. ERC721Consecutive checks the initializing flag **and version 1**; registration-only DiamondIntrospection has no such guard. |
+| `lattice-sequence` | Bundles only: concrete ordered `Module[ with k=v];` records, with the same qualification as `lattice-initializes`. This includes registration steps and is not an unordered dependency set. A qualified partial-state record (for example `Governor with policy=governed-cut-route;`) does not establish full module configuration. Only `MultiInit` and `ReinitMultiInit` use `caller-defined;` for their supplied address/calldata arrays. |
+| `lattice-registers-interfaces` | Bare positive marker when an entrypoint can register ERC-165 flags; omitted otherwise. Conditional view-facet registration remains conditional (ADR0016). Put this bare marker **last** in its comment block: otherwise solc consumes the next custom tag as its value. It compiles to an empty string, so consumers check presence. |
+| `lattice-param` | One record per ABI input: `name [unit=seconds\|percent\|wei] [rule=text] [example=value] [authority];`, or `none;` for no parameters. Flags are optional source-backed facts. Generic Governor delays use token clock ticks, not necessarily seconds; token amounts use smallest units, not wei. Struct rules refer to the declared struct fields. Timelock's current `admin` parameter is ignored by its library; it does not grant an extra admin. |
+
+The only upstream overlay is [`CoreCompositionMetadata`](script/lib/CoreCompositionMetadata.sol): four
+unmodified diamond-lib facets and MultiInit at the documented pinned commit. Its records are explicitly
+curated rather than represented as compiler-emitted tags. Review all five records whenever updating the
+submodule. First-party and future inventory entries must emit their own NatSpec and cannot inherit the overlay.
+
+The `caller-defined;` module/sequence sentinel is allowed only for the two explicit batch helpers:
+`MultiInit` opens no initialization window; first-party `ReinitMultiInit` opens a strictly increasing
+reinitializer window. Both run the supplied steps in order and terminate at a zero target. Successful
+empty/terminated reinitializer batches still advance their version. Other bundles declare concrete modules.
+
+The ERC-3643 suite also declares its source-bound
+`transient:lattice.storage.ERC3643Execution` lock. Its precomputed root and derivation are checked
+separately from persistent layouts, and every suite facet with guarded mutable entrypoints declares it.
+
+The lint checks required fields, semicolon framing, referenced artifacts/facets/storage namespaces,
+exported ownership/seam signatures and parameter coverage/units. Missing/dangling and existing-but-not-initializer mutation fixtures prove
+rejection. It cannot prove that a declaration captures every semantic prerequisite or external write.
+See [ADR0018](docs/adr/0018-compiler-composition-metadata.md). NatSpec contributes to the compiler metadata
+hash: changing these tags changes codehashes and deterministic deployment addresses, including when
+executable opcodes and bytecode lengths stay unchanged. Regenerate release manifests for new deployments.

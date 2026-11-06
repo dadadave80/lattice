@@ -10,9 +10,10 @@ import {CCTPBridgeAdapterLib} from "@lattice/crosschain/circle/CCTPBridgeAdapter
 ///         chain-domain and per-domain config setters are `DEFAULT_ADMIN_ROLE`-gated), the reentrancy guard
 ///         (the burn path is `nonReentrant`), and wires the deployed CCTP TokenMessenger + MessageTransmitter +
 ///         USDC (registering the ICCTPBridgeAdapter interface via ERC-165). Delegatecalled by
-///         {Diamond.initialize} inside the initializing window (so it must NOT open its own pre/postInitializer;
+///         {Lattice.initialize} inside the initializing window (so it must NOT open its own pre/postInitializer;
 ///         each `__*_init` guard passes because the window is already open). Reverts `CCTPZeroAddress` if any of
 ///         the three CCTP addresses is zero.
+/// @custom:lattice-kind bundle
 contract CCTPBridgeAdapterInit {
     /// @notice Runs the access-control + reentrancy-guard + CCTP-adapter initializers. MUST be invoked via the
     ///         diamond's `initialize` `_init` delegatecall.
@@ -20,6 +21,16 @@ contract CCTPBridgeAdapterInit {
     /// @param tokenMessenger     The deployed CCTP v2 `TokenMessengerV2` (burn side).
     /// @param messageTransmitter The deployed CCTP v2 `MessageTransmitterV2` (receive/mint side).
     /// @param usdc               The deployed USDC token bridged by CCTP.
+    /// @custom:lattice-initializes AccessControl;
+    /// @custom:lattice-initializes CCTPBridgeAdapter;
+    /// @custom:lattice-after none;
+    /// @custom:lattice-same-call Initializable hard enclosing-initializing-window;
+    /// @custom:lattice-sequence AccessControl;CCTPBridgeAdapter;
+    /// @custom:lattice-param admin authority;
+    /// @custom:lattice-param tokenMessenger;
+    /// @custom:lattice-param messageTransmitter;
+    /// @custom:lattice-param usdc;
+    /// @custom:lattice-registers-interfaces
     function init(address admin, address tokenMessenger, address messageTransmitter, address usdc) external {
         AccessControlLib.__AccessControl_init(admin);
         CCTPBridgeAdapterLib.__CCTPBridgeAdapter_init(tokenMessenger, messageTransmitter, usdc);

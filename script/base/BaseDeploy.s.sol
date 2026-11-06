@@ -6,6 +6,8 @@ import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {ArachnidDeployer} from "@lattice-script/lib/ArachnidDeployer.sol";
 import {FacetInventory} from "@lattice-script/lib/FacetInventory.sol";
 import {InitInventory} from "@lattice-script/lib/InitInventory.sol";
+import {RecipePlanLib} from "@lattice-script/lib/RecipePlanLib.sol";
+import {RecipeFacet, RecipeSeam, RecipeSelectorSelection} from "@lattice-script/lib/RecipeSpec.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
 import {LatticeFactory} from "@lattice/LatticeFactory.sol";
 import {LatticeRegistry} from "@lattice/LatticeRegistry.sol";
@@ -46,6 +48,39 @@ abstract contract BaseDeploy is Script, GetSelectors {
 
     /// @dev Diamonds assembled so far by this script instance — mixed into each diamond's CREATE2 salt.
     uint256 private _assembled;
+
+    /// @notice Materialize a declared recipe, rejecting incompatible movers before any shared deployment.
+    /// @dev Typed initializer encoding remains in each builder. No caller binding or ABI expression is interpreted.
+    function _materialize(RecipeFacet[] memory facets, RecipeSeam[] memory seams)
+        internal
+        returns (FacetCut[] memory cuts)
+    {
+        return _materialize(facets, seams, LatticeVersion.VERSION);
+    }
+
+    /// @dev Explicit release versions retain the same checked plan semantics for account release blueprints.
+    function _materialize(RecipeFacet[] memory facets, RecipeSeam[] memory seams, string memory version)
+        internal
+        returns (FacetCut[] memory cuts)
+    {
+        RecipePlanLib.validateEarly(facets, seams);
+        cuts = new FacetCut[](facets.length);
+        bytes4[][] memory exports = new bytes4[][](facets.length);
+        for (uint256 i; i < facets.length; ++i) {
+            address at = _facet(facets[i].name, version);
+            exports[i] = _exportedSelectors(at);
+            if (facets[i].selection == RecipeSelectorSelection.All) {
+                require(facets[i].selectors.length == 0, "BaseDeploy: All selection cannot list selectors");
+                cuts[i] = FacetCut(at, facets[i].action, exports[i]);
+            } else if (facets[i].selection == RecipeSelectorSelection.Except) {
+                cuts[i] = _cutExcept(at, facets[i].selectors);
+                cuts[i].action = facets[i].action;
+            } else {
+                cuts[i] = FacetCut(at, facets[i].action, facets[i].selectors);
+            }
+        }
+        RecipePlanLib.validateCuts(facets, seams, cuts, exports);
+    }
 
     //*//////////////////////////////////////////////////////////////////////////
     //                      STRING (forge inspect) CUTS
@@ -163,14 +198,12 @@ abstract contract BaseDeploy is Script, GetSelectors {
     ///      deploy a missing facet; {DeployRelease} later skips it and registers it.
     /// @param name The facet contract name exactly as listed in {FacetInventory}.
     function _facet(string memory name) internal returns (address facet) {
-        string memory path = _inventoryPath(name);
-        if (ArachnidDeployer.PROXY.code.length == 0) return deployCode(path);
-        bytes memory initCode = vm.getCode(path);
-        bytes32 salt = keccak256(abi.encodePacked("lattice.", name, ".", LatticeVersion.VERSION));
-        facet = ArachnidDeployer.predict(salt, keccak256(initCode));
-        if (facet.code.length == 0) {
-            require(ArachnidDeployer.deploy(salt, initCode) == facet, "BaseDeploy: facet deployed != predicted");
-        }
+        return _facet(name, LatticeVersion.VERSION);
+    }
+
+    /// @dev Explicit version for release builders; ordinary recipes remain pinned to LatticeVersion.
+    function _facet(string memory name, string memory version) internal returns (address) {
+        return _released(name, _inventoryPath(name), "", version);
     }
 
     /// @notice A released stateless initializer, reused by name with the same proxy policy as facets.
@@ -178,14 +211,23 @@ abstract contract BaseDeploy is Script, GetSelectors {
         (string[] memory names, string[] memory paths) = InitInventory.inventory();
         for (uint256 i; i < names.length; ++i) {
             if (keccak256(bytes(names[i])) != keccak256(bytes(name))) continue;
-            if (ArachnidDeployer.PROXY.code.length == 0) return deployCode(paths[i]);
-            bytes memory initCode = vm.getCode(paths[i]);
-            bytes32 salt = keccak256(abi.encodePacked("lattice.", name, ".", LatticeVersion.VERSION));
-            init = ArachnidDeployer.predict(salt, keccak256(initCode));
-            if (init.code.length == 0) ArachnidDeployer.deploy(salt, initCode);
-            return init;
+            return _released(name, paths[i], "", LatticeVersion.VERSION);
         }
         revert(string.concat("BaseDeploy: ", name, " is not in InitInventory"));
+    }
+
+    /// @dev One release policy for stateless artifacts and constructor-bound account identities.
+    function _released(string memory name, string memory artifact, bytes memory args, string memory version)
+        internal
+        returns (address at)
+    {
+        if (ArachnidDeployer.PROXY.code.length == 0) return deployCode(artifact, args);
+        bytes memory initCode = abi.encodePacked(vm.getCode(artifact), args);
+        bytes32 salt = keccak256(abi.encodePacked("lattice.", name, ".", version));
+        at = ArachnidDeployer.predict(salt, keccak256(initCode));
+        if (at.code.length == 0) {
+            require(ArachnidDeployer.deploy(salt, initCode) == at, "BaseDeploy: artifact deployed != predicted");
+        }
     }
 
     /// @dev The `vm.getCode` artifact path of {FacetInventory} entry `name`.

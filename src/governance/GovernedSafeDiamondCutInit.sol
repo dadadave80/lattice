@@ -13,11 +13,12 @@ import {EmergencyStopLib} from "@lattice/security/libraries/EmergencyStopLib.sol
 ///         guardian management + `emergencyResume` are `DEFAULT_ADMIN_ROLE`-gated), EmergencyStop, registers
 ///         the IERC165 + IDiamondLoupe ERC-165 flags, and pins the Safe authority + minimum threshold +
 ///         minimum timelock delay (the module also self-registers its own IGovernedSafeDiamondCut ERC-165
-///         id `0xacb1aeb6`). Delegatecalled by {Diamond.initialize} inside the initializing window (so it
+///         id `0xacb1aeb6`). Delegatecalled by {Lattice.initialize} inside the initializing window (so it
 ///         must NOT open its own pre/postInitializer; each `__*_init` guard passes because the window is
 ///         already open). Mirrors exactly what the old `MockGovernedSafeDiamond.initialize` did, minus the
 ///         redundant pre/postInitializer. Companion to the {ERC2981Init} pattern — a
 ///         first-class production deploy artifact.
+/// @custom:lattice-kind bundle
 contract GovernedSafeDiamondCutInit {
     /// @notice Runs the access-control + emergency-stop + governed-Safe-cut module initializers. MUST be
     ///         invoked via the diamond's `initialize` `_init` delegatecall.
@@ -25,6 +26,19 @@ contract GovernedSafeDiamondCutInit {
     /// @param safe The Gnosis Safe multisig pinned as the sole scheduling/execution authority.
     /// @param minThreshold The minimum signature threshold the pinned Safe must enforce.
     /// @param minDelay The minimum timelock delay (seconds) between schedule and execute.
+    /// @custom:lattice-initializes AccessControl;
+    /// @custom:lattice-initializes EmergencyStop;
+    /// @custom:lattice-initializes ERC165;
+    /// @custom:lattice-initializes Diamond with loupe-only=true;
+    /// @custom:lattice-initializes GovernedSafeDiamondCut;
+    /// @custom:lattice-after none;
+    /// @custom:lattice-same-call Initializable hard enclosing-initializing-window;
+    /// @custom:lattice-sequence AccessControl;EmergencyStop;ERC165;Diamond;GovernedSafeDiamondCut;
+    /// @custom:lattice-param admin authority;
+    /// @custom:lattice-param safe authority;
+    /// @custom:lattice-param minThreshold;
+    /// @custom:lattice-param minDelay unit=seconds;
+    /// @custom:lattice-registers-interfaces
     function init(address admin, address safe, uint256 minThreshold, uint256 minDelay) external {
         AccessControlLib.__AccessControl_init(admin);
         EmergencyStopLib.__EmergencyStop_init();
