@@ -6,9 +6,18 @@ catalog_tmp_dir=$(mktemp -d)
 trap 'rm -rf "$catalog_tmp_dir"' EXIT
 failures=0
 number=0
+# shellcheck disable=SC2016
+yul_helpers='
+ def lit($value): {nodeType:"YulLiteral",value:$value};
+ def id($name): {nodeType:"YulIdentifier",name:$name};
+ def call($name;$arguments): {nodeType:"YulFunctionCall",functionName:{name:$name},arguments:$arguments};
+ def stmt($name;$arguments): {nodeType:"YulExpressionStatement",expression:call($name;$arguments)};
+ def extra($statements): .ast.nodes[2].AST.statements += $statements;
+'
 
 fixture() {
-    mkdir -p "$1/out/Fixture.sol"
+    mkdir -p "$1/out/Fixture.sol" "$1/src" "$1/lib/diamond-lib/src"
+    touch "$1/src/Fixture.sol"
     cat >"$1/out/Fixture.sol/Fixture.json" <<'JSON'
 {
   "abi": [
@@ -19,10 +28,10 @@ fixture() {
     "absolutePath":"src/Fixture.sol",
     "nodes":[
       {"nodeType":"ErrorDefinition","name":"NotInitializing","errorSelector":"d7e6bcf8"},
-      {"nodeType":"EventDefinition","name":"Initialized","eventSelector":"c7f505b2f371ae2175ee4913f4499e1f2633a7b5936321eed1cdaeb6115181d2","anonymous":false,"parameters":{"parameters":[{"indexed":false}]}},
+      {"nodeType":"EventDefinition","name":"Initialized","eventSelector":"c7f505b2f371ae2175ee4913f4499e1f2633a7b5936321eed1cdaeb6115181d2","anonymous":false,"parameters":{"parameters":[{"indexed":false,"typeName":{"nodeType":"ElementaryTypeName","name":"uint64"}}]}},
       {"nodeType":"InlineAssembly","AST":{"nodeType":"YulBlock","statements":[
-        {"nodeType":"YulExpressionStatement","expression":{"functionName":{"name":"mstore"},"arguments":[{"nodeType":"YulLiteral","value":"0x00"},{"nodeType":"YulLiteral","value":"0xd7e6bcf8"}]}},
-        {"nodeType":"YulExpressionStatement","src":"100:4:0","expression":{"functionName":{"name":"revert"},"arguments":[{"nodeType":"YulLiteral","value":"0x1c"},{"nodeType":"YulLiteral","value":"0x04"}]}}
+        {"nodeType":"YulExpressionStatement","expression":{"nodeType":"YulFunctionCall","functionName":{"name":"mstore"},"arguments":[{"nodeType":"YulLiteral","value":"0x00"},{"nodeType":"YulLiteral","value":"0xd7e6bcf8"}]}},
+        {"nodeType":"YulExpressionStatement","src":"100:4:0","expression":{"nodeType":"YulFunctionCall","functionName":{"name":"revert"},"arguments":[{"nodeType":"YulLiteral","value":"0x1c"},{"nodeType":"YulLiteral","value":"0x04"}]}}
       ]}}
     ]
   }
@@ -31,13 +40,14 @@ JSON
 }
 
 expect() {
-    local want=$1 name=$2 filter=$3 directory result
+    local want=$1 name=$2 filter=$3 extra_source=${4:-} directory result
     number=$((number + 1))
     directory="$catalog_tmp_dir/case$number"
     fixture "$directory"
-    jq "$filter" "$directory/out/Fixture.sol/Fixture.json" >"$directory/artifact.tmp"
+    if [[ -n "$extra_source" ]]; then touch "$directory/src/$extra_source"; fi
+    jq "$yul_helpers $filter" "$directory/out/Fixture.sol/Fixture.json" >"$directory/artifact.tmp"
     mv "$directory/artifact.tmp" "$directory/out/Fixture.sol/Fixture.json"
-    if "$CHECK" "$directory/out" "$directory/catalog.json" >"$directory/log" 2>&1; then result=pass; else result=fail; fi
+    if (cd "$directory" && "$CHECK" out catalog.json) >"$directory/log" 2>&1; then result=pass; else result=fail; fi
     if [[ "$result" == pass && "$want" == pass ]]; then
         jq -e '.errors["0xd7e6bcf8"].signature == "NotInitializing()" and (.events | length) == 1 and (.assembly | length) == 1' "$directory/catalog.json" >/dev/null || result=fail
     fi
@@ -58,16 +68,57 @@ expect fail "unrecognized four-byte assembly encoding" '.ast.nodes[2].AST.statem
 expect fail "nonliteral assembly selector" '.ast.nodes[2].AST.statements[0].expression.arguments[1] = {"nodeType":"YulIdentifier","name":"unknown"}'
 expect fail "missing compiler AST" 'del(.ast)'
 expect fail "multiple JSON documents in one artifact" '., {}'
+expect fail "source unit absent from compiler artifacts" '.' Missing.sol
+expect fail "expression length hides a local error" '
+ .ast.nodes[2].AST.statements[0].expression.arguments[1].value = "0xdeadbeef"
+ | .ast.nodes[2].AST.statements[1].expression.arguments[1] = {"nodeType":"YulFunctionCall","functionName":{"name":"add"},"arguments":[{"nodeType":"YulLiteral","value":"2"},{"nodeType":"YulLiteral","value":"2"}]}'
+expect fail "nonadjacent variable length hides a local error" '
+ .ast.nodes[2].AST.statements[0].expression.arguments[1].value = "0xdeadbeef"
+ | .ast.nodes[2].AST.statements[1].expression.arguments[1] = {"nodeType":"YulIdentifier","name":"size"}
+ | .ast.nodes[2].AST.statements |= .[:1] + [{"nodeType":"YulVariableDeclaration","variables":[{"name":"size"}],"value":{"nodeType":"YulLiteral","value":"4"}}] + .[1:]'
 expect fail "event indexed encoding differs from its ABI" '.ast.nodes[1].parameters.parameters[0].indexed = true'
 expect pass "anonymous event with matching ABI encoding" '.abi[1].anonymous = true | .ast.nodes[1].anonymous = true'
 expect pass "canonical tuple array signature" '
  .abi += [{"type":"error","name":"TupleError","inputs":[{"type":"tuple[]","components":[{"type":"uint256"},{"type":"address"}]}]}]
- | .ast.nodes += [{"nodeType":"ErrorDefinition","name":"TupleError","errorSelector":"3b048a8c"}]'
+ | .ast.nodes += [{"nodeType":"StructDefinition","id":10,"members":[{"typeName":{"nodeType":"ElementaryTypeName","name":"uint256"}},{"typeName":{"nodeType":"ElementaryTypeName","name":"address"}}]},
+   {"nodeType":"ErrorDefinition","name":"TupleError","errorSelector":"3b048a8c","parameters":{"parameters":[{"typeName":{"nodeType":"ArrayTypeName","typeDescriptions":{"typeString":"struct Pair[]"},"baseType":{"nodeType":"UserDefinedTypeName","referencedDeclaration":10}}}]}}]'
 expect fail "distinct signatures with one error selector" '
  .abi += [{"type":"error","name":"burn","inputs":[{"name":"amount","type":"uint256"}]},
           {"type":"error","name":"collate_propagate_storage","inputs":[{"name":"value","type":"bytes16"}]}]
- | .ast.nodes += [{"nodeType":"ErrorDefinition","name":"burn","errorSelector":"42966c68"},
-                  {"nodeType":"ErrorDefinition","name":"collate_propagate_storage","errorSelector":"42966c68"}]'
+ | .ast.nodes += [{"nodeType":"ErrorDefinition","name":"burn","errorSelector":"42966c68","parameters":{"parameters":[{"typeName":{"nodeType":"ElementaryTypeName","name":"uint256"}}]}},
+                  {"nodeType":"ErrorDefinition","name":"collate_propagate_storage","errorSelector":"42966c68","parameters":{"parameters":[{"typeName":{"nodeType":"ElementaryTypeName","name":"bytes16"}}]}}]'
+# shellcheck disable=SC2016
+expect fail "same name and selector hide a different AST signature" '
+ .abi += [{"type":"error","name":"SameName","inputs":[{"type":"uint256[1177]"}]}]
+ | .ast.nodes += [1177,64923] | . as $artifact
+ | .ast.nodes = ($artifact.ast.nodes[:-2] + [1177,64923 | {"nodeType":"ErrorDefinition","name":"SameName","errorSelector":"cf438950","parameters":{"parameters":[{"typeName":{"nodeType":"ArrayTypeName","typeDescriptions":{"typeString":("uint256[" + tostring + "]")},"baseType":{"nodeType":"ElementaryTypeName","name":"uint256"}}}]}}])'
+expect pass "bytes-return-data expression bubble" 'extra([stmt("revert";[call("add";[id("err"),lit("0x20")]),call("mload";[id("err")])])])'
+expect pass "bytes-return-data variable bubble" 'extra([
+ {nodeType:"YulVariableDeclaration",variables:[{name:"size"}],value:call("mload";[id("err")])},
+ stmt("revert";[call("add";[lit("32"),id("err")]),id("size")])])'
+expect pass "returndatasize bubble" 'extra([stmt("revert";[lit("0"),call("returndatasize";[])])])'
+expect pass "copied return-data pointer bubble" 'extra([
+ stmt("returndatacopy";[id("ptr"),lit("0"),id("size")]),stmt("revert";[id("ptr"),id("size")])])'
+expect pass "empty revert" 'extra([stmt("revert";[lit("0"),lit("0")])])'
+expect pass "built-in Panic encoding" 'extra([
+ stmt("mstore";[lit("0"),lit("0x4e487b71")]),stmt("mstore";[lit("32"),id("code")]),
+ stmt("revert";[lit("28"),lit("36")])])'
+expect fail "reassigned bubble length becomes a local error" 'extra([
+ {nodeType:"YulVariableDeclaration",variables:[{name:"size"}],value:call("mload";[id("err")])},
+ {nodeType:"YulAssignment",variableNames:[id("size")],value:lit("4")},
+ stmt("revert";[call("add";[lit("32"),id("err")]),id("size")])])'
+expect fail "mixed compiler type identifiers" '.ast.nodes += [
+ {nodeType:"StructDefinition",id:10,members:[]},{nodeType:"EnumDefinition",id:10}]'
+expect pass "contract enum value and external function types" '
+ .abi += [{type:"error",name:"Types",inputs:[{type:"address"},{type:"uint8"},{type:"uint256"},{type:"function"}]}]
+ | .ast.nodes += [{nodeType:"ContractDefinition",id:11},{nodeType:"EnumDefinition",id:12},
+   {nodeType:"UserDefinedValueTypeDefinition",id:13,underlyingType:{nodeType:"ElementaryTypeName",name:"uint256"}},
+   {nodeType:"ErrorDefinition",name:"Types",errorSelector:"1d3b7ea6",parameters:{parameters:
+     ([11,12,13 | {typeName:{nodeType:"UserDefinedTypeName",referencedDeclaration:.}}] +
+      [{typeName:{nodeType:"FunctionTypeName",visibility:"external"}}])}}]'
+expect fail "unresolved compiler type reference" '
+ .ast.nodes += [{nodeType:"ErrorDefinition",name:"UnknownType",errorSelector:"deadbeef",parameters:{parameters:
+   [{typeName:{nodeType:"UserDefinedTypeName",referencedDeclaration:999}}]}}]'
 
 [[ "$failures" == 0 ]] || exit 1
 echo "$number ABI catalog fixtures passed."

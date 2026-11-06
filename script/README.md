@@ -38,15 +38,17 @@ The schema has three collections:
 | --- | --- |
 | `errors` | Four-byte selector → canonical signature and declaration source paths |
 | `events` | Full signature hash → canonical signature and definitions, including indexed/anonymous encoding |
-| `assembly` | Custom-error selector, declaration source file and assembly revert position (`byte-offset:length`) |
+| `assembly` | Custom-error selector, revert source file and byte position (`byte-offset:length`) |
 
 For example, `.errors["0xd7e6bcf8"]` describes `NotInitializing()` and its declarations. Anonymous
 events retain their signature hash as a catalog key, although they emit no signature topic. Repeated
 declarations of the same signature share a key; different event encodings remain separate definitions.
 
 The checker reads native compiler ASTs and ABIs for every `src/` and `lib/diamond-lib/src/` declaration.
-It rejects declarations absent from all ABIs, distinct signatures with the same selector, and assembly
-error selectors missing from the catalog. The supported local assembly convention is adjacent literal
-`mstore(0, selector)` / `revert(28, 4)`; another four-byte encoding fails until the checker is extended.
-Dynamic revert-data bubbling and Solidity's built-in `Panic(uint256)` are not local custom errors.
+It rejects missing source artifacts, declarations absent from all ABIs, distinct signatures with the same
+selector, and assembly error selectors missing from the catalog. AST type resolution binds complete
+signatures, including tuple/array parameters; mixed compiler node IDs require another clean build.
+The supported local assembly convention is adjacent literal `mstore(0, selector)` / `revert(28, 4)`.
+Known return-data bubbling, empty reverts and Solidity's built-in `Panic(uint256)` are separate accepted
+shapes; every other assembly revert fails until the checker is extended.
 `script/test-error-event-catalog.sh` covers these guards with positive and negative fixtures.

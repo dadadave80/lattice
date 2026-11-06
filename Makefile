@@ -157,7 +157,7 @@ scripts-check: ## Regression tests for the CI helper scripts (closing-keyword pa
 
 .PHONY: abi-catalog
 abi-catalog: ## Clean source build and checked error/event/assembly catalog (out/errors.json)
-	FOUNDRY_PROFILE=ci forge build --locked --force --skip test script
+	FOUNDRY_PROFILE=ci forge build src lib/diamond-lib/src --locked --force --skip test script
 	./script/error-event-catalog.sh out '$(ABI_CATALOG_OUTPUT)'
 
 .PHONY: storage-update
