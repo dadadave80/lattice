@@ -14,6 +14,7 @@ contract MockEIP712Contract is EIP712, Initializable {
     /// @notice Initialize EIP-712 with the given name and version.
     function initialize(string memory name, string memory version) external initializer {
         EIP712Lib.__EIP712_init(name, version);
+        EIP712Lib.registerInterface(); // Inherited view dispatch has no diamond selector map.
     }
 
     /// @notice Exposes domainSeparatorV4 for testing.
