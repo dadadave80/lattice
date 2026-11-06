@@ -138,6 +138,14 @@ release-verify: ## Verify frozen shared sources on Sourcify (MANIFEST, CHAIN_MAN
 via-ir: ## IR-pipeline parity build (catches stack-too-deep / IR-only errors)
 	forge build --via-ir --skip test script
 
+.PHONY: erc3643-profile-check erc3643-profile-update
+erc3643-profile-check: ## Build and check closed ERC-3643 admission fingerprints, then exercise mutation fixtures
+	./script/erc3643-profile.sh --check
+	./script/test-erc3643-profile.sh
+
+erc3643-profile-update: ## Regenerate the reviewed ERC-3643 host/facet/route fingerprints after source changes
+	./script/erc3643-profile.sh --update
+
 .PHONY: storage-check
 storage-check: ## ERC-7201 storage-layout guard: every annotated struct vs the committed baseline (BASE_REF=origin/dev also checks append-only vs that ref, as CI does vs the PR base)
 	./script/upgrades/check-storage-layout.sh $(if $(BASE_REF),--baseline-ref '$(BASE_REF)')
@@ -180,7 +188,7 @@ test-ci: ## Full test suite under the CI profile (snapshots/ is left to snapshot
 	FOUNDRY_PROFILE=ci FORGE_SNAPSHOT_EMIT=false forge test
 
 .PHONY: ci
-ci: fmt-check license-check scripts-check readme-check release-build-check sizes via-ir storage-check test-ci snapshot-check abi-catalog ## All CI gates, locally, in CI order
+ci: fmt-check license-check scripts-check readme-check release-build-check sizes erc3643-profile-check via-ir storage-check test-ci snapshot-check abi-catalog ## All CI gates, locally, in CI order
 
 .PHONY: slither
 slither: ## Static analysis gate, as CI runs it (slither.config.json + triaged slither.db.json; fails on High)

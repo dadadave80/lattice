@@ -90,6 +90,16 @@ import {ERC20CappedStorage} from "@lattice/tokens/ERC20/libraries/ERC20CappedLib
 import {ERC20Storage} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
 import {ERC20WrapperStorage} from "@lattice/tokens/ERC20/libraries/ERC20WrapperLib.sol";
 import {ERC2981Storage} from "@lattice/tokens/ERC2981/libraries/ERC2981Lib.sol";
+import {ERC3643ClaimTopicsRegistryData} from "@lattice/tokens/ERC3643/libraries/ERC3643ClaimTopicsRegistryLib.sol";
+import {ERC3643ComplianceData} from "@lattice/tokens/ERC3643/libraries/ERC3643ComplianceLib.sol";
+import {ERC3643IdentityRegistryData} from "@lattice/tokens/ERC3643/libraries/ERC3643IdentityRegistryLib.sol";
+import {
+    ERC3643IdentityRegistryStorageData
+} from "@lattice/tokens/ERC3643/libraries/ERC3643IdentityRegistryStorageLib.sol";
+import {ERC3643Storage} from "@lattice/tokens/ERC3643/libraries/ERC3643Lib.sol";
+import {
+    ERC3643TrustedIssuersRegistryData
+} from "@lattice/tokens/ERC3643/libraries/ERC3643TrustedIssuersRegistryLib.sol";
 import {ERC4626Storage} from "@lattice/tokens/ERC4626/libraries/ERC4626Lib.sol";
 import {ERC721ConsecutiveStorage} from "@lattice/tokens/ERC721/libraries/ERC721ConsecutiveLib.sol";
 import {ERC721EnumerableStorage} from "@lattice/tokens/ERC721/libraries/ERC721EnumerableLib.sol";
@@ -157,6 +167,12 @@ contract StorageLayoutProbe {
     ERC20Storage internal _eRC20Storage;
     ERC20WrapperStorage internal _eRC20WrapperStorage;
     ERC2981Storage internal _eRC2981Storage;
+    ERC3643Storage internal _eRC3643Data;
+    ERC3643IdentityRegistryData internal _eRC3643IdentityRegistryData;
+    ERC3643IdentityRegistryStorageData internal _eRC3643IdentityRegistryStorageData;
+    ERC3643TrustedIssuersRegistryData internal _eRC3643TrustedIssuersRegistryData;
+    ERC3643ClaimTopicsRegistryData internal _eRC3643ClaimTopicsRegistryData;
+    ERC3643ComplianceData internal _eRC3643ComplianceData;
     ERC4337ValidationStorage internal _eRC4337ValidationStorage;
     ERC4626AdapterStorage internal _eRC4626AdapterStorage;
     ERC4626Storage internal _eRC4626Storage;

@@ -1,0 +1,13 @@
+{
+  "ERC3643.batchTransfer.two": "102898",
+  "ERC3643.burn.frozenDeficit": "56131",
+  "ERC3643.factoryDeploy.existingFacetsAndInit": "5619666",
+  "ERC3643.forcedTransfer.frozenDeficit": "77366",
+  "ERC3643.mint": "74116",
+  "ERC3643.recovery.newWallet": "174089",
+  "ERC3643.transfer.explicitCold": "87610",
+  "ERC3643.transfer.noRequiredClaims": "87611",
+  "ERC3643.transfer.oneRequiredClaim": "135764",
+  "ERC3643.transfer.repeatedWarm": "81111",
+  "ERC3643.transferFrom.persistent": "89643"
+}

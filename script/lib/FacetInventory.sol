@@ -20,11 +20,11 @@ import {OwnableFacet} from "@diamond/facets/OwnableFacet.sol";
 ///      artifact contract names exactly: the registry key is `keccak256("lattice.<name>")` and the facet
 ///      deploy salt is `keccak256("lattice.<name>.<version>")`, so renaming an entry re-derives BOTH.
 library FacetInventory {
-    /// @notice The 131 release facets (127 Lattice + 4 diamond-lib core) as (contract name, `"<file>:<Name>"` deploy path) pairs.
+    /// @notice The 138 release facets (134 Lattice + 4 diamond-lib core) as (contract name, `"<file>:<Name>"` deploy path) pairs.
     /// @return names The facet contract names (registry name = `"lattice." ++ name`).
     /// @return paths The matching `vm.getCode`/`deployCode` artifact paths, index-aligned with `names`.
     function inventory() internal pure returns (string[] memory names, string[] memory paths) {
-        string[131] memory n = [
+        string[138] memory n = [
             "AcrossBridgeAdapter",
             "AxelarGatewayAdapter",
             "BridgeERC20",
@@ -83,6 +83,13 @@ library FacetInventory {
             "ERC20Votes",
             "ERC20Wrapper",
             "ERC2981",
+            "ERC3643",
+            "ERC3643AgentRole",
+            "ERC3643ClaimTopicsRegistry",
+            "ERC3643Compliance",
+            "ERC3643IdentityRegistry",
+            "ERC3643IdentityRegistryStorage",
+            "ERC3643TrustedIssuersRegistry",
             "ERC4626",
             "ERC721",
             "ERC721Burnable",
@@ -160,7 +167,7 @@ library FacetInventory {
             "ERC165Facet",
             "OwnableFacet"
         ];
-        string[131] memory p = [
+        string[138] memory p = [
             "src/crosschain/across/AcrossBridgeAdapter.sol:AcrossBridgeAdapter",
             "src/crosschain/axelar/AxelarGatewayAdapter.sol:AxelarGatewayAdapter",
             "src/crosschain/BridgeERC20.sol:BridgeERC20",
@@ -219,6 +226,13 @@ library FacetInventory {
             "src/tokens/ERC20/ERC20Votes.sol:ERC20Votes",
             "src/tokens/ERC20/ERC20Wrapper.sol:ERC20Wrapper",
             "src/tokens/ERC2981/ERC2981.sol:ERC2981",
+            "src/tokens/ERC3643/ERC3643.sol:ERC3643",
+            "src/tokens/ERC3643/ERC3643AgentRole.sol:ERC3643AgentRole",
+            "src/tokens/ERC3643/ERC3643ClaimTopicsRegistry.sol:ERC3643ClaimTopicsRegistry",
+            "src/tokens/ERC3643/ERC3643Compliance.sol:ERC3643Compliance",
+            "src/tokens/ERC3643/ERC3643IdentityRegistry.sol:ERC3643IdentityRegistry",
+            "src/tokens/ERC3643/ERC3643IdentityRegistryStorage.sol:ERC3643IdentityRegistryStorage",
+            "src/tokens/ERC3643/ERC3643TrustedIssuersRegistry.sol:ERC3643TrustedIssuersRegistry",
             "src/tokens/ERC4626/ERC4626.sol:ERC4626",
             "src/tokens/ERC721/ERC721.sol:ERC721",
             "src/tokens/ERC721/ERC721Burnable.sol:ERC721Burnable",
@@ -295,9 +309,9 @@ library FacetInventory {
             "ERC165Facet.sol:ERC165Facet",
             "OwnableFacet.sol:OwnableFacet"
         ];
-        names = new string[](131);
-        paths = new string[](131);
-        for (uint256 i; i < 131; ++i) {
+        names = new string[](138);
+        paths = new string[](138);
+        for (uint256 i; i < 138; ++i) {
             names[i] = n[i];
             paths[i] = p[i];
         }

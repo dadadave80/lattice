@@ -185,6 +185,8 @@ jobs:
       # forge builds against the checked-out submodule and passes silently.
       - name: Build src (--sizes)
         run: forge build src lib/diamond-lib/src --locked --sizes --skip test script
+      - name: Check closed ERC-3643 admission fingerprints
+        run: make erc3643-profile-check
       - name: Check error, event and assembly coverage
         run: ./script/error-event-catalog.sh
 
