@@ -50,6 +50,7 @@ contract GovernedVaultENSInit {
     /// @custom:lattice-initializes EmergencyStop;
     /// @custom:lattice-initializes ERC165;
     /// @custom:lattice-initializes Diamond;
+    /// @custom:lattice-initializes Governor with policy=governed-cut-route;
     /// @custom:lattice-initializes GovernedDiamondCut;
     /// @custom:lattice-initializes ERC20;
     /// @custom:lattice-initializes ERC4626;
@@ -63,7 +64,7 @@ contract GovernedVaultENSInit {
     /// @custom:lattice-initializes ENSReverseClaimer;
     /// @custom:lattice-after none;
     /// @custom:lattice-same-call Initializable hard enclosing-initializing-window;
-    /// @custom:lattice-sequence AccessControl;EmergencyStop;ERC165;Diamond;GovernedDiamondCut;ERC20;ERC4626;EIP712;Nonces;Votes;VaultCore;TimelockController;Governor;GovernedVault;ENSReverseClaimer;
+    /// @custom:lattice-sequence AccessControl;EmergencyStop;ERC165;Diamond;Governor with policy=governed-cut-route;GovernedDiamondCut;ERC20;ERC4626;EIP712;Nonces;Votes;VaultCore;TimelockController;Governor;GovernedVault;ENSReverseClaimer;
     /// @custom:lattice-param p rule=GovernedVaultParams-voting-times-in-seconds-quorum-0-to-100;
     /// @custom:lattice-registers-interfaces
     function init(GovernedVaultENSParams calldata p) external {

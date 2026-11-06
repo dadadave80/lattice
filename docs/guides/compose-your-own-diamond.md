@@ -302,6 +302,38 @@ cast storage "$DIAMOND" 0xffffffffffffffffffffffffffffffffffffffffffffffffffffff
 Decode the returned hex with the full-width [initialization-word encoding](../../STORAGE_REGISTRY.md#initialization-version-read).
 Use a consistent block for this read and the rest of the proposed upgrade's preflight.
 
+### Governor and governed-cut executors
+
+When `GovernedDiamondCut` serves `diamondCut`, its canonical initializer grants the diamond
+`UPGRADE_EXECUTOR_ROLE` and makes the role self-administered. Two topologies preserve that executor:
+
+| Governor timelock | Proposal execution | Caller seen by `diamondCut` |
+| --- | --- | --- |
+| `address(this)` | propose → vote → queue → delay → execute through the co-located timelock | The diamond |
+| `address(0)` | propose → vote → execute directly, with no timelock delay | The diamond |
+
+The trusted governed-cut initializer records the nonzero installed cut owner. Governor initialization
+and `updateTimelock` reject an external timelock while that owner still serves `diamondCut`, with
+`GovernorIncompatibleTimelock`. The cut initializer also checks an already-configured Governor, so
+either initialization order detects incompatible wiring. A missing cut route produces
+`GovernorMissingGovernedCutRoute`. These checks declare policy within the canonical guarded
+initialization flow; they do not classify runtime bytecode. Pair the initializer with its matching
+cut flavor. Standalone Governors and independent cut flavors retain external-timelock support.
+
+A deliberate external authority design can use `GovernorInit.initWithExternalTimelockOptOut` with
+`acknowledgeIncompatibleCutExecutor_ = true`. This persists an explicit validation exemption; it
+grants no executor role and does not make an external timelock able to cut the diamond. The integrator
+must separately design and test that authority path. A false acknowledgement reverts.
+
+Replacing the cut owner makes its old policy declaration inactive. When upgrading to a new
+`GovernedDiamondCut` address, re-register the policy in the same authorized initialization batch.
+For legacy unmarked deployments, upgrading Governor alone does not enable this protection. Use an
+authorized strictly increasing reinitializer batch (the `ReinitMultiInit` helper) to call
+`GovernorInit.registerGovernedCutTopology()`. That step preserves Governor configuration, roles and
+emergency state and rejects an incompatible existing timelock atomically. Repair incompatible
+configuration through an explicitly authorized recovery/migration before declaring its policy;
+this check cannot restore a governance path that was already unreachable.
+
 Do not grow an inheritance mega-facet past the deployment size limit. For an existing-state upgrade, preserve storage
 compatibility or implement and test an explicit migration before proposing the cut through Governor.
 Fresh pre-major deployments may use intentionally breaking layouts; document that deployment choice

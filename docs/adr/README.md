@@ -30,6 +30,7 @@ the linked issue or pull request; a record is the outcome, not a spec.
 | [0023](0023-frozen-input-source-verification.md) | Source verification submits the frozen compiler witness and requires exact bytecode matches | Accepted |
 | [0024](0024-upgrade-initializer-batches.md) | Upgrade initializer batches share one replay-protected window and a stable version read | Accepted |
 | [0025](0025-account-factory-release-identity.md) | Account recipes use specialized atomic factories with EntryPoint-specific release identities | Accepted |
+| [0027](0027-governor-governed-cut-topology.md) | Governor validates the declared governed-cut executor topology | Accepted |
 
 ## When to write one
 

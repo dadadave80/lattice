@@ -4,6 +4,7 @@ pragma solidity ^0.8.30;
 import {DiamondLib, FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
 import {AccessControlLib} from "@lattice/access/libraries/AccessControlLib.sol";
+import {GovernorLib} from "@lattice/governance/libraries/GovernorLib.sol";
 import {IEmergencyCut} from "@lattice/interfaces/governance/IEmergencyCut.sol";
 import {IFrozenSelectors} from "@lattice/interfaces/governance/IFrozenSelectors.sol";
 import {IGovernedDiamondCut} from "@lattice/interfaces/governance/IGovernedDiamondCut.sol";
@@ -127,9 +128,13 @@ library GovernedDiamondCutLib {
     ///      preInitializer/postInitializer window; AccessControl must already be initialized (the role
     ///      writes target its storage). Does NOT register an ERC-165 interface: `0x1f931c1c` is already
     ///      registered by `DiamondLib.registerInterface()` (see the ERC165_MAP_ICUT_SLOT note above).
+    ///      Declares the installed cut owner to Governor's topology policy and validates any already-configured
+    ///      timelock. A missing route reverts. Pair this trusted initializer with the matching cut flavor.
     function __GovernedDiamondCut_init() internal {
         bytes32 s = InitializableLib.initializableSlot();
         InitializableLib.checkInitializing(s);
+        // Trusted policy declaration bound to the installed route, not a runtime-code classifier.
+        GovernorLib.__registerGovernedCutTopology();
         AccessControlLib._grantRole(UPGRADE_EXECUTOR_ROLE, address(this));
         // Pin UPGRADE_EXECUTOR_ROLE to administer itself so DEFAULT_ADMIN_ROLE can no longer
         // grant/revoke it (OZ AccessManager adminless pattern). Only an existing holder

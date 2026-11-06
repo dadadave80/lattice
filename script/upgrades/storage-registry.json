@@ -1715,6 +1715,18 @@
           "offset": 0,
           "name": "_governanceCall",
           "type": "t_mapping(t_bytes32,t_uint256)"
+        },
+        {
+          "slot": "10",
+          "offset": 0,
+          "name": "_governedCutFacet",
+          "type": "t_address"
+        },
+        {
+          "slot": "10",
+          "offset": 20,
+          "name": "_allowExternalTimelockWithGovernedCut",
+          "type": "t_bool"
         }
       ]
     },
