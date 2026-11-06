@@ -11,10 +11,18 @@ import {SemaphoreLib} from "@lattice/privacy/libraries/SemaphoreLib.sol";
 ///         Poll and group admin are per-group (set by `createGroup`), so there is NO AccessControl in the recipe.
 ///         Delegatecalled by {Diamond.initialize} inside the initializing window (so it must NOT open its own
 ///         pre/postInitializer; each `__*_init` guard passes because the window is already open).
+/// @custom:lattice-kind bundle
 contract PrivateVotingInit {
     /// @notice Runs the Semaphore + PrivateVoting module initializers. MUST be invoked via the diamond's
     ///         `initialize` `_init` delegatecall.
     /// @param verifier The {ISemaphoreVerifier} contract address used to check the anonymous vote proofs.
+    /// @custom:lattice-initializes Semaphore;
+    /// @custom:lattice-initializes PrivateVoting;
+    /// @custom:lattice-after none;
+    /// @custom:lattice-same-call Initializable hard enclosing-initializing-window;
+    /// @custom:lattice-sequence Semaphore;PrivateVoting;
+    /// @custom:lattice-param verifier;
+    /// @custom:lattice-registers-interfaces
     function init(address verifier) external {
         SemaphoreLib.__Semaphore_init(verifier);
         PrivateVotingLib.__PrivateVoting_init();

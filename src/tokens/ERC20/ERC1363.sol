@@ -13,8 +13,14 @@ import {ERC1363Lib} from "@lattice/tokens/ERC20/libraries/ERC1363Lib.sol";
 ///      GovernedVault `Replace` `transfer`/`transferFrom`, and the `*AndCall` paths move tokens through {ERC20Lib}
 ///      without them, so a pause would not stop them and votes would not follow them. No selector clash catches
 ///      this at cut time; `CompositionHazardsTest` pins it. {ERC1363Lib} lists every difference from OpenZeppelin.
-/// @custom:lattice-version 0.5.0
 /// @custom:lattice-source OpenZeppelin v5.6.1
+/// @custom:lattice-requires ERC20 convention complete-token-surface;
+/// @custom:lattice-family none
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches lattice.storage.ERC20;
+/// @custom:lattice-touches transient:lattice.storage.ERC20TemporaryApproval;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init ERC1363Init
 contract ERC1363 is IERC1363 {
     /// @inheritdoc IERC1363
     function transferAndCall(address to, uint256 value) public virtual returns (bool) {

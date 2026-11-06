@@ -4,6 +4,7 @@ pragma solidity ^0.8.30;
 import {DiamondLoupeFacet} from "@diamond/facets/DiamondLoupeFacet.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {DeployGovernedVault} from "@lattice-script/base/defi/DeployGovernedVault.s.sol";
+import {DesignBench, ISelectorReader} from "@lattice-test/gas/LatticeCoreDesignBenchTest.t.sol";
 import {RawCode} from "@lattice-test/helpers/LatticeCoreMocks.sol";
 import {Lattice} from "@lattice/Lattice.sol";
 import {LatticeFactory} from "@lattice/LatticeFactory.sol";
@@ -12,7 +13,7 @@ import {GovernedVaultParams} from "@lattice/defi/GovernedVaultInit.sol";
 import {ILatticeFactory, RecipeEntry} from "@lattice/interfaces/ILatticeFactory.sol";
 import {ILatticeRegistry} from "@lattice/interfaces/ILatticeRegistry.sol";
 import {IERC8153} from "@lattice/interfaces/external/ercs/IERC8153.sol";
-import {Test} from "forge-std/Test.sol";
+import {Test, console2} from "forge-std/Test.sol";
 
 /// @notice Runs a raw CREATE of the given initcode. Foundry's dynamic test linking (on by default) turns a `new`
 ///         written in a test file into an unmetered cheatcode deployment, so creation gas is measured through
@@ -42,6 +43,7 @@ contract LatticeCoreGasTest is Test {
     LatticeRegistry internal registry;
     LatticeFactory internal factory;
     RawCreator internal creator;
+    DesignBench internal pairedBench;
 
     bytes32 internal constant LOUPE = keccak256("lattice.DiamondLoupeFacet");
     uint64 internal constant V1 = 1 << 48;
@@ -77,11 +79,93 @@ contract LatticeCoreGasTest is Test {
         _prepareGrid("8x16", 8, 16);
         _prepareGrid("16x32", 16, 32);
         _prepareGovernedVault();
+        pairedBench = new DesignBench();
     }
 
     //*//////////////////////////////////////////////////////////////////////////
     //                           SIZES AND DEPLOYMENT
     //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice Each test starts cold; the second read in its helper reuses warmed accounts and slots.
+    function _readPair(uint256 i) internal view {
+        (uint256 cold, uint256 warm) = pairedBench.measureReadPair(ISelectorReader(address(registry)), readNames[i], V1);
+        assertGt(warm, 0);
+        assertLt(warm, cold);
+        console2.log("registry selectors, cold / warm", uint256(4) << (2 * i), cold, warm);
+    }
+
+    function test_ColdAndWarmRegistryRead4() public view {
+        _readPair(0);
+    }
+
+    function test_ColdAndWarmRegistryRead16() public view {
+        _readPair(1);
+    }
+
+    function test_ColdAndWarmRegistryRead64() public view {
+        _readPair(2);
+    }
+
+    /// @notice Both calls create a new diamond with one recipe and distinct salts; no idempotent reuse.
+    function _deployPair(string memory shape) internal {
+        (uint256 cold, uint256 warm) = pairedBench.measureDeployPair(address(factory), deployCalls[shape], false);
+        assertGt(warm, 0);
+        assertLt(warm, cold);
+        console2.log(shape);
+        console2.log("  factory deployment execution, cold / warm", cold, warm);
+    }
+
+    function test_ColdAndWarmIdempotentDeployment() public {
+        (uint256 cold, uint256 warm) =
+            pairedBench.measureDeployPair(address(factory), deployCalls["loupe.pinned"], true);
+        assertGt(warm, 0);
+        assertLt(warm, cold);
+        console2.log("factory deployment execution, first / idempotent reuse", cold, warm);
+    }
+
+    function test_ColdAndWarmLoupeCustom() public {
+        _deployPair("loupe.custom");
+    }
+
+    function test_ColdAndWarmLoupePinned() public {
+        _deployPair("loupe.pinned");
+    }
+
+    function test_ColdAndWarmLoupeLatest() public {
+        _deployPair("loupe.latest");
+    }
+
+    function test_ColdAndWarmGrid8x16Custom() public {
+        _deployPair("8x16.custom");
+    }
+
+    function test_ColdAndWarmGrid8x16Pinned() public {
+        _deployPair("8x16.pinned");
+    }
+
+    function test_ColdAndWarmGrid8x16Mixed() public {
+        _deployPair("8x16.mixed");
+    }
+
+    function test_ColdAndWarmGrid16x32Custom() public {
+        _deployPair("16x32.custom");
+    }
+
+    function test_ColdAndWarmGrid16x32Pinned() public {
+        _deployPair("16x32.pinned");
+    }
+
+    function test_ColdAndWarmGovernedVaultCustom() public {
+        _deployPair("governedVault.custom");
+    }
+
+    function test_ColdAndWarmGovernedVaultRegistry() public {
+        _deployPair("governedVault.registry");
+    }
+
+    function test_ColdAndWarmGovernedVaultRegistryAll() public {
+        _deployPair("governedVault.registryAll");
+    }
 
     function test_Gas_Sizes() public {
         vm.snapshotValue("LatticeRegistry.runtimeSize", address(registry).code.length);

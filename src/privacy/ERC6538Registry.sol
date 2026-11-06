@@ -15,8 +15,13 @@ import {EIP712Lib} from "@lattice/utils/libraries/EIP712Lib.sol";
 ///      facet in a Diamond. ERC-5267 domain discovery comes from a separately-cut {EIP712} facet;
 ///      {DeployERC6538Registry} composes both. The EIP-712 domain (name "ERC6538Registry" / version "1.0")
 ///      and the registry must be initialized in the diamond initializer.
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source Lattice original
+/// @custom:lattice-requires none;
+/// @custom:lattice-family none
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches lattice.storage.ERC6538Registry;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init ERC6538RegistryInit
 contract ERC6538Registry is IERC6538Registry {
     /// @inheritdoc IERC6538Registry
     function registerKeys(uint256 schemeId, bytes calldata stealthMetaAddress) external virtual {

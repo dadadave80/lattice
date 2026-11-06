@@ -18,6 +18,12 @@ pragma solidity ^0.8.30;
 ///      costs a cold selector-map `SLOAD` + delegatecall (~4,700 gas), so Solidity `.transfer()` /
 ///      `.send()` with their 2,300-gas stipend CANNOT pay a Lattice diamond — senders must use
 ///      `call{value: ...}("")`.
+/// @custom:lattice-requires none;
+/// @custom:lattice-family none
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches none;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init none
 contract Receive {
     /// @notice Accept bare ETH (account funding, timelock/governor value, native payouts).
     receive() external payable virtual {}

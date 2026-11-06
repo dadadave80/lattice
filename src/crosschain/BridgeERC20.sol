@@ -16,8 +16,13 @@ import {IERC7786MessageHandler} from "@lattice/interfaces/crosschain/IERC7786Mes
 ///      CUSTODY: locked tokens sit in the diamond's balance with no per-module ledger. A co-cut module that
 ///      counts the diamond's whole balance of the same token (ERC-4626 `totalAssets`, VestingWallet `release`)
 ///      treats the escrow as its own. One custodian per asset per diamond (issue #240).
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source OpenZeppelin
+/// @custom:lattice-requires CrosschainLink convention authenticated-inbound-dispatch;
+/// @custom:lattice-family bridge-handler
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches slot:0x8000000000ab143c06;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init BridgeERC20Init
 contract BridgeERC20 is IBridgeFungible, IERC7786MessageHandler {
     /// @inheritdoc IBridgeFungible
     function crosschainTransfer(bytes calldata to, uint256 amount) external virtual override returns (bytes32 sendId) {
