@@ -327,8 +327,12 @@ facet code fingerprints before approving the action. The preflight checks chain 
 both exact routes and the scheduler's `HSS_SCHEDULER_ROLE` through relay reads. Route addresses are trust
 inputs; these checks do not verify historical facet source or prove possession of the scheduler's key.
 The expiry is calculated **after** preflight, from wall-clock time plus 600 seconds, rather than from the
-older fork timestamp. The callback has a 200,000 gas allowance and transfers zero value. The booking call explicitly requests
-1,000,000 gas; verify the recorded transaction limit, including intrinsic gas, in the dry-run JSON.
+older fork timestamp. The callback has a 200,000 gas allowance and transfers zero value. The booking call
+explicitly requests 2,000,000 gas; verify the recorded transaction limit, including intrinsic gas, in the
+dry-run JSON. The 2026-11-06 booking at a 1,000,000 transaction limit forwarded 935,804 gas to native HSS
+and failed there with `INSUFFICIENT_GAS`. The larger budget adds forwarding headroom; it is not a measured
+native minimum or proof that booking or callback execution succeeds. That failed attempt consumed its
+authorization; another submission requires fresh approval.
 
 Prepare without a key, keystore or broadcast:
 

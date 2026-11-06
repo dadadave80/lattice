@@ -253,7 +253,7 @@ contract ProbeHedera is DeployHTSAdapter {
     uint256 internal constant SCHEDULE_GAS_LIMIT = 200_000;
 
     /// @notice Fixed gas requested by the isolated probe6 booking transaction, checked in its dry-run JSON.
-    uint256 internal constant PROBE6_TRANSACTION_GAS_LIMIT = 1_000_000;
+    uint256 internal constant PROBE6_TRANSACTION_GAS_LIMIT = 2_000_000;
 
     /// @notice Correlation id for probe 6's raw callback; also identifies historical tracked probe jobs.
     bytes32 internal constant PROBE_JOB_ID = keccak256("lattice.probe.hedera.selfCall");
@@ -291,7 +291,7 @@ contract ProbeHedera is DeployHTSAdapter {
     /// @notice Queues exactly one raw sender-probe call; it deploys, funds and creates no other entity itself.
     /// @dev Requires separate authorization before --broadcast. Use the shared pinned forge binary with
     ///      FOUNDRY_PROFILE=hedera, --sender <verified scheduler>, --account <keystore>, --slow,
-    ///      --skip-simulation and --legacy. The call requests 1,000,000 gas; set its legacy price using
+    ///      --skip-simulation and --legacy. The call requests 2,000,000 gas; set its legacy price using
     ///      --with-gas-price and verify the actual transaction gas in the reviewed dry-run JSON.
     ///      Without --broadcast this records a local dry run only. Native system contracts cannot execute
     ///      in revm, so its low-level outcome is not a network verdict. Neither this method nor planProbe6
