@@ -33,7 +33,7 @@ contract DeployAcrossBridgeAdapter is BaseDeploy {
     {
         cuts = _coreCuts();
         (init, initCalldata) = _withImmutableIntrospection(
-            address(new AcrossBridgeAdapterInit()), abi.encodeCall(AcrossBridgeAdapterInit.init, (spokePool))
+            _init("AcrossBridgeAdapterInit"), abi.encodeCall(AcrossBridgeAdapterInit.init, (spokePool))
         );
     }
 
@@ -48,19 +48,19 @@ contract DeployAcrossBridgeAdapter is BaseDeploy {
         for (uint256 i; i < base.length; ++i) {
             cuts[i] = base[i];
         }
-        cuts[base.length] = _cut(address(new AccessControl()));
-        cuts[base.length + 1] = _cut(address(new AccessControlDiamondCut()));
+        cuts[base.length] = _cut(_facet("AccessControl"));
+        cuts[base.length + 1] = _cut(_facet("AccessControlDiamondCut"));
         (init, initCalldata) = _withAdminUpgradeableIntrospection(
-            address(new AcrossBridgeAdapterInit()), abi.encodeCall(AcrossBridgeAdapterInit.init, (spokePool)), admin
+            _init("AcrossBridgeAdapterInit"), abi.encodeCall(AcrossBridgeAdapterInit.init, (spokePool)), admin
         );
     }
 
     /// @dev The shared cut set of both overloads: the module facets plus {DiamondLoupeFacet} (introspection).
     function _coreCuts() internal returns (FacetCut[] memory cuts) {
         cuts = new FacetCut[](3);
-        cuts[0] = _cut(address(new ERC165Facet()));
-        cuts[1] = _cut(address(new AcrossBridgeAdapter()));
-        cuts[2] = _cut(address(new DiamondLoupeFacet()));
+        cuts[0] = _cut(_facet("ERC165Facet"));
+        cuts[1] = _cut(_facet("AcrossBridgeAdapter"));
+        cuts[2] = _cut(_facet("DiamondLoupeFacet"));
     }
 
     /// @notice Deploys an Across adapter diamond (broadcasting entrypoint for `forge script ... --broadcast`).

@@ -22,13 +22,13 @@ import {DeployPythEntropyAdapter} from "@lattice-script/base/oracles/DeployPythE
 import {DeployRedStoneAdapter} from "@lattice-script/base/oracles/DeployRedStoneAdapter.s.sol";
 import {DeployTWAPOracle} from "@lattice-script/base/oracles/DeployTWAPOracle.s.sol";
 import {DeployTellorAdapter} from "@lattice-script/base/oracles/DeployTellorAdapter.s.sol";
-import {RecipeGuards} from "@lattice-test/composability/RecipeGuards.sol";
+import {ReleasedRecipeGuards} from "@lattice-test/composability/ReleasedRecipeGuards.sol";
 
 /// @title RecipeUpgradeabilityOraclesTest
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice Oracles-family recipe guards: every diamond these recipes assemble must be introspectable and
 ///         either admin-upgradeable or immutable BY DESIGN (never silently frozen).
-contract RecipeUpgradeabilityOraclesTest is RecipeGuards {
+contract RecipeUpgradeabilityOraclesTest is ReleasedRecipeGuards {
     TestnetAsset internal asset;
 
     function setUp() public {

@@ -38,11 +38,11 @@ contract DeployERC20Permit is BaseDeploy {
         for (uint256 i; i < baseCuts.length; ++i) {
             cuts[i] = baseCuts[i];
         }
-        cuts[baseCuts.length] = _cut(address(new ERC20Permit()));
+        cuts[baseCuts.length] = _cut(_facet("ERC20Permit"));
 
         inits = new address[](2);
         inits[0] = baseInit;
-        inits[1] = address(new ERC20PermitInit());
+        inits[1] = _init("ERC20PermitInit");
 
         initCalldatas = new bytes[](2);
         initCalldatas[0] = baseCalldata;
@@ -69,15 +69,15 @@ contract DeployERC20Permit is BaseDeploy {
         for (uint256 i; i < defCuts.length; ++i) {
             cuts[i] = defCuts[i];
         }
-        cuts[defCuts.length] = _cut(address(new AccessControl()));
-        cuts[defCuts.length + 1] = _cut(address(new AccessControlDiamondCut()));
+        cuts[defCuts.length] = _cut(_facet("AccessControl"));
+        cuts[defCuts.length + 1] = _cut(_facet("AccessControlDiamondCut"));
 
         inits = new address[](defInits.length + 2);
         for (uint256 i; i < defInits.length; ++i) {
             inits[i] = defInits[i];
         }
-        inits[defInits.length] = address(new AccessControlInit());
-        inits[defInits.length + 1] = address(new DiamondIntrospectionInit());
+        inits[defInits.length] = _init("AccessControlInit");
+        inits[defInits.length + 1] = _init("DiamondIntrospectionInit");
 
         initCalldatas = new bytes[](defCalldatas.length + 2);
         for (uint256 i; i < defCalldatas.length; ++i) {

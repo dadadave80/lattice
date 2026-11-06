@@ -36,17 +36,17 @@ contract DeployERC721Royalty is BaseDeploy {
         returns (FacetCut[] memory cuts, address[] memory inits, bytes[] memory initCalldatas)
     {
         cuts = new FacetCut[](6);
-        cuts[0] = _cut(address(new ERC165Facet()));
-        cuts[1] = _cut(address(new ERC721()));
-        cuts[2] = _cut(address(new ERC2981()));
-        cuts[3] = _cut(address(new AccessControl()));
-        cuts[4] = _cut(address(new DiamondLoupeFacet()));
-        cuts[5] = _cut(address(new AccessControlDiamondCut()));
+        cuts[0] = _cut(_facet("ERC165Facet"));
+        cuts[1] = _cut(_facet("ERC721"));
+        cuts[2] = _cut(_facet("ERC2981"));
+        cuts[3] = _cut(_facet("AccessControl"));
+        cuts[4] = _cut(_facet("DiamondLoupeFacet"));
+        cuts[5] = _cut(_facet("AccessControlDiamondCut"));
 
         inits = new address[](3);
-        inits[0] = address(new ERC721Init());
-        inits[1] = address(new ERC2981Init());
-        inits[2] = address(new DiamondIntrospectionInit());
+        inits[0] = _init("ERC721Init");
+        inits[1] = _init("ERC2981Init");
+        inits[2] = _init("DiamondIntrospectionInit");
 
         initCalldatas = new bytes[](3);
         initCalldatas[0] = abi.encodeCall(ERC721Init.init, (name_, symbol_));

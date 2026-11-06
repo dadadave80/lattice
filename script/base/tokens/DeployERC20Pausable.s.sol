@@ -36,17 +36,17 @@ contract DeployERC20Pausable is BaseDeploy {
             cuts[i] = baseCuts[i];
         }
         // Additive pause/unpause/paused control.
-        cuts[baseCuts.length] = _cut(address(new Pausable()));
+        cuts[baseCuts.length] = _cut(_facet("Pausable"));
         // Override the base transfer/transferFrom with pause-gated variants.
-        cuts[baseCuts.length + 1] = _replace(address(new ERC20Pausable()));
+        cuts[baseCuts.length + 1] = _replace(_facet("ERC20Pausable"));
         // The pause/upgrade authority must be inspectable and rotatable on-chain: cut the role surface too.
-        cuts[baseCuts.length + 2] = _cut(address(new AccessControl()));
-        cuts[baseCuts.length + 3] = _cut(address(new AccessControlDiamondCut()));
+        cuts[baseCuts.length + 2] = _cut(_facet("AccessControl"));
+        cuts[baseCuts.length + 3] = _cut(_facet("AccessControlDiamondCut"));
 
         inits = new address[](3);
         inits[0] = baseInit;
-        inits[1] = address(new ERC20PausableInit());
-        inits[2] = address(new DiamondIntrospectionInit());
+        inits[1] = _init("ERC20PausableInit");
+        inits[2] = _init("DiamondIntrospectionInit");
 
         initCalldatas = new bytes[](3);
         initCalldatas[0] = baseCalldata;

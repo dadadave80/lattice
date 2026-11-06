@@ -48,7 +48,7 @@ contract DeployGovernedVault is BaseDeploy {
     {
         DiamondValidationLib.assertNamespacesDisjoint(storageNamespaces());
         cuts = _buildBaseCuts();
-        init = address(new GovernedVaultInit());
+        init = _init("GovernedVaultInit");
         initCalldata = abi.encodeCall(GovernedVaultInit.init, (p));
     }
 
@@ -127,7 +127,7 @@ contract DeployGovernedVault is BaseDeploy {
     ///      AccessManager next to it would open a second path). {Receive} lets the timelock hold the
     ///      ETH that proposals spend. All diamond-lib facets are cut via the
     ///      ERC-8153 address helpers (diamond-lib ≥0.2.0 facets self-report their selectors) — no FFI. Every
-    ///      facet comes from {_facet}, so on a CreateX chain vaults share one released facet set.
+    ///      facet comes from {_facet}, so on a chain with the Arachnid proxy vaults share one released facet set.
     function _buildBaseCuts() internal returns (FacetCut[] memory cuts) {
         cuts = new FacetCut[](14);
         cuts[0] = _cut(_facet("ERC165Facet"));

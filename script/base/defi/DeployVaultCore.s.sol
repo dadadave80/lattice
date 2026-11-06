@@ -40,13 +40,13 @@ contract DeployVaultCore is BaseDeploy {
         address admin_,
         uint8 decimalsOffset_
     ) public returns (FacetCut[] memory cuts, address init, bytes memory initCalldata) {
-        address vaultFacet = address(new ERC4626());
-        address coreFacet = address(new VaultCore());
+        address vaultFacet = _facet("ERC4626");
+        address coreFacet = _facet("VaultCore");
 
         cuts = new FacetCut[](9);
-        cuts[0] = _cut(address(new ERC165Facet()));
-        cuts[1] = _cut(address(new AccessControl()));
-        cuts[2] = _cut(address(new ERC20()));
+        cuts[0] = _cut(_facet("ERC165Facet"));
+        cuts[1] = _cut(_facet("AccessControl"));
+        cuts[2] = _cut(_facet("ERC20"));
         // ERC-4626 vault surface over the ERC-20 shares: ADD the vault views/mutators, REPLACE `decimals`.
         cuts[3] = FacetCut({facetAddress: vaultFacet, action: FacetCutAction.Add, functionSelectors: _vaultSurface()});
         cuts[4] = FacetCut({facetAddress: vaultFacet, action: FacetCutAction.Replace, functionSelectors: _decimals()});
@@ -54,11 +54,11 @@ contract DeployVaultCore is BaseDeploy {
         cuts[5] = FacetCut({facetAddress: coreFacet, action: FacetCutAction.Add, functionSelectors: _strategySurface()});
         cuts[6] =
             FacetCut({facetAddress: coreFacet, action: FacetCutAction.Replace, functionSelectors: _coreOverrides()});
-        cuts[7] = _cut(address(new DiamondLoupeFacet()));
-        cuts[8] = _cut(address(new AccessControlDiamondCut()));
+        cuts[7] = _cut(_facet("DiamondLoupeFacet"));
+        cuts[8] = _cut(_facet("AccessControlDiamondCut"));
 
         (init, initCalldata) = _withUpgradeableIntrospection(
-            address(new VaultCoreInit()),
+            _init("VaultCoreInit"),
             abi.encodeCall(VaultCoreInit.init, (asset_, name_, symbol_, admin_, decimalsOffset_))
         );
     }

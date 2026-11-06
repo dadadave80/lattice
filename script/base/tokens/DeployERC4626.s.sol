@@ -39,7 +39,7 @@ contract DeployERC4626 is BaseDeploy {
     {
         cuts = _coreCuts();
         (init, initCalldata) = _withImmutableIntrospection(
-            address(new ERC4626Init()), abi.encodeCall(ERC4626Init.init, (asset_, name_, symbol_, decimalsOffset_))
+            _init("ERC4626Init"), abi.encodeCall(ERC4626Init.init, (asset_, name_, symbol_, decimalsOffset_))
         );
     }
 
@@ -54,26 +54,24 @@ contract DeployERC4626 is BaseDeploy {
         for (uint256 i; i < base.length; ++i) {
             cuts[i] = base[i];
         }
-        cuts[base.length] = _cut(address(new AccessControl()));
-        cuts[base.length + 1] = _cut(address(new AccessControlDiamondCut()));
+        cuts[base.length] = _cut(_facet("AccessControl"));
+        cuts[base.length + 1] = _cut(_facet("AccessControlDiamondCut"));
         (init, initCalldata) = _withAdminUpgradeableIntrospection(
-            address(new ERC4626Init()),
-            abi.encodeCall(ERC4626Init.init, (asset_, name_, symbol_, decimalsOffset_)),
-            admin
+            _init("ERC4626Init"), abi.encodeCall(ERC4626Init.init, (asset_, name_, symbol_, decimalsOffset_)), admin
         );
     }
 
     /// @dev The shared cut set of both overloads: the vault facets plus {DiamondLoupeFacet} (introspection).
     function _coreCuts() internal returns (FacetCut[] memory cuts) {
-        address vaultFacet = address(new ERC4626());
+        address vaultFacet = _facet("ERC4626");
 
         cuts = new FacetCut[](5);
-        cuts[0] = _cut(address(new ERC165Facet()));
-        cuts[1] = _cut(address(new ERC20()));
+        cuts[0] = _cut(_facet("ERC165Facet"));
+        cuts[1] = _cut(_facet("ERC20"));
         cuts[2] = FacetCut({facetAddress: vaultFacet, action: FacetCutAction.Add, functionSelectors: _vaultSurface()});
         // `decimals()` already exists on the base ERC-20 facet — replace it with the share-offset variant.
         cuts[3] = FacetCut({facetAddress: vaultFacet, action: FacetCutAction.Replace, functionSelectors: _decimals()});
-        cuts[4] = _cut(address(new DiamondLoupeFacet()));
+        cuts[4] = _cut(_facet("DiamondLoupeFacet"));
     }
 
     /// @notice The ERC-4626 vault selectors that are NEW relative to the base ERC-20 facet (an `Add` cut).

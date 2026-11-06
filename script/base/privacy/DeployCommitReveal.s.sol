@@ -27,7 +27,7 @@ contract DeployCommitReveal is BaseDeploy {
     function buildCuts() public returns (FacetCut[] memory cuts, address init, bytes memory initCalldata) {
         cuts = _coreCuts();
         (init, initCalldata) =
-            _withImmutableIntrospection(address(new CommitRevealInit()), abi.encodeCall(CommitRevealInit.init, ()));
+            _withImmutableIntrospection(_init("CommitRevealInit"), abi.encodeCall(CommitRevealInit.init, ()));
     }
 
     /// @notice ADMIN OVERLOAD: the immutable default plus `AccessControl` + `AccessControlDiamondCut`, so
@@ -38,19 +38,19 @@ contract DeployCommitReveal is BaseDeploy {
         for (uint256 i; i < base.length; ++i) {
             cuts[i] = base[i];
         }
-        cuts[base.length] = _cut(address(new AccessControl()));
-        cuts[base.length + 1] = _cut(address(new AccessControlDiamondCut()));
+        cuts[base.length] = _cut(_facet("AccessControl"));
+        cuts[base.length + 1] = _cut(_facet("AccessControlDiamondCut"));
         (init, initCalldata) = _withAdminUpgradeableIntrospection(
-            address(new CommitRevealInit()), abi.encodeCall(CommitRevealInit.init, ()), admin
+            _init("CommitRevealInit"), abi.encodeCall(CommitRevealInit.init, ()), admin
         );
     }
 
     /// @dev The shared cut set of both overloads: the module facets plus {DiamondLoupeFacet} (introspection).
     function _coreCuts() internal returns (FacetCut[] memory cuts) {
         cuts = new FacetCut[](3);
-        cuts[0] = _cut(address(new ERC165Facet()));
-        cuts[1] = _cut(address(new CommitReveal()));
-        cuts[2] = _cut(address(new DiamondLoupeFacet()));
+        cuts[0] = _cut(_facet("ERC165Facet"));
+        cuts[1] = _cut(_facet("CommitReveal"));
+        cuts[2] = _cut(_facet("DiamondLoupeFacet"));
     }
 
     /// @notice Deploys a CommitReveal diamond (broadcasting entrypoint for `forge script ... --broadcast`).

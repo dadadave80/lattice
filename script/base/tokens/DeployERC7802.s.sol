@@ -38,12 +38,12 @@ contract DeployERC7802 is BaseDeploy {
         for (uint256 i; i < base.length; ++i) {
             cuts[i] = base[i];
         }
-        cuts[base.length] = _cut(address(new AccessControl()));
-        cuts[base.length + 1] = _cut(address(new ERC7802()));
-        cuts[base.length + 2] = _cut(address(new AccessControlDiamondCut()));
+        cuts[base.length] = _cut(_facet("AccessControl"));
+        cuts[base.length + 1] = _cut(_facet("ERC7802"));
+        cuts[base.length + 2] = _cut(_facet("AccessControlDiamondCut"));
 
         (init, initCalldata) = _withUpgradeableIntrospection(
-            address(new ERC7802Init()), abi.encodeCall(ERC7802Init.init, (admin, bridge, name_, symbol_))
+            _init("ERC7802Init"), abi.encodeCall(ERC7802Init.init, (admin, bridge, name_, symbol_))
         );
     }
 

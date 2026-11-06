@@ -27,14 +27,13 @@ contract DeployChainRegistry is BaseDeploy {
     /// @return initCalldata The matching `multiInit` calldata.
     function buildCuts(address admin) public returns (FacetCut[] memory cuts, address init, bytes memory initCalldata) {
         cuts = new FacetCut[](5);
-        cuts[0] = _cut(address(new ERC165Facet()));
-        cuts[1] = _cut(address(new AccessControl()));
-        cuts[2] = _cut(address(new ChainRegistry()));
-        cuts[3] = _cut(address(new DiamondLoupeFacet()));
-        cuts[4] = _cut(address(new AccessControlDiamondCut()));
-        (init, initCalldata) = _withUpgradeableIntrospection(
-            address(new ChainRegistryInit()), abi.encodeCall(ChainRegistryInit.init, (admin))
-        );
+        cuts[0] = _cut(_facet("ERC165Facet"));
+        cuts[1] = _cut(_facet("AccessControl"));
+        cuts[2] = _cut(_facet("ChainRegistry"));
+        cuts[3] = _cut(_facet("DiamondLoupeFacet"));
+        cuts[4] = _cut(_facet("AccessControlDiamondCut"));
+        (init, initCalldata) =
+            _withUpgradeableIntrospection(_init("ChainRegistryInit"), abi.encodeCall(ChainRegistryInit.init, (admin)));
     }
 
     /// @notice Deploys a chain-registry diamond (broadcasting entrypoint for `forge script ... --broadcast`).

@@ -142,9 +142,9 @@ contract DeployGovernedVaultENS is DeployGovernedVault {
         for (uint256 i; i < baseCuts.length; ++i) {
             cuts[i] = baseCuts[i];
         }
-        cuts[baseCuts.length] = _cut(address(new ENSReverseClaimer()));
+        cuts[baseCuts.length] = _cut(_facet("ENSReverseClaimer"));
 
-        init = address(new GovernedVaultENSInit());
+        init = _init("GovernedVaultENSInit");
         initCalldata = abi.encodeCall(GovernedVaultENSInit.init, (p));
     }
 

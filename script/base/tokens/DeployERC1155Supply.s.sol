@@ -47,8 +47,8 @@ contract DeployERC1155Supply is BaseDeploy {
 
         inits = new address[](3);
         inits[0] = baseInit;
-        inits[1] = address(new ERC1155SupplyInit());
-        inits[2] = address(new ERC1155BurnableInit());
+        inits[1] = _init("ERC1155SupplyInit");
+        inits[2] = _init("ERC1155BurnableInit");
 
         initCalldatas = new bytes[](3);
         initCalldatas[0] = baseCalldata;
@@ -76,15 +76,15 @@ contract DeployERC1155Supply is BaseDeploy {
         for (uint256 i; i < defCuts.length; ++i) {
             cuts[i] = defCuts[i];
         }
-        cuts[defCuts.length] = _cut(address(new AccessControl()));
-        cuts[defCuts.length + 1] = _cut(address(new AccessControlDiamondCut()));
+        cuts[defCuts.length] = _cut(_facet("AccessControl"));
+        cuts[defCuts.length + 1] = _cut(_facet("AccessControlDiamondCut"));
 
         inits = new address[](defInits.length + 2);
         for (uint256 i; i < defInits.length; ++i) {
             inits[i] = defInits[i];
         }
-        inits[defInits.length] = address(new AccessControlInit());
-        inits[defInits.length + 1] = address(new DiamondIntrospectionInit());
+        inits[defInits.length] = _init("AccessControlInit");
+        inits[defInits.length + 1] = _init("DiamondIntrospectionInit");
 
         initCalldatas = new bytes[](defCalldatas.length + 2);
         for (uint256 i; i < defCalldatas.length; ++i) {

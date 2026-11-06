@@ -32,7 +32,7 @@ import {DeployInvariantChecker} from "@lattice-script/base/security/DeployInvari
 import {DeployPausable} from "@lattice-script/base/security/DeployPausable.s.sol";
 import {DeployRateLimiter} from "@lattice-script/base/security/DeployRateLimiter.s.sol";
 import {DeployMulticall} from "@lattice-script/base/utils/DeployMulticall.s.sol";
-import {RecipeGuards} from "@lattice-test/composability/RecipeGuards.sol";
+import {ReleasedRecipeGuards} from "@lattice-test/composability/ReleasedRecipeGuards.sol";
 import {AccessManaged} from "@lattice/access/AccessManaged.sol";
 import {AccessManager} from "@lattice/access/AccessManager.sol";
 import {ICommitReveal} from "@lattice/interfaces/privacy/ICommitReveal.sol";
@@ -46,7 +46,7 @@ import {IPrivateVoting} from "@lattice/interfaces/privacy/IPrivateVoting.sol";
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice Modules-family recipe guards: every diamond these recipes assemble must be introspectable and
 ///         either admin-upgradeable or immutable BY DESIGN (never silently frozen).
-contract RecipeUpgradeabilityModulesTest is RecipeGuards {
+contract RecipeUpgradeabilityModulesTest is ReleasedRecipeGuards {
     TestnetAsset internal asset;
 
     function setUp() public {

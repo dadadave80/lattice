@@ -41,19 +41,19 @@ contract DeployERC1155URIStorage is BaseDeploy {
         address uriFacet = _facet("ERC1155URIStorage");
 
         cuts = new FacetCut[](7);
-        cuts[0] = _cut(address(new ERC165Facet()));
-        cuts[1] = _cut(address(new ERC1155()));
+        cuts[0] = _cut(_facet("ERC165Facet"));
+        cuts[1] = _cut(_facet("ERC1155"));
         // `setURI`/`setBaseURI` are new — ADD them; `uri` already exists on the base ERC-1155 facet — REPLACE it.
         cuts[2] = FacetCut({facetAddress: uriFacet, action: FacetCutAction.Add, functionSelectors: _setters()});
         cuts[3] = FacetCut({facetAddress: uriFacet, action: FacetCutAction.Replace, functionSelectors: _uri()});
-        cuts[4] = _cut(address(new AccessControl()));
-        cuts[5] = _cut(address(new DiamondLoupeFacet()));
-        cuts[6] = _cut(address(new AccessControlDiamondCut()));
+        cuts[4] = _cut(_facet("AccessControl"));
+        cuts[5] = _cut(_facet("DiamondLoupeFacet"));
+        cuts[6] = _cut(_facet("AccessControlDiamondCut"));
 
         inits = new address[](3);
-        inits[0] = address(new ERC1155Init());
-        inits[1] = address(new ERC1155URIStorageInit());
-        inits[2] = address(new DiamondIntrospectionInit());
+        inits[0] = _init("ERC1155Init");
+        inits[1] = _init("ERC1155URIStorageInit");
+        inits[2] = _init("DiamondIntrospectionInit");
 
         initCalldatas = new bytes[](3);
         initCalldatas[0] = abi.encodeCall(ERC1155Init.init, (uri_));

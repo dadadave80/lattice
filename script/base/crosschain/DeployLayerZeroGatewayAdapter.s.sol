@@ -29,14 +29,13 @@ contract DeployLayerZeroGatewayAdapter is BaseDeploy {
         returns (FacetCut[] memory cuts, address init, bytes memory initCalldata)
     {
         cuts = new FacetCut[](5);
-        cuts[0] = _cut(address(new ERC165Facet()));
-        cuts[1] = _cut(address(new AccessControl()));
-        cuts[2] = _cut(address(new LayerZeroGatewayAdapter()));
-        cuts[3] = _cut(address(new DiamondLoupeFacet()));
-        cuts[4] = _cut(address(new AccessControlDiamondCut()));
+        cuts[0] = _cut(_facet("ERC165Facet"));
+        cuts[1] = _cut(_facet("AccessControl"));
+        cuts[2] = _cut(_facet("LayerZeroGatewayAdapter"));
+        cuts[3] = _cut(_facet("DiamondLoupeFacet"));
+        cuts[4] = _cut(_facet("AccessControlDiamondCut"));
         (init, initCalldata) = _withUpgradeableIntrospection(
-            address(new LayerZeroGatewayAdapterInit()),
-            abi.encodeCall(LayerZeroGatewayAdapterInit.init, (admin, endpoint))
+            _init("LayerZeroGatewayAdapterInit"), abi.encodeCall(LayerZeroGatewayAdapterInit.init, (admin, endpoint))
         );
     }
 

@@ -31,7 +31,7 @@ contract DeployERC1155 is BaseDeploy {
     {
         cuts = _coreCuts();
         (init, initCalldata) =
-            _withImmutableIntrospection(address(new ERC1155Init()), abi.encodeCall(ERC1155Init.init, (uri_)));
+            _withImmutableIntrospection(_init("ERC1155Init"), abi.encodeCall(ERC1155Init.init, (uri_)));
     }
 
     /// @notice ADMIN OVERLOAD: the immutable default plus `AccessControl` + `AccessControlDiamondCut`, so
@@ -45,19 +45,18 @@ contract DeployERC1155 is BaseDeploy {
         for (uint256 i; i < base.length; ++i) {
             cuts[i] = base[i];
         }
-        cuts[base.length] = _cut(address(new AccessControl()));
-        cuts[base.length + 1] = _cut(address(new AccessControlDiamondCut()));
-        (init, initCalldata) = _withAdminUpgradeableIntrospection(
-            address(new ERC1155Init()), abi.encodeCall(ERC1155Init.init, (uri_)), admin
-        );
+        cuts[base.length] = _cut(_facet("AccessControl"));
+        cuts[base.length + 1] = _cut(_facet("AccessControlDiamondCut"));
+        (init, initCalldata) =
+            _withAdminUpgradeableIntrospection(_init("ERC1155Init"), abi.encodeCall(ERC1155Init.init, (uri_)), admin);
     }
 
     /// @dev The shared cut set of both overloads: the module facets plus {DiamondLoupeFacet} (introspection).
     function _coreCuts() internal returns (FacetCut[] memory cuts) {
         cuts = new FacetCut[](3);
-        cuts[0] = _cut(address(new ERC165Facet()));
-        cuts[1] = _cut(address(new ERC1155()));
-        cuts[2] = _cut(address(new DiamondLoupeFacet()));
+        cuts[0] = _cut(_facet("ERC165Facet"));
+        cuts[1] = _cut(_facet("ERC1155"));
+        cuts[2] = _cut(_facet("DiamondLoupeFacet"));
     }
 
     /// @notice Deploys a base ERC-1155 token diamond (broadcasting entrypoint for `forge script ... --broadcast`).

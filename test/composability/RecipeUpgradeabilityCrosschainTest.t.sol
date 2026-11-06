@@ -29,7 +29,7 @@ import {DeploySuperchainETHBridgeAdapter} from "@lattice-script/base/crosschain/
 import {DeployWormholeGatewayAdapter} from "@lattice-script/base/crosschain/DeployWormholeGatewayAdapter.s.sol";
 import {DeployZetaChainGatewayAdapter} from "@lattice-script/base/crosschain/DeployZetaChainGatewayAdapter.s.sol";
 import {TestnetAsset} from "@lattice-script/base/defi/DeployGovernedVaultENS.s.sol";
-import {RecipeGuards} from "@lattice-test/composability/RecipeGuards.sol";
+import {ReleasedRecipeGuards} from "@lattice-test/composability/ReleasedRecipeGuards.sol";
 import {AcrossBridgeAdapter} from "@lattice/crosschain/across/AcrossBridgeAdapter.sol";
 import {ISuperchainETHBridgeAdapter} from "@lattice/interfaces/crosschain/ISuperchainETHBridgeAdapter.sol";
 
@@ -37,7 +37,7 @@ import {ISuperchainETHBridgeAdapter} from "@lattice/interfaces/crosschain/ISuper
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice Crosschain-family recipe guards: every diamond these recipes assemble must be introspectable and
 ///         either admin-upgradeable or immutable BY DESIGN (never silently frozen).
-contract RecipeUpgradeabilityCrosschainTest is RecipeGuards {
+contract RecipeUpgradeabilityCrosschainTest is ReleasedRecipeGuards {
     TestnetAsset internal asset;
 
     function setUp() public {

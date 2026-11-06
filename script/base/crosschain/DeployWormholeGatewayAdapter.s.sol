@@ -31,13 +31,13 @@ contract DeployWormholeGatewayAdapter is BaseDeploy {
         returns (FacetCut[] memory cuts, address init, bytes memory initCalldata)
     {
         cuts = new FacetCut[](5);
-        cuts[0] = _cut(address(new ERC165Facet()));
-        cuts[1] = _cut(address(new AccessControl()));
-        cuts[2] = _cut(address(new WormholeGatewayAdapter()));
-        cuts[3] = _cut(address(new DiamondLoupeFacet()));
-        cuts[4] = _cut(address(new AccessControlDiamondCut()));
+        cuts[0] = _cut(_facet("ERC165Facet"));
+        cuts[1] = _cut(_facet("AccessControl"));
+        cuts[2] = _cut(_facet("WormholeGatewayAdapter"));
+        cuts[3] = _cut(_facet("DiamondLoupeFacet"));
+        cuts[4] = _cut(_facet("AccessControlDiamondCut"));
         (init, initCalldata) = _withUpgradeableIntrospection(
-            address(new WormholeGatewayAdapterInit()),
+            _init("WormholeGatewayAdapterInit"),
             abi.encodeCall(WormholeGatewayAdapterInit.init, (admin, relayer, wormholeChainId))
         );
     }

@@ -39,13 +39,13 @@ contract DeployERC20Crosschain is BaseDeploy {
         for (uint256 i; i < base.length; ++i) {
             cuts[i] = base[i];
         }
-        cuts[base.length] = _cut(address(new AccessControl()));
-        cuts[base.length + 1] = _cut(address(new CrosschainLink()));
-        cuts[base.length + 2] = _cut(address(new ERC20Crosschain()));
-        cuts[base.length + 3] = _cut(address(new AccessControlDiamondCut()));
+        cuts[base.length] = _cut(_facet("AccessControl"));
+        cuts[base.length + 1] = _cut(_facet("CrosschainLink"));
+        cuts[base.length + 2] = _cut(_facet("ERC20Crosschain"));
+        cuts[base.length + 3] = _cut(_facet("AccessControlDiamondCut"));
 
         (init, initCalldata) = _withUpgradeableIntrospection(
-            address(new ERC20CrosschainInit()), abi.encodeCall(ERC20CrosschainInit.init, (admin, name_, symbol_))
+            _init("ERC20CrosschainInit"), abi.encodeCall(ERC20CrosschainInit.init, (admin, name_, symbol_))
         );
     }
 

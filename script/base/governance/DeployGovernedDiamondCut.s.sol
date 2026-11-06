@@ -27,12 +27,12 @@ contract DeployGovernedDiamondCut is BaseDeploy {
     /// @return initCalldata The `init(admin)` calldata.
     function buildCuts(address admin) public returns (FacetCut[] memory cuts, address init, bytes memory initCalldata) {
         cuts = new FacetCut[](5);
-        cuts[0] = _cut(address(new ERC165Facet()), "ERC165Facet");
-        cuts[1] = _cut(address(new DiamondLoupeFacet()), "DiamondLoupeFacet");
-        cuts[2] = _cut(address(new AccessControl()));
-        cuts[3] = _cut(address(new EmergencyStop()));
-        cuts[4] = _cut(address(new GovernedDiamondCut()));
-        init = address(new GovernedDiamondCutInit());
+        cuts[0] = _cut(_facet("ERC165Facet"));
+        cuts[1] = _cut(_facet("DiamondLoupeFacet"));
+        cuts[2] = _cut(_facet("AccessControl"));
+        cuts[3] = _cut(_facet("EmergencyStop"));
+        cuts[4] = _cut(_facet("GovernedDiamondCut"));
+        init = _init("GovernedDiamondCutInit");
         initCalldata = abi.encodeCall(GovernedDiamondCutInit.init, (admin));
     }
 

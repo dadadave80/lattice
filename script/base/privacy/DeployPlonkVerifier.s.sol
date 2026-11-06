@@ -27,7 +27,7 @@ contract DeployPlonkVerifier is BaseDeploy {
     function buildCuts() public returns (FacetCut[] memory cuts, address init, bytes memory initCalldata) {
         cuts = _coreCuts();
         (init, initCalldata) =
-            _withImmutableIntrospection(address(new PlonkVerifierInit()), abi.encodeCall(PlonkVerifierInit.init, ()));
+            _withImmutableIntrospection(_init("PlonkVerifierInit"), abi.encodeCall(PlonkVerifierInit.init, ()));
     }
 
     /// @notice ADMIN OVERLOAD: the immutable default plus `AccessControl` + `AccessControlDiamondCut`, so
@@ -38,19 +38,19 @@ contract DeployPlonkVerifier is BaseDeploy {
         for (uint256 i; i < base.length; ++i) {
             cuts[i] = base[i];
         }
-        cuts[base.length] = _cut(address(new AccessControl()));
-        cuts[base.length + 1] = _cut(address(new AccessControlDiamondCut()));
+        cuts[base.length] = _cut(_facet("AccessControl"));
+        cuts[base.length + 1] = _cut(_facet("AccessControlDiamondCut"));
         (init, initCalldata) = _withAdminUpgradeableIntrospection(
-            address(new PlonkVerifierInit()), abi.encodeCall(PlonkVerifierInit.init, ()), admin
+            _init("PlonkVerifierInit"), abi.encodeCall(PlonkVerifierInit.init, ()), admin
         );
     }
 
     /// @dev The shared cut set of both overloads: the module facets plus {DiamondLoupeFacet} (introspection).
     function _coreCuts() internal returns (FacetCut[] memory cuts) {
         cuts = new FacetCut[](3);
-        cuts[0] = _cut(address(new ERC165Facet()));
-        cuts[1] = _cut(address(new PlonkVerifier()));
-        cuts[2] = _cut(address(new DiamondLoupeFacet()));
+        cuts[0] = _cut(_facet("ERC165Facet"));
+        cuts[1] = _cut(_facet("PlonkVerifier"));
+        cuts[2] = _cut(_facet("DiamondLoupeFacet"));
     }
 
     /// @notice Deploys a PLONK verifier diamond (broadcasting entrypoint for `forge script ... --broadcast`).

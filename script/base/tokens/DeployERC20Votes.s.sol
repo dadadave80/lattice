@@ -40,7 +40,7 @@ contract DeployERC20Votes is BaseDeploy {
         (FacetCut[] memory baseCuts, address baseInit, bytes memory baseCalldata) =
             new DeployERC20().buildCuts(name_, symbol_);
 
-        address votesFacet = address(new ERC20Votes());
+        address votesFacet = _facet("ERC20Votes");
 
         // `transfer`/`transferFrom` (base ERC-20) and `delegate`/`delegateBySig` (base {Votes}) already exist —
         // replace them with the checkpoint/balance-aware variants so voting power tracks balance movement.
@@ -60,18 +60,18 @@ contract DeployERC20Votes is BaseDeploy {
             cuts[i] = baseCuts[i];
         }
         // The ERC-5805 delegation + ERC-6372 clock surface comes from the standalone {Votes} facet.
-        cuts[baseCuts.length] = _cut(address(new Votes()));
+        cuts[baseCuts.length] = _cut(_facet("Votes"));
         cuts[baseCuts.length + 1] =
             FacetCut({facetAddress: votesFacet, action: FacetCutAction.Add, functionSelectors: addSelectors});
         cuts[baseCuts.length + 2] =
             FacetCut({facetAddress: votesFacet, action: FacetCutAction.Replace, functionSelectors: replaceSelectors});
-        cuts[baseCuts.length + 3] = _cut(address(new AccessControl()));
-        cuts[baseCuts.length + 4] = _cut(address(new AccessControlDiamondCut()));
+        cuts[baseCuts.length + 3] = _cut(_facet("AccessControl"));
+        cuts[baseCuts.length + 4] = _cut(_facet("AccessControlDiamondCut"));
 
         inits = new address[](3);
         inits[0] = baseInit;
-        inits[1] = address(new ERC20VotesInit());
-        inits[2] = address(new DiamondIntrospectionInit());
+        inits[1] = _init("ERC20VotesInit");
+        inits[2] = _init("DiamondIntrospectionInit");
 
         initCalldatas = new bytes[](3);
         initCalldatas[0] = baseCalldata;
