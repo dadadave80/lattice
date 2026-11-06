@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
+import {AccountReleaseInventory} from "@lattice-script/lib/AccountReleaseInventory.sol";
 import {ArachnidDeployer} from "@lattice-script/lib/ArachnidDeployer.sol";
 import {FacetInventory} from "@lattice-script/lib/FacetInventory.sol";
 import {InitInventory} from "@lattice-script/lib/InitInventory.sol";
@@ -15,6 +17,91 @@ import {Test} from "forge-std/Test.sol";
 import {Vm} from "forge-std/Vm.sol";
 
 contract ReleaseManifestTest is Test, GenerateManifest {
+    function test_ReleaseIncludesEveryCanonicalAccountIdentity() public {
+        ContractIdentity[] memory records = ManifestReader.identities(vm, snapshot("99.0.0", address(this)));
+        AccountReleaseInventory.Entry[] memory entries = AccountReleaseInventory.inventory();
+        for (uint256 i; i < entries.length; ++i) {
+            bool foundInit;
+            bool foundFactory;
+            for (uint256 k; k < records.length; ++k) {
+                if (keccak256(bytes(records[k].name)) == keccak256(bytes(entries[i].initializer))) {
+                    foundInit = true;
+                    assertEq(records[k].kind, "account-init");
+                    assertEq(records[k].artifact, entries[i].initializerArtifact);
+                    assertEq(abi.decode(records[k].constructorArgs, (address)), entries[i].entryPoint);
+                }
+                if (keccak256(bytes(records[k].name)) == keccak256(bytes(entries[i].factory))) {
+                    foundFactory = true;
+                    assertEq(records[k].kind, "account-factory");
+                    assertEq(records[k].artifact, entries[i].factoryArtifact);
+                }
+            }
+            assertTrue(foundInit, "canonical account initializer missing");
+            assertTrue(foundFactory, "canonical account factory missing");
+        }
+    }
+
+    function test_AccountBindingsMatchExactBlueprintConstructorsAndSourceProxyHashes() public {
+        string memory json = snapshot("99.0.0", address(this));
+        ContractIdentity[] memory records = ManifestReader.identities(vm, json);
+        AccountReleaseInventory.Entry[] memory entries = AccountReleaseInventory.inventory();
+        assertEq(abi.decode(vm.parseJson(json, ".accounts[*].factory"), (string[])).length, entries.length);
+        for (uint256 i; i < entries.length; ++i) {
+            AccountReleaseInventory.Entry memory entry = entries[i];
+            ContractIdentity memory initializer = _identity(records, entry.initializer);
+            ContractIdentity memory factory = _identity(records, entry.factory);
+            (FacetCut[] memory cuts, address init) = abi.decode(factory.constructorArgs, (FacetCut[], address));
+            assertEq(init, initializer.at);
+            string[] memory wanted = AccountReleaseInventory.facetNames(entry.modular);
+            assertEq(cuts.length, wanted.length);
+            for (uint256 k; k < wanted.length; ++k) {
+                ContractIdentity memory facet = _identity(records, wanted[k]);
+                assertEq(cuts[k].facetAddress, facet.at);
+                assertEq(uint256(cuts[k].action), 0);
+                bytes memory packed;
+                for (uint256 s; s < cuts[k].functionSelectors.length; ++s) {
+                    packed = abi.encodePacked(packed, cuts[k].functionSelectors[s]);
+                }
+                assertEq(packed, IERC8153(facet.at).exportSelectors());
+            }
+            string memory path = string.concat(".accounts[", vm.toString(i), "]");
+            assertEq(vm.parseJsonString(json, string.concat(path, ".initializer")), initializer.name);
+            assertEq(vm.parseJsonString(json, string.concat(path, ".factory")), factory.name);
+            assertEq(vm.parseJsonString(json, string.concat(path, ".proxyKind")), entry.proxyKind);
+            assertEq(vm.parseJsonAddress(json, string.concat(path, ".entryPoint")), entry.entryPoint);
+            assertEq(vm.parseJsonString(json, string.concat(path, ".entryPointVersion")), entry.entryPointVersion);
+            assertEq(vm.parseJsonBytes32(json, string.concat(path, ".blueprintHash")), keccak256(abi.encode(cuts)));
+            assertEq(
+                vm.parseJsonBytes32(json, string.concat(path, ".proxyInitCodeHash")),
+                keccak256(vm.getCode(entry.proxyArtifact))
+            );
+        }
+    }
+
+    function test_AccountManifestNativeBindingMutations() public {
+        string memory root = "deployments/.account-manifest-fixture";
+        vm.createDir(root, true);
+        string memory path = string.concat(root, "/release.json");
+        vm.writeJson(_envelope(this.snapshot("99.0.0", address(0xBEEF))), path);
+        string[] memory command = new string[](3);
+        command[0] = "bash";
+        command[1] = "script/test-account-release-manifest.sh";
+        command[2] = path;
+        vm.ffi(command);
+        vm.removeDir(root, true);
+    }
+
+    function _identity(ContractIdentity[] memory records, string memory name)
+        private
+        pure
+        returns (ContractIdentity memory)
+    {
+        for (uint256 i; i < records.length; ++i) {
+            if (keccak256(bytes(records[i].name)) == keccak256(bytes(name))) return records[i];
+        }
+        revert("missing manifest identity");
+    }
+
     function test_ReleaseIdentityHasSchemaAndCreationCommitments() public {
         string memory json = snapshot("99.0.0", address(0xBEEF));
         ContractIdentity[] memory records = ManifestReader.identities(vm, json);
@@ -22,7 +109,10 @@ contract ReleaseManifestTest is Test, GenerateManifest {
         (string[] memory inits, string[] memory initPaths) = InitInventory.inventory();
         (string[] memory libraries, string[] memory libraryPaths, address[] memory linked) =
             LibraryInventory.inventory();
-        assertEq(records.length, 2 + facets.length + inits.length + libraries.length);
+        assertEq(
+            records.length,
+            2 + facets.length + inits.length + libraries.length + 2 * AccountReleaseInventory.inventory().length
+        );
         assertEq(abi.decode(records[0].constructorArgs, (address)), address(0xBEEF));
         (address registry, address registrar, address reverseOwner) =
             abi.decode(records[1].constructorArgs, (address, address, address));
@@ -51,13 +141,17 @@ contract ReleaseManifestTest is Test, GenerateManifest {
                 assertEq(record.nameHash, bytes32(0));
                 assertEq(record.selectorsHash, bytes32(0));
                 assertEq(record.selectors.length, 0);
-            } else if (i >= 2 + facets.length + inits.length) {
+            } else if (i >= 2 + facets.length + inits.length && i < 2 + facets.length + inits.length + libraries.length)
+            {
                 uint256 at = i - 2 - facets.length - inits.length;
                 assertEq(record.name, libraries[at]);
                 assertEq(record.artifact, libraryPaths[at]);
                 assertEq(record.at, linked[at]);
                 assertEq(record.codehash, LibraryInventory.runtimeHash(vm, record.artifact, record.at));
                 assertEq(ILatticeRegistry(records[0].at).resolve(record.codehash), record.at);
+            } else if (i >= 2 + facets.length + inits.length + libraries.length) {
+                assertEq(record.nameHash, bytes32(0));
+                assertEq(record.selectorsHash, bytes32(0));
             }
         }
         assertEq(vm.parseJsonBytes32(json, ".proxy.initCodeHash"), keccak256(vm.getCode("src/Lattice.sol:Lattice")));
@@ -147,7 +241,11 @@ contract ReleaseManifestTest is Test, GenerateManifest {
         for (uint256 i; i < required.length; ++i) {
             assertTrue(vm.keyExistsJson(json, string.concat(".", required[i])));
         }
-        assertEq(vm.parseJsonKeys(json, ".").length, required.length);
+        string[] memory keys = vm.parseJsonKeys(json, ".");
+        string memory schema = vm.readFile(schemaPath);
+        for (uint256 i; i < keys.length; ++i) {
+            assertTrue(vm.keyExistsJson(schema, string.concat(".properties.", keys[i])), "unknown manifest field");
+        }
     }
 
     function test_ObserverHasNoLinkedLibraryDependencies() public view {

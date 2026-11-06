@@ -38,6 +38,7 @@ const decisions: Item = {
     { text: '0022 Native release libraries', link: '/adr/0022-native-create2-release-libraries' },
     { text: '0023 Frozen source verification', link: '/adr/0023-frozen-input-source-verification' },
     { text: '0024 Upgrade initializer batches', link: '/adr/0024-upgrade-initializer-batches' },
+    { text: '0025 Account factory identities', link: '/adr/0025-account-factory-release-identity' },
   ],
 }
 

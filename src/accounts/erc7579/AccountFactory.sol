@@ -11,8 +11,9 @@ import {IAccountFactory} from "@lattice/interfaces/accounts/IAccountFactory.sol"
 ///         `initCode` onboarding. Holds a fixed facet blueprint + initializer; each `createAccount` CREATE2-
 ///         deploys a {AccountDiamond} proxy and initializes it with the blueprint and the owner.
 /// @dev The proxy has no constructor args, so its initcode hash is constant and the CREATE2 address depends
-///      only on `(factory, keccak256(owner, salt))`. Deploy this factory itself deterministically (e.g. via
-///      CreateX) and the same `(owner, salt)` lands at the SAME account address on every chain. Folding the
+///      only on `(factory, keccak256(owner, salt))`. Canonical releases deploy this factory through Arachnid
+///      with the released blueprint and EntryPoint-bound initializer. The same build, constructor arguments,
+///      owner and salt derive the same account address on supported chains. Folding the
 ///      owner into the salt binds each counterfactual address to its owner, so no third party can occupy it
 ///      under a different owner. Not a Diamond facet — a standalone singleton with its own storage.
 contract AccountFactory is IAccountFactory {

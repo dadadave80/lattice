@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {GenerateManifest, JsonRecordWriter} from "./GenerateManifest.s.sol";
+import {GenerateManifest} from "./GenerateManifest.s.sol";
+import {JsonRecordWriter} from "./JsonRecordWriter.sol";
 import {ManifestReader} from "./ManifestReader.sol";
 import {ReleaseVersion} from "@lattice-script/lib/ReleaseVersion.sol";
 import {ILatticeRegistry} from "@lattice/interfaces/ILatticeRegistry.sol";
