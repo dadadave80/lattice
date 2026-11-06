@@ -13,8 +13,13 @@ import {PythAdapterLib} from "@lattice/oracles/pyth/PythAdapterLib.sol";
 /// @dev Stateless delegator — all logic and storage live in {PythAdapterLib}. Consumers inherit this
 ///      contract and add AccessControl + an initializer. Prices are refreshed via the payable
 ///      {updatePriceFeeds}, then read via {latestAnswer}.
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source Pyth Network
+/// @custom:lattice-requires AccessControl|AccessControlEnumerable|AccessControlTimed convention role-management-surface;
+/// @custom:lattice-family price-source
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches lattice.storage.PythAdapter;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init PythAdapterInit
 contract PythAdapter is IPythAdapter {
     /// @inheritdoc IPythAdapter
     function pyth() external view virtual override returns (address) {

@@ -11,8 +11,13 @@ import {ChainlinkAdapterLib} from "@lattice/oracles/chainlink/ChainlinkAdapterLi
 ///         per-feed staleness configuration and WAD-normalised answers.
 /// @dev Stateless delegator — all logic and storage live in ChainlinkAdapterLib.
 ///      Consumers inherit this contract and add AccessControl + an initializer.
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source Chainlink
+/// @custom:lattice-requires AccessControl|AccessControlEnumerable|AccessControlTimed convention role-management-surface;
+/// @custom:lattice-family price-source
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches lattice.storage.ChainlinkAdapter;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init ChainlinkAdapterInit
 contract ChainlinkAdapter is IChainlinkAdapter {
     /// @inheritdoc IChainlinkAdapter
     function getFeed(bytes32 key) external view virtual override returns (address feed, uint48 maxStaleness) {

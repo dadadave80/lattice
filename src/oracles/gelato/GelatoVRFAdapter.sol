@@ -13,8 +13,13 @@ import {GelatoVRFAdapterLib} from "@lattice/oracles/gelato/GelatoVRFAdapterLib.s
 ///      This facet handles the request/track layer only.  Consumer facets that
 ///      inherit this contract should override `fulfillRandomness` to act on
 ///      delivered randomness after calling `super.fulfillRandomness`.
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source Gelato
+/// @custom:lattice-requires AccessControl|AccessControlEnumerable|AccessControlTimed convention role-management-surface;
+/// @custom:lattice-family none
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches lattice.storage.GelatoVRFAdapter;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init GelatoVRFAdapterInit
 contract GelatoVRFAdapter is IGelatoVRFAdapter {
     /// @inheritdoc IGelatoVRFAdapter
     function getOperator() external view virtual override returns (address) {

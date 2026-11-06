@@ -10,8 +10,13 @@ import {IAccessManager} from "@lattice/interfaces/access/IAccessManager.sol";
 /// @dev Cut it into its own authority diamond. Next to other facets its ADMIN_ROLE is root: `execute` calls the
 ///      diamond as the diamond, which passes every gate that trusts `address(this)` (a governed `diamondCut`, the
 ///      timelock's self-only setters, the ERC-7786 handlers). See {IAccessManager} and issue #240.
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source OpenZeppelin v5.1.0
+/// @custom:lattice-requires none;
+/// @custom:lattice-family none
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches lattice.storage.AccessManager;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init AccessManagerInit
 contract AccessManager is IAccessManager {
     function ADMIN_ROLE() external pure virtual override returns (uint64) {
         return AccessManagerLib.ADMIN_ROLE;

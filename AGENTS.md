@@ -97,7 +97,11 @@ if older documentation conflicts with the development policy below, apply this p
 | `test/` | Layout and conventions in [test/README.md](test/README.md) |
 
 Adding a module touches more than its three source files: follow the
-[add-a-module checklist](CONTRIBUTING.md#adding-a-module).
+[add-a-module checklist](CONTRIBUTING.md#adding-a-module). Every first-party facet and released initializer
+also needs the [composition metadata](CONTRIBUTING.md#composition-metadata) tags and artifact lint coverage.
+Use raw compiler metadata, semicolon-terminated records, and distinguish hard requirements from conventions;
+never infer a required public facet merely from a library import. Release manifests carry versions; do not
+add redundant `lattice-version` tags.
 
 | Command | Purpose |
 | --- | --- |

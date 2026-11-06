@@ -16,6 +16,7 @@ import {
 ///         (`0x4200000000000000000000000000000000000007`). Delegatecalled by {Diamond.initialize} inside the
 ///         initializing window (so it must NOT open its own pre/postInitializer; each `__*_init` guard passes
 ///         because the window is already open). A first-class production deploy artifact.
+/// @custom:lattice-kind bundle
 contract L1ToL2CrossDomainMessengerGatewayAdapterInit {
     /// @notice Runs the access-control + adapter module initializers. MUST be invoked via the diamond's
     ///         `initialize` `_init` delegatecall.
@@ -23,6 +24,16 @@ contract L1ToL2CrossDomainMessengerGatewayAdapterInit {
     /// @param counterpartChainId The paired-domain chain id.
     /// @param counterpartAdapter The sibling adapter on the paired domain (must be non-zero).
     /// @param minGasLimit        The `minGasLimit` the messenger relays outbound messages with.
+    /// @custom:lattice-initializes AccessControl;
+    /// @custom:lattice-initializes L1ToL2CrossDomainMessengerGatewayAdapter;
+    /// @custom:lattice-after none;
+    /// @custom:lattice-same-call Initializable hard enclosing-initializing-window;
+    /// @custom:lattice-sequence AccessControl;L1ToL2CrossDomainMessengerGatewayAdapter;
+    /// @custom:lattice-param admin authority;
+    /// @custom:lattice-param counterpartChainId;
+    /// @custom:lattice-param counterpartAdapter;
+    /// @custom:lattice-param minGasLimit rule=gas-units;
+    /// @custom:lattice-registers-interfaces
     function init(address admin, uint256 counterpartChainId, address counterpartAdapter, uint32 minGasLimit) external {
         AccessControlLib.__AccessControl_init(admin);
         L1ToL2CrossDomainMessengerGatewayAdapterLib.__L1ToL2CrossDomainMessengerGatewayAdapter_init(

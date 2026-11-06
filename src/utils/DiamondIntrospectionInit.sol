@@ -18,8 +18,16 @@ import {ERC165Lib} from "@diamond/libraries/ERC165Lib.sol";
 /// @dev Delegatecalled by {Diamond.initialize} inside the initializing window (stock diamond-lib
 ///      `DiamondInit` is NOT usable here: it unconditionally registers both flags AND initializes an
 ///      Ownable owner). Stateless; safe to share one deployed instance across recipes.
+/// @custom:lattice-kind bundle
 contract DiamondIntrospectionInit {
     /// @notice Registers the IERC165 + IDiamondCut + IDiamondLoupe ERC-165 flags (cut facet + loupe both cut).
+    /// @custom:lattice-initializes ERC165;
+    /// @custom:lattice-initializes Diamond;
+    /// @custom:lattice-after none;
+    /// @custom:lattice-same-call none;
+    /// @custom:lattice-sequence ERC165;Diamond;
+    /// @custom:lattice-param none;
+    /// @custom:lattice-registers-interfaces
     function initUpgradeable() external {
         ERC165Lib.registerInterface();
         DiamondLib.registerInterface();
@@ -31,6 +39,13 @@ contract DiamondIntrospectionInit {
     ///      `= 0x8b4e92bdfe8926212c580d8c12b81d3807ee1d50462b0f735541a0bd64c0003c` (single `sstore`, per the
     ///      repo's `registerInterface` standard; the read path recomputes the keccak, so the guard tests'
     ///      `supportsInterface(0x48e2b093)` asserts verify the constant).
+    /// @custom:lattice-initializes ERC165;
+    /// @custom:lattice-initializes Diamond with loupe-only=true;
+    /// @custom:lattice-after none;
+    /// @custom:lattice-same-call none;
+    /// @custom:lattice-sequence ERC165;Diamond;
+    /// @custom:lattice-param none;
+    /// @custom:lattice-registers-interfaces
     function initImmutable() external {
         ERC165Lib.registerInterface();
         assembly ("memory-safe") {

@@ -12,8 +12,14 @@ import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
 ///      OpenZeppelin.
 ///      `transfer`/`transferFrom` are the movement selectors a movement-replacing extension (ERC20Pausable,
 ///      ERC20Votes, GovernedVault) replaces; only one of them per diamond (D25, #234).
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source OpenZeppelin v5.6.1
+/// @custom:lattice-requires none;
+/// @custom:lattice-family none
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches lattice.storage.ERC20;
+/// @custom:lattice-touches transient:lattice.storage.ERC20TemporaryApproval;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init ERC20Init
 contract ERC20 is IERC20 {
     /// @inheritdoc IERC20
     function totalSupply() public view virtual returns (uint256) {

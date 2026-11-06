@@ -15,7 +15,16 @@ import {NoncesLib} from "@lattice/utils/libraries/NoncesLib.sol";
 ///         window opened by the diamond, alongside the base {ERC721Init}; it must NOT open its own
 ///         pre/postInitializer. Reverts `ERC721VotesForbiddenBatchMint` on a diamond that initialized batch minting
 ///         ({ERC721ConsecutiveLib}), whose batches the vote checkpoints would miss, including in a later upgrade cut.
+/// @custom:lattice-kind bundle
 contract ERC721VotesInit {
+    /// @custom:lattice-initializes EIP712 with version=1;
+    /// @custom:lattice-initializes Nonces;
+    /// @custom:lattice-initializes Votes;
+    /// @custom:lattice-after ERC721 convention domain-name-matches-token-name;
+    /// @custom:lattice-same-call Initializable hard enclosing-initializing-window;
+    /// @custom:lattice-sequence EIP712;Nonces;Votes;
+    /// @custom:lattice-param name_;
+    /// @custom:lattice-registers-interfaces
     function init(string memory name_) external {
         if (ERC721ConsecutiveLib.erc721ConsecutiveStorage()._enabled) {
             revert IERC721Consecutive.ERC721VotesForbiddenBatchMint();

@@ -10,8 +10,13 @@ import {ERC1155Lib} from "@lattice/tokens/ERC1155/libraries/ERC1155Lib.sol";
 /// @dev All logic lives in ERC1155Lib. This contract is a pure delegator.
 ///      `safeTransferFrom`/`safeBatchTransferFrom` are the movement selectors a movement-replacing extension
 ///      replaces; only one such extension per diamond (D25, #234).
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source OpenZeppelin v5.6.1
+/// @custom:lattice-requires none;
+/// @custom:lattice-family none
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches lattice.storage.ERC1155;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init ERC1155Init
 contract ERC1155 is IERC1155 {
     /// @inheritdoc IERC1155
     function uri(uint256 id) public view virtual returns (string memory) {

@@ -18,8 +18,13 @@ import {Callable, MessageContext} from "@lattice/interfaces/external/zetachain/I
 ///      trusted-remote registry is a forward (`chainId ⇒ app`) + reverse (`app ⇒ chainId`) map of ZEVM universal
 ///      apps; the gateway-gated `onCall` is the inbound analogue of CCIP's `ccipReceive` / LayerZero's `lzReceive`.
 ///      Implements {Callable} (`onCall`) so the ZetaChain `GatewayEVM` can deliver inbound messages.
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source ZetaChain
+/// @custom:lattice-requires AccessControl|AccessControlEnumerable|AccessControlTimed convention role-management-surface;
+/// @custom:lattice-family gateway
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches lattice.storage.ZetaChainGatewayAdapter;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init ZetaChainGatewayAdapterInit
 contract ZetaChainGatewayAdapter is IERC7786GatewaySource, Callable, IZetaChainGatewayAdapter {
     /// @inheritdoc IERC7786GatewaySource
     function sendMessage(bytes calldata recipient, bytes calldata payload, bytes[] calldata attributes)

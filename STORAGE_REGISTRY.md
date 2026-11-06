@@ -22,10 +22,14 @@ the module library, and proves that **all storage slots are mutually unique** an
 ERC-165 map slots are mutually unique**. When you add a module, add its slot constants there
 and a row here.
 
+Transient allowance mapping roots are listed separately from persistent layouts: ERC20TemporaryApproval
+uses TLOAD/TSTORE at its derived root and adds no persistent fields. The JSON layout export
+therefore has no separate TemporaryApproval struct.
+
 The [JSON registry](script/upgrades/storage-registry.json) exports every namespace, slot and struct
 layout, including nested structs, from the existing source-checked layout baseline. It also exports
 source-declared interface IDs and map-slot constants with file provenance, deduplicating shared IDs.
-The 108 exported ID/slot pairs include the 107 Lattice registrations and the existing `IDiamondCut` alias.
+The 109 exported ID/slot pairs include the 108 Lattice registrations and the existing `IDiamondCut` alias.
 `make storage-check` checks the source layout, recomputes map slots with `cast`, and detects JSON drift
 and incorrect namespace or interface-ID/map-slot pairs in this table; `make storage-update`
 regenerates both the reviewed baseline and JSON. New releases attach both checked files from the exact
@@ -34,6 +38,27 @@ release tag. Historical release layouts are not regenerated from a later source 
 > **CI:** the test suite `StorageSlotVerificationTest` MUST be run on every change
 > (`forge test --match-contract StorageSlotVerificationTest`). A failure means a slot constant
 > is wrong (would collide with another module) and is a release blocker.
+
+## Initialization version read
+
+Lattice's existing initialization word uses the fixed non-ERC-7201 slot
+`0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffbf601132` from
+`InitializableLib.initializableSlot()`. This address and encoding are a stable read for tools:
+bit 0 is `initializing`; bits 1–64 are the unsigned initialization version. Version 0 means never
+initialized, version 1 is normal initial setup, and `2**64 - 1` prevents later initialization.
+Remaining bits are reserved. Read this word with `eth_getStorageAt` at the same block used for
+the rest of an upgrade inspection, and decode with full-width integers:
+
+```javascript
+const word = BigInt(storageHex); // eth_getStorageAt's 32-byte hex result
+const initializing = (word & 1n) !== 0n;
+const initializedVersion = (word >> 1n) & 0xffffffffffffffffn;
+```
+
+`ReinitMultiInit` uses this same word when authorized upgrades initialize additional modules.
+It adds no storage namespace or routed view selector. See
+[upgrade initialization](docs/guides/compose-your-own-diamond.md#initialize-modules-during-an-upgrade)
+and [ADR0024](docs/adr/0024-upgrade-initializer-batches.md).
 
 ## Notes on interface IDs
 
@@ -204,11 +229,13 @@ release tag. Historical release layouts are not regenerated from a later source 
   `_createdTokens`, the set of HTS tokens the diamond treasuries — because associations, balances and
   allowances live in HTS and a cached copy would drift; it mints `IHTSAdapter` (`0x37ae8968`) and is gated on
   `HTS_MANAGER_ROLE` (associate / create) and `HTS_OPERATOR_ROLE` (move treasury funds, mint, burn).
-  **HSSAdapter** keeps one `_schedules` map (job id → live schedule address) and mints `IHSSAdapter`
-  (`0xd07095cf`), gated on `HSS_SCHEDULER_ROLE`. **HASSignatureVerifier** (`0x96c247cb`),
-  **HederaExchangeRateAdapter** (`0x409e5cd5`) and **HederaPrngAdapter** (`0x8e848f42`) are stateless: no
-  ERC-7201 slot and no row in the storage-uniqueness array, one ERC-165 map slot each. Together the five add
-  **two** ERC-7201 storage slots and **five** ERC-165 map slots.
+  **HSSAdapter** keeps the append-only job-to-schedule mapping, booking generations and active callback
+  context. Its original `IHSSAdapter` id (`0xd07095cf`) remains fixed; `HSSAdapterRecovery` shares the
+  namespace and adds `IHSSAdapterRecovery` (`0x4d10dd54`). Scheduling/cancellation uses
+  `HSS_SCHEDULER_ROLE`. **HASSignatureVerifier** (`0x96c247cb`), **HederaExchangeRateAdapter**
+  (`0x409e5cd5`) and **HederaPrngAdapter** (`0x8e848f42`) are stateless: no ERC-7201 slot and no row in the
+  storage-uniqueness array, one ERC-165 map slot each. Together these six facets add **two** ERC-7201
+  storage slots and **six** ERC-165 map slots.
   DIAMOND-SPECIFIC RULE: a facet call is a `delegatecall` frame, so HTS refuses a plain `CONTRACT_ID` key
   wherever it verifies one (`INVALID_FULL_PREFIX_SIGNATURE_FOR_PRECOMPILE`, 326). Every token key
   `HTSAdapterLib` sets therefore uses `key.delegatableContractId = address(this)`, and a token created
@@ -256,6 +283,7 @@ release tag. Historical release layouts are not regenerated from a later source 
 | ERC1155Supply | `lattice.storage.ERC1155Supply` | `0x587745c63b1b33029f813b403978fa83db2954e4dd333c28aeae4b4e067ade00` | `IERC1155Supply` (supply views only; `burn`/`burnBatch` stay under `IERC1155Burnable`) | `0xeac6339d` | `0x1c1760c9fb8bc6a2feef129121ee2d30637b318349bcc0156b579ab5b5af6f16` |
 | ERC1155URIStorage | `lattice.storage.ERC1155URIStorage` | `0x410b28ad7d410d71a721debe93a5796847f0aba6b82f9b5e65108eff17bfbc00` | `IERC1155URIStorage` (setters only; `uri` stays under `IERC1155MetadataURI`) | `0xd3dc4451` | `0xd822e48b513c28ab47f256a8e46baad1ce902e38e6cae6a58b04347a1a191de1` |
 | ERC1363 | — (no own storage; moves the ERC20 balances and allowances) | — | `IERC1363` (EIP-1363) | `0xb0202a11` | `0x0ebeb7a78f222e08be2c2d80a20fcc22cbe5dd2ddf53005dc602c88dd66185a1` |
+| ERC20TemporaryApproval | `lattice.storage.ERC20TemporaryApproval` (transient mapping only; no persistent fields) | `0xaa382fcf0bf54b576b3f55eb526cf1114e476579e700b2c0450079831fe05700` | `IERC20TemporaryApproval` (ERC-7674) | `0x42232a4c` | `0xac7c974adc1627494c05d38379885274843f8308973f1cb430861ef9696b24b5` |
 | ERC2981 | `lattice.storage.ERC2981` | `0xf01000cac811e850d05bb5588943b621fb762a575809c98a87e3540df4e97a00` | `IERC2981` | `0x2a55205a` | `0x0b6e5f3aef2b5db6c8b7f9a90550b00e1bcf3efa09341feda1a90dabdea92899` |
 | ERC4626 | `lattice.storage.ERC4626` | `0x748f49bc653df23655f3b413e3d5c91c1b4c965af17a32d743e995b145325100` | `IERC4626` | `0x87dfe5a0` | `0xdad016fc8af4f826152a6bfdd6ece63fb81a66a94f522cc8a79db8d6838e2732` |
 | HTSAdapter | `lattice.storage.HTSAdapter` | `0x91b64afeea686e80e2bda212862c0850ed3389288ac3f914b1109537d6e3f500` | `IHTSAdapter` | `0x37ae8968` | `0x0785670462ca582bde40afa31cf7989a7c25557d842b1003652c1ca6b4044d81` |
@@ -317,6 +345,7 @@ release tag. Historical release layouts are not regenerated from a later source 
 | TWAPOracle | `lattice.storage.TWAPOracle` | `0xc2bcc163613aea761b734a9692ad3548aab9088be29b53e03facf6a2a351df00` | `ITWAPOracle` | `0xd1baebe0` | `0x3edcb012a40cef5fed8aba3a5816c3233af9ecd91b8a1965a2b67b8940a0f49f` |
 | OracleGuard | `lattice.storage.OracleGuard` | `0xcb4d3b20d6a2c3be74f0770f2a6fab88f83473f0767b2765ccc6af180a66bc00` | `IOracleGuard` | `0x33a1a017` | `0x41da0c252d134ba14fd7bb076efcd912935e2490fdd095fda46ea7b4ab0cb258` |
 | HSSAdapter | `lattice.storage.HSSAdapter` | `0x12fa09b7b2cb13ace416911567e16cefd04261b5db45857ec33ecae7c1298700` | `IHSSAdapter` | `0xd07095cf` | `0x336d3eab18c157b0aa1696b6a9cef1943b53e0b1cdacf2490de1d33245c45247` |
+| HSSAdapter (recovery) | `lattice.storage.HSSAdapter` | (shares HSSAdapter slot) | `IHSSAdapterRecovery` | `0x4d10dd54` | `0xd8059154e8e96e6eecaf07fe11ba32eaf97db00d355f926132173527e14d213a` |
 | HederaExchangeRateAdapter | — (stateless) | — | `IHederaExchangeRateAdapter` | `0x409e5cd5` | `0x63eb9226e864b43834b3b55a3188cdb0170b49fdd7f8a67c2a48bd7b9f6a8378` |
 | HederaPrngAdapter | — (stateless) | — | `IHederaPrngAdapter` | `0x8e848f42` | `0xe34a308c0f52419d136ed1b5d11f586cf680db1cc128f8b2678f2b24615706b7` |
 
@@ -483,10 +512,11 @@ defensive rehashing on the 1271 path (#59) composing audited OZ/Solady rather th
 `ERC6551Account` facet (#58 item 8) makes the Diamond a token-bound account controlled by the owner of a bound
 ERC-721 — a fifth ERC-7201 slot and two more ERC-165 ids (`IERC6551Account` `0x6faff5f1`, `IERC6551Executable`
 `0x51945447`), bringing accounts to five ERC-7201 slots and seven ERC-165 map slots. The Hedera system-contract
-track adds five facets across three areas: `HTSAdapter` (tokens) and `HSSAdapter` (oracles) are
+track adds six facets across three areas: `HTSAdapter` (tokens) and `HSSAdapter` (oracles) are
 storage-bearing — one ERC-7201 slot and one ERC-165 map slot each — while `HASSignatureVerifier`
 (accounts), `HederaExchangeRateAdapter` and `HederaPrngAdapter` (oracles) are stateless: no ERC-7201 slot,
-one ERC-165 map slot each. So Hedera contributes two ERC-7201 slots and five ERC-165 map slots.
+one ERC-165 map slot each. HSSAdapterRecovery shares the HSS namespace and adds its own interface flag.
+So Hedera contributes two ERC-7201 slots and six ERC-165 map slots.
 
 **EIP-7702 storage-collision review (#58 item 7).** The same facets run as an EIP-7702 delegate, executing
 against the *EOA's own storage*. This is collision-safe by construction: every slot the account touches is high

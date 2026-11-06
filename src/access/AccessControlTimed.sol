@@ -10,8 +10,14 @@ import {IAccessControlTimed} from "@lattice/interfaces/access/IAccessControlTime
 /// @title AccessControlTimed
 /// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/access/AccessControl.sol)
 /// @notice Diamond facet exposing AccessControl + per-grant (start, expires) windows.
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source OpenZeppelin v5.1.0
+/// @custom:lattice-requires none;
+/// @custom:lattice-family access
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches lattice.storage.AccessControl;
+/// @custom:lattice-touches lattice.storage.AccessControlTimed;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init AccessControlTimedInit
 contract AccessControlTimed is AccessControl, IAccessControlTimed {
     /// @inheritdoc IAccessControlTimed
     function grantRoleTimed(bytes32 role, address account, uint48 start, uint48 expires) external virtual override {

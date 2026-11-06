@@ -10,7 +10,13 @@ import {ERC20WrapperLib} from "@lattice/tokens/ERC20/libraries/ERC20WrapperLib.s
 ///         {MultiInit}) inside the initializing window opened by the diamond, alongside the base {ERC20Init}; it
 ///         must NOT open its own pre/postInitializer. Reverts with {IERC20Wrapper-ERC20InvalidUnderlying} when
 ///         `underlying_` is the wrapper itself.
+/// @custom:lattice-kind step
 contract ERC20WrapperInit {
+    /// @custom:lattice-initializes ERC20Wrapper;
+    /// @custom:lattice-after none;
+    /// @custom:lattice-same-call Initializable hard enclosing-initializing-window;
+    /// @custom:lattice-param underlying_;
+    /// @custom:lattice-registers-interfaces
     function init(address underlying_) external {
         ERC20WrapperLib.__ERC20Wrapper_init(underlying_);
     }

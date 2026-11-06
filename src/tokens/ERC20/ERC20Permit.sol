@@ -20,8 +20,15 @@ import {NoncesLib} from "@lattice/utils/libraries/NoncesLib.sol";
 ///      - `DOMAIN_SEPARATOR` stays `public view virtual`. OpenZeppelin v5.5 dropped `virtual` (it was already
 ///        `external`); the ABI is the same.
 ///      - Registers {IERC20Permit} for ERC-165 in its init; OpenZeppelin's extension has no ERC-165.
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source OpenZeppelin v5.6.1
+/// @custom:lattice-requires ERC20 convention complete-token-surface;
+/// @custom:lattice-family none
+/// @custom:lattice-owns DOMAIN_SEPARATOR();
+/// @custom:lattice-owns nonces(address);
+/// @custom:lattice-touches lattice.storage.ERC20;
+/// @custom:lattice-touches lattice.storage.Nonces;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init ERC20PermitInit
 contract ERC20Permit is IERC20Permit {
     /// @inheritdoc IERC20Permit
     function permit(address owner, address spender, uint256 value, uint256 deadline, uint8 v, bytes32 r, bytes32 s)

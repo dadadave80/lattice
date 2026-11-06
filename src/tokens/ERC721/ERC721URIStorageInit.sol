@@ -13,7 +13,15 @@ import {ERC721URIStorageLib} from "@lattice/tokens/ERC721/libraries/ERC721URISto
 ///         `__ERC721URIStorage_init` / `__AccessControl_init` guards pass because the window is already open.
 /// @dev `setTokenURI` on the {ERC721URIStorage} facet is gated on `DEFAULT_ADMIN_ROLE`, so seeding that admin
 ///      is intrinsic to deploying a usable per-token-URI token — hence AccessControl is bootstrapped here.
+/// @custom:lattice-kind bundle
 contract ERC721URIStorageInit {
+    /// @custom:lattice-initializes ERC721URIStorage;
+    /// @custom:lattice-initializes AccessControl;
+    /// @custom:lattice-after none;
+    /// @custom:lattice-same-call Initializable hard enclosing-initializing-window;
+    /// @custom:lattice-sequence ERC721URIStorage;AccessControl;
+    /// @custom:lattice-param admin_ authority;
+    /// @custom:lattice-registers-interfaces
     function init(address admin_) external {
         ERC721URIStorageLib.__ERC721URIStorage_init();
         AccessControlLib.__AccessControl_init(admin_);

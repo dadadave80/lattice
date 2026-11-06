@@ -13,8 +13,14 @@ import {ExecutionManifest, ModuleEntity, ValidationConfig} from "@lattice/interf
 ///         `IERC6900Account`) lands in the executor facet; this facet is the install/uninstall half.
 /// @dev Stateless delegator — logic/storage live in {ERC6900ModuleManagerLib}. Part of the ERC-6900 account
 ///      blueprint, an alternative flavor to the ERC-7579 stack (`ERC7579ModuleConfig`).
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source ERC-6900
+/// @custom:lattice-requires AccessControl|AccessControlEnumerable|AccessControlTimed convention role-management-surface;
+/// @custom:lattice-family account-modules
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches diamond.lib.storage.ERC165;
+/// @custom:lattice-touches lattice.storage.ERC6900ModuleManager;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init AccountInit6900
 contract ERC6900ModuleManager {
     /// @notice Installs an execution module from its manifest (execution functions, execution hooks, interface ids).
     function installExecution(address module, ExecutionManifest calldata manifest, bytes calldata installData)

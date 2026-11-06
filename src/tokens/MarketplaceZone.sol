@@ -16,8 +16,13 @@ import {MarketplaceZoneLib} from "@lattice/tokens/libraries/MarketplaceZoneLib.s
 ///      blocklist (pre-fulfillment, skippable); `validateOrder` enforces royalties (post-fulfillment, final
 ///      amounts). Each returns its own selector as Seaport's magic value, else reverts. v1 of #25 — the
 ///      `ContractOffererInterface` (AMM-priced orders) facet is a separate v2 deliverable.
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source Seaport
+/// @custom:lattice-requires AccessControl|AccessControlEnumerable|AccessControlTimed convention role-management-surface;
+/// @custom:lattice-family none
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches lattice.storage.MarketplaceZone;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init MarketplaceZoneInit
 contract MarketplaceZone is ZoneInterface, IMarketplaceZone {
     /// @inheritdoc ZoneInterface
     function authorizeOrder(ZoneParameters calldata zoneParameters) external virtual returns (bytes4) {
