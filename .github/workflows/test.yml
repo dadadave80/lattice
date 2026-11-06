@@ -87,6 +87,17 @@ jobs:
           ./script/test-release-manifest.sh
           ./script/test-release-verification.sh
           ./script/test-release-script-simulation.sh
+          ./script/test-release-notes.sh
+      - name: Render canonical shared-contract release notes
+        run: |
+          ./script/check-release-notes.sh "$RUNNER_TEMP/shared-contract-changes.md"
+          cat "$RUNNER_TEMP/shared-contract-changes.md" >> "$GITHUB_STEP_SUMMARY"
+      - name: Retain release PR comparison
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: shared-contract-changes
+          path: ${{ runner.temp }}/shared-contract-changes.md
+          retention-days: 7
 
   # Formatting needs no compilation, so it runs standalone and fails fast.
   fmt:

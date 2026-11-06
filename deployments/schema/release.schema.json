@@ -171,6 +171,10 @@
           "selectorsHash": {
             "type": "string",
             "pattern": "^0x[0-9a-fA-F]{64}$"
+          },
+          "selectors": {
+            "type": "string",
+            "pattern": "^0x([0-9a-fA-F]{8})*$"
           }
         },
         "required": [
@@ -183,6 +187,7 @@
           "codehash",
           "constructorArgs",
           "nameHash",
+          "selectors",
           "selectorsHash"
         ],
         "additionalProperties": false

@@ -27,6 +27,7 @@ contract GenerateManifest is DeployRelease {
         string name;
         bytes32 nameHash;
         bytes32 salt;
+        bytes selectors;
         bytes32 selectorsHash;
     }
 
@@ -110,7 +111,9 @@ contract JsonRecordWriter is Script {
         bool facet = keccak256(bytes(kind)) == keccak256("facet");
         vm.serializeBytes32(key, "nameHash", facet ? keccak256(abi.encodePacked("lattice.", name)) : bytes32(0));
         vm.serializeBytes32(key, "salt", salt);
-        return vm.serializeBytes32(key, "selectorsHash", facet ? keccak256(IERC8153(at).exportSelectors()) : bytes32(0));
+        bytes memory selectors = facet ? IERC8153(at).exportSelectors() : bytes("");
+        vm.serializeBytes(key, "selectors", selectors);
+        return vm.serializeBytes32(key, "selectorsHash", facet ? keccak256(selectors) : bytes32(0));
     }
 
     /// @dev One allocation prevents quadratic string concatenation across the full release catalog.

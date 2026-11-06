@@ -73,9 +73,20 @@ jobs:
         run: make storage-check
       - name: Generate the checked error and event catalog
         run: make abi-catalog ABI_CATALOG_OUTPUT="$RUNNER_TEMP/errors.json"
+      - name: Append the canonical shared-contract comparison
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ needs.release-please.outputs.tag_name }}
+        run: |
+          ./script/check-release-notes.sh "$RUNNER_TEMP/shared-contract-changes.md" "$RELEASE_TAG"
+          gh release view "$RELEASE_TAG" --json body |
+            jq -r --rawfile notes "$RUNNER_TEMP/shared-contract-changes.md" \
+              -f script/release/append-notes.jq > "$RUNNER_TEMP/release-body.md"
+          gh release edit "$RELEASE_TAG" --notes-file "$RUNNER_TEMP/release-body.md"
       - name: Attach the checked layouts
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           RELEASE_TAG: ${{ needs.release-please.outputs.tag_name }}
-        run: gh release upload "$RELEASE_TAG" script/upgrades/storage-registry.json script/upgrades/storage-layout.baseline "$LATTICE_RELEASE_BUILD_ARCHIVE" "$RUNNER_TEMP/errors.json" --clobber
+        run: gh release upload "$RELEASE_TAG" script/upgrades/storage-registry.json script/upgrades/storage-layout.baseline "$LATTICE_RELEASE_BUILD_ARCHIVE" "$RUNNER_TEMP/errors.json" "$RUNNER_TEMP/shared-contract-changes.md" --clobber

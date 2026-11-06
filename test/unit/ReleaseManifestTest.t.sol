@@ -10,6 +10,7 @@ import {ManifestReader} from "@lattice-script/release/ManifestReader.sol";
 import {ObserveManifest} from "@lattice-script/release/ObserveManifest.s.sol";
 import {LatticeFactory} from "@lattice/LatticeFactory.sol";
 import {ILatticeRegistry} from "@lattice/interfaces/ILatticeRegistry.sol";
+import {IERC8153} from "@lattice/interfaces/external/ercs/IERC8153.sol";
 import {Test} from "forge-std/Test.sol";
 import {Vm} from "forge-std/Vm.sol";
 
@@ -42,11 +43,14 @@ contract ReleaseManifestTest is Test, GenerateManifest {
                 assertEq(record.artifact, facetPaths[i - 2]);
                 assertEq(record.nameHash, keccak256(abi.encodePacked("lattice.", record.name)));
                 assertTrue(record.selectorsHash != bytes32(0));
+                assertEq(record.selectors, IERC8153(record.at).exportSelectors());
+                assertEq(record.selectorsHash, keccak256(record.selectors));
             } else if (i >= 2 + facets.length && i < 2 + facets.length + inits.length) {
                 assertEq(record.name, inits[i - 2 - facets.length]);
                 assertEq(record.artifact, initPaths[i - 2 - facets.length]);
                 assertEq(record.nameHash, bytes32(0));
                 assertEq(record.selectorsHash, bytes32(0));
+                assertEq(record.selectors.length, 0);
             } else if (i >= 2 + facets.length + inits.length) {
                 uint256 at = i - 2 - facets.length - inits.length;
                 assertEq(record.name, libraries[at]);

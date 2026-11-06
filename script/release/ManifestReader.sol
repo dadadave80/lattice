@@ -13,7 +13,7 @@ library ManifestReader {
             vm.parseJsonTypeArray(
                 json,
                 ".contracts",
-                "Identity(address address,string artifact,bytes32 codehash,bytes constructorArgs,bytes32 initCodeHash,string kind,string name,bytes32 nameHash,bytes32 salt,bytes32 selectorsHash)"
+                "Identity(address address,string artifact,bytes32 codehash,bytes constructorArgs,bytes32 initCodeHash,string kind,string name,bytes32 nameHash,bytes32 salt,bytes selectors,bytes32 selectorsHash)"
             ),
             (GenerateManifest.ContractIdentity[])
         );

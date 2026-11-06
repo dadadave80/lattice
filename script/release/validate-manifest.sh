@@ -30,7 +30,7 @@ deployer=$(jq -r '.deployer.address | ascii_downcase' "$release")
 version=$(jq -r '.lattice.version' "$release")
 owner=$(jq -r '.initialOwner' "$release")
 registry=$(jq -r '.contracts[] | select(.kind == "registry") | .address' "$release")
-while IFS=$'\t' read -r name kind at salt init_hash args name_hash selectors_hash; do
+while IFS=$'\t' read -r name kind at salt init_hash args name_hash selectors_hash selectors; do
     digest=$(cast keccak "0xff${deployer#0x}${salt#0x}${init_hash#0x}")
     [ "$at" = "0x${digest:26}" ] || fail "$name CREATE2 prediction differs"
     expected_name_hash="0x$(printf '%064d' 0)"
@@ -43,11 +43,17 @@ while IFS=$'\t' read -r name kind at salt init_hash args name_hash selectors_has
     if [ "$kind" = facet ]; then
         expected_name_hash=$(cast keccak "lattice.$name")
         [ "$selectors_hash" != "0x$(printf '%064d' 0)" ] || fail "$name missing selector commitment"
+        [ "$selectors_hash" = "$(cast keccak "$selectors")" ] || fail "$name selector bytes differ from commitment"
+        jq -e --arg name "$name" '
+            .contracts[] | select(.name==$name) | .selectors[2:] | [scan(".{8}")] |
+            length>0 and (length == (unique | length))
+        ' "$release" >/dev/null || fail "$name empty or duplicate selectors"
     else
         [ "$selectors_hash" = "0x$(printf '%064d' 0)" ] || fail "$name is not a facet"
+        [ "$selectors" = 0x ] || fail "$name is not a facet but exports selectors"
     fi
     [ "$salt" = "$expected_salt" ] && [ "$args" = "$expected_args" ] && [ "$name_hash" = "$expected_name_hash" ] || fail "$name salt, constructor arguments or name hash differ"
-done < <(jq -r '.contracts[] | [.name,.kind,(.address|ascii_downcase),.salt,.initCodeHash,(.constructorArgs|ascii_downcase),.nameHash,.selectorsHash] | @tsv' "$release")
+done < <(jq -r '.contracts[] | [.name,.kind,(.address|ascii_downcase),.salt,.initCodeHash,(.constructorArgs|ascii_downcase),.nameHash,.selectorsHash,(.selectors|ascii_downcase)] | @tsv' "$release")
 [ "$#" = 2 ] || exit 0
 chain=$2
 json_object "$chain"

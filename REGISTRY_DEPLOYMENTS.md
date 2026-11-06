@@ -40,6 +40,21 @@ Anvil and Foundry's test EVM pre-deploy the proxy. Tests can restore its runtime
 CREATE when the proxy is missing ([`BaseDeploy._facet`](script/base/BaseDeploy.s.sol)); that fallback
 has no canonical release address.
 
+## Comparing canonical releases
+
+`make release-notes PREVIOUS=deployments/release-<old>.json CURRENT=deployments/release-<new>.json`
+prints a deterministic Markdown comparison of shared contracts: additions/removals, runtime codehash,
+creation hash and address changes, and each facet's added/removed selectors. Use `PREVIOUS=-` for the
+first canonical manifest. Each identity contains the packed `exportSelectors()` bytes in `selectors`;
+the validator checks their `selectorsHash` commitment. Non-facets use empty `0x` bytes and a zero hash.
+This compares identities and selector sets; it does not establish storage or upgrade compatibility.
+
+The release-manifest CI job renders the newest committed canonical manifests into its job summary
+and `shared-contract-changes` artifact, including on Release Please PRs. It reports the absence of a
+canonical manifest explicitly. The release workflow selects its exact tag, appends the comparison
+after the Release Please changelog, and attaches `shared-contract-changes.md`. There is no historical
+schema-v1 baseline for the first canonical release; the synthetic schema fixtures are not releases.
+
 ## Salt formulas
 
 Salts are **raw protocol salts** — human-readable strings hashed with keccak256, containing no

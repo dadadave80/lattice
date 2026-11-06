@@ -118,6 +118,10 @@ release-build-check: ## Canonical compiler/EVM/metadata settings and locked depe
 release-manifests: ## Compare two clean current builds, validate schemas/status and rebuild any published goldens
 	./script/check-release-manifests.sh
 
+.PHONY: release-notes
+release-notes: ## Markdown shared-contract diff (PREVIOUS=<manifest|->, CURRENT=<manifest>)
+	./script/release-notes.sh "$(PREVIOUS)" "$(CURRENT)"
+
 .PHONY: release-manifest
 release-manifest: ## Offline identities (VERSION, TAG, OWNER, PUBLICATION=fixture|release, DESTINATION required)
 	./script/release-manifest.sh generate "$(VERSION)" "$(TAG)" "$(OWNER)" "$(PUBLICATION)" "$(DESTINATION)"
@@ -158,6 +162,7 @@ scripts-check: ## Regression tests for the CI helper scripts (closing-keyword pa
 	./script/test-storage-registry.sh
 	./script/test-error-event-catalog.sh
 	./script/test-release-manifest.sh
+	./script/test-release-notes.sh
 	./script/test-release-verification.sh
 
 .PHONY: abi-catalog
