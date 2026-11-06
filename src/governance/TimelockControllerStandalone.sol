@@ -37,16 +37,8 @@ contract TimelockControllerStandalone is TimelockController, AccessControl, Init
     /// @param admin The address to grant DEFAULT_ADMIN_ROLE to.
     ///              Pass address(0) to leave administration to the timelock itself only.
     constructor(uint256 minDelay, address[] memory proposers, address[] memory executors, address admin) initializer {
-        // Only grant DEFAULT_ADMIN_ROLE to a non-zero admin; a zero admin means
-        // "self-administered only" — address(this) receives the role unconditionally
-        // inside __TimelockController_init.
-        if (admin != address(0)) {
-            AccessControlLib.__AccessControl_init(admin);
-        } else {
-            // Still satisfy AccessControl's checkInitializing requirement and register interface
-            // without granting the role to address(0).
-            AccessControlLib.registerInterface();
-        }
+        // A zero admin means self-administration, never a role for address(0).
+        AccessControlLib.__AccessControl_init(admin == address(0) ? address(this) : admin);
         TimelockControllerLib.__TimelockController_init(minDelay, proposers, executors, admin);
     }
 
