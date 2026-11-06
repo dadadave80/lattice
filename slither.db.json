@@ -100,9 +100,30 @@
   {
     "check": "msg-value-in-nonpayable",
     "impact": "High",
+    "id": "7bb9f448d3b24639b9d37d3eed5165f3a866157ab12b72cfa7352a68226ce237",
+    "description": "HyperbridgeGatewayAdapterLib._dispatch(HyperbridgeGatewayAdapterStorage,bytes,bytes,uint256,uint256,bytes32) (src/crosschain/hyperbridge/HyperbridgeGatewayAdapterLib.sol#381-400) uses msg.value but is not reachable from any payable function\n",
+    "reason": "False positive: private library helper called only by internal sendMessageWithFee, reached from the two payable HyperbridgeGatewayAdapter send entry points. Positive msg.value selects the bounded native path; zero retains ERC20 payment. The detector misses facet-to-library reachability. Native real-proxy dispatch/refund and zero-value ERC20 regressions pass on identical source."
+  },
+  {
+    "check": "msg-value-in-nonpayable",
+    "impact": "High",
+    "id": "f0e2d0db10e3b092abe6bedff1f093116aae938b2491fe89331fc01170c6f90b",
+    "description": "HyperbridgeGatewayAdapterLib._dispatchNative(address,DispatchPost) (src/crosschain/hyperbridge/HyperbridgeGatewayAdapterLib.sol#404-422) uses msg.value but is not reachable from any payable function\n",
+    "reason": "False positive: private library helper reached only from _dispatch for positive msg.value under the two payable HyperbridgeGatewayAdapter send entry points. It forwards only the quote within the current-call budget, preserves standing balances and refunds the delta. The detector misses facet-to-library reachability. Positive-budget, prefund, refund-failure rollback and reentry real-proxy regressions cover the path."
+  },
+  {
+    "check": "msg-value-in-nonpayable",
+    "impact": "High",
     "id": "42370247d87ef7915bfaad20fca072dd0519a75833061ce57739584592979c87",
     "description": "HyperbridgeGatewayAdapterLib.sendMessage(bytes,bytes,bytes[]) (src/crosschain/hyperbridge/HyperbridgeGatewayAdapterLib.sol#208-215) uses msg.value but is not reachable from any payable function\n",
     "reason": "False positive: internal library function. Every src caller reaches it only from payable entry points (HyperbridgeGatewayAdapter.sendMessage); the detector does not follow facet-to-library calls."
+  },
+  {
+    "check": "msg-value-in-nonpayable",
+    "impact": "High",
+    "id": "37ad74cb32c88ae226e387fc50e8da833fb5f51815dfc08395b7177a15175329",
+    "description": "HyperbridgeGatewayAdapterLib.sendMessageWithFee(bytes,bytes,uint256) (src/crosschain/hyperbridge/HyperbridgeGatewayAdapterLib.sol#229-248) uses msg.value but is not reachable from any payable function\n",
+    "reason": "False positive: internal library function called only by payable HyperbridgeGatewayAdapter.sendMessageWithFee and, through internal sendMessage, payable HyperbridgeGatewayAdapter.sendMessage. The internal calls preserve msg.value; the detector misses facet-to-library reachability. Positive-value real-proxy tests cover both entry points and the MessageSent native budget."
   },
   {
     "check": "msg-value-in-nonpayable",
@@ -173,6 +194,20 @@
     "id": "8981f0e74703c42944a8b27f58f6eb94b87da8720bb1c3fec595487a4b3b3741",
     "description": "StargateBridgeAdapterLib.sendToken(IStargateBridgeAdapter.SendTokenParams) (src/crosschain/layerzero/StargateBridgeAdapterLib.sol#164-194) uses msg.value but is not reachable from any payable function\n",
     "reason": "False positive: internal library function. Every src caller reaches it only from payable entry points (StargateBridgeAdapter.sendToken); the detector does not follow facet-to-library calls."
+  },
+  {
+    "check": "msg-value-in-nonpayable",
+    "impact": "High",
+    "id": "21ddb9f0f50510f6702e12bb7d54496bed3a68666e9b005dd7cb6047ff3a8f0e",
+    "description": "StargateBusBridgeAdapterLib._callPool(address,SendParam,uint256) (src/crosschain/layerzero/StargateBusBridgeAdapterLib.sol#73-91) uses msg.value but is not reachable from any payable function\n",
+    "reason": "False positive: private library helper reached only from internal sendTokenBus under payable StargateBusBridgeAdapter.sendTokenBus, after exact-fare admission. It forwards that same current-call msg.value to the configured pool and validates the returned fare/receipt. The detector misses facet-to-library reachability. Real-proxy successful fare forwarding, prefund preservation and invalid-receipt/fare rollback regressions cover the path."
+  },
+  {
+    "check": "msg-value-in-nonpayable",
+    "impact": "High",
+    "id": "d6f71d12601f688e7837f9cf41d80331e810ed1ac5e3a73841e6b04b530c264e",
+    "description": "StargateBusBridgeAdapterLib.sendTokenBus(IStargateBridgeAdapter.SendTokenParams) (src/crosschain/layerzero/StargateBusBridgeAdapterLib.sol#42-62) uses msg.value but is not reachable from any payable function\n",
+    "reason": "False positive: internal library function reached only from payable StargateBusBridgeAdapter.sendTokenBus. The internal call preserves msg.value; exact fare is checked before the token pull. The detector misses facet-to-library reachability. Real-proxy exact-fare enqueue, under/overpayment-before-pull and prefund preservation regressions cover the path."
   },
   {
     "check": "msg-value-in-nonpayable",
