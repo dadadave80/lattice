@@ -177,9 +177,12 @@ temporary grant. Temporary grants/consumption emit no `Approval` event; `allowan
 
 The OpenZeppelin parity scope for [#235](https://github.com/dadadave80/lattice/issues/235) is the pinned 5.6.1
 release. The 5.7 extensions mentioned in [#234](https://github.com/dadadave80/lattice/issues/234)
-(ERC3009/TransferAuthorization and ERC721/ERC1155 Crosschain) remain deferred to separate review. The existing
-ERC1363/movement-family hazard is still an integrator exclusion rather than a generic cut-time rejection;
-temporary approval does not resolve that issue's separate pairing acceptance condition.
+(ERC3009/TransferAuthorization and ERC721/ERC1155 Crosschain) remain deferred to separate review.
+The [checked recipe policy](../adr/0026-checked-recipe-data-and-seams.md) rejects ERC1363 with
+ERC20Pausable, ERC20Votes or GovernedVault before shared implementation resolution, with
+[composition regressions](../../test/composability/CheckedRecipeCompositionTest.t.sol).
+Arbitrary authorized diamond cuts can bypass this script policy. The temporary allowance policy leaves
+the movement model unchanged.
 
 ### ERC-721 and ERC-1155
 
