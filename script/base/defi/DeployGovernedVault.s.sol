@@ -207,7 +207,7 @@ contract DeployGovernedVault is BaseDeploy {
         atomicContext.bindings[1] = "factory.deploy([],cuts,init,calldata,salt)";
         atomicContext.conditions = new string[](1);
         atomicContext.conditions[0] =
-        "create and initialize are one factory transaction; an occupied caller-bound salt reverts";
+            "create and initialize are one factory transaction; after argument validation, an occupied caller-bound salt returns the existing address and ignores the replacement recipe/init";
         result.deploymentContexts[1] = atomicContext;
     }
 

@@ -36,7 +36,7 @@ contract DeploySafeDiamondCut is BaseDeploy {
     /// @notice Builds the Safe-gated cut diamond cuts + initializer (no broadcast, no proxy deploy).
     /// @param admin The address granted `DEFAULT_ADMIN_ROLE` (manages guardians and resumes operation).
     /// @param safe The Gnosis Safe multisig pinned as the sole cut authority.
-    /// @param minThreshold The minimum signature threshold the pinned Safe must enforce.
+    /// @param minThreshold Minimum Safe signature threshold checked during initialization admission only.
     /// @return cuts The facet cuts (ERC165 + Loupe + AccessControl + EmergencyStop + SafeDiamondCut).
     /// @return init The {SafeDiamondCutInit} initializer address.
     /// @return initCalldata The `init(admin, safe, minThreshold)` calldata.
@@ -81,14 +81,14 @@ contract DeploySafeDiamondCut is BaseDeploy {
             "address",
             "Safe-compatible-authority",
             "target-configured-safe",
-            "enforced: nonzero and getThreshold() at least minThreshold; caller authenticates the Safe implementation"
+            "init admission: nonzero and getThreshold() at least minThreshold; caller authenticates Safe code and its ongoing signing policy"
         );
         variant.inputs[2] = RecipeParameter(
             "minThreshold",
             "uint256",
             "signature-count",
             "1",
-            "enforced: greater than zero and no larger than Safe threshold"
+            "init admission only: greater than zero and no larger than current Safe threshold; not stored as ongoing policy"
         );
         string[] memory bindings = new string[](3);
         bindings[0] = "admin";
@@ -106,7 +106,10 @@ contract DeploySafeDiamondCut is BaseDeploy {
             "guardian management and emergency resume"
         );
         variant.authorities[1] = RecipeSpecLib.externalAuthority(
-            "SafeDiamondCut", "cutAuthority", "safe", "sole cut authority, with the configured minimum Safe threshold"
+            "SafeDiamondCut",
+            "cutAuthority",
+            "safe",
+            "sole cut authority; minThreshold is init-only admission; Safe controls its later signing policy and setSafe checks replacements against threshold 1"
         );
         variant.conditions = new string[](1);
         variant.conditions[0] = "safe is the sole cut authority; DEFAULT_ADMIN_ROLE does not authorize diamondCut";
@@ -120,7 +123,7 @@ contract DeploySafeDiamondCut is BaseDeploy {
     /// @notice Deploys a Safe-gated cut diamond (broadcasting entrypoint for `forge script ... --broadcast`).
     /// @param admin The governance admin.
     /// @param safe The pinned Safe authority.
-    /// @param minThreshold The minimum Safe signature threshold.
+    /// @param minThreshold Minimum Safe signature threshold checked during initialization admission only.
     /// @return safeDiamond The deployed Safe-gated cut diamond address.
     function run(address admin, address safe, uint256 minThreshold) external returns (address safeDiamond) {
         vm.startBroadcast();

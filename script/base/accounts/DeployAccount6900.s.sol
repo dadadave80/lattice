@@ -115,7 +115,7 @@ contract DeployAccount6900 is AccountDeployBase {
         variant.conditions[2] =
             "Factory runtime codehash does not bind stored cuts; select exact constructor-bound manifest identity, never infer factory blueprint from codehash";
         variant.conditions[3] =
-            "owner() and the unrouted Ownable cut-gate word are distinct authorities; the account is its own cut-gate owner";
+            "The supplied owner receives DEFAULT_ADMIN_ROLE; the unrouted Ownable cut-gate word is diamond-self; this blueprint exposes no owner() route";
         variant.conditions[4] =
             "An initial validation module is not installed; the administrator must install reviewed validation/execution modules before normal ERC4337 use";
         result.variants[0] = variant;

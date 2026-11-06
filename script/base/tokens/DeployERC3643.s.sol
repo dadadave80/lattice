@@ -128,7 +128,7 @@ contract DeployERC3643 is BaseDeploy {
                 "bool",
                 "profile-switch",
                 i == 0 ? "false" : "true",
-                i == 0 ? "profile: false" : "profile: true; requires Cancun EIP1153 transient storage"
+                i == 0 ? "profile: false" : "profile: true"
             );
             string[] memory bindings = new string[](9);
             for (uint256 j; j < bindings.length; ++j) {
@@ -152,7 +152,7 @@ contract DeployERC3643 is BaseDeploy {
                 "each config.agents element",
                 "retained explicit agent memberships; no DEFAULT_ADMIN_ROLE bootstrap grant"
             );
-            variant.conditions = new string[](4);
+            variant.conditions = new string[](5);
             variant.conditions[0] =
                 "Closed immutable profile: admission validates exact proxy/facet runtime hashes and selector routes both before and after external initialization callbacks";
             variant.conditions[1] =
@@ -160,7 +160,9 @@ contract DeployERC3643 is BaseDeploy {
             variant.conditions[2] =
                 "External identity storage and compliance require predeployment counterfactual binding/authorization; caller authenticates all external component behavior";
             variant.conditions[3] =
-                "Claim topics, trusted issuers and investor identities require post-deployment setup; owner is not implicitly an agent and no DEFAULT_ADMIN_ROLE is granted";
+                "Claim topics, trusted issuers and investor identities require post-deployment setup; tokens start paused and an explicitly configured agent must unpause after setup; owner is not implicitly an agent and no DEFAULT_ADMIN_ROLE is granted";
+            variant.conditions[4] =
+                "Both profiles require Cancun EIP1153: the ERC3643 execution lock and shared allowance spending use native transient storage even when temporaryApproval=false";
             result.variants[i] = variant;
         }
         result.deploymentContexts = new RecipeDeploymentContext[](1);
@@ -169,6 +171,17 @@ contract DeployERC3643 is BaseDeploy {
             "run((address,address[],string,string,uint8,address,address,address,bool))",
             result.variants[0],
             "buildCuts(config)"
+        );
+        context.inputs = new RecipeParameter[](result.variants[0].inputs.length);
+        for (uint256 i; i < context.inputs.length; ++i) {
+            context.inputs[i] = result.variants[0].inputs[i];
+        }
+        context.inputs[8] = RecipeParameter(
+            "config.temporaryApproval",
+            "bool",
+            "profile-switch",
+            "false",
+            "false selects the base profile; true selects temporary approval; both profiles require Cancun EIP1153"
         );
         context.variants = new string[](2);
         context.variants[0] = result.variants[0].id;

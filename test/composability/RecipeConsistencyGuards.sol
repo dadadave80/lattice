@@ -18,6 +18,7 @@ import {
     RecipeSpec,
     RecipeVariant
 } from "@lattice-script/lib/RecipeSpec.sol";
+import {ExpectedRecipeRoute, RecipeSeamExpectations} from "@lattice-test/composability/RecipeSeamExpectations.sol";
 import {CanonicalRecipeSeamOracle} from "@lattice-test/composability/RecipeSeamOracleTest.t.sol";
 import {ReleasedRecipeGuards} from "@lattice-test/composability/ReleasedRecipeGuards.sol";
 import {LatticeVersion} from "@lattice/LatticeVersion.sol";
@@ -28,6 +29,8 @@ import {IERC8153} from "@lattice/interfaces/external/ercs/IERC8153.sol";
 /// @notice Compare every typed canonical builder fixture with its data, then observe real proxy seam routes.
 /// @dev Literal fixture names also feed a separate source-ledger oracle, independent of declared allowedOwners.
 abstract contract RecipeConsistencyGuards is ReleasedRecipeGuards, CanonicalRecipeSeamOracle {
+    error MissingIndependentSeamOracle(string recipe, bytes4 selector);
+
     bytes private _expectedVariant;
     string private _canonicalRecipe;
     bool private _parallelAssembly;
@@ -54,12 +57,34 @@ abstract contract RecipeConsistencyGuards is ReleasedRecipeGuards, CanonicalReci
     function _expectRecipe(RecipeSpec memory spec, uint256 variant, string memory fixedRecipeName) internal {
         assertEq(spec.name, fixedRecipeName, "fixture recipe identity");
         assertLt(variant, spec.variants.length, "missing typed variant");
+        _assertIndependentOracleCoverage(spec.variants[variant], fixedRecipeName);
         _expectedVariant = abi.encode(spec.variants[variant]);
         _canonicalRecipe = fixedRecipeName;
     }
 
+    function _assertIndependentOracleCoverage(RecipeVariant memory variant, string memory fixedRecipeName)
+        private
+        pure
+    {
+        ExpectedRecipeRoute[] memory fixedRoutes = RecipeSeamExpectations.forRecipe(fixedRecipeName);
+        for (uint256 i; i < variant.seams.length; ++i) {
+            RecipeSeam memory seam = variant.seams[i];
+            bool active = true;
+            for (uint256 j; j < seam.participants.length; ++j) {
+                if (!RecipePlanLib.contains(variant.facets, seam.participants[j])) active = false;
+            }
+            if (!active) continue;
+            bool covered;
+            for (uint256 j; j < fixedRoutes.length; ++j) {
+                if (fixedRoutes[j].selector == seam.selector) covered = true;
+            }
+            if (!covered) revert MissingIndependentSeamOracle(fixedRecipeName, seam.selector);
+        }
+    }
+
     function _assertRecipeCuts(FacetCut[] memory actual, RecipeVariant memory expected) internal view {
         assertEq(actual.length, expected.facets.length, "recipe ordered cut count");
+        bytes4[][] memory exports = new bytes4[][](actual.length);
         for (uint256 i; i < actual.length; ++i) {
             RecipeFacet memory declaration = expected.facets[i];
             address owner = _facetAddresses[declaration.name];
@@ -74,6 +99,7 @@ abstract contract RecipeConsistencyGuards is ReleasedRecipeGuards, CanonicalReci
                 assembly ("memory-safe") { selector := mload(add(add(packed, 32), mul(j, 4))) }
                 exported[j] = selector;
             }
+            exports[i] = exported;
             bytes4[] memory selectors;
             if (declaration.selection == RecipeSelectorSelection.All) {
                 selectors = exported;
@@ -92,6 +118,9 @@ abstract contract RecipeConsistencyGuards is ReleasedRecipeGuards, CanonicalReci
             }
             assertEq(abi.encode(actual[i].functionSelectors), abi.encode(selectors), "recipe selector selection/order");
         }
+        // Validate the spec's own declarations too: a builder may be correct while its metadata drops a seam.
+        RecipePlanLib.validateEarly(expected.facets, expected.seams);
+        RecipePlanLib.validateCuts(expected.facets, expected.seams, actual, exports);
     }
 
     function _has(bytes4[] memory values, bytes4 value) private pure returns (bool) {

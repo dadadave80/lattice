@@ -58,4 +58,34 @@ contract RecipeSeamCorrelationTest is ReleasedRecipeGuards, CanonicalRecipeSeamO
         );
         this.assertFixedOracle(diamond);
     }
+
+    function test_DroppedParticipantCannotDeactivateFixedCanonicalOracle() public {
+        DeployERC4626 recipe = new DeployERC4626();
+        (, address init, bytes memory data) = recipe.buildCuts(address(0), "Dropped Vault", "DV", 3);
+        RecipeSpec memory spec = recipe.recipeSpec();
+        RecipeVariant memory changed = spec.variants[0];
+        // Remove both ERC4626 cut entries. Its declared seam is now inactive, but the fixed fixture
+        // identity still obliges this topology to route decimals through the canonical vault facet.
+        RecipeFacet[] memory facets = new RecipeFacet[](changed.facets.length - 2);
+        uint256 next;
+        for (uint256 i; i < changed.facets.length; ++i) {
+            if (i != 2 && i != 3) facets[next++] = changed.facets[i];
+        }
+        address diamond = new CheckedDeclaredPlanFixture().assemble(facets, changed.seams, init, data);
+        address actual = _predictedSeamOwner("ERC20");
+        address canonical = _predictedSeamOwner("ERC4626");
+        bytes4 selector = bytes4(keccak256("decimals()"));
+        assertEq(IDiamondLoupe(diamond).facetAddress(selector), actual);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                CanonicalRecipeSeamOracle.WrongCanonicalSeam.selector,
+                "DeployERC4626",
+                selector,
+                "ERC4626",
+                canonical,
+                actual
+            )
+        );
+        this.assertFixedOracle(diamond);
+    }
 }
