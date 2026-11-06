@@ -20,25 +20,15 @@ import {HTS_SYSTEM_CONTRACT} from "@lattice/tokens/hedera/HTSAdapterLib.sol";
 /// Enabling fork tests:
 ///   export HEDERA_TESTNET_RPC_URL=<hedera-testnet-json-rpc-relay>
 ///   export HEDERA_TEST_TOKEN=<live-hedera-testnet-HTS-token>
-///   script/config/hedera/forge-hedera.sh test --match-path "test/fork/HTSAdapterFork.t.sol"
+///   FOUNDRY_PROFILE=hedera forge test --match-path "test/fork/HTSAdapterFork.t.sol"
 ///
 /// Without HEDERA_TEST_TOKEN set, all tests in this contract are skipped.
 ///
-/// {test_Fork_AssociateTokenCannotExecuteHTSOnAFork} is the one test that opens a fork. It is skipped unless you
-/// also opt in, and it must run through the command above (Foundry 1.7.1):
-///   export HEDERA_TEST_FORK=true
-///
 /// @dev Only {test_Fork_AssociateTokenCannotExecuteHTSOnAFork} forks, and it opens the fork in its own body
-///      rather than in `setUp`, so the relay-backed test never depends on forking. It needs the Hedera-pinned
-///      Foundry: by default Foundry 1.8.x (1.8.1 and 1.8.5 measured) fetches accounts with EIP-1898
-///      block-hash objects, which Hedera's relay rejects (`Invalid parameter 1: The value passed is not valid:
-///      [object Object]`), aborting the test with a database error no `try`/`catch` can turn into a skip.
-///      Under Foundry 1.7.1 — what `script/config/hedera/forge-hedera.sh` runs — it forks hashio and passes
-///      (2026-09-12, re-run 2026-10-08). Foundry 1.8.5 with `--fork-state-by-number` also passes (2026-10-08),
-///      but the wrapper stays the supported route until #227 retires it. The separate `HEDERA_TEST_FORK`
-///      opt-in exists because plain `forge test` and `make test-fork` run the shared pin, where setting
-///      HEDERA_TEST_TOKEN alone must not turn the suite red. {test_Fork_RelayEthCallSeesALiveHTSToken} works
-///      on either version: `vm.rpc` addresses the endpoint by its `rpc_endpoints` alias and never opens a fork.
+///      rather than in `setUp`, so the relay-backed test never depends on forking. Both run on the shared
+///      Foundry pin with the same RPC/token fixtures. Opening the fork does not make native system contracts
+///      executable in revm. {test_Fork_RelayEthCallSeesALiveHTSToken} instead uses `vm.rpc` to address the
+///      endpoint by its `rpc_endpoints` alias without opening a fork.
 contract HTSAdapterFork is HTSAdapterTestBase {
     /// @dev The `rpc_endpoints` alias (chain 296), shared by the fork and the relay `eth_call`.
     string constant HEDERA_TESTNET = "hedera-testnet";
@@ -63,7 +53,6 @@ contract HTSAdapterFork is HTSAdapterTestBase {
     ///         a typed revert — were the relay to report NO code, the `call` would succeed with empty
     ///         returndata and `abi.decode` would bubble a dataless revert instead.
     function test_Fork_AssociateTokenCannotExecuteHTSOnAFork() public {
-        if (!vm.envOr("HEDERA_TEST_FORK", false)) vm.skip(true);
         vm.createSelectFork(HEDERA_TESTNET);
         diamond = _deployHTSAdapter(admin);
         htsAdapter = HTSAdapter(diamond);

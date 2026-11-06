@@ -4,9 +4,9 @@ Mount Hedera's system contracts as Diamond facets: hold and issue HTS tokens, ve
 signatures, read the network exchange rate, draw a native random seed, and schedule your own future calls.
 The contracts are unaudited. [Verification status](#verification-status) records dated live probes and
 read-only checks, limited to their observed source and toolchain. Behaviours marked **assumed**, including
-probe6's native callback/sender, still need on-chain confirmation; a broadcast on the current shared
-Foundry pin remains unverified. Offline generation-safety tests, unsigned plans and dry runs are separate
-evidence.
+probe6's native callback/sender, still need on-chain confirmation. A shared Foundry 1.9.0 booking
+succeeded on 2026-11-06; its later scheduled call failed native payer authorization before observed EVM
+entry. Offline generation-safety tests, unsigned plans and dry runs are separate evidence.
 
 ## The five modules
 
@@ -96,20 +96,21 @@ and deterministic addresses, even where executable code is identical. Reproduce 
 from its release tag and settings. Build and deploy everything Hedera-bound under the dedicated profile:
 
 ```sh
-script/config/hedera/forge-hedera.sh build --skip test script
+FOUNDRY_PROFILE=hedera forge build --skip test script
 ```
 
-Deploy with the canonical recipe, through the same wrapper (the relay note below explains the pin):
+Use the shared pinned Foundry 1.9.0 binary with the default fork backend. Deploy with the canonical recipe:
 
 ```sh
-script/config/hedera/forge-hedera.sh script script/base/tokens/DeployHTSAdapter.s.sol \
+FOUNDRY_PROFILE=hedera forge script script/base/tokens/DeployHTSAdapter.s.sol \
     --sig "run(address)" <ADMIN> \
     --rpc-url hedera-testnet --account <keystore> --broadcast --slow --legacy \
     --verify --verifier sourcify
 ```
 
-That command without `--broadcast` simulates cleanly against hedera-testnet (checked 2026-09-12 and 2026-10-08).
-Sourcify verification under the pin is still unconfirmed — probe 8 in the table below.
+Earlier versions of that command without `--broadcast` simulated cleanly against hedera-testnet on
+2026-09-12 and 2026-10-08. The dated shared-pin checks below record their exact source and endpoint.
+Sourcify verification remains unconfirmed — probe 8 in the table below.
 
 Keep `[profile.hedera]` on the canonical Cancun target. A future target change needs a coordinated
 release-build decision and updated reproducibility checks, rather than a chain-local compiler override.
@@ -117,9 +118,16 @@ release-build decision and updated reproducibility checks, rather than a chain-l
 `hedera` (295) and `hedera-testnet` (296) are already named RPC aliases in `foundry.toml`; set
 `HEDERA_RPC_URL` / `HEDERA_TESTNET_RPC_URL` in `.env`.
 
-**Run Hedera `forge script` work on Foundry 1.7.1.** By default, Foundry 1.8 cannot reach Hedera's JSON-RPC
-relay from `forge script` or a forking test; 1.7.1 can. The two versions ask the relay for account state
-differently (against hashio; 1.8.1 measured 2026-09-12, 1.7.1 re-traced 2026-10-08):
+### Shared pin and historical relay compatibility
+
+The shared Foundry pin is **1.9.0** for Hedera as well as other chains. Use
+`FOUNDRY_PROFILE=hedera` explicitly and keep the default fork backend. The successful shared-pin
+booking below completes the broadcast condition that had kept a separate Hedera toolchain in use;
+that exception is retired. It does not establish native scheduled-payer authorization or the callback sender.
+
+The following records explain the earlier exception. In the 2026-09/10 measurements, Foundry 1.7.1
+could reach Hedera's relay while the measured 1.8 defaults could not. The versions asked for account
+state differently (hashio; 1.8.1 measured 2026-09-12, 1.7.1 re-traced 2026-10-08):
 
 ```
 forge 1.7.1 -> eth_getTransactionCount(addr, "0x279521e")                     exit 0
@@ -127,21 +135,23 @@ forge 1.8.1 -> eth_getTransactionCount(addr, {"blockHash": "0x671a…", ...})   
                Invalid parameter 1: The value passed is not valid: [object Object].
 ```
 
-In the 2026-09/10 measurements, 1.7.1 asked for state at a block number (and the sender's first nonce at
-`"latest"`). 1.8's fork backend sent an EIP-1898 block-hash object, `{"blockHash": …, "requireCanonical": false}`.
-On `eth_getTransactionCount`, `eth_getBalance`, `eth_getCode` and `eth_getStorageAt`, the then-deployed Hedera
-relay (`hiero-json-rpc-relay`) validated the block parameter as a string (a number, a tag or a bare hash), so
-it rejected every EIP-1898 object with `-32602`, and `eth_getCode` also rejected a bare hash (`-39012`).
-`eth_call` accepted `{"blockHash": …}` and `{"blockNumber": …}` but rejected the `requireCanonical` key, so all
-five methods rejected the exact object 1.8 sent. EIP-1898 is standard
-Ethereum JSON-RPC, and so is the older form. Measured 2026-09-12 with a script that deploys nothing: on 1.8.1 no
-flag avoids it (`--legacy`, `--slow`, `--skip-simulation` with and without `--broadcast`, `--fork-block-number`,
-`--no-storage-caching`, `--offline`, `--sender-nonce`, `--unlocked`, `--sender`, `--estimate`), and changing relay
-does not help — a QuickNode Hedera-testnet endpoint returns the byte-identical error with the same relay Request-ID
-format.
+In those measurements, 1.7.1 used a block number (and `"latest"` for the sender's first nonce).
+1.8's fork backend sent `{"blockHash": …, "requireCanonical": false}`. The then-deployed relay
+validated the block parameter as a string on `eth_getTransactionCount`, `eth_getBalance`,
+`eth_getCode` and `eth_getStorageAt`, rejecting EIP-1898 objects with `-32602`; `eth_getCode` also
+rejected a bare hash with `-39012`. `eth_call` accepted `{blockHash}` and `{blockNumber}` but rejected
+`requireCanonical`. Both EIP-1898 and the older number form are standard Ethereum JSON-RPC.
+Measured 2026-09-12 with a script that deployed nothing, none of the tested 1.8.1 options avoided the
+failure: `--legacy`, `--slow`, `--skip-simulation` with and without `--broadcast`, `--fork-block-number`,
+`--no-storage-caching`, `--offline`, `--sender-nonce`, `--unlocked`, `--sender` and `--estimate`.
+QuickNode returned the same error and relay Request-ID format. The official
+[relay issue #5826](https://github.com/hiero-ledger/hiero-json-rpc-relay/issues/5826) and
+[implementation #5845](https://github.com/hiero-ledger/hiero-json-rpc-relay/pull/5845) track EIP-1898 support.
 
-Re-measured 2026-10-08 against `https://testnet.hashio.io/api` (`relay/0.79.0`), with the `DeployHTSAdapter`
-simulation above (no `--broadcast`, no key) and `HTSAdapterFork` with `HEDERA_TEST_FORK=true`:
+Re-measured 2026-10-08 against `https://testnet.hashio.io/api` (`relay/0.79.0`), with the
+`DeployHTSAdapter` simulation (no broadcast or key) and the opt-in `HTSAdapterFork` suite. The
+[2026-10-08 transcript](https://github.com/dadadave80/lattice/issues/227#issuecomment-6058119157)
+retains every request and relay Request-ID:
 
 | Foundry | `DeployHTSAdapter` simulation | `HTSAdapterFork` forking test |
 | --- | --- | --- |
@@ -151,28 +161,19 @@ simulation above (no `--broadcast`, no key) and `HTSAdapterFork` with `HEDERA_TE
 | 1.8.5 (`51a52c5`), default | `-32602 … [object Object]` | fails with the same database error |
 | 1.8.5 with `--fork-state-by-number` | passes, no block-hash params sent | passes |
 
-`--fork-state-by-number` (also `FOUNDRY_FORK_STATE_BY_NUMBER=true`, which behaved the same in the simulation;
-config key `fork_state_by_number`, not exercised) reaches `forge script` and `forge test` in 1.8.5
-([foundry-rs/foundry#17352](https://github.com/foundry-rs/foundry/pull/17352)); in 1.8.3 and 1.8.4 it is an
-`anvil` flag only. Its help text warns that number-based reads cannot guarantee a consistent snapshot if the chain
-reorganizes and skip the disk state cache, and that transaction replay still needs hash-addressed state. No
-broadcast has been made with it yet, so the wrapper stays the supported route until #227 verifies one and retires
-the exception.
+That historical number-based option, also exposed as `FOUNDRY_FORK_STATE_BY_NUMBER=true`, reached
+Forge scripts, tests and cheatcode forks in 1.8.5 through
+[Foundry #17352](https://github.com/foundry-rs/foundry/pull/17352); it was an Anvil-only option in 1.8.3/1.8.4.
+The 2026-10-08 simulation also accepted the environment form; the `fork_state_by_number` config key
+was not exercised. Number-based reads cannot guarantee a consistent snapshot across a reorganization,
+skip the disk state cache, and do not replace hash reads for transaction replay. No broadcast with that
+option was measured. It is not needed by the current shared-pin workflow.
 
-The repo's shared pin for CI, builds and tests is v1.9.0. The documented Hedera exception remains until
-#227 verifies a broadcast on the shared pin. The historical table above concerns the listed 1.8 releases.
-A read-only recheck on 2026-11-06 against the same endpoint reported `relay/0.80.3`: all 30 requests
+A read-only recheck on 2026-11-06 reported `relay/0.80.3` at hashio: all 30 requests succeeded
 (five state/call methods, each with `latest`, number, bare hash, `{blockHash}`,
-`{blockHash, requireCanonical: false}` and `{blockNumber}`) succeeded. Foundry 1.9.0 (`6056c58`) passed
-`DeployHTSAdapter` simulation and both `HTSAdapterFork` tests on source checkpoint
-`fa606adca0129bedd8dabd54e1392a815234888b`. These checks did not broadcast a transaction.
-Hedera work goes through a wrapper that runs the installed 1.7.1 binary directly under
-`FOUNDRY_PROFILE=hedera`, without touching your active `forge`:
-
-```sh
-foundryup --install v1.7.1    # once; then `foundryup --use <your usual version>` if foundryup switched to it
-script/config/hedera/forge-hedera.sh <forge args…>
-```
+`{blockHash, requireCanonical: false}` and `{blockNumber}`). Foundry 1.9.0 (`6056c58`) passed
+`DeployHTSAdapter` simulation and both `HTSAdapterFork` tests at source checkpoint
+`fa606adca0129bedd8dabd54e1392a815234888b`. Those checks did not broadcast a transaction.
 
 Historical parity check: under `[profile.hedera]`, Foundry 1.7.1 (`4072e48`) and 1.8.5
 (`51a52c5`) resolve the same compiler settings and both build with solc `0.8.36+commit.8a079791`. Re-checked
@@ -195,10 +196,10 @@ files matched that checkpoint. The shared-pin `HTSAdapterFork` tests passed (2 t
 “socket hang up”; it was not retried. That failure was not an EIP-1898 rejection, and no transaction
 was signed or broadcast.
 
-Anything that never opens a fork backend works on **both** versions — `forge create`, `cast send` / `call` /
-`mktx`, and `vm.rpc` inside a test. `--legacy` is worth passing as Hedera's native transaction form, but it is
-not what fixes this: `cast mktx` signs cleanly in both legacy and EIP-1559 form. `--slow` helps against rate
-limits.
+In the historical comparisons, commands that did not open a fork backend also worked on both compared
+versions: `forge create`, `cast send` / `call` / `mktx`, and `vm.rpc` inside a test. Both legacy and EIP-1559
+signing were exercised. The approved booking below used `--legacy`; that option does not fix relay block
+parameter compatibility. `--slow` helps against rate limits.
 
 ## Deterministic deployment: Arachnid, not CreateX
 
@@ -240,15 +241,15 @@ concern does not arise.
   local shape and uses `vm.rpc("eth_call", …)` to hand anything that must really execute to the relay, where
   the mirror node simulates it. In the September/October measurements, the fork reached hashio on 1.7.1
   while the then-shared defaults were rejected for EIP-1898 params. The dated 1.9.0 read-only results above
-  update that observation; a shared-pin broadcast remains unverified. The fork stays behind the
-  `HEDERA_TEST_FORK=true` opt-in and runs through `script/config/hedera/forge-hedera.sh`. Setting
-  `HEDERA_TEST_TOKEN` alone gives you the relay-backed test plus a skip, never a spurious failure.
+  update that observation; the successful shared-pin booking below is separate native evidence. The
+  suite uses the shared binary. With a configured `HEDERA_TESTNET_RPC_URL` and a live
+  `HEDERA_TEST_TOKEN`, both tests run; without the token, both skip.
 
 ## Verification status
 
 The table preserves dated historical live executions and read-only checks; these do not verify the
-remaining assumptions or the current release. Probe6's native callback/sender and a current shared-pin
-broadcast remain unverified; offline generation-safety tests do not establish them.
+remaining assumptions or the current release. The shared-pin booking is confirmed below; probe6's
+native callback/sender remains unverified. Offline generation-safety tests do not establish it.
 `script/config/hedera/ProbeHedera.s.sol` exists to settle the native assumptions and is deliberately not
 broadcast by CI.
 
@@ -259,15 +260,15 @@ broadcast by CI.
 | 3 | The same create with a `contractId` key → 326 | **REFUTED live, 2026-09-12** — minted successfully instead (token `0.0.10506858`, supply 1000 → 1777). The control was degenerate: the key was byte-identical to the diamond's own account key and got elided before verification. See "The delegatable-key rule" |
 | 4 | HTS getters and both HAS auth functions staying `view` (`staticcall`-safe) | partly confirmed — `isToken` answers `(22, true)` through the relay's `eth_call` (2026-09-12); whether a diamond's own `view` facet function may `staticcall` it *inside a transaction* is still assumed |
 | 5 | `redirectForAccount(address(this), …)` giving a diamond unlimited auto-associations | partially measured — the frame succeeded and returned 32 bytes decoding to `15`, so `0x16a` does expose the entrypoint; whether the association limit actually changed is unverified, and `redirectForAccount` stays out of the vendored interface until it is |
-| 6 | `scheduleSelfCall` firing with `msg.sender == address(this)` | still assumed — the attempt reverted `HSSInvalidExpiry`: the probe computed the expiry from the fork clock, 125 s behind consensus time |
+| 6 | `scheduleSelfCall` firing with `msg.sender == address(this)` | unverified — the 2026-09-12 attempt reverted `HSSInvalidExpiry`; the 2026-11-06 raw sender probe booked successfully but its scheduled call failed `INVALID_PAYER_SIGNATURE` before observed EVM entry. No native sender measured |
 | 7 | ED25519 verification through `isAuthorizedRaw` from the ERC-1271 path | assumed |
 | 8 | Sourcify verification reproducing under `FOUNDRY_PROFILE=hedera` | assumed |
 | — | System-contract code shape, **both** networks: `eth_getCode(0x167)` is `0xfe`; `0x168`, `0x169`, `0x16a` and `0x16b` are all empty. (The research brief said `0x16b` also answers `0xfe` — it does not.) | **confirmed live, 2026-09-12** |
 | — | CreateX `0xba5Ed099…ba5Ed` has no code on Hedera mainnet or testnet | **confirmed live, 2026-09-12** |
 | — | The Arachnid proxy `0x4e59b448…956C` has code on Hedera mainnet **and** testnet, byte-identical to `test/helpers/ArachnidProxy.RUNTIME` | **confirmed live, 2026-09-12** |
-| — | `forge script` on Foundry 1.8.1 cannot reach Hedera's relay (its fork backend's EIP-1898 block-hash params are rejected, by hashio and QuickNode alike); Foundry 1.7.1 can, and the probe run was made with it. Whether Foundry or the relay should change is open | **confirmed live, 2026-09-12** |
-| — | The relay (`relay/0.79.0` on hashio) rejected EIP-1898 objects on `eth_getTransactionCount`, `eth_getBalance`, `eth_getCode` and `eth_getStorageAt` with `-32602` (`eth_call` accepts them but rejects the `requireCanonical` key Foundry adds), and Foundry 1.8.3 and 1.8.5 still send them by default. Foundry 1.8.5's `--fork-state-by-number` reaches it in a `forge script` simulation and the forking `HTSAdapterFork` test; a broadcast under it is unverified (#227) | **confirmed live, 2026-10-08** |
-| — | Hashio reported `relay/0.80.3`; all 30 state/call request forms above succeeded. The shared Foundry 1.9.0 pin passed `DeployHTSAdapter` simulation and both `HTSAdapterFork` tests; 1.7.1/1.9.0 build parity holds at `fa606adc`. The shared-pin broadcast needed to retire the wrapper is still unverified (#227) | **read-only checks, 2026-11-06** |
+| — | `forge script` on Foundry 1.8.1 cannot reach Hedera's relay (its fork backend's EIP-1898 block-hash params are rejected, by hashio and QuickNode alike); Foundry 1.7.1 can, and the probe run was made with it. This is historical; relay EIP-1898 support and the shared-pin booking are recorded above and below | **confirmed live, 2026-09-12** |
+| — | The relay (`relay/0.79.0` on hashio) rejected EIP-1898 objects on `eth_getTransactionCount`, `eth_getBalance`, `eth_getCode` and `eth_getStorageAt` with `-32602` (`eth_call` accepts them but rejects the `requireCanonical` key Foundry adds), and Foundry 1.8.3 and 1.8.5 still send them by default. Foundry 1.8.5's `--fork-state-by-number` reaches it in a `forge script` simulation and the forking `HTSAdapterFork` test; no broadcast with that option was measured | **confirmed live, 2026-10-08** |
+| — | Hashio reported `relay/0.80.3`; all 30 state/call request forms above succeeded. The shared Foundry 1.9.0 pin passed `DeployHTSAdapter` simulation and both `HTSAdapterFork` tests; 1.7.1/1.9.0 build parity holds at `fa606adc`. These were read-only checks; the later successful shared-pin broadcast is separate evidence below | **read-only checks, 2026-11-06** |
 
 To run the probes you need a funded testnet account: set `HEDERA_TESTNET_RPC_URL` and `HEDERA_TESTNET_PK`
 in `.env` and fund the derived address from the Hedera portal faucet. Record each outcome in the relevant
@@ -303,16 +304,76 @@ fails, although `completeSelfCall` cannot clear a replacement. Review those lega
 reusing the same business operation; local recovery cannot retroactively wrap or veto them.
 
 Self-call authority remains a trust boundary. Do not install unrestricted public self-call executors.
-The network-fired payer/sender assumption is still **unverified**: probe6 now uses raw `scheduleCall`
+The native payer-authorization/sender path is still **unverified**: probe6 uses raw `scheduleCall`
 to its ungated callback, so the envelope's extra self-call cannot manufacture the measured sender.
 Read `HSSCallScheduled` in that transaction's receipt for its schedule address; `scheduleOf` describes
 tracked jobs, not this raw probe. The existing
 [upstream payer-signature report](https://github.com/hiero-ledger/hiero-consensus-node/issues/27263)
 records two testnet schedules created on 2026-09-12 that failed `INVALID_PAYER_SIGNATURE` before entering
-the EVM. It does not establish the behavior of the current node or the callback sender. Issue
+the EVM. The 2026-11-06 retest below failed at the same native stage. Neither result measures a callback
+sender, and an authorization repair has not been validated. Issue
 [#226](https://github.com/dadadave80/lattice/issues/226) still needs a separately authorized successful
 native callback with its sender, schedule ID, date and measured consensus-node version. Offline mock
 coverage and local generation safety do not satisfy that live acceptance.
+
+### Native retest on 2026-11-06
+
+The first approved [1M booking](https://testnet.mirrornode.hedera.com/api/v1/contracts/results/0xf2d4a225865d90573d64a0a7557baa77b8742b32dbab182e8d7fca20b8d13cf9)
+failed. Its [native action trace](https://testnet.mirrornode.hedera.com/api/v1/contracts/results/0xf2d4a225865d90573d64a0a7557baa77b8742b32dbab182e8d7fca20b8d13cf9/actions?limit=100)
+shows HSS received and consumed 935,804 gas, then failed with `INSUFFICIENT_GAS`. The expiry was still 165 seconds
+in the future. `HSSCallFailed(...,21)` reflects the adapter's failed-frame fallback, not a native UNKNOWN
+response or an expiry diagnosis. No schedule or callback was evidenced by that failed transaction.
+
+A separately approved booking from source
+[`4a7913dfcf10425ec2598723811e5496492f7ac3`](https://github.com/dadadave80/lattice/commit/4a7913dfcf10425ec2598723811e5496492f7ac3)
+used the shared Foundry 1.9.0 binary, `FOUNDRY_PROFILE=hedera`, the default fork backend and a Thirdweb endpoint.
+Its [2M transaction](https://testnet.mirrornode.hedera.com/api/v1/contracts/results/0x7c14969725b69671d533d7a238bfab1c79dd00d4feba6dbacd296af68dd35ab2)
+succeeded at 1793991731.096673104, using 1,446,999 gas. Its
+[native action trace](https://testnet.mirrornode.hedera.com/api/v1/contracts/results/0x7c14969725b69671d533d7a238bfab1c79dd00d4feba6dbacd296af68dd35ab2/actions?limit=100)
+shows HSS received 1,904,788 gas, used 1,409,649 and returned 22 with schedule address
+`0x0000000000000000000000000000000000ad194c`. The transaction input and scheduled body specify
+zero value; the diamond event matches expiry 1793992027, callback 200,000 gas and zero indexed job ID.
+This confirms the shared-pin
+broadcast/booking path that #227 required, independently of the scheduled execution result.
+
+[Schedule 0.0.11344204](https://testnet.mirrornode.hedera.com/api/v1/schedules/0.0.11344204) names payer
+`0.0.10506850`, creator `0.0.10499114` and `wait_for_expiry=true`. Its own
+[scheduled CONTRACTCALL](https://testnet.mirrornode.hedera.com/api/v1/transactions?timestamp=1793992027.007135136&limit=100)
+at 1793992027.007135136 failed `INVALID_PAYER_SIGNATURE`, with no charge. The complete
+[exact-timestamp contract-result list](https://testnet.mirrornode.hedera.com/api/v1/contracts/results?timestamp=1793992027.007135136&limit=100)
+is empty. Its `executed_timestamp` therefore records a failed execution attempt, not a successful
+callback. No native EVM sender or callback log was observed; keep the strict-self guard.
+
+Current public account data identifies the payer key as plain `ContractID(self)`, while the schedule's
+admin key is `DelegatableContractID(self)`. These are distinct native authorities, separate from
+Lattice's scheduler role. Zero recorded Mirror signatures do not establish that no implicit native
+contract authorization existed; current account data does not reconstruct execution-time key history.
+The published [release/0.79 candidate verifier](https://github.com/hiero-ledger/hiero-consensus-node/blob/aa6af6975a737dbd9b7f9605586695cc91709c4d/hedera-node/hedera-schedule-service-impl/src/main/java/com/hedera/node/app/service/schedule/impl/handlers/AbstractScheduleHandler.java#L295)
+and its [explicit tests](https://github.com/hiero-ledger/hiero-consensus-node/blob/aa6af6975a737dbd9b7f9605586695cc91709c4d/hedera-node/hedera-schedule-service-impl/src/test/java/com/hedera/node/app/service/schedule/impl/handlers/AbstractScheduleHandlerTest.java#L76)
+do not let delegated authorization satisfy a plain ContractID payer key. That is a credible explanation
+of this deployment's failure, not an attestation of the deployed node revision or a proven repair.
+Adding `authorizeSchedule` through the same delegated path is not established as a fix. Native payer or
+key changes require a separately reviewed authority/deployment design; no callback authentication is relaxed.
+
+The operator's [testnet upgrade status](https://status.hedera.com/incidents/6qrr40p9mtcb) reported
+v0.79.0 complete before this booking. No paid/native
+`NetworkGetVersionInfo` result was obtained, and the exact deployed source commit remains unknown.
+Relay `web3_clientVersion`, a mirror block's `hapi_version` and published candidate source are separate
+facts; none substitutes for that native software-version measurement.
+
+The two attempts' actual fees are distinct from their gas allowances:
+
+| Attempt | Total charged HBAR | `hbar1` account 0.0.10499114 debit HBAR | Relay debit HBAR |
+| --- | --- | --- | --- |
+| Failed 1M booking | 1.20455715 | 1.20310008 | 0.00145707 |
+| Successful 2M booking | 1.79427876 | 1.79427876 | 0 |
+| Both approvals | 2.99883591 | 2.99737884 | 0.00145707 |
+
+The scheduled failed call reports fee 0 and no transfers; its 200k allowance is not an additional measured
+charge. Both one-operation approvals are consumed. No retry, authorization, cancellation, funding,
+payer/key change or paid query follows from these results. The successful call targeted the existing
+historical diamond/facets; it does not attest their source identity. Recompiling this script can rotate
+metadata for its co-located throwaway probe facet without changing that live target's bytecode.
 
 ### Minimal native sender probe
 
@@ -327,8 +388,12 @@ facet code fingerprints before approving the action. The preflight checks chain 
 both exact routes and the scheduler's `HSS_SCHEDULER_ROLE` through relay reads. Route addresses are trust
 inputs; these checks do not verify historical facet source or prove possession of the scheduler's key.
 The expiry is calculated **after** preflight, from wall-clock time plus 600 seconds, rather than from the
-older fork timestamp. The callback has a 200,000 gas allowance and transfers zero value. The booking call explicitly requests
-1,000,000 gas; verify the recorded transaction limit, including intrinsic gas, in the dry-run JSON.
+older fork timestamp. The callback has a 200,000 gas allowance and transfers zero value. The booking call
+explicitly requests 2,000,000 gas; verify the recorded transaction limit, including intrinsic gas, in the
+dry-run JSON. The 2026-11-06 booking at a 1,000,000 transaction limit forwarded 935,804 gas to native HSS
+and failed there with `INSUFFICIENT_GAS`. The separately approved 2M retest booked successfully, as recorded
+above; the successful budget is not a measured minimum or proof of callback execution. Both one-operation
+approvals are consumed; any further submission requires fresh approval.
 
 Prepare without a key, keystore or broadcast:
 
@@ -339,7 +404,7 @@ FOUNDRY_PROFILE=hedera forge script script/config/hedera/ProbeHedera.s.sol:Probe
     --rpc-url hedera-testnet
 ```
 
-Use the pinned 1.9.0 binary explicitly when validating #227. A `probe6(address,address,address,bytes32)`
+Use the shared pinned 1.9.0 binary. A `probe6(address,address,address,bytes32)`
 dry run, with `--sender <scheduler> --skip-simulation --legacy` and **without** `--broadcast` or
 `--account`, records the one planned call. Its local result cannot establish native success: revm does
 not implement HSS. Inspect the dry-run transaction array, target, zero value, gas and exact nested input.
@@ -364,6 +429,5 @@ Record the actual callback sender, event timestamp, schedule ID, date and **cons
 version**. Keep the relay's `web3_clientVersion` and a mirror block's `hapi_version` as separate facts;
 neither is a measurement of `hederaServicesVersion`. Compare the event sender with both the EVM alias
 and canonical Hedera address, while retaining Solidity's exact `msg.sender == address(this)` question.
-If scheduling or firing fails, preserve the native status and leave #226 open. A successful shared-pin
-booking validates that broadcast path for #227; retirement of the wrapper and its exception requires
-the completed result and a separate reviewed cleanup.
+If scheduling or firing fails, preserve the native status and leave #226 open. The successful shared-pin
+booking above validates that broadcast path for #227; it does not complete #226 or authorize another call.

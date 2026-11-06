@@ -34,6 +34,18 @@ contract Probe6Harness is ProbeHedera {
     }
 }
 
+/// @dev Synthetic forwarding regression only: this floor is not Hedera's actual native gas requirement.
+contract Probe6GasFloorHss {
+    uint256 public entryGas;
+
+    function scheduleCall(address, uint256, uint256, uint64, bytes calldata) external returns (int64, address) {
+        uint256 available = gasleft();
+        require(available >= 1_000_000, "synthetic HSS gas floor");
+        entryGas = available;
+        return (22, address(0x10001));
+    }
+}
+
 contract HederaProbe6Test is Test {
     address immutable ADMIN = address(this);
     bytes32 constant CORRELATION = keccak256("test probe6 attempt");
@@ -117,6 +129,7 @@ contract HederaProbe6Test is Test {
     }
 
     function test_ProbeQueuesExactlyOneZeroValueRootCallAndRawCorrelation() public {
+        vm.expectCall(diamond, 0, uint64(2_000_000), abi.encodePacked(IHSSAdapter.scheduleCall.selector), 1);
         vm.recordLogs();
         vm.startStateDiffRecording();
         (uint256 expiry, bytes memory data) = probe.probe6(diamond, hssFacet, callbackFacet, CORRELATION);
@@ -165,6 +178,32 @@ contract HederaProbe6Test is Test {
         assertEq(logs[0].topics[1], bytes32(uint256(uint160(diamond))));
         assertEq(logs[0].topics[2], CORRELATION);
         assertEq(logs[0].data, abi.encode(vm.getBlockTimestamp()));
+    }
+
+    function test_ProbeBudgetCrossesSyntheticNativeGasFloorThroughRealDiamond() public {
+        vm.etch(HSS_SYSTEM_CONTRACT, address(new Probe6GasFloorHss()).code);
+        Probe6GasFloorHss gasFloor = Probe6GasFloorHss(HSS_SYSTEM_CONTRACT);
+        (, bytes memory oldBudgetInput) = _plan();
+
+        // The old budget cannot deliver a million gas through the diamond's delegatecall and HSS CALL.
+        (bool ok, bytes memory reason) = diamond.call{gas: 1_000_000}(oldBudgetInput);
+        assertFalse(ok);
+        assertEq(
+            reason,
+            abi.encodeWithSelector(IHSSAdapter.HSSCallFailed.selector, IHSSAdapter.scheduleCall.selector, int64(21))
+        );
+        assertEq(gasFloor.entryGas(), 0, "failed native frame rolls back");
+
+        vm.expectCall(diamond, 0, uint64(2_000_000), abi.encodePacked(IHSSAdapter.scheduleCall.selector), 1);
+        vm.recordLogs();
+        (uint256 expiry,) = probe.probe6(diamond, hssFacet, callbackFacet, CORRELATION);
+        assertGe(gasFloor.entryGas(), 1_000_000, "new budget reaches synthetic native floor");
+        assertEq(expiry, probe.clock() + 600);
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        assertEq(logs.length, 1);
+        assertEq(logs[0].emitter, diamond);
+        assertEq(logs[0].topics[1], bytes32(uint256(uint160(SCHEDULE))));
+        assertEq(logs[0].data, abi.encode(expiry, uint256(200_000)));
     }
 
     function test_WrongChainRejected() public {
