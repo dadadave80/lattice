@@ -283,7 +283,7 @@ the whole-transaction snapshots above.
 | Loupe deployment, custom / pinned / latest | 1,580,084 / 1,591,916 / 1,598,527 | 1,575,035 / 1,578,380 / 1,580,991 |
 | 8x16 deployment, custom / mixed / pinned | 5,676,582 / 5,724,185 / 5,760,102 | 5,650,566 / 5,666,153 / 5,678,411 |
 | 16x32 deployment, custom / pinned | 16,779,895 / 16,935,911 | 16,728,007 / 16,786,019 |
-| Governed vault, custom / mixed / all registry | 6,817,007 / 6,850,058 / 7,031,884 | 6,773,232 / 6,756,236 / 6,902,341 |
+| Governed vault, custom / mixed / all registry | 6,803,848 / 6,836,899 / 7,018,725 | 6,760,073 / 6,743,077 / 6,889,182 |
 | Loupe pinned, first deployment / idempotent reuse | 1,591,918 | 2,460 (same diamond) |
 
 The warmed mixed vault is cheaper than its warmed custom equivalent in this workload; the cold mixed
