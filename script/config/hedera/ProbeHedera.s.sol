@@ -244,7 +244,7 @@ contract ProbeHedera is DeployHTSAdapter {
     /// @notice Gas the network reserves for the scheduled callback (an event emit through diamond dispatch).
     uint256 internal constant SCHEDULE_GAS_LIMIT = 200_000;
 
-    /// @notice The {IHSSAdapter-scheduleSelfCall} job id probe 6 books, and the key `scheduleOf` reads back.
+    /// @notice Correlation id for probe 6's raw callback; also identifies historical tracked probe jobs.
     bytes32 internal constant PROBE_JOB_ID = keccak256("lattice.probe.hedera.selfCall");
 
     /// @notice Probe 2 / probe 3 token parameters, and the amount each probe mints to the treasury.
