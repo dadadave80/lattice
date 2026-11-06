@@ -33,6 +33,10 @@ optimizer_runs = 1_000_000
 via_ir = false
 bytecode_hash = "ipfs"
 cbor_metadata = true
+# Native Foundry post-linking: one raw CREATE2 library map in tests and scripts, without solc metadata drift.
+libraries = []
+create2_deployer = "0x4e59b44847b379578588920ca78fbf26c0b4956c"
+create2_library_salt = "0x0000000000000000000000000000000000000000000000000000000000000000"
 
 [profile.ci]
 evm_version = "cancun"

@@ -5,6 +5,7 @@ import {DeployRelease} from "@lattice-script/deploy/DeployRelease.s.sol";
 import {ArachnidDeployer} from "@lattice-script/lib/ArachnidDeployer.sol";
 import {FacetInventory} from "@lattice-script/lib/FacetInventory.sol";
 import {InitInventory} from "@lattice-script/lib/InitInventory.sol";
+import {LibraryInventory} from "@lattice-script/lib/LibraryInventory.sol";
 import {ArachnidProxy} from "@lattice-test/helpers/ArachnidProxy.sol";
 import {MockCreateX} from "@lattice-test/helpers/MockCreateX.sol";
 import {LatticeFactory} from "@lattice/LatticeFactory.sol";
@@ -52,6 +53,45 @@ contract DeployReleaseTest is Test, DeployRelease {
         MockCreateX impl = new MockCreateX();
         vm.etch(CANONICAL, address(impl).code);
         vm.etch(ArachnidProxy.PROXY, ArachnidProxy.RUNTIME);
+    }
+
+    function test_ReleaseLibrary_DeploysMissingCodeAndAttestsPatchedRuntime() public {
+        (string[] memory names, string[] memory artifacts, address[] memory linked) = LibraryInventory.inventory();
+        vm.etch(linked[0], "");
+        vm.setNonceUnsafe(linked[0], 0);
+        ReleaseOutput memory out = this.release(VERSION, address(this));
+        assertEq(out.libraries.length, names.length);
+        for (uint256 i; i < names.length; ++i) {
+            address libraryAt = out.libraries[i];
+            assertEq(libraryAt, linked[i]);
+            assertEq(libraryAt, ArachnidDeployer.predict(LibraryInventory.SALT, keccak256(vm.getCode(artifacts[i]))));
+            assertEq(libraryAt.codehash, LibraryInventory.runtimeHash(vm, artifacts[i], libraryAt));
+            assertTrue(
+                libraryAt.codehash != keccak256(vm.getDeployedCode(artifacts[i])),
+                "library self address must be patched"
+            );
+            bytes memory runtime = libraryAt.code;
+            address embeddedSelf;
+            assembly ("memory-safe") { embeddedSelf := shr(96, mload(add(runtime, 33))) }
+            assertEq(embeddedSelf, libraryAt);
+            assertEq(ILatticeRegistry(out.registry).resolve(libraryAt.codehash), libraryAt);
+            bytes32 nameHash = keccak256(abi.encodePacked("lattice.", names[i]));
+            vm.expectRevert(
+                abi.encodeWithSelector(ILatticeRegistry.LatticeRegistry__RecordNotFound.selector, nameHash, PACKED)
+            );
+            ILatticeRegistry(out.registry).get(nameHash, PACKED);
+        }
+    }
+
+    function test_ReleaseLibrary_RejectsWrongCodeBeforeCoreDeployment() public {
+        (,, address[] memory linked) = LibraryInventory.inventory();
+        vm.etch(linked[0], hex"00");
+        vm.expectRevert("release library: runtime code mismatch");
+        this.release(VERSION, address(this));
+        address registryAt = ArachnidDeployer.predict(
+            REGISTRY_SALT, keccak256(abi.encodePacked(type(LatticeRegistry).creationCode, abi.encode(address(this))))
+        );
+        assertEq(registryAt.code.length, 0);
     }
 
     function test_Release_UsesArachnidWhenBothDeployersExist() public {
@@ -436,17 +476,17 @@ contract DeployReleaseTest is Test, DeployRelease {
     //                                MANIFEST
     //////////////////////////////////////////////////////////////////////////*//
 
-    /// @notice The manifest writer produces `<root>/<chainid>/release-<version>.json` with the top-level
+    /// @notice The manifest writer produces `<root>/<chainid>/plan-<version>.json` with the top-level
     ///         addresses and one entry per facet carrying the two pins the registry records (codehash +
     ///         selectorsHash). Writes under an isolated test root so a REAL committed manifest under
     ///         `deployments/<chainid>/` is never overwritten or deleted, and cleans up only its own tree.
     function test_Manifest_WrittenAndWellFormed() public {
         DeployRelease.ReleaseOutput memory out = this.release(VERSION, address(this));
         string memory testRoot = "deployments/.test-tmp";
-        _writeManifest(testRoot, VERSION, out);
+        _writeDeploymentPlan(testRoot, VERSION, out);
 
         string memory dir = string.concat(testRoot, "/", vm.toString(block.chainid));
-        string memory path = string.concat(dir, "/release-", VERSION, ".json");
+        string memory path = string.concat(dir, "/plan-", VERSION, ".json");
         assertTrue(vm.exists(path), "manifest file not written");
 
         string memory json = vm.readFile(path);
@@ -460,6 +500,22 @@ contract DeployReleaseTest is Test, DeployRelease {
 
         _assertFacetManifest(json, out);
         _assertInitManifest(json, out);
+        (string[] memory libraryNames, string[] memory libraryPaths,) = LibraryInventory.inventory();
+        assertEq(vm.parseJsonKeys(json, ".libraries").length, libraryNames.length);
+        for (uint256 i; i < libraryNames.length; ++i) {
+            string memory prefix = string.concat(".libraries.", libraryNames[i]);
+            assertEq(vm.parseJsonString(json, string.concat(prefix, ".name")), libraryNames[i]);
+            assertEq(vm.parseJsonAddress(json, string.concat(prefix, ".address")), out.libraries[i]);
+            assertEq(vm.parseJsonBytes32(json, string.concat(prefix, ".salt")), LibraryInventory.SALT);
+            assertEq(
+                vm.parseJsonBytes32(json, string.concat(prefix, ".initCodeHash")),
+                keccak256(vm.getCode(libraryPaths[i]))
+            );
+            assertEq(
+                vm.parseJsonBytes32(json, string.concat(prefix, ".codehash")),
+                LibraryInventory.runtimeHash(vm, libraryPaths[i], out.libraries[i])
+            );
+        }
         assertEq(vm.parseJsonBytes32(json, ".facets.ERC20.salt"), facetSalt("ERC20", VERSION), "manifest facet salt");
 
         // Remove ONLY the isolated test tree — never the real deployments root or its manifests.

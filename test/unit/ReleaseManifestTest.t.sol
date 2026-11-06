@@ -1,0 +1,221 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.30;
+
+import {ArachnidDeployer} from "@lattice-script/lib/ArachnidDeployer.sol";
+import {FacetInventory} from "@lattice-script/lib/FacetInventory.sol";
+import {InitInventory} from "@lattice-script/lib/InitInventory.sol";
+import {LibraryInventory} from "@lattice-script/lib/LibraryInventory.sol";
+import {GenerateManifest} from "@lattice-script/release/GenerateManifest.s.sol";
+import {ManifestReader} from "@lattice-script/release/ManifestReader.sol";
+import {ObserveManifest} from "@lattice-script/release/ObserveManifest.s.sol";
+import {LatticeFactory} from "@lattice/LatticeFactory.sol";
+import {ILatticeRegistry} from "@lattice/interfaces/ILatticeRegistry.sol";
+import {Test} from "forge-std/Test.sol";
+import {Vm} from "forge-std/Vm.sol";
+
+contract ReleaseManifestTest is Test, GenerateManifest {
+    function test_ReleaseIdentityHasSchemaAndCreationCommitments() public {
+        string memory json = snapshot("99.0.0", address(0xBEEF));
+        ContractIdentity[] memory records = ManifestReader.identities(vm, json);
+        (string[] memory facets, string[] memory facetPaths) = FacetInventory.inventory();
+        (string[] memory inits, string[] memory initPaths) = InitInventory.inventory();
+        (string[] memory libraries, string[] memory libraryPaths, address[] memory linked) =
+            LibraryInventory.inventory();
+        assertEq(records.length, 2 + facets.length + inits.length + libraries.length);
+        assertEq(abi.decode(records[0].constructorArgs, (address)), address(0xBEEF));
+        (address registry, address registrar, address reverseOwner) =
+            abi.decode(records[1].constructorArgs, (address, address, address));
+        assertEq(registry, records[0].at);
+        assertEq(registrar, address(0));
+        assertEq(reverseOwner, address(0));
+        // Factory's immutable registry address means a zero-filled artifact runtime is not its codehash.
+        assertEq(address(LatticeFactory(records[1].at).registry()), records[0].at);
+        for (uint256 i; i < records.length; ++i) {
+            ContractIdentity memory record = records[i];
+            assertEq(record.at, ArachnidDeployer.predict(record.salt, record.initCodeHash));
+            assertEq(record.codehash, record.at.codehash);
+            assertEq(
+                record.initCodeHash, keccak256(abi.encodePacked(vm.getCode(record.artifact), record.constructorArgs))
+            );
+            if (i >= 2 && i < 2 + facets.length) {
+                assertEq(record.name, facets[i - 2]);
+                assertEq(record.artifact, facetPaths[i - 2]);
+                assertEq(record.nameHash, keccak256(abi.encodePacked("lattice.", record.name)));
+                assertTrue(record.selectorsHash != bytes32(0));
+            } else if (i >= 2 + facets.length && i < 2 + facets.length + inits.length) {
+                assertEq(record.name, inits[i - 2 - facets.length]);
+                assertEq(record.artifact, initPaths[i - 2 - facets.length]);
+                assertEq(record.nameHash, bytes32(0));
+                assertEq(record.selectorsHash, bytes32(0));
+            } else if (i >= 2 + facets.length + inits.length) {
+                uint256 at = i - 2 - facets.length - inits.length;
+                assertEq(record.name, libraries[at]);
+                assertEq(record.artifact, libraryPaths[at]);
+                assertEq(record.at, linked[at]);
+                assertEq(record.codehash, LibraryInventory.runtimeHash(vm, record.artifact, record.at));
+                assertEq(ILatticeRegistry(records[0].at).resolve(record.codehash), record.at);
+            }
+        }
+        assertEq(vm.parseJsonBytes32(json, ".proxy.initCodeHash"), keccak256(vm.getCode("src/Lattice.sol:Lattice")));
+    }
+
+    function test_InitialOwnerIsExplicitAndChangesCorePredictions() public {
+        vm.expectRevert("manifest: explicit nonzero initial owner required");
+        this.snapshot("99.0.0", address(0));
+        bytes32 hashA = keccak256(
+            abi.encodePacked(vm.getCode("src/LatticeRegistry.sol:LatticeRegistry"), abi.encode(address(0xBEEF)))
+        );
+        bytes32 hashB = keccak256(
+            abi.encodePacked(vm.getCode("src/LatticeRegistry.sol:LatticeRegistry"), abi.encode(address(0xCAFE)))
+        );
+        assertTrue(ArachnidDeployer.predict(REGISTRY_SALT, hashA) != ArachnidDeployer.predict(REGISTRY_SALT, hashB));
+    }
+
+    function test_AllCommittedManifestsHaveSchemaAndPredictions() public {
+        Vm.DirEntry[] memory entries = vm.readDir("deployments", 3);
+        string memory fixtureRelease = "test/fixtures/release-manifests/release.json";
+        string memory fixtureChain = "test/fixtures/release-manifests/chain.json";
+        _requiredKeys(vm.readFile(fixtureRelease), "deployments/schema/release.schema.json");
+        _requiredKeys(vm.readFile(fixtureChain), "deployments/schema/chain.schema.json");
+        string[] memory fixtureCommand = new string[](4);
+        fixtureCommand[0] = "bash";
+        fixtureCommand[1] = "script/release/validate-manifest.sh";
+        fixtureCommand[2] = fixtureRelease;
+        fixtureCommand[3] = fixtureChain;
+        vm.ffi(fixtureCommand);
+        for (uint256 i; i < entries.length; ++i) {
+            if (entries[i].isDir || !_endsWith(entries[i].path, ".json") || !_contains(entries[i].path, "/release-")) {
+                continue;
+            }
+            string memory json = vm.readFile(entries[i].path);
+            assertEq(vm.parseJsonUint(json, ".schemaVersion"), 1);
+            if (vm.keyExistsJson(json, ".chain")) {
+                _validateCommittedChain(entries[i].path, json, entries);
+                continue;
+            }
+            _requiredKeys(json, "deployments/schema/release.schema.json");
+            string[] memory command = new string[](3);
+            command[0] = "bash";
+            command[1] = "script/release/validate-manifest.sh";
+            command[2] = entries[i].path;
+            vm.ffi(command);
+            ContractIdentity[] memory records = ManifestReader.identities(vm, json);
+            for (uint256 j; j < records.length; ++j) {
+                assertEq(records[j].at, ArachnidDeployer.predict(records[j].salt, records[j].initCodeHash));
+            }
+        }
+        // Published release goldens are added only after an already-merged source freeze and owner decision.
+        // Synthetic schema fixtures never stand in for a public release or an archived source commit.
+    }
+
+    function _validateCommittedChain(string memory statusPath, string memory statusJson, Vm.DirEntry[] memory entries)
+        private
+    {
+        _requiredKeys(statusJson, "deployments/schema/chain.schema.json");
+        bool matched;
+        for (uint256 i; i < entries.length; ++i) {
+            if (entries[i].isDir || !_endsWith(entries[i].path, ".json") || !_contains(entries[i].path, "/release-")) {
+                continue;
+            }
+            string memory candidate = vm.readFile(entries[i].path);
+            if (vm.keyExistsJson(candidate, ".chain")) continue;
+            if (
+                keccak256(bytes(vm.parseJsonString(candidate, ".lattice.commit")))
+                    != keccak256(bytes(vm.parseJsonString(statusJson, ".lattice.commit")))
+            ) continue;
+            if (
+                keccak256(bytes(vm.parseJsonString(candidate, ".lattice.version")))
+                    != keccak256(bytes(vm.parseJsonString(statusJson, ".lattice.version")))
+            ) continue;
+            string[] memory command = new string[](4);
+            command[0] = "bash";
+            command[1] = "script/release/validate-manifest.sh";
+            command[2] = entries[i].path;
+            command[3] = statusPath;
+            vm.ffi(command);
+            matched = true;
+        }
+        assertTrue(matched, "chain manifest must reference an offline manifest");
+    }
+
+    function _requiredKeys(string memory json, string memory schemaPath) private view {
+        string[] memory required = vm.parseJsonStringArray(vm.readFile(schemaPath), ".required");
+        for (uint256 i; i < required.length; ++i) {
+            assertTrue(vm.keyExistsJson(json, string.concat(".", required[i])));
+        }
+        assertEq(vm.parseJsonKeys(json, ".").length, required.length);
+    }
+
+    function test_ObservedStatusSeparatesPresenceCurationAndVerification() public {
+        string memory releaseJson = _envelope(this.snapshot("99.0.0", address(this)));
+        vm.serializeJson("test:owner", releaseJson);
+        releaseJson = vm.serializeAddress("test:owner", "initialOwner", address(this));
+        ContractIdentity[] memory records = ManifestReader.identities(vm, releaseJson);
+        // A missing factory and wrong-code facet must not be promoted to ready, even with old registry records.
+        vm.etch(records[1].at, "");
+        vm.etch(records[2].at, hex"00");
+        string memory statusJson = new ObserveManifest().observe(releaseJson, keccak256("local fixture block"));
+        bool[] memory matches = abi.decode(vm.parseJson(statusJson, ".contracts[*].codeMatches"), (bool[]));
+        bool[] memory registered = abi.decode(vm.parseJson(statusJson, ".contracts[*].registered"), (bool[]));
+        bool[] memory latest = abi.decode(vm.parseJson(statusJson, ".contracts[*].latest"), (bool[]));
+        bool[] memory verified = abi.decode(vm.parseJson(statusJson, ".contracts[*].verified"), (bool[]));
+        assertEq(matches.length, records.length);
+        assertEq(vm.parseJsonAddress(statusJson, ".registryOwner"), address(this));
+        assertFalse(matches[1]);
+        assertFalse(matches[2]);
+        for (uint256 i; i < records.length; ++i) {
+            assertFalse(verified[i]);
+            bool curated = i > 2 && keccak256(bytes(records[i].kind)) == keccak256("facet");
+            assertEq(registered[i], curated);
+            assertEq(latest[i], curated);
+        }
+        string memory root = "deployments/.manifest-fixtures";
+        vm.createDir(root, true);
+        vm.writeJson(releaseJson, string.concat(root, "/release.json"));
+        // Canonical JSON hashing belongs to the Bash wrapper; it is tested through the fixture driver.
+        vm.writeJson(statusJson, string.concat(root, "/chain-unhashed.json"));
+        string[] memory command = new string[](5);
+        command[0] = "bash";
+        command[1] = "script/test-release-manifest.sh";
+        command[2] = string.concat(root, "/release.json");
+        command[3] = string.concat(root, "/chain-unhashed.json");
+        command[4] = "--hash-local-fixture";
+        vm.ffi(command);
+        vm.removeDir(root, true);
+    }
+
+    function _envelope(string memory identities) private pure returns (string memory) {
+        bytes memory original = bytes(identities);
+        original[original.length - 1] = " ";
+        return string.concat(
+            string(original),
+            ',"schemaVersion":1,"publication":"fixture","initialOwner":"0x000000000000000000000000000000000000bEEF","lattice":{"version":"99.0.0","tag":"fixture/unit-test","commit":"1111111111111111111111111111111111111111"},"deployer":{"kind":"arachnid","address":"0x4e59b44847b379578588920cA78FbF26c0B4956C","librarySalt":"0x0000000000000000000000000000000000000000000000000000000000000000"},"compiler":{"foundry":"v1.9.0","solc":"0.8.36","evmVersion":"cancun","optimizerRuns":1000000,"viaIR":false,"bytecodeHash":"ipfs","libraries":{},"inputHash":"0x1111111111111111111111111111111111111111111111111111111111111111"}}'
+        );
+    }
+
+    function _endsWith(string memory value, string memory suffix) private pure returns (bool) {
+        bytes memory v = bytes(value);
+        bytes memory s = bytes(suffix);
+        if (v.length < s.length) return false;
+        for (uint256 i; i < s.length; ++i) {
+            if (v[v.length - s.length + i] != s[i]) return false;
+        }
+        return true;
+    }
+
+    function _contains(string memory value, string memory needle) private pure returns (bool) {
+        bytes memory v = bytes(value);
+        bytes memory n = bytes(needle);
+        for (uint256 i; i + n.length <= v.length; ++i) {
+            bool match_ = true;
+            for (uint256 j; j < n.length; ++j) {
+                if (v[i + j] != n[j]) {
+                    match_ = false;
+                    break;
+                }
+            }
+            if (match_) return true;
+        }
+        return false;
+    }
+}

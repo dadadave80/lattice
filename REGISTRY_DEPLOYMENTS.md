@@ -177,47 +177,113 @@ The factory similarly appends `abi.encode(registry, address(0), address(0))`. It
 be the predicted registry for that same build and owner. Use one release build profile across chains;
 a different EVM target or metadata hash can change the initcode and addresses.
 
-## The release manifest
+## Release identities and chain observations
 
-Every `run(version, owner)` writes `deployments/<chainid>/release-<version>.json`:
+Schema version 1 separates two kinds of evidence:
 
-```jsonc
-{
-  "version": "0.1.0",
-  "chainid": 1,
-  "deployer": { "kind": "arachnid", "address": "0x4e59b44847b379578588920cA78FbF26c0B4956C" },
-  "registry": "0x...",
-  "factory": "0x...",
-  "owner": "0x...",            // read live off the registry
-  "timestamp": 1780000000,
-  "inits": {
-    "ERC20Init": {
-      "name": "ERC20Init",
-      "address": "0x...",
-      "salt": "0x...",
-      "codehash": "0x...",
-      "initCodeHash": "0x..."    // creation bytecode hash; no constructor arguments
-    }
-    // ... one entry per InitInventory initializer
-  },
-  "facets": {
-    "ERC20": {
-      "name": "ERC20",
-      "address": "0x...",
-      "codehash": "0x...",       // runtime codehash — the LatticeRegistry code pin
-      "selectorsHash": "0x...",  // keccak256 of the live ERC-8153 exportSelectors() blob — the selector pin
-      "salt": "0x..."            // keccak256("lattice.ERC20.0.1.0")
-    }
-    // ... one entry per FacetInventory facet
-  }
-}
+| File | Evidence |
+| --- | --- |
+| `deployments/release-<version>.json` | Offline identities: source version/tag/commit, explicit initial owner, Arachnid deployer, compiler configuration/input hash, Lattice proxy initcode hash, and every registry/factory/facet/init/external-library identity |
+| `deployments/<chainid>/release-<version>.json` | State observed at a pinned chain block: code presence/match, registry owner, facet registration/latest and source-verification status |
+| `deployments/<chainid>/plan-<version>.json` | Legacy-shaped output from `DeployRelease.run`; a simulation deployment plan, produced before broadcast inclusion, **not chain evidence** |
+
+The offline `contracts` array begins with registry and factory, followed by the facet and stateless
+initializer inventories, then external libraries. Every entry has `name`, `artifact`, `kind`, predicted `address`, raw `salt`,
+`initCodeHash`, runtime `codehash`, ABI-encoded `constructorArgs`, `nameHash` and `selectorsHash`.
+The last two fields are zero for non-facets. Registry/factory constructor arguments include the
+initial owner and predicted registry, respectively; ENS arguments are zero. Factory runtime hashes
+come from local constructor execution, including its immutable registry and proxy hash.
+`deployer.librarySalt` records the pinned native Foundry library salt (zero), and
+`compiler.libraries` is the actual empty solc map. The external library records supply the post-link
+address map. Foundry native CREATE2 linking keeps that map identical in tests and release scripts;
+it does not inject a global solc metadata map. PoseidonT3 is deployed/verified as a shared Tier-A
+library; its actual runtime includes Solidity's patched self address. See
+[ADR 0022](docs/adr/0022-native-create2-release-libraries.md).
+`AccountInit` and `AccountInit6900` remain constructor-bound recipe instances, outside this catalog.
+
+Generate identities **offline**, after committing the source inputs, with the shared pinned toolchain:
+
+```bash
+make release-manifest VERSION=<version> TAG=v<version> OWNER=<confirmed-initial-owner> \
+  PUBLICATION=release DESTINATION=deployments/release-<version>.json
 ```
 
-`codehash` and `selectorsHash` are exactly the two pins `LatticeRegistry.register` records and its
-live-read views re-verify, so the manifest diffs directly against on-chain state. The `deployer`
-entry names the actual release proxy on every chain. The `inits` records include both the runtime
-codehash and creation initCodeHash, alongside the exact predicted/deployed address and salt. Legacy manifests with a `createx` field describe
-the earlier deployment policy and require its historical source/configuration to reproduce.
+No canonical initial owner has been confirmed in this repository. Do not substitute a broadcaster,
+a development owner or an ENS reverse-record address. Publication remains blocked until the
+maintainer confirms that one address and the release source freeze. The small synthetic examples under
+`test/fixtures/release-manifests/` use `publication: fixture`, a `fixture/` tag and an obvious test owner.
+Their source/input hashes and block identifier are test sentinels, not release or chain evidence.
+
+`lattice.commit` is the **existing source commit**, not the future commit containing its manifest.
+A manifest-only successor may commit the output. For a real release, freeze an already-merged
+source commit before that successor; the release tag must descend from the source commit and preserve its build inputs. IPFS/CBOR metadata stays enabled: source comments, NatSpec,
+paths and compiler settings can change addresses. Regenerate drafts after edits; preserve frozen
+release files. [ADR 0020](docs/adr/0020-source-anchored-release-manifests.md) records this boundary.
+
+`make release-manifests` checks schemas, CREATE2/constructor identities and per-chain cross references,
+then compares **two clean builds of the current checkout**, including all shared addresses and the
+proxy/compiler-input hashes. Once real release manifests exist, it also rebuilds each published golden
+in a clean checkout of **its own already-merged** source commit.
+Forge tests additionally check current artifact/inventory parity and immutable-adjusted runtimes.
+The native schema validator implements exactly the vocabulary in `deployments/schema/`; no schema
+CLI or new runtime is required. Goldens require the recorded Foundry version and locked submodules;
+the source guard rejects a different toolchain rather than silently redefining historical input.
+No committed fixture depends on retaining an unmerged PR head. Real release goldens are added only
+after the generator is merged, a source commit is frozen and the canonical owner is confirmed.
+
+After broadcast inclusion and multisig curation, collect actual chain state:
+
+```bash
+make release-status MANIFEST=deployments/release-<version>.json RPC_URL=<rpc-url-or-alias> \
+  DESTINATION=deployments/<chainid>/release-<version>.json
+```
+
+This command forks a pinned RPC block read-only and rejects a changed block hash. `deployed: null`
+means absent; `pre-existing` means code observed at that block without asserting a transaction hash.
+`codeMatches` compares runtime hashes; `registered` and `latest` additionally compare the exact
+version, address, runtime and selector pins. Verification starts `false` with a null verifier and
+must be updated only from actual verification results. Re-observation resets verification to
+unknown; it does not infer a Sourcify match from code presence. A future verification command is
+tracked in [#198](https://github.com/dadadave80/lattice/issues/198).
+
+The tagged release asset job requires the matching real release manifest, rebuilds it and attaches
+`lattice-build-info-v<version>.tar.gz` with standard-JSON compiler inputs, compiler versions, manifest
+and schemas, alongside the checked storage layout assets. `compiler.inputHash` is keccak256 of the
+compact, sorted JSON input package without its trailing newline. Host-specific non-standard compiler
+CLI path fields and compiler outputs are excluded; standard-JSON language, sources and settings
+are retained. The public **v0.5.0** release had no such assets or schema-v1 golden. Its Foundry 1.8.5,
+implicit Osaka build and CreateX-first policy remain historical inputs; rebuilding current Cancun
+source does not reproduce or replace that release's evidence.
+
+## Chain readiness and ownership
+
+There are currently **no public chains certified ready by schema-v1 evidence**. RPC aliases in
+`foundry.toml` are configuration options, not support claims. A chain supports a release only when:
+
+1. its EVM supports Cancun and the Arachnid proxy is installed at the canonical address;
+2. every shared identity has matching code and actual source verification;
+3. all versioned facets are registered and `latest` points to that version; and
+4. a reviewed block-pinned chain manifest records that state and the current registry owner.
+
+Use the same confirmed **initial owner** on every chain so core CREATE2 predictions agree. Establish
+and verify that address's control on each chain before deployment; a multisig must own the registry
+from the first mainnet release. Later per-chain handovers do not change existing addresses: the
+current owner calls `transferOwnership(newOwner)`, the intended multisig independently checks the
+registry and pending owner, then calls `acceptOwnership()`. Record the resulting owner at a new
+observed block. Passing a new owner to `DeployRelease` derives a different registry, not a handover.
+
+Release operators advance `latest` for each supported chain after verification and curation. The
+release script never downgrades it when replaying an older version; the registry owner retains
+rollback authority, so consumers pin exact versions. Chain readiness is evaluated against the
+observed version, not assumed from a tag or a successful simulation.
+
+The Sepolia factory `0x9e49fb5cdbb09ecf65513f7c690909e093170037` is an **ENS-enabled development
+instance**, deployed by plain CREATE according to the tracked
+[broadcast](broadcast/DeployFactory.s.sol/11155111/run-latest.json). It is not the canonical raw-salt
+factory. Its historical build commit and embedded proxy hash are not established by that log, so no
+schema-v1 `nonCanonicalFactories` entry invents those fields. Add one only with verified source and
+hash evidence. `LatticeVersion` and the release manifest currently agree at 0.5.0; normal release
+promotions back-merge version bumps into dev.
 
 ## Idempotency and resume
 
