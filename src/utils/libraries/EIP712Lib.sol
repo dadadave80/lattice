@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {DiamondLib} from "@diamond/libraries/DiamondLib.sol";
 import {IEIP712} from "@lattice/interfaces/utils/IEIP712.sol";
 import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 import {ShortString, ShortStrings} from "@lattice/utils/libraries/ShortStrings.sol";
@@ -64,7 +65,8 @@ library EIP712Lib {
     /// @notice Initializes the EIP-712 module with the given name and version.
     /// @dev Must be called inside a pre/postInitializer block.
     ///      Caches the domain separator, chain ID, and contract address.
-    ///      Registers the IEIP712 interface for ERC-165 discovery.
+    ///      Rejects a conflicting domain; identical configuration preserves the existing domain/cache.
+    ///      Registers IEIP712 only when its discovery view is routed in this diamond.
     /// @param name The human-readable name of the signing domain.
     /// @param version The version of the signing domain.
     function __EIP712_init(string memory name, string memory version) internal {
@@ -77,19 +79,30 @@ library EIP712Lib {
         if (bytes(name).length == 0) revert IEIP712.EIP712InvalidName();
         if (bytes(version).length == 0) revert IEIP712.EIP712InvalidVersion();
 
-        // Pack name and version using ShortStrings (falls back to storage for long ones)
-        $._name = ShortStrings.toShortStringWithFallback(name, $._nameFallback);
-        $._version = ShortStrings.toShortStringWithFallback(version, $._versionFallback);
+        bytes32 hashedName = keccak256(bytes(name));
+        bytes32 hashedVersion = keccak256(bytes(version));
+        if ($._hashedName != bytes32(0) || $._hashedVersion != bytes32(0)) {
+            if ($._hashedName != hashedName || $._hashedVersion != hashedVersion) {
+                revert IEIP712.EIP712ConflictingDomain();
+            }
+        } else {
+            $._name = ShortStrings.toShortStringWithFallback(name, $._nameFallback);
+            $._version = ShortStrings.toShortStringWithFallback(version, $._versionFallback);
+            $._hashedName = hashedName;
+            $._hashedVersion = hashedVersion;
+            $._cachedChainId = block.chainid;
+            $._cachedThis = address(this);
+            $._cachedDomainSeparator = _buildDomainSeparator(hashedName, hashedVersion);
+        }
 
-        $._hashedName = keccak256(bytes(name));
-        $._hashedVersion = keccak256(bytes(version));
-
-        // Cache the domain separator for current chain + address
-        $._cachedChainId = block.chainid;
-        $._cachedThis = address(this);
-        $._cachedDomainSeparator = _buildDomainSeparator($._hashedName, $._hashedVersion);
-
-        registerInterface();
+        if (DiamondLib.selectorToFacet(DiamondLib.diamondStorage(), IEIP712.eip712Domain.selector) != address(0)) {
+            registerInterface();
+        } else {
+            // Repair false-positive flags left by initializers predating routed-view registration.
+            assembly ("memory-safe") {
+                sstore(ERC165_MAP_IEIP712_SLOT, false)
+            }
+        }
     }
 
     //*//////////////////////////////////////////////////////////////////////////

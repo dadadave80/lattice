@@ -33,6 +33,8 @@ struct RoleData {
 /// @custom:storage-location erc7201:lattice.storage.AccessControl
 struct AccessControlStorage {
     mapping(bytes32 role => RoleData) _roles;
+    address _initialAdmin;
+    bool _initialized;
 }
 
 /// @title Access Control Library
@@ -68,10 +70,25 @@ library AccessControlLib {
 
     /// @notice Initializes the AccessControl module with a given admin address.
     /// @param _admin The address to be granted the DEFAULT_ADMIN_ROLE.
-    /// @dev Can only be called during initialization phase. Requires InitializableLib context.
+    /// @dev Identical bootstrap configuration is a no-op, even if that admin's role was later revoked.
+    ///      A registered legacy instance has no historical admin record and requires a reviewed migration.
     function __AccessControl_init(address _admin) internal {
         bytes32 s = InitializableLib.initializableSlot();
         InitializableLib.checkInitializing(s);
+        AccessControlStorage storage $ = accessControlStorage();
+        if ($._initialized) {
+            if ($._initialAdmin != _admin) {
+                revert IAccessControl.AccessControlConflictingInitialization($._initialAdmin, _admin);
+            }
+            return;
+        }
+        bool registered;
+        assembly ("memory-safe") {
+            registered := sload(ERC165_MAP_IACCESSCONTROL_SLOT)
+        }
+        if (registered) revert IAccessControl.AccessControlLegacyInitialization();
+        $._initialAdmin = _admin;
+        $._initialized = true;
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
         registerInterface();
     }

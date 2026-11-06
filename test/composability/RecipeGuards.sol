@@ -28,6 +28,22 @@ contract RecipeProbeFacet {
 ///         truthful) or IMMUTABLE BY DESIGN (no `0x1f931c1c` route, cut flag false). A recipe regressing to
 ///         the pre-#130 frozen/un-introspectable state fails its guard by construction.
 abstract contract RecipeGuards is Test {
+    error UnroutedInterfaceSelector(string interfaceName, bytes4 selector);
+
+    struct InterfaceRoutes {
+        string name;
+        bytes4[] selectors;
+    }
+
+    bytes private _interfaceCatalog;
+
+    constructor() {
+        string[] memory command = new string[](2);
+        command[0] = "bash";
+        command[1] = "test/helpers/interface-routing-catalog.sh";
+        _interfaceCatalog = vm.ffi(command);
+    }
+
     address internal constant ADMIN = address(0xAD);
     address internal constant UPGRADE_ADMIN = address(0xAD2);
     address internal constant STRANGER = address(0xBAD);
@@ -68,6 +84,25 @@ abstract contract RecipeGuards is Test {
         assertTrue(ERC165Facet(diamond).supportsInterface(0x48e2b093), "IDiamondLoupe flag missing");
         assertFalse(ERC165Facet(diamond).supportsInterface(0x00000000), "0x00000000 must be unsupported");
         assertEq(vm.load(diamond, keccak256(abi.encode(bytes32(0)))), bytes32(0), "stray write to keccak256(0)");
+        _assertInterfacesRouted(diamond);
+    }
+
+    /// @dev ERC-165 IDs exclude inherited declarations; separately claimed parent IDs are checked too.
+    function _assertInterfacesRouted(address diamond) internal view {
+        InterfaceRoutes[] memory interfaces = abi.decode(_interfaceCatalog, (InterfaceRoutes[]));
+        for (uint256 i; i < interfaces.length; ++i) {
+            bytes4 id;
+            for (uint256 j; j < interfaces[i].selectors.length; ++j) {
+                id ^= interfaces[i].selectors[j];
+            }
+            if (id == bytes4(0) || id == 0x01ffc9a7 || !ERC165Facet(diamond).supportsInterface(id)) continue;
+            for (uint256 j; j < interfaces[i].selectors.length; ++j) {
+                bytes4 selector = interfaces[i].selectors[j];
+                if (IDiamondLoupe(diamond).facetAddress(selector) == address(0)) {
+                    revert UnroutedInterfaceSelector(interfaces[i].name, selector);
+                }
+            }
+        }
     }
 
     /// @notice A plain ETH send to `diamond` succeeds iff `accepts`. Recipes cut {Receive} only when the
