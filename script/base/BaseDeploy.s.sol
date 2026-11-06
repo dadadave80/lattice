@@ -163,14 +163,12 @@ abstract contract BaseDeploy is Script, GetSelectors {
     ///      deploy a missing facet; {DeployRelease} later skips it and registers it.
     /// @param name The facet contract name exactly as listed in {FacetInventory}.
     function _facet(string memory name) internal returns (address facet) {
-        string memory path = _inventoryPath(name);
-        if (ArachnidDeployer.PROXY.code.length == 0) return deployCode(path);
-        bytes memory initCode = vm.getCode(path);
-        bytes32 salt = keccak256(abi.encodePacked("lattice.", name, ".", LatticeVersion.VERSION));
-        facet = ArachnidDeployer.predict(salt, keccak256(initCode));
-        if (facet.code.length == 0) {
-            require(ArachnidDeployer.deploy(salt, initCode) == facet, "BaseDeploy: facet deployed != predicted");
-        }
+        return _facet(name, LatticeVersion.VERSION);
+    }
+
+    /// @dev Explicit version for release builders; ordinary recipes remain pinned to LatticeVersion.
+    function _facet(string memory name, string memory version) internal returns (address) {
+        return _released(name, _inventoryPath(name), "", version);
     }
 
     /// @notice A released stateless initializer, reused by name with the same proxy policy as facets.
@@ -178,14 +176,23 @@ abstract contract BaseDeploy is Script, GetSelectors {
         (string[] memory names, string[] memory paths) = InitInventory.inventory();
         for (uint256 i; i < names.length; ++i) {
             if (keccak256(bytes(names[i])) != keccak256(bytes(name))) continue;
-            if (ArachnidDeployer.PROXY.code.length == 0) return deployCode(paths[i]);
-            bytes memory initCode = vm.getCode(paths[i]);
-            bytes32 salt = keccak256(abi.encodePacked("lattice.", name, ".", LatticeVersion.VERSION));
-            init = ArachnidDeployer.predict(salt, keccak256(initCode));
-            if (init.code.length == 0) ArachnidDeployer.deploy(salt, initCode);
-            return init;
+            return _released(name, paths[i], "", LatticeVersion.VERSION);
         }
         revert(string.concat("BaseDeploy: ", name, " is not in InitInventory"));
+    }
+
+    /// @dev One release policy for stateless artifacts and constructor-bound account identities.
+    function _released(string memory name, string memory artifact, bytes memory args, string memory version)
+        internal
+        returns (address at)
+    {
+        if (ArachnidDeployer.PROXY.code.length == 0) return deployCode(artifact, args);
+        bytes memory initCode = abi.encodePacked(vm.getCode(artifact), args);
+        bytes32 salt = keccak256(abi.encodePacked("lattice.", name, ".", version));
+        at = ArachnidDeployer.predict(salt, keccak256(initCode));
+        if (at.code.length == 0) {
+            require(ArachnidDeployer.deploy(salt, initCode) == at, "BaseDeploy: artifact deployed != predicted");
+        }
     }
 
     /// @dev The `vm.getCode` artifact path of {FacetInventory} entry `name`.

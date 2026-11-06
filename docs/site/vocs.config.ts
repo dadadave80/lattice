@@ -36,6 +36,7 @@ const decisions: Item = {
     { text: '0019 Temporary allowances', link: '/adr/0019-shared-temporary-allowances' },
     { text: '0020 Release source freeze', link: '/adr/0020-source-anchored-release-manifests' },
     { text: '0022 Native release libraries', link: '/adr/0022-native-create2-release-libraries' },
+    { text: '0025 Account factory identities', link: '/adr/0025-account-factory-release-identity' },
   ],
 }
 

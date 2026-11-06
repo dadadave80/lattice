@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {DeployRelease} from "@lattice-script/deploy/DeployRelease.s.sol";
+import {AccountReleaseInventory} from "@lattice-script/lib/AccountReleaseInventory.sol";
 import {FacetInventory} from "@lattice-script/lib/FacetInventory.sol";
 import {InitInventory} from "@lattice-script/lib/InitInventory.sol";
 import {LibraryInventory} from "@lattice-script/lib/LibraryInventory.sol";
@@ -41,7 +43,8 @@ contract GenerateManifest is DeployRelease {
         vm.etch(ArachnidProxy.PROXY, ArachnidProxy.RUNTIME);
         ReleaseOutput memory out = release(version, owner);
         JsonRecordWriter writer = new JsonRecordWriter();
-        string[] memory records = new string[](2 + out.facets.length + out.inits.length + out.libraries.length);
+        string[] memory records =
+            new string[](2 + out.facets.length + out.inits.length + out.libraries.length + 2 * out.accountInits.length);
         records[0] = writer.record(
             "registry",
             "LatticeRegistry",
@@ -79,10 +82,33 @@ contract GenerateManifest is DeployRelease {
                     writer.record("library", names[i], artifacts[i], out.libraries[i], LibraryInventory.SALT, "");
             }
         }
+        string memory accountBindings = _accountRecords(version, out, writer, records);
         vm.serializeString("identity:proxy", "name", "Lattice");
         string memory proxy =
             vm.serializeBytes32("identity:proxy", "initCodeHash", keccak256(vm.getCode("src/Lattice.sol:Lattice")));
-        json = string.concat('{"proxy":', proxy, ',"contracts":', writer.join(records), "}");
+        json = string.concat(
+            '{"proxy":', proxy, ',"contracts":', writer.join(records), ',"accounts":', accountBindings, "}"
+        );
+    }
+
+    function _accountRecords(
+        string memory version,
+        ReleaseOutput memory out,
+        JsonRecordWriter writer,
+        string[] memory records
+    ) private returns (string memory) {
+        AccountReleaseInventory.Entry[] memory accounts = AccountReleaseInventory.inventory();
+        string[] memory accountBindings = new string[](accounts.length);
+        for (uint256 i; i < accounts.length; ++i) {
+            AccountReleaseInventory.Entry memory entry = accounts[i];
+            FacetCut[] memory cuts = _accountCuts(entry.modular, version);
+            uint256 offset = 2 + out.facets.length + out.inits.length + out.libraries.length + 2 * i;
+            records[offset] = writer.accountInitializer(entry, out.accountInits[i], version);
+            records[offset + 1] =
+                writer.accountFactory(entry, out.accountFactories[i], version, abi.encode(cuts, out.accountInits[i]));
+            accountBindings[i] = writer.account(entry, keccak256(abi.encode(cuts)));
+        }
+        return writer.join(accountBindings);
     }
 }
 
@@ -90,6 +116,51 @@ contract GenerateManifest is DeployRelease {
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice Small offline helper: each artifact serialization has its own memory frame.
 contract JsonRecordWriter is Script {
+    function accountInitializer(AccountReleaseInventory.Entry memory entry, address at, string memory version)
+        external
+        returns (string memory)
+    {
+        return this.record(
+            "account-init",
+            entry.initializer,
+            entry.initializerArtifact,
+            at,
+            keccak256(abi.encodePacked("lattice.", entry.initializer, ".", version)),
+            abi.encode(entry.entryPoint)
+        );
+    }
+
+    function accountFactory(
+        AccountReleaseInventory.Entry memory entry,
+        address at,
+        string memory version,
+        bytes memory args
+    ) external returns (string memory) {
+        return this.record(
+            "account-factory",
+            entry.factory,
+            entry.factoryArtifact,
+            at,
+            keccak256(abi.encodePacked("lattice.", entry.factory, ".", version)),
+            args
+        );
+    }
+
+    /// @dev Account bindings supplement, rather than replace, the definitive contract constructor arguments.
+    function account(AccountReleaseInventory.Entry memory entry, bytes32 blueprintHash)
+        external
+        returns (string memory)
+    {
+        string memory key = string.concat("binding:", entry.factory);
+        vm.serializeAddress(key, "entryPoint", entry.entryPoint);
+        vm.serializeString(key, "entryPointVersion", entry.entryPointVersion);
+        vm.serializeString(key, "proxyKind", entry.proxyKind);
+        vm.serializeBytes32(key, "proxyInitCodeHash", keccak256(vm.getCode(entry.proxyArtifact)));
+        vm.serializeString(key, "initializer", entry.initializer);
+        vm.serializeString(key, "factory", entry.factory);
+        return vm.serializeBytes32(key, "blueprintHash", blueprintHash);
+    }
+
     /// @dev External helper bounds artifact/serialization memory to one record.
     function record(
         string memory kind,

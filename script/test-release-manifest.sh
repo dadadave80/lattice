@@ -8,7 +8,7 @@ temporary=$(mktemp -d "${TMPDIR:-/tmp}/lattice-manifest-fixtures.XXXXXX")
 trap 'rm -rf "$temporary"' EXIT
 if [ "${3:-}" = --hash-local-fixture ]; then
     # Four generated representatives exercise the schema; the Forge test separately asserts the full catalog.
-    jq '.contracts = ([.contracts[] | select(.kind == "registry")][0:1] + [.contracts[] | select(.kind == "factory")][0:1] + [.contracts[] | select(.kind == "facet")][0:1] + [.contracts[] | select(.kind == "init")][0:1])' "$release" > "$temporary/baseline-release.json"
+    jq 'del(.accounts) | .contracts = ([.contracts[] | select(.kind == "registry")][0:1] + [.contracts[] | select(.kind == "factory")][0:1] + [.contracts[] | select(.kind == "facet")][0:1] + [.contracts[] | select(.kind == "init")][0:1])' "$release" > "$temporary/baseline-release.json"
     release=$temporary/baseline-release.json
     jq --slurpfile release "$release" '.contracts |= map(select(.name as $name | any($release[0].contracts[]; .name == $name)))' "$chain" > "$temporary/filtered-chain.json"
     chain=$temporary/filtered-chain.json

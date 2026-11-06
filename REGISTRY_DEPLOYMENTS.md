@@ -4,7 +4,8 @@ This file is the **canonical reference** for how Lattice releases land on-chain:
 address scheme of the [`LatticeRegistry`](src/LatticeRegistry.sol), the
 [`LatticeFactory`](src/LatticeFactory.sol), and every
 [`FacetInventory`](script/lib/FacetInventory.sol) facet and
-[`InitInventory`](script/lib/InitInventory.sol) stateless initializer, all deployed through the **Arachnid
+[`InitInventory`](script/lib/InitInventory.sol) stateless initializer, plus the constructor-bound
+[account initializer/factory pairs](script/lib/AccountReleaseInventory.sol), all deployed through the **Arachnid
 deterministic-deployment proxy** by
 [`script/deploy/DeployRelease.s.sol`](script/deploy/DeployRelease.s.sol). The same salt, initcode and
 constructor arguments give the same address on every chain with that proxy. Broadcasting accounts and
@@ -51,6 +52,7 @@ deployer address and no chain id:
 | `LatticeFactory` | `keccak256("lattice.LatticeFactory")` (versionless) | `0x23ac1297d420218079953740f312f2c5385edfea1f817c984d2e6effea132efe` |
 | every facet | `keccak256("lattice.<Name>.<version>")`, e.g. `keccak256("lattice.ERC20.0.1.0")` | per facet/version (ERC20 0.1.0: `0x938c2ea7277871ff5f71c989637ac4c6733ed43924e245cd91bc1e7363db2078`) |
 | every stateless init | `keccak256("lattice.<InitName>.<version>")`, e.g. `keccak256("lattice.ERC20Init.0.1.0")` | per initializer/version |
+| account init/factory | `keccak256("lattice.<AccountIdentity>.<version>")`, e.g. `lattice.AccountFactoryV09.0.1.0` | per proxy kind/EntryPoint/version |
 
 `<Name>` is the facet's contract name exactly as listed in
 [`FacetInventory`](script/lib/FacetInventory.sol) (also the source of the parity gate — the same
@@ -67,12 +69,50 @@ every Lattice facet, so e.g. the loupe's registry key is `keccak256("lattice.Dia
 each unique name with its compiled artifact path. The source parity test rejects missing/extra entries,
 duplicates and constructors requiring arguments. `AccountInit` and `AccountInit6900` are explicitly
 excluded because their EntryPoint constructor argument belongs to a specific account factory.
+Their canonical instances are released separately through `AccountReleaseInventory`, as described below.
 
 The release deploys each initializer through Arachnid and calls the registry's permissionless Tier A
 `attest`. Initializers are **not facets**: they are not registered in Tier B, have no `latest` pointer,
 and do not need `exportSelectors()`. A codehash resolver keeps its first attester, so identical runtime
 code at a later version's new salt may still resolve to the earlier address. Consumers pin the
 initializer's release manifest address when they need version identity.
+
+## Account releases
+
+Both account recipes create accounts through their specialized factories: `AccountFactory` deploys
+`AccountDiamond` with ERC-7579 handler dispatch, and `AccountFactory6900` deploys `ModularAccount6900`
+with ERC-6900 execution-module dispatch. A plain `Lattice` does not provide those fallback paths.
+The factories create and initialize an account in one transaction. They bind owner and salt to its
+address and intentionally return the existing account when that pair is reused.
+
+The release includes both proxy kinds for each pinned EntryPoint:
+
+| EntryPoint | Address | Identity suffix |
+| --- | --- | --- |
+| v0.7 | `0x0000000071727De22E5E9d8BAf0edAc6f37da032` | `V07` |
+| v0.8 | `0x4337084D9E255Ff0702461CF8895CE9E3b5Ff108` | `V08` |
+| v0.9 (repository default) | `0x433709009B8330FDa32311DF1C2AFA402eD8D009` | `V09` |
+
+For example, `AccountInitV09` ABI-encodes v0.9 in its constructor; `AccountFactoryV09` ABI-encodes the
+ordered released facet cuts and that initializer's address. The 6900 labels add `6900` before the
+suffix. These twelve identities are permissionless Tier-A attestations, without curated facet names
+or `latest` pointers. Their blueprint facet names have one definition shared by the recipes and release.
+Changing the EntryPoint, blueprint, build or version can change their predictions.
+
+`DeployAccount.run(entryPoint, owner, salt)` and `DeployAccount6900.run(entryPoint, owner, salt)` use
+these factories. The two-argument forms read `LATTICE_SALT` (default zero), and `run(owner)` uses the
+repository's default EntryPoint. `buildCuts` keeps its constructor-bound initializer return type;
+`buildFactory` resolves the corresponding factory without creating an account. Custom EntryPoints
+remain supported with explicit `Custom` labels whose initcode binds the address. They are outside the
+canonical release list. Without Arachnid, the local profile uses ordinary CREATE for the implementation,
+initializer and factory contracts and has no canonical shared address.
+
+The pinned EntryPoint address is a configuration choice, not proof that a target chain has compatible
+EntryPoint code, a bundler, native EIP-7702 support or working external modules. Existing plain-Lattice
+accounts are not repaired by changing a script; corrected deployments use the specialized proxy.
+See [ADR 0025](docs/adr/0025-account-factory-release-identity.md).
+
+## Composing released initializers
 
 `BaseDeploy._init(name)` reuses those same versioned addresses. Its MultiInit, AccessControlInit and
 DiamondIntrospectionInit helpers no longer deploy new copies per recipe. The security recipes likewise
@@ -188,7 +228,7 @@ Schema version 1 separates two kinds of evidence:
 | `deployments/<chainid>/plan-<version>.json` | Legacy-shaped output from `DeployRelease.run`; a simulation deployment plan, produced before broadcast inclusion, **not chain evidence** |
 
 The offline `contracts` array begins with registry and factory, followed by the facet and stateless
-initializer inventories, then external libraries. Every entry has `name`, `artifact`, `kind`, predicted `address`, raw `salt`,
+initializer inventories, then external libraries and the account initializer/factory pairs. Every entry has `name`, `artifact`, `kind`, predicted `address`, raw `salt`,
 `initCodeHash`, runtime `codehash`, ABI-encoded `constructorArgs`, `nameHash` and `selectorsHash`.
 The last two fields are zero for non-facets. Registry/factory constructor arguments include the
 initial owner and predicted registry, respectively; ENS arguments are zero. Factory runtime hashes
@@ -199,7 +239,13 @@ address map. Foundry native CREATE2 linking keeps that map identical in tests an
 it does not inject a global solc metadata map. PoseidonT3 is a shared Tier-A library and must be
 included in release deployment and verification; its actual runtime includes Solidity's patched self address. See
 [ADR 0022](docs/adr/0022-native-create2-release-libraries.md).
-`AccountInit` and `AccountInit6900` remain constructor-bound recipe instances, outside this catalog.
+Account identities use `account-init` and `account-factory` kinds. The optional schema-v1 `accounts`
+array binds each pair's names to its EntryPoint/version, proxy kind/initcode hash and
+`keccak256(abi.encode(orderedCuts))` blueprint hash. Current generation includes all six pairs;
+historical manifests may omit this array only when they contain no account identities. Full
+`constructorArgs` remain definitive. Native validation checks bindings, canonical labels, decoded
+constructors and listed-facet selector commitments; frozen source regeneration also checks the exact
+blueprint and trusted artifact/proxy/runtime hashes. Schema validation alone is not source verification.
 
 Generate identities **offline**, after committing the source inputs, with the shared pinned toolchain:
 

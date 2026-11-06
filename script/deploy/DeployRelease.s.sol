@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {AccountDeployBase} from "@lattice-script/base/accounts/AccountDeployBase.s.sol";
+import {AccountReleaseInventory} from "@lattice-script/lib/AccountReleaseInventory.sol";
 import {ArachnidDeployer} from "@lattice-script/lib/ArachnidDeployer.sol";
 import {FacetInventory} from "@lattice-script/lib/FacetInventory.sol";
 import {InitInventory} from "@lattice-script/lib/InitInventory.sol";
@@ -11,7 +13,7 @@ import {LatticeRegistry} from "@lattice/LatticeRegistry.sol";
 import {LatticeVersion} from "@lattice/LatticeVersion.sol";
 import {ILatticeRegistry} from "@lattice/interfaces/ILatticeRegistry.sol";
 import {IERC8153} from "@lattice/interfaces/external/ercs/IERC8153.sol";
-import {Script, console} from "forge-std/Script.sol";
+import {console} from "forge-std/Script.sol";
 
 /// @title DeployRelease
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
@@ -60,7 +62,7 @@ import {Script, console} from "forge-std/Script.sol";
 ///
 ///      {release} holds ALL on-chain logic and uses no broadcast/prank cheatcodes (only the read-only
 ///      `vm.getCode`), so tests drive it exactly as production runs it.
-contract DeployRelease is Script {
+contract DeployRelease is AccountDeployBase {
     //*//////////////////////////////////////////////////////////////////////////
     //                              TYPES / ERRORS
     //////////////////////////////////////////////////////////////////////////*//
@@ -76,6 +78,8 @@ contract DeployRelease is Script {
         address[] facets;
         address[] inits;
         address[] libraries;
+        address[] accountInits;
+        address[] accountFactories;
     }
 
     /// @notice Thrown when `version` is not a well-formed "MAJOR.MINOR.PATCH" semver string (all-digit,
@@ -210,6 +214,7 @@ contract DeployRelease is Script {
             registry.attest(out.libraries[i]);
         }
         out.inits = _releaseInits(version, registry);
+        (out.accountInits, out.accountFactories) = _releaseAccounts(version, registry);
 
         // --- Phase 4: facet registration (broadcaster must own the registry) -----------------------
         if (registry.owner() != msg.sender) {
@@ -309,7 +314,8 @@ contract DeployRelease is Script {
         vm.serializeUint(root, "timestamp", block.timestamp);
         vm.serializeString(root, "facets", facetsJson);
         vm.serializeString(root, "inits", initsJson);
-        string memory json = vm.serializeString(root, "libraries", librariesJson);
+        vm.serializeString(root, "libraries", librariesJson);
+        string memory json = vm.serializeString(root, "accounts", _serializeAccounts(version, out));
 
         string memory dir = string.concat(deploymentsRoot, "/", vm.toString(block.chainid));
         vm.createDir(dir, true);
@@ -344,6 +350,56 @@ contract DeployRelease is Script {
             (inits[i],) = _deployOrSkip(facetSalt(names[i], version), vm.getCode(paths[i]), names[i]);
             registry.attest(inits[i]);
         }
+    }
+
+    function _releaseAccounts(string memory version, ILatticeRegistry registry)
+        private
+        returns (address[] memory inits, address[] memory factories)
+    {
+        AccountReleaseInventory.Entry[] memory entries = AccountReleaseInventory.inventory();
+        inits = new address[](entries.length);
+        factories = new address[](entries.length);
+        for (uint256 i; i < entries.length; ++i) {
+            (, inits[i], factories[i]) = _accountRelease(entries[i], version);
+            registry.attest(inits[i]);
+            registry.attest(factories[i]);
+        }
+    }
+
+    function _serializeAccounts(string memory version, ReleaseOutput memory out) private returns (string memory json) {
+        AccountReleaseInventory.Entry[] memory entries = AccountReleaseInventory.inventory();
+        for (uint256 i; i < entries.length; ++i) {
+            AccountReleaseInventory.Entry memory entry = entries[i];
+            string memory initRecord =
+                _accountPlanRecord(entry, false, out.accountInits[i], version, abi.encode(entry.entryPoint));
+            vm.serializeString("accounts", entry.initializer, initRecord);
+            bytes memory factoryArgs = abi.encode(_accountCuts(entry.modular, version), out.accountInits[i]);
+            string memory factoryRecord = _accountPlanRecord(entry, true, out.accountFactories[i], version, factoryArgs);
+            json = vm.serializeString("accounts", entry.factory, factoryRecord);
+        }
+    }
+
+    function _accountPlanRecord(
+        AccountReleaseInventory.Entry memory entry,
+        bool factory,
+        address at,
+        string memory version,
+        bytes memory args
+    ) private returns (string memory) {
+        string memory name = factory ? entry.factory : entry.initializer;
+        string memory artifact = factory ? entry.factoryArtifact : entry.initializerArtifact;
+        string memory key = string.concat("account:", name);
+        vm.serializeString(key, "name", name);
+        vm.serializeString(key, "artifact", artifact);
+        vm.serializeAddress(key, "entryPoint", entry.entryPoint);
+        vm.serializeString(key, "entryPointVersion", entry.entryPointVersion);
+        vm.serializeString(key, "proxyKind", entry.proxyKind);
+        vm.serializeBytes32(key, "proxyInitCodeHash", keccak256(vm.getCode(entry.proxyArtifact)));
+        vm.serializeAddress(key, "address", at);
+        vm.serializeBytes32(key, "codehash", at.codehash);
+        vm.serializeBytes(key, "constructorArgs", args);
+        vm.serializeBytes32(key, "initCodeHash", keccak256(abi.encodePacked(vm.getCode(artifact), args)));
+        return vm.serializeBytes32(key, "salt", facetSalt(name, version));
     }
 
     function _serializeLibraries(address[] memory deployed) private returns (string memory json) {

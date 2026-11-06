@@ -17,9 +17,11 @@ jq -e --slurpfile plan "$plan" '
     elif .kind == "factory" then .address == $plan[0].factory
     else (if .kind == "facet" then $plan[0].facets[.name]
           elif .kind == "init" then $plan[0].inits[.name]
+          elif .kind == "account-init" or .kind == "account-factory" then $plan[0].accounts[.name]
           else $plan[0].libraries[.name] end) as $p |
       .address == $p.address and .salt == $p.salt and .codehash == $p.codehash and
-      (if .kind == "facet" then .selectorsHash == $p.selectorsHash else .initCodeHash == $p.initCodeHash end)
+      (if .kind == "facet" then .selectorsHash == $p.selectorsHash else .initCodeHash == $p.initCodeHash end) and
+      (if .kind == "account-init" or .kind == "account-factory" then .constructorArgs == $p.constructorArgs else true end)
     end)
 ' "$snapshot" >/dev/null
 echo 'release simulation: filtered generator and release script reproduce the same native-linked identities'
