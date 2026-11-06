@@ -12,7 +12,7 @@ the linked issue or pull request; a record is the outcome, not a spec.
 | [0004](0004-release-deployer-and-salts.md) | Releases use raw-salt CREATE2: versioned facet salts, versionless registry and factory salts | Accepted for salts; deployer superseded by [0014](0014-arachnid-shared-release-deployer.md) |
 | [0005](0005-receive-facet.md) | Bare-ETH acceptance is an opt-in facet under the zero selector | Accepted |
 | [0006](0006-atomic-factory-initialization.md) | Diamonds are created and initialized atomically through `LatticeFactory` | Accepted |
-| [0007](0007-registry-trust-model.md) | `LatticeRegistry` is a standalone two-tier registry | Proposed until [#176](https://github.com/dadadave80/lattice/issues/176) settles |
+| [0007](0007-registry-trust-model.md) | `LatticeRegistry` is a standalone two-tier registry | Accepted |
 | [0008](0008-freeze-once-live.md) | A live module's namespace and interfaceId are frozen | Accepted |
 | [0009](0009-token-extension-hook-model.md) | Token extensions replace base selectors; base libraries run no hooks | Accepted |
 | [0010](0010-groth16-bn254.md) | Zero-knowledge modules standardize on Groth16 over BN254 | Accepted |
