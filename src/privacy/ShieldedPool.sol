@@ -10,8 +10,10 @@ import {ShieldedPoolLib} from "@lattice/privacy/libraries/ShieldedPoolLib.sol";
 ///         (Tornado-style): deposit a commitment, then withdraw to an arbitrary recipient by proving
 ///         membership in zero knowledge and burning a one-time nullifier hash.
 /// @dev All logic lives in {ShieldedPoolLib}. The withdraw circuit + verifier are consumer-supplied per
-///      pool. SECURITY: escrows funds — deploy only with an AUDITED circuit/verifier and honest trusted
-///      setup before any mainnet-with-funds use.
+///      pool. Lattice publishes reference circuit requirements (option (a), issue #238) in
+///      `docs/guides/shielded-pool-circuit.md`; it supplies no audited production withdraw circuit.
+///      SECURITY: escrows funds — consumers must supply an independently AUDITED circuit/verifier and
+///      honest trusted setup before any mainnet-with-funds use. The repository circuit is a test fixture only.
 ///      CUSTODY: deposits sit in the diamond's balance with no per-module ledger. A co-cut module that counts
 ///      the diamond's whole balance of the same token (ERC-4626 `totalAssets`, VestingWallet `release`)
 ///      treats the pool's escrow as its own. One custodian per asset per diamond (issue #240).

@@ -39,6 +39,7 @@ const guides: Item = {
     { text: 'Quickstart', link: '/' },
     { text: 'Compose your own Diamond', link: '/guides/compose-your-own-diamond' },
     { text: 'Selector compatibility', link: '/guides/selector-compatibility' },
+    { text: 'ShieldedPool circuit requirements', link: '/guides/shielded-pool-circuit' },
     { text: 'Storage-safety Action', link: '/guides/storage-action' },
     { text: 'Hedera', link: '/guides/hedera' },
     { text: 'Grant evidence', link: '/grants' },
