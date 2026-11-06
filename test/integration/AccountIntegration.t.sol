@@ -209,6 +209,7 @@ contract AccountIntegration is Test {
     }
 
     /// @dev A P256-passkey-owned account validates AND executes a userOp end-to-end via the EntryPoint.
+    /// forge-config: default.hardfork = "osaka"
     function test_P256Owner_FullUserOpFlow() public {
         (uint256 x, uint256 y) = vm.publicKeyP256(PASSKEY_PK);
         vm.prank(admin);
@@ -232,6 +233,7 @@ contract AccountIntegration is Test {
     }
 
     /// @dev A WebAuthn-passkey-owned account satisfies an external ERC-1271 / ERC-7739 consumer.
+    /// forge-config: default.hardfork = "osaka"
     function test_WebAuthnOwner_ERC1271Consumer() public {
         (uint256 x, uint256 y) = vm.publicKeyP256(PASSKEY_PK);
         vm.prank(admin);

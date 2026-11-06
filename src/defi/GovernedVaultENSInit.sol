@@ -42,8 +42,8 @@ struct GovernedVaultENSParams {
 ///      window is already open; it must NOT open its own pre/postInitializer. The inline claim mirrors
 ///      {ENSReverseClaimerLib.setEnsName} minus its `ENS_MANAGER_ROLE` gate (which checks `msg.sender` — the
 ///      deployer during init, deliberately NOT a role holder): cache the name (CEI), forward `setName` to the
-///      registrar, emit {IENSReverseClaimer.EnsNameSet}. It must NOT call {ENSReverseClaimerInit}, which would
-///      re-run `__AccessControl_init` and clobber the self-admin wiring.
+///      registrar, emit {IENSReverseClaimer.EnsNameSet}. Initializes ENS directly so the shared authority
+///      bootstrap remains explicit; module initializers cannot replace the original AccessControl admin.
 contract GovernedVaultENSInit {
     function init(GovernedVaultENSParams calldata p) external {
         address self = address(this); // the diamond (delegatecall context)

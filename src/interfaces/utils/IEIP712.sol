@@ -12,6 +12,9 @@ interface IEIP712 {
     /// @dev Thrown when the provided version is invalid (empty).
     error EIP712InvalidVersion();
 
+    /// @notice A module initializer requested a different name or version from the existing signing domain.
+    error EIP712ConflictingDomain();
+
     /// @notice Returns the fields and values that describe the domain separator used for signing.
     /// @dev Implements ERC-5267.
     /// @return fields A bitmask where bit i indicates that field i is active in the domain.

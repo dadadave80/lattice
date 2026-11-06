@@ -1,8 +1,7 @@
 # 0004. Releases use raw-salt CREATE2: versioned facet salts, versionless registry and factory salts
 
-- **Status:** Accepted for the salt scheme and the use of CREATE2. The choice of deployer is under review:
-  [#193](https://github.com/dadadave80/lattice/issues/193) (open) proposes Arachnid's proxy on every chain
-  instead of CreateX first.
+- **Status:** Accepted for the salt scheme and CREATE2. The CreateX-first deployer choice below is
+  superseded by [0014](0014-arachnid-shared-release-deployer.md).
 - **Date:** salts and CreateX from [#120](https://github.com/dadadave80/lattice/issues/120) (2026-07-09);
   the Arachnid fallback from [#189](https://github.com/dadadave80/lattice/pull/189) (2026-10-07); recorded
   2026-10-09

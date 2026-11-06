@@ -9,7 +9,7 @@ the linked issue or pull request; a record is the outcome, not a spec.
 | [0001](0001-three-file-pattern.md) | Modules are an interface, a library and a stateless facet | Accepted |
 | [0002](0002-erc7201-namespaced-storage.md) | ERC-7201 storage at hard-coded `lattice.storage.<Module>` slots | Accepted |
 | [0003](0003-precomputed-erc165-slots.md) | ERC-165 registration writes a precomputed map slot | Accepted |
-| [0004](0004-release-deployer-and-salts.md) | Releases use raw-salt CREATE2: versioned facet salts, versionless registry and factory salts | Accepted; deployer under review in [#193](https://github.com/dadadave80/lattice/issues/193) |
+| [0004](0004-release-deployer-and-salts.md) | Releases use raw-salt CREATE2: versioned facet salts, versionless registry and factory salts | Accepted for salts; deployer superseded by [0014](0014-arachnid-shared-release-deployer.md) |
 | [0005](0005-receive-facet.md) | Bare-ETH acceptance is an opt-in facet under the zero selector | Accepted |
 | [0006](0006-atomic-factory-initialization.md) | Diamonds are created and initialized atomically through `LatticeFactory` | Accepted |
 | [0007](0007-registry-trust-model.md) | `LatticeRegistry` is a standalone two-tier registry | Proposed until [#176](https://github.com/dadadave80/lattice/issues/176) settles |
@@ -19,6 +19,9 @@ the linked issue or pull request; a record is the outcome, not a spec.
 | [0011](0011-no-stateless-utility-duplicates.md) | No new copies of stateless Solady or OpenZeppelin utilities | Accepted |
 | [0012](0012-storage-checker-bash-jq.md) | The storage-layout checker stays in Bash and jq | Accepted |
 | [0013](0013-colocated-timelock-enforces-governor-grace.md) | A timelock in the Governor's diamond enforces the proposal grace period | Accepted |
+| [0014](0014-arachnid-shared-release-deployer.md) | Shared releases use only the Arachnid deterministic-deployment proxy | Accepted |
+| [0015](0015-canonical-cancun-build.md) | Canonical releases target Cancun with one pinned build configuration | Accepted |
+| [0016](0016-shared-initialization-identity.md) | Shared bootstrap identity is consistent and interface claims follow routed selectors | Accepted |
 
 ## When to write one
 

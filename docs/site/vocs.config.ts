@@ -28,6 +28,9 @@ const decisions: Item = {
     { text: '0011 No utility duplicates', link: '/adr/0011-no-stateless-utility-duplicates' },
     { text: '0012 Bash storage checker', link: '/adr/0012-storage-checker-bash-jq' },
     { text: '0013 Governor grace', link: '/adr/0013-colocated-timelock-enforces-governor-grace' },
+    { text: '0014 Shared release deployer', link: '/adr/0014-arachnid-shared-release-deployer' },
+    { text: '0015 Canonical Cancun build', link: '/adr/0015-canonical-cancun-build' },
+    { text: '0016 Shared initialization', link: '/adr/0016-shared-initialization-identity' },
   ],
 }
 

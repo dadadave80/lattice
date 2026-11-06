@@ -1,0 +1,5280 @@
+{
+  "schemaVersion": 1,
+  "layouts": [
+    {
+      "struct": "API3AdapterStorage",
+      "namespace": "lattice.storage.API3Adapter",
+      "slot": "0xdedf34315ce34cb136d15a8f1bef434dfd97b5e1960d065caa42769bce24e700",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_feeds",
+          "type": "t_mapping(t_bytes32,t_struct(API3Feed)_storage)"
+        }
+      ]
+    },
+    {
+      "struct": "API3QRNGAdapterStorage",
+      "namespace": "lattice.storage.API3QRNGAdapter",
+      "slot": "0xb551ab661bfaed153d497ffdaa9cbb1d46fa1d799d8e6f2a2aa8ecfb66104b00",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_airnodeRrp",
+          "type": "t_address"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "_airnode",
+          "type": "t_address"
+        },
+        {
+          "slot": "2",
+          "offset": 0,
+          "name": "_endpointId",
+          "type": "t_bytes32"
+        },
+        {
+          "slot": "3",
+          "offset": 0,
+          "name": "_sponsorWallet",
+          "type": "t_address"
+        },
+        {
+          "slot": "4",
+          "offset": 0,
+          "name": "_pendingRequests",
+          "type": "t_mapping(t_bytes32,t_bytes32)"
+        }
+      ]
+    },
+    {
+      "struct": "AaveV3AdapterStorage",
+      "namespace": "lattice.storage.AaveV3Adapter",
+      "slot": "0x78e1f0849c8352c9588d407dc28e9981715ac638a0aa753fc1ecf5191c1f8200",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_provider",
+          "type": "t_address"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "_asset",
+          "type": "t_address"
+        },
+        {
+          "slot": "2",
+          "offset": 0,
+          "name": "_vault",
+          "type": "t_address"
+        },
+        {
+          "slot": "3",
+          "offset": 0,
+          "name": "_rewardRecipient",
+          "type": "t_address"
+        },
+        {
+          "slot": "4",
+          "offset": 0,
+          "name": "_assetUsdFeedKey",
+          "type": "t_bytes32"
+        },
+        {
+          "slot": "5",
+          "offset": 0,
+          "name": "_minHealthFactorWad",
+          "type": "t_uint256"
+        },
+        {
+          "slot": "6",
+          "offset": 0,
+          "name": "_eModeCategory",
+          "type": "t_uint8"
+        },
+        {
+          "slot": "6",
+          "offset": 1,
+          "name": "_rewardsController",
+          "type": "t_address"
+        },
+        {
+          "slot": "7",
+          "offset": 0,
+          "name": "_operator",
+          "type": "t_address"
+        }
+      ]
+    },
+    {
+      "struct": "AccessControlEnumerableStorage",
+      "namespace": "lattice.storage.AccessControlEnumerable",
+      "slot": "0xae7c738306b742461a657cbf6c6b56bd5351917d4cf69da559703284f7d34500",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_roleMembers",
+          "type": "t_mapping(t_bytes32,t_struct(AddressSet)_storage)"
+        }
+      ]
+    },
+    {
+      "struct": "AccessControlStorage",
+      "namespace": "lattice.storage.AccessControl",
+      "slot": "0xb914f813e2d49e02dd5aa794466aa4a74f9c100c2b1e98e29e7267020b834d00",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_roles",
+          "type": "t_mapping(t_bytes32,t_struct(RoleData)_storage)"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "_initialAdmin",
+          "type": "t_address"
+        },
+        {
+          "slot": "1",
+          "offset": 20,
+          "name": "_initialized",
+          "type": "t_bool"
+        }
+      ]
+    },
+    {
+      "struct": "AccessControlTimedStorage",
+      "namespace": "lattice.storage.AccessControlTimed",
+      "slot": "0xc28360e6402e1e090270be0970bdf75960435f822fc9a49d7b8c286806e6af00",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_timings",
+          "type": "t_mapping(t_bytes32,t_mapping(t_address,t_struct(Timing)_storage))"
+        }
+      ]
+    },
+    {
+      "struct": "AccessManagedStorage",
+      "namespace": "lattice.storage.AccessManaged",
+      "slot": "0x1d3b28af968dd6edd45cccd73c2668243fb5bd57c6ee16239765b74aa3d5e100",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_authority",
+          "type": "t_address"
+        },
+        {
+          "slot": "0",
+          "offset": 20,
+          "name": "_consumingScheduledOp",
+          "type": "t_bool"
+        }
+      ]
+    },
+    {
+      "struct": "AccessManagerStorage",
+      "namespace": "lattice.storage.AccessManager",
+      "slot": "0x031c2bc21c63b497895ca319b75b15a6c2f2e4b0e91bbd5327f580843bca1a00",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_roles",
+          "type": "t_mapping(t_uint64,t_struct(Role)_storage)"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "_access",
+          "type": "t_mapping(t_uint64,t_mapping(t_address,t_struct(Access)_storage))"
+        },
+        {
+          "slot": "2",
+          "offset": 0,
+          "name": "_roleMembers",
+          "type": "t_mapping(t_uint64,t_struct(AddressSet)_storage)"
+        },
+        {
+          "slot": "3",
+          "offset": 0,
+          "name": "_targets",
+          "type": "t_mapping(t_address,t_struct(TargetConfig)_storage)"
+        },
+        {
+          "slot": "4",
+          "offset": 0,
+          "name": "_operationQueue",
+          "type": "t_struct(MultiSchedule)_storage"
+        },
+        {
+          "slot": "5",
+          "offset": 0,
+          "name": "_nonces",
+          "type": "t_mapping(t_bytes32,t_uint32)"
+        },
+        {
+          "slot": "6",
+          "offset": 0,
+          "name": "_nextNonce",
+          "type": "t_uint32"
+        },
+        {
+          "slot": "7",
+          "offset": 0,
+          "name": "_executionId",
+          "type": "t_bytes32"
+        }
+      ]
+    },
+    {
+      "struct": "AccountSignerStorage",
+      "namespace": "lattice.storage.AccountSigner",
+      "slot": "0x0da6d1e39c7e91c8bb664dbc699f525d1effdcf9e745a754a440ffebe67feb00",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_owner",
+          "type": "t_address"
+        },
+        {
+          "slot": "0",
+          "offset": 20,
+          "name": "_signerType",
+          "type": "t_uint8"
+        },
+        {
+          "slot": "0",
+          "offset": 21,
+          "name": "_requireUV",
+          "type": "t_bool"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "_p256X",
+          "type": "t_bytes32"
+        },
+        {
+          "slot": "2",
+          "offset": 0,
+          "name": "_p256Y",
+          "type": "t_bytes32"
+        }
+      ]
+    },
+    {
+      "struct": "AcrossBridgeAdapterStorage",
+      "namespace": "lattice.storage.AcrossBridgeAdapter",
+      "slot": "0xd1f2b3a38609618605209c75d051e4ac61236c94f39400c851dd252f5fe1d000",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_spokePool",
+          "type": "t_address"
+        }
+      ]
+    },
+    {
+      "struct": "AggregatorExecAdapterStorage",
+      "namespace": "lattice.storage.AggregatorExecAdapter",
+      "slot": "0xa2d04b4e843f01463940d93cd4d536111875b48fb08f2c3a7d094e91e39a5100",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_allowedCall",
+          "type": "t_mapping(t_address,t_mapping(t_bytes4,t_bool))"
+        }
+      ]
+    },
+    {
+      "struct": "AxelarGatewayAdapterStorage",
+      "namespace": "lattice.storage.AxelarGatewayAdapter",
+      "slot": "0xeb5bee64b500c298be8b1e9f77b8505f5c8c9cdd4c45b490c069ffc446e8fd00",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_gateway",
+          "type": "t_address"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "_remoteGateways",
+          "type": "t_mapping(t_bytes2,t_mapping(t_bytes_memory_ptr,t_bytes_storage))"
+        },
+        {
+          "slot": "2",
+          "offset": 0,
+          "name": "_erc7930ToAxelar",
+          "type": "t_mapping(t_bytes_memory_ptr,t_string_storage)"
+        },
+        {
+          "slot": "3",
+          "offset": 0,
+          "name": "_axelarToErc7930",
+          "type": "t_mapping(t_string_memory_ptr,t_bytes_storage)"
+        }
+      ]
+    },
+    {
+      "struct": "BandAdapterStorage",
+      "namespace": "lattice.storage.BandAdapter",
+      "slot": "0xf5012e750700459bfafa131fc1c12ce6e9c0f0209cb29cbc1f960c4760a00a00",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_feeds",
+          "type": "t_mapping(t_bytes32,t_struct(BandFeed)_storage)"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "_reference",
+          "type": "t_address"
+        }
+      ]
+    },
+    {
+      "struct": "BridgeERC20Storage",
+      "namespace": "lattice.storage.BridgeERC20",
+      "slot": "0x0e9006c16c4f5fe9e0e3215c8af601bd97024c6bebdfa0efe51c092276cd7c00",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_token",
+          "type": "t_address"
+        }
+      ]
+    },
+    {
+      "struct": "BridgeERC7802Storage",
+      "namespace": "lattice.storage.BridgeERC7802",
+      "slot": "0x9d1b234db7644d1f76207933d92c2e89140027741ab600a4ff4b12a8d51e4b00",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_token",
+          "type": "t_address"
+        }
+      ]
+    },
+    {
+      "struct": "CCIPGatewayAdapterStorage",
+      "namespace": "lattice.storage.CCIPGatewayAdapter",
+      "slot": "0xfc37dafbf0181d0474cf94e236f0ede0d369aab52659fb134d4be3b15fbb8e00",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_router",
+          "type": "t_address"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "_feeToken",
+          "type": "t_address"
+        },
+        {
+          "slot": "2",
+          "offset": 0,
+          "name": "_chainIdToSelector",
+          "type": "t_mapping(t_uint256,t_uint64)"
+        },
+        {
+          "slot": "3",
+          "offset": 0,
+          "name": "_selectorToChainId",
+          "type": "t_mapping(t_uint64,t_uint256)"
+        },
+        {
+          "slot": "4",
+          "offset": 0,
+          "name": "_remoteGateways",
+          "type": "t_mapping(t_uint256,t_address)"
+        },
+        {
+          "slot": "5",
+          "offset": 0,
+          "name": "_destGasLimit",
+          "type": "t_mapping(t_uint256,t_uint256)"
+        },
+        {
+          "slot": "6",
+          "offset": 0,
+          "name": "_destAllowOutOfOrder",
+          "type": "t_mapping(t_uint256,t_bool)"
+        },
+        {
+          "slot": "7",
+          "offset": 0,
+          "name": "_executed",
+          "type": "t_mapping(t_uint256,t_mapping(t_bytes32,t_bool))"
+        },
+        {
+          "slot": "8",
+          "offset": 0,
+          "name": "_ccvConfigs",
+          "type": "t_mapping(t_uint256,t_struct(CCVConfig)_storage)"
+        }
+      ]
+    },
+    {
+      "struct": "CCTPBridgeAdapterStorage",
+      "namespace": "lattice.storage.CCTPBridgeAdapter",
+      "slot": "0x94bcfd23a6ef7deebf3dfac9da6ba8c390ae8a620c8a163523fd263b20958b00",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_tokenMessenger",
+          "type": "t_address"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "_messageTransmitter",
+          "type": "t_address"
+        },
+        {
+          "slot": "2",
+          "offset": 0,
+          "name": "_usdc",
+          "type": "t_address"
+        },
+        {
+          "slot": "3",
+          "offset": 0,
+          "name": "_chainIdToDomain",
+          "type": "t_mapping(t_uint256,t_uint32)"
+        },
+        {
+          "slot": "4",
+          "offset": 0,
+          "name": "_chainRegistered",
+          "type": "t_mapping(t_uint256,t_bool)"
+        },
+        {
+          "slot": "5",
+          "offset": 0,
+          "name": "_domainConfig",
+          "type": "t_mapping(t_uint32,t_struct(DomainConfig)_storage)"
+        },
+        {
+          "slot": "6",
+          "offset": 0,
+          "name": "_domainOwner",
+          "type": "t_mapping(t_uint32,t_uint256)"
+        },
+        {
+          "slot": "7",
+          "offset": 0,
+          "name": "_hookExecutor",
+          "type": "t_address"
+        }
+      ]
+    },
+    {
+      "struct": "ChainRegistryStorage",
+      "namespace": "lattice.storage.ChainRegistry",
+      "slot": "0x3d04730f387c3a41671abdc91e43582ee4d80e460792f9c401b5acc80eab5b00",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_chains",
+          "type": "t_mapping(t_bytes32,t_struct(ChainRecord)_storage)"
+        }
+      ]
+    },
+    {
+      "struct": "ChainlinkAdapterStorage",
+      "namespace": "lattice.storage.ChainlinkAdapter",
+      "slot": "0xdbb02d424081d7fb4c59a631e74d23250f514b627bc328ad0ec973d94b228000",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_feeds",
+          "type": "t_mapping(t_bytes32,t_struct(Feed)_storage)"
+        }
+      ]
+    },
+    {
+      "struct": "ChainlinkAutomationAdapterStorage",
+      "namespace": "lattice.storage.ChainlinkAutomationAdapter",
+      "slot": "0x79ff96d501e28b99bca4f72c19ec619bce29c1cac16a5bcab62634e5e94dcb00",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_forwarder",
+          "type": "t_address"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "_interval",
+          "type": "t_uint256"
+        },
+        {
+          "slot": "2",
+          "offset": 0,
+          "name": "_lastTimeStamp",
+          "type": "t_uint256"
+        },
+        {
+          "slot": "3",
+          "offset": 0,
+          "name": "_counter",
+          "type": "t_uint256"
+        }
+      ]
+    },
+    {
+      "struct": "ChainlinkCREAdapterStorage",
+      "namespace": "lattice.storage.ChainlinkCREAdapter",
+      "slot": "0x38811f86f85f0447c0970d57466dc7a3c4187640f04a44e7622c183e45f90b00",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_forwarder",
+          "type": "t_address"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "_workflows",
+          "type": "t_mapping(t_bytes32,t_bool)"
+        },
+        {
+          "slot": "2",
+          "offset": 0,
+          "name": "_latestReports",
+          "type": "t_mapping(t_bytes32,t_struct(CREReport)_storage)"
+        }
+      ]
+    },
+    {
+      "struct": "ChainlinkVRFStorage",
+      "namespace": "lattice.storage.ChainlinkVRF",
+      "slot": "0x296a09c3f1dda7c7057a0d3e9cfd88b1666f0f2ebdcbdc2f576bbcf22db0d200",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_coordinator",
+          "type": "t_address"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "_subscriptionId",
+          "type": "t_uint256"
+        },
+        {
+          "slot": "2",
+          "offset": 0,
+          "name": "_keyHash",
+          "type": "t_bytes32"
+        },
+        {
+          "slot": "3",
+          "offset": 0,
+          "name": "_requestConfirmations",
+          "type": "t_uint16"
+        },
+        {
+          "slot": "3",
+          "offset": 2,
+          "name": "_callbackGasLimit",
+          "type": "t_uint32"
+        },
+        {
+          "slot": "4",
+          "offset": 0,
+          "name": "_pendingRequests",
+          "type": "t_mapping(t_uint256,t_bytes32)"
+        }
+      ]
+    },
+    {
+      "struct": "ChronicleAdapterStorage",
+      "namespace": "lattice.storage.ChronicleAdapter",
+      "slot": "0xfc08f646a4b61c410e914db3efd5dca6935b089749eb55e38d0c450dddbb7600",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_feeds",
+          "type": "t_mapping(t_bytes32,t_struct(ChronicleFeed)_storage)"
+        }
+      ]
+    },
+    {
+      "struct": "CircuitBreakerStorage",
+      "namespace": "lattice.storage.CircuitBreaker",
+      "slot": "0xd8788de4a058793385dd8cf230dd9182ee7825c114e097c68b1e086af1ccbe00",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_buckets",
+          "type": "t_mapping(t_bytes32,t_struct(CircuitBreakerBucket)_storage)"
+        }
+      ]
+    },
+    {
+      "struct": "CommitRevealStorage",
+      "namespace": "lattice.storage.CommitReveal",
+      "slot": "0xd3109411a8705fe8e8868eda2607aae4e6b37bb0d383a8a9e1c55c78e6853e00",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_commitments",
+          "type": "t_mapping(t_bytes32,t_struct(Commitment)_storage)"
+        }
+      ]
+    },
+    {
+      "struct": "CompoundV3AdapterStorage",
+      "namespace": "lattice.storage.CompoundV3Adapter",
+      "slot": "0x96f5f0ff446cccea8e0037b1046912f9609bac8e9b25707c9fadf78bc2d9fe00",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_comet",
+          "type": "t_address"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "_asset",
+          "type": "t_address"
+        },
+        {
+          "slot": "2",
+          "offset": 0,
+          "name": "_vault",
+          "type": "t_address"
+        },
+        {
+          "slot": "3",
+          "offset": 0,
+          "name": "_rewardRecipient",
+          "type": "t_address"
+        },
+        {
+          "slot": "4",
+          "offset": 0,
+          "name": "_cometRewards",
+          "type": "t_address"
+        },
+        {
+          "slot": "5",
+          "offset": 0,
+          "name": "_operator",
+          "type": "t_address"
+        }
+      ]
+    },
+    {
+      "struct": "ConstantProductStorage",
+      "namespace": "lattice.storage.ConstantProduct",
+      "slot": "0xf3baf196a9957c5a93606e180cd873c83f4d725c3513c9295ef6ca05f13a2200",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_token0",
+          "type": "t_address"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "_token1",
+          "type": "t_address"
+        },
+        {
+          "slot": "2",
+          "offset": 0,
+          "name": "_reserve0",
+          "type": "t_uint112"
+        },
+        {
+          "slot": "2",
+          "offset": 14,
+          "name": "_reserve1",
+          "type": "t_uint112"
+        },
+        {
+          "slot": "2",
+          "offset": 28,
+          "name": "_blockTimestampLast",
+          "type": "t_uint32"
+        },
+        {
+          "slot": "3",
+          "offset": 0,
+          "name": "_totalLpSupply",
+          "type": "t_uint256"
+        },
+        {
+          "slot": "4",
+          "offset": 0,
+          "name": "_lpBalances",
+          "type": "t_mapping(t_address,t_uint256)"
+        },
+        {
+          "slot": "5",
+          "offset": 0,
+          "name": "_initialized",
+          "type": "t_bool"
+        }
+      ]
+    },
+    {
+      "struct": "CrosschainLinkStorage",
+      "namespace": "lattice.storage.CrosschainLink",
+      "slot": "0x018a2157cdb5adbb1b39e614b18b4d8eae2cba40cdae1a4ba3100cc857e64900",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_links",
+          "type": "t_mapping(t_bytes_memory_ptr,t_struct(Link)_storage)"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "_handlers",
+          "type": "t_mapping(t_bytes4,t_address)"
+        },
+        {
+          "slot": "2",
+          "offset": 0,
+          "name": "_used",
+          "type": "t_mapping(t_bytes32,t_bool)"
+        }
+      ]
+    },
+    {
+      "struct": "CurveStableSwapAdapterStorage",
+      "namespace": "lattice.storage.CurveStableSwapAdapter",
+      "slot": "0x9a875cb7e904ab3576fe7e6b7405b28b9f810acb5bf4def0fec57c5e754def00",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_pool",
+          "type": "t_address"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "_lpToken",
+          "type": "t_address"
+        },
+        {
+          "slot": "2",
+          "offset": 0,
+          "name": "_gauge",
+          "type": "t_address"
+        },
+        {
+          "slot": "3",
+          "offset": 0,
+          "name": "_asset",
+          "type": "t_address"
+        },
+        {
+          "slot": "4",
+          "offset": 0,
+          "name": "_vault",
+          "type": "t_address"
+        },
+        {
+          "slot": "5",
+          "offset": 0,
+          "name": "_rewardRecipient",
+          "type": "t_address"
+        },
+        {
+          "slot": "6",
+          "offset": 0,
+          "name": "_crvToken",
+          "type": "t_address"
+        },
+        {
+          "slot": "7",
+          "offset": 0,
+          "name": "_coinIndex",
+          "type": "t_int128"
+        },
+        {
+          "slot": "8",
+          "offset": 0,
+          "name": "_slippageBps",
+          "type": "t_uint256"
+        },
+        {
+          "slot": "9",
+          "offset": 0,
+          "name": "_operator",
+          "type": "t_address"
+        }
+      ]
+    },
+    {
+      "struct": "DIAAdapterStorage",
+      "namespace": "lattice.storage.DIAAdapter",
+      "slot": "0x96676e4e566fe60ae3185e7bd982de2eb1f4d0f9b85c8e29200af4e575d6c400",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_feeds",
+          "type": "t_mapping(t_bytes32,t_struct(DIAFeed)_storage)"
+        }
+      ]
+    },
+    {
+      "struct": "EIP712Storage",
+      "namespace": "lattice.storage.EIP712",
+      "slot": "0x20a66479672b0fb14805a3bad8d1d6c2fa26c98d9118036fcaf73a0900bc5a00",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_cachedDomainSeparator",
+          "type": "t_bytes32"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "_cachedChainId",
+          "type": "t_uint256"
+        },
+        {
+          "slot": "2",
+          "offset": 0,
+          "name": "_cachedThis",
+          "type": "t_address"
+        },
+        {
+          "slot": "3",
+          "offset": 0,
+          "name": "_hashedName",
+          "type": "t_bytes32"
+        },
+        {
+          "slot": "4",
+          "offset": 0,
+          "name": "_hashedVersion",
+          "type": "t_bytes32"
+        },
+        {
+          "slot": "5",
+          "offset": 0,
+          "name": "_name",
+          "type": "t_userDefinedValueType(ShortString)"
+        },
+        {
+          "slot": "6",
+          "offset": 0,
+          "name": "_version",
+          "type": "t_userDefinedValueType(ShortString)"
+        },
+        {
+          "slot": "7",
+          "offset": 0,
+          "name": "_nameFallback",
+          "type": "t_string_storage"
+        },
+        {
+          "slot": "8",
+          "offset": 0,
+          "name": "_versionFallback",
+          "type": "t_string_storage"
+        }
+      ]
+    },
+    {
+      "struct": "ENSResolverStorage",
+      "namespace": "lattice.storage.ENSResolver",
+      "slot": "0x33f26d8db6499021a25127a427a9f060956987880daa3f7db97807f377225300",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_ensRegistry",
+          "type": "t_address"
+        }
+      ]
+    },
+    {
+      "struct": "ENSReverseClaimerStorage",
+      "namespace": "lattice.storage.ENSReverseClaimer",
+      "slot": "0x4490f19c91eeff7574cc9707696b972040b89f54488ef7fa354afe94a194c100",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_reverseRegistrar",
+          "type": "t_address"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "_ensName",
+          "type": "t_string_storage"
+        }
+      ]
+    },
+    {
+      "struct": "ENSSubnameIssuerStorage",
+      "namespace": "lattice.storage.ENSSubnameIssuer",
+      "slot": "0xecd97908615d460a8806be2f460463395b75373d406444064e9704ed5d892e00",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_nameWrapper",
+          "type": "t_address"
+        }
+      ]
+    },
+    {
+      "struct": "ERC1155Storage",
+      "namespace": "lattice.storage.ERC1155",
+      "slot": "0xe39704fe713bf9d011ae08177a1e99cc7df74d40063bba4426aeb9d10e274c00",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_balances",
+          "type": "t_mapping(t_uint256,t_mapping(t_address,t_uint256))"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "_operatorApprovals",
+          "type": "t_mapping(t_address,t_mapping(t_address,t_bool))"
+        },
+        {
+          "slot": "2",
+          "offset": 0,
+          "name": "_uri",
+          "type": "t_string_storage"
+        }
+      ]
+    },
+    {
+      "struct": "ERC1155SupplyStorage",
+      "namespace": "lattice.storage.ERC1155Supply",
+      "slot": "0x587745c63b1b33029f813b403978fa83db2954e4dd333c28aeae4b4e067ade00",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_totalSupply",
+          "type": "t_mapping(t_uint256,t_uint256)"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "_totalSupplyAll",
+          "type": "t_uint256"
+        }
+      ]
+    },
+    {
+      "struct": "ERC1155URIStorageStorage",
+      "namespace": "lattice.storage.ERC1155URIStorage",
+      "slot": "0x410b28ad7d410d71a721debe93a5796847f0aba6b82f9b5e65108eff17bfbc00",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_baseURI",
+          "type": "t_string_storage"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "_tokenURIs",
+          "type": "t_mapping(t_uint256,t_string_storage)"
+        }
+      ]
+    },
+    {
+      "struct": "ERC20CappedStorage",
+      "namespace": "lattice.storage.ERC20Capped",
+      "slot": "0xf3126bfe4af748db9eb069fa2ed04557107fb53a164b5206750073586b2bc900",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_cap",
+          "type": "t_uint256"
+        }
+      ]
+    },
+    {
+      "struct": "ERC20Storage",
+      "namespace": "lattice.storage.ERC20",
+      "slot": "0x948387732d07f6e6ec1c3bf1559c10e90e518c5a59f5d2be5a80edb6f2494300",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_balances",
+          "type": "t_mapping(t_address,t_uint256)"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "_allowances",
+          "type": "t_mapping(t_address,t_mapping(t_address,t_uint256))"
+        },
+        {
+          "slot": "2",
+          "offset": 0,
+          "name": "_totalSupply",
+          "type": "t_uint256"
+        },
+        {
+          "slot": "3",
+          "offset": 0,
+          "name": "_name",
+          "type": "t_string_storage"
+        },
+        {
+          "slot": "4",
+          "offset": 0,
+          "name": "_symbol",
+          "type": "t_string_storage"
+        }
+      ]
+    },
+    {
+      "struct": "ERC20WrapperStorage",
+      "namespace": "lattice.storage.ERC20Wrapper",
+      "slot": "0x9af643d743ece491f2a9cf5444d757c9d02a4957e91a8cb344a1642a3cb94400",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_underlying",
+          "type": "t_address"
+        },
+        {
+          "slot": "0",
+          "offset": 20,
+          "name": "_underlyingDecimals",
+          "type": "t_uint8"
+        }
+      ]
+    },
+    {
+      "struct": "ERC2981Storage",
+      "namespace": "lattice.storage.ERC2981",
+      "slot": "0xf01000cac811e850d05bb5588943b621fb762a575809c98a87e3540df4e97a00",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_defaultRoyaltyInfo",
+          "type": "t_struct(RoyaltyInfo)_storage"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "_tokenRoyaltyInfo",
+          "type": "t_mapping(t_uint256,t_struct(RoyaltyInfo)_storage)"
+        }
+      ]
+    },
+    {
+      "struct": "ERC4337ValidationStorage",
+      "namespace": "lattice.storage.ERC4337Validation",
+      "slot": "0x63f3a16063eb3400d0c49a9883f78e71c0740febe009dfe0af21003612fc2a00",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_entryPoint",
+          "type": "t_address"
+        }
+      ]
+    },
+    {
+      "struct": "ERC4626AdapterStorage",
+      "namespace": "lattice.storage.ERC4626Adapter",
+      "slot": "0x8e54862d9117c02647004a257ec52ba4f4c6ce02a01e23235ed8d34a2127c500",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_targetVault",
+          "type": "t_address"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "_asset",
+          "type": "t_address"
+        },
+        {
+          "slot": "2",
+          "offset": 0,
+          "name": "_vault",
+          "type": "t_address"
+        },
+        {
+          "slot": "3",
+          "offset": 0,
+          "name": "_rewardRecipient",
+          "type": "t_address"
+        },
+        {
+          "slot": "4",
+          "offset": 0,
+          "name": "_sideRewardToken",
+          "type": "t_address"
+        },
+        {
+          "slot": "5",
+          "offset": 0,
+          "name": "_operator",
+          "type": "t_address"
+        }
+      ]
+    },
+    {
+      "struct": "ERC4626Storage",
+      "namespace": "lattice.storage.ERC4626",
+      "slot": "0x748f49bc653df23655f3b413e3d5c91c1b4c965af17a32d743e995b145325100",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_asset",
+          "type": "t_address"
+        },
+        {
+          "slot": "0",
+          "offset": 20,
+          "name": "_underlyingDecimals",
+          "type": "t_uint8"
+        },
+        {
+          "slot": "0",
+          "offset": 21,
+          "name": "_decimalsOffset",
+          "type": "t_uint8"
+        }
+      ]
+    },
+    {
+      "struct": "ERC6538RegistryStorage",
+      "namespace": "lattice.storage.ERC6538Registry",
+      "slot": "0x77e72c5973ed8cfb58126100bfd525d25949aa328155f37334e51548cdc80100",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_stealthMetaAddresses",
+          "type": "t_mapping(t_address,t_mapping(t_uint256,t_bytes_storage))"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "_nonces",
+          "type": "t_mapping(t_address,t_uint256)"
+        }
+      ]
+    },
+    {
+      "struct": "ERC6551AccountStorage",
+      "namespace": "lattice.storage.ERC6551Account",
+      "slot": "0x5d509296c8693d1a2071f7702ffb166090e7cdcee4fc11a42df61b6a19026100",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_chainId",
+          "type": "t_uint256"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "_tokenContract",
+          "type": "t_address"
+        },
+        {
+          "slot": "2",
+          "offset": 0,
+          "name": "_tokenId",
+          "type": "t_uint256"
+        },
+        {
+          "slot": "3",
+          "offset": 0,
+          "name": "_state",
+          "type": "t_uint256"
+        }
+      ]
+    },
+    {
+      "struct": "ERC6900ModuleManagerStorage",
+      "namespace": "lattice.storage.ERC6900ModuleManager",
+      "slot": "0x498a44bfdab4c9c01e0c660bf3b7240261bf444dc4c542e64dac94a83f534500",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_executions",
+          "type": "t_mapping(t_bytes4,t_struct(ExecutionStorage)_storage)"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "_validations",
+          "type": "t_mapping(t_userDefinedValueType(ModuleEntity),t_struct(ValidationStorage)_storage)"
+        },
+        {
+          "slot": "2",
+          "offset": 0,
+          "name": "_interfaceRefCount",
+          "type": "t_mapping(t_bytes4,t_uint256)"
+        }
+      ]
+    },
+    {
+      "struct": "ERC721ConsecutiveStorage",
+      "namespace": "lattice.storage.ERC721Consecutive",
+      "slot": "0xa366fb2bdee137bc7f716776578183d1280f09a256650bb770031cb75d936000",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_firstConsecutiveId",
+          "type": "t_uint96"
+        },
+        {
+          "slot": "0",
+          "offset": 12,
+          "name": "_nextConsecutiveId",
+          "type": "t_uint96"
+        },
+        {
+          "slot": "0",
+          "offset": 24,
+          "name": "_enabled",
+          "type": "t_bool"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "_sequentialOwnership",
+          "type": "t_struct(Trace160)_storage"
+        },
+        {
+          "slot": "2",
+          "offset": 0,
+          "name": "_sequentialBurn",
+          "type": "t_mapping(t_uint256,t_uint256)"
+        }
+      ]
+    },
+    {
+      "struct": "ERC721EnumerableStorage",
+      "namespace": "lattice.storage.ERC721Enumerable",
+      "slot": "0xf44b1a2ac6259907d34f22f5cc88909b4db34b47d9193d82fe8ed2889ec8e200",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_ownedTokens",
+          "type": "t_mapping(t_address,t_mapping(t_uint256,t_uint256))"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "_ownedTokensIndex",
+          "type": "t_mapping(t_uint256,t_uint256)"
+        },
+        {
+          "slot": "2",
+          "offset": 0,
+          "name": "_allTokens",
+          "type": "t_array(t_uint256)dyn_storage"
+        },
+        {
+          "slot": "3",
+          "offset": 0,
+          "name": "_allTokensIndex",
+          "type": "t_mapping(t_uint256,t_uint256)"
+        }
+      ]
+    },
+    {
+      "struct": "ERC721Storage",
+      "namespace": "lattice.storage.ERC721",
+      "slot": "0xb57056eaff39f17dbb7656e3d0f4bee059cc8b05a6894f946db4b85f3b03e700",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_owners",
+          "type": "t_mapping(t_uint256,t_address)"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "_balances",
+          "type": "t_mapping(t_address,t_uint256)"
+        },
+        {
+          "slot": "2",
+          "offset": 0,
+          "name": "_tokenApprovals",
+          "type": "t_mapping(t_uint256,t_address)"
+        },
+        {
+          "slot": "3",
+          "offset": 0,
+          "name": "_operatorApprovals",
+          "type": "t_mapping(t_address,t_mapping(t_address,t_bool))"
+        },
+        {
+          "slot": "4",
+          "offset": 0,
+          "name": "_name",
+          "type": "t_string_storage"
+        },
+        {
+          "slot": "5",
+          "offset": 0,
+          "name": "_symbol",
+          "type": "t_string_storage"
+        }
+      ]
+    },
+    {
+      "struct": "ERC721URIStorageStorage",
+      "namespace": "lattice.storage.ERC721URIStorage",
+      "slot": "0xcad0a180da252dc6d7fda719c706c048d7fcfbea8301125fec9b8527feaa7700",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_tokenURIs",
+          "type": "t_mapping(t_uint256,t_string_storage)"
+        }
+      ]
+    },
+    {
+      "struct": "ERC721WrapperStorage",
+      "namespace": "lattice.storage.ERC721Wrapper",
+      "slot": "0x434ed71ac956f35c738c07eaadcb4935b3686524cef619db6f8caec66db4f500",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_underlying",
+          "type": "t_address"
+        }
+      ]
+    },
+    {
+      "struct": "ERC7579ModuleConfigStorage",
+      "namespace": "lattice.storage.ERC7579ModuleConfig",
+      "slot": "0xf5855f8dc57bbb54955d6871575c862d7a11401119f5a873c91e7ac60628d800",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_installed",
+          "type": "t_mapping(t_uint256,t_mapping(t_address,t_bool))"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "_hook",
+          "type": "t_address"
+        },
+        {
+          "slot": "2",
+          "offset": 0,
+          "name": "_fallbacks",
+          "type": "t_mapping(t_bytes4,t_struct(FallbackHandler)_storage)"
+        }
+      ]
+    },
+    {
+      "struct": "ERC7786OpenBridgeStorage",
+      "namespace": "lattice.storage.ERC7786OpenBridge",
+      "slot": "0xca75154ce55fdf901a786b6fa60962886fadca5cda61c777098bc66b49134a00",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_gateways",
+          "type": "t_struct(AddressSet)_storage"
+        },
+        {
+          "slot": "2",
+          "offset": 0,
+          "name": "_threshold",
+          "type": "t_uint8"
+        },
+        {
+          "slot": "3",
+          "offset": 0,
+          "name": "_nonce",
+          "type": "t_uint256"
+        },
+        {
+          "slot": "4",
+          "offset": 0,
+          "name": "_remotes",
+          "type": "t_mapping(t_bytes2,t_mapping(t_bytes_memory_ptr,t_bytes_storage))"
+        },
+        {
+          "slot": "5",
+          "offset": 0,
+          "name": "_trackers",
+          "type": "t_mapping(t_bytes32,t_struct(OpenBridgeTracker)_storage)"
+        },
+        {
+          "slot": "6",
+          "offset": 0,
+          "name": "_minDirectCoverage",
+          "type": "t_uint8"
+        }
+      ]
+    },
+    {
+      "struct": "EmergencyStopStorage",
+      "namespace": "lattice.storage.EmergencyStop",
+      "slot": "0x06261d2148a76026572818ff69ded6332eb2830e669ce15f15f286b1d91c5800",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_stopped",
+          "type": "t_bool"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "_reason",
+          "type": "t_string_storage"
+        }
+      ]
+    },
+    {
+      "struct": "GelatoAutomateAdapterStorage",
+      "namespace": "lattice.storage.GelatoAutomateAdapter",
+      "slot": "0x2e009cfe8b023d727b88173e4903cf45c68c8d769ec207081d89791b624d6900",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_automate",
+          "type": "t_address"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "_dedicatedMsgSender",
+          "type": "t_address"
+        },
+        {
+          "slot": "2",
+          "offset": 0,
+          "name": "_tasks",
+          "type": "t_mapping(t_bytes32,t_bool)"
+        }
+      ]
+    },
+    {
+      "struct": "GelatoVRFAdapterStorage",
+      "namespace": "lattice.storage.GelatoVRFAdapter",
+      "slot": "0x411b018662c29400f5f1d8919575dbc72aa8b7559a2445103c6d3b36a4058500",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_operator",
+          "type": "t_address"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "_nextRequestId",
+          "type": "t_uint256"
+        },
+        {
+          "slot": "2",
+          "offset": 0,
+          "name": "_pendingRequests",
+          "type": "t_mapping(t_uint256,t_bytes32)"
+        }
+      ]
+    },
+    {
+      "struct": "GovernedDiamondCutStorage",
+      "namespace": "lattice.storage.GovernedDiamondCut",
+      "slot": "0x9a46da229426897da8e8df190858c430564a988584235445fd229e2bef8a8700",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_cutCount",
+          "type": "t_uint256"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "_cutRegistry",
+          "type": "t_mapping(t_uint256,t_struct(CutRecord)_storage)"
+        },
+        {
+          "slot": "2",
+          "offset": 0,
+          "name": "_frozenSelectors",
+          "type": "t_struct(Bytes4Set)_storage"
+        }
+      ]
+    },
+    {
+      "struct": "GovernedSafeDiamondCutStorage",
+      "namespace": "lattice.storage.GovernedSafeDiamondCut",
+      "slot": "0x67b04bedb2ce49892ef6d6cc51adf679ddefc544b7aca2da8ae73f02694ff300",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_safe",
+          "type": "t_address"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "_minDelay",
+          "type": "t_uint256"
+        },
+        {
+          "slot": "2",
+          "offset": 0,
+          "name": "_scheduledAt",
+          "type": "t_mapping(t_bytes32,t_uint256)"
+        },
+        {
+          "slot": "3",
+          "offset": 0,
+          "name": "_cutCount",
+          "type": "t_uint256"
+        },
+        {
+          "slot": "4",
+          "offset": 0,
+          "name": "_cutRegistry",
+          "type": "t_mapping(t_uint256,t_struct(CutRecord)_storage)"
+        },
+        {
+          "slot": "5",
+          "offset": 0,
+          "name": "_frozenSelectors",
+          "type": "t_struct(Bytes4Set)_storage"
+        },
+        {
+          "slot": "7",
+          "offset": 0,
+          "name": "_pendingMinDelay",
+          "type": "t_uint256"
+        },
+        {
+          "slot": "8",
+          "offset": 0,
+          "name": "_minDelayEffectAt",
+          "type": "t_uint256"
+        }
+      ]
+    },
+    {
+      "struct": "GovernedVaultStorage",
+      "namespace": "lattice.storage.GovernedVault",
+      "slot": "0xce91473269200f209353d1f9f84b7900d57f30b14d017212fb8c61b25320cc00",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_ballotNonces",
+          "type": "t_mapping(t_address,t_uint256)"
+        }
+      ]
+    },
+    {
+      "struct": "GovernorStorage",
+      "namespace": "lattice.storage.Governor",
+      "slot": "0x20a7901cc1c78eb01d63d9c1875355513c3dabc82d8607ad0f82e1312f750c00",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_name",
+          "type": "t_string_storage"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "_token",
+          "type": "t_address"
+        },
+        {
+          "slot": "2",
+          "offset": 0,
+          "name": "_timelock",
+          "type": "t_address"
+        },
+        {
+          "slot": "2",
+          "offset": 20,
+          "name": "_votingDelay",
+          "type": "t_uint48"
+        },
+        {
+          "slot": "2",
+          "offset": 26,
+          "name": "_votingPeriod",
+          "type": "t_uint32"
+        },
+        {
+          "slot": "3",
+          "offset": 0,
+          "name": "_proposalThreshold",
+          "type": "t_uint256"
+        },
+        {
+          "slot": "4",
+          "offset": 0,
+          "name": "_quorumNumerator",
+          "type": "t_uint256"
+        },
+        {
+          "slot": "5",
+          "offset": 0,
+          "name": "_proposals",
+          "type": "t_mapping(t_uint256,t_struct(ProposalCore)_storage)"
+        },
+        {
+          "slot": "6",
+          "offset": 0,
+          "name": "_proposalVotes",
+          "type": "t_mapping(t_uint256,t_struct(ProposalVote)_storage)"
+        },
+        {
+          "slot": "7",
+          "offset": 0,
+          "name": "_timelockIds",
+          "type": "t_mapping(t_bytes32,t_uint256)"
+        },
+        {
+          "slot": "8",
+          "offset": 0,
+          "name": "_proposalTimelockIds",
+          "type": "t_mapping(t_uint256,t_bytes32)"
+        },
+        {
+          "slot": "9",
+          "offset": 0,
+          "name": "_governanceCall",
+          "type": "t_mapping(t_bytes32,t_uint256)"
+        }
+      ]
+    },
+    {
+      "struct": "HSSAdapterStorage",
+      "namespace": "lattice.storage.HSSAdapter",
+      "slot": "0x12fa09b7b2cb13ace416911567e16cefd04261b5db45857ec33ecae7c1298700",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_schedules",
+          "type": "t_mapping(t_bytes32,t_address)"
+        }
+      ]
+    },
+    {
+      "struct": "HTSAdapterStorage",
+      "namespace": "lattice.storage.HTSAdapter",
+      "slot": "0x91b64afeea686e80e2bda212862c0850ed3389288ac3f914b1109537d6e3f500",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_createdTokens",
+          "type": "t_struct(AddressSet)_storage"
+        }
+      ]
+    },
+    {
+      "struct": "HyperbridgeGatewayAdapterStorage",
+      "namespace": "lattice.storage.HyperbridgeGatewayAdapter",
+      "slot": "0x51a6b52d433abb3ae06100272e5ee46754531b734f9cac910997924c61569700",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_host",
+          "type": "t_address"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "_stateMachineIds",
+          "type": "t_mapping(t_uint256,t_bytes_storage)"
+        },
+        {
+          "slot": "2",
+          "offset": 0,
+          "name": "_chainIds",
+          "type": "t_mapping(t_bytes32,t_uint256)"
+        },
+        {
+          "slot": "3",
+          "offset": 0,
+          "name": "_trustedRemotes",
+          "type": "t_mapping(t_uint256,t_bytes_storage)"
+        },
+        {
+          "slot": "4",
+          "offset": 0,
+          "name": "_destTimeout",
+          "type": "t_mapping(t_uint256,t_uint64)"
+        },
+        {
+          "slot": "5",
+          "offset": 0,
+          "name": "_lastNonce",
+          "type": "t_uint256"
+        },
+        {
+          "slot": "6",
+          "offset": 0,
+          "name": "_executed",
+          "type": "t_mapping(t_uint256,t_mapping(t_bytes32,t_bool))"
+        }
+      ]
+    },
+    {
+      "struct": "HyperlaneGatewayAdapterStorage",
+      "namespace": "lattice.storage.HyperlaneGatewayAdapter",
+      "slot": "0x8a4b1302312d119abfdb0305131f00457b784ef22f6824db37cbaed84bba5600",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_mailbox",
+          "type": "t_address"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "_chainIdToDomain",
+          "type": "t_mapping(t_uint256,t_uint32)"
+        },
+        {
+          "slot": "2",
+          "offset": 0,
+          "name": "_domainToChainId",
+          "type": "t_mapping(t_uint32,t_uint256)"
+        },
+        {
+          "slot": "3",
+          "offset": 0,
+          "name": "_trustedRemotes",
+          "type": "t_mapping(t_uint256,t_bytes32)"
+        },
+        {
+          "slot": "4",
+          "offset": 0,
+          "name": "_destGasLimit",
+          "type": "t_mapping(t_uint256,t_uint256)"
+        },
+        {
+          "slot": "5",
+          "offset": 0,
+          "name": "_lastNonce",
+          "type": "t_uint256"
+        },
+        {
+          "slot": "6",
+          "offset": 0,
+          "name": "_executed",
+          "type": "t_mapping(t_uint256,t_mapping(t_bytes32,t_bool))"
+        }
+      ]
+    },
+    {
+      "struct": "InvariantCheckerStorage",
+      "namespace": "lattice.storage.InvariantChecker",
+      "slot": "0x6d7e4fbc04e31fa71f6fa52aa22270dd459ba0a3bd079c75a4fa29fd0ddbc200",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_invariants",
+          "type": "t_mapping(t_bytes32,t_struct(Invariant)_storage)"
+        }
+      ]
+    },
+    {
+      "struct": "L1ToL2CrossDomainMessengerGatewayAdapterStorage",
+      "namespace": "lattice.storage.L1ToL2CrossDomainMessengerGatewayAdapter",
+      "slot": "0xba3de3e77bc32833730368f3190597d7121922af189304a06067265b4d53a500",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_counterpartChainId",
+          "type": "t_uint256"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "_counterpartAdapter",
+          "type": "t_address"
+        },
+        {
+          "slot": "1",
+          "offset": 20,
+          "name": "_minGasLimit",
+          "type": "t_uint32"
+        },
+        {
+          "slot": "2",
+          "offset": 0,
+          "name": "_executed",
+          "type": "t_mapping(t_bytes32,t_bool)"
+        },
+        {
+          "slot": "3",
+          "offset": 0,
+          "name": "_outboundNonce",
+          "type": "t_uint256"
+        }
+      ]
+    },
+    {
+      "struct": "L2ToL2CrossDomainMessengerGatewayAdapterStorage",
+      "namespace": "lattice.storage.L2ToL2CrossDomainMessengerGatewayAdapter",
+      "slot": "0x7d097b8d74c3eca1712de7b01bb2e081ac18f7660e60d35d0a11a670a90beb00",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_remoteAdapters",
+          "type": "t_mapping(t_uint256,t_address)"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "_executed",
+          "type": "t_mapping(t_uint256,t_mapping(t_bytes32,t_bool))"
+        },
+        {
+          "slot": "2",
+          "offset": 0,
+          "name": "_outboundNonce",
+          "type": "t_uint256"
+        }
+      ]
+    },
+    {
+      "struct": "LayerZeroGatewayAdapterStorage",
+      "namespace": "lattice.storage.LayerZeroGatewayAdapter",
+      "slot": "0xbca2daa6d08cb277e523bf7dcd928e312ddbb7f9ac88be435916dda92924d100",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_endpoint",
+          "type": "t_address"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "_chainIdToEid",
+          "type": "t_mapping(t_uint256,t_uint32)"
+        },
+        {
+          "slot": "2",
+          "offset": 0,
+          "name": "_eidToChainId",
+          "type": "t_mapping(t_uint32,t_uint256)"
+        },
+        {
+          "slot": "3",
+          "offset": 0,
+          "name": "_peers",
+          "type": "t_mapping(t_uint256,t_bytes32)"
+        },
+        {
+          "slot": "4",
+          "offset": 0,
+          "name": "_destConfig",
+          "type": "t_mapping(t_uint256,t_struct(DestinationConfig)_storage)"
+        },
+        {
+          "slot": "5",
+          "offset": 0,
+          "name": "_executed",
+          "type": "t_mapping(t_uint256,t_mapping(t_bytes32,t_bool))"
+        }
+      ]
+    },
+    {
+      "struct": "LidoAdapterStorage",
+      "namespace": "lattice.storage.LidoAdapter",
+      "slot": "0x3d4dff0246f0af54636d62603e75b921d2876c293bb97376b20bb8265ecb3900",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_weth",
+          "type": "t_address"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "_lido",
+          "type": "t_address"
+        },
+        {
+          "slot": "2",
+          "offset": 0,
+          "name": "_wstETH",
+          "type": "t_address"
+        },
+        {
+          "slot": "3",
+          "offset": 0,
+          "name": "_withdrawalQueue",
+          "type": "t_address"
+        },
+        {
+          "slot": "4",
+          "offset": 0,
+          "name": "_vault",
+          "type": "t_address"
+        },
+        {
+          "slot": "5",
+          "offset": 0,
+          "name": "_rewardRecipient",
+          "type": "t_address"
+        },
+        {
+          "slot": "6",
+          "offset": 0,
+          "name": "_pendingAssets",
+          "type": "t_uint256"
+        },
+        {
+          "slot": "7",
+          "offset": 0,
+          "name": "_pendingRequests",
+          "type": "t_struct(UintSet)_storage"
+        },
+        {
+          "slot": "9",
+          "offset": 0,
+          "name": "_requestAssets",
+          "type": "t_mapping(t_uint256,t_uint256)"
+        },
+        {
+          "slot": "10",
+          "offset": 0,
+          "name": "_operator",
+          "type": "t_address"
+        }
+      ]
+    },
+    {
+      "struct": "MarketplaceZoneStorage",
+      "namespace": "lattice.storage.MarketplaceZone",
+      "slot": "0xe77b1be4866c120f9cf1b3ac35bdd606adb1b331ef4d920e5a5993f90d992800",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_paused",
+          "type": "t_bool"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "_royaltyRequired",
+          "type": "t_mapping(t_address,t_bool)"
+        }
+      ]
+    },
+    {
+      "struct": "NoncesStorage",
+      "namespace": "lattice.storage.Nonces",
+      "slot": "0x2b93a5a8782d382c0f6890e7e2d77ba67ed77675c16cc334b45b931317d4de00",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_nonces",
+          "type": "t_mapping(t_address,t_uint256)"
+        }
+      ]
+    },
+    {
+      "struct": "OracleGuardStorage",
+      "namespace": "lattice.storage.OracleGuard",
+      "slot": "0xcb4d3b20d6a2c3be74f0770f2a6fab88f83473f0767b2765ccc6af180a66bc00",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_sequencerFeed",
+          "type": "t_address"
+        },
+        {
+          "slot": "0",
+          "offset": 20,
+          "name": "_gracePeriod",
+          "type": "t_uint48"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "_feeds",
+          "type": "t_mapping(t_bytes32,t_struct(GuardedFeed)_storage)"
+        }
+      ]
+    },
+    {
+      "struct": "PausableStorage",
+      "namespace": "lattice.storage.Pausable",
+      "slot": "0x1484a55ae2f6de193138ed7f3a9f9b3307c3701783002d2a375beb8271f96200",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_paused",
+          "type": "t_bool"
+        }
+      ]
+    },
+    {
+      "struct": "PrivateVotingStorage",
+      "namespace": "lattice.storage.PrivateVoting",
+      "slot": "0x366a7e9d1ddfe6eaa85ec4e6a71a0be592797e3e9ab0151a827465f6ed6bb900",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_polls",
+          "type": "t_mapping(t_uint256,t_struct(Poll)_storage)"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "_pollCount",
+          "type": "t_uint256"
+        }
+      ]
+    },
+    {
+      "struct": "PythAdapterStorage",
+      "namespace": "lattice.storage.PythAdapter",
+      "slot": "0x4f06923ad9b02e8a3ff8edafe956de2290e9ad8f87494c6f70ad4259b24ff100",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_feeds",
+          "type": "t_mapping(t_bytes32,t_struct(PythFeed)_storage)"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "_pyth",
+          "type": "t_address"
+        }
+      ]
+    },
+    {
+      "struct": "PythEntropyAdapterStorage",
+      "namespace": "lattice.storage.PythEntropyAdapter",
+      "slot": "0xf5638fd8a7410f61ded501225ccb03fd632a93dd0cfb1615ce2666e2781d4f00",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_entropy",
+          "type": "t_address"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "_provider",
+          "type": "t_address"
+        },
+        {
+          "slot": "2",
+          "offset": 0,
+          "name": "_pendingRequests",
+          "type": "t_mapping(t_uint64,t_bytes32)"
+        }
+      ]
+    },
+    {
+      "struct": "RateLimiterStorage",
+      "namespace": "lattice.storage.RateLimiter",
+      "slot": "0xb9ee9c1434713ac0213faa3d41a1dd3c78042ad8ee2d7f6e110f73cd6f19bd00",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_buckets",
+          "type": "t_mapping(t_bytes32,t_struct(RateLimiterBucket)_storage)"
+        }
+      ]
+    },
+    {
+      "struct": "RedStoneAdapterStorage",
+      "namespace": "lattice.storage.RedStoneAdapter",
+      "slot": "0x6c77ff7037fedb1e7737bf925fac4c87e7cc2c960916dee7790d2d73271bc700",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_feeds",
+          "type": "t_mapping(t_bytes32,t_struct(RedStoneFeed)_storage)"
+        }
+      ]
+    },
+    {
+      "struct": "SafeDiamondCutStorage",
+      "namespace": "lattice.storage.SafeDiamondCut",
+      "slot": "0xdfdae3ef74d2f2c31fc34cd5e60ae4b170cd90587a13d52debd5569f575e7900",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_safe",
+          "type": "t_address"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "_cutCount",
+          "type": "t_uint256"
+        },
+        {
+          "slot": "2",
+          "offset": 0,
+          "name": "_cutRegistry",
+          "type": "t_mapping(t_uint256,t_struct(CutRecord)_storage)"
+        },
+        {
+          "slot": "3",
+          "offset": 0,
+          "name": "_frozenSelectors",
+          "type": "t_struct(Bytes4Set)_storage"
+        }
+      ]
+    },
+    {
+      "struct": "SafeHarborAdopterStorage",
+      "namespace": "lattice.storage.SafeHarborAdopter",
+      "slot": "0xaaf15994f2af30ab6b279714cd625e3af0592976549136cf56b423f8b1439400",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_safeHarborRegistry",
+          "type": "t_address"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "_agreementFactory",
+          "type": "t_address"
+        }
+      ]
+    },
+    {
+      "struct": "SemaphoreStorage",
+      "namespace": "lattice.storage.Semaphore",
+      "slot": "0x9014b6f2f89a94726c6607d3b9e5562f77c44e9f80791dbbfea2ef3de33d0300",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "groups",
+          "type": "t_mapping(t_uint256,t_struct(Group)_storage)"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "groupCount",
+          "type": "t_uint256"
+        },
+        {
+          "slot": "2",
+          "offset": 0,
+          "name": "verifier",
+          "type": "t_address"
+        }
+      ]
+    },
+    {
+      "struct": "SessionKeyStorage",
+      "namespace": "lattice.storage.SessionKey",
+      "slot": "0xd72f45b3818762a6cc49804ed52c577908badd7fff8bbd7849829b4fc764ae00",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_keys",
+          "type": "t_mapping(t_address,t_struct(SessionKeyData)_storage)"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "_allowed",
+          "type": "t_mapping(t_address,t_mapping(t_bytes32,t_bool))"
+        },
+        {
+          "slot": "2",
+          "offset": 0,
+          "name": "_spend",
+          "type": "t_mapping(t_address,t_mapping(t_address,t_struct(SpendLimit)_storage))"
+        },
+        {
+          "slot": "3",
+          "offset": 0,
+          "name": "_cappedTokens",
+          "type": "t_mapping(t_address,t_array(t_address)dyn_storage)"
+        },
+        {
+          "slot": "4",
+          "offset": 0,
+          "name": "_epoch",
+          "type": "t_mapping(t_address,t_uint256)"
+        }
+      ]
+    },
+    {
+      "struct": "ShieldedPoolStorage",
+      "namespace": "lattice.storage.ShieldedPool",
+      "slot": "0xa961220e87963afb8adc0f7621a90ce1922bf3bb438109c43cc7dacbc8e06600",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_pools",
+          "type": "t_mapping(t_uint256,t_struct(ShieldedPool)_storage)"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "_poolCount",
+          "type": "t_uint256"
+        }
+      ]
+    },
+    {
+      "struct": "StargateBridgeAdapterStorage",
+      "namespace": "lattice.storage.StargateBridgeAdapter",
+      "slot": "0x2076bfc799b61fb4ea9b1d4a406060be54015b08cd19ef147b102a3e634c0800",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_chainIdToEid",
+          "type": "t_mapping(t_uint256,t_uint32)"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "_eidToChainId",
+          "type": "t_mapping(t_uint32,t_uint256)"
+        },
+        {
+          "slot": "2",
+          "offset": 0,
+          "name": "_pools",
+          "type": "t_mapping(t_address,t_address)"
+        }
+      ]
+    },
+    {
+      "struct": "StarknetGatewayAdapterStorage",
+      "namespace": "lattice.storage.StarknetGatewayAdapter",
+      "slot": "0x3f9fd8bc99bc5c4e4ff64e899fbe5f73a1a0f6c02aaa904e7184494718213e00",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_starknetCore",
+          "type": "t_address"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "_expectedChainReference",
+          "type": "t_bytes_storage"
+        },
+        {
+          "slot": "2",
+          "offset": 0,
+          "name": "_l1HandlerSelector",
+          "type": "t_mapping(t_uint256,t_uint256)"
+        },
+        {
+          "slot": "3",
+          "offset": 0,
+          "name": "_trustedL2Senders",
+          "type": "t_mapping(t_uint256,t_bool)"
+        },
+        {
+          "slot": "4",
+          "offset": 0,
+          "name": "_initiators",
+          "type": "t_mapping(t_bytes32,t_address)"
+        }
+      ]
+    },
+    {
+      "struct": "StrategyManagerStorage",
+      "namespace": "lattice.storage.StrategyManager",
+      "slot": "0x1b00913e47c53f1d64d326bde2ad6a7904ed791d4ee4432bc133be907894ca00",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_vault",
+          "type": "t_address"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "_strategies",
+          "type": "t_array(t_address)dyn_storage"
+        },
+        {
+          "slot": "2",
+          "offset": 0,
+          "name": "_targets",
+          "type": "t_mapping(t_address,t_uint16)"
+        },
+        {
+          "slot": "3",
+          "offset": 0,
+          "name": "_strategyIndex",
+          "type": "t_mapping(t_address,t_uint256)"
+        },
+        {
+          "slot": "4",
+          "offset": 0,
+          "name": "_totalTargetBps",
+          "type": "t_uint256"
+        },
+        {
+          "slot": "5",
+          "offset": 0,
+          "name": "_depositsLatched",
+          "type": "t_bool"
+        }
+      ]
+    },
+    {
+      "struct": "TWAPOracleStorage",
+      "namespace": "lattice.storage.TWAPOracle",
+      "slot": "0xc2bcc163613aea761b734a9692ad3548aab9088be29b53e03facf6a2a351df00",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_pairs",
+          "type": "t_mapping(t_bytes32,t_address)"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "_observations",
+          "type": "t_mapping(t_bytes32,t_array(t_struct(Observation)_storage)dyn_storage)"
+        }
+      ]
+    },
+    {
+      "struct": "TellorAdapterStorage",
+      "namespace": "lattice.storage.TellorAdapter",
+      "slot": "0xf830cd05b050ba9ecf73559ef9b50793eb6cd90a674e3621847f667a1210d100",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_feeds",
+          "type": "t_mapping(t_bytes32,t_struct(TellorFeed)_storage)"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "_tellor",
+          "type": "t_address"
+        }
+      ]
+    },
+    {
+      "struct": "TimelockControllerStorage",
+      "namespace": "lattice.storage.TimelockController",
+      "slot": "0x87f5daf40fea2daee0a93658693902d7cd9e07fa1a4f16f2e8eb4a4e9d433000",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_timestamps",
+          "type": "t_mapping(t_bytes32,t_uint256)"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "_minDelay",
+          "type": "t_uint256"
+        }
+      ]
+    },
+    {
+      "struct": "UniswapV3AdapterStorage",
+      "namespace": "lattice.storage.UniswapV3Adapter",
+      "slot": "0x6f3c1f877b0bf340477364a294f77f49bff3a5479f70012a0fb5cb2803b61e00",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_positionManager",
+          "type": "t_address"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "_pool",
+          "type": "t_address"
+        },
+        {
+          "slot": "2",
+          "offset": 0,
+          "name": "_token0",
+          "type": "t_address"
+        },
+        {
+          "slot": "3",
+          "offset": 0,
+          "name": "_token1",
+          "type": "t_address"
+        },
+        {
+          "slot": "4",
+          "offset": 0,
+          "name": "_vault",
+          "type": "t_address"
+        },
+        {
+          "slot": "5",
+          "offset": 0,
+          "name": "_rewardRecipient",
+          "type": "t_address"
+        },
+        {
+          "slot": "6",
+          "offset": 0,
+          "name": "_tokenId",
+          "type": "t_uint256"
+        },
+        {
+          "slot": "7",
+          "offset": 0,
+          "name": "_twapWindow",
+          "type": "t_uint32"
+        },
+        {
+          "slot": "7",
+          "offset": 4,
+          "name": "_fee",
+          "type": "t_uint24"
+        },
+        {
+          "slot": "7",
+          "offset": 7,
+          "name": "_tickLower",
+          "type": "t_int24"
+        },
+        {
+          "slot": "7",
+          "offset": 10,
+          "name": "_tickUpper",
+          "type": "t_int24"
+        },
+        {
+          "slot": "8",
+          "offset": 0,
+          "name": "_slippageBps",
+          "type": "t_uint256"
+        },
+        {
+          "slot": "9",
+          "offset": 0,
+          "name": "_operator",
+          "type": "t_address"
+        }
+      ]
+    },
+    {
+      "struct": "VaultCoreRecoveryStorage",
+      "namespace": "lattice.storage.VaultCoreRecovery",
+      "slot": "0x47912b574bd5afb37a2207dcbb19ecd0a5ba9d0ace45a4775d2beed47d20cd00",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_managerSwapLatched",
+          "type": "t_bool"
+        }
+      ]
+    },
+    {
+      "struct": "VaultCoreStorage",
+      "namespace": "lattice.storage.VaultCore",
+      "slot": "0x391c4f0f82559e85ff01d307d4b19b40f088495abd453c84d7e0fa35497de600",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_strategyManager",
+          "type": "t_address"
+        }
+      ]
+    },
+    {
+      "struct": "VestingWalletStorage",
+      "namespace": "lattice.storage.VestingWallet",
+      "slot": "0x6d3272be2f02b6d92080037a80b8780ee2896be455de43b32ab08d8adbdbbe00",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_released",
+          "type": "t_uint256"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "_erc20Released",
+          "type": "t_mapping(t_address,t_uint256)"
+        },
+        {
+          "slot": "2",
+          "offset": 0,
+          "name": "_start",
+          "type": "t_uint64"
+        },
+        {
+          "slot": "2",
+          "offset": 8,
+          "name": "_duration",
+          "type": "t_uint64"
+        }
+      ]
+    },
+    {
+      "struct": "VotesStorage",
+      "namespace": "lattice.storage.Votes",
+      "slot": "0x51efe794a829d7992f137137b94eec0d37b1c5be45aa8cf9431c145ea39c0600",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_delegatee",
+          "type": "t_mapping(t_address,t_address)"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "_delegateCheckpoints",
+          "type": "t_mapping(t_address,t_struct(Trace208)_storage)"
+        },
+        {
+          "slot": "2",
+          "offset": 0,
+          "name": "_totalCheckpoints",
+          "type": "t_struct(Trace208)_storage"
+        }
+      ]
+    },
+    {
+      "struct": "WormholeGatewayAdapterStorage",
+      "namespace": "lattice.storage.WormholeGatewayAdapter",
+      "slot": "0x46329d8c82c4b2643a1707018dd8f47f4e747c04259ec1eec95a00ddfb1bd600",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_relayer",
+          "type": "t_address"
+        },
+        {
+          "slot": "0",
+          "offset": 20,
+          "name": "_wormholeChainId",
+          "type": "t_uint16"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "_lastMsgId",
+          "type": "t_uint256"
+        },
+        {
+          "slot": "2",
+          "offset": 0,
+          "name": "_remoteGateways",
+          "type": "t_mapping(t_uint256,t_address)"
+        },
+        {
+          "slot": "3",
+          "offset": 0,
+          "name": "_chainIdToWormhole",
+          "type": "t_mapping(t_uint256,t_uint16)"
+        },
+        {
+          "slot": "4",
+          "offset": 0,
+          "name": "_wormholeToChainId",
+          "type": "t_mapping(t_uint16,t_uint256)"
+        },
+        {
+          "slot": "5",
+          "offset": 0,
+          "name": "_pending",
+          "type": "t_mapping(t_bytes32,t_struct(PendingMessage)_storage)"
+        },
+        {
+          "slot": "6",
+          "offset": 0,
+          "name": "_executed",
+          "type": "t_mapping(t_uint256,t_mapping(t_uint256,t_bool))"
+        }
+      ]
+    },
+    {
+      "struct": "ZetaChainGatewayAdapterStorage",
+      "namespace": "lattice.storage.ZetaChainGatewayAdapter",
+      "slot": "0x7529f1b714a55f00ea95d180ad0c2a53651f18a834ecec0ff1f9af59ddf74000",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_gateway",
+          "type": "t_address"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "_defaultOnRevertGasLimit",
+          "type": "t_uint256"
+        },
+        {
+          "slot": "2",
+          "offset": 0,
+          "name": "_remoteApps",
+          "type": "t_mapping(t_uint256,t_address)"
+        },
+        {
+          "slot": "3",
+          "offset": 0,
+          "name": "_appToChainId",
+          "type": "t_mapping(t_address,t_uint256)"
+        },
+        {
+          "slot": "4",
+          "offset": 0,
+          "name": "_executed",
+          "type": "t_mapping(t_uint256,t_mapping(t_bytes32,t_bool))"
+        },
+        {
+          "slot": "5",
+          "offset": 0,
+          "name": "_outboundNonce",
+          "type": "t_uint256"
+        }
+      ]
+    },
+    {
+      "struct": "API3Feed",
+      "namespace": null,
+      "slot": null,
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "proxy",
+          "type": "t_address"
+        },
+        {
+          "slot": "0",
+          "offset": 20,
+          "name": "maxStaleness",
+          "type": "t_uint48"
+        }
+      ]
+    },
+    {
+      "struct": "Access",
+      "namespace": null,
+      "slot": null,
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "since",
+          "type": "t_uint48"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "delay",
+          "type": "t_struct(Delay)_storage"
+        }
+      ]
+    },
+    {
+      "struct": "AddressSet",
+      "namespace": null,
+      "slot": null,
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_inner",
+          "type": "t_struct(Set)_storage"
+        }
+      ]
+    },
+    {
+      "struct": "BandFeed",
+      "namespace": null,
+      "slot": null,
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "maxStaleness",
+          "type": "t_uint48"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "base",
+          "type": "t_string_storage"
+        },
+        {
+          "slot": "2",
+          "offset": 0,
+          "name": "quote",
+          "type": "t_string_storage"
+        }
+      ]
+    },
+    {
+      "struct": "Bytes32Set",
+      "namespace": null,
+      "slot": null,
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_inner",
+          "type": "t_struct(Set)_storage"
+        }
+      ]
+    },
+    {
+      "struct": "Bytes4Set",
+      "namespace": null,
+      "slot": null,
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_values",
+          "type": "t_array(t_bytes4)dyn_storage"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "_positions",
+          "type": "t_mapping(t_bytes4,t_uint256)"
+        }
+      ]
+    },
+    {
+      "struct": "CCVConfig",
+      "namespace": null,
+      "slot": null,
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "requiredCCVs",
+          "type": "t_array(t_address)dyn_storage"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "optionalCCVs",
+          "type": "t_array(t_address)dyn_storage"
+        },
+        {
+          "slot": "2",
+          "offset": 0,
+          "name": "optionalThreshold",
+          "type": "t_uint8"
+        },
+        {
+          "slot": "2",
+          "offset": 1,
+          "name": "allowedFinalityConfig",
+          "type": "t_bytes4"
+        }
+      ]
+    },
+    {
+      "struct": "CREReport",
+      "namespace": null,
+      "slot": null,
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "data",
+          "type": "t_bytes_storage"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "timestamp",
+          "type": "t_uint256"
+        }
+      ]
+    },
+    {
+      "struct": "ChainRecord",
+      "namespace": null,
+      "slot": null,
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "registered",
+          "type": "t_bool"
+        },
+        {
+          "slot": "0",
+          "offset": 1,
+          "name": "chainType",
+          "type": "t_bytes2"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "chainReference",
+          "type": "t_bytes_storage"
+        },
+        {
+          "slot": "2",
+          "offset": 0,
+          "name": "evmChainId",
+          "type": "t_uint256"
+        },
+        {
+          "slot": "3",
+          "offset": 0,
+          "name": "ids",
+          "type": "t_struct(NativeIds)_storage"
+        },
+        {
+          "slot": "6",
+          "offset": 0,
+          "name": "gateways",
+          "type": "t_struct(AddressSet)_storage"
+        },
+        {
+          "slot": "8",
+          "offset": 0,
+          "name": "hubRouted",
+          "type": "t_mapping(t_address,t_bool)"
+        }
+      ]
+    },
+    {
+      "struct": "Checkpoint160",
+      "namespace": null,
+      "slot": null,
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_key",
+          "type": "t_uint96"
+        },
+        {
+          "slot": "0",
+          "offset": 12,
+          "name": "_value",
+          "type": "t_uint160"
+        }
+      ]
+    },
+    {
+      "struct": "Checkpoint208",
+      "namespace": null,
+      "slot": null,
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_key",
+          "type": "t_uint48"
+        },
+        {
+          "slot": "0",
+          "offset": 6,
+          "name": "_value",
+          "type": "t_uint208"
+        }
+      ]
+    },
+    {
+      "struct": "ChronicleFeed",
+      "namespace": null,
+      "slot": null,
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "chronicle",
+          "type": "t_address"
+        },
+        {
+          "slot": "0",
+          "offset": 20,
+          "name": "maxStaleness",
+          "type": "t_uint48"
+        }
+      ]
+    },
+    {
+      "struct": "CircuitBreakerBucket",
+      "namespace": null,
+      "slot": null,
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "threshold",
+          "type": "t_uint256"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "windowSeconds",
+          "type": "t_uint48"
+        },
+        {
+          "slot": "1",
+          "offset": 6,
+          "name": "windowStart",
+          "type": "t_uint48"
+        },
+        {
+          "slot": "2",
+          "offset": 0,
+          "name": "cumulative",
+          "type": "t_uint256"
+        },
+        {
+          "slot": "3",
+          "offset": 0,
+          "name": "tripped",
+          "type": "t_bool"
+        }
+      ]
+    },
+    {
+      "struct": "Commitment",
+      "namespace": null,
+      "slot": null,
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "committer",
+          "type": "t_address"
+        },
+        {
+          "slot": "0",
+          "offset": 20,
+          "name": "committedAt",
+          "type": "t_uint64"
+        },
+        {
+          "slot": "0",
+          "offset": 28,
+          "name": "revealed",
+          "type": "t_bool"
+        }
+      ]
+    },
+    {
+      "struct": "CutRecord",
+      "namespace": null,
+      "slot": null,
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "cutHash",
+          "type": "t_bytes32"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "executor",
+          "type": "t_address"
+        },
+        {
+          "slot": "1",
+          "offset": 20,
+          "name": "executedAt",
+          "type": "t_uint48"
+        },
+        {
+          "slot": "1",
+          "offset": 26,
+          "name": "facetCutCount",
+          "type": "t_uint32"
+        },
+        {
+          "slot": "2",
+          "offset": 0,
+          "name": "init",
+          "type": "t_address"
+        }
+      ]
+    },
+    {
+      "struct": "DIAFeed",
+      "namespace": null,
+      "slot": null,
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "oracle",
+          "type": "t_address"
+        },
+        {
+          "slot": "0",
+          "offset": 20,
+          "name": "maxStaleness",
+          "type": "t_uint48"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "diaKey",
+          "type": "t_string_storage"
+        }
+      ]
+    },
+    {
+      "struct": "Delay",
+      "namespace": null,
+      "slot": null,
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "value",
+          "type": "t_uint32"
+        },
+        {
+          "slot": "0",
+          "offset": 4,
+          "name": "pendingValue",
+          "type": "t_uint32"
+        },
+        {
+          "slot": "0",
+          "offset": 8,
+          "name": "effectAt",
+          "type": "t_uint48"
+        }
+      ]
+    },
+    {
+      "struct": "DestinationConfig",
+      "namespace": null,
+      "slot": null,
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "gas",
+          "type": "t_uint128"
+        },
+        {
+          "slot": "0",
+          "offset": 16,
+          "name": "msgValue",
+          "type": "t_uint128"
+        }
+      ]
+    },
+    {
+      "struct": "DomainConfig",
+      "namespace": null,
+      "slot": null,
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "maxFee",
+          "type": "t_uint256"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "minFinalityThreshold",
+          "type": "t_uint32"
+        },
+        {
+          "slot": "2",
+          "offset": 0,
+          "name": "destinationCaller",
+          "type": "t_bytes32"
+        }
+      ]
+    },
+    {
+      "struct": "ExecutionStorage",
+      "namespace": null,
+      "slot": null,
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "module",
+          "type": "t_address"
+        },
+        {
+          "slot": "0",
+          "offset": 20,
+          "name": "skipRuntimeValidation",
+          "type": "t_bool"
+        },
+        {
+          "slot": "0",
+          "offset": 21,
+          "name": "allowGlobalValidation",
+          "type": "t_bool"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "executionHooks",
+          "type": "t_struct(Bytes32Set)_storage"
+        }
+      ]
+    },
+    {
+      "struct": "FallbackHandler",
+      "namespace": null,
+      "slot": null,
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "handler",
+          "type": "t_address"
+        },
+        {
+          "slot": "0",
+          "offset": 20,
+          "name": "callType",
+          "type": "t_bytes1"
+        }
+      ]
+    },
+    {
+      "struct": "Feed",
+      "namespace": null,
+      "slot": null,
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "feed",
+          "type": "t_address"
+        },
+        {
+          "slot": "0",
+          "offset": 20,
+          "name": "maxStaleness",
+          "type": "t_uint48"
+        },
+        {
+          "slot": "0",
+          "offset": 26,
+          "name": "decimals",
+          "type": "t_uint8"
+        }
+      ]
+    },
+    {
+      "struct": "Group",
+      "namespace": null,
+      "slot": null,
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "tree",
+          "type": "t_struct(Tree)_storage"
+        },
+        {
+          "slot": "7",
+          "offset": 0,
+          "name": "nullifiers",
+          "type": "t_struct(Registry)_storage"
+        },
+        {
+          "slot": "8",
+          "offset": 0,
+          "name": "admin",
+          "type": "t_address"
+        },
+        {
+          "slot": "8",
+          "offset": 20,
+          "name": "exists",
+          "type": "t_bool"
+        }
+      ]
+    },
+    {
+      "struct": "GuardedFeed",
+      "namespace": null,
+      "slot": null,
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "oracle",
+          "type": "t_address"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "minAnswer",
+          "type": "t_int256"
+        },
+        {
+          "slot": "2",
+          "offset": 0,
+          "name": "maxAnswer",
+          "type": "t_int256"
+        }
+      ]
+    },
+    {
+      "struct": "Invariant",
+      "namespace": null,
+      "slot": null,
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "target",
+          "type": "t_address"
+        },
+        {
+          "slot": "0",
+          "offset": 20,
+          "name": "selector",
+          "type": "t_bytes4"
+        }
+      ]
+    },
+    {
+      "struct": "LeanIMTData",
+      "namespace": null,
+      "slot": null,
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "size",
+          "type": "t_uint256"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "depth",
+          "type": "t_uint256"
+        },
+        {
+          "slot": "2",
+          "offset": 0,
+          "name": "sideNodes",
+          "type": "t_mapping(t_uint256,t_uint256)"
+        },
+        {
+          "slot": "3",
+          "offset": 0,
+          "name": "leaves",
+          "type": "t_mapping(t_uint256,t_uint256)"
+        }
+      ]
+    },
+    {
+      "struct": "Link",
+      "namespace": null,
+      "slot": null,
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "gateway",
+          "type": "t_address"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "counterpart",
+          "type": "t_bytes_storage"
+        }
+      ]
+    },
+    {
+      "struct": "MultiSchedule",
+      "namespace": null,
+      "slot": null,
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_readyAt",
+          "type": "t_mapping(t_bytes32,t_uint48)"
+        }
+      ]
+    },
+    {
+      "struct": "NativeIds",
+      "namespace": null,
+      "slot": null,
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "ccipSelector",
+          "type": "t_uint64"
+        },
+        {
+          "slot": "0",
+          "offset": 8,
+          "name": "lzEid",
+          "type": "t_uint32"
+        },
+        {
+          "slot": "0",
+          "offset": 12,
+          "name": "wormholeId",
+          "type": "t_uint16"
+        },
+        {
+          "slot": "0",
+          "offset": 14,
+          "name": "cctpDomain",
+          "type": "t_uint32"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "axelarName",
+          "type": "t_string_storage"
+        },
+        {
+          "slot": "2",
+          "offset": 0,
+          "name": "hyperlaneDomain",
+          "type": "t_uint32"
+        }
+      ]
+    },
+    {
+      "struct": "Observation",
+      "namespace": null,
+      "slot": null,
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "timestamp",
+          "type": "t_uint32"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "price0Cumulative",
+          "type": "t_uint256"
+        },
+        {
+          "slot": "2",
+          "offset": 0,
+          "name": "price1Cumulative",
+          "type": "t_uint256"
+        }
+      ]
+    },
+    {
+      "struct": "OpenBridgeTracker",
+      "namespace": null,
+      "slot": null,
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "receivedBy",
+          "type": "t_mapping(t_address,t_bool)"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "countReceived",
+          "type": "t_uint8"
+        },
+        {
+          "slot": "1",
+          "offset": 1,
+          "name": "executed",
+          "type": "t_bool"
+        }
+      ]
+    },
+    {
+      "struct": "PendingMessage",
+      "namespace": null,
+      "slot": null,
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "sender",
+          "type": "t_address"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "value",
+          "type": "t_uint256"
+        },
+        {
+          "slot": "2",
+          "offset": 0,
+          "name": "recipient",
+          "type": "t_bytes_storage"
+        },
+        {
+          "slot": "3",
+          "offset": 0,
+          "name": "payload",
+          "type": "t_bytes_storage"
+        }
+      ]
+    },
+    {
+      "struct": "Poll",
+      "namespace": null,
+      "slot": null,
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "groupId",
+          "type": "t_uint256"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "nullifiers",
+          "type": "t_struct(Registry)_storage"
+        },
+        {
+          "slot": "2",
+          "offset": 0,
+          "name": "tally",
+          "type": "t_mapping(t_uint256,t_uint256)"
+        },
+        {
+          "slot": "3",
+          "offset": 0,
+          "name": "totalVotes",
+          "type": "t_uint256"
+        },
+        {
+          "slot": "4",
+          "offset": 0,
+          "name": "creator",
+          "type": "t_address"
+        },
+        {
+          "slot": "4",
+          "offset": 20,
+          "name": "numChoices",
+          "type": "t_uint32"
+        },
+        {
+          "slot": "4",
+          "offset": 24,
+          "name": "startTime",
+          "type": "t_uint64"
+        },
+        {
+          "slot": "5",
+          "offset": 0,
+          "name": "endTime",
+          "type": "t_uint64"
+        },
+        {
+          "slot": "5",
+          "offset": 8,
+          "name": "exists",
+          "type": "t_bool"
+        }
+      ]
+    },
+    {
+      "struct": "ProposalCore",
+      "namespace": null,
+      "slot": null,
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "proposer",
+          "type": "t_address"
+        },
+        {
+          "slot": "0",
+          "offset": 20,
+          "name": "voteStart",
+          "type": "t_uint48"
+        },
+        {
+          "slot": "0",
+          "offset": 26,
+          "name": "voteDuration",
+          "type": "t_uint32"
+        },
+        {
+          "slot": "0",
+          "offset": 30,
+          "name": "executed",
+          "type": "t_bool"
+        },
+        {
+          "slot": "0",
+          "offset": 31,
+          "name": "canceled",
+          "type": "t_bool"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "etaSeconds",
+          "type": "t_uint48"
+        }
+      ]
+    },
+    {
+      "struct": "ProposalVote",
+      "namespace": null,
+      "slot": null,
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "againstVotes",
+          "type": "t_uint256"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "forVotes",
+          "type": "t_uint256"
+        },
+        {
+          "slot": "2",
+          "offset": 0,
+          "name": "abstainVotes",
+          "type": "t_uint256"
+        },
+        {
+          "slot": "3",
+          "offset": 0,
+          "name": "hasVoted",
+          "type": "t_mapping(t_address,t_bool)"
+        }
+      ]
+    },
+    {
+      "struct": "PythFeed",
+      "namespace": null,
+      "slot": null,
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "priceId",
+          "type": "t_bytes32"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "maxStaleness",
+          "type": "t_uint48"
+        },
+        {
+          "slot": "1",
+          "offset": 6,
+          "name": "maxConfBps",
+          "type": "t_uint64"
+        }
+      ]
+    },
+    {
+      "struct": "RateLimiterBucket",
+      "namespace": null,
+      "slot": null,
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "capacity",
+          "type": "t_uint256"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "refillRate",
+          "type": "t_uint256"
+        },
+        {
+          "slot": "2",
+          "offset": 0,
+          "name": "tokens",
+          "type": "t_uint256"
+        },
+        {
+          "slot": "3",
+          "offset": 0,
+          "name": "lastRefill",
+          "type": "t_uint48"
+        }
+      ]
+    },
+    {
+      "struct": "RedStoneFeed",
+      "namespace": null,
+      "slot": null,
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "adapter",
+          "type": "t_address"
+        },
+        {
+          "slot": "0",
+          "offset": 20,
+          "name": "maxStaleness",
+          "type": "t_uint48"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "dataFeedId",
+          "type": "t_bytes32"
+        }
+      ]
+    },
+    {
+      "struct": "Registry",
+      "namespace": null,
+      "slot": null,
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_spent",
+          "type": "t_mapping(t_uint256,t_bool)"
+        }
+      ]
+    },
+    {
+      "struct": "Role",
+      "namespace": null,
+      "slot": null,
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "admin",
+          "type": "t_uint64"
+        },
+        {
+          "slot": "0",
+          "offset": 8,
+          "name": "guardian",
+          "type": "t_uint64"
+        },
+        {
+          "slot": "0",
+          "offset": 16,
+          "name": "grantDelay",
+          "type": "t_uint32"
+        },
+        {
+          "slot": "0",
+          "offset": 20,
+          "name": "grantDelayEffectAt",
+          "type": "t_uint48"
+        },
+        {
+          "slot": "0",
+          "offset": 26,
+          "name": "pendingGrantDelay",
+          "type": "t_uint32"
+        }
+      ]
+    },
+    {
+      "struct": "RoleData",
+      "namespace": null,
+      "slot": null,
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "hasRole",
+          "type": "t_mapping(t_address,t_bool)"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "adminRole",
+          "type": "t_bytes32"
+        }
+      ]
+    },
+    {
+      "struct": "RoyaltyInfo",
+      "namespace": null,
+      "slot": null,
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "receiver",
+          "type": "t_address"
+        },
+        {
+          "slot": "0",
+          "offset": 20,
+          "name": "royaltyFraction",
+          "type": "t_uint96"
+        }
+      ]
+    },
+    {
+      "struct": "SessionKeyData",
+      "namespace": null,
+      "slot": null,
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "validAfter",
+          "type": "t_uint48"
+        },
+        {
+          "slot": "0",
+          "offset": 6,
+          "name": "validUntil",
+          "type": "t_uint48"
+        }
+      ]
+    },
+    {
+      "struct": "Set",
+      "namespace": null,
+      "slot": null,
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_values",
+          "type": "t_array(t_bytes32)dyn_storage"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "_positions",
+          "type": "t_mapping(t_bytes32,t_uint256)"
+        }
+      ]
+    },
+    {
+      "struct": "ShieldedPool",
+      "namespace": null,
+      "slot": null,
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "commitments",
+          "type": "t_struct(Tree)_storage"
+        },
+        {
+          "slot": "7",
+          "offset": 0,
+          "name": "nullifiers",
+          "type": "t_struct(Registry)_storage"
+        },
+        {
+          "slot": "8",
+          "offset": 0,
+          "name": "token",
+          "type": "t_address"
+        },
+        {
+          "slot": "9",
+          "offset": 0,
+          "name": "denomination",
+          "type": "t_uint256"
+        },
+        {
+          "slot": "10",
+          "offset": 0,
+          "name": "verifier",
+          "type": "t_address"
+        },
+        {
+          "slot": "10",
+          "offset": 20,
+          "name": "exists",
+          "type": "t_bool"
+        }
+      ]
+    },
+    {
+      "struct": "SpendLimit",
+      "namespace": null,
+      "slot": null,
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "cap",
+          "type": "t_uint256"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "spent",
+          "type": "t_uint256"
+        },
+        {
+          "slot": "2",
+          "offset": 0,
+          "name": "configured",
+          "type": "t_bool"
+        }
+      ]
+    },
+    {
+      "struct": "TargetConfig",
+      "namespace": null,
+      "slot": null,
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "allowedRoles",
+          "type": "t_mapping(t_bytes4,t_uint64)"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "adminDelay",
+          "type": "t_uint32"
+        },
+        {
+          "slot": "1",
+          "offset": 4,
+          "name": "adminDelayEffectAt",
+          "type": "t_uint48"
+        },
+        {
+          "slot": "1",
+          "offset": 10,
+          "name": "pendingAdminDelay",
+          "type": "t_uint32"
+        },
+        {
+          "slot": "1",
+          "offset": 14,
+          "name": "closed",
+          "type": "t_bool"
+        }
+      ]
+    },
+    {
+      "struct": "TellorFeed",
+      "namespace": null,
+      "slot": null,
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "queryId",
+          "type": "t_bytes32"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "disputeBuffer",
+          "type": "t_uint48"
+        },
+        {
+          "slot": "1",
+          "offset": 6,
+          "name": "maxStaleness",
+          "type": "t_uint48"
+        }
+      ]
+    },
+    {
+      "struct": "Timing",
+      "namespace": null,
+      "slot": null,
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "start",
+          "type": "t_uint48"
+        },
+        {
+          "slot": "0",
+          "offset": 6,
+          "name": "expires",
+          "type": "t_uint48"
+        }
+      ]
+    },
+    {
+      "struct": "Trace160",
+      "namespace": null,
+      "slot": null,
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_checkpoints",
+          "type": "t_array(t_struct(Checkpoint160)_storage)dyn_storage"
+        }
+      ]
+    },
+    {
+      "struct": "Trace208",
+      "namespace": null,
+      "slot": null,
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_checkpoints",
+          "type": "t_array(t_struct(Checkpoint208)_storage)dyn_storage"
+        }
+      ]
+    },
+    {
+      "struct": "Tree",
+      "namespace": null,
+      "slot": null,
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_leanIMT",
+          "type": "t_struct(LeanIMTData)_storage"
+        },
+        {
+          "slot": "4",
+          "offset": 0,
+          "name": "_currentRootIndex",
+          "type": "t_uint256"
+        },
+        {
+          "slot": "5",
+          "offset": 0,
+          "name": "_rootCount",
+          "type": "t_uint256"
+        },
+        {
+          "slot": "6",
+          "offset": 0,
+          "name": "_rootHistory",
+          "type": "t_mapping(t_uint256,t_uint256)"
+        }
+      ]
+    },
+    {
+      "struct": "UintSet",
+      "namespace": null,
+      "slot": null,
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_inner",
+          "type": "t_struct(Set)_storage"
+        }
+      ]
+    },
+    {
+      "struct": "ValidationStorage",
+      "namespace": null,
+      "slot": null,
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "validationFlags",
+          "type": "t_userDefinedValueType(ValidationFlags)"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "validationHooks",
+          "type": "t_array(t_userDefinedValueType(HookConfig))dyn_storage"
+        },
+        {
+          "slot": "2",
+          "offset": 0,
+          "name": "executionHooks",
+          "type": "t_struct(Bytes32Set)_storage"
+        },
+        {
+          "slot": "4",
+          "offset": 0,
+          "name": "selectors",
+          "type": "t_struct(Bytes4Set)_storage"
+        }
+      ]
+    }
+  ],
+  "interfaces": [
+    {
+      "interfaceId": "0x03fde054",
+      "slot": "0xe8225b256c9522a08c27f0d5ba22c2c153d632cc7b7a99a5ed27141b67ebedd9",
+      "sources": [
+        {
+          "source": "src/access/libraries/AccessManagerLib.sol",
+          "constant": "ERC165_MAP_IACCESSMANAGER_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x065383d4",
+      "slot": "0x5537f73b9d1f73b54596091975d6c567826a5e930691e592f6a854f19cdcd2fb",
+      "sources": [
+        {
+          "source": "src/defi/libraries/VaultCoreLib.sol",
+          "constant": "ERC165_MAP_IVAULTCORERECOVERY_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x0e89341c",
+      "slot": "0x16223e323116e54e339612437d2478d553a51948c039066bf3354fac71c5ef6c",
+      "sources": [
+        {
+          "source": "src/tokens/ERC1155/libraries/ERC1155Lib.sol",
+          "constant": "ERC165_MAP_IERC1155METADATAURI_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x11967553",
+      "slot": "0x3c75b8ea75c097979221eb9302e2f0f6009b4ffe0a7198db5dc29979e09ea0e3",
+      "sources": [
+        {
+          "source": "src/crosschain/axelar/AxelarGatewayAdapterLib.sol",
+          "constant": "ERC165_MAP_IERC7786GATEWAYSOURCE_SLOT"
+        },
+        {
+          "source": "src/crosschain/chainlink/CCIPGatewayAdapterLib.sol",
+          "constant": "ERC165_MAP_IERC7786GATEWAYSOURCE_SLOT"
+        },
+        {
+          "source": "src/crosschain/hyperbridge/HyperbridgeGatewayAdapterLib.sol",
+          "constant": "ERC165_MAP_IERC7786GATEWAYSOURCE_SLOT"
+        },
+        {
+          "source": "src/crosschain/hyperlane/HyperlaneGatewayAdapterLib.sol",
+          "constant": "ERC165_MAP_IERC7786GATEWAYSOURCE_SLOT"
+        },
+        {
+          "source": "src/crosschain/layerzero/LayerZeroGatewayAdapterLib.sol",
+          "constant": "ERC165_MAP_IERC7786GATEWAYSOURCE_SLOT"
+        },
+        {
+          "source": "src/crosschain/libraries/ERC7786OpenBridgeLib.sol",
+          "constant": "ERC165_MAP_IERC7786GATEWAYSOURCE_SLOT"
+        },
+        {
+          "source": "src/crosschain/optimism/L1ToL2CrossDomainMessengerGatewayAdapterLib.sol",
+          "constant": "ERC165_MAP_IERC7786GATEWAYSOURCE_SLOT"
+        },
+        {
+          "source": "src/crosschain/optimism/L2ToL2CrossDomainMessengerGatewayAdapterLib.sol",
+          "constant": "ERC165_MAP_IERC7786GATEWAYSOURCE_SLOT"
+        },
+        {
+          "source": "src/crosschain/wormhole/WormholeGatewayAdapterLib.sol",
+          "constant": "ERC165_MAP_IERC7786GATEWAYSOURCE_SLOT"
+        },
+        {
+          "source": "src/crosschain/zetachain/ZetaChainGatewayAdapterLib.sol",
+          "constant": "ERC165_MAP_IERC7786GATEWAYSOURCE_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x137e339e",
+      "slot": "0x0a0affa1c3cd17b5e25d35fd719de9756671b9a056876933fee65c04fc5735d3",
+      "sources": [
+        {
+          "source": "src/crosschain/libraries/ChainRegistryLib.sol",
+          "constant": "ERC165_MAP_ICHAINREGISTRY_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x1626ba7e",
+      "slot": "0x13edcf2102dbcbe8afc6b8b590ac545a2ed12e9a15726b4c8ab7a3fb938ab3b7",
+      "sources": [
+        {
+          "source": "src/accounts/libraries/ERC1271SignatureLib.sol",
+          "constant": "ERC165_MAP_IERC1271_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x199fc6b0",
+      "slot": "0x326cc60e86592cbb0d41c91042ab150a4f99ae6dd5d49d392cfc87d10b32650d",
+      "sources": [
+        {
+          "source": "src/crosschain/layerzero/StargateBridgeAdapterLib.sol",
+          "constant": "ERC165_MAP_ISTARGATEBRIDGEADAPTER_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x1bfc84d0",
+      "slot": "0x9baecadb3e37f7ef6c6624a337da384f68e7fa9684795d0ccbd7f9f089dee070",
+      "sources": [
+        {
+          "source": "src/crosschain/chainlink/CCIPGatewayAdapterLib.sol",
+          "constant": "ERC165_MAP_IANY2EVMMESSAGERECEIVERV2_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x1c3a25a8",
+      "slot": "0x30594729cb8d6a49998656680a715012a3392034ab2a6e4f69a94bf6b0450af9",
+      "sources": [
+        {
+          "source": "src/utils/libraries/VestingWalletLib.sol",
+          "constant": "ERC165_MAP_IVESTINGWALLET_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x1f931c1c",
+      "slot": "0xa0f80413692945aab97c6ef0328381ebb94e4b17a84d11ebf6b61f73435b6d7e",
+      "sources": [
+        {
+          "source": "src/governance/libraries/AccessControlDiamondCutLib.sol",
+          "constant": "ERC165_MAP_IACCESSCONTROLDIAMONDCUT_SLOT"
+        },
+        {
+          "source": "src/governance/libraries/GovernedDiamondCutLib.sol",
+          "constant": "ERC165_MAP_ICUT_SLOT"
+        },
+        {
+          "source": "src/governance/libraries/SafeDiamondCutLib.sol",
+          "constant": "ERC165_MAP_ICUT_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x220cdebb",
+      "slot": "0x16d0785b1b0d3d2d988cff60fd273da31ad0fc5acccec3792316ca40dcc33977",
+      "sources": [
+        {
+          "source": "src/governance/libraries/GovernorLib.sol",
+          "constant": "ERC165_MAP_IGOVERNOR_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x232dbb4a",
+      "slot": "0x1c2e0d7514777ddafe41add8aefc1cb6319fbc463de0c6eb0b00433efbdbdd41",
+      "sources": [
+        {
+          "source": "src/accounts/erc7579/libraries/ERC7579ModuleConfigLib.sol",
+          "constant": "ERC165_MAP_IERC7579MODULECONFIG_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x24e34e52",
+      "slot": "0x1aa8e25c37e7f12aeead6e76f9ac394d6db559f39dd1228f00e20ba394b198e1",
+      "sources": [
+        {
+          "source": "src/security/libraries/InvariantCheckerLib.sol",
+          "constant": "ERC165_MAP_IINVARIANTCHECKER_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x278f5b6a",
+      "slot": "0xfbb4f19de9230b60c572e8ff078c06c8112306947245c1d5058d08359436c1ca",
+      "sources": [
+        {
+          "source": "src/oracles/chronicle/ChronicleAdapterLib.sol",
+          "constant": "ERC165_MAP_ICHRONICLEADAPTER_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x28dcc8d8",
+      "slot": "0xc98ec5eb76ed7701e7884a55fd8dcc6ba54f192d7f68011281537265c16215d4",
+      "sources": [
+        {
+          "source": "src/crosschain/libraries/BridgeFungibleLib.sol",
+          "constant": "ERC165_MAP_IBRIDGEFUNGIBLE_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x2a3e8e12",
+      "slot": "0xc27d89bdc7ce502086d0749a1bda2c210ca866065fa49ea19147ad53e8e018ad",
+      "sources": [
+        {
+          "source": "src/governance/libraries/SafeHarborAdopterLib.sol",
+          "constant": "ERC165_MAP_ISAFEHARBORADOPTER_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x2a55205a",
+      "slot": "0x0b6e5f3aef2b5db6c8b7f9a90550b00e1bcf3efa09341feda1a90dabdea92899",
+      "sources": [
+        {
+          "source": "src/tokens/ERC2981/libraries/ERC2981Lib.sol",
+          "constant": "ERC165_MAP_IERC2981_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x3327c9eb",
+      "slot": "0x61ade9dd9a8b94d6fecab99fabf41cc4bf0b14d40172852668cf26dba0f52f49",
+      "sources": [
+        {
+          "source": "src/governance/libraries/VotesLib.sol",
+          "constant": "ERC165_MAP_IVOTES_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x33331994",
+      "slot": "0x8874437f0039021364a4853ff7e826b818ba7233f378ea008f000746be5d784a",
+      "sources": [
+        {
+          "source": "src/tokens/ERC7802/libraries/ERC7802Lib.sol",
+          "constant": "ERC165_MAP_IERC7802_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x33a1a017",
+      "slot": "0x41da0c252d134ba14fd7bb076efcd912935e2490fdd095fda46ea7b4ab0cb258",
+      "sources": [
+        {
+          "source": "src/oracles/libraries/OracleGuardLib.sol",
+          "constant": "ERC165_MAP_IORACLEGUARD_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x355274ea",
+      "slot": "0xb2089445722e0a36969fff4735cd037fb1b56a44be61c7f6c752270db855a1b7",
+      "sources": [
+        {
+          "source": "src/tokens/ERC20/libraries/ERC20CappedLib.sol",
+          "constant": "ERC165_MAP_IERC20CAPPED_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x364fdec9",
+      "slot": "0x65e721c748691ae5a9544827b82a8602440249a42e1438a441599564727a3bd2",
+      "sources": [
+        {
+          "source": "src/oracles/chainlink/ChainlinkAdapterLib.sol",
+          "constant": "ERC165_MAP_ICHAINLINKADAPTER_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x37ae8968",
+      "slot": "0x0785670462ca582bde40afa31cf7989a7c25557d842b1003652c1ca6b4044d81",
+      "sources": [
+        {
+          "source": "src/tokens/hedera/HTSAdapterLib.sol",
+          "constant": "ERC165_MAP_IHTSADAPTER_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x3822a094",
+      "slot": "0xeb1ff41651f419b216c82171945cb548e85f1f021f4de7ac580f5665f8fc8360",
+      "sources": [
+        {
+          "source": "src/tokens/libraries/MarketplaceZoneLib.sol",
+          "constant": "ERC165_MAP_ZONEINTERFACE_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x3839468c",
+      "slot": "0x8285166a3f9489792233ccce4dfcee0aa88473267c0fab1b647d041fceb112c6",
+      "sources": [
+        {
+          "source": "src/oracles/pyth/PythAdapterLib.sol",
+          "constant": "ERC165_MAP_IPYTHADAPTER_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x39922547",
+      "slot": "0x78c1401e50bfb6276de93dc8c11adfbefc06555e8af1f7964bc4c850cbbd171c",
+      "sources": [
+        {
+          "source": "src/accounts/erc7579/libraries/ERC7821ExecutorLib.sol",
+          "constant": "ERC165_MAP_IERC7821_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x3b5a0bf8",
+      "slot": "0x20898a14bb56c69b48cb37845539190e2348a67664163cad45eb1e5d40d06096",
+      "sources": [
+        {
+          "source": "src/tokens/ERC20/libraries/ERC20BurnableLib.sol",
+          "constant": "ERC165_MAP_IERC20BURNABLE_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x3f3f9537",
+      "slot": "0x1adc25256844eecf70d1111a7d897d059d6c39bccc33e2fe1bcdd0aa07e45227",
+      "sources": [
+        {
+          "source": "src/accounts/erc7579/libraries/ERC7579ModuleConfigLib.sol",
+          "constant": "ERC165_MAP_IERC7579EXECUTION_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x409e5cd5",
+      "slot": "0x63eb9226e864b43834b3b55a3188cdb0170b49fdd7f8a67c2a48bd7b9f6a8378",
+      "sources": [
+        {
+          "source": "src/oracles/hedera/HederaExchangeRateAdapterLib.sol",
+          "constant": "ERC165_MAP_IHEDERAEXCHANGERATEADAPTER_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x42966c68",
+      "slot": "0x9eb38abe883a9d9203f59f04d3952f6b497989121d4c2afe4ca6d5038b9dfc43",
+      "sources": [
+        {
+          "source": "src/tokens/ERC721/libraries/ERC721BurnableLib.sol",
+          "constant": "ERC165_MAP_IERC721BURNABLE_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x4615a4f1",
+      "slot": "0xd64961c0a774526940a248ad01e6f5f33fadd297074bcba45861d774858b837c",
+      "sources": [
+        {
+          "source": "src/crosschain/across/AcrossBridgeAdapterLib.sol",
+          "constant": "ERC165_MAP_IACROSSBRIDGEADAPTER_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x49064906",
+      "slot": "0xf6e2df7ae707ae7f293659ac6f748c7ba27a30d8639e53e763363aebc5fa8f65",
+      "sources": [
+        {
+          "source": "src/tokens/ERC721/libraries/ERC721URIStorageLib.sol",
+          "constant": "ERC165_MAP_ERC4906_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x4a531f33",
+      "slot": "0x97f7b4db7c24da5392018b796b53913aa0747b5c0b28d3c6627e928edcc14372",
+      "sources": [
+        {
+          "source": "src/access/libraries/AccessManagedLib.sol",
+          "constant": "ERC165_MAP_IACCESSMANAGED_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x4d1f9583",
+      "slot": "0xa57260aa5166ddbfa7edd847f707bbf0762a8707401140e29b2073d6dfc88e2e",
+      "sources": [
+        {
+          "source": "src/privacy/libraries/ERC5564AnnouncerLib.sol",
+          "constant": "ERC165_MAP_IERC5564ANNOUNCER_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x4da4fb45",
+      "slot": "0x0b3233815ce1b1f92051bbb497fa74751e231e11c662dee243cd17d8f2a816f7",
+      "sources": [
+        {
+          "source": "src/oracles/pyth/PythEntropyAdapterLib.sol",
+          "constant": "ERC165_MAP_IPYTHENTROPYADAPTER_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x51945447",
+      "slot": "0x7119a8e42d55700f1f34f34e17ffb769e414497fcab2ff2004aa97c610742b4b",
+      "sources": [
+        {
+          "source": "src/accounts/libraries/ERC6551AccountLib.sol",
+          "constant": "ERC165_MAP_IERC6551EXECUTABLE_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x55658261",
+      "slot": "0x6389d98b1603c26ed93ee23dd27c7d50ce87ec4985c6f5adaf89a862d65f1d7e",
+      "sources": [
+        {
+          "source": "src/access/libraries/AccessControlTimedLib.sol",
+          "constant": "ERC165_MAP_IACCESSCONTROLTIMED_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x566ec67d",
+      "slot": "0x79535b2b28365a4b28deff1d36dfc239871172c80dcc5e494674d846366975cb",
+      "sources": [
+        {
+          "source": "src/ens/libraries/ENSResolverLib.sol",
+          "constant": "ERC165_MAP_IENSRESOLVER_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x5b5e139f",
+      "slot": "0xdec0fb77ff71ebf00e30e78bd255149ae2525d6ff9925bff1ddd9a569813231d",
+      "sources": [
+        {
+          "source": "src/tokens/ERC721/libraries/ERC721Lib.sol",
+          "constant": "ERC165_MAP_IERC721METADATA_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x5d484314",
+      "slot": "0xb1e78a1a6e11f30e01de857f602d74246da41ae3318d8e6afc2b73cc1cbe0ede",
+      "sources": [
+        {
+          "source": "src/privacy/libraries/PlonkVerifierLib.sol",
+          "constant": "ERC165_MAP_IPLONKVERIFIER_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x60237459",
+      "slot": "0xbf9f024bc4077d1561e72f01e7eabc003cc7b8d081de85f0fd1662da93832e2b",
+      "sources": [
+        {
+          "source": "src/tokens/ERC20/libraries/ERC20WrapperLib.sol",
+          "constant": "ERC165_MAP_IERC20WRAPPER_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x6189942b",
+      "slot": "0x84ec7ed953664aca1f16de58454031d5ee56bdfdc133c3183893a830a7b1c08b",
+      "sources": [
+        {
+          "source": "src/defi/libraries/ERC4626AdapterLib.sol",
+          "constant": "ERC165_MAP_IERC4626ADAPTER_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x648cc6c7",
+      "slot": "0x96d079b02f2bbbe165b473b6ab18c1244741cc699c115aaf2550dd64c3fba9dd",
+      "sources": [
+        {
+          "source": "src/oracles/gelato/GelatoVRFAdapterLib.sol",
+          "constant": "ERC165_MAP_IGELATOVRFADAPTER_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x6d832d8e",
+      "slot": "0x65fb5f0c2dd2a1b03fcdcf008584d060b7a7596bbc510b7022310e4dbd7682a9",
+      "sources": [
+        {
+          "source": "src/privacy/libraries/Groth16VerifierLib.sol",
+          "constant": "ERC165_MAP_IGROTH16VERIFIER_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x6ead39e3",
+      "slot": "0x19f98b1c052723a0f45e31ccce192390fdd3867a76366f19df750eb883381f60",
+      "sources": [
+        {
+          "source": "src/ens/libraries/ENSSubnameIssuerLib.sol",
+          "constant": "ERC165_MAP_IENSSUBNAMEISSUER_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x6faff5f1",
+      "slot": "0xe5e50471a231013bea8f6034ec0b978814d697120ebd88e3624ed42959ed0a66",
+      "sources": [
+        {
+          "source": "src/accounts/libraries/ERC6551AccountLib.sol",
+          "constant": "ERC165_MAP_IERC6551ACCOUNT_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x7462bdca",
+      "slot": "0x9f65a04bbf27ebfd1338d2e0d1c8a9eeb3234866269ee27f320faed8bab02aec",
+      "sources": [
+        {
+          "source": "src/security/libraries/CircuitBreakerLib.sol",
+          "constant": "ERC165_MAP_ICIRCUITBREAKER_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x780e9d63",
+      "slot": "0x9fad85d457c138ef818380b4b39b6b747ee53391250a17c4834c66e238e37af4",
+      "sources": [
+        {
+          "source": "src/tokens/ERC721/libraries/ERC721EnumerableLib.sol",
+          "constant": "ERC165_MAP_IERC721ENUMERABLE_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x7965db0b",
+      "slot": "0xce317eb1da4e1492e501dc3f63d2206e3e9294a33442f09d99ce09cbbaaeae1f",
+      "sources": [
+        {
+          "source": "src/access/libraries/AccessControlLib.sol",
+          "constant": "ERC165_MAP_IACCESSCONTROL_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x7b1f57cb",
+      "slot": "0xba3bf91c60e936a8bb7a4c2729c74c6ef842a655f3dff9707765ac926778cd2e",
+      "sources": [
+        {
+          "source": "src/privacy/libraries/ERC6538RegistryLib.sol",
+          "constant": "ERC165_MAP_IERC6538REGISTRY_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x7dfd78ca",
+      "slot": "0xbcf162df5dae478299124881124442c9a950f7c7a4c96c5d289b1c3a20b1dd53",
+      "sources": [
+        {
+          "source": "src/crosschain/starknet/StarknetGatewayAdapterLib.sol",
+          "constant": "ERC165_MAP_ISTARKNETGATEWAYADAPTER_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x7ecebe00",
+      "slot": "0x7a551986b45870996296121343257817091920bfbe333333c5198eab95eb2fa2",
+      "sources": [
+        {
+          "source": "src/utils/libraries/NoncesLib.sol",
+          "constant": "ERC165_MAP_INONCES_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x805f2132",
+      "slot": "0x441e497903b68a1fc13e526fe3469e615b027289cdd3d767c8ce4993ccc4bf83",
+      "sources": [
+        {
+          "source": "src/oracles/chainlink/ChainlinkCREAdapterLib.sol",
+          "constant": "ERC165_MAP_IRECEIVER_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x8098801f",
+      "slot": "0xe179134a78bc5c2b2530eee9483cf7fd81654d9311d88e7b22e0fa63d02f43cf",
+      "sources": [
+        {
+          "source": "src/amm/libraries/ConstantProductLib.sol",
+          "constant": "ERC165_MAP_ICONSTANTPRODUCT_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x80ac58cd",
+      "slot": "0x741e8246930c2bfc93c4e7042569e8d7f42e535e31e366398006f597e42d38fb",
+      "sources": [
+        {
+          "source": "src/tokens/ERC721/libraries/ERC721Lib.sol",
+          "constant": "ERC165_MAP_IERC721_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x832d7d61",
+      "slot": "0x3e08ed85f4544feff1f3f78c34d4e426159248bf51477cf7b08dde93bbe30744",
+      "sources": [
+        {
+          "source": "src/crosschain/optimism/SuperchainETHBridgeAdapterLib.sol",
+          "constant": "ERC165_MAP_ISUPERCHAINETHBRIDGEADAPTER_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x83d0afd2",
+      "slot": "0x6167b6f3924e213fbc2c85ec2d6ca3e7f5267a73935588adb9fb05f57a52b315",
+      "sources": [
+        {
+          "source": "src/defi/libraries/LidoAdapterLib.sol",
+          "constant": "ERC165_MAP_ILIDOADAPTER_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x84019dd8",
+      "slot": "0x3c859ae3ba58f26576821324787594a5249343bb61f3f7c4054b439dbc4eff8c",
+      "sources": [
+        {
+          "source": "src/ens/libraries/ENSReverseClaimerLib.sol",
+          "constant": "ERC165_MAP_IENSREVERSECLAIMER_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x84b0196e",
+      "slot": "0xce8419fc9d1331d080c55682cb17490a04c7d4f800e9d81986c2db7a5e912f84",
+      "sources": [
+        {
+          "source": "src/utils/libraries/EIP712Lib.sol",
+          "constant": "ERC165_MAP_IEIP712_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x85572ffb",
+      "slot": "0x800eb085c0ca5e4523c112cc053bae87b4696eb6a3bf735b4b8b0a9d09be1465",
+      "sources": [
+        {
+          "source": "src/crosschain/chainlink/CCIPGatewayAdapterLib.sol",
+          "constant": "ERC165_MAP_IANY2EVMMESSAGERECEIVER_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x87dfe5a0",
+      "slot": "0xdad016fc8af4f826152a6bfdd6ece63fb81a66a94f522cc8a79db8d6838e2732",
+      "sources": [
+        {
+          "source": "src/tokens/ERC4626/libraries/ERC4626Lib.sol",
+          "constant": "ERC165_MAP_IERC4626_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x8e848f42",
+      "slot": "0xe34a308c0f52419d136ed1b5d11f586cf680db1cc128f8b2678f2b24615706b7",
+      "sources": [
+        {
+          "source": "src/oracles/hedera/HederaPrngAdapterLib.sol",
+          "constant": "ERC165_MAP_IHEDERAPRNGADAPTER_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x8f5cc2c7",
+      "slot": "0x584247a1f67e966ee8f18e29a93dbcead963401775336064ffc8d6a343c2a4df",
+      "sources": [
+        {
+          "source": "src/privacy/libraries/ShieldedPoolLib.sol",
+          "constant": "ERC165_MAP_ISHIELDEDPOOL_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x8f7783e6",
+      "slot": "0x789387b95720f4aa713e912bc377a2f999f1310b69003727d9c01b7ea1494c77",
+      "sources": [
+        {
+          "source": "src/defi/libraries/AaveV3AdapterLib.sol",
+          "constant": "ERC165_MAP_IPROTOCOLADAPTER_SLOT"
+        },
+        {
+          "source": "src/defi/libraries/CompoundV3AdapterLib.sol",
+          "constant": "ERC165_MAP_IPROTOCOLADAPTER_SLOT"
+        },
+        {
+          "source": "src/defi/libraries/CurveStableSwapAdapterLib.sol",
+          "constant": "ERC165_MAP_IPROTOCOLADAPTER_SLOT"
+        },
+        {
+          "source": "src/defi/libraries/ERC4626AdapterLib.sol",
+          "constant": "ERC165_MAP_IPROTOCOLADAPTER_SLOT"
+        },
+        {
+          "source": "src/defi/libraries/LidoAdapterLib.sol",
+          "constant": "ERC165_MAP_IPROTOCOLADAPTER_SLOT"
+        },
+        {
+          "source": "src/defi/libraries/UniswapV3AdapterLib.sol",
+          "constant": "ERC165_MAP_IPROTOCOLADAPTER_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x942e8b22",
+      "slot": "0xc99f0f757c400475fa5e27e7e237b05409e3b11dbfd9a8930fb35692da3f3a3d",
+      "sources": [
+        {
+          "source": "src/tokens/ERC20/libraries/ERC20Lib.sol",
+          "constant": "ERC165_MAP_IERC20_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x96c247cb",
+      "slot": "0x6abd9841429d5258dad1bcd53196ecd11f06899bbc66ddc8c90a5bb0ca520e26",
+      "sources": [
+        {
+          "source": "src/accounts/hedera/HASSignatureVerifierLib.sol",
+          "constant": "ERC165_MAP_IHASSIGNATUREVERIFIER_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x97290114",
+      "slot": "0xda518c4395658f1bda3e69bd76a71c3cebddb4103a2ca4f795abdfcb18525c7c",
+      "sources": [
+        {
+          "source": "src/oracles/chainlink/ChainlinkAutomationAdapterLib.sol",
+          "constant": "ERC165_MAP_ICHAINLINKAUTOMATIONADAPTER_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x9afe0493",
+      "slot": "0x58fa1bc4807b27651ddeaa1871a010e28c99455295cf3f3424edd8a3f6c6db45",
+      "sources": [
+        {
+          "source": "src/security/libraries/RateLimiterLib.sol",
+          "constant": "ERC165_MAP_IRATELIMITER_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x9c48e32e",
+      "slot": "0xb7ece225a1d7ee3cb3d032ac79e8edc4e7bc0b80a422071828120db87beadfcb",
+      "sources": [
+        {
+          "source": "src/crosschain/hyperbridge/HyperbridgeGatewayAdapterLib.sol",
+          "constant": "ERC165_MAP_IHYPERBRIDGEGATEWAYADAPTER_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x9d8ff7da",
+      "slot": "0x31d570801fe317e940436657728da1f6ff9fa61ca17b4eaff38ae98d162c1920",
+      "sources": [
+        {
+          "source": "src/tokens/ERC20/libraries/ERC20PermitLib.sol",
+          "constant": "ERC165_MAP_IERC20PERMIT_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x9e094e9e",
+      "slot": "0xb792d4a365dc518babbaf5a6b3fa80d3f09c413d4a7f831e1cc47184f1a864a9",
+      "sources": [
+        {
+          "source": "src/tokens/ERC1155/libraries/ERC1155BurnableLib.sol",
+          "constant": "ERC165_MAP_IERC1155BURNABLE_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x9e464da9",
+      "slot": "0x59d8ae278aff771bb9e56436652ef8f684d37f52855acb66dfe58a5a44c4d9de",
+      "sources": [
+        {
+          "source": "src/security/libraries/EmergencyStopLib.sol",
+          "constant": "ERC165_MAP_IEMERGENCYSTOP_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0xa01f1203",
+      "slot": "0x02c9afc8b129398c559418de4825ac6d2670e884630d5a02557a9dcecd0b40e1",
+      "sources": [
+        {
+          "source": "src/defi/libraries/CompoundV3AdapterLib.sol",
+          "constant": "ERC165_MAP_ICOMPOUNDV3ADAPTER_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0xa5503dc2",
+      "slot": "0x266c2a44ce0cae7d2ae6065711c72b357de4f867c756d7ce5224cd89d213768f",
+      "sources": [
+        {
+          "source": "src/oracles/gelato/GelatoAutomateAdapterLib.sol",
+          "constant": "ERC165_MAP_IGELATOAUTOMATEADAPTER_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0xa86d8962",
+      "slot": "0xee1c77df59bab5696d7427515bb0fba56d8719259c4cc5bc6587a3654b26bdf2",
+      "sources": [
+        {
+          "source": "src/defi/libraries/VaultCoreLib.sol",
+          "constant": "ERC165_MAP_IVAULTCORE_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0xacb1aeb6",
+      "slot": "0xe71618ea5c7977b34866901ace6d6c6585c16253798f12024e30133e7fb7b675",
+      "sources": [
+        {
+          "source": "src/governance/libraries/GovernedSafeDiamondCutLib.sol",
+          "constant": "ERC165_MAP_IGOVERNEDSAFEDIAMONDCUT_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0xae37b187",
+      "slot": "0x686b5c002fca8114a8568270b3aef529a60083a8d9c09dbd16e3a0bb6b30bfcf",
+      "sources": [
+        {
+          "source": "src/oracles/api3/API3QRNGAdapterLib.sol",
+          "constant": "ERC165_MAP_IAPI3QRNGADAPTER_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0xb0202a11",
+      "slot": "0x0ebeb7a78f222e08be2c2d80a20fcc22cbe5dd2ddf53005dc602c88dd66185a1",
+      "sources": [
+        {
+          "source": "src/tokens/ERC20/libraries/ERC1363Lib.sol",
+          "constant": "ERC165_MAP_IERC1363_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0xb4f23f37",
+      "slot": "0xda64faf279e491b8914ea1bd5a229e6b869c7ceecd7af74ddf271e5df1381612",
+      "sources": [
+        {
+          "source": "src/crosschain/hyperlane/HyperlaneGatewayAdapterLib.sol",
+          "constant": "ERC165_MAP_IHYPERLANEGATEWAYADAPTER_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0xbe1d6cf6",
+      "slot": "0xca27659497801bbd07af0889ead6ea5a1a9b8739438e7af51464f7082b08ae43",
+      "sources": [
+        {
+          "source": "src/accounts/erc7579/libraries/ERC7579ModuleConfigLib.sol",
+          "constant": "ERC165_MAP_IERC7579ACCOUNTCONFIG_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0xcce4011b",
+      "slot": "0x3d05027e9ebc1daac4235d8ac5fc59b9acea5ece08ff307b79ab5b69ad569930",
+      "sources": [
+        {
+          "source": "src/defi/libraries/StrategyManagerLib.sol",
+          "constant": "ERC165_MAP_ISTRATEGYMANAGER_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0xd07095cf",
+      "slot": "0x336d3eab18c157b0aa1696b6a9cef1943b53e0b1cdacf2490de1d33245c45247",
+      "sources": [
+        {
+          "source": "src/oracles/hedera/HSSAdapterLib.sol",
+          "constant": "ERC165_MAP_IHSSADAPTER_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0xd1baebe0",
+      "slot": "0x3edcb012a40cef5fed8aba3a5816c3233af9ecd91b8a1965a2b67b8940a0f49f",
+      "sources": [
+        {
+          "source": "src/oracles/uniswap/TWAPOracleLib.sol",
+          "constant": "ERC165_MAP_ITWAPORACLE_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0xd352d843",
+      "slot": "0x59c693771151cd0d11eb26b1e9fd28dca5722cdc5fa2b4db3a12e7d9be8d4e2c",
+      "sources": [
+        {
+          "source": "src/defi/libraries/StrategyManagerLib.sol",
+          "constant": "ERC165_MAP_ISTRATEGYMANAGERRECOVERY_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0xd3dc4451",
+      "slot": "0xd822e48b513c28ab47f256a8e46baad1ce902e38e6cae6a58b04347a1a191de1",
+      "sources": [
+        {
+          "source": "src/tokens/ERC1155/libraries/ERC1155URIStorageLib.sol",
+          "constant": "ERC165_MAP_IERC1155URISTORAGE_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0xd5afaecd",
+      "slot": "0x48fa637c6327d1b003860a80c88da58028cdc6c0ad566c17cfe6e68792096327",
+      "sources": [
+        {
+          "source": "src/oracles/redstone/RedStoneAdapterLib.sol",
+          "constant": "ERC165_MAP_IREDSTONEADAPTER_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0xd5cae628",
+      "slot": "0xce6fd43da1904d8f433b8bce181e4722445e0a5f694993acc9f150691da893d1",
+      "sources": [
+        {
+          "source": "src/defi/libraries/GovernedVaultLib.sol",
+          "constant": "ERC165_MAP_IGOVERNEDVAULT_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0xd826478e",
+      "slot": "0xc0a085cd59634eff50a01907a25e03eb6a55bd6279462a3ac6a99ce44b9c2f08",
+      "sources": [
+        {
+          "source": "src/governance/libraries/TimelockControllerLib.sol",
+          "constant": "ERC165_MAP_ITIMELOCKCONTROLLER_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0xd9b67a26",
+      "slot": "0xa10754813726d67c8d4e4553f74a520d6623216a67c6c4a53860c47e2ccde594",
+      "sources": [
+        {
+          "source": "src/tokens/ERC1155/libraries/ERC1155Lib.sol",
+          "constant": "ERC165_MAP_IERC1155_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0xd9e5011d",
+      "slot": "0x77282127b26cc01e57f32ac10fe9c172e5d41d192d3e6e87d2e5c74c35c6f9e8",
+      "sources": [
+        {
+          "source": "src/tokens/ERC721/libraries/ERC721WrapperLib.sol",
+          "constant": "ERC165_MAP_IERC721WRAPPER_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0xddc762ca",
+      "slot": "0xd0880994b1b91b07c905771aa510c46b61d48fe80d33acc431dc49f1cf7b22c5",
+      "sources": [
+        {
+          "source": "src/oracles/tellor/TellorAdapterLib.sol",
+          "constant": "ERC165_MAP_ITELLORADAPTER_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0xe0d5525d",
+      "slot": "0x262752a3af13c9a5ddea1c5915891d611ab5f872b74fae046923437d05fcf120",
+      "sources": [
+        {
+          "source": "src/defi/libraries/AaveV3AdapterLib.sol",
+          "constant": "ERC165_MAP_IAAVEV3ADAPTER_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0xe1805ff8",
+      "slot": "0x9ddc11a88c7ecd9ccccbcd59cd7f34c709ebe70b4507cbaed74ad8b1267235ef",
+      "sources": [
+        {
+          "source": "src/crosschain/libraries/CrosschainLinkLib.sol",
+          "constant": "ERC165_MAP_ICROSSCHAINLINK_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0xe371e8b7",
+      "slot": "0xdc9ba0d500a620df2dabeedf359873cda3ecd1229c8cb91b5b30ae80ec382462",
+      "sources": [
+        {
+          "source": "src/privacy/libraries/CommitRevealLib.sol",
+          "constant": "ERC165_MAP_ICOMMITREVEAL_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0xe4143091",
+      "slot": "0x4275a6f3829c1d71af9909c7c48ca9008f7cc1253f2e37d9ec6b19b0ee746d41",
+      "sources": [
+        {
+          "source": "src/tokens/ERC20/libraries/ERC20FlashMintLib.sol",
+          "constant": "ERC165_MAP_IERC3156FLASHLENDER_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0xe78a39d8",
+      "slot": "0xad8c21edea54b0e7ec01d18544e806e752f64eb497d475cd8353c0c8726b4d3d",
+      "sources": [
+        {
+          "source": "src/security/libraries/PausableLib.sol",
+          "constant": "ERC165_MAP_IPAUSABLE_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0xe95f85f2",
+      "slot": "0x3b0da15f74db1bb0d7ebc58a8d802243b2c7050873887bf8e60ab5b971b5a8e9",
+      "sources": [
+        {
+          "source": "src/defi/libraries/AggregatorExecAdapterLib.sol",
+          "constant": "ERC165_MAP_IAGGREGATOREXECADAPTER_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0xeac6339d",
+      "slot": "0x1c1760c9fb8bc6a2feef129121ee2d30637b318349bcc0156b579ab5b5af6f16",
+      "sources": [
+        {
+          "source": "src/tokens/ERC1155/libraries/ERC1155SupplyLib.sol",
+          "constant": "ERC165_MAP_IERC1155SUPPLY_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0xebdf87c5",
+      "slot": "0xc004cf02eead1d879bc806deefbe1f4228491d4cea98d16c38bf22274d73f5ac",
+      "sources": [
+        {
+          "source": "src/oracles/band/BandAdapterLib.sol",
+          "constant": "ERC165_MAP_IBANDADAPTER_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0xec319d60",
+      "slot": "0xac3b2e96bffda1d6525b62f471f6722940d02b7c74a1e8090cae939120be2443",
+      "sources": [
+        {
+          "source": "src/oracles/dia/DIAAdapterLib.sol",
+          "constant": "ERC165_MAP_IDIAADAPTER_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0xed74ccf3",
+      "slot": "0x5e805972aa7ebffe06f2b61cc9d80c103d549fa32d030cc2918893026547c07e",
+      "sources": [
+        {
+          "source": "src/oracles/chainlink/ChainlinkVRFLib.sol",
+          "constant": "ERC165_MAP_ICHAINLINKVRF_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0xf497879d",
+      "slot": "0xf2439559430b40518d710e6342516a19266235963e7106afd03350497fe51040",
+      "sources": [
+        {
+          "source": "src/privacy/libraries/SemaphoreLib.sol",
+          "constant": "ERC165_MAP_ISEMAPHORE_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0xf5187bdc",
+      "slot": "0x04cddf593d633f3c8537926f8f726adaafc298a0f78a2bfd4848abb0191103e1",
+      "sources": [
+        {
+          "source": "src/crosschain/circle/CCTPBridgeAdapterLib.sol",
+          "constant": "ERC165_MAP_ICCTPBRIDGEADAPTER_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0xf723aa17",
+      "slot": "0x18cf2bfdc937c75408cba5cf015af2a2f8d21a881c553ac382a288bcae5dc1c8",
+      "sources": [
+        {
+          "source": "src/defi/libraries/UniswapV3AdapterLib.sol",
+          "constant": "ERC165_MAP_IUNISWAPV3ADAPTER_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0xf750b661",
+      "slot": "0xd7a71e51b42fc01807cbfbb5db7d2ead6dbf4db6187d1c815fc074c4ac95ba7c",
+      "sources": [
+        {
+          "source": "src/privacy/libraries/PrivateVotingLib.sol",
+          "constant": "ERC165_MAP_IPRIVATEVOTING_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0xf92172dc",
+      "slot": "0xdfb0020c4bf380ed4a6e172ee8a12845bb7e78959d456aee21dd4cc4e0a60edf",
+      "sources": [
+        {
+          "source": "src/access/libraries/AccessControlEnumerableLib.sol",
+          "constant": "ERC165_MAP_IACCESSCONTROLENUMERABLE_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0xfa38ccb7",
+      "slot": "0x5d7c390f2f6bf0ca6f51b6ea0940c100b21726e3e202811c94c2ff39040d4299",
+      "sources": [
+        {
+          "source": "src/defi/libraries/CurveStableSwapAdapterLib.sol",
+          "constant": "ERC165_MAP_ICURVESTABLESWAPADAPTER_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0xfa98111e",
+      "slot": "0x21168d66e590ee042a818ed855046fa88c4c6601cbf29cfcb9e870d054a8cb77",
+      "sources": [
+        {
+          "source": "src/oracles/api3/API3AdapterLib.sol",
+          "constant": "ERC165_MAP_IAPI3ADAPTER_SLOT"
+        }
+      ]
+    }
+  ]
+}
