@@ -6,14 +6,14 @@ pragma solidity ^0.8.30;
 /// @notice Generated admission data for the reviewed immutable token profile.
 /// @dev Only initialization code imports this file. Regenerate with script/erc3643-profile.sh --update.
 library ERC3643Profile {
-    bytes32 internal constant HOST_CODEHASH = 0xac694be96cfee9dc3bb08cdaf7a6a02190d5f54c18e0832b2f5b27a96d1b9243;
-    bytes32 internal constant INPUT_HASH = 0x82a406818fad6ff956d40de21178b45bc6ddd7004cc0b884162b6480123815b2;
+    bytes32 internal constant HOST_CODEHASH = 0x9e321300fcd84703dfb5f8a8e71bfd539508afa280019d99007582b1d643ca47;
+    bytes32 internal constant INPUT_HASH = 0xdf3140d7becb1a782041e1e16182eeb3e8505348cbb911d6eb09d654cd3ecc59;
     uint256 internal constant REQUIRED_MASK = 1023;
     uint256 internal constant TEMPORARY_INDEX = 10;
 
     function expected(bytes32 hash) internal pure returns (uint256, bytes memory) {
         // ERC3643
-        if (hash == 0xeb593491bf4865855dd6cf4d3194c582d4514774304cd263b1411750f035205c) {
+        if (hash == 0x566193c2e52e983687c2bec6dd6327015bbf0c59bd29c61b247679ade99269bd) {
             return (
                 0,
                 hex"dd62ed3e095ea7b370a082314a6cc67742a47abcfc7e5fa8685731071a7af37988d695b24710362d9dc29fac6290865d313ce5679fc1d0e7125c4a33158b1a57134e18f4e583983640c10f1906fdde03aba637058456cb595c975abb9285948ac69c09cff8981789cbf3f861c47f00273d1ddc5bb84c824695d89b4118160ddda9059cbb23b872dd1fe56f7d3f4ba83a54fd4d50"
@@ -57,7 +57,7 @@ library ERC3643Profile {
             return (9, hex"cdffacc652ef6b2cadfca15e7a0ed627");
         }
         // ERC20TemporaryApproval
-        if (hash == 0x9d340efbc94c7c3ae5c2c70d8dc65be4a7e0dc6f96018ec3c1848e97213c4484) return (10, hex"42232a4c");
+        if (hash == 0x55161ef35c12984abfbd4dd640f2528701831ed04f50dfd665a50c1fe4d8a681) return (10, hex"42232a4c");
         return (type(uint256).max, hex"");
     }
 }

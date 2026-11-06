@@ -16,7 +16,7 @@ import {ERC3643Lib} from "@lattice/tokens/ERC3643/libraries/ERC3643Lib.sol";
 /// @custom:lattice-source ERC-3643 CC0 standard
 /// @custom:lattice-requires OwnableFacet convention issuer-owner-management;
 /// @custom:lattice-requires ERC3643AgentRole convention token-agent-management;
-/// @custom:lattice-requires ERC3643IdentityRegistry convention identity-management;
+/// @custom:lattice-requires ERC3643IdentityRegistry hard co-located-isVerified-self-call;
 /// @custom:lattice-requires ERC3643Compliance convention compliance-management;
 /// @custom:lattice-family erc20-transfer
 /// @custom:lattice-owns allowance(address,address);

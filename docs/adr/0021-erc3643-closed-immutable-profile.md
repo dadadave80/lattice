@@ -36,6 +36,9 @@ Generated fingerprints are imported only by initialization code. The native buil
 the host, every facet, selectors and canonical compiler settings in its input hash, rejects link
 references and immutables, and rejects a facet dependency on profile/initializer code. Source or
 metadata changes require review and regeneration. No deployed token can adopt regenerated values.
+ERC-3643's required `version()` is the explicit exception to the generic VERSION-getter prohibition:
+it returns the source-owned Lattice version. Release preparation imports Release Please's generated
+version update and regenerates fingerprints before the immutable source freeze; CI never rewrites them.
 
 This guarantee assumes the canonical initializer and atomic recipe. The general LatticeFactory can
 execute arbitrary initializers that write arbitrary diamond storage. A malicious alternative can

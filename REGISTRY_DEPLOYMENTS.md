@@ -223,6 +223,29 @@ a fresh build; use their historical source or explicit fixture mode. IPFS/CBOR m
 paths and compiler settings can change addresses. Regenerate drafts after edits; preserve frozen
 release files. [ADR 0020](docs/adr/0020-source-anchored-release-manifests.md) records this boundary.
 
+### Prepare versioned source before freezing a release
+
+The ERC-3643 standard's `version()` returns the source-owned `LatticeVersion.VERSION`. A version
+change therefore changes its runtime and the closed profile's fingerprints. CI checks generated
+fingerprints; it never silently regenerates source while validating a release.
+
+1. Let Release Please choose the next version `V` in its standing PR on `main`, and keep that PR
+   unmerged. Merging it tags and publishes; the later asset checks cannot serve as source preparation.
+2. Import only its generated `src/LatticeVersion.sol` update into a source-preparation PR targeting
+   `dev`. Leave `.release-please-manifest.json` and `CHANGELOG.md` for Release Please. Run
+   `make erc3643-profile-update`, review the generated profile, then run its check and all normal gates.
+3. Merge that coherent version/profile source as commit `S`, retained by `origin/dev`. Generate the
+   real `release-V.json` and exact archived inputs from `S` with the confirmed canonical owner.
+   Commit that evidence in a manifest-only successor `M`.
+4. Explicitly promote the source and evidence to `main`. Require the refreshed Release Please PR
+   to leave every frozen compiler input unchanged from `S`, with profile and manifest checks green.
+   Its remaining `.release-please-manifest.json`, changelog and README updates do not redefine those inputs.
+5. Only then authorize merging/tagging that Release Please PR. A different proposed version or any
+   compiler-input change requires regenerated profiles and a new reviewed source freeze first.
+
+This keeps the automatic version choice, the immutable input witness and the generated admission
+profile consistent. It does not authorize a promotion, release, deployment or verification submission.
+
 `make release-manifests` checks schemas, CREATE2/constructor identities and per-chain cross references,
 then compares **two clean builds of the current checkout**, including all shared addresses and the
 proxy/compiler-input hashes. Once real release manifests exist, it also rebuilds each published golden

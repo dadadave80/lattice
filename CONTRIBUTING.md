@@ -249,6 +249,10 @@ sentinel means the supplied address/calldata arrays choose the steps; it opens n
 and returns at a zero address. Review all five records whenever updating the submodule. First-party and
 future inventory entries cannot inherit this exception.
 
+The ERC-3643 suite also declares its source-bound
+`transient:lattice.storage.ERC3643Execution` lock. Its precomputed root and derivation are checked
+separately from persistent layouts, and every suite facet with guarded mutable entrypoints declares it.
+
 The lint checks required fields, semicolon framing, referenced artifacts/facets/storage namespaces,
 exported ownership/seam signatures and parameter coverage/units. Missing/dangling and existing-but-not-initializer mutation fixtures prove
 rejection. It cannot prove that a declaration captures every semantic prerequisite or external write.

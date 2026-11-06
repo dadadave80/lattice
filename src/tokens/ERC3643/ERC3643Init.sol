@@ -40,10 +40,10 @@ contract ERC3643Init {
     /// @custom:lattice-initializes ERC3643;
     /// @custom:lattice-initializes ERC20TemporaryApproval with condition=config.temporaryApproval;
     /// @custom:lattice-initializes ERC165;
-    /// @custom:lattice-initializes DiamondLoupe;
+    /// @custom:lattice-initializes DiamondLoupeFacet;
     /// @custom:lattice-after none;
     /// @custom:lattice-same-call Initializable hard enclosing-initializing-window;
-    /// @custom:lattice-sequence Ownable;ERC3643AgentRole;ERC3643ClaimTopicsRegistry;ERC3643TrustedIssuersRegistry;ERC3643IdentityRegistryStorage;ERC3643IdentityRegistry;ERC3643Compliance;ERC20;ERC3643;ERC20TemporaryApproval;ERC165;DiamondLoupe;
+    /// @custom:lattice-sequence Ownable;ERC3643AgentRole;ERC3643ClaimTopicsRegistry;ERC3643TrustedIssuersRegistry;ERC3643IdentityRegistryStorage;ERC3643IdentityRegistry;ERC3643Compliance;ERC20;ERC3643;ERC20TemporaryApproval;ERC165;DiamondLoupeFacet;
     /// @custom:lattice-param config rule=closed-immutable-profile;
     /// @custom:lattice-registers-interfaces
     function init(ERC3643Params calldata config) external {

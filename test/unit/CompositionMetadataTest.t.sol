@@ -6,6 +6,7 @@ import {CoreCompositionMetadata} from "@lattice-script/lib/CoreCompositionMetada
 import {FacetInventory} from "@lattice-script/lib/FacetInventory.sol";
 import {InitInventory} from "@lattice-script/lib/InitInventory.sol";
 import {ERC20_TEMPORARY_APPROVAL_STORAGE_SLOT} from "@lattice/tokens/ERC20/libraries/ERC20TemporaryApprovalLib.sol";
+import {ERC3643_EXECUTION_SLOT} from "@lattice/tokens/ERC3643/libraries/ERC3643ExecutionLib.sol";
 import {Test} from "forge-std/Test.sol";
 
 /// @title CompositionMetadataTest
@@ -13,6 +14,7 @@ import {Test} from "forge-std/Test.sol";
 /// @notice Compiled NatSpec completeness and reference gate; semantic truth still requires source review.
 contract CompositionMetadataTest is Test {
     string private constant TEMPORARY_NAMESPACE = "transient:lattice.storage.ERC20TemporaryApproval";
+    string private constant EXECUTION_NAMESPACE = "transient:lattice.storage.ERC3643Execution";
 
     error MissingTag(string artifact, string tag);
     error InvalidTag(string artifact, string tag, string value);
@@ -147,7 +149,7 @@ contract CompositionMetadataTest is Test {
 
     /// @dev Curated against actual exported entrypoints: _spendAllowance consumers and direct temporaryApprove.
     function test_TransientWriteUnionCoversSpendersAndExcludesApproveOnlyFacets() public view {
-        string[10] memory writers = [
+        string[11] memory writers = [
             "ERC20",
             "ERC20Burnable",
             "ERC20FlashMint",
@@ -157,17 +159,21 @@ contract CompositionMetadataTest is Test {
             "ERC4626",
             "VaultCore",
             "GovernedVault",
-            "ERC20TemporaryApproval"
+            "ERC20TemporaryApproval",
+            "ERC3643"
         ];
         for (uint256 i; i < writers.length; ++i) {
             assertTrue(
-                _declaresTemporaryWrites(writers[i]),
+                _declaresNamespace(writers[i], TEMPORARY_NAMESPACE),
                 string.concat(writers[i], ": missing conditional transient writes")
             );
         }
         string[5] memory others = ["ERC20Permit", "ERC20Capped", "ERC20Wrapper", "ERC20Crosschain", "ERC7802"];
         for (uint256 i; i < others.length; ++i) {
-            assertFalse(_declaresTemporaryWrites(others[i]), string.concat(others[i], ": no local transient writes"));
+            assertFalse(
+                _declaresNamespace(others[i], TEMPORARY_NAMESPACE),
+                string.concat(others[i], ": no local transient writes")
+            );
         }
     }
 
@@ -177,11 +183,36 @@ contract CompositionMetadataTest is Test {
         assertEq(ERC20_TEMPORARY_APPROVAL_STORAGE_SLOT, derived, "temporary namespace must match the source root");
     }
 
-    function _declaresTemporaryWrites(string memory name) private view returns (bool) {
+    function _assertExecutionRoot() private pure {
+        bytes32 derived =
+            keccak256(abi.encode(uint256(keccak256("lattice.storage.ERC3643Execution")) - 1)) & ~bytes32(uint256(0xff));
+        assertEq(ERC3643_EXECUTION_SLOT, derived, "execution namespace must match the source root");
+    }
+
+    function test_ERC3643ExecutionWriteUnion() public view {
+        _assertExecutionRoot();
+        string[7] memory writers = [
+            "ERC3643",
+            "ERC3643AgentRole",
+            "ERC3643ClaimTopicsRegistry",
+            "ERC3643Compliance",
+            "ERC3643IdentityRegistry",
+            "ERC3643IdentityRegistryStorage",
+            "ERC3643TrustedIssuersRegistry"
+        ];
+        for (uint256 i; i < writers.length; ++i) {
+            assertTrue(
+                _declaresNamespace(writers[i], EXECUTION_NAMESPACE),
+                string.concat(writers[i], ": missing native lock writes")
+            );
+        }
+    }
+
+    function _declaresNamespace(string memory name, string memory expected) private view returns (bool) {
         string memory raw = vm.parseJsonString(_artifact(string.concat(name, ".sol"), name), ".rawMetadata");
         string[] memory namespaces = _split(_tag(raw, ".output.devdoc", name, "touches"), bytes1(";"));
         for (uint256 i; i < namespaces.length; ++i) {
-            if (_eq(namespaces[i], TEMPORARY_NAMESPACE)) return true;
+            if (_eq(namespaces[i], expected)) return true;
         }
         return false;
     }
@@ -402,6 +433,10 @@ contract CompositionMetadataTest is Test {
             if (_eq(namespaces[i], "none")) continue;
             if (_eq(namespaces[i], TEMPORARY_NAMESPACE)) {
                 _assertTemporaryRoot();
+                continue;
+            }
+            if (_eq(namespaces[i], EXECUTION_NAMESPACE)) {
+                _assertExecutionRoot();
                 continue;
             }
             if (_eq(namespaces[i], "diamond.lib.storage") || _eq(namespaces[i], "diamond.lib.storage.ERC165")) {
