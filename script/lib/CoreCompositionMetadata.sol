@@ -37,7 +37,7 @@ library CoreCompositionMetadata {
             );
         }
         if (key == keccak256("MultiInit")) {
-            return '{"output":{"devdoc":{"custom:lattice-kind":"bundle","methods":{"multiInit(address[],bytes[])":{"custom:lattice-initializes":"caller-defined;","custom:lattice-after":"none;","custom:lattice-same-call":"Initializable convention called-steps-may-require-window;","custom:lattice-sequence":"caller-defined;","custom:lattice-param":"_initAddresses rule=ordered-code-bearing-addresses-zero-terminates;_initData rule=length-matches-initAddresses;"}}}}}';
+            return '{"output":{"devdoc":{"custom:lattice-kind":"bundle","methods":{"multiInit(address[],bytes[])":{"custom:lattice-initializes":"caller-defined;","custom:lattice-after":"none;","custom:lattice-same-call":"Initializable convention called-steps-may-require-window;","custom:lattice-sequence":"caller-defined;","custom:lattice-param":"_initAddresses rule=ordered-code-bearing-nonzero-addresses;_initData rule=length-matches-initAddresses;"}}}}}';
         }
         return "";
     }

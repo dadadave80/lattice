@@ -14,8 +14,8 @@ import {Test} from "forge-std/Test.sol";
 ///         + CrosschainLink + BridgeERC20 + {BridgeERC20Init}) — so every bridge call routes through the diamond's
 ///         `delegatecall` dispatch, catching selector/storage/init bugs a mock hides. The external ERC-7786
 ///         gateway + ERC-20 token mocks stay test fixtures (they are NOT the facet under test). The zero-token
-///         init guard is exercised by calling `_deployBridgeERC20(admin, address(0))` inside `vm.expectRevert`
-///         (the `BridgeZeroToken` revert bubbles up through {Lattice.initialize}).
+///         init guard is exercised by building a zero-token recipe and asserting its exact indexed
+///         `MultiInit__StepFailed` error, retaining `BridgeZeroToken`, on {Lattice.initialize}.
 abstract contract BridgeERC20TestBase is Test, GetSelectors {
     DeployBridgeERC20 internal deployer;
 

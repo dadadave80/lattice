@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {MultiInitErrors} from "@lattice-test/helpers/MultiInitErrors.sol";
+
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {CCTPBridgeAdapterTestBase} from "@lattice-test/base/CCTPBridgeAdapterTestBase.sol";
@@ -325,12 +327,14 @@ contract CCTPBridgeAdapterTest is CCTPBridgeAdapterTestBase {
         assertEq(adapter.usdc(), address(usdcToken));
     }
 
-    /// @dev Only `d.initialize` is wrapped in `expectRevert` (the `CCTPZeroAddress` revert bubbles up through
-    ///      {Lattice.initialize}); `deployer` was created in `setUp`.
+    /// @dev Only `d.initialize` is wrapped in `expectRevert` (the indexed batch error retains
+    ///      `CCTPZeroAddress`); `deployer` was created in `setUp`.
     function _expectZeroAddressInitRevert(address tm, address mt, address u) internal {
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) = deployer.buildCuts(admin, tm, mt, u);
         Lattice d = new Lattice();
-        vm.expectRevert(ICCTPBridgeAdapter.CCTPZeroAddress.selector);
+        vm.expectRevert(
+            MultiInitErrors.at(0, initCalldata, abi.encodePacked(ICCTPBridgeAdapter.CCTPZeroAddress.selector))
+        );
         d.initialize(cuts, init, initCalldata);
     }
 

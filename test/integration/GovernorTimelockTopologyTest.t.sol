@@ -3,7 +3,7 @@ pragma solidity ^0.8.30;
 
 import {DiamondCutFacet} from "@diamond/facets/DiamondCutFacet.sol";
 import {DiamondLoupeFacet} from "@diamond/facets/DiamondLoupeFacet.sol";
-import {MultiInit} from "@diamond/initializers/MultiInit.sol";
+import {MultiInit, MultiInit__StepFailed} from "@diamond/initializers/MultiInit.sol";
 import {DiamondLib, FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
 import {DeployGovernedDiamondCut} from "@lattice-script/base/governance/DeployGovernedDiamondCut.s.sol";
@@ -139,13 +139,29 @@ contract GovernorTimelockTopologyTest is Test, BaseDeploy {
     }
 
     function test_ExternalTimelockRejectedWhenGovernorInitializesAfterGovernedCut() public {
-        vm.expectPartialRevert(INCOMPATIBLE);
-        this.deployTopology(2, false, false, false);
+        _expectRejectedTopology(false, false, false, INCOMPATIBLE);
     }
 
     function test_ExternalTimelockRejectedWhenGovernorInitializesBeforeGovernedCut() public {
-        vm.expectPartialRevert(INCOMPATIBLE);
-        this.deployTopology(2, true, false, false);
+        _expectRejectedTopology(true, false, false, INCOMPATIBLE);
+    }
+
+    function _expectRejectedTopology(bool governorFirst, bool optOut, bool acknowledge, bytes4 failure) private {
+        bytes32 salt = bytes32(++nonce);
+        address predicted = factory.predict(address(this), salt);
+        (FacetCut[] memory cuts, address[] memory inits, bytes[] memory data) =
+            _buildTopology(Setup(predicted, EXTERNAL, governorFirst, optOut, acknowledge));
+        // The fixed governed-cut plan puts its cut implementation at index4. The topology error names that
+        // declared route owner, not the proxy address. In either initializer order the conflict is step1.
+        bytes memory inner = failure == INCOMPATIBLE
+            ? abi.encodeWithSelector(INCOMPATIBLE, EXTERNAL, cuts[4].facetAddress)
+            : abi.encodePacked(failure);
+        MultiInit batch = new MultiInit();
+        vm.expectRevert(abi.encodeWithSelector(MultiInit__StepFailed.selector, 1, inits[1], inner));
+        factory.deploy(
+            new RecipeEntry[](0), cuts, address(batch), abi.encodeCall(MultiInit.multiInit, (inits, data)), salt
+        );
+        assertEq(predicted.code.length, 0, "failed initialization rolls back proxy creation");
     }
 
     function test_SelfTimelockExecutesPassedCut() public {
@@ -190,8 +206,7 @@ contract GovernorTimelockTopologyTest is Test, BaseDeploy {
     }
 
     function test_OptOutRequiresAcknowledgement() public {
-        vm.expectRevert(UNACKNOWLEDGED);
-        this.deployTopology(2, false, true, false);
+        _expectRejectedTopology(false, true, false, UNACKNOWLEDGED);
     }
 
     function test_TopologyConfigurationRequiresAnInitializationWindow() public {

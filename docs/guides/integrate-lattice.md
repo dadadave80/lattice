@@ -238,9 +238,12 @@ Bit 0 of the initialization word is the open-window flag; bits 1–64 hold the v
 The closed version-2 example is `4`. General tooling decodes with a full-width integer:
 `version = (word >> 1) & (2^64 - 1)`. See the
 [stable read definition](../../STORAGE_REGISTRY.md#initialization-version-read).
-Successful empty batches and a zero-address terminator still advance the version; uint64 maximum
-is terminal. Read each init's raw compiler metadata and library preconditions, preserve the original
-bootstrap identity where required, and order steps deliberately. Metadata describes code facts.
+Successful empty batches still advance the version; zero targets revert and uint64 maximum
+is terminal. The indexed-error policy follows
+[diamond-lib v0.4.0 and ADR0031](../adr/0031-indexed-initializer-batch-failures.md). Keep shared
+initializer helpers free of custody, token spending approvals and external roles. Read each init's raw
+compiler metadata and library preconditions, preserve the original bootstrap identity where required,
+and order steps deliberately. Metadata describes code facts.
 Use `make recipes` to generate `out/recipes.json`, the
 [descriptive recipe catalog](../../script/README.md#recipe-data-and-checked-composition)
 checked against compiler ABIs. There is no automatic recipe planner.

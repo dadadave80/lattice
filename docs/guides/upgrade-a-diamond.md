@@ -105,7 +105,12 @@ VERSION=2
 Version2 is the explicit choice for this version1 fixture. In an application, choose a reviewed
 uint64 strictly greater than the observed version; never truncate through floating-point JSON or
 automatically assume the next integer is available. uint64 maximum is terminal.
-Even an empty successful batch or a zero-address terminator advances the version.
+An empty successful batch advances the version. Zero targets revert `MultiInit__ZeroInit(index)`;
+missing code reverts `NoBytecodeAtAddress(index, initAddress)`, and reverted steps wrap their
+unchanged inner bytes in `MultiInit__StepFailed(index, init, reason)`. Indexes are zero-based.
+Pass exactly sized arrays without zero sentinels, following
+[diamond-lib v0.4.0 and ADR0031](../adr/0031-indexed-initializer-batch-failures.md). Keep shared
+initializer helpers free of custody, token spending approvals and external roles.
 See the [stable read contract](../../STORAGE_REGISTRY.md#initialization-version-read).
 
 ## 4. Propose, vote, queue and execute the initialized cut

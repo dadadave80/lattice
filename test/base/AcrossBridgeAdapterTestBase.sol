@@ -15,8 +15,8 @@ import {Test} from "forge-std/Test.sol";
 ///         the local SpokePool wired at init — so every deposit / handle call routes through the diamond's
 ///         `delegatecall` dispatch, catching selector/storage/init bugs a mock hides. The external
 ///         `MockSpokePool` stays a test fixture (it is NOT the facet under test). The zero-address init guard
-///         is exercised by calling `buildCuts` with a zero SpokePool inside `vm.expectRevert` (the
-///         `AcrossZeroAddress` revert bubbles up through {Lattice.initialize}).
+///         is exercised by building a zero-SpokePool recipe and asserting the exact indexed
+///         `MultiInit__StepFailed` error, retaining `AcrossZeroAddress`, on {Lattice.initialize}.
 abstract contract AcrossBridgeAdapterTestBase is Test, GetSelectors {
     DeployAcrossBridgeAdapter internal deployer;
 

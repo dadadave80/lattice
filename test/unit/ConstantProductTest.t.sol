@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {MultiInitErrors} from "@lattice-test/helpers/MultiInitErrors.sol";
+
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {ConstantProductTestBase} from "@lattice-test/base/ConstantProductTestBase.sol";
@@ -112,7 +114,11 @@ contract ConstantProductTest is ConstantProductTestBase {
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) =
             _buildPoolCuts(admin, address(token0), address(token0));
         Lattice d = new Lattice();
-        vm.expectRevert(IConstantProduct.ConstantProductInvalidTokens.selector);
+        vm.expectRevert(
+            MultiInitErrors.at(
+                0, initCalldata, abi.encodePacked(IConstantProduct.ConstantProductInvalidTokens.selector)
+            )
+        );
         d.initialize(cuts, init, initCalldata);
     }
 
@@ -121,7 +127,11 @@ contract ConstantProductTest is ConstantProductTestBase {
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) =
             _buildPoolCuts(admin, address(0), address(token1));
         Lattice d = new Lattice();
-        vm.expectRevert(IConstantProduct.ConstantProductInvalidTokens.selector);
+        vm.expectRevert(
+            MultiInitErrors.at(
+                0, initCalldata, abi.encodePacked(IConstantProduct.ConstantProductInvalidTokens.selector)
+            )
+        );
         d.initialize(cuts, init, initCalldata);
     }
 
@@ -130,7 +140,11 @@ contract ConstantProductTest is ConstantProductTestBase {
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) =
             _buildPoolCuts(admin, address(token0), address(0));
         Lattice d = new Lattice();
-        vm.expectRevert(IConstantProduct.ConstantProductInvalidTokens.selector);
+        vm.expectRevert(
+            MultiInitErrors.at(
+                0, initCalldata, abi.encodePacked(IConstantProduct.ConstantProductInvalidTokens.selector)
+            )
+        );
         d.initialize(cuts, init, initCalldata);
     }
 

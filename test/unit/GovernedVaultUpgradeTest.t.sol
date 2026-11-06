@@ -3,6 +3,7 @@ pragma solidity ^0.8.30;
 
 import {Selectors} from "@diamond-test/helpers/Selectors.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
+import {MultiInit__StepFailed} from "@diamond/initializers/MultiInit.sol";
 import {IDiamondLoupe} from "@diamond/interfaces/IDiamondLoupe.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {DeployGovernedVault} from "@lattice-script/base/defi/DeployGovernedVault.s.sol";
@@ -224,18 +225,18 @@ contract GovernedVaultUpgradeTest is GovernedVaultTestBase {
         cuts[0] = FacetCut(limiter, FacetCutAction.Add, Selectors.decode(RateLimiter(limiter).exportSelectors()));
     }
 
-    function _rateLimiterBatch(uint64 version, address limiter, address moduleInit, bool fail)
+    function _rateLimiterBatch(uint64 version, address limiter, address moduleInit, address conflictingAdminInit)
         internal
         returns (bytes memory)
     {
-        address[] memory inits = new address[](fail ? 3 : 2);
+        address[] memory inits = new address[](conflictingAdminInit != address(0) ? 3 : 2);
         bytes[] memory data = new bytes[](inits.length);
         inits[0] = moduleInit;
         data[0] = abi.encodeCall(RateLimiterInit.init, (vault));
         inits[1] = limiter;
         data[1] = abi.encodeCall(IRateLimiter.configure, (RATE_KEY, 100, 1));
-        if (fail) {
-            inits[2] = address(new AccessControlInit());
+        if (conflictingAdminInit != address(0)) {
+            inits[2] = conflictingAdminInit;
             data[2] = abi.encodeCall(AccessControlInit.init, (stranger));
         }
         return abi.encodeCall(ReinitMultiInit.reinitMulti, (version, inits, data));
@@ -278,7 +279,7 @@ contract GovernedVaultUpgradeTest is GovernedVaultTestBase {
                 (
                     _rateLimiterCut(address(limiter)),
                     address(batch),
-                    _rateLimiterBatch(2, address(limiter), address(moduleInit), false)
+                    _rateLimiterBatch(2, address(limiter), address(moduleInit), address(0))
                 )
             ),
             "upgrade: add and initialize RateLimiter"
@@ -315,7 +316,7 @@ contract GovernedVaultUpgradeTest is GovernedVaultTestBase {
                 (
                     _rateLimiterCut(address(limiter)),
                     address(batch),
-                    _rateLimiterBatch(2, address(limiter), address(moduleInit), false)
+                    _rateLimiterBatch(2, address(limiter), address(moduleInit), address(0))
                 )
             ),
             "upgrade: version2"
@@ -327,7 +328,7 @@ contract GovernedVaultUpgradeTest is GovernedVaultTestBase {
                     (
                         new FacetCut[](0),
                         address(batch),
-                        _rateLimiterBatch(version, address(limiter), address(moduleInit), false)
+                        _rateLimiterBatch(version, address(limiter), address(moduleInit), address(0))
                     )
                 ),
                 version == 2 ? "upgrade: same version rejected" : "upgrade: lower version rejected",
@@ -350,13 +351,23 @@ contract GovernedVaultUpgradeTest is GovernedVaultTestBase {
         ReinitMultiInit batch = new ReinitMultiInit();
         FacetCut[] memory cuts = _rateLimiterCut(address(limiter));
         bytes32 bucket = keccak256(abi.encode(RATE_KEY, RATE_LIMITER_STORAGE_SLOT));
+        AccessControlInit conflictingAdminInit = new AccessControlInit();
         _governRejected(
             abi.encodeCall(
                 IGovernedDiamondCut.diamondCut,
-                (cuts, address(batch), _rateLimiterBatch(2, address(limiter), address(moduleInit), true))
+                (
+                    cuts,
+                    address(batch),
+                    _rateLimiterBatch(2, address(limiter), address(moduleInit), address(conflictingAdminInit))
+                )
             ),
             "upgrade: conflicting final bootstrap rejected",
-            abi.encodeWithSelector(IAccessControl.AccessControlConflictingInitialization.selector, vault, stranger)
+            abi.encodeWithSelector(
+                MultiInit__StepFailed.selector,
+                2,
+                address(conflictingAdminInit),
+                abi.encodeWithSelector(IAccessControl.AccessControlConflictingInitialization.selector, vault, stranger)
+            )
         );
         _assertReinitVersion(1);
         assertEq(vm.load(vault, bucket), bytes32(0), "earlier capacity write rolled back");
@@ -368,7 +379,7 @@ contract GovernedVaultUpgradeTest is GovernedVaultTestBase {
         _govern(
             abi.encodeCall(
                 IGovernedDiamondCut.diamondCut,
-                (cuts, address(batch), _rateLimiterBatch(2, address(limiter), address(moduleInit), false))
+                (cuts, address(batch), _rateLimiterBatch(2, address(limiter), address(moduleInit), address(0)))
             ),
             "upgrade: retry version2 with valid final step"
         );

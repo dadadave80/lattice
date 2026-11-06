@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {MultiInit} from "@diamond/initializers/MultiInit.sol";
+import {MultiInit, MultiInit__StepFailed} from "@diamond/initializers/MultiInit.sol";
 import {IDiamondCut} from "@diamond/interfaces/IDiamondCut.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {DeployERC721} from "@lattice-script/base/tokens/DeployERC721.s.sol";
@@ -62,6 +62,7 @@ abstract contract ERC721ConsecutiveTestBase is Test {
 
     /// @dev Expects `initialize` to revert with `revertData`.
     function _expectDeployRevert(
+        uint256 index,
         FacetCut[] memory cuts,
         address[] memory inits,
         bytes[] memory datas,
@@ -70,7 +71,7 @@ abstract contract ERC721ConsecutiveTestBase is Test {
         Lattice d = new Lattice();
         FacetCut[] memory all = _withHelper(cuts);
         address multiInit = address(new MultiInit());
-        vm.expectRevert(revertData);
+        vm.expectRevert(abi.encodeWithSelector(MultiInit__StepFailed.selector, index, inits[index], revertData));
         d.initialize(all, multiInit, abi.encodeCall(MultiInit.multiInit, (inits, datas)));
     }
 
@@ -212,7 +213,7 @@ abstract contract ERC721ConsecutiveOffsetTest is ERC721ConsecutiveTestBase {
         (FacetCut[] memory cuts, address[] memory inits, bytes[] memory datas) =
             new DeployERC721Consecutive().buildCuts(NAME, SYMBOL, _offset(), receivers, amounts);
         _expectDeployRevert(
-            cuts, inits, datas, abi.encodeWithSelector(IERC721.ERC721InvalidReceiver.selector, address(0))
+            1, cuts, inits, datas, abi.encodeWithSelector(IERC721.ERC721InvalidReceiver.selector, address(0))
         );
     }
 
@@ -369,6 +370,7 @@ contract ERC721ConsecutiveInvalidUseTest is ERC721ConsecutiveTestBase {
         (FacetCut[] memory cuts, address[] memory inits, bytes[] memory datas) =
             new DeployERC721Consecutive().buildCuts(NAME, SYMBOL, 0, receivers, amounts);
         _expectDeployRevert(
+            1,
             cuts,
             inits,
             datas,
@@ -385,7 +387,9 @@ contract ERC721ConsecutiveInvalidUseTest is ERC721ConsecutiveTestBase {
         (inits, datas) = _append(
             inits, datas, address(new ERC721SingleMintInit()), abi.encodeCall(ERC721SingleMintInit.init, (bruce, 100))
         );
-        _expectDeployRevert(cuts, inits, datas, abi.encodeWithSelector(IERC721Consecutive.ERC721ForbiddenMint.selector));
+        _expectDeployRevert(
+            2, cuts, inits, datas, abi.encodeWithSelector(IERC721Consecutive.ERC721ForbiddenMint.selector)
+        );
     }
 
     /// @notice Why no init order makes a single mint safe in the first initialization: one that runs BEFORE
@@ -416,7 +420,7 @@ contract ERC721ConsecutiveInvalidUseTest is ERC721ConsecutiveTestBase {
         (inits[1], datas[1]) =
         (address(new ERC721BatchWithoutInit()), abi.encodeCall(ERC721BatchWithoutInit.init, (alice, 3)));
         _expectDeployRevert(
-            cuts, inits, datas, abi.encodeWithSelector(IERC721Consecutive.ERC721ForbiddenBatchMint.selector)
+            1, cuts, inits, datas, abi.encodeWithSelector(IERC721Consecutive.ERC721ForbiddenBatchMint.selector)
         );
     }
 
@@ -444,7 +448,7 @@ contract ERC721ConsecutiveInvalidUseTest is ERC721ConsecutiveTestBase {
         (inits, datas) =
             _append(inits, datas, address(new ERC721ConsecutiveInit()), _consecutiveInitData(0, alice, 100));
         _expectDeployRevert(
-            cuts, inits, datas, abi.encodeWithSelector(IERC721Enumerable.ERC721EnumerableForbiddenBatchMint.selector)
+            2, cuts, inits, datas, abi.encodeWithSelector(IERC721Enumerable.ERC721EnumerableForbiddenBatchMint.selector)
         );
     }
 
@@ -456,7 +460,7 @@ contract ERC721ConsecutiveInvalidUseTest is ERC721ConsecutiveTestBase {
         (inits, datas) =
             _append(inits, datas, address(new ERC721EnumerableInit()), abi.encodeCall(ERC721EnumerableInit.init, ()));
         _expectDeployRevert(
-            cuts, inits, datas, abi.encodeWithSelector(IERC721Enumerable.ERC721EnumerableForbiddenBatchMint.selector)
+            2, cuts, inits, datas, abi.encodeWithSelector(IERC721Enumerable.ERC721EnumerableForbiddenBatchMint.selector)
         );
     }
 
@@ -465,13 +469,14 @@ contract ERC721ConsecutiveInvalidUseTest is ERC721ConsecutiveTestBase {
         (FacetCut[] memory cuts, address[] memory inits, bytes[] memory datas) =
             new DeployERC721Consecutive().buildCuts(NAME, SYMBOL, 0, receivers, amounts);
         (inits, datas) = _append(inits, datas, inits[1], _consecutiveInitData(100, bruce, 3));
-        _expectDeployRevert(cuts, inits, datas, abi.encodeWithSelector(InvalidInitialization.selector));
+        _expectDeployRevert(2, cuts, inits, datas, abi.encodeWithSelector(InvalidInitialization.selector));
     }
 
     function test_RevertWhen_BatchLengthMismatch() public {
         (FacetCut[] memory cuts, address[] memory inits, bytes[] memory datas) =
             new DeployERC721Consecutive().buildCuts(NAME, SYMBOL, 0, new address[](2), new uint96[](1));
         _expectDeployRevert(
+            1,
             cuts,
             inits,
             datas,
@@ -489,7 +494,7 @@ contract ERC721ConsecutiveInvalidUseTest is ERC721ConsecutiveTestBase {
 
         (FacetCut[] memory cuts, address[] memory inits, bytes[] memory datas) =
             new DeployERC721Consecutive().buildCuts(NAME, SYMBOL, max - 1, receivers, amounts);
-        _expectDeployRevert(cuts, inits, datas, stdError.arithmeticError);
+        _expectDeployRevert(1, cuts, inits, datas, stdError.arithmeticError);
     }
 
     /// @notice An upgrade cut's `_init` runs in a reinitializer window (version 2+), not the first initialization, so

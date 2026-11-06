@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {MultiInitErrors} from "@lattice-test/helpers/MultiInitErrors.sol";
+
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {AccessManagedTestBase} from "@lattice-test/base/AccessManagedTestBase.sol";
 import {AccessManagedTestFacet, IAccessManagedTestHook} from "@lattice-test/helpers/AccessManagedTestFacet.sol";
@@ -96,7 +98,13 @@ contract AccessManagedTest is AccessManagedTestBase {
     function test_InitWithZeroAuthorityReverts() public {
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) = _managedCuts(address(0));
         Lattice d = new Lattice();
-        vm.expectRevert(abi.encodeWithSelector(IAccessManaged.AccessManagedInvalidAuthority.selector, address(0)));
+        vm.expectRevert(
+            MultiInitErrors.at(
+                0,
+                initCalldata,
+                abi.encodeWithSelector(IAccessManaged.AccessManagedInvalidAuthority.selector, address(0))
+            )
+        );
         d.initialize(cuts, init, initCalldata);
     }
 
@@ -124,7 +132,11 @@ contract AccessManagedTest is AccessManagedTestBase {
         address eoa = address(0xBEEF);
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) = _managedCuts(eoa);
         Lattice d = new Lattice();
-        vm.expectRevert(abi.encodeWithSelector(IAccessManaged.AccessManagedInvalidAuthority.selector, eoa));
+        vm.expectRevert(
+            MultiInitErrors.at(
+                0, initCalldata, abi.encodeWithSelector(IAccessManaged.AccessManagedInvalidAuthority.selector, eoa)
+            )
+        );
         d.initialize(cuts, init, initCalldata);
     }
 

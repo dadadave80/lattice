@@ -16,8 +16,8 @@ import {Test} from "forge-std/Test.sol";
 ///         every send / cancel / consume / config call routes through the diamond's `delegatecall` dispatch,
 ///         catching selector/storage/init bugs a mock hides. The external {MockStarknetMessaging} stays a test
 ///         fixture (it is NOT the facet under test). The init guards are exercised by calling
-///         `_deployStarknetGatewayAdapter` with bad args inside `vm.expectRevert` (the revert bubbles up
-///         through {Lattice.initialize}).
+///         `buildCuts` with bad args and asserting the exact indexed `MultiInit__StepFailed` error and
+///         preserved inner reason on {Lattice.initialize}.
 abstract contract StarknetGatewayAdapterTestBase is Test, GetSelectors {
     DeployStarknetGatewayAdapter internal deployer;
 

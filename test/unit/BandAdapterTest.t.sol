@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {MultiInitErrors} from "@lattice-test/helpers/MultiInitErrors.sol";
+
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {DeployBandAdapter} from "@lattice-script/base/oracles/DeployBandAdapter.s.sol";
@@ -79,7 +81,9 @@ contract BandAdapterTest is BandAdapterTestBase {
         DeployBandAdapter d = new DeployBandAdapter();
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) = d.buildCuts(admin, address(0));
         Lattice diamond_ = new Lattice();
-        vm.expectRevert(IBandAdapter.BandReferenceIsZero.selector);
+        vm.expectRevert(
+            MultiInitErrors.at(0, initCalldata, abi.encodePacked(IBandAdapter.BandReferenceIsZero.selector))
+        );
         diamond_.initialize(cuts, init, initCalldata);
     }
 
