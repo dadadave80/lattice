@@ -6,6 +6,10 @@ pragma solidity ^0.8.30;
 /// @author Modified from ERC-3643 (https://eips.ethereum.org/EIPS/eip-3643)
 /// @notice Fresh declaration of the standard CC0 ABI; implementation is authored independently.
 interface IClaimTopicsRegistry {
+    error ERC3643ClaimTopicAlreadyRequired(uint256 topic);
+    error ERC3643ClaimTopicNotRequired(uint256 topic);
+    error ERC3643ClaimTopicsLimit();
+
     event ClaimTopicAdded(uint256 indexed claimTopic);
 
     event ClaimTopicRemoved(uint256 indexed claimTopic);

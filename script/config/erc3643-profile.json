@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "host": {"name": "Lattice", "artifact": "src/Lattice.sol:Lattice"},
+  "facets": [
+    {"name": "ERC3643", "artifact": "src/tokens/ERC3643/ERC3643.sol:ERC3643", "optional": false},
+    {"name": "ERC3643AgentRole", "artifact": "src/tokens/ERC3643/ERC3643AgentRole.sol:ERC3643AgentRole", "optional": false},
+    {"name": "ERC3643IdentityRegistry", "artifact": "src/tokens/ERC3643/ERC3643IdentityRegistry.sol:ERC3643IdentityRegistry", "optional": false},
+    {"name": "ERC3643IdentityRegistryStorage", "artifact": "src/tokens/ERC3643/ERC3643IdentityRegistryStorage.sol:ERC3643IdentityRegistryStorage", "optional": false},
+    {"name": "ERC3643TrustedIssuersRegistry", "artifact": "src/tokens/ERC3643/ERC3643TrustedIssuersRegistry.sol:ERC3643TrustedIssuersRegistry", "optional": false},
+    {"name": "ERC3643ClaimTopicsRegistry", "artifact": "src/tokens/ERC3643/ERC3643ClaimTopicsRegistry.sol:ERC3643ClaimTopicsRegistry", "optional": false},
+    {"name": "ERC3643Compliance", "artifact": "src/tokens/ERC3643/ERC3643Compliance.sol:ERC3643Compliance", "optional": false},
+    {"name": "OwnableFacet", "artifact": "OwnableFacet.sol:OwnableFacet", "optional": false},
+    {"name": "ERC165Facet", "artifact": "ERC165Facet.sol:ERC165Facet", "optional": false},
+    {"name": "DiamondLoupeFacet", "artifact": "DiamondLoupeFacet.sol:DiamondLoupeFacet", "optional": false},
+    {"name": "ERC20TemporaryApproval", "artifact": "src/tokens/ERC20/ERC20TemporaryApproval.sol:ERC20TemporaryApproval", "optional": true}
+  ]
+}

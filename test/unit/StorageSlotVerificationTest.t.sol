@@ -483,6 +483,30 @@ import {ERC165_MAP_IERC7802_SLOT} from "@lattice/tokens/ERC7802/libraries/ERC780
 ///      module must have (a) a `test_<Module>StorageSlot` derivation check, (b) a
 ///      `test_Erc165Map<Module>Slot` derivation check if it registers an interface, and (c) an entry
 ///      in both the global uniqueness arrays below. CI runs this contract on every change.
+import {ERC165_MAP_IAGENTROLE_SLOT} from "@lattice/tokens/ERC3643/libraries/ERC3643AgentRoleLib.sol";
+import {
+    ERC165_MAP_ICLAIMTOPICSREGISTRY_SLOT,
+    ERC3643_CLAIM_TOPICS_REGISTRY_STORAGE_SLOT
+} from "@lattice/tokens/ERC3643/libraries/ERC3643ClaimTopicsRegistryLib.sol";
+import {
+    ERC165_MAP_ICOMPLIANCE_SLOT,
+    ERC3643_COMPLIANCE_STORAGE_SLOT
+} from "@lattice/tokens/ERC3643/libraries/ERC3643ComplianceLib.sol";
+import {ERC3643_EXECUTION_SLOT} from "@lattice/tokens/ERC3643/libraries/ERC3643ExecutionLib.sol";
+import {
+    ERC165_MAP_IIDENTITYREGISTRY_SLOT,
+    ERC3643_IDENTITY_REGISTRY_STORAGE_ROOT
+} from "@lattice/tokens/ERC3643/libraries/ERC3643IdentityRegistryLib.sol";
+import {
+    ERC165_MAP_IIDENTITYREGISTRYSTORAGE_SLOT,
+    ERC3643_IDENTITY_REGISTRY_STORAGE_SLOT
+} from "@lattice/tokens/ERC3643/libraries/ERC3643IdentityRegistryStorageLib.sol";
+import {ERC165_MAP_IERC3643_SLOT, ERC3643_STORAGE_SLOT} from "@lattice/tokens/ERC3643/libraries/ERC3643Lib.sol";
+import {
+    ERC165_MAP_ITRUSTEDISSUERSREGISTRY_SLOT,
+    ERC3643_TRUSTED_ISSUERS_REGISTRY_STORAGE_SLOT
+} from "@lattice/tokens/ERC3643/libraries/ERC3643TrustedIssuersRegistryLib.sol";
+
 contract StorageSlotVerificationTest is Test {
     // Canonical EIP interface IDs registered by the token modules. These are intentionally NOT
     // `type(I...).interfaceId` of the Lattice interfaces: the Lattice `IERC721`/`IERC1155` interfaces
@@ -2293,6 +2317,17 @@ contract StorageSlotVerificationTest is Test {
         );
     }
 
+    function test_ERC3643TokenAndTransientExecutionRoots() public pure {
+        assertEq(ERC3643_STORAGE_SLOT, _erc7201Slot("lattice.storage.ERC3643"));
+        assertEq(ERC3643_EXECUTION_SLOT, _erc7201Slot("lattice.storage.ERC3643Execution"));
+        bytes32[] memory persistent = _allStorageSlots();
+        for (uint256 i; i < persistent.length; ++i) {
+            assertTrue(persistent[i] != ERC3643_EXECUTION_SLOT);
+        }
+        assertTrue(ERC3643_EXECUTION_SLOT != ERC20_TEMPORARY_APPROVAL_STORAGE_SLOT);
+        assertEq(ERC165_MAP_IERC3643_SLOT, _erc165MapSlot(bytes4(0xb97d944c), ERC165_STORAGE_LOCATION));
+    }
+
     // ======================== Uniqueness Checks ========================
 
     function test_ERC6900ModuleManagerIsIncludedInUniquenessCheck() public pure {
@@ -2333,7 +2368,7 @@ contract StorageSlotVerificationTest is Test {
     // ======================== Slot inventories ========================
 
     function _allStorageSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](97);
+        slots = new bytes32[](103);
         uint256 i;
         // access
         slots[i++] = ACCESS_CONTROL_STORAGE_SLOT;
@@ -2342,6 +2377,12 @@ contract StorageSlotVerificationTest is Test {
         slots[i++] = ACCESS_MANAGER_STORAGE_SLOT;
         slots[i++] = ACCESS_MANAGED_STORAGE_SLOT;
         // tokens
+        slots[i++] = ERC3643_STORAGE_SLOT;
+        slots[i++] = ERC3643_IDENTITY_REGISTRY_STORAGE_ROOT;
+        slots[i++] = ERC3643_IDENTITY_REGISTRY_STORAGE_SLOT;
+        slots[i++] = ERC3643_TRUSTED_ISSUERS_REGISTRY_STORAGE_SLOT;
+        slots[i++] = ERC3643_CLAIM_TOPICS_REGISTRY_STORAGE_SLOT;
+        slots[i++] = ERC3643_COMPLIANCE_STORAGE_SLOT;
         slots[i++] = ERC20_STORAGE_SLOT;
         slots[i++] = ERC20CAPPED_STORAGE_SLOT;
         slots[i++] = ERC20WRAPPER_STORAGE_SLOT;
@@ -2451,7 +2492,7 @@ contract StorageSlotVerificationTest is Test {
     }
 
     function _allErc165MapSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](109);
+        slots = new bytes32[](116);
         uint256 i;
         // access
         slots[i++] = ERC165_MAP_IACCESSCONTROL_SLOT;
@@ -2460,6 +2501,13 @@ contract StorageSlotVerificationTest is Test {
         slots[i++] = ERC165_MAP_IACCESSMANAGER_SLOT;
         slots[i++] = ERC165_MAP_IACCESSMANAGED_SLOT;
         // tokens
+        slots[i++] = ERC165_MAP_IERC3643_SLOT;
+        slots[i++] = ERC165_MAP_IIDENTITYREGISTRY_SLOT;
+        slots[i++] = ERC165_MAP_IIDENTITYREGISTRYSTORAGE_SLOT;
+        slots[i++] = ERC165_MAP_ITRUSTEDISSUERSREGISTRY_SLOT;
+        slots[i++] = ERC165_MAP_ICLAIMTOPICSREGISTRY_SLOT;
+        slots[i++] = ERC165_MAP_ICOMPLIANCE_SLOT;
+        slots[i++] = ERC165_MAP_IAGENTROLE_SLOT;
         slots[i++] = ERC165_MAP_IERC20_SLOT;
         slots[i++] = ERC165_MAP_IERC20TEMPORARYAPPROVAL_SLOT;
         slots[i++] = ERC165_MAP_IERC20CAPPED_SLOT;

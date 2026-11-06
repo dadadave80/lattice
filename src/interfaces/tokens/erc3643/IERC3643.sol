@@ -10,6 +10,21 @@ import {IIdentityRegistry} from "@lattice/interfaces/tokens/erc3643/IIdentityReg
 /// @author Modified from ERC-3643 (https://eips.ethereum.org/EIPS/eip-3643)
 /// @notice Fresh declaration of the standard CC0 ABI; implementation is authored independently.
 interface IERC3643 is IERC20 {
+    error ERC3643NotInitialized();
+    error ERC3643TokenPaused();
+    error ERC3643WalletFrozen(address wallet);
+    error ERC3643InsufficientFreeBalance(address wallet, uint256 available, uint256 requested);
+    error ERC3643UnverifiedIdentity(address wallet);
+    error ERC3643ComplianceRejected();
+    error ERC3643InvalidDependency(address dependency);
+    error ERC3643ComplianceBinding(address compliance, address boundToken);
+    error ERC3643InvalidArrayLengths();
+    error ERC3643InvalidRecovery(address lostWallet, address newWallet);
+    error ERC3643RecoveryIdentityMismatch(address wallet, address expected, address actual);
+    error ERC3643RecoveryKeyMissing(address identity, address wallet);
+    error ERC3643InsufficientFrozenTokens(address wallet, uint256 available, uint256 requested);
+    error ERC3643FrozenBalanceInvariant(address wallet);
+
     event UpdatedTokenInformation(
         string indexed newName,
         string indexed newSymbol,

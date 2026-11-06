@@ -8,6 +8,17 @@ import {IERC3643Identity} from "@lattice/interfaces/external/erc3643/IERC3643Ide
 /// @author Modified from ERC-3643 (https://eips.ethereum.org/EIPS/eip-3643)
 /// @notice Fresh declaration of the standard CC0 ABI; implementation is authored independently.
 interface IIdentityRegistryStorage {
+    error ERC3643InvalidInvestor(address wallet);
+    error ERC3643InvalidIdentity(address identity);
+    error ERC3643IdentityAlreadyStored(address wallet);
+    error ERC3643IdentityNotStored(address wallet);
+    error ERC3643UnauthorizedRegistry(address registry);
+    error ERC3643InvalidRegistry(address registry);
+    error ERC3643RegistryAlreadyBound(address registry);
+    error ERC3643RegistryNotBound(address registry);
+    error ERC3643RegistryLimit();
+    error ERC3643IdentityKeyMissing(address identity, address wallet);
+
     event IdentityStored(address indexed investorAddress, IERC3643Identity indexed identity);
 
     event IdentityUnstored(address indexed investorAddress, IERC3643Identity indexed identity);

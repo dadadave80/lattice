@@ -6,7 +6,7 @@ pragma solidity ^0.8.30;
 /// @notice Stateless initializer artifacts released and attested by codehash, separate from facet registration.
 library InitInventory {
     function inventory() internal pure returns (string[] memory names, string[] memory paths) {
-        string[107] memory n = [
+        string[108] memory n = [
             "API3AdapterInit",
             "API3QRNGAdapterInit",
             "AccessControlEnumerableInit",
@@ -55,6 +55,7 @@ library InitInventory {
             "ERC20VotesInit",
             "ERC20WrapperInit",
             "ERC2981Init",
+            "ERC3643Init",
             "ERC4626Init",
             "ERC5564AnnouncerInit",
             "ERC6538RegistryInit",
@@ -115,7 +116,7 @@ library InitInventory {
             "WormholeGatewayAdapterInit",
             "ZetaChainGatewayAdapterInit"
         ];
-        string[107] memory p = [
+        string[108] memory p = [
             "src/oracles/api3/API3AdapterInit.sol:API3AdapterInit",
             "src/oracles/api3/API3QRNGAdapterInit.sol:API3QRNGAdapterInit",
             "src/access/AccessControlEnumerableInit.sol:AccessControlEnumerableInit",
@@ -164,6 +165,7 @@ library InitInventory {
             "src/tokens/ERC20/ERC20VotesInit.sol:ERC20VotesInit",
             "src/tokens/ERC20/ERC20WrapperInit.sol:ERC20WrapperInit",
             "src/tokens/ERC2981/ERC2981Init.sol:ERC2981Init",
+            "src/tokens/ERC3643/ERC3643Init.sol:ERC3643Init",
             "src/tokens/ERC4626/ERC4626Init.sol:ERC4626Init",
             "src/privacy/ERC5564AnnouncerInit.sol:ERC5564AnnouncerInit",
             "src/privacy/ERC6538RegistryInit.sol:ERC6538RegistryInit",
@@ -224,8 +226,8 @@ library InitInventory {
             "src/crosschain/wormhole/WormholeGatewayAdapterInit.sol:WormholeGatewayAdapterInit",
             "src/crosschain/zetachain/ZetaChainGatewayAdapterInit.sol:ZetaChainGatewayAdapterInit"
         ];
-        names = new string[](107);
-        paths = new string[](107);
+        names = new string[](108);
+        paths = new string[](108);
         for (uint256 i; i < names.length; ++i) {
             names[i] = n[i];
             paths[i] = p[i];

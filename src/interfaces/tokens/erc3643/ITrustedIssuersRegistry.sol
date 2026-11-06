@@ -8,6 +8,12 @@ import {IERC3643ClaimIssuer} from "@lattice/interfaces/external/erc3643/IERC3643
 /// @author Modified from ERC-3643 (https://eips.ethereum.org/EIPS/eip-3643)
 /// @notice Fresh declaration of the standard CC0 ABI; implementation is authored independently.
 interface ITrustedIssuersRegistry {
+    error ERC3643InvalidIssuer(address issuer);
+    error ERC3643IssuerAlreadyTrusted(address issuer);
+    error ERC3643IssuerNotTrusted(address issuer);
+    error ERC3643IssuerTopicsLength(uint256 length);
+    error ERC3643TrustedIssuersLimit();
+
     event TrustedIssuerAdded(IERC3643ClaimIssuer indexed trustedIssuer, uint256[] claimTopics);
 
     event TrustedIssuerRemoved(IERC3643ClaimIssuer indexed trustedIssuer);

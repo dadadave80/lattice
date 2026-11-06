@@ -24,12 +24,14 @@ and a row here.
 
 Transient allowance mapping roots are listed separately from persistent layouts: ERC20TemporaryApproval
 uses TLOAD/TSTORE at its derived root and adds no persistent fields. The JSON layout export
-therefore has no separate TemporaryApproval struct.
+therefore has no separate TemporaryApproval struct. ERC3643Execution uses the separate native transient
+lock root `0x7ec596ba3a239053ac1cb6c6ad11931467488f3fa0022f65c88f71add3b23800`
+(`lattice.storage.ERC3643Execution`), derived by the same formula; it has no persistent struct either.
 
 The [JSON registry](script/upgrades/storage-registry.json) exports every namespace, slot and struct
 layout, including nested structs, from the existing source-checked layout baseline. It also exports
 source-declared interface IDs and map-slot constants with file provenance, deduplicating shared IDs.
-The 109 exported ID/slot pairs include the 108 Lattice registrations and the existing `IDiamondCut` alias.
+The 116 exported ID/slot pairs include the 115 Lattice registrations and the existing `IDiamondCut` alias.
 `make storage-check` checks the source layout, recomputes map slots with `cast`, and detects JSON drift
 and incorrect namespace or interface-ID/map-slot pairs in this table; `make storage-update`
 regenerates both the reviewed baseline and JSON. New releases attach both checked files from the exact
@@ -264,6 +266,13 @@ release tag. Historical release layouts are not regenerated from a later source 
 | ERC1363 | — (no own storage; moves the ERC20 balances and allowances) | — | `IERC1363` (EIP-1363) | `0xb0202a11` | `0x0ebeb7a78f222e08be2c2d80a20fcc22cbe5dd2ddf53005dc602c88dd66185a1` |
 | ERC20TemporaryApproval | `lattice.storage.ERC20TemporaryApproval` (transient mapping only; no persistent fields) | `0xaa382fcf0bf54b576b3f55eb526cf1114e476579e700b2c0450079831fe05700` | `IERC20TemporaryApproval` (ERC-7674) | `0x42232a4c` | `0xac7c974adc1627494c05d38379885274843f8308973f1cb430861ef9696b24b5` |
 | ERC2981 | `lattice.storage.ERC2981` | `0xf01000cac811e850d05bb5588943b621fb762a575809c98a87e3540df4e97a00` | `IERC2981` | `0x2a55205a` | `0x0b6e5f3aef2b5db6c8b7f9a90550b00e1bcf3efa09341feda1a90dabdea92899` |
+| ERC3643 | `lattice.storage.ERC3643` | `0xd2596bdadf56df9c4b979459dbbea8fd215833aab674547a3f07281f92ff8400` | `IERC3643` | `0xb97d944c` | `0xcc87e7afa96fdc55152180e6574a08d5c0d5b11e49e549f6bafca01a76c4354f` |
+| ERC3643IdentityRegistry | `lattice.storage.ERC3643IdentityRegistry` | `0x0ea0b7136671cc454d4dbd6846eb4555e21642d317fda5e88aa0aa0398c0ed00` | `IIdentityRegistry` | `0x8ff89f73` | `0x1432554cd2aff9b2bdec5e9b776ed6f1cb4c1249efb6e06e0d30d4d2282073f8` |
+| ERC3643IdentityRegistryStorage | `lattice.storage.ERC3643IdentityRegistryStorage` | `0xe887ffba65a77a04a49755f77f35ff689ea1d47eb3c26a4ae93fc39e1696fb00` | `IIdentityRegistryStorage` | `0x57defe0d` | `0x76c31b23f779d640712776c8fc2183ef2248d79a58156d6e4ba36486cb057f27` |
+| ERC3643TrustedIssuersRegistry | `lattice.storage.ERC3643TrustedIssuersRegistry` | `0x5378a9ff2d49f0b9d9a96809a7b737e6b13fb211786455938311f4d4d34ee500` | `ITrustedIssuersRegistry` | `0xb0f773b8` | `0x1581f45088ce8cd867e9eb74d20ba9c1676b618fa0eca24f95a10e1e759db18a` |
+| ERC3643ClaimTopicsRegistry | `lattice.storage.ERC3643ClaimTopicsRegistry` | `0x75becd3dc46851ccd9a9e74ae984f7607b7dfc21e393161cc0a3246962eb1100` | `IClaimTopicsRegistry` | `0x10928b13` | `0xfb0800521a41e28960f7a406ade656c595694178bf7b582791143ed7dc6ec311` |
+| ERC3643Compliance | `lattice.storage.ERC3643Compliance` | `0xcfb462e7546f5454efc8beb4ff0c622b5b0701cba309faa31474042e507a7600` | `ICompliance` | `0xa87a1289` | `0x65ca2e039e0fba3681e69e0c954d898b4065522cde366f6f0a523370719acc0d` |
+| ERC3643AgentRole | — (reuses AccessControl role bookkeeping; owner controls membership) | — | `IAgentRole` | `0x0cba0fa8` | `0x5e0e61fcfafd9757a5e1c80a17dd186de8f76529f91d051782b2ee9d958f98cf` |
 | ERC4626 | `lattice.storage.ERC4626` | `0x748f49bc653df23655f3b413e3d5c91c1b4c965af17a32d743e995b145325100` | `IERC4626` | `0x87dfe5a0` | `0xdad016fc8af4f826152a6bfdd6ece63fb81a66a94f522cc8a79db8d6838e2732` |
 | HTSAdapter | `lattice.storage.HTSAdapter` | `0x91b64afeea686e80e2bda212862c0850ed3389288ac3f914b1109537d6e3f500` | `IHTSAdapter` | `0x37ae8968` | `0x0785670462ca582bde40afa31cf7989a7c25557d842b1003652c1ca6b4044d81` |
 

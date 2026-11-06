@@ -149,6 +149,8 @@ jobs:
       # forge builds against the checked-out submodule and passes silently.
       - name: Build src (--sizes)
         run: forge build --locked --sizes --skip test script
+      - name: Check closed ERC-3643 admission fingerprints
+        run: make erc3643-profile-check
 
   # IR-pipeline parity is a SEPARATE compiler configuration (via_ir), so it cannot reuse the
   # legacy build cache -- it runs standalone, in parallel, and does not block `test`.

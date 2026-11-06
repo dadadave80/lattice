@@ -11,6 +11,10 @@ import {ITrustedIssuersRegistry} from "@lattice/interfaces/tokens/erc3643/ITrust
 /// @author Modified from ERC-3643 (https://eips.ethereum.org/EIPS/eip-3643)
 /// @notice Fresh declaration of the standard CC0 ABI; implementation is authored independently.
 interface IIdentityRegistry {
+    error ERC3643InvalidRegistryDependency(address dependency);
+    error ERC3643UnboundIdentityStorage(address storageAddress, address registry);
+    error ERC3643RegistryArrayLengths();
+
     event ClaimTopicsRegistrySet(address indexed claimTopicsRegistry);
 
     event IdentityStorageSet(address indexed identityStorage);

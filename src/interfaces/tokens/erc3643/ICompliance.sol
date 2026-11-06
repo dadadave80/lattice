@@ -6,6 +6,11 @@ pragma solidity ^0.8.30;
 /// @author Modified from ERC-3643 (https://eips.ethereum.org/EIPS/eip-3643)
 /// @notice Fresh declaration of the standard CC0 ABI; implementation is authored independently.
 interface ICompliance {
+    error ERC3643InvalidToken(address token);
+    error ERC3643TokenAlreadyBound(address boundToken);
+    error ERC3643TokenNotBound(address token);
+    error ERC3643UnauthorizedToken(address caller);
+
     event TokenBound(address token);
 
     event TokenUnbound(address token);
