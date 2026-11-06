@@ -49,6 +49,11 @@ for mutation in '.contracts[2].selectors="0x01"' '.contracts[2].selectors="0xd39
         echo "release notes accepted invalid selector commitment: $mutation" >&2; exit 1
     fi
 done
+hash=$(cast keccak 0xd3948fecD3948FEC)
+jq --arg hash "$hash" '.contracts[2].selectors="0xd3948fecD3948FEC" | .contracts[2].selectorsHash=$hash' "$baseline" > "$temporary/mixed-duplicate.json"
+if ./script/release-notes.sh "$baseline" "$temporary/mixed-duplicate.json" > /dev/null 2>&1; then
+    echo 'release notes accepted mixed-case duplicate selectors with a matching commitment' >&2; exit 1
+fi
 selection=$temporary/selection
 mkdir -p "$selection/script/release" "$selection/deployments/schema"
 cp script/release-notes.sh script/check-release-notes.sh "$selection/script/"

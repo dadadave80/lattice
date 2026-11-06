@@ -105,7 +105,7 @@ while IFS=$'\t' read -r name kind at salt init_hash args name_hash selectors_has
         [ "$selectors_hash" != "0x$(printf '%064d' 0)" ] || fail "$name missing selector commitment"
         [ "$selectors_hash" = "$(cast keccak "$selectors")" ] || fail "$name selector bytes differ from commitment"
         jq -e --arg name "$name" '
-            .contracts[] | select(.name==$name) | .selectors[2:] | [scan(".{8}")] |
+            .contracts[] | select(.name==$name) | .selectors | ascii_downcase | .[2:] | [scan(".{8}")] |
             length>0 and (length == (unique | length))
         ' "$release" >/dev/null || fail "$name empty or duplicate selectors"
     else
