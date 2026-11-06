@@ -52,6 +52,18 @@ contract CompositionMetadataTest is Test {
         }
     }
 
+    function test_GovernedCutPolicyBackfillMetadataDeclaresOnlyPartialGovernorState() public view {
+        string memory artifact = _artifact("GovernorInit.sol", "GovernorInit");
+        string memory raw = vm.parseJsonString(artifact, ".rawMetadata");
+        string memory method = ".output.devdoc.methods['registerGovernedCutTopology()']";
+        assertEq(
+            vm.parseJsonString(raw, string.concat(method, "['custom:lattice-initializes']")),
+            "Governor with policy=governed-cut-route;"
+        );
+        assertEq(vm.parseJsonString(raw, string.concat(method, "['custom:lattice-param']")), "none;");
+        assertFalse(vm.keyExistsJson(raw, string.concat(method, "['custom:lattice-registers-interfaces']")));
+    }
+
     function test_MissingTagMutationIsRejected() public {
         vm.expectRevert(abi.encodeWithSelector(MissingTag.selector, "MetadataMissingFixture", "init"));
         this.validateFacet("MetadataMissingFixture", "MetadataFixtures.sol:MetadataMissingFixture");

@@ -53,6 +53,11 @@ release tag. Historical release layouts are not regenerated from a later source 
     standalone Lattice interface type.
   - **ERC4626** / **VaultCore** ids are the XOR of their vault-specific selectors only
     (inherited `IERC20` excluded), as declared in the Lattice interfaces.
+- **Governor** appends its governed-cut policy declaration and explicit external-timelock exemption in
+  slot 10 of the existing struct (address at offset 0, bool at offset 20). Its previous fields,
+  namespace, selector set and interfaceId remain unchanged. Canonical governed-cut initialization
+  records only this policy state; it does not configure the voting module. Legacy deployments need
+  an explicitly authorized topology-only backfill before this declaration protects them.
 - **GovernedDiamondCut** exposes only `diamondCut`, so `type(IGovernedDiamondCut).interfaceId == 0x1f931c1c`,
   identical to `IDiamondCut`. It reuses diamond-lib's `ERC165_MAP_ICUT_SLOT`
   (`0xa0f80413692945aab97c6ef0328381ebb94e4b17a84d11ebf6b61f73435b6d7e`) — already registered by

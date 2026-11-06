@@ -149,6 +149,10 @@ contract SelfGovDiamond is
 
         EmergencyStopLib.__EmergencyStop_init();
         DiamondLib.registerInterface();
+        // This flattened fixture owns diamondCut natively rather than through fallback dispatch.
+        // Declare its actual immutable owner for the routed governed-cut policy initializer.
+        DiamondLib.diamondStorage().selectorToFacetAndPosition[IGovernedDiamondCut.diamondCut.selector].facetAddress =
+            address(this);
         GovernedDiamondCutLib.__GovernedDiamondCut_init(); // grants UPGRADE_EXECUTOR_ROLE to address(this)
     }
 

@@ -17,6 +17,9 @@ import {EmergencyStopLib} from "@lattice/security/libraries/EmergencyStopLib.sol
 ///         already open). Mirrors exactly what the old `MockGovernedDiamond.initialize` did, minus the
 ///         redundant pre/postInitializer. Companion to the {ERC2981Init} pattern — a
 ///         first-class production deploy artifact.
+/// @dev Requires a nonzero installed diamondCut owner and declares it as the governed-cut policy for Governor
+///      topology checks. Pair this initializer only with its matching cut flavor; this is a trusted declaration,
+///      not runtime classification. Legacy policy-only backfills use GovernorInit.registerGovernedCutTopology.
 /// @custom:lattice-kind bundle
 contract GovernedDiamondCutInit {
     /// @notice Runs the access-control + emergency-stop + governed-cut module initializers. MUST be invoked
@@ -26,10 +29,11 @@ contract GovernedDiamondCutInit {
     /// @custom:lattice-initializes EmergencyStop;
     /// @custom:lattice-initializes ERC165;
     /// @custom:lattice-initializes Diamond;
+    /// @custom:lattice-initializes Governor with policy=governed-cut-route;
     /// @custom:lattice-initializes GovernedDiamondCut;
     /// @custom:lattice-after none;
     /// @custom:lattice-same-call Initializable hard enclosing-initializing-window;
-    /// @custom:lattice-sequence AccessControl;EmergencyStop;ERC165;Diamond;GovernedDiamondCut;
+    /// @custom:lattice-sequence AccessControl;EmergencyStop;ERC165;Diamond;Governor with policy=governed-cut-route;GovernedDiamondCut;
     /// @custom:lattice-param admin authority;
     /// @custom:lattice-registers-interfaces
     function init(address admin) external {
