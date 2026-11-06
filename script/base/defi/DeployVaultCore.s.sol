@@ -1,6 +1,20 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {RecipePlanLib} from "@lattice-script/lib/RecipePlanLib.sol";
+import {
+    RecipeAuthority,
+    RecipeDeploymentContext,
+    RecipeFacet,
+    RecipeInitOutputKind,
+    RecipeParameter,
+    RecipeProxyKind,
+    RecipeSeam,
+    RecipeSpec,
+    RecipeVariant
+} from "@lattice-script/lib/RecipeSpec.sol";
+import {RecipeSpecLib} from "@lattice-script/lib/RecipeSpecLib.sol";
+
 import {DiamondLoupeFacet} from "@diamond/facets/DiamondLoupeFacet.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
@@ -40,26 +54,150 @@ contract DeployVaultCore is BaseDeploy {
         address admin_,
         uint8 decimalsOffset_
     ) public returns (FacetCut[] memory cuts, address init, bytes memory initCalldata) {
-        address vaultFacet = _facet("ERC4626");
-        address coreFacet = _facet("VaultCore");
-
-        cuts = new FacetCut[](9);
-        cuts[0] = _cut(_facet("ERC165Facet"));
-        cuts[1] = _cut(_facet("AccessControl"));
-        cuts[2] = _cut(_facet("ERC20"));
-        // ERC-4626 vault surface over the ERC-20 shares: ADD the vault views/mutators, REPLACE `decimals`.
-        cuts[3] = FacetCut({facetAddress: vaultFacet, action: FacetCutAction.Add, functionSelectors: _vaultSurface()});
-        cuts[4] = FacetCut({facetAddress: vaultFacet, action: FacetCutAction.Replace, functionSelectors: _decimals()});
-        // VaultCore over ERC-4626: ADD the strategy hooks, REPLACE the strategy-aware / guarded mutators.
-        cuts[5] = FacetCut({facetAddress: coreFacet, action: FacetCutAction.Add, functionSelectors: _strategySurface()});
-        cuts[6] =
-            FacetCut({facetAddress: coreFacet, action: FacetCutAction.Replace, functionSelectors: _coreOverrides()});
-        cuts[7] = _cut(_facet("DiamondLoupeFacet"));
-        cuts[8] = _cut(_facet("AccessControlDiamondCut"));
+        cuts = _materialize(_cutPlan(0), _recipeSeams(0));
 
         (init, initCalldata) = _withUpgradeableIntrospection(
             _init("VaultCoreInit"),
             abi.encodeCall(VaultCoreInit.init, (asset_, name_, symbol_, admin_, decimalsOffset_))
+        );
+    }
+
+    function _cutPlan(uint256 variant) internal pure returns (RecipeFacet[] memory cuts) {
+        require(variant == 0, "DeployVaultCore: unknown variant");
+        cuts = new RecipeFacet[](9);
+        cuts[0] = RecipePlanLib.all("ERC165Facet");
+        cuts[1] = RecipePlanLib.all("AccessControl");
+        cuts[2] = RecipePlanLib.all("ERC20");
+        cuts[3] = RecipePlanLib.only("ERC4626", FacetCutAction.Add, _vaultSurface());
+        cuts[4] = RecipePlanLib.only("ERC4626", FacetCutAction.Replace, _decimals());
+        cuts[5] = RecipePlanLib.only("VaultCore", FacetCutAction.Add, _strategySurface());
+        cuts[6] = RecipePlanLib.only("VaultCore", FacetCutAction.Replace, _coreOverrides());
+        cuts[7] = RecipePlanLib.all("DiamondLoupeFacet");
+        cuts[8] = RecipePlanLib.all("AccessControlDiamondCut");
+    }
+
+    function _recipeSeams(uint256) internal pure returns (RecipeSeam[] memory seams) {
+        seams = new RecipeSeam[](8);
+        seams[0] = RecipePlanLib.seam2(
+            "share-decimals",
+            bytes4(keccak256("decimals()")),
+            "ERC20",
+            "ERC4626",
+            "ERC4626",
+            "share decimals include the virtual-share offset"
+        );
+        seams[1] = RecipePlanLib.seam2(
+            "strategy.totalAssets()",
+            bytes4(keccak256("totalAssets()")),
+            "ERC4626",
+            "VaultCore",
+            "VaultCore",
+            "strategy-aware accounting and manager-swap latch"
+        );
+        seams[2] = RecipePlanLib.seam2(
+            "strategy.maxDeposit(address)",
+            bytes4(keccak256("maxDeposit(address)")),
+            "ERC4626",
+            "VaultCore",
+            "VaultCore",
+            "strategy-aware accounting and manager-swap latch"
+        );
+        seams[3] = RecipePlanLib.seam2(
+            "strategy.maxMint(address)",
+            bytes4(keccak256("maxMint(address)")),
+            "ERC4626",
+            "VaultCore",
+            "VaultCore",
+            "strategy-aware accounting and manager-swap latch"
+        );
+        seams[4] = RecipePlanLib.seam2(
+            "strategy.deposit(uint256,address)",
+            bytes4(keccak256("deposit(uint256,address)")),
+            "ERC4626",
+            "VaultCore",
+            "VaultCore",
+            "strategy-aware accounting and manager-swap latch"
+        );
+        seams[5] = RecipePlanLib.seam2(
+            "strategy.mint(uint256,address)",
+            bytes4(keccak256("mint(uint256,address)")),
+            "ERC4626",
+            "VaultCore",
+            "VaultCore",
+            "strategy-aware accounting and manager-swap latch"
+        );
+        seams[6] = RecipePlanLib.seam2(
+            "strategy.withdraw(uint256,address,address)",
+            bytes4(keccak256("withdraw(uint256,address,address)")),
+            "ERC4626",
+            "VaultCore",
+            "VaultCore",
+            "strategy-aware accounting and manager-swap latch"
+        );
+        seams[7] = RecipePlanLib.seam2(
+            "strategy.redeem(uint256,address,address)",
+            bytes4(keccak256("redeem(uint256,address,address)")),
+            "ERC4626",
+            "VaultCore",
+            "VaultCore",
+            "strategy-aware accounting and manager-swap latch"
+        );
+    }
+
+    function recipeSpec() public pure returns (RecipeSpec memory result) {
+        result = RecipeSpecLib.spec("DeployVaultCore", "script/base/defi/DeployVaultCore.s.sol", 1);
+        RecipeVariant memory variant;
+        variant.id = "DeployVaultCore:buildCuts(address,string,string,address,uint8)";
+        variant.buildSignature = "buildCuts(address,string,string,address,uint8)";
+        variant.proxyKind = RecipeProxyKind.Lattice;
+        variant.initOutputKind = RecipeInitOutputKind.Single;
+        variant.facets = _cutPlan(0);
+        variant.seams = _recipeSeams(0);
+        variant.inputs = new RecipeParameter[](5);
+        variant.inputs[0] = RecipeParameter(
+            "asset_",
+            "address",
+            "ERC20-contract",
+            "target-configured-asset",
+            "caller authenticates usable underlying; init permits zero and defaults decimals after failed reads"
+        );
+        variant.inputs[1] = RecipeParameter("name_", "string", "metadata", "Example Vault", "no length constraint");
+        variant.inputs[2] = RecipeParameter("symbol_", "string", "metadata", "EVLT", "no length constraint");
+        variant.inputs[3] = RecipeSpecLib.aclAdministrator("admin_");
+        variant.inputs[4] = RecipeParameter(
+            "decimalsOffset_",
+            "uint8",
+            "decimal-places",
+            "0",
+            "ABI uint8 only; caller chooses usable decimal and virtual-share arithmetic; no extra init clamp"
+        );
+        string[] memory bindings = new string[](5);
+        for (uint256 i; i < bindings.length; ++i) {
+            bindings[i] = variant.inputs[i].name;
+        }
+        variant.initPlan = RecipeSpecLib.introspected(
+            RecipeSpecLib.leaf("VaultCoreInit", "init(address,string,string,address,uint8)", variant.inputs, bindings),
+            true
+        );
+        variant.authorities = new RecipeAuthority[](1);
+        variant.authorities[0] = RecipeSpecLib.role(
+            "AccessControl",
+            "DEFAULT_ADMIN_ROLE",
+            "bytes32",
+            bytes32(0),
+            "admin_",
+            "strategy-manager administration and diamondCut"
+        );
+        variant.conditions = new string[](1);
+        variant.conditions[0] =
+        "Manager replacement is a separate post-deployment configuration; no strategy is installed by init";
+        result.variants[0] = variant;
+        result.deploymentContexts = new RecipeDeploymentContext[](1);
+        result.deploymentContexts[0] = RecipeSpecLib.deploymentContext(
+            "DeployVaultCore",
+            "run(address,string,string,address,uint8)",
+            variant,
+            "buildCuts(asset_,name_,symbol_,admin_,decimalsOffset_)"
         );
     }
 

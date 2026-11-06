@@ -1,6 +1,21 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {RecipePlanLib} from "@lattice-script/lib/RecipePlanLib.sol";
+import {
+    RecipeAuthority,
+    RecipeDeploymentContext,
+    RecipeFacet,
+    RecipeInitOutputKind,
+    RecipeInitStep,
+    RecipeParameter,
+    RecipeProxyKind,
+    RecipeSeam,
+    RecipeSpec,
+    RecipeVariant
+} from "@lattice-script/lib/RecipeSpec.sol";
+import {RecipeSpecLib} from "@lattice-script/lib/RecipeSpecLib.sol";
+
 import {DiamondLoupeFacet} from "@diamond/facets/DiamondLoupeFacet.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
@@ -37,7 +52,7 @@ contract DeployERC4626 is BaseDeploy {
         public
         returns (FacetCut[] memory cuts, address init, bytes memory initCalldata)
     {
-        cuts = _coreCuts();
+        cuts = _materialize(_cutPlan(0), _recipeSeams(0));
         (init, initCalldata) = _withImmutableIntrospection(
             _init("ERC4626Init"), abi.encodeCall(ERC4626Init.init, (asset_, name_, symbol_, decimalsOffset_))
         );
@@ -49,29 +64,105 @@ contract DeployERC4626 is BaseDeploy {
         public
         returns (FacetCut[] memory cuts, address init, bytes memory initCalldata)
     {
-        FacetCut[] memory base = _coreCuts();
-        cuts = new FacetCut[](base.length + 2);
-        for (uint256 i; i < base.length; ++i) {
-            cuts[i] = base[i];
-        }
-        cuts[base.length] = _cut(_facet("AccessControl"));
-        cuts[base.length + 1] = _cut(_facet("AccessControlDiamondCut"));
+        cuts = _materialize(_cutPlan(1), _recipeSeams(1));
         (init, initCalldata) = _withAdminUpgradeableIntrospection(
             _init("ERC4626Init"), abi.encodeCall(ERC4626Init.init, (asset_, name_, symbol_, decimalsOffset_)), admin
         );
     }
 
     /// @dev The shared cut set of both overloads: the vault facets plus {DiamondLoupeFacet} (introspection).
-    function _coreCuts() internal returns (FacetCut[] memory cuts) {
-        address vaultFacet = _facet("ERC4626");
+    function _cutPlan(uint256 variant) internal pure returns (RecipeFacet[] memory cuts) {
+        require(variant < 2, "DeployERC4626: unknown variant");
+        cuts = new RecipeFacet[](variant == 0 ? 5 : 7);
+        cuts[0] = RecipePlanLib.all("ERC165Facet");
+        cuts[1] = RecipePlanLib.all("ERC20");
+        cuts[2] = RecipePlanLib.only("ERC4626", FacetCutAction.Add, _vaultSurface());
+        cuts[3] = RecipePlanLib.only("ERC4626", FacetCutAction.Replace, _decimals());
+        cuts[4] = RecipePlanLib.all("DiamondLoupeFacet");
+        if (variant == 1) {
+            cuts[5] = RecipePlanLib.all("AccessControl");
+            cuts[6] = RecipePlanLib.all("AccessControlDiamondCut");
+        }
+    }
 
-        cuts = new FacetCut[](5);
-        cuts[0] = _cut(_facet("ERC165Facet"));
-        cuts[1] = _cut(_facet("ERC20"));
-        cuts[2] = FacetCut({facetAddress: vaultFacet, action: FacetCutAction.Add, functionSelectors: _vaultSurface()});
-        // `decimals()` already exists on the base ERC-20 facet — replace it with the share-offset variant.
-        cuts[3] = FacetCut({facetAddress: vaultFacet, action: FacetCutAction.Replace, functionSelectors: _decimals()});
-        cuts[4] = _cut(_facet("DiamondLoupeFacet"));
+    function _recipeSeams(uint256) internal pure returns (RecipeSeam[] memory seams) {
+        seams = new RecipeSeam[](1);
+        seams[0] = RecipePlanLib.seam2(
+            "share-decimals",
+            ERC4626.decimals.selector,
+            "ERC20",
+            "ERC4626",
+            "ERC4626",
+            "share decimals include the virtual-share offset"
+        );
+    }
+
+    function recipeSpec() public pure returns (RecipeSpec memory result) {
+        result = RecipeSpecLib.spec("DeployERC4626", "script/base/tokens/DeployERC4626.s.sol", 2);
+        result.deploymentContexts = new RecipeDeploymentContext[](2);
+        for (uint256 i; i < 2; ++i) {
+            RecipeVariant memory variant;
+            variant.buildSignature =
+                i == 0 ? "buildCuts(address,string,string,uint8)" : "buildCuts(address,string,string,uint8,address)";
+            variant.id = string.concat("DeployERC4626:", variant.buildSignature);
+            variant.proxyKind = RecipeProxyKind.Lattice;
+            variant.initOutputKind = RecipeInitOutputKind.Single;
+            variant.facets = _cutPlan(i);
+            variant.seams = _recipeSeams(i);
+            variant.inputs = new RecipeParameter[](i == 0 ? 4 : 5);
+            variant.inputs[0] = RecipeParameter(
+                "asset_",
+                "address",
+                "ERC20-contract",
+                "target-configured-asset",
+                "caller authenticates usable underlying; init permits zero and defaults decimals after failed reads"
+            );
+            variant.inputs[1] = RecipeParameter("name_", "string", "metadata", "Example Vault", "no length constraint");
+            variant.inputs[2] = RecipeParameter("symbol_", "string", "metadata", "EVLT", "no length constraint");
+            variant.inputs[3] = RecipeParameter(
+                "decimalsOffset_",
+                "uint8",
+                "decimal-places",
+                "0",
+                "ABI uint8 only; caller chooses usable virtual-share arithmetic; no extra init clamp"
+            );
+            RecipeParameter[] memory parameters = new RecipeParameter[](4);
+            string[] memory bindings = new string[](4);
+            for (uint256 j; j < 4; ++j) {
+                parameters[j] = variant.inputs[j];
+                bindings[j] = variant.inputs[j].name;
+            }
+            RecipeInitStep[] memory module =
+                RecipeSpecLib.leaf("ERC4626Init", "init(address,string,string,uint8)", parameters, bindings);
+            if (i == 0) {
+                variant.initPlan = RecipeSpecLib.introspected(module, false);
+                variant.authorities = new RecipeAuthority[](0);
+            } else {
+                variant.inputs[4] = RecipeSpecLib.aclAdministrator("admin");
+                variant.initPlan = RecipeSpecLib.adminIntrospected(module, "admin");
+                variant.authorities = new RecipeAuthority[](1);
+                variant.authorities[0] = RecipeSpecLib.role(
+                    "AccessControl",
+                    "DEFAULT_ADMIN_ROLE",
+                    "bytes32",
+                    bytes32(0),
+                    "admin",
+                    "diamondCut and role administration"
+                );
+            }
+            variant.conditions = new string[](1);
+            variant.conditions[0] =
+                "Asset transfers and share arithmetic require a usable trusted underlying; initialization does not certify ERC20 behavior";
+            result.variants[i] = variant;
+            result.deploymentContexts[i] = RecipeSpecLib.deploymentContext(
+                "DeployERC4626",
+                i == 0 ? "run(address,string,string,uint8)" : "run(address,string,string,uint8,address)",
+                variant,
+                i == 0
+                    ? "buildCuts(asset_,name_,symbol_,decimalsOffset_)"
+                    : "buildCuts(asset_,name_,symbol_,decimalsOffset_,admin)"
+            );
+        }
     }
 
     /// @notice The ERC-4626 vault selectors that are NEW relative to the base ERC-20 facet (an `Add` cut).

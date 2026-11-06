@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {RecipePlanLib} from "@lattice-script/lib/RecipePlanLib.sol";
+import {RecipeFacet, RecipeSeam} from "@lattice-script/lib/RecipeSpec.sol";
+
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
 import {AccountReleaseInventory} from "@lattice-script/lib/AccountReleaseInventory.sol";
@@ -10,10 +13,14 @@ import {AccountReleaseInventory} from "@lattice-script/lib/AccountReleaseInvento
 /// @notice Shared script-only account construction used by both account recipes and the release pipeline.
 abstract contract AccountDeployBase is BaseDeploy {
     function _accountCuts(bool modular, string memory version) internal returns (FacetCut[] memory cuts) {
+        return _materialize(_accountCutPlan(modular), new RecipeSeam[](0), version);
+    }
+
+    function _accountCutPlan(bool modular) internal pure returns (RecipeFacet[] memory facets) {
         string[] memory names = AccountReleaseInventory.facetNames(modular);
-        cuts = new FacetCut[](names.length);
+        facets = new RecipeFacet[](names.length);
         for (uint256 i; i < names.length; ++i) {
-            cuts[i] = _cut(_facet(names[i], version));
+            facets[i] = RecipePlanLib.all(names[i]);
         }
     }
 

@@ -35,7 +35,7 @@ import {DeployERC721Wrapper} from "@lattice-script/base/tokens/DeployERC721Wrapp
 import {DeployERC7802} from "@lattice-script/base/tokens/DeployERC7802.s.sol";
 import {DeployHTSAdapter} from "@lattice-script/base/tokens/DeployHTSAdapter.s.sol";
 import {DeployMarketplaceZone} from "@lattice-script/base/tokens/DeployMarketplaceZone.s.sol";
-import {ReleasedRecipeGuards} from "@lattice-test/composability/ReleasedRecipeGuards.sol";
+import {RecipeConsistencyGuards} from "@lattice-test/composability/RecipeConsistencyGuards.sol";
 import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
 import {ERC1155} from "@lattice/tokens/ERC1155/ERC1155.sol";
 import {ERC20Wrapper} from "@lattice/tokens/ERC20/ERC20Wrapper.sol";
@@ -48,7 +48,7 @@ import {ERC721Wrapper} from "@lattice/tokens/ERC721/ERC721Wrapper.sol";
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice Tokens-family recipe guards: every diamond these recipes assemble must be introspectable and
 ///         either admin-upgradeable or immutable BY DESIGN (never silently frozen).
-contract RecipeUpgradeabilityTokensTest is ReleasedRecipeGuards {
+contract RecipeUpgradeabilityTokensTest is RecipeConsistencyGuards {
     TestnetAsset internal asset;
 
     function setUp() public {
@@ -56,6 +56,7 @@ contract RecipeUpgradeabilityTokensTest is ReleasedRecipeGuards {
     }
 
     function test_Immutable_ERC20() public {
+        _expectRecipe(new DeployERC20().recipeSpec(), 0, "DeployERC20");
         (FacetCut[] memory cuts, address init, bytes memory cd) = new DeployERC20().buildCuts("Tok", "TOK");
         address d = _assemble(cuts, init, cd);
         _assertIntrospectable(d, 3);
@@ -79,6 +80,7 @@ contract RecipeUpgradeabilityTokensTest is ReleasedRecipeGuards {
         config.symbol = "PERM";
         config.decimals = 6;
         config.temporaryApproval = temporaryApproval;
+        _expectRecipe(new DeployERC3643().recipeSpec(), temporaryApproval ? 1 : 0, "DeployERC3643");
         (FacetCut[] memory cuts, address init, bytes memory cd) = new DeployERC3643().buildCuts(config);
         address d = _assemble(cuts, init, cd);
         _assertIntrospectable(d, temporaryApproval ? 11 : 10);
@@ -87,6 +89,7 @@ contract RecipeUpgradeabilityTokensTest is ReleasedRecipeGuards {
     }
 
     function test_Upgradeable_ERC20() public {
+        _expectRecipe(new DeployERC20().recipeSpec(), 1, "DeployERC20");
         (FacetCut[] memory cuts, address init, bytes memory cd) = new DeployERC20().buildCuts("Tok", "TOK", ADMIN);
         address d = _assemble(cuts, init, cd);
         _assertIntrospectable(d, 5);
@@ -96,6 +99,7 @@ contract RecipeUpgradeabilityTokensTest is ReleasedRecipeGuards {
     }
 
     function test_Immutable_ERC721() public {
+        _expectRecipe(new DeployERC721().recipeSpec(), 0, "DeployERC721");
         (FacetCut[] memory cuts, address init, bytes memory cd) = new DeployERC721().buildCuts("Tok", "TOK");
         address d = _assemble(cuts, init, cd);
         _assertIntrospectable(d, 3);
@@ -104,6 +108,7 @@ contract RecipeUpgradeabilityTokensTest is ReleasedRecipeGuards {
     }
 
     function test_Upgradeable_ERC721() public {
+        _expectRecipe(new DeployERC721().recipeSpec(), 1, "DeployERC721");
         (FacetCut[] memory cuts, address init, bytes memory cd) = new DeployERC721().buildCuts("Tok", "TOK", ADMIN);
         address d = _assemble(cuts, init, cd);
         _assertIntrospectable(d, 5);
@@ -113,6 +118,7 @@ contract RecipeUpgradeabilityTokensTest is ReleasedRecipeGuards {
     }
 
     function test_Immutable_ERC1155() public {
+        _expectRecipe(new DeployERC1155().recipeSpec(), 0, "DeployERC1155");
         (FacetCut[] memory cuts, address init, bytes memory cd) = new DeployERC1155().buildCuts("uri://");
         address d = _assemble(cuts, init, cd);
         _assertIntrospectable(d, 3);
@@ -121,6 +127,7 @@ contract RecipeUpgradeabilityTokensTest is ReleasedRecipeGuards {
     }
 
     function test_Upgradeable_ERC1155() public {
+        _expectRecipe(new DeployERC1155().recipeSpec(), 1, "DeployERC1155");
         (FacetCut[] memory cuts, address init, bytes memory cd) = new DeployERC1155().buildCuts("uri://", ADMIN);
         address d = _assemble(cuts, init, cd);
         _assertIntrospectable(d, 5);
@@ -130,6 +137,7 @@ contract RecipeUpgradeabilityTokensTest is ReleasedRecipeGuards {
     }
 
     function test_Immutable_ERC1155Burnable() public {
+        _expectRecipe(new DeployERC1155Burnable().recipeSpec(), 0, "DeployERC1155Burnable");
         (FacetCut[] memory cuts, address[] memory inits, bytes[] memory cds) =
             new DeployERC1155Burnable().buildCuts("uri://");
         address d = _assembleMulti(cuts, inits, cds);
@@ -139,6 +147,7 @@ contract RecipeUpgradeabilityTokensTest is ReleasedRecipeGuards {
     }
 
     function test_Upgradeable_ERC1155Burnable() public {
+        _expectRecipe(new DeployERC1155Burnable().recipeSpec(), 1, "DeployERC1155Burnable");
         (FacetCut[] memory cuts, address[] memory inits, bytes[] memory cds) =
             new DeployERC1155Burnable().buildCuts("uri://", ADMIN);
         address d = _assembleMulti(cuts, inits, cds);
@@ -149,6 +158,7 @@ contract RecipeUpgradeabilityTokensTest is ReleasedRecipeGuards {
     }
 
     function test_Upgradeable_ERC1155Pausable() public {
+        _expectRecipe(new DeployERC1155Pausable().recipeSpec(), 0, "DeployERC1155Pausable");
         (FacetCut[] memory cuts, address[] memory inits, bytes[] memory cds) =
             new DeployERC1155Pausable().buildCuts("uri://", ADMIN);
         address d = _assembleMulti(cuts, inits, cds);
@@ -159,6 +169,7 @@ contract RecipeUpgradeabilityTokensTest is ReleasedRecipeGuards {
     }
 
     function test_Immutable_ERC1155Supply() public {
+        _expectRecipe(new DeployERC1155Supply().recipeSpec(), 0, "DeployERC1155Supply");
         (FacetCut[] memory cuts, address[] memory inits, bytes[] memory cds) =
             new DeployERC1155Supply().buildCuts("uri://");
         address d = _assembleMulti(cuts, inits, cds);
@@ -168,6 +179,7 @@ contract RecipeUpgradeabilityTokensTest is ReleasedRecipeGuards {
     }
 
     function test_Upgradeable_ERC1155Supply() public {
+        _expectRecipe(new DeployERC1155Supply().recipeSpec(), 1, "DeployERC1155Supply");
         (FacetCut[] memory cuts, address[] memory inits, bytes[] memory cds) =
             new DeployERC1155Supply().buildCuts("uri://", ADMIN);
         address d = _assembleMulti(cuts, inits, cds);
@@ -178,6 +190,7 @@ contract RecipeUpgradeabilityTokensTest is ReleasedRecipeGuards {
     }
 
     function test_Upgradeable_ERC1155URIStorage() public {
+        _expectRecipe(new DeployERC1155URIStorage().recipeSpec(), 0, "DeployERC1155URIStorage");
         (FacetCut[] memory cuts, address[] memory inits, bytes[] memory cds) =
             new DeployERC1155URIStorage().buildCuts("uri://", ADMIN);
         address d = _assembleMulti(cuts, inits, cds);
@@ -188,6 +201,7 @@ contract RecipeUpgradeabilityTokensTest is ReleasedRecipeGuards {
     }
 
     function test_Immutable_ERC4626() public {
+        _expectRecipe(new DeployERC4626().recipeSpec(), 0, "DeployERC4626");
         (FacetCut[] memory cuts, address init, bytes memory cd) =
             new DeployERC4626().buildCuts(address(asset), "Vault", "VLT", 0);
         address d = _assemble(cuts, init, cd);
@@ -197,6 +211,7 @@ contract RecipeUpgradeabilityTokensTest is ReleasedRecipeGuards {
     }
 
     function test_Upgradeable_ERC4626() public {
+        _expectRecipe(new DeployERC4626().recipeSpec(), 1, "DeployERC4626");
         (FacetCut[] memory cuts, address init, bytes memory cd) =
             new DeployERC4626().buildCuts(address(asset), "Vault", "VLT", 0, ADMIN);
         address d = _assemble(cuts, init, cd);
@@ -207,6 +222,7 @@ contract RecipeUpgradeabilityTokensTest is ReleasedRecipeGuards {
     }
 
     function test_Immutable_ERC1363() public {
+        _expectRecipe(new DeployERC1363().recipeSpec(), 0, "DeployERC1363");
         (FacetCut[] memory cuts, address[] memory inits, bytes[] memory cds) =
             new DeployERC1363().buildCuts("Tok", "TOK");
         address d = _assembleMulti(cuts, inits, cds);
@@ -216,6 +232,7 @@ contract RecipeUpgradeabilityTokensTest is ReleasedRecipeGuards {
     }
 
     function test_Upgradeable_ERC1363() public {
+        _expectRecipe(new DeployERC1363().recipeSpec(), 1, "DeployERC1363");
         (FacetCut[] memory cuts, address[] memory inits, bytes[] memory cds) =
             new DeployERC1363().buildCuts("Tok", "TOK", ADMIN);
         address d = _assembleMulti(cuts, inits, cds);
@@ -226,6 +243,7 @@ contract RecipeUpgradeabilityTokensTest is ReleasedRecipeGuards {
     }
 
     function test_Immutable_ERC20TemporaryApproval() public {
+        _expectRecipe(new DeployERC20TemporaryApproval().recipeSpec(), 0, "DeployERC20TemporaryApproval");
         (FacetCut[] memory cuts, address[] memory inits, bytes[] memory cds) =
             new DeployERC20TemporaryApproval().buildCuts("Tok", "TOK");
         address d = _assembleMulti(cuts, inits, cds);
@@ -235,6 +253,7 @@ contract RecipeUpgradeabilityTokensTest is ReleasedRecipeGuards {
     }
 
     function test_Upgradeable_ERC20TemporaryApproval() public {
+        _expectRecipe(new DeployERC20TemporaryApproval().recipeSpec(), 1, "DeployERC20TemporaryApproval");
         (FacetCut[] memory cuts, address[] memory inits, bytes[] memory cds) =
             new DeployERC20TemporaryApproval().buildCuts("Tok", "TOK", ADMIN);
         address d = _assembleMulti(cuts, inits, cds);
@@ -245,6 +264,7 @@ contract RecipeUpgradeabilityTokensTest is ReleasedRecipeGuards {
     }
 
     function test_Immutable_ERC20Burnable() public {
+        _expectRecipe(new DeployERC20Burnable().recipeSpec(), 0, "DeployERC20Burnable");
         (FacetCut[] memory cuts, address[] memory inits, bytes[] memory cds) =
             new DeployERC20Burnable().buildCuts("Tok", "TOK");
         address d = _assembleMulti(cuts, inits, cds);
@@ -254,6 +274,7 @@ contract RecipeUpgradeabilityTokensTest is ReleasedRecipeGuards {
     }
 
     function test_Upgradeable_ERC20Burnable() public {
+        _expectRecipe(new DeployERC20Burnable().recipeSpec(), 1, "DeployERC20Burnable");
         (FacetCut[] memory cuts, address[] memory inits, bytes[] memory cds) =
             new DeployERC20Burnable().buildCuts("Tok", "TOK", ADMIN);
         address d = _assembleMulti(cuts, inits, cds);
@@ -264,6 +285,7 @@ contract RecipeUpgradeabilityTokensTest is ReleasedRecipeGuards {
     }
 
     function test_Immutable_ERC20Capped() public {
+        _expectRecipe(new DeployERC20Capped().recipeSpec(), 0, "DeployERC20Capped");
         (FacetCut[] memory cuts, address[] memory inits, bytes[] memory cds) =
             new DeployERC20Capped().buildCuts("Tok", "TOK", 1000 ether);
         address d = _assembleMulti(cuts, inits, cds);
@@ -273,6 +295,7 @@ contract RecipeUpgradeabilityTokensTest is ReleasedRecipeGuards {
     }
 
     function test_Upgradeable_ERC20Capped() public {
+        _expectRecipe(new DeployERC20Capped().recipeSpec(), 1, "DeployERC20Capped");
         (FacetCut[] memory cuts, address[] memory inits, bytes[] memory cds) =
             new DeployERC20Capped().buildCuts("Tok", "TOK", 1000 ether, ADMIN);
         address d = _assembleMulti(cuts, inits, cds);
@@ -283,6 +306,7 @@ contract RecipeUpgradeabilityTokensTest is ReleasedRecipeGuards {
     }
 
     function test_Immutable_ERC20FlashMint() public {
+        _expectRecipe(new DeployERC20FlashMint().recipeSpec(), 0, "DeployERC20FlashMint");
         (FacetCut[] memory cuts, address[] memory inits, bytes[] memory cds) =
             new DeployERC20FlashMint().buildCuts("Tok", "TOK");
         address d = _assembleMulti(cuts, inits, cds);
@@ -292,6 +316,7 @@ contract RecipeUpgradeabilityTokensTest is ReleasedRecipeGuards {
     }
 
     function test_Upgradeable_ERC20FlashMint() public {
+        _expectRecipe(new DeployERC20FlashMint().recipeSpec(), 1, "DeployERC20FlashMint");
         (FacetCut[] memory cuts, address[] memory inits, bytes[] memory cds) =
             new DeployERC20FlashMint().buildCuts("Tok", "TOK", ADMIN);
         address d = _assembleMulti(cuts, inits, cds);
@@ -302,6 +327,7 @@ contract RecipeUpgradeabilityTokensTest is ReleasedRecipeGuards {
     }
 
     function test_Immutable_ERC20Permit() public {
+        _expectRecipe(new DeployERC20Permit().recipeSpec(), 0, "DeployERC20Permit");
         (FacetCut[] memory cuts, address[] memory inits, bytes[] memory cds) =
             new DeployERC20Permit().buildCuts("Tok", "TOK");
         address d = _assembleMulti(cuts, inits, cds);
@@ -311,6 +337,7 @@ contract RecipeUpgradeabilityTokensTest is ReleasedRecipeGuards {
     }
 
     function test_Upgradeable_ERC20Permit() public {
+        _expectRecipe(new DeployERC20Permit().recipeSpec(), 1, "DeployERC20Permit");
         (FacetCut[] memory cuts, address[] memory inits, bytes[] memory cds) =
             new DeployERC20Permit().buildCuts("Tok", "TOK", ADMIN);
         address d = _assembleMulti(cuts, inits, cds);
@@ -321,6 +348,7 @@ contract RecipeUpgradeabilityTokensTest is ReleasedRecipeGuards {
     }
 
     function test_Immutable_ERC20Wrapper() public {
+        _expectRecipe(new DeployERC20Wrapper().recipeSpec(), 0, "DeployERC20Wrapper");
         (FacetCut[] memory cuts, address[] memory inits, bytes[] memory cds) =
             new DeployERC20Wrapper().buildCuts("Tok", "TOK", address(asset));
         address d = _assembleMulti(cuts, inits, cds);
@@ -330,6 +358,7 @@ contract RecipeUpgradeabilityTokensTest is ReleasedRecipeGuards {
     }
 
     function test_Upgradeable_ERC20Wrapper() public {
+        _expectRecipe(new DeployERC20Wrapper().recipeSpec(), 1, "DeployERC20Wrapper");
         (FacetCut[] memory cuts, address[] memory inits, bytes[] memory cds) =
             new DeployERC20Wrapper().buildCuts("Tok", "TOK", address(asset), ADMIN);
         address d = _assembleMulti(cuts, inits, cds);
@@ -340,6 +369,7 @@ contract RecipeUpgradeabilityTokensTest is ReleasedRecipeGuards {
     }
 
     function test_Upgradeable_ERC2981() public {
+        _expectRecipe(new DeployERC2981().recipeSpec(), 0, "DeployERC2981");
         (FacetCut[] memory cuts, address init, bytes memory cd) = new DeployERC2981().buildCuts(ADMIN);
         address d = _assemble(cuts, init, cd);
         _assertIntrospectable(d, 5);
@@ -348,6 +378,7 @@ contract RecipeUpgradeabilityTokensTest is ReleasedRecipeGuards {
     }
 
     function test_Upgradeable_MarketplaceZone() public {
+        _expectRecipe(new DeployMarketplaceZone().recipeSpec(), 0, "DeployMarketplaceZone");
         (FacetCut[] memory cuts, address init, bytes memory cd) = new DeployMarketplaceZone().buildCuts(ADMIN);
         address d = _assemble(cuts, init, cd);
         _assertIntrospectable(d, 5);
@@ -356,6 +387,7 @@ contract RecipeUpgradeabilityTokensTest is ReleasedRecipeGuards {
     }
 
     function test_Upgradeable_ERC20Pausable() public {
+        _expectRecipe(new DeployERC20Pausable().recipeSpec(), 0, "DeployERC20Pausable");
         (FacetCut[] memory cuts, address[] memory inits, bytes[] memory cds) =
             new DeployERC20Pausable().buildCuts("Tok", "TOK", ADMIN);
         address d = _assembleMulti(cuts, inits, cds);
@@ -365,6 +397,7 @@ contract RecipeUpgradeabilityTokensTest is ReleasedRecipeGuards {
     }
 
     function test_Upgradeable_ERC20Votes() public {
+        _expectRecipe(new DeployERC20Votes().recipeSpec(), 0, "DeployERC20Votes");
         (FacetCut[] memory cuts, address[] memory inits, bytes[] memory cds) =
             new DeployERC20Votes().buildCuts("Tok", "TOK", ADMIN);
         address d = _assembleMulti(cuts, inits, cds);
@@ -374,6 +407,7 @@ contract RecipeUpgradeabilityTokensTest is ReleasedRecipeGuards {
     }
 
     function test_Upgradeable_ERC721URIStorage() public {
+        _expectRecipe(new DeployERC721URIStorage().recipeSpec(), 0, "DeployERC721URIStorage");
         (FacetCut[] memory cuts, address[] memory inits, bytes[] memory cds) =
             new DeployERC721URIStorage().buildCuts("Tok", "TOK", ADMIN);
         address d = _assembleMulti(cuts, inits, cds);
@@ -383,6 +417,7 @@ contract RecipeUpgradeabilityTokensTest is ReleasedRecipeGuards {
     }
 
     function test_Immutable_ERC721Burnable() public {
+        _expectRecipe(new DeployERC721Burnable().recipeSpec(), 0, "DeployERC721Burnable");
         (FacetCut[] memory cuts, address[] memory inits, bytes[] memory cds) =
             new DeployERC721Burnable().buildCuts("Tok", "TOK");
         address d = _assembleMulti(cuts, inits, cds);
@@ -392,6 +427,7 @@ contract RecipeUpgradeabilityTokensTest is ReleasedRecipeGuards {
     }
 
     function test_Upgradeable_ERC721Burnable() public {
+        _expectRecipe(new DeployERC721Burnable().recipeSpec(), 1, "DeployERC721Burnable");
         (FacetCut[] memory cuts, address[] memory inits, bytes[] memory cds) =
             new DeployERC721Burnable().buildCuts("Tok", "TOK", ADMIN);
         address d = _assembleMulti(cuts, inits, cds);
@@ -403,6 +439,7 @@ contract RecipeUpgradeabilityTokensTest is ReleasedRecipeGuards {
 
     function test_Immutable_ERC721Consecutive() public {
         (address[] memory receivers, uint96[] memory amounts) = _oneConsecutiveBatch();
+        _expectRecipe(new DeployERC721Consecutive().recipeSpec(), 0, "DeployERC721Consecutive");
         (FacetCut[] memory cuts, address[] memory inits, bytes[] memory cds) =
             new DeployERC721Consecutive().buildCuts("Tok", "TOK", 0, receivers, amounts);
         address d = _assembleMulti(cuts, inits, cds);
@@ -414,6 +451,7 @@ contract RecipeUpgradeabilityTokensTest is ReleasedRecipeGuards {
 
     function test_Upgradeable_ERC721Consecutive() public {
         (address[] memory receivers, uint96[] memory amounts) = _oneConsecutiveBatch();
+        _expectRecipe(new DeployERC721Consecutive().recipeSpec(), 1, "DeployERC721Consecutive");
         (FacetCut[] memory cuts, address[] memory inits, bytes[] memory cds) =
             new DeployERC721Consecutive().buildCuts("Tok", "TOK", 0, receivers, amounts, ADMIN);
         address d = _assembleMulti(cuts, inits, cds);
@@ -431,6 +469,7 @@ contract RecipeUpgradeabilityTokensTest is ReleasedRecipeGuards {
     }
 
     function test_Immutable_ERC721Wrapper() public {
+        _expectRecipe(new DeployERC721Wrapper().recipeSpec(), 0, "DeployERC721Wrapper");
         (FacetCut[] memory cuts, address[] memory inits, bytes[] memory cds) =
             new DeployERC721Wrapper().buildCuts("Tok", "TOK", address(asset));
         address d = _assembleMulti(cuts, inits, cds);
@@ -440,6 +479,7 @@ contract RecipeUpgradeabilityTokensTest is ReleasedRecipeGuards {
     }
 
     function test_Upgradeable_ERC721Wrapper() public {
+        _expectRecipe(new DeployERC721Wrapper().recipeSpec(), 1, "DeployERC721Wrapper");
         (FacetCut[] memory cuts, address[] memory inits, bytes[] memory cds) =
             new DeployERC721Wrapper().buildCuts("Tok", "TOK", address(asset), ADMIN);
         address d = _assembleMulti(cuts, inits, cds);
@@ -450,6 +490,7 @@ contract RecipeUpgradeabilityTokensTest is ReleasedRecipeGuards {
     }
 
     function test_Upgradeable_ERC721Pausable() public {
+        _expectRecipe(new DeployERC721Pausable().recipeSpec(), 0, "DeployERC721Pausable");
         (FacetCut[] memory cuts, address[] memory inits, bytes[] memory cds) =
             new DeployERC721Pausable().buildCuts("Tok", "TOK", ADMIN);
         address d = _assembleMulti(cuts, inits, cds);
@@ -460,6 +501,7 @@ contract RecipeUpgradeabilityTokensTest is ReleasedRecipeGuards {
     }
 
     function test_Immutable_ERC721Enumerable() public {
+        _expectRecipe(new DeployERC721Enumerable().recipeSpec(), 0, "DeployERC721Enumerable");
         (FacetCut[] memory cuts, address[] memory inits, bytes[] memory cds) =
             new DeployERC721Enumerable().buildCuts("Tok", "TOK");
         address d = _assembleMulti(cuts, inits, cds);
@@ -469,6 +511,7 @@ contract RecipeUpgradeabilityTokensTest is ReleasedRecipeGuards {
     }
 
     function test_Upgradeable_ERC721Enumerable() public {
+        _expectRecipe(new DeployERC721Enumerable().recipeSpec(), 1, "DeployERC721Enumerable");
         (FacetCut[] memory cuts, address[] memory inits, bytes[] memory cds) =
             new DeployERC721Enumerable().buildCuts("Tok", "TOK", ADMIN);
         address d = _assembleMulti(cuts, inits, cds);
@@ -479,6 +522,7 @@ contract RecipeUpgradeabilityTokensTest is ReleasedRecipeGuards {
     }
 
     function test_Immutable_ERC721Votes() public {
+        _expectRecipe(new DeployERC721Votes().recipeSpec(), 0, "DeployERC721Votes");
         (FacetCut[] memory cuts, address[] memory inits, bytes[] memory cds) =
             new DeployERC721Votes().buildCuts("Tok", "TOK");
         address d = _assembleMulti(cuts, inits, cds);
@@ -488,6 +532,7 @@ contract RecipeUpgradeabilityTokensTest is ReleasedRecipeGuards {
     }
 
     function test_Upgradeable_ERC721Votes() public {
+        _expectRecipe(new DeployERC721Votes().recipeSpec(), 1, "DeployERC721Votes");
         (FacetCut[] memory cuts, address[] memory inits, bytes[] memory cds) =
             new DeployERC721Votes().buildCuts("Tok", "TOK", ADMIN);
         address d = _assembleMulti(cuts, inits, cds);
@@ -498,6 +543,7 @@ contract RecipeUpgradeabilityTokensTest is ReleasedRecipeGuards {
     }
 
     function test_Upgradeable_ERC721Royalty() public {
+        _expectRecipe(new DeployERC721Royalty().recipeSpec(), 0, "DeployERC721Royalty");
         (FacetCut[] memory cuts, address[] memory inits, bytes[] memory cds) =
             new DeployERC721Royalty().buildCuts("Tok", "TOK", ADMIN);
         address d = _assembleMulti(cuts, inits, cds);
@@ -508,6 +554,7 @@ contract RecipeUpgradeabilityTokensTest is ReleasedRecipeGuards {
     }
 
     function test_Upgradeable_ERC20Crosschain() public {
+        _expectRecipe(new DeployERC20Crosschain().recipeSpec(), 0, "DeployERC20Crosschain");
         (FacetCut[] memory cuts, address init, bytes memory cd) =
             new DeployERC20Crosschain().buildCuts(ADMIN, "Tok", "TOK");
         address d = _assemble(cuts, init, cd);
@@ -517,6 +564,7 @@ contract RecipeUpgradeabilityTokensTest is ReleasedRecipeGuards {
     }
 
     function test_Upgradeable_ERC7802() public {
+        _expectRecipe(new DeployERC7802().recipeSpec(), 0, "DeployERC7802");
         (FacetCut[] memory cuts, address init, bytes memory cd) =
             new DeployERC7802().buildCuts(ADMIN, address(this), "Tok", "TOK");
         address d = _assemble(cuts, init, cd);
@@ -526,6 +574,7 @@ contract RecipeUpgradeabilityTokensTest is ReleasedRecipeGuards {
     }
 
     function test_Upgradeable_HTSAdapter() public {
+        _expectRecipe(new DeployHTSAdapter().recipeSpec(), 0, "DeployHTSAdapter");
         (FacetCut[] memory cuts, address init, bytes memory cd) = new DeployHTSAdapter().buildCuts(ADMIN);
         address d = _assemble(cuts, init, cd);
         _assertIntrospectable(d, 6);

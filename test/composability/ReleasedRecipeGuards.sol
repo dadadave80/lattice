@@ -84,7 +84,12 @@ abstract contract ReleasedRecipeGuards is RecipeGuards {
         }
     }
 
-    function _assemble(FacetCut[] memory cuts, address init, bytes memory data) internal override returns (address) {
+    function _assemble(FacetCut[] memory cuts, address init, bytes memory data)
+        internal
+        virtual
+        override
+        returns (address)
+    {
         _assertReleasedCuts(cuts);
         _assertReleasedInitializer(init, data);
         return super._assemble(cuts, init, data);
@@ -92,6 +97,7 @@ abstract contract ReleasedRecipeGuards is RecipeGuards {
 
     function _assembleMulti(FacetCut[] memory cuts, address[] memory inits, bytes[] memory calldatas)
         internal
+        virtual
         override
         returns (address)
     {
