@@ -13,8 +13,14 @@ import {IERC7786MessageHandler} from "@lattice/interfaces/crosschain/IERC7786Mes
 ///         message. Registered as a handler on a co-mounted {CrosschainLink} facet.
 /// @dev Stateless delegator — logic/storage live in {BridgeERC7802Lib}. `processMessage` is callable only
 ///      via the Diamond's own authenticated `receiveMessage` dispatch (`msg.sender == address(this)`).
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source OpenZeppelin
+/// @custom:lattice-requires CrosschainLink convention authenticated-inbound-dispatch;
+/// @custom:lattice-family bridge-handler
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches lattice.storage.BridgeERC7802;
+/// @custom:lattice-touches slot:0x8000000000ab143c06;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init BridgeERC7802Init
 contract BridgeERC7802 is IBridgeFungible, IERC7786MessageHandler {
     /// @inheritdoc IBridgeFungible
     function crosschainTransfer(bytes calldata to, uint256 amount) external virtual override returns (bytes32 sendId) {

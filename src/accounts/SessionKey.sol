@@ -12,7 +12,13 @@ import {ISessionKey} from "@lattice/interfaces/accounts/ISessionKey.sol";
 /// @dev Stateless delegator — logic/storage live in {SessionKeyLib}. Enforces expiry, the allowlist (with
 ///      `ANY_*` wildcards) and per-token cumulative spend limits, with post-batch approval resets on capped
 ///      tokens. Revoking a key drops its grants and limits.
-/// @custom:lattice-version 0.1.0
+/// @custom:lattice-requires AccessControl|AccessControlEnumerable|AccessControlTimed convention role-management-surface;
+/// @custom:lattice-requires AccountSigner convention account-authority-configuration;
+/// @custom:lattice-family none
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches lattice.storage.SessionKey;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init AccountInit
 contract SessionKey is ISessionKey {
     /// @inheritdoc ISessionKey
     function registerSessionKey(address key, uint48 validAfter, uint48 validUntil, Permission[] calldata permissions)

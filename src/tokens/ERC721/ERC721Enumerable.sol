@@ -17,8 +17,20 @@ import {ERC721EnumerableLib} from "@lattice/tokens/ERC721/libraries/ERC721Enumer
 ///        transfer facet for an enumerable diamond calls {ERC721EnumerableLib} instead, never {ERC721Lib}.
 ///      - Batch mints ({ERC721ConsecutiveInit}) skip the lists; either init order reverts
 ///        `ERC721EnumerableForbiddenBatchMint`, as OpenZeppelin forbids the pair.
-/// @custom:lattice-version 0.5.0
 /// @custom:lattice-source OpenZeppelin v5.6.1
+/// @custom:lattice-requires ERC721 convention complete-token-surface;
+/// @custom:lattice-family erc721-transfer
+/// @custom:lattice-owns transferFrom(address,address,uint256);
+/// @custom:lattice-owns safeTransferFrom(address,address,uint256);
+/// @custom:lattice-owns safeTransferFrom(address,address,uint256,bytes);
+/// @custom:lattice-owns totalSupply();
+/// @custom:lattice-touches lattice.storage.ERC721;
+/// @custom:lattice-touches lattice.storage.ERC721Consecutive;
+/// @custom:lattice-touches lattice.storage.ERC721Enumerable;
+/// @custom:lattice-seam transferFrom(address,address,uint256) when=ERC721 anyOf=ERC721Enumerable replace-base-movement;
+/// @custom:lattice-seam safeTransferFrom(address,address,uint256) when=ERC721 anyOf=ERC721Enumerable replace-base-movement;
+/// @custom:lattice-seam safeTransferFrom(address,address,uint256,bytes) when=ERC721 anyOf=ERC721Enumerable replace-base-movement;
+/// @custom:lattice-init ERC721EnumerableInit
 contract ERC721Enumerable is IERC721Enumerable {
     /// @inheritdoc IERC721Enumerable
     function totalSupply() public view virtual returns (uint256) {

@@ -12,11 +12,20 @@ import {AxelarGatewayAdapterLib} from "@lattice/crosschain/axelar/AxelarGatewayA
 ///         window (so it must NOT open its own pre/postInitializer; each `__*_init` guard passes because the window
 ///         is already open). Companion to the {ERC2981Init} and {ChainlinkAdapterInit} patterns — a first-class
 ///         production deploy artifact.
+/// @custom:lattice-kind bundle
 contract AxelarGatewayAdapterInit {
     /// @notice Runs the access-control + Axelar-adapter module initializers. MUST be invoked via the diamond's
     ///         `initialize` `_init` delegatecall.
     /// @param admin The address granted `DEFAULT_ADMIN_ROLE` (controls every adapter setter).
     /// @param gateway The Axelar gateway the adapter dispatches `callContract` to and validates inbound calls with.
+    /// @custom:lattice-initializes AccessControl;
+    /// @custom:lattice-initializes AxelarGatewayAdapter;
+    /// @custom:lattice-after none;
+    /// @custom:lattice-same-call Initializable hard enclosing-initializing-window;
+    /// @custom:lattice-sequence AccessControl;AxelarGatewayAdapter;
+    /// @custom:lattice-param admin authority;
+    /// @custom:lattice-param gateway;
+    /// @custom:lattice-registers-interfaces
     function init(address admin, address gateway) external {
         AccessControlLib.__AccessControl_init(admin);
         AxelarGatewayAdapterLib.__AxelarGatewayAdapter_init(gateway);

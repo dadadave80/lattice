@@ -17,12 +17,25 @@ import {EmergencyStopLib} from "@lattice/security/libraries/EmergencyStopLib.sol
 ///         Mirrors exactly what the old `MockSafeDiamond.initialize` did, minus the redundant
 ///         pre/postInitializer. Companion to the {ERC2981Init} pattern — a first-class
 ///         production deploy artifact.
+/// @custom:lattice-kind bundle
 contract SafeDiamondCutInit {
     /// @notice Runs the access-control + emergency-stop + Safe-cut module initializers. MUST be invoked via
     ///         the diamond's `initialize` `_init` delegatecall.
     /// @param admin The address granted `DEFAULT_ADMIN_ROLE` (manages guardians and resumes operation).
     /// @param safe The Gnosis Safe multisig pinned as the sole cut authority.
     /// @param minThreshold The minimum signature threshold the pinned Safe must enforce.
+    /// @custom:lattice-initializes AccessControl;
+    /// @custom:lattice-initializes EmergencyStop;
+    /// @custom:lattice-initializes ERC165;
+    /// @custom:lattice-initializes Diamond;
+    /// @custom:lattice-initializes SafeDiamondCut;
+    /// @custom:lattice-after none;
+    /// @custom:lattice-same-call Initializable hard enclosing-initializing-window;
+    /// @custom:lattice-sequence AccessControl;EmergencyStop;ERC165;Diamond;SafeDiamondCut;
+    /// @custom:lattice-param admin authority;
+    /// @custom:lattice-param safe authority;
+    /// @custom:lattice-param minThreshold;
+    /// @custom:lattice-registers-interfaces
     function init(address admin, address safe, uint256 minThreshold) external {
         AccessControlLib.__AccessControl_init(admin);
         EmergencyStopLib.__EmergencyStop_init();

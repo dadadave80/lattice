@@ -33,6 +33,36 @@ import {SignatureChecker} from "@lattice/utils/libraries/SignatureChecker.sol";
 ///      - BALLOT-NONCE NAMESPACE: `castVoteBySig` draws from {GovernedVaultLib}'s dedicated nonce, leaving the
 ///        ERC-20 `delegateBySig` nonce on {NoncesLib} — see {GovernedVaultLib} for why a shared counter would
 ///        silently invalidate signatures.
+/// @custom:lattice-requires ERC20Votes convention vote-aware-transfer-and-delegation-surface;
+/// @custom:lattice-requires VaultCore convention strategy-NAV-and-vault-management;
+/// @custom:lattice-requires Governor convention proposal-and-governance-surface;
+/// @custom:lattice-requires TimelockController convention self-referential-governance-execution;
+/// @custom:lattice-family none
+/// @custom:lattice-owns transfer(address,uint256);
+/// @custom:lattice-owns transferFrom(address,address,uint256);
+/// @custom:lattice-owns deposit(uint256,address);
+/// @custom:lattice-owns mint(uint256,address);
+/// @custom:lattice-owns withdraw(uint256,address,address);
+/// @custom:lattice-owns redeem(uint256,address,address);
+/// @custom:lattice-owns name();
+/// @custom:lattice-owns clock();
+/// @custom:lattice-owns CLOCK_MODE();
+/// @custom:lattice-owns castVoteBySig(uint256,uint8,address,bytes);
+/// @custom:lattice-touches lattice.storage.ERC20;
+/// @custom:lattice-touches lattice.storage.GovernedVault;
+/// @custom:lattice-touches lattice.storage.Governor;
+/// @custom:lattice-touches lattice.storage.Votes;
+/// @custom:lattice-seam deposit(uint256,address) when=ERC20Votes|ERC4626|VaultCore anyOf=GovernedVault combined-vault-and-vote-accounting;
+/// @custom:lattice-seam mint(uint256,address) when=ERC20Votes|ERC4626|VaultCore anyOf=GovernedVault combined-vault-and-vote-accounting;
+/// @custom:lattice-seam withdraw(uint256,address,address) when=ERC20Votes|ERC4626|VaultCore anyOf=GovernedVault combined-vault-and-vote-accounting;
+/// @custom:lattice-seam redeem(uint256,address,address) when=ERC20Votes|ERC4626|VaultCore anyOf=GovernedVault combined-vault-and-vote-accounting;
+/// @custom:lattice-seam transfer(address,uint256) when=ERC20Votes anyOf=GovernedVault combined-vault-transfer-route;
+/// @custom:lattice-seam transferFrom(address,address,uint256) when=ERC20Votes anyOf=GovernedVault combined-vault-transfer-route;
+/// @custom:lattice-seam name() when=ERC20|Governor anyOf=GovernedVault shared-governance-route-and-ballot-replay-domain;
+/// @custom:lattice-seam clock() when=Governor|Votes anyOf=GovernedVault shared-governance-route-and-ballot-replay-domain;
+/// @custom:lattice-seam CLOCK_MODE() when=Governor|Votes anyOf=GovernedVault shared-governance-route-and-ballot-replay-domain;
+/// @custom:lattice-seam castVoteBySig(uint256,uint8,address,bytes) when=Governor anyOf=GovernedVault shared-governance-route-and-ballot-replay-domain;
+/// @custom:lattice-init GovernedVaultInit
 contract GovernedVault is IGovernedVault {
     //*//////////////////////////////////////////////////////////////////////////
     //                            CLASH RESOLUTIONS

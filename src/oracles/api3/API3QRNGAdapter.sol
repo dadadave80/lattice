@@ -14,8 +14,13 @@ import {API3QRNGAdapterLib} from "@lattice/oracles/api3/API3QRNGAdapterLib.sol";
 ///      This facet handles the request/track layer only.  Consumer facets that
 ///      inherit this contract should override `fulfillRandomNumber` to act on
 ///      delivered randomness after calling `super.fulfillRandomNumber`.
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source API3
+/// @custom:lattice-requires AccessControl|AccessControlEnumerable|AccessControlTimed convention role-management-surface;
+/// @custom:lattice-family none
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches lattice.storage.API3QRNGAdapter;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init API3QRNGAdapterInit
 contract API3QRNGAdapter is IAPI3QRNGAdapter {
     /// @inheritdoc IAPI3QRNGAdapter
     function getConfig() external view virtual override returns (QRNGConfig memory) {

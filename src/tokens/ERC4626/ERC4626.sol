@@ -25,8 +25,13 @@ import {ERC4626Lib} from "@lattice/tokens/ERC4626/libraries/ERC4626Lib.sol";
 ///        - ERC4626Lib.__ERC4626_init(asset, decimalsOffset)
 ///
 ///      {ERC4626Lib} lists every difference from OpenZeppelin.
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source OpenZeppelin v5.6.1
+/// @custom:lattice-requires ERC20 convention share-token-surface;
+/// @custom:lattice-family none
+/// @custom:lattice-owns decimals();
+/// @custom:lattice-touches lattice.storage.ERC20;
+/// @custom:lattice-seam decimals() when=ERC20 anyOf=ERC4626 asset-decimals-plus-offset;
+/// @custom:lattice-init ERC4626Init
 contract ERC4626 {
     //*//////////////////////////////////////////////////////////////////////////
     //                           ERC-20 OVERRIDE

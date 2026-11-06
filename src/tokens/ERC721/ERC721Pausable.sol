@@ -20,8 +20,19 @@ import {ERC721Lib} from "@lattice/tokens/ERC721/libraries/ERC721Lib.sol";
 ///        them: one ERC-721 movement override per diamond (pinned by SelectorCompatibilityTest).
 ///      - `pause()`/`unpause()` come from the {Pausable} facet, gated on `DEFAULT_ADMIN_ROLE`; OpenZeppelin leaves
 ///        them to the deriving contract.
-/// @custom:lattice-version 0.5.0
 /// @custom:lattice-source OpenZeppelin v5.6.1
+/// @custom:lattice-requires ERC721 convention complete-token-surface;
+/// @custom:lattice-requires Pausable convention pause-management-surface;
+/// @custom:lattice-family erc721-transfer
+/// @custom:lattice-owns transferFrom(address,address,uint256);
+/// @custom:lattice-owns safeTransferFrom(address,address,uint256);
+/// @custom:lattice-owns safeTransferFrom(address,address,uint256,bytes);
+/// @custom:lattice-touches lattice.storage.ERC721;
+/// @custom:lattice-touches lattice.storage.ERC721Consecutive;
+/// @custom:lattice-seam transferFrom(address,address,uint256) when=ERC721 anyOf=ERC721Pausable replace-base-movement;
+/// @custom:lattice-seam safeTransferFrom(address,address,uint256) when=ERC721 anyOf=ERC721Pausable replace-base-movement;
+/// @custom:lattice-seam safeTransferFrom(address,address,uint256,bytes) when=ERC721 anyOf=ERC721Pausable replace-base-movement;
+/// @custom:lattice-init ERC721PausableInit
 contract ERC721Pausable {
     /// @notice Transfers `tokenId` from `from` to `to`, reverting {IPausable-EnforcedPause} while paused (replaces
     ///         the base `transferFrom`).

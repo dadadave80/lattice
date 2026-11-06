@@ -18,8 +18,14 @@ import {IStarknetGatewayAdapter} from "@lattice/interfaces/crosschain/IStarknetG
 ///      are `nonReentrant`; cancellation authority is re-derived at the facet level because the DIAMOND is the
 ///      L1 sender on the Starknet core. FEE WARNING: the message fee is escrowed by Starknet and NEVER
 ///      refunded, cancellation included.
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source Starknet
+/// @custom:lattice-requires AccessControl|AccessControlEnumerable|AccessControlTimed convention role-management-surface;
+/// @custom:lattice-family none
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches lattice.storage.StarknetGatewayAdapter;
+/// @custom:lattice-touches slot:0x8000000000ab143c06;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init StarknetGatewayAdapterInit
 contract StarknetGatewayAdapter is IStarknetGatewayAdapter {
     /// @inheritdoc IStarknetGatewayAdapter
     function sendMessage(bytes calldata recipient, bytes calldata payload)

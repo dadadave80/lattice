@@ -19,8 +19,14 @@ import {AcrossMessageHandler} from "@lattice/interfaces/external/across/AcrossMe
 ///      `nonReentrant` with strict CEI and exact-amount approval hygiene and is NOT payable (ERC-20 inputs only
 ///      in v1; native ETH users wrap first). Inbound fills are relayer-pushed and optimistic — NOT yet
 ///      UMA-finalized when the hook runs (treat received funds/messages as reversible-until-finalized).
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source Across
+/// @custom:lattice-requires none;
+/// @custom:lattice-family none
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches lattice.storage.AcrossBridgeAdapter;
+/// @custom:lattice-touches slot:0x8000000000ab143c06;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init AcrossBridgeAdapterInit
 contract AcrossBridgeAdapter is IAcrossBridgeAdapter, AcrossMessageHandler {
     /// @inheritdoc IAcrossBridgeAdapter
     function deposit(DepositParams calldata params) external virtual {

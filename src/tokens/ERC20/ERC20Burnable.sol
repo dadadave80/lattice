@@ -9,8 +9,13 @@ import {ERC20BurnableLib} from "@lattice/tokens/ERC20/libraries/ERC20BurnableLib
 /// @notice Stateless Diamond facet adding burn operations to ERC-20.
 /// @dev Inherits ERC20 and delegates burn/burnFrom to ERC20BurnableLib, which lists the differences from
 ///      OpenZeppelin.
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source OpenZeppelin v5.6.1
+/// @custom:lattice-requires ERC20 convention complete-token-surface;
+/// @custom:lattice-family none
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches lattice.storage.ERC20;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init ERC20BurnableInit
 contract ERC20Burnable is IERC20Burnable {
     /// @inheritdoc IERC20Burnable
     function burn(uint256 value) public virtual {

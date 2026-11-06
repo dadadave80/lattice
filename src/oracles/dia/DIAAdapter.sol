@@ -11,8 +11,13 @@ import {DIAAdapterLib} from "@lattice/oracles/dia/DIAAdapterLib.sol";
 ///         with per-feed staleness configuration and WAD-normalized answers.
 /// @dev Stateless delegator — all logic and storage live in {DIAAdapterLib}. Consumers inherit this
 ///      contract and add AccessControl + an initializer.
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source DIA
+/// @custom:lattice-requires AccessControl|AccessControlEnumerable|AccessControlTimed convention role-management-surface;
+/// @custom:lattice-family price-source
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches lattice.storage.DIAAdapter;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init DIAAdapterInit
 contract DIAAdapter is IDIAAdapter {
     /// @inheritdoc IDIAAdapter
     function getFeed(bytes32 key)

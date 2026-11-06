@@ -18,8 +18,16 @@ import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
 ///      facet over ERC20Capped's `_mint`) mints and burns while paused. The sanctioned mint/burn path is a facet
 ///      that calls {PausableLib.checkNotPaused} before {ERC20Lib._mint}/{ERC20Lib._burn}.
 ///      See docs/guides/selector-compatibility.md#token-extension-hook-model.
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source OpenZeppelin v5.6.1
+/// @custom:lattice-requires ERC20 convention complete-token-surface;
+/// @custom:lattice-requires Pausable convention pause-management-surface;
+/// @custom:lattice-family erc20-transfer
+/// @custom:lattice-owns transfer(address,uint256);
+/// @custom:lattice-owns transferFrom(address,address,uint256);
+/// @custom:lattice-touches lattice.storage.ERC20;
+/// @custom:lattice-seam transfer(address,uint256) when=ERC20 anyOf=ERC20Pausable replace-base-movement;
+/// @custom:lattice-seam transferFrom(address,address,uint256) when=ERC20 anyOf=ERC20Pausable replace-base-movement;
+/// @custom:lattice-init ERC20PausableInit
 contract ERC20Pausable {
     /// @notice Moves `value` to `to`, reverting with {IPausable-EnforcedPause} while paused (replaces base transfer).
     function transfer(address to, uint256 value) public virtual returns (bool) {

@@ -15,8 +15,13 @@ import {IWormholeReceiver} from "@lattice/interfaces/external/wormhole/IWormhole
 ///         relayer's delivery callback. EVM chains only.
 /// @dev Stateless delegator — logic/storage live in {WormholeGatewayAdapterLib}. OZ's `immutable` relayer +
 ///      `Ownable` are converted to ERC-7201 storage + AccessControl; `BitMaps` replay → a plain mapping.
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source OpenZeppelin
+/// @custom:lattice-requires AccessControl|AccessControlEnumerable|AccessControlTimed convention role-management-surface;
+/// @custom:lattice-family gateway
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches lattice.storage.WormholeGatewayAdapter;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init WormholeGatewayAdapterInit
 contract WormholeGatewayAdapter is IERC7786GatewaySource, IWormholeReceiver, IWormholeGatewayAdapter {
     /// @inheritdoc IERC7786GatewaySource
     function sendMessage(bytes calldata recipient, bytes calldata payload, bytes[] calldata attributes)

@@ -31,6 +31,7 @@ const decisions: Item = {
     { text: '0014 Shared release deployer', link: '/adr/0014-arachnid-shared-release-deployer' },
     { text: '0015 Canonical Cancun build', link: '/adr/0015-canonical-cancun-build' },
     { text: '0016 Shared initialization', link: '/adr/0016-shared-initialization-identity' },
+    { text: '0018 Composition metadata', link: '/adr/0018-compiler-composition-metadata' },
   ],
 }
 
