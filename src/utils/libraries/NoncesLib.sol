@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {DiamondLib} from "@diamond/libraries/DiamondLib.sol";
 import {INonces} from "@lattice/interfaces/utils/INonces.sol";
 import {InitializableLib} from "@lattice/utils/libraries/InitializableLib.sol";
 
@@ -46,11 +47,18 @@ library NoncesLib {
 
     /// @notice Initializes the Nonces module.
     /// @dev Must be called inside a pre/postInitializer block.
-    ///      Registers the INonces interface for ERC-165 discovery.
+    ///      Registers INonces only when its query selector is routed in this diamond.
     function __Nonces_init() internal {
         bytes32 s = InitializableLib.initializableSlot();
         InitializableLib.checkInitializing(s);
-        registerInterface();
+        if (DiamondLib.selectorToFacet(DiamondLib.diamondStorage(), INonces.nonces.selector) != address(0)) {
+            registerInterface();
+        } else {
+            // Repair false-positive flags left by initializers predating routed-view registration.
+            assembly ("memory-safe") {
+                sstore(ERC165_MAP_INONCES_SLOT, false)
+            }
+        }
     }
 
     //*//////////////////////////////////////////////////////////////////////////

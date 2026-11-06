@@ -17,6 +17,12 @@ interface IAccessControl {
     /// @dev NOTE: Don't confuse with {AccessControlUnauthorizedAccount}.
     error AccessControlBadConfirmation();
 
+    /// @notice A module initializer requested an admin different from the original bootstrap admin.
+    error AccessControlConflictingInitialization(address initialAdmin, address requestedAdmin);
+
+    /// @notice Legacy AccessControl registration exists without a recorded bootstrap admin; use a reviewed migration.
+    error AccessControlLegacyInitialization();
+
     /// @dev Emitted when a new admin role is assigned to govern access for another role.
     /// The DEFAULT_ADMIN_ROLE is the initial admin for all roles, though RoleAdminChanged
     /// is not emitted for this initial state.

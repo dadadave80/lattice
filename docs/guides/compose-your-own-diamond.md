@@ -269,6 +269,35 @@ Fresh pre-major deployments may use intentionally breaking layouts; document tha
 and update the reviewed baseline. If a cut runs a new initializer, use a strictly
 increasing reinitializer version; never rerun the original init or overwrite existing user state.
 
+## Shared initialization
+
+Module initializers share the diamond's state. EIP-712 modules may share a name/version domain, as
+ERC20Permit and ERC20Votes do, but a different name or version reverts with
+`EIP712ConflictingDomain`. An identical domain leaves its stored strings and cache unchanged.
+
+AccessControl records its original bootstrap admin. Repeating that admin is a no-op; repeating the
+initializer never restores a role the admin later revoked or renounced. A different bootstrap admin
+reverts with `AccessControlConflictingInitialization`. Use ordinary role grants and revocations to
+change authority deliberately.
+
+A legacy registered AccessControl instance without the new bootstrap record reverts with
+`AccessControlLegacyInitialization`. Installing the updated facet preserves existing roles, but its
+initializer cannot recover historical bootstrap identity from current role membership. Review a
+custom migration or initialize the new module's own state without replaying AccessControl bootstrap.
+A diamond that has never registered AccessControl may still initialize it for the first time in a
+later reinitializer. Custom legacy initializers that seeded roles without registering the module
+need separate migration review; absence of an ERC-165 flag does not prove arbitrary custom state is
+empty.
+
+Internal EIP-712 and nonce helpers do not require public discovery facets. Their initializers
+advertise `IEIP712` and `INonces` only if `eip712Domain()` and `nonces(address)`, respectively, are
+routed. Running the updated initializer clears a stale legacy claim when its view is absent. Install
+desired views before running their module initializers. The shared recipe guard
+checks advertised interfaces against routes, including immutable and admin variants.
+
+See [the initialization decision](../adr/0016-shared-initialization-identity.md) for legacy upgrade
+constraints and the alternatives considered.
+
 ## Composition hazards
 
 Every facet in a diamond runs as one contract at one address, with one balance. Modules ported from standalone
