@@ -60,6 +60,9 @@ expect fail "missing compiler AST" 'del(.ast)'
 expect fail "multiple JSON documents in one artifact" '., {}'
 expect fail "event indexed encoding differs from its ABI" '.ast.nodes[1].parameters.parameters[0].indexed = true'
 expect pass "anonymous event with matching ABI encoding" '.abi[1].anonymous = true | .ast.nodes[1].anonymous = true'
+expect pass "canonical tuple array signature" '
+ .abi += [{"type":"error","name":"TupleError","inputs":[{"type":"tuple[]","components":[{"type":"uint256"},{"type":"address"}]}]}]
+ | .ast.nodes += [{"nodeType":"ErrorDefinition","name":"TupleError","errorSelector":"3b048a8c"}]'
 expect fail "distinct signatures with one error selector" '
  .abi += [{"type":"error","name":"burn","inputs":[{"name":"amount","type":"uint256"}]},
           {"type":"error","name":"collate_propagate_storage","inputs":[{"name":"value","type":"bytes16"}]}]
