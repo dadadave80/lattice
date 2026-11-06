@@ -335,7 +335,10 @@ contract CompositionMetadataTest is Test {
         string[] memory entries = _split(records, bytes1(";"));
         for (uint256 i; i < entries.length; ++i) {
             string memory entry = entries[i];
-            if (_eq(entry, "none") || (_eq(name, "MultiInit") && _eq(entry, "caller-defined"))) continue;
+            if (
+                _eq(entry, "none")
+                    || ((_eq(name, "MultiInit") || _eq(name, "ReinitMultiInit")) && _eq(entry, "caller-defined"))
+            ) continue;
             string[] memory words = _split(entry, bytes1(" "));
             if (qualified && (words.length < 3 || (!_eq(words[1], "hard") && !_eq(words[1], "convention")))) {
                 revert InvalidTag(name, "requirement", entry);
