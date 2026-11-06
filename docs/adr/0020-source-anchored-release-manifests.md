@@ -27,7 +27,8 @@ readiness. A committed manifest also cannot contain its own future Git commit ha
 - Schema-v1 release identities are offline and chain independent. Local constructor execution
   supplies immutable-adjusted runtime hashes; explicit constructor arguments, CREATE2 salts,
   initcode hashes, selector commitments and the proxy initcode hash are included.
-- `lattice.commit` names an existing source commit. Compiler-input witnesses contain standard-JSON
+- `lattice.commit` names an already-merged source commit retained by `origin/dev` or `origin/main`,
+  independently of a feature branch's ancestry. Compiler-input witnesses contain standard-JSON
   language, sources and settings, with the actual compiler version. A manifest-only successor may
   contain the file; a release tag must preserve those build inputs. Sources and metadata freeze
   there. IPFS/CBOR metadata remains enabled.

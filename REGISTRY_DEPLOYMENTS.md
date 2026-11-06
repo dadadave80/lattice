@@ -216,7 +216,10 @@ Their source/input hashes and block identifier are test sentinels, not release o
 
 `lattice.commit` is the **existing source commit**, not the future commit containing its manifest.
 A manifest-only successor may commit the output. For a real release, freeze an already-merged
-source commit before that successor; the release tag must descend from the source commit and preserve its build inputs. IPFS/CBOR metadata stays enabled: source comments, NatSpec,
+source commit retained by `origin/dev` or `origin/main` before that successor; being an ancestor
+of the current feature HEAD is insufficient after squash merging. The release tag must preserve
+those build inputs. Existing tags with different inputs (including v0.5.0) cannot be relabelled as
+a fresh build; use their historical source or explicit fixture mode. IPFS/CBOR metadata stays enabled: source comments, NatSpec,
 paths and compiler settings can change addresses. Regenerate drafts after edits; preserve frozen
 release files. [ADR 0020](docs/adr/0020-source-anchored-release-manifests.md) records this boundary.
 

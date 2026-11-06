@@ -9,11 +9,15 @@ version=$2 tag=$3 owner=$4 publication=$5 destination=$6
 [[ "$owner" =~ ^0x[0-9a-fA-F]{40}$ ]] && [[ ! "$owner" =~ ^0x0{40}$ ]] || fail 'explicit nonzero initial owner required'
 case "$publication:$tag" in fixture:fixture/*) ;; release:v"$version") ;; *) fail 'use fixture/<name> or the exact release tag v<version>' ;; esac
 [[ "$destination" == deployments/* ]] && [[ "$destination" != *..* ]] || fail 'destination must be below deployments/'
+inputs=(src script test/helpers/ArachnidProxy.sol lib foundry.toml foundry.lock remappings.txt .github/actions/foundry-setup/action.yml)
 if [ "$publication" = release ]; then
-    grep -q "VERSION = \"$version\"" src/LatticeVersion.sol || fail 'release version differs from LatticeVersion'
+    grep -Fq "VERSION = \"$version\"" src/LatticeVersion.sol || fail 'release version differs from LatticeVersion'
+    if git rev-parse --verify "refs/tags/$tag" >/dev/null 2>&1; then
+        git diff --quiet "$tag" HEAD -- "${inputs[@]}" || fail 'existing tag has different build inputs; use its historical source or explicit fixture mode'
+    fi
+    ./script/release/source-boundary.sh "$(git rev-parse HEAD)"
 fi
 # The source witness is an existing commit. A later manifest-only commit may contain its output.
-inputs=(src script test/helpers/ArachnidProxy.sol lib foundry.toml foundry.lock remappings.txt .github/actions/foundry-setup/action.yml)
 git diff --quiet HEAD -- "${inputs[@]}" || fail 'commit build-input changes before freezing a manifest'
 [ -z "$(git ls-files --others --exclude-standard -- "${inputs[@]}")" ] || fail 'commit untracked build inputs before freezing a manifest'
 ./script/check-release-build.sh

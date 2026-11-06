@@ -4,7 +4,11 @@ set -euo pipefail
 cd "$(dirname "$0")/../.."
 fail() { echo "manifest: $*" >&2; exit 1; }
 [ "$#" -ge 1 ] && [ "$#" -le 2 ] || fail 'usage: validate-manifest.sh <release.json> [chain.json]'
+json_object() {
+    jq -e -s 'length == 1 and (.[0] | type == "object")' "$1" >/dev/null || fail "invalid JSON object: $1"
+}
 release=$1
+json_object "$release"
 jq -e --slurpfile schema deployments/schema/release.schema.json -f script/release/validate-schema.jq "$release" >/dev/null || fail "invalid release schema: $release"
 jq -e '
   .initialOwner != "0x0000000000000000000000000000000000000000" and
@@ -46,6 +50,7 @@ while IFS=$'\t' read -r name kind at salt init_hash args name_hash selectors_has
 done < <(jq -r '.contracts[] | [.name,.kind,(.address|ascii_downcase),.salt,.initCodeHash,(.constructorArgs|ascii_downcase),.nameHash,.selectorsHash] | @tsv' "$release")
 [ "$#" = 2 ] || exit 0
 chain=$2
+json_object "$chain"
 jq -e --slurpfile schema deployments/schema/chain.schema.json -f script/release/validate-schema.jq "$chain" >/dev/null || fail "invalid chain schema: $chain"
 release_hash=$(jq -cS . "$release" | tr -d '\n' | cast keccak)
 jq -e --slurpfile release "$release" --arg hash "$release_hash" '

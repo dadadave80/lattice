@@ -4,20 +4,35 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 mode=${1:-golden}
 [ "$mode" = golden ] || [ "$mode" = --schema-only ] || { echo 'usage: check-release-manifests.sh [--schema-only]' >&2; exit 1; }
-root=$(pwd)
+root=$(pwd -P)
+if [ -n "${RELEASE_ASSET_DIR:-}" ]; then
+    mkdir -p "$RELEASE_ASSET_DIR"
+    RELEASE_ASSET_DIR=$(cd "$RELEASE_ASSET_DIR" && pwd -P)
+    case "$RELEASE_ASSET_DIR" in
+        "$root"|"$root"/*) echo 'golden: release asset staging must be outside the checkout so forge clean preserves frozen inputs' >&2; exit 1 ;;
+    esac
+    export RELEASE_ASSET_DIR
+fi
 temporary=
 cleanup() { if [ -n "$temporary" ]; then git worktree remove --force --force "$temporary" >/dev/null; fi; }
 trap cleanup EXIT
+classify() {
+    jq -e -s 'length == 1 and (.[0] | type == "object")' "$1" >/dev/null || {
+        echo "golden: invalid JSON object candidate: $1" >&2; return 1;
+    }
+    jq -r 'has("chain")' "$1"
+}
 count=0
 while IFS= read -r manifest; do
-    jq -e 'has("chain") | not' "$manifest" >/dev/null || continue
+    chain_candidate=$(classify "$manifest")
+    [ "$chain_candidate" = false ] || continue
     ./script/release/validate-manifest.sh "$manifest"
     jq -e '.publication == "release"' "$manifest" >/dev/null || { echo 'golden: keep synthetic fixtures under test/fixtures' >&2; exit 1; }
     count=$((count + 1))
     if [ "$mode" = golden ]; then
         commit=$(jq -r '.lattice.commit' "$manifest")
         git cat-file -e "$commit^{commit}"
-        git merge-base --is-ancestor "$commit" HEAD || { echo "golden: freeze an already-merged source commit: $manifest" >&2; exit 1; }
+        ./script/release/source-boundary.sh "$commit"
         if [ "$(jq -r '.publication' "$manifest")" = release ]; then
             tag=$(jq -r '.lattice.tag' "$manifest")
             # A release PR may precede its tag. An existing tag must preserve the exact frozen inputs.
@@ -52,7 +67,8 @@ if [ "$count" = 0 ]; then
 fi
 # Reject orphan chain files rather than silently omitting validation.
 while IFS= read -r status; do
-    jq -e 'has("chain")' "$status" >/dev/null || continue
+    chain_candidate=$(classify "$status")
+    [ "$chain_candidate" = true ] || continue
     matched=false
     while IFS= read -r manifest; do
         if jq -e --slurpfile status "$status" 'has("chain") == false and .lattice == $status[0].lattice' "$manifest" >/dev/null; then matched=true; fi

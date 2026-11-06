@@ -46,4 +46,46 @@ reject_chain invented-contract '.contracts[2].address = "0x000000000000000000000
 reject_chain unobserved-verification '.contracts[2] += {deployed:null,verified:true,verifier:"sourcify"}'
 reject_chain verifier-without-verification '.contracts[2] += {verified:false,verifier:"sourcify"}'
 reject_chain latest-without-registration '.contracts[2] += {latest:true,registered:false}'
-echo 'manifest fixtures: 20 invalid mutations rejected'
+# Isolated consumer-candidate fixture: old `jq ... || continue` silently accepted this malformed file.
+fixture_gate=$temporary/candidate-gate
+mkdir -p "$fixture_gate/script/release" "$fixture_gate/deployments"
+cp script/check-release-manifests.sh "$fixture_gate/script/"
+printf '#!/usr/bin/env bash\nexit 0\n' > "$fixture_gate/script/release/validate-manifest.sh"
+chmod +x "$fixture_gate/script/release/validate-manifest.sh"
+bash "$fixture_gate/script/check-release-manifests.sh" --schema-only > "$temporary/candidate-baseline.log" 2>&1
+if RELEASE_ASSET_DIR="$fixture_gate/out/release-assets" bash "$fixture_gate/script/check-release-manifests.sh" --schema-only > "$temporary/asset-boundary.log" 2>&1; then
+    echo 'manifest gate accepted asset staging under its forge output' >&2; exit 1
+fi
+grep -q 'release asset staging must be outside the checkout' "$temporary/asset-boundary.log"
+printf '{"schemaVersion":1,\n' > "$fixture_gate/deployments/release-broken.json"
+if bash "$fixture_gate/script/check-release-manifests.sh" --schema-only > "$temporary/candidate-invalid.log" 2>&1; then
+    echo 'manifest gate silently skipped malformed committed candidate' >&2; exit 1
+fi
+grep -q 'invalid JSON object candidate' "$temporary/candidate-invalid.log"
+# An existing published tag cannot be relabelled with a later source tree (the v0.5.0 boundary).
+fixture_repo=$temporary/tag-boundary
+mkdir -p "$fixture_repo/script" "$fixture_repo/src"
+cp script/release-manifest.sh "$fixture_repo/script/"
+printf 'string constant VERSION = "99.0.0";\n' > "$fixture_repo/src/LatticeVersion.sol"
+git -C "$fixture_repo" init -q
+git -C "$fixture_repo" add .
+git -C "$fixture_repo" -c user.name=Fixture -c user.email=fixture@example.test -c commit.gpgsign=false commit -qm source
+git -C "$fixture_repo" -c tag.gpgSign=false tag v99.0.0
+retained_commit=$(git -C "$fixture_repo" rev-parse HEAD)
+git -C "$fixture_repo" update-ref refs/remotes/origin/dev "$retained_commit"
+printf '// later source\n' >> "$fixture_repo/src/LatticeVersion.sol"
+git -C "$fixture_repo" add .
+git -C "$fixture_repo" -c user.name=Fixture -c user.email=fixture@example.test -c commit.gpgsign=false commit -qm later
+feature_commit=$(git -C "$fixture_repo" rev-parse HEAD)
+git -C "$fixture_repo" -c user.name=Fixture -c user.email=fixture@example.test -c commit.gpgsign=false commit --allow-empty -qm feature-child
+git -C "$fixture_repo" merge-base --is-ancestor "$feature_commit" HEAD
+./script/release/source-boundary.sh "$retained_commit" "$fixture_repo"
+if ./script/release/source-boundary.sh "$feature_commit" "$fixture_repo" > "$temporary/source-boundary.log" 2>&1; then
+    echo 'source boundary accepted an unmerged feature ancestor' >&2; exit 1
+fi
+grep -q 'already-merged commit retained by origin/dev or origin/main' "$temporary/source-boundary.log"
+if bash "$fixture_repo/script/release-manifest.sh" generate 99.0.0 v99.0.0 0x000000000000000000000000000000000000bEEF release deployments/release-99.0.0.json > "$temporary/tag-boundary.log" 2>&1; then
+    echo 'manifest fixture accepted a historical tag with different build inputs' >&2; exit 1
+fi
+grep -q 'existing tag has different build inputs' "$temporary/tag-boundary.log"
+echo 'manifest fixtures: 20 invalid mutations, malformed committed candidate and mismatched historical tag, unmerged source and unsafe asset staging rejected'
