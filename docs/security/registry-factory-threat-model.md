@@ -173,7 +173,8 @@ hardening change, as corroboration on a node. With the current ABI the `deploy` 
   with correct errors as the minimum it accepts. This change ships that minimum, as the approved R-1/R-2
   scope asked: every exporter call gets at most 100,000 gas and 8,192 bytes of return, and every malformed
   return is `NotERC8153` at `register` and `SelectorDrift` on a read. Read gas is unchanged (the
-  comparison measured the stored blob at about 1.7k more per read and 40k to 60k more per registration).
+  original comparison measured the stored blob at about 1.7k more per cold read and 40k to 60k more per
+  registration; the current-toolchain cold/warm refresh is below).
   The residual is the curator's to manage: a registered exporter whose answer depends on its own state, or
   on anything that can change, turns every read and every deploy that resolves it into `SelectorDrift`
   until a new version is registered. The caps bound what such an exporter costs a caller; nothing
@@ -240,14 +241,15 @@ unchanged, so `MUTANTS="823"` re-runs a survivor; any edit to either contract re
 
 ## Gas and size baselines
 
-`snapshots/LatticeCoreGasTest.json` holds the gated baseline, produced under `FOUNDRY_PROFILE=ci`
-(solc 0.8.36, optimizer 1,000,000 runs, `via_ir = false`, EVM osaka, Foundry 1.8.5). Forge runs each
+`snapshots/LatticeCoreGasTest.json` holds the current gated baseline under `FOUNDRY_PROFILE=ci`
+(solc 0.8.36, optimizer 1,000,000 runs, `via_ir = false`, Cancun, Foundry 1.9.0). Forge runs each
 top-level call from a test as its own transaction (`isolate`, on by default), so state-changing calls are
 measured as whole transactions from cold state (21,000 intrinsic plus calldata plus execution) and view
 calls as cold execution. Foundry's dynamic test linking turns a `new` written in a test file into an
 unmetered cheatcode deployment, so the singleton deployments go through an explicit CREATE.
 
-The hardening change moved the baseline as follows (before, after):
+The original hardening change moved the baseline as follows (2026-10-09, Foundry 1.8.5/Osaka;
+historical before/after values, rather than the current release-target measurements):
 
 | Item | Before | After |
 | --- | --- | --- |
@@ -266,3 +268,38 @@ recipe hash (about 2,300 gas for a loupe-only recipe, about 20,000 for the gover
 vault costs 175,732 more than the 8 + 6 recipe: six more registry lookups plus the exclusion filter over 25
 selectors. `LatticeCoreDesignBenchTest` logs the prototype measurements the design comparison uses
 (`forge test --match-contract LatticeCoreDesignBenchTest -vv`).
+
+### Current cold and warm measurements
+
+The paired helpers measure execution gas inside one transaction, excluding intrinsic and calldata gas.
+Each workload starts cold. Its second operation reuses warmed accounts and slots. Fresh-deployment pairs
+use the same recipe with distinct salts and assert distinct live diamonds with equal runtime hashes; the
+idempotent pair instead requires the same returned address. These figures are not interchangeable with
+the whole-transaction snapshots above.
+
+| Workload | Cold execution | Warm execution |
+| --- | ---: | ---: |
+| Registry selector read, 4 / 16 / 64 selectors | 15,625 / 20,484 / 40,008 | 4,623 / 9,487 / 29,073 |
+| Loupe deployment, custom / pinned / latest | 1,580,084 / 1,591,916 / 1,598,527 | 1,575,035 / 1,578,380 / 1,580,991 |
+| 8x16 deployment, custom / mixed / pinned | 5,676,582 / 5,724,185 / 5,760,102 | 5,650,566 / 5,666,153 / 5,678,411 |
+| 16x32 deployment, custom / pinned | 16,779,895 / 16,935,911 | 16,728,007 / 16,786,019 |
+| Governed vault, custom / mixed / all registry | 6,817,007 / 6,850,058 / 7,031,884 | 6,773,232 / 6,756,236 / 6,902,341 |
+| Loupe pinned, first deployment / idempotent reuse | 1,591,918 | 2,460 (same diamond) |
+
+The warmed mixed vault is cheaper than its warmed custom equivalent in this workload; the cold mixed
+path remains more expensive. Registry gas depends on batching and recipe shape, while verification and
+discovery remain its main purpose.
+
+The selector prototypes now include storage-based owner checks, the resolver event and the same bounded
+registration export decoder. At 16 selectors a blob costs 198,429 registration execution gas versus
+153,325 live, and reads cost 22,843/9,346 cold/warm versus 20,484/9,487 live. A warm-only stream needs
+320 reads to offset the extra setup; including one cold read, one burst needs 338 total reads. A normal
+one-cold-read-per-deployment workload has no gas break-even. The array is more expensive to register and
+read at this size. Prototype APIs remain evaluation subsets, not alternative production registries.
+
+`test_SelectorPrototypesPreserveExporterBounds` checks malformed, empty, looping and return-bomb exports
+against all three registration paths. `LatticeCoreDesignBenchTest` also retains the real 14-facet,
+122-selector vault hash measurement (17,269 gas) and the 16x32 loupe-first/last comparison
+(16,775,542/17,075,990). ADR [0007](../adr/0007-registry-trust-model.md) records the selected outcomes;
+the seven decision matrices and estimates are linked from #176 and its evidence PR. This update changes
+no production contract, interface or bytecode and claims no new mutation-testing score or audit.
