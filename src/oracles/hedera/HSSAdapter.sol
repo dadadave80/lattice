@@ -10,7 +10,7 @@ import {HSSAdapterLib} from "@lattice/oracles/hedera/HSSAdapterLib.sol";
 /// @notice Diamond facet for Hedera Schedule Service automation: scheduled (self-)calls paid by the diamond,
 ///         plus contract-key signatures on native scheduled transactions.
 /// @dev Stateless delegator over HSSAdapterLib. Only meaningful on Hedera.
-/// @custom:lattice-version 0.1.0
+/// @custom:lattice-version 0.2.0
 /// @custom:lattice-source Hedera
 contract HSSAdapter is IHSSAdapter {
     /// @inheritdoc IHSSAdapter

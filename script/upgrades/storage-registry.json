@@ -1728,6 +1728,24 @@
           "offset": 0,
           "name": "_schedules",
           "type": "t_mapping(t_bytes32,t_address)"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "_generations",
+          "type": "t_mapping(t_bytes32,t_uint256)"
+        },
+        {
+          "slot": "2",
+          "offset": 0,
+          "name": "_activeJobId",
+          "type": "t_bytes32"
+        },
+        {
+          "slot": "3",
+          "offset": 0,
+          "name": "_activeGeneration",
+          "type": "t_uint256"
         }
       ]
     },
@@ -4503,6 +4521,16 @@
         {
           "source": "src/access/libraries/AccessManagedLib.sol",
           "constant": "ERC165_MAP_IACCESSMANAGED_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x4d10dd54",
+      "slot": "0xd8059154e8e96e6eecaf07fe11ba32eaf97db00d355f926132173527e14d213a",
+      "sources": [
+        {
+          "source": "src/oracles/hedera/HSSAdapterLib.sol",
+          "constant": "ERC165_MAP_IHSSADAPTERRECOVERY_SLOT"
         }
       ]
     },

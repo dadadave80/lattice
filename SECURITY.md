@@ -274,10 +274,12 @@ original attack against the fixed code; run one with
 
 ### Open
 
-- **HSSAdapter `scheduleSelfCall` jobId strand.** A self-call schedule that is
-  deleted, expires unfired, or cannot be paid for at fire time holds its
-  `jobId` until a diamond cut
-  ([#226](https://github.com/dadadave80/lattice/issues/226)).
+- **HSSAdapter native callback identity.** Generation-bound cancellation now
+  recovers deleted, unfired or unpaid jobs locally, with offline regressions.
+  Native payer-as-sender behavior remains unverified; legacy raw payloads can
+  still execute when native deletion fails. See the
+  [recovery guide](docs/guides/hedera.md#recovering-scheduled-self-call-jobs)
+  and [#226](https://github.com/dadadave80/lattice/issues/226).
 - **UniswapV3 adapter exit (accepted).** `rebalance()` can allocate into the
   swap-free position but never recall from it, so capital allocated there
   reaches redeemers only after the admin's `emergencyWithdraw`, the only exit;

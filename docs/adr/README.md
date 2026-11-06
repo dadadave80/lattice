@@ -22,6 +22,7 @@ the linked issue or pull request; a record is the outcome, not a spec.
 | [0014](0014-arachnid-shared-release-deployer.md) | Shared releases use only the Arachnid deterministic-deployment proxy | Accepted |
 | [0015](0015-canonical-cancun-build.md) | Canonical releases target Cancun with one pinned build configuration | Accepted |
 | [0016](0016-shared-initialization-identity.md) | Shared bootstrap identity is consistent and interface claims follow routed selectors | Accepted |
+| [0017](0017-hss-generation-recovery.md) | HSS job recovery invalidates generations before native deletion | Accepted locally; native sender unverified |
 | [0020](0020-source-anchored-release-manifests.md) | Release identities freeze an existing source commit; chain observations stay separate | Accepted |
 | [0022](0022-native-create2-release-libraries.md) | Shared external libraries use native CREATE2 linking and trusted runtime checks | Accepted |
 
