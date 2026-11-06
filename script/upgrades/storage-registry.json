@@ -135,6 +135,18 @@
           "offset": 0,
           "name": "_roles",
           "type": "t_mapping(t_bytes32,t_struct(RoleData)_storage)"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "_initialAdmin",
+          "type": "t_address"
+        },
+        {
+          "slot": "1",
+          "offset": 20,
+          "name": "_initialized",
+          "type": "t_bool"
         }
       ]
     },
