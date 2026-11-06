@@ -334,6 +334,8 @@
 7	0	_timelockIds	t_mapping(t_bytes32,t_uint256)
 8	0	_proposalTimelockIds	t_mapping(t_uint256,t_bytes32)
 9	0	_governanceCall	t_mapping(t_bytes32,t_uint256)
+10	0	_governedCutFacet	t_address
+10	20	_allowExternalTimelockWithGovernedCut	t_bool
 
 ### HSSAdapterStorage @ erc7201:lattice.storage.HSSAdapter (slot 0x12fa09b7b2cb13ace416911567e16cefd04261b5db45857ec33ecae7c1298700)
 0	0	_schedules	t_mapping(t_bytes32,t_address)
