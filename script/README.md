@@ -19,10 +19,11 @@ directly with `forge script` (usage is in its NatSpec header) or it is only impo
 | `config/` (auth) | Runs a command with `FORGE_AUTH` built from a Foundry keystore | `keychain-auth.sh` | used by every demo target when `KEYSTORE=` is set |
 | `config/hedera/` | Hedera tooling: the pinned-Foundry wrapper and the day-0 network probe ([docs/guides/hedera.md](../docs/guides/hedera.md)) | `forge-hedera.sh`, `ProbeHedera.s.sol` | none |
 | `deploy/` | Canonical release and singleton deploys | `DeployRelease.s.sol` (all inventory facets/inits plus registry and factory), `DeployFactory.s.sol` (replacement factory), `DeployAdapters.s.sol`; `check-atomic-deploy.sh` | `check-atomic-deploy` |
+| `recipes/` | Compiler-backed descriptive recipe catalog, ordered checked plans and native export fixtures | `GenerateRecipes.s.sol`, `type-description.jq`, `check-catalog.sh`, `test-catalog.sh`, `test-export.sh`; root wrapper `recipes.sh` | `recipes`; `scripts-check` |
 | `release/` | Frozen identities, schema validation, read-only chain observations and source verification | `GenerateManifest.s.sol`, `ManifestReader.sol`, `JsonRecordWriter.sol` (bounded offline record/object serialization), `ObserveManifest.s.sol`, `validate-manifest.sh`, `source-boundary.sh`, `package-build-info.sh`, `prepare-verification.sh`, `chain-evidence.sh`, `sourcify.sh`; root wrappers `release-manifest.sh`, `release-status.sh`, `release-verify.sh`, `release-notes.sh` (compare two frozen manifests), `check-release-notes.sh` (select a canonical comparison), `test-release-notes.sh` fixtures, `check-release-manifests.sh`, `check-release-reproducibility.sh`, mutation drivers `test-release-manifest.sh`, `test-account-release-manifest.sh`, `test-release-verification.sh` and actual-linker gate `test-release-script-simulation.sh` | `release-manifest`; `release-status`; `release-verify`; `release-manifests`; `release-notes` |
 | `docs/` | Documentation site build: stages forge doc output and the guides into `docs/site`, builds it with Vocs and checks its links | `build.sh`, `check-links.sh` | `doc`, `doc-serve` |
 | `governance/` | Upgrade tooling for live diamonds | `UpgradeDiamond.s.sol` (CreateX deploy plus governed-cut proposal); `ProposeGovernedCut.s.sol` (OpenZeppelin Defender payload for a one-selector cut, smoke-tested in `test/unit/ProposeGovernedCutScriptTest.t.sol`) | none |
-| `lib/` | Imported helpers, not run directly | `ArachnidDeployer.sol` (shared release CREATE2), `CreateXDeployer.sol` (CREATE3 and legacy raw CREATE2), `FacetInventory.sol` (release facets; drives `ExportSelectorsParityTest`), `InitInventory.sol` (stateless release inits; source parity checked), `AccountReleaseInventory.sol` (shared account blueprints and constructor-bound EntryPoint instances), `CoreCompositionMetadata.sol` (pinned upstream-only composition records), `LibraryInventory.sol` (native CREATE2-linked shared dependencies), `ReleaseVersion.sol` (deployment/observer semver parser) | none |
+| `lib/` | Imported helpers, not run directly | `ArachnidDeployer.sol` (shared release CREATE2), `CreateXDeployer.sol` (CREATE3 and legacy raw CREATE2), `FacetInventory.sol` (release facets; drives `ExportSelectorsParityTest`), `InitInventory.sol` (stateless release inits; source parity checked), `AccountReleaseInventory.sol` (shared account blueprints and constructor-bound EntryPoint instances), `CoreCompositionMetadata.sol` (pinned upstream-only composition records), `LibraryInventory.sol` (native CREATE2-linked shared dependencies), `ReleaseVersion.sol` (deployment/observer semver parser), `RecipeSpec.sol` (documented script DTO), `RecipeInventory.sol` (canonical recipe sources), `RecipePlanLib.sol` / `TokenRecipePlans.sol` (checked cut declarations), `RecipeSpecLib.sol` (descriptive init/authority data constructors) | none |
 | `upgrades/` | ERC-7201 storage-layout guard: `check-storage-layout.sh` runs the storage-safety Action's checker (`.github/actions/storage-layout/`) with Lattice's probe, baseline and optional reviewed resets file (`storage-layout.resets`) | `check-storage-layout.sh`, `StorageLayoutProbe.sol`, `storage-layout.baseline`, `storage-registry.sh`, `storage-registry.json` | `storage-check`, `storage-update` |
 
 Moving a file breaks README permalinks and the `@lattice-script/` imports in `test/`, so update both
@@ -71,3 +72,37 @@ The supported local assembly convention is adjacent literal `mstore(0, selector)
 Known return-data bubbling, empty reverts and Solidity's built-in `Panic(uint256)` are separate accepted
 shapes; every other assembly revert fails until the checker is extended.
 `script/test-error-event-catalog.sh` covers these guards with positive and negative fixtures.
+
+## Recipe data and checked composition
+
+Run `make recipes` with the pinned toolchain to write `out/recipes.json`. The command uses the canonical
+CI profile and no RPC or broadcast. It collects all canonical recipe classes in inventory order through
+bounded native Forge executions, validates every record against compiler ABIs, then atomically replaces
+the output. A failed record or validation leaves an existing catalog intact. Source commit and dirty-tree
+state are captured before generated outputs. CI runs the same export and retains a `recipe-catalog`
+artifact; its format job also runs the isolated exporter/catalog regression fixtures. Demos and abstract
+helpers have explicit dispositions; they are not silently treated as canonical deploy profiles.
+
+[`RecipeSpec.sol`](lib/RecipeSpec.sol) documents the machine data: ordered facet cuts and selector
+selection, active seam participants/allowed final owners/reasons, proxy and builder-output kinds,
+complete nested initializer trees, parameter names/types/units/examples/rules, assigned authorities and
+public deployment contexts. Account constructor EntryPoints are separate from runtime owner/salt inputs;
+`accountProfiles` records the six canonical EntryPoint-specific release bindings. ERC3643 has one builder
+ABI and two explicit temporary-approval profiles. Policy-only bundle initialization is not full module
+configuration; compiler composition metadata retains those internal phases.
+
+Small integers (including enum values and ordinary parent indices) are native JSON numbers; large
+integers, including the root-parent uint256 sentinel, are **decimal JSON strings**.
+Addresses, bytes32, dynamic bytes and strings retain their ABI types through native named serialization
+and an exact ABI-byte roundtrip. Use a lossless JSON parser and preserve integer strings or use
+arbitrary-precision arithmetic when consuming the output; do not assume every integer can safely pass
+through a JavaScript number. Binding strings are source descriptions, never executable expressions. Examples are illustrative inputs or named templates,
+not verified target-chain configuration.
+
+Every exclusion, partial export omission or replacement cites a declared seam. Builders check the whole
+plan before resolving shared implementations, then validate ordered selector ownership. The typed test
+suites compare actual cuts and initializer trees with the data and inspect assembled proxy routes; a
+separate fixed selector-owner oracle detects correlated mistakes in plans and allowed-owner declarations.
+The checked builder rejects ERC1363 together with ERC20Pausable, ERC20Votes or GovernedVault under
+ADR0009. Arbitrary authorized diamond cuts can bypass this script policy. External assets/providers,
+EntryPoints, verifiers/circuits and existing-state migration requirements remain caller obligations.

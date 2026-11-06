@@ -4,6 +4,21 @@ pragma solidity ^0.8.30;
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {DeployERC721} from "@lattice-script/base/tokens/DeployERC721.s.sol";
 import {TokenDeployBase} from "@lattice-script/base/tokens/TokenDeployBase.s.sol";
+import {RecipePlanLib} from "@lattice-script/lib/RecipePlanLib.sol";
+import {
+    RecipeAuthority,
+    RecipeDeploymentContext,
+    RecipeFacet,
+    RecipeInitOutputKind,
+    RecipeInitStep,
+    RecipeParameter,
+    RecipeProxyKind,
+    RecipeSeam,
+    RecipeSpec,
+    RecipeVariant
+} from "@lattice-script/lib/RecipeSpec.sol";
+import {RecipeSpecLib} from "@lattice-script/lib/RecipeSpecLib.sol";
+import {TokenRecipePlans} from "@lattice-script/lib/TokenRecipePlans.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlInit} from "@lattice/access/AccessControlInit.sol";
 import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
@@ -37,31 +52,8 @@ contract DeployERC721Enumerable is TokenDeployBase {
         public
         returns (FacetCut[] memory cuts, address[] memory inits, bytes[] memory initCalldatas)
     {
-        (FacetCut[] memory baseCuts, address baseInit, bytes memory baseCalldata) = _erc721Base(name_, symbol_);
-
-        address facet = _facet("ERC721Enumerable");
-        // The base ERC-721 already routes these three; replace them so every transfer updates the lists.
-        bytes4[] memory movement = new bytes4[](3);
-        movement[0] = ERC721Enumerable.transferFrom.selector;
-        movement[1] = bytes4(keccak256("safeTransferFrom(address,address,uint256)"));
-        movement[2] = bytes4(keccak256("safeTransferFrom(address,address,uint256,bytes)"));
-
-        cuts = new FacetCut[](baseCuts.length + 2);
-        for (uint256 i; i < baseCuts.length; ++i) {
-            cuts[i] = baseCuts[i];
-        }
-        // The three enumeration views are new.
-        cuts[baseCuts.length] = _cutExcept(facet, movement);
-        cuts[baseCuts.length + 1] =
-            FacetCut({facetAddress: facet, action: FacetCutAction.Replace, functionSelectors: movement});
-
-        inits = new address[](2);
-        inits[0] = baseInit;
-        inits[1] = _init("ERC721EnumerableInit");
-
-        initCalldatas = new bytes[](2);
-        initCalldatas[0] = baseCalldata;
-        initCalldatas[1] = abi.encodeCall(ERC721EnumerableInit.init, ());
+        cuts = _materialize(_cutPlan(0), _recipeSeams(0));
+        (inits, initCalldatas) = _buildInitializers(name_, symbol_);
     }
 
     /// @notice Deploys an enumerable ERC-721 token diamond (broadcasting entrypoint for `forge script ... --broadcast`).
@@ -78,15 +70,8 @@ contract DeployERC721Enumerable is TokenDeployBase {
         public
         returns (FacetCut[] memory cuts, address[] memory inits, bytes[] memory initCalldatas)
     {
-        (FacetCut[] memory defCuts, address[] memory defInits, bytes[] memory defCalldatas) = buildCuts(name_, symbol_);
-
-        cuts = new FacetCut[](defCuts.length + 2);
-        for (uint256 i; i < defCuts.length; ++i) {
-            cuts[i] = defCuts[i];
-        }
-        cuts[defCuts.length] = _cut(_facet("AccessControl"));
-        cuts[defCuts.length + 1] = _cut(_facet("AccessControlDiamondCut"));
-
+        cuts = _materialize(_cutPlan(1), _recipeSeams(1));
+        (address[] memory defInits, bytes[] memory defCalldatas) = _buildInitializers(name_, symbol_);
         inits = new address[](defInits.length + 2);
         for (uint256 i; i < defInits.length; ++i) {
             inits[i] = defInits[i];
@@ -110,5 +95,162 @@ contract DeployERC721Enumerable is TokenDeployBase {
             buildCuts(name_, symbol_, admin);
         token = _assembleMulti(cuts, inits, initCalldatas);
         vm.stopBroadcast();
+    }
+
+    /// @dev Resolves only the original ordered initializer sequence after complete-plan validation.
+    function _buildInitializers(string memory name_, string memory symbol_)
+        internal
+        returns (address[] memory inits, bytes[] memory initCalldatas)
+    {
+        (address baseInit, bytes memory baseCalldata) = _erc721BaseInit(name_, symbol_);
+        inits = new address[](2);
+        inits[0] = baseInit;
+        inits[1] = _init("ERC721EnumerableInit");
+
+        initCalldatas = new bytes[](2);
+        initCalldatas[0] = baseCalldata;
+        initCalldatas[1] = abi.encodeCall(ERC721EnumerableInit.init, ());
+    }
+
+    function _cutPlan(uint256 variant) internal pure returns (RecipeFacet[] memory facets) {
+        require(variant < 2, "DeployERC721Enumerable: unknown variant");
+        RecipeFacet[] memory extension = new RecipeFacet[](variant == 0 ? 2 : 4);
+        extension[0] = RecipePlanLib.except("ERC721Enumerable", _seamSelectors());
+        extension[1] = RecipePlanLib.only("ERC721Enumerable", FacetCutAction.Replace, _seamSelectors());
+        if (variant == 1) {
+            extension[2] = RecipePlanLib.all("AccessControl");
+            extension[3] = RecipePlanLib.all("AccessControlDiamondCut");
+        }
+        return RecipePlanLib.append(TokenRecipePlans.erc721(false), extension);
+    }
+
+    function _seamSelectors() private pure returns (bytes4[] memory selectors) {
+        selectors = new bytes4[](3);
+        selectors[0] = bytes4(keccak256("transferFrom(address,address,uint256)"));
+        selectors[1] = bytes4(keccak256("safeTransferFrom(address,address,uint256)"));
+        selectors[2] = bytes4(keccak256("safeTransferFrom(address,address,uint256,bytes)"));
+    }
+
+    function _recipeSeams(uint256) internal pure returns (RecipeSeam[] memory seams) {
+        seams = new RecipeSeam[](3);
+        seams[0] = RecipePlanLib.seam2(
+            "DeployERC721Enumerable:transferFrom(address,address,uint256)",
+            bytes4(keccak256("transferFrom(address,address,uint256)")),
+            "ERC721",
+            "ERC721Enumerable",
+            "ERC721Enumerable",
+            "the enumerable mover must update ownership enumeration on base transfers"
+        );
+        seams[1] = RecipePlanLib.seam2(
+            "DeployERC721Enumerable:safeTransferFrom(address,address,uint256)",
+            bytes4(keccak256("safeTransferFrom(address,address,uint256)")),
+            "ERC721",
+            "ERC721Enumerable",
+            "ERC721Enumerable",
+            "the enumerable mover must update ownership enumeration on base transfers"
+        );
+        seams[2] = RecipePlanLib.seam2(
+            "DeployERC721Enumerable:safeTransferFrom(address,address,uint256,bytes)",
+            bytes4(keccak256("safeTransferFrom(address,address,uint256,bytes)")),
+            "ERC721",
+            "ERC721Enumerable",
+            "ERC721Enumerable",
+            "the enumerable mover must update ownership enumeration on base transfers"
+        );
+    }
+
+    function _recipeInitPlan(uint256 variant, RecipeParameter[] memory inputs)
+        private
+        pure
+        returns (RecipeInitStep[] memory)
+    {
+        RecipeInitStep[] memory baseModule;
+        {
+            RecipeParameter[] memory baseModuleParameters = new RecipeParameter[](2);
+            string[] memory baseModuleBindings = new string[](2);
+            baseModuleParameters[0] =
+                RecipeParameter("name_", "string", inputs[0].unit, inputs[0].example, inputs[0].rule);
+            baseModuleBindings[0] = "name_";
+            baseModuleParameters[1] =
+                RecipeParameter("symbol_", "string", inputs[1].unit, inputs[1].example, inputs[1].rule);
+            baseModuleBindings[1] = "symbol_";
+            baseModule =
+                RecipeSpecLib.leaf("ERC721Init", "init(string,string)", baseModuleParameters, baseModuleBindings);
+        }
+        RecipeInitStep[] memory base = RecipeSpecLib.introspected(baseModule, false);
+        RecipeInitStep[] memory module = RecipeSpecLib.emptyLeaf("ERC721EnumerableInit", "init()");
+        RecipeInitStep[][] memory children = new RecipeInitStep[][](variant == 0 ? 2 : 4);
+        children[0] = base;
+        children[1] = module;
+        if (variant == 1) {
+            RecipeInitStep[] memory adminStep;
+            {
+                RecipeParameter[] memory adminStepParameters = new RecipeParameter[](1);
+                string[] memory adminStepBindings = new string[](1);
+                adminStepParameters[0] =
+                    RecipeParameter("admin", "address", inputs[2].unit, inputs[2].example, inputs[2].rule);
+                adminStepBindings[0] = "admin";
+                adminStep =
+                    RecipeSpecLib.leaf("AccessControlInit", "init(address)", adminStepParameters, adminStepBindings);
+            }
+            children[2] = adminStep;
+            children[3] = RecipeSpecLib.emptyLeaf("DiamondIntrospectionInit", "initUpgradeable()");
+        }
+        return RecipeSpecLib.wrap(children);
+    }
+
+    /// @notice Canonical cut/seam plans, exact initializer tree and deployment arguments as script-only data.
+    function recipeSpec() public pure returns (RecipeSpec memory result) {
+        result = RecipeSpecLib.spec("DeployERC721Enumerable", "script/base/tokens/DeployERC721Enumerable.s.sol", 2);
+        result.deploymentContexts = new RecipeDeploymentContext[](2);
+        for (uint256 i; i < 2; ++i) {
+            RecipeVariant memory variant;
+            variant.id = i == 0
+                ? "DeployERC721Enumerable:buildCuts(string,string)"
+                : "DeployERC721Enumerable:buildCuts(string,string,address)";
+            variant.buildSignature = i == 0 ? "buildCuts(string,string)" : "buildCuts(string,string,address)";
+            variant.proxyKind = RecipeProxyKind.Lattice;
+            variant.initOutputKind = RecipeInitOutputKind.Parallel;
+            variant.facets = _cutPlan(i);
+            variant.seams = _recipeSeams(i);
+            variant.inputs = new RecipeParameter[](i == 0 ? 2 : 3);
+            variant.inputs[0] = RecipeParameter("name_", "string", "metadata", "Example NFT", "no length constraint");
+            variant.inputs[1] = RecipeParameter("symbol_", "string", "metadata", "EXNFT", "no length constraint");
+            if (i == 1) {
+                variant.inputs[2] = RecipeParameter(
+                    "admin",
+                    "address",
+                    "account",
+                    "0x00000000000000000000000000000000000000ad",
+                    "caller: choose a usable role and upgrade administrator; initialization permits the zero address"
+                );
+            }
+            variant.initPlan = _recipeInitPlan(i, variant.inputs);
+            variant.authorities = new RecipeAuthority[](i == 0 ? 0 : 1);
+            if (i == 1) {
+                variant.authorities[0] = RecipeSpecLib.role(
+                    "AccessControl",
+                    "DEFAULT_ADMIN_ROLE",
+                    "bytes32",
+                    bytes32(0),
+                    "admin",
+                    "role administration and diamondCut; no automatic mint authority or NFT ownership"
+                );
+            }
+            variant.conditions = new string[](3);
+            variant.conditions[0] =
+                "caller: mint and burn through ERC721EnumerableLib hooks; do not add Burnable, Wrapper, Pausable or Votes paths that bypass enumeration bookkeeping";
+            variant.conditions[1] =
+                "enforced: the initializer rejects enabled Consecutive batch minting; no batch-mint initializer belongs in this recipe";
+            variant.conditions[2] =
+                "caller: initialize before NFTs exist, or use a separately designed migration; the initializer does not reconstruct enumeration for existing NFT ownership";
+            result.variants[i] = variant;
+            result.deploymentContexts[i] = RecipeSpecLib.deploymentContext(
+                "DeployERC721Enumerable",
+                i == 0 ? "run(string,string)" : "run(string,string,address)",
+                variant,
+                i == 0 ? "buildCuts(name_,symbol_)" : "buildCuts(name_,symbol_,admin)"
+            );
+        }
     }
 }

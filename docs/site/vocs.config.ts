@@ -40,6 +40,7 @@ const decisions: Item = {
     { text: '0023 Frozen source verification', link: '/adr/0023-frozen-input-source-verification' },
     { text: '0024 Upgrade initializer batches', link: '/adr/0024-upgrade-initializer-batches' },
     { text: '0025 Account factory identities', link: '/adr/0025-account-factory-release-identity' },
+    { text: '0026 Recipe data and seams', link: '/adr/0026-checked-recipe-data-and-seams' },
     { text: '0027 Governor cut topology', link: '/adr/0027-governor-governed-cut-topology' },
   ],
 }

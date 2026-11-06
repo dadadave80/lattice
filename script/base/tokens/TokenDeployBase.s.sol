@@ -18,7 +18,7 @@ abstract contract TokenDeployBase is BaseDeploy {
         returns (FacetCut[] memory cuts, address init, bytes memory data)
     {
         cuts = _baseTokenCuts("ERC20");
-        (init, data) = _withImmutableIntrospection(_init("ERC20Init"), abi.encodeCall(ERC20Init.init, (name, symbol)));
+        (init, data) = _erc20BaseInit(name, symbol);
     }
 
     function _erc721Base(string memory name, string memory symbol)
@@ -26,7 +26,7 @@ abstract contract TokenDeployBase is BaseDeploy {
         returns (FacetCut[] memory cuts, address init, bytes memory data)
     {
         cuts = _baseTokenCuts("ERC721");
-        (init, data) = _withImmutableIntrospection(_init("ERC721Init"), abi.encodeCall(ERC721Init.init, (name, symbol)));
+        (init, data) = _erc721BaseInit(name, symbol);
     }
 
     function _erc1155Base(string memory uri)
@@ -34,6 +34,25 @@ abstract contract TokenDeployBase is BaseDeploy {
         returns (FacetCut[] memory cuts, address init, bytes memory data)
     {
         cuts = _baseTokenCuts("ERC1155");
+        (init, data) = _erc1155BaseInit(uri);
+    }
+
+    /// @dev Init-only variants let checked extensions reject an incompatible complete plan before any resolution.
+    function _erc20BaseInit(string memory name, string memory symbol)
+        internal
+        returns (address init, bytes memory data)
+    {
+        (init, data) = _withImmutableIntrospection(_init("ERC20Init"), abi.encodeCall(ERC20Init.init, (name, symbol)));
+    }
+
+    function _erc721BaseInit(string memory name, string memory symbol)
+        internal
+        returns (address init, bytes memory data)
+    {
+        (init, data) = _withImmutableIntrospection(_init("ERC721Init"), abi.encodeCall(ERC721Init.init, (name, symbol)));
+    }
+
+    function _erc1155BaseInit(string memory uri) internal returns (address init, bytes memory data) {
         (init, data) = _withImmutableIntrospection(_init("ERC1155Init"), abi.encodeCall(ERC1155Init.init, (uri)));
     }
 

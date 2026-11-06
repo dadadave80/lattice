@@ -1,9 +1,23 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {ENS_MANAGER_ROLE} from "@lattice/ens/libraries/ENSReverseClaimerLib.sol";
+
 import {IDiamondLoupe} from "@diamond/interfaces/IDiamondLoupe.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {DeployGovernedVault} from "@lattice-script/base/defi/DeployGovernedVault.s.sol";
+import {RecipePlanLib} from "@lattice-script/lib/RecipePlanLib.sol";
+import {
+    RecipeAuthority,
+    RecipeDeploymentContext,
+    RecipeFacet,
+    RecipeInitOutputKind,
+    RecipeParameter,
+    RecipeProxyKind,
+    RecipeSpec,
+    RecipeVariant
+} from "@lattice-script/lib/RecipeSpec.sol";
+import {RecipeSpecLib} from "@lattice-script/lib/RecipeSpecLib.sol";
 import {GovernedVaultENSInit, GovernedVaultENSParams} from "@lattice/defi/GovernedVaultENSInit.sol";
 import {ENSReverseClaimer} from "@lattice/ens/ENSReverseClaimer.sol";
 import {DiamondValidationLib} from "@lattice/governance/libraries/DiamondValidationLib.sol";
@@ -137,15 +151,130 @@ contract DeployGovernedVaultENS is DeployGovernedVault {
         returns (FacetCut[] memory cuts, address init, bytes memory initCalldata)
     {
         DiamondValidationLib.assertNamespacesDisjoint(storageNamespacesWithENS());
-        FacetCut[] memory baseCuts = _buildBaseCuts();
-        cuts = new FacetCut[](baseCuts.length + 1);
-        for (uint256 i; i < baseCuts.length; ++i) {
-            cuts[i] = baseCuts[i];
-        }
-        cuts[baseCuts.length] = _cut(_facet("ENSReverseClaimer"));
+        cuts = _materialize(_cutPlan(1), _recipeSeams(1));
 
         init = _init("GovernedVaultENSInit");
         initCalldata = abi.encodeCall(GovernedVaultENSInit.init, (p));
+    }
+
+    function _cutPlan(uint256 variant) internal pure override returns (RecipeFacet[] memory) {
+        require(variant < 2, "DeployGovernedVaultENS: unknown variant");
+        RecipeFacet[] memory base = super._cutPlan(0);
+        if (variant == 0) return base;
+        RecipeFacet[] memory extension = new RecipeFacet[](1);
+        extension[0] = RecipePlanLib.all("ENSReverseClaimer");
+        return RecipePlanLib.append(base, extension);
+    }
+
+    function recipeSpec() public pure override returns (RecipeSpec memory result) {
+        RecipeSpec memory base = super.recipeSpec();
+        RecipeVariant memory original = base.variants[0];
+        result = RecipeSpecLib.spec("DeployGovernedVaultENS", "script/base/defi/DeployGovernedVaultENS.s.sol", 2);
+        result.variants[0] = RecipeVariant({
+            id: "DeployGovernedVaultENS:buildCuts((address,string,string,uint8,uint256,uint48,uint32,uint256,uint256))",
+            buildSignature: original.buildSignature,
+            proxyKind: original.proxyKind,
+            initOutputKind: original.initOutputKind,
+            facets: original.facets,
+            seams: original.seams,
+            initPlan: original.initPlan,
+            inputs: original.inputs,
+            authorities: original.authorities,
+            conditions: original.conditions
+        });
+        RecipeVariant memory variant;
+        variant.id =
+            "DeployGovernedVaultENS:buildCutsWithENS(((address,string,string,uint8,uint256,uint48,uint32,uint256,uint256),address,string))";
+        variant.buildSignature =
+        "buildCutsWithENS(((address,string,string,uint8,uint256,uint48,uint32,uint256,uint256),address,string))";
+        variant.proxyKind = RecipeProxyKind.Lattice;
+        variant.initOutputKind = RecipeInitOutputKind.Single;
+        variant.facets = _cutPlan(1);
+        variant.seams = _recipeSeams(1);
+        variant.inputs = new RecipeParameter[](11);
+        string[9] memory paths = [
+            "p.vault.asset",
+            "p.vault.name",
+            "p.vault.symbol",
+            "p.vault.decimalsOffset",
+            "p.vault.minDelay",
+            "p.vault.votingDelay",
+            "p.vault.votingPeriod",
+            "p.vault.proposalThreshold",
+            "p.vault.quorumNumerator"
+        ];
+        for (uint256 i; i < 9; ++i) {
+            RecipeParameter memory old = original.inputs[i];
+            variant.inputs[i] = RecipeParameter(paths[i], old.abiType, old.unit, old.example, old.rule);
+        }
+        variant.inputs[9] = RecipeParameter(
+            "p.reverseRegistrar",
+            "address",
+            "ENS-reverse-registrar",
+            "target-configured-reverse-registrar",
+            "enforced nonzero; no code/provenance validation; nonempty ensName invokes the registrar"
+        );
+        variant.inputs[10] = RecipeParameter(
+            "p.ensName", "string", "ENS-name", "example.lattice.eth", "empty string skips inline reverse claim"
+        );
+        string[] memory bindings = new string[](11);
+        for (uint256 i; i < bindings.length; ++i) {
+            bindings[i] = variant.inputs[i].name;
+        }
+        variant.initPlan = RecipeSpecLib.leaf(
+            "GovernedVaultENSInit",
+            "init(((address,string,string,uint8,uint256,uint48,uint32,uint256,uint256),address,string))",
+            variant.inputs,
+            bindings
+        );
+        variant.authorities = new RecipeAuthority[](6);
+        for (uint256 i; i < 5; ++i) {
+            variant.authorities[i] = original.authorities[i];
+        }
+        variant.authorities[5] = RecipeSpecLib.role(
+            "ENSReverseClaimer",
+            "ENS_MANAGER_ROLE",
+            "bytes32",
+            ENS_MANAGER_ROLE,
+            "diamond-self",
+            "governance alone renames the diamond"
+        );
+        variant.conditions = new string[](original.conditions.length + 2);
+        for (uint256 i; i < original.conditions.length; ++i) {
+            variant.conditions[i] = original.conditions[i];
+        }
+        variant.conditions[original.conditions.length] =
+        "Reverse claims originate from diamond-self; caller authenticates the chain-specific reverse registrar";
+        variant.conditions[original.conditions.length + 1] =
+        "The inherited base builder remains a separate callable topology without ENS";
+        result.variants[1] = variant;
+        result.deploymentContexts = new RecipeDeploymentContext[](3);
+        result.deploymentContexts[0] = RecipeSpecLib.deploymentContext(
+            "DeployGovernedVaultENS",
+            "run((address,string,string,uint8,uint256,uint48,uint32,uint256,uint256))",
+            result.variants[0],
+            "buildCuts(p)"
+        );
+        RecipeDeploymentContext memory oldAtomic = base.deploymentContexts[1];
+        result.deploymentContexts[1] = RecipeDeploymentContext({
+            id: "DeployGovernedVaultENS:deployAtomic((address,string,string,uint8,uint256,uint48,uint32,uint256,uint256),address,bytes32)",
+            signature: oldAtomic.signature,
+            createsProxy: oldAtomic.createsProxy,
+            variants: new string[](1),
+            inputs: oldAtomic.inputs,
+            bindings: oldAtomic.bindings,
+            conditions: oldAtomic.conditions
+        });
+        result.deploymentContexts[1].variants[0] = result.variants[0].id;
+        result.deploymentContexts[2] = RecipeSpecLib.deploymentContext(
+            "DeployGovernedVaultENS",
+            "run(((address,string,string,uint8,uint256,uint48,uint32,uint256,uint256),address,string))",
+            variant,
+            "buildCutsWithENS(p)"
+        );
+        result.deploymentContexts[2].conditions = new string[](1);
+        result.deploymentContexts[2].conditions[0] =
+            "Only run replaces a zero p.vault.asset with a TESTNET-ONLY open-faucet TestnetAsset; buildCutsWithENS does not";
     }
 
     /// @notice The base vault's storage owners plus the {ENSReverseClaimer} namespace this recipe adds.

@@ -98,6 +98,8 @@ The [integrator guide](docs/guides/integrate-lattice.md) runs a private Anvil ex
 release identities, registry reads, strict factory deployment and released initializer batches.
 Follow [Upgrade a diamond](docs/guides/upgrade-a-diamond.md) for a governed version2 module upgrade and verification.
 
+`make recipes` exports the compiler-checked [recipe catalog](script/README.md#recipe-data-and-checked-composition) to `out/recipes.json`, including variants, initializer trees, units, authorities and explicit selector seams.
+
 Every `script/base/**` recipe creates and initializes its diamond in one transaction through
 `LatticeFactory`. By default a run first deploys its own `LatticeRegistry` + `LatticeFactory`. Set
 `LATTICE_FACTORY=<address>` to reuse a deployed factory, such as a release factory (a committed per-chain

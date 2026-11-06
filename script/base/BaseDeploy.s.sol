@@ -6,6 +6,8 @@ import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {ArachnidDeployer} from "@lattice-script/lib/ArachnidDeployer.sol";
 import {FacetInventory} from "@lattice-script/lib/FacetInventory.sol";
 import {InitInventory} from "@lattice-script/lib/InitInventory.sol";
+import {RecipePlanLib} from "@lattice-script/lib/RecipePlanLib.sol";
+import {RecipeFacet, RecipeSeam, RecipeSelectorSelection} from "@lattice-script/lib/RecipeSpec.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
 import {LatticeFactory} from "@lattice/LatticeFactory.sol";
 import {LatticeRegistry} from "@lattice/LatticeRegistry.sol";
@@ -46,6 +48,39 @@ abstract contract BaseDeploy is Script, GetSelectors {
 
     /// @dev Diamonds assembled so far by this script instance — mixed into each diamond's CREATE2 salt.
     uint256 private _assembled;
+
+    /// @notice Materialize a declared recipe, rejecting incompatible movers before any shared deployment.
+    /// @dev Typed initializer encoding remains in each builder. No caller binding or ABI expression is interpreted.
+    function _materialize(RecipeFacet[] memory facets, RecipeSeam[] memory seams)
+        internal
+        returns (FacetCut[] memory cuts)
+    {
+        return _materialize(facets, seams, LatticeVersion.VERSION);
+    }
+
+    /// @dev Explicit release versions retain the same checked plan semantics for account release blueprints.
+    function _materialize(RecipeFacet[] memory facets, RecipeSeam[] memory seams, string memory version)
+        internal
+        returns (FacetCut[] memory cuts)
+    {
+        RecipePlanLib.validateEarly(facets, seams);
+        cuts = new FacetCut[](facets.length);
+        bytes4[][] memory exports = new bytes4[][](facets.length);
+        for (uint256 i; i < facets.length; ++i) {
+            address at = _facet(facets[i].name, version);
+            exports[i] = _exportedSelectors(at);
+            if (facets[i].selection == RecipeSelectorSelection.All) {
+                require(facets[i].selectors.length == 0, "BaseDeploy: All selection cannot list selectors");
+                cuts[i] = FacetCut(at, facets[i].action, exports[i]);
+            } else if (facets[i].selection == RecipeSelectorSelection.Except) {
+                cuts[i] = _cutExcept(at, facets[i].selectors);
+                cuts[i].action = facets[i].action;
+            } else {
+                cuts[i] = FacetCut(at, facets[i].action, facets[i].selectors);
+            }
+        }
+        RecipePlanLib.validateCuts(facets, seams, cuts, exports);
+    }
 
     //*//////////////////////////////////////////////////////////////////////////
     //                      STRING (forge inspect) CUTS

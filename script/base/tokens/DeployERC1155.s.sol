@@ -5,6 +5,21 @@ import {DiamondLoupeFacet} from "@diamond/facets/DiamondLoupeFacet.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {TokenDeployBase} from "@lattice-script/base/tokens/TokenDeployBase.s.sol";
+import {RecipePlanLib} from "@lattice-script/lib/RecipePlanLib.sol";
+import {
+    RecipeAuthority,
+    RecipeDeploymentContext,
+    RecipeFacet,
+    RecipeInitOutputKind,
+    RecipeInitStep,
+    RecipeParameter,
+    RecipeProxyKind,
+    RecipeSeam,
+    RecipeSpec,
+    RecipeVariant
+} from "@lattice-script/lib/RecipeSpec.sol";
+import {RecipeSpecLib} from "@lattice-script/lib/RecipeSpecLib.sol";
+import {TokenRecipePlans} from "@lattice-script/lib/TokenRecipePlans.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
 import {ERC1155} from "@lattice/tokens/ERC1155/ERC1155.sol";
@@ -29,7 +44,8 @@ contract DeployERC1155 is TokenDeployBase {
         public
         returns (FacetCut[] memory cuts, address init, bytes memory initCalldata)
     {
-        (cuts, init, initCalldata) = _erc1155Base(uri_);
+        cuts = _materialize(_cutPlan(0), _recipeSeams(0));
+        (init, initCalldata) = _erc1155BaseInit(uri_);
     }
 
     /// @notice ADMIN OVERLOAD: the immutable default plus `AccessControl` + `AccessControlDiamondCut`, so
@@ -38,15 +54,80 @@ contract DeployERC1155 is TokenDeployBase {
         public
         returns (FacetCut[] memory cuts, address init, bytes memory initCalldata)
     {
-        FacetCut[] memory base = _baseTokenCuts("ERC1155");
-        cuts = new FacetCut[](base.length + 2);
-        for (uint256 i; i < base.length; ++i) {
-            cuts[i] = base[i];
-        }
-        cuts[base.length] = _cut(_facet("AccessControl"));
-        cuts[base.length + 1] = _cut(_facet("AccessControlDiamondCut"));
+        cuts = _materialize(_cutPlan(1), _recipeSeams(1));
         (init, initCalldata) =
             _withAdminUpgradeableIntrospection(_init("ERC1155Init"), abi.encodeCall(ERC1155Init.init, (uri_)), admin);
+    }
+
+    function _cutPlan(uint256 variant) internal pure returns (RecipeFacet[] memory facets) {
+        require(variant < 2, "DeployERC1155: unknown variant");
+        return TokenRecipePlans.erc1155(variant == 1);
+    }
+
+    function _recipeSeams(uint256) internal pure returns (RecipeSeam[] memory) {
+        return new RecipeSeam[](0);
+    }
+
+    /// @notice Canonical cut plans, exact nested initialization and authorities as script data.
+    function recipeSpec() public pure returns (RecipeSpec memory result) {
+        result = RecipeSpecLib.spec("DeployERC1155", "script/base/tokens/DeployERC1155.s.sol", 2);
+        result.deploymentContexts = new RecipeDeploymentContext[](2);
+        for (uint256 i; i < 2; ++i) {
+            RecipeVariant memory variant;
+            variant.id = i == 0 ? "DeployERC1155:buildCuts(string)" : "DeployERC1155:buildCuts(string,address)";
+            variant.buildSignature = i == 0 ? "buildCuts(string)" : "buildCuts(string,address)";
+            variant.proxyKind = RecipeProxyKind.Lattice;
+            variant.initOutputKind = RecipeInitOutputKind.Single;
+            variant.facets = _cutPlan(i);
+            variant.seams = _recipeSeams(i);
+            variant.inputs = new RecipeParameter[](i == 0 ? 1 : 2);
+            variant.inputs[0] = RecipeParameter(
+                "uri_",
+                "string",
+                "ERC1155-URI-template",
+                "ipfs://example/{id}.json",
+                "no nonempty or length constraint; caller supplies the intended metadata template"
+            );
+            if (i == 1) {
+                variant.inputs[1] = RecipeParameter(
+                    "admin",
+                    "address",
+                    "account",
+                    "0x00000000000000000000000000000000000000ad",
+                    "caller: choose a usable role and upgrade administrator; initialization permits the zero address"
+                );
+            }
+            RecipeParameter[] memory baseParameters = new RecipeParameter[](1);
+            baseParameters[0] = variant.inputs[0];
+            string[] memory baseBindings = new string[](1);
+            baseBindings[0] = "uri_";
+            RecipeInitStep[] memory baseLeaf =
+                RecipeSpecLib.leaf("ERC1155Init", "init(string)", baseParameters, baseBindings);
+            variant.initPlan = i == 0
+                ? RecipeSpecLib.introspected(baseLeaf, false)
+                : RecipeSpecLib.adminIntrospected(baseLeaf, "admin");
+            variant.authorities = new RecipeAuthority[](i == 0 ? 0 : 1);
+            if (i == 1) {
+                variant.authorities[0] = RecipeSpecLib.role(
+                    "AccessControl",
+                    "DEFAULT_ADMIN_ROLE",
+                    "bytes32",
+                    bytes32(0),
+                    "admin",
+                    "role administration and diamondCut; token approvals and burns retain their owner/operator checks"
+                );
+            }
+            variant.conditions = new string[](1);
+            variant.conditions[0] =
+            "caller: add application mint logic separately; no public mint selector is cut by this recipe";
+            result.variants[i] = variant;
+            result.deploymentContexts[i] = RecipeSpecLib.deploymentContext(
+                "DeployERC1155",
+                i == 0 ? "run(string)" : "run(string,address)",
+                variant,
+                i == 0 ? "buildCuts(uri_)" : "buildCuts(uri_,admin)"
+            );
+        }
     }
 
     /// @notice Deploys a base ERC-1155 token diamond (broadcasting entrypoint for `forge script ... --broadcast`).

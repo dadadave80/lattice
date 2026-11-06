@@ -172,6 +172,12 @@ scripts-check: ## Regression tests for the CI helper scripts (closing-keyword pa
 	./script/test-release-manifest.sh
 	./script/test-release-notes.sh
 	./script/test-release-verification.sh
+	./script/recipes/test-export.sh
+	./script/recipes/test-catalog.sh
+
+.PHONY: recipes
+recipes: ## Export all checked canonical recipe data to out/recipes.json, locally without RPC
+	./script/recipes.sh
 
 .PHONY: abi-catalog
 abi-catalog: ## Clean source build and checked error/event/assembly catalog (out/errors.json)
@@ -188,7 +194,7 @@ test-ci: ## Full test suite under the CI profile (snapshots/ is left to snapshot
 	FOUNDRY_PROFILE=ci FORGE_SNAPSHOT_EMIT=false forge test
 
 .PHONY: ci
-ci: fmt-check license-check scripts-check readme-check release-build-check sizes erc3643-profile-check via-ir storage-check test-ci snapshot-check abi-catalog ## All CI gates, locally, in CI order
+ci: fmt-check license-check scripts-check readme-check release-build-check sizes erc3643-profile-check via-ir storage-check test-ci snapshot-check abi-catalog recipes ## All CI gates, locally, in CI order
 
 .PHONY: slither
 slither: ## Static analysis gate, as CI runs it (slither.config.json + triaged slither.db.json; fails on High)

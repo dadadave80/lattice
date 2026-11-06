@@ -5,6 +5,20 @@ import {DiamondLoupeFacet} from "@diamond/facets/DiamondLoupeFacet.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
+import {RecipePlanLib} from "@lattice-script/lib/RecipePlanLib.sol";
+import {
+    RecipeAuthority,
+    RecipeDeploymentContext,
+    RecipeFacet,
+    RecipeInitOutputKind,
+    RecipeInitStep,
+    RecipeParameter,
+    RecipeProxyKind,
+    RecipeSeam,
+    RecipeSpec,
+    RecipeVariant
+} from "@lattice-script/lib/RecipeSpec.sol";
+import {RecipeSpecLib} from "@lattice-script/lib/RecipeSpecLib.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AcrossBridgeAdapter} from "@lattice/crosschain/across/AcrossBridgeAdapter.sol";
 import {AcrossBridgeAdapterInit} from "@lattice/crosschain/across/AcrossBridgeAdapterInit.sol";
@@ -31,7 +45,7 @@ contract DeployAcrossBridgeAdapter is BaseDeploy {
         public
         returns (FacetCut[] memory cuts, address init, bytes memory initCalldata)
     {
-        cuts = _coreCuts();
+        cuts = _materialize(_cutPlan(0), _recipeSeams(0));
         (init, initCalldata) = _withImmutableIntrospection(
             _init("AcrossBridgeAdapterInit"), abi.encodeCall(AcrossBridgeAdapterInit.init, (spokePool))
         );
@@ -43,24 +57,10 @@ contract DeployAcrossBridgeAdapter is BaseDeploy {
         public
         returns (FacetCut[] memory cuts, address init, bytes memory initCalldata)
     {
-        FacetCut[] memory base = _coreCuts();
-        cuts = new FacetCut[](base.length + 2);
-        for (uint256 i; i < base.length; ++i) {
-            cuts[i] = base[i];
-        }
-        cuts[base.length] = _cut(_facet("AccessControl"));
-        cuts[base.length + 1] = _cut(_facet("AccessControlDiamondCut"));
+        cuts = _materialize(_cutPlan(1), _recipeSeams(1));
         (init, initCalldata) = _withAdminUpgradeableIntrospection(
             _init("AcrossBridgeAdapterInit"), abi.encodeCall(AcrossBridgeAdapterInit.init, (spokePool)), admin
         );
-    }
-
-    /// @dev The shared cut set of both overloads: the module facets plus {DiamondLoupeFacet} (introspection).
-    function _coreCuts() internal returns (FacetCut[] memory cuts) {
-        cuts = new FacetCut[](3);
-        cuts[0] = _cut(_facet("ERC165Facet"));
-        cuts[1] = _cut(_facet("AcrossBridgeAdapter"));
-        cuts[2] = _cut(_facet("DiamondLoupeFacet"));
     }
 
     /// @notice Deploys an Across adapter diamond (broadcasting entrypoint for `forge script ... --broadcast`).
@@ -79,5 +79,87 @@ contract DeployAcrossBridgeAdapter is BaseDeploy {
         (FacetCut[] memory cuts, address init, bytes memory initCalldata) = buildCuts(spokePool, admin);
         adapter = _assemble(cuts, init, initCalldata);
         vm.stopBroadcast();
+    }
+
+    /// @dev The shared module cuts plus introspection; the admin variant appends its upgrade authority.
+    function _cutPlan(uint256 variant) internal pure returns (RecipeFacet[] memory facets) {
+        require(variant < 2, "DeployAcrossBridgeAdapter: unknown variant");
+        facets = new RecipeFacet[](variant == 0 ? 3 : 5);
+        facets[0] = RecipePlanLib.all("ERC165Facet");
+        facets[1] = RecipePlanLib.all("AcrossBridgeAdapter");
+        facets[2] = RecipePlanLib.all("DiamondLoupeFacet");
+        if (variant == 1) {
+            facets[3] = RecipePlanLib.all("AccessControl");
+            facets[4] = RecipePlanLib.all("AccessControlDiamondCut");
+        }
+    }
+
+    function _recipeSeams(uint256) internal pure returns (RecipeSeam[] memory) {
+        return new RecipeSeam[](0);
+    }
+
+    /// @notice Canonical builder variants and exact ordered initializer calls as script-only recipe data.
+    function recipeSpec() public pure returns (RecipeSpec memory result) {
+        result = RecipeSpecLib.spec(
+            "DeployAcrossBridgeAdapter", "script/base/crosschain/DeployAcrossBridgeAdapter.s.sol", 2
+        );
+        result.deploymentContexts = new RecipeDeploymentContext[](2);
+        for (uint256 i; i < 2; ++i) {
+            RecipeVariant memory variant;
+            variant.id = i == 0
+                ? "DeployAcrossBridgeAdapter:buildCuts(address)"
+                : "DeployAcrossBridgeAdapter:buildCuts(address,address)";
+            variant.buildSignature = i == 0 ? "buildCuts(address)" : "buildCuts(address,address)";
+            variant.proxyKind = RecipeProxyKind.Lattice;
+            variant.initOutputKind = RecipeInitOutputKind.Single;
+            variant.facets = _cutPlan(i);
+            variant.seams = _recipeSeams(i);
+            variant.inputs = new RecipeParameter[](i == 0 ? 1 : 2);
+            variant.inputs[0] = RecipeParameter(
+                "spokePool",
+                "address",
+                "Across-v3-SpokePool",
+                "target-configured-spoke-pool",
+                "enforced: nonzero; caller authenticates the local canonical SpokePool and its chain support"
+            );
+            RecipeParameter[] memory parameters = new RecipeParameter[](1);
+            parameters[0] = variant.inputs[0];
+            string[] memory bindings = new string[](1);
+            bindings[0] = "spokePool";
+            RecipeInitStep[] memory module =
+                RecipeSpecLib.leaf("AcrossBridgeAdapterInit", "init(address)", parameters, bindings);
+            if (i == 0) {
+                variant.initPlan = RecipeSpecLib.introspected(module, false);
+                variant.authorities = new RecipeAuthority[](0);
+            } else {
+                variant.inputs[1] = RecipeParameter(
+                    "admin",
+                    "address",
+                    "account",
+                    "0x00000000000000000000000000000000000000ad",
+                    "caller: choose a usable role and upgrade administrator; initialization permits the zero address"
+                );
+                variant.initPlan = RecipeSpecLib.adminIntrospected(module, "admin");
+                variant.authorities = new RecipeAuthority[](1);
+                variant.authorities[0] = RecipeSpecLib.role(
+                    "AccessControl",
+                    "DEFAULT_ADMIN_ROLE",
+                    "bytes32",
+                    bytes32(0),
+                    "admin",
+                    "role administration and diamondCut through the admin-only wrapper"
+                );
+            }
+            variant.conditions = new string[](1);
+            variant.conditions[0] =
+                "caller: pass raw Across destination chain IDs accepted by the configured SpokePool; this recipe creates no chain-domain table";
+            result.variants[i] = variant;
+            result.deploymentContexts[i] = RecipeSpecLib.deploymentContext(
+                "DeployAcrossBridgeAdapter",
+                i == 0 ? "run(address)" : "run(address,address)",
+                variant,
+                i == 0 ? "buildCuts(spokePool)" : "buildCuts(spokePool,admin)"
+            );
+        }
     }
 }
