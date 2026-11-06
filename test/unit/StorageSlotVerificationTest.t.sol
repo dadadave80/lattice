@@ -32,6 +32,7 @@ import {
 } from "@lattice/access/libraries/AccessManagerLib.sol";
 
 // tokens
+import {IERC20TemporaryApproval} from "@lattice/interfaces/tokens/IERC20TemporaryApproval.sol";
 import {ERC165_MAP_IERC1155BURNABLE_SLOT} from "@lattice/tokens/ERC1155/libraries/ERC1155BurnableLib.sol";
 import {
     ERC1155_STORAGE_SLOT,
@@ -55,6 +56,10 @@ import {
 import {ERC165_MAP_IERC3156FLASHLENDER_SLOT} from "@lattice/tokens/ERC20/libraries/ERC20FlashMintLib.sol";
 import {ERC165_MAP_IERC20_SLOT, ERC20_STORAGE_SLOT} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
 import {ERC165_MAP_IERC20PERMIT_SLOT} from "@lattice/tokens/ERC20/libraries/ERC20PermitLib.sol";
+import {
+    ERC165_MAP_IERC20TEMPORARYAPPROVAL_SLOT,
+    ERC20_TEMPORARY_APPROVAL_STORAGE_SLOT
+} from "@lattice/tokens/ERC20/libraries/ERC20TemporaryApprovalLib.sol";
 import {
     ERC165_MAP_IERC20WRAPPER_SLOT,
     ERC20WRAPPER_STORAGE_SLOT
@@ -544,6 +549,22 @@ contract StorageSlotVerificationTest is Test {
     }
 
     // ---- tokens ----
+
+    function test_ERC20TemporaryApprovalTransientSlot() public pure {
+        assertEq(ERC20_TEMPORARY_APPROVAL_STORAGE_SLOT, _erc7201Slot("lattice.storage.ERC20TemporaryApproval"));
+        bytes32[] memory persistent = _allStorageSlots();
+        for (uint256 i; i < persistent.length; ++i) {
+            assertTrue(persistent[i] != ERC20_TEMPORARY_APPROVAL_STORAGE_SLOT);
+        }
+    }
+
+    function test_Erc165MapIERC20TemporaryApprovalSlot() public pure {
+        assertEq(type(IERC20TemporaryApproval).interfaceId, bytes4(0x42232a4c));
+        assertEq(
+            ERC165_MAP_IERC20TEMPORARYAPPROVAL_SLOT,
+            _erc165MapSlot(type(IERC20TemporaryApproval).interfaceId, ERC165_STORAGE_LOCATION)
+        );
+    }
 
     function test_ERC20StorageSlot() public pure {
         assertEq(ERC20_STORAGE_SLOT, _erc7201Slot("lattice.storage.ERC20"), "ERC20 storage slot mismatch");
@@ -2416,7 +2437,7 @@ contract StorageSlotVerificationTest is Test {
     }
 
     function _allErc165MapSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](107);
+        slots = new bytes32[](108);
         uint256 i;
         // access
         slots[i++] = ERC165_MAP_IACCESSCONTROL_SLOT;
@@ -2426,6 +2447,7 @@ contract StorageSlotVerificationTest is Test {
         slots[i++] = ERC165_MAP_IACCESSMANAGED_SLOT;
         // tokens
         slots[i++] = ERC165_MAP_IERC20_SLOT;
+        slots[i++] = ERC165_MAP_IERC20TEMPORARYAPPROVAL_SLOT;
         slots[i++] = ERC165_MAP_IERC20CAPPED_SLOT;
         slots[i++] = ERC165_MAP_IERC721_SLOT;
         slots[i++] = ERC165_MAP_IERC721METADATA_SLOT;

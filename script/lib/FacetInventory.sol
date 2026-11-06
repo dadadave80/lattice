@@ -13,11 +13,11 @@ pragma solidity ^0.8.30;
 ///      artifact contract names exactly: the registry key is `keccak256("lattice.<name>")` and the facet
 ///      deploy salt is `keccak256("lattice.<name>.<version>")`, so renaming an entry re-derives BOTH.
 library FacetInventory {
-    /// @notice The 129 release facets (125 Lattice + 4 diamond-lib core) as (contract name, `"<file>:<Name>"` deploy path) pairs.
+    /// @notice The 130 release facets (126 Lattice + 4 diamond-lib core) as (contract name, `"<file>:<Name>"` deploy path) pairs.
     /// @return names The facet contract names (registry name = `"lattice." ++ name`).
     /// @return paths The matching `vm.getCode`/`deployCode` artifact paths, index-aligned with `names`.
     function inventory() internal pure returns (string[] memory names, string[] memory paths) {
-        string[129] memory n = [
+        string[130] memory n = [
             "AcrossBridgeAdapter",
             "AxelarGatewayAdapter",
             "BridgeERC20",
@@ -71,6 +71,7 @@ library FacetInventory {
             "ERC20FlashMint",
             "ERC20Pausable",
             "ERC20Permit",
+            "ERC20TemporaryApproval",
             "ERC20Votes",
             "ERC20Wrapper",
             "ERC2981",
@@ -151,7 +152,7 @@ library FacetInventory {
             "ERC165Facet",
             "OwnableFacet"
         ];
-        string[129] memory p = [
+        string[130] memory p = [
             "src/crosschain/across/AcrossBridgeAdapter.sol:AcrossBridgeAdapter",
             "src/crosschain/axelar/AxelarGatewayAdapter.sol:AxelarGatewayAdapter",
             "src/crosschain/BridgeERC20.sol:BridgeERC20",
@@ -205,6 +206,7 @@ library FacetInventory {
             "src/tokens/ERC20/ERC20FlashMint.sol:ERC20FlashMint",
             "src/tokens/ERC20/ERC20Pausable.sol:ERC20Pausable",
             "src/tokens/ERC20/ERC20Permit.sol:ERC20Permit",
+            "src/tokens/ERC20/ERC20TemporaryApproval.sol:ERC20TemporaryApproval",
             "src/tokens/ERC20/ERC20Votes.sol:ERC20Votes",
             "src/tokens/ERC20/ERC20Wrapper.sol:ERC20Wrapper",
             "src/tokens/ERC2981/ERC2981.sol:ERC2981",
@@ -284,9 +286,9 @@ library FacetInventory {
             "ERC165Facet.sol:ERC165Facet",
             "OwnableFacet.sol:OwnableFacet"
         ];
-        names = new string[](129);
-        paths = new string[](129);
-        for (uint256 i; i < 129; ++i) {
+        names = new string[](130);
+        paths = new string[](130);
+        for (uint256 i; i < 130; ++i) {
             names[i] = n[i];
             paths[i] = p[i];
         }

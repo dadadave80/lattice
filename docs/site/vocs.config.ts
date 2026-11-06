@@ -30,6 +30,7 @@ const decisions: Item = {
     { text: '0013 Governor grace', link: '/adr/0013-colocated-timelock-enforces-governor-grace' },
     { text: '0014 Shared release deployer', link: '/adr/0014-arachnid-shared-release-deployer' },
     { text: '0015 Canonical Cancun build', link: '/adr/0015-canonical-cancun-build' },
+    { text: '0019 Temporary allowances', link: '/adr/0019-shared-temporary-allowances' },
   ],
 }
 
