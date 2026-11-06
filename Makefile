@@ -108,6 +108,11 @@ fmt-check: ## Formatting gate (what CI runs)
 sizes: ## EIP-170 size gate under the CI profile (skips test/script)
 	FOUNDRY_PROFILE=ci forge build --locked --sizes --skip test script
 
+.PHONY: release-build-check
+release-build-check: ## Canonical compiler/EVM/metadata settings and locked dependency identity
+	./script/test-check-release-build.sh
+	./script/check-release-build.sh
+
 .PHONY: via-ir
 via-ir: ## IR-pipeline parity build (catches stack-too-deep / IR-only errors)
 	forge build --via-ir --skip test script
@@ -115,6 +120,7 @@ via-ir: ## IR-pipeline parity build (catches stack-too-deep / IR-only errors)
 .PHONY: storage-check
 storage-check: ## ERC-7201 storage-layout guard: every annotated struct vs the committed baseline (BASE_REF=origin/dev also checks append-only vs that ref, as CI does vs the PR base)
 	./script/upgrades/check-storage-layout.sh $(if $(BASE_REF),--baseline-ref '$(BASE_REF)')
+	./script/upgrades/storage-registry.sh --check
 
 .PHONY: license-check
 license-check: ## License notices: SPDX on every .sol, license texts present, external interfaces attributed + listed in lib/VENDORED.md
@@ -132,17 +138,19 @@ scripts-check: ## Regression tests for the CI helper scripts (closing-keyword pa
 	./script/test-fork-lanes.sh
 	./script/fork-lanes.sh check
 	./script/test-storage-layout.sh
+	./script/test-storage-registry.sh
 
 .PHONY: storage-update
 storage-update: ## Regenerate the storage-layout baseline (review the diff: appends only for live namespaces; see CONTRIBUTING.md)
 	./script/upgrades/check-storage-layout.sh --update
+	./script/upgrades/storage-registry.sh --update
 
 .PHONY: test-ci
 test-ci: ## Full test suite under the CI profile (snapshots/ is left to snapshot-check, as in CI)
 	FOUNDRY_PROFILE=ci FORGE_SNAPSHOT_EMIT=false forge test
 
 .PHONY: ci
-ci: fmt-check license-check scripts-check readme-check sizes via-ir storage-check test-ci snapshot-check ## All CI gates, locally, in CI order
+ci: fmt-check license-check scripts-check readme-check release-build-check sizes via-ir storage-check test-ci snapshot-check ## All CI gates, locally, in CI order
 
 .PHONY: slither
 slither: ## Static analysis gate, as CI runs it (slither.config.json + triaged slither.db.json; fails on High)
