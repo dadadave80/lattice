@@ -6,7 +6,7 @@ pragma solidity >=0.8.4;
 /// @notice Interface for the HSSAdapter Diamond facet — Hedera Schedule Service (HIP-755 contract signatures on
 ///         native scheduled transactions, HIP-1215 scheduled contract calls) as the diamond's native
 ///         automation: the diamond schedules a call (typically to itself) that the network executes at
-///         `expirySecond`, paid from the diamond's own HBAR, with the diamond as `msg.sender`.
+///         `expirySecond`, paid from the diamond's own HBAR. The payer-as-callback-sender assumption remains unverified on-chain.
 /// @dev Sits beside the Chainlink / Gelato automation adapters. A scheduled call is a one-shot; recurring jobs
 ///      re-schedule themselves from inside the callback. Capacity per consensus second is throttled — check
 ///      {hasScheduleCapacity} first; `expirySecond` must be later than now and at most ~62 days ahead.
@@ -60,24 +60,19 @@ interface IHSSAdapter {
     // -------------------------------------------------------------------------
 
     /// @notice Schedules `to.call{value}(data)` at `expirySecond`, paid by the diamond, executed with the
-    ///         diamond as `msg.sender`. Returns the schedule entity's address.
+    ///         expected diamond-as-sender semantics still pending native verification. Returns its schedule address.
     function scheduleCall(address to, uint256 expirySecond, uint256 gasLimit, uint64 value, bytes calldata data)
         external
         returns (address scheduleAddress);
 
     /// @notice Schedules a call to the diamond itself under `jobId` (one live schedule per job). The callback
     ///         must clear the job via {completeSelfCall} so it can be re-scheduled.
-    /// @dev KNOWN PHASE-2 LIMITATION — a `jobId` can be stranded. {completeSelfCall} is the ONLY path that
-    ///      clears `jobId`, and it is callable only by the diamond executing its own scheduled call. So if the
-    ///      schedule never fires — the scheduler deletes it with {deleteSchedule}, the expiry passes
-    ///      unexecuted, or the diamond is out of HBAR at fire time — `jobId` stays occupied and every later
-    ///      `scheduleSelfCall` for it reverts {HSSJobAlreadyScheduled} forever. {deleteSchedule} takes a
-    ///      schedule address and cannot free the job. Recovery today needs a diamond cut. The fix (a
-    ///      scheduler-gated cancel that clears the map) is deliberately deferred: it changes this interface's
-    ///      function set and therefore its pinned `interfaceId`, and the whole self-call design rests on the
-    ///      unverified assumption that a fired schedule presents `msg.sender == address(this)` — probe 6 in
-    ///      `script/config/hedera/ProbeHedera.s.sol` settles that first. Do not build a recurring job on
-    ///      `scheduleSelfCall` until both land.
+    /// @dev The matching HSSAdapterRecovery facet must be installed. New bookings wrap `data` in a
+    ///      generation-bound envelope, which authenticates the self caller before executing the payload.
+    ///      A scheduler-role holder may cancel a stranded job through IHSSAdapterRecovery. The frozen
+    ///      interfaceId and selectors of this interface are unchanged. After an upgrade, cancel and replace
+    ///      legacy raw jobs: they cannot complete a generation-bound job, but their raw payload may still
+    ///      execute if native deletion fails. Native callback sender identity still requires probe6 evidence.
     function scheduleSelfCall(bytes32 jobId, uint256 expirySecond, uint256 gasLimit, bytes calldata data)
         external
         returns (address scheduleAddress);
@@ -92,6 +87,6 @@ interface IHSSAdapter {
     //                        Callback plumbing (self only)
     // -------------------------------------------------------------------------
 
-    /// @notice Clears `jobId`'s live schedule; callable only by the diamond executing its own scheduled call.
+    /// @notice Clears `jobId` only inside its matching generation envelope, with the diamond as caller.
     function completeSelfCall(bytes32 jobId) external;
 }

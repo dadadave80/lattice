@@ -11,8 +11,13 @@ import {API3AdapterLib} from "@lattice/oracles/api3/API3AdapterLib.sol";
 ///         configuration and WAD-normalized answers.
 /// @dev Stateless delegator — all logic and storage live in {API3AdapterLib}. Consumers inherit this
 ///      contract and add AccessControl + an initializer.
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source API3
+/// @custom:lattice-requires AccessControl|AccessControlEnumerable|AccessControlTimed convention role-management-surface;
+/// @custom:lattice-family price-source
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches lattice.storage.API3Adapter;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init API3AdapterInit
 contract API3Adapter is IAPI3Adapter {
     /// @inheritdoc IAPI3Adapter
     function getFeed(bytes32 key) external view virtual override returns (address proxy, uint48 maxStaleness) {

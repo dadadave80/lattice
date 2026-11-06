@@ -10,9 +10,15 @@ import {AccessManagerLib} from "@lattice/access/libraries/AccessManagerLib.sol";
 ///         inside the initializing window (so it must NOT open its own pre/postInitializer; the
 ///         `__AccessManager_init` guard passes because the window is already open). Reverts with
 ///         {AccessManagerInvalidInitialAdmin} if `admin` is the zero address.
+/// @custom:lattice-kind step
 contract AccessManagerInit {
     /// @notice Seeds the AccessManager module. MUST be invoked via the diamond's `initialize` `_init` delegatecall.
     /// @param admin The address granted the initial `ADMIN_ROLE`.
+    /// @custom:lattice-initializes AccessManager;
+    /// @custom:lattice-after none;
+    /// @custom:lattice-same-call Initializable hard enclosing-initializing-window;
+    /// @custom:lattice-param admin authority;
+    /// @custom:lattice-registers-interfaces
     function init(address admin) external {
         AccessManagerLib.__AccessManager_init(admin);
     }

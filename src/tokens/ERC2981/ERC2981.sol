@@ -8,8 +8,13 @@ import {ERC2981Lib} from "@lattice/tokens/ERC2981/libraries/ERC2981Lib.sol";
 /// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/common/ERC2981.sol)
 /// @notice Stateless Diamond facet for the ERC-2981 NFT Royalty Standard.
 /// @dev All logic — including admin auth — lives in `ERC2981Lib`. Pure delegator.
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source OpenZeppelin v5.6.1
+/// @custom:lattice-requires AccessControl|AccessControlEnumerable|AccessControlTimed convention role-management-surface;
+/// @custom:lattice-family none
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches lattice.storage.ERC2981;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init ERC2981Init
 contract ERC2981 is IERC2981 {
     /// @inheritdoc IERC2981
     function royaltyInfo(uint256 tokenId, uint256 salePrice) public view virtual returns (address, uint256) {

@@ -12,10 +12,18 @@ import {StrategyManagerLib} from "@lattice/defi/libraries/StrategyManagerLib.sol
 ///         Delegatecalled by {Diamond.initialize} inside the initializing window (so it must NOT open its own
 ///         pre/postInitializer; each `__*_init` guard passes because the window is already open). Companion to
 ///         the {VaultCoreInit}/{ERC2981Init} patterns — a first-class production deploy artifact.
+/// @custom:lattice-kind bundle
 contract StrategyManagerInit {
     /// @notice Runs the access-control + StrategyManager module initializers. MUST be invoked via the diamond's
     ///         `initialize` `_init` delegatecall.
     /// @param admin The address granted `DEFAULT_ADMIN_ROLE`.
+    /// @custom:lattice-initializes AccessControl;
+    /// @custom:lattice-initializes StrategyManager;
+    /// @custom:lattice-after none;
+    /// @custom:lattice-same-call Initializable hard enclosing-initializing-window;
+    /// @custom:lattice-sequence AccessControl;StrategyManager;
+    /// @custom:lattice-param admin authority;
+    /// @custom:lattice-registers-interfaces
     function init(address admin) external {
         AccessControlLib.__AccessControl_init(admin);
         StrategyManagerLib.__StrategyManager_init();

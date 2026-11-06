@@ -152,6 +152,34 @@ The vote-aware `ERC20VotesLib._mint` is a direct minter for ERC20Capped too: it 
 The matrix below classifies `transfer` as One per diamond and `transferFrom` as Incompatible (it is also the
 ERC-721 selector), each with a D25 note.
 
+### ERC-7674 temporary allowances
+
+`ERC20TemporaryApproval` adds only `temporaryApprove(address,uint256)` (`0x42232a4c`). Its stateless initializer
+registers ERC-165 discovery. The matching shared `ERC20Lib` reports the saturated
+sum of persistent and temporary allowances, and every spender consumes temporary allowance first. This covers
+base and votes `transferFrom`, `burnFrom`, flash-mint repayment and approved ERC-4626 withdrawals/redemptions.
+No balance-movement hook is added: the exclusions in the table above still apply.
+
+Use `DeployERC20TemporaryApproval` for a fresh token, or compose `ERC20TemporaryApprovalInit` in another
+recipe's initializing window. On an existing diamond, the admin must atomically upgrade **all** allowance
+readers/spenders, including custom facets compiled with older ERC20Lib code, add the temporary facet and run
+its init through the application's guarded reinitializer. Adding the new facet to old spender bytecode alone
+cannot change that old code's allowance policy. Existing ERC20 selectors/interfaceId and the storage prefix
+are unchanged. There is no persistent activation field: all matching ERC20Lib spenders read the transient
+allowance, which is zero unless a grant was set in that transaction.
+
+All matching allowance readers/spenders require EIP-1153, even without the temporary facet installed
+(the canonical Cancun minimum supports it). There is no chain-ID exception
+or persistent-storage fallback. A grant is useful only within one transaction containing both grant and spend;
+a later transaction sees only persistent approval. Ordinary `approve`/permit changes do not revoke a live
+temporary grant. Temporary grants/consumption emit no `Approval` event; `allowance` may saturate at uint256 max.
+
+The OpenZeppelin parity scope for [#235](https://github.com/dadadave80/lattice/issues/235) is the pinned 5.6.1
+release. The 5.7 extensions mentioned in [#234](https://github.com/dadadave80/lattice/issues/234)
+(ERC3009/TransferAuthorization and ERC721/ERC1155 Crosschain) remain deferred to separate review. The existing
+ERC1363/movement-family hazard is still an integrator exclusion rather than a generic cut-time rejection;
+temporary approval does not resolve that issue's separate pairing acceptance condition.
+
 ### ERC-721 and ERC-1155
 
 ERC721Enumerable, ERC721Pausable and ERC721Votes each replace the three ERC-721 movement selectors, so a diamond

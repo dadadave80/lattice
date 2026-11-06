@@ -15,10 +15,18 @@ import {
 ///         (`0x4200000000000000000000000000000000000023`). Delegatecalled by {Diamond.initialize} inside the
 ///         initializing window (so it must NOT open its own pre/postInitializer; each `__*_init` guard passes
 ///         because the window is already open). A first-class production deploy artifact.
+/// @custom:lattice-kind bundle
 contract L2ToL2CrossDomainMessengerGatewayAdapterInit {
     /// @notice Runs the access-control + adapter module initializers. MUST be invoked via the diamond's
     ///         `initialize` `_init` delegatecall.
     /// @param admin The address granted `DEFAULT_ADMIN_ROLE` (controls the remote-adapter setter).
+    /// @custom:lattice-initializes AccessControl;
+    /// @custom:lattice-initializes L2ToL2CrossDomainMessengerGatewayAdapter;
+    /// @custom:lattice-after none;
+    /// @custom:lattice-same-call Initializable hard enclosing-initializing-window;
+    /// @custom:lattice-sequence AccessControl;L2ToL2CrossDomainMessengerGatewayAdapter;
+    /// @custom:lattice-param admin authority;
+    /// @custom:lattice-registers-interfaces
     function init(address admin) external {
         AccessControlLib.__AccessControl_init(admin);
         L2ToL2CrossDomainMessengerGatewayAdapterLib.__L2ToL2CrossDomainMessengerGatewayAdapter_init();

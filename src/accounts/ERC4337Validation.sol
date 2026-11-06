@@ -13,8 +13,14 @@ import {IAccount, PackedUserOperation} from "@lattice/interfaces/external/ercs/I
 ///         owner, and pays the EntryPoint its prefund.
 /// @dev Stateless delegator — logic/storage live in {ERC4337ValidationLib}. The EntryPoint is configurable
 ///      (v0.7/v0.8/v0.9) rather than hardcoded.
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source ERC-4337
+/// @custom:lattice-requires AccessControl|AccessControlEnumerable|AccessControlTimed convention role-management-surface;
+/// @custom:lattice-requires AccountSigner convention account-authority-configuration;
+/// @custom:lattice-family account-validation
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches lattice.storage.ERC4337Validation;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init AccountInit
 contract ERC4337Validation is IAccount, IERC4337Validation {
     /// @inheritdoc IAccount
     function validateUserOp(PackedUserOperation calldata userOp, bytes32 userOpHash, uint256 missingAccountFunds)

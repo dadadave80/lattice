@@ -15,8 +15,13 @@ import {IERC7786Recipient} from "@lattice/interfaces/external/ercs/IERC7786.sol"
 ///         the send path (`sendMessage`) to a registered counterpart.
 /// @dev Stateless delegator — all logic and storage live in {CrosschainLinkLib}. Consumers inherit this
 ///      facet and add AccessControl + an initializer that calls `CrosschainLinkLib.__CrosschainLink_init`.
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source OpenZeppelin
+/// @custom:lattice-requires AccessControl|AccessControlEnumerable|AccessControlTimed convention role-management-surface;
+/// @custom:lattice-family gateway
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches lattice.storage.CrosschainLink;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init CrosschainLinkInit
 contract CrosschainLink is IERC7786Recipient, ICrosschainLink {
     /// @inheritdoc IERC7786Recipient
     function receiveMessage(bytes32 receiveId, bytes calldata sender, bytes calldata payload)

@@ -15,7 +15,6 @@ import {NoncesLib} from "@lattice/utils/libraries/NoncesLib.sol";
 /// @dev Initializes EIP-712 (for castVoteBySig), Nonces (for signature replay-protection),
 ///      and Governor inside a single `initializer`-guarded constructor.
 ///      The token_ address must implement {IVotes} (e.g. an ERC20Votes token).
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source OpenZeppelin v5.1.0
 contract GovernorStandalone is Governor, Initializable {
     /// @param name_ Human-readable name of the governor and EIP-712 signing domain.

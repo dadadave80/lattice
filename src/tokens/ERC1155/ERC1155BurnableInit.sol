@@ -8,7 +8,13 @@ import {ERC1155BurnableLib} from "@lattice/tokens/ERC1155/libraries/ERC1155Burna
 /// @notice One-shot initializer for the ERC-1155 Burnable extension — registers IERC1155Burnable via ERC-165.
 ///         Delegatecalled by {Diamond.initialize} (through {MultiInit}) inside the initializing window opened by
 ///         the diamond, alongside the base {ERC1155Init}; it must NOT open its own pre/postInitializer.
+/// @custom:lattice-kind step
 contract ERC1155BurnableInit {
+    /// @custom:lattice-initializes ERC1155Burnable;
+    /// @custom:lattice-after none;
+    /// @custom:lattice-same-call Initializable hard enclosing-initializing-window;
+    /// @custom:lattice-param none;
+    /// @custom:lattice-registers-interfaces
     function init() external {
         ERC1155BurnableLib.__ERC1155Burnable_init();
     }

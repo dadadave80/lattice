@@ -12,8 +12,13 @@ import {BandAdapterLib} from "@lattice/oracles/band/BandAdapterLib.sol";
 ///         {IPriceOracleReader} read surface with the other Lattice oracle adapters.
 /// @dev Stateless delegator — all logic and storage live in {BandAdapterLib}. Consumers inherit this
 ///      contract and add AccessControl + an initializer.
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source Band
+/// @custom:lattice-requires AccessControl|AccessControlEnumerable|AccessControlTimed convention role-management-surface;
+/// @custom:lattice-family price-source
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches lattice.storage.BandAdapter;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init BandAdapterInit
 contract BandAdapter is IBandAdapter {
     /// @inheritdoc IBandAdapter
     function stdReference() external view virtual override returns (address) {

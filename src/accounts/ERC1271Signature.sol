@@ -12,8 +12,13 @@ import {IERC1271} from "@lattice/interfaces/external/ercs/IERC1271.sol";
 /// @dev Stateless delegator — logic lives in {ERC1271SignatureLib}. Implements ERC-7739 defensive rehashing:
 ///      accepts only nested `TypedDataSign` / `PersonalSign` envelopes bound to this account's EIP-712 domain
 ///      (a plain signature over the raw hash is rejected), defeating cross-account replay.
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source ERC-7739
+/// @custom:lattice-requires AccountSigner convention account-authority-configuration;
+/// @custom:lattice-family account-signature
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches none;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init AccountInit
 contract ERC1271Signature is IERC1271 {
     /// @inheritdoc IERC1271
     function isValidSignature(bytes32 hash, bytes calldata signature) external view virtual returns (bytes4) {

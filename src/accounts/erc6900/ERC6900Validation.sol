@@ -13,8 +13,13 @@ import {PackedUserOperation} from "@lattice/interfaces/external/ercs/IAccount.so
 ///         account. Shares the EntryPoint configured via `ERC4337ValidationLib`.
 /// @dev Stateless delegator — logic lives in {ERC6900ValidationLib}; it reads the registries owned by
 ///      {ERC6900ModuleManagerLib} and reuses the executor's validation-applicability gate.
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source ERC-6900
+/// @custom:lattice-requires ERC6900ModuleManager convention validation-and-execution-configuration;
+/// @custom:lattice-family account-validation
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches none;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init AccountInit6900
 contract ERC6900Validation {
     /// @notice ERC-4337 account validation. Only the configured EntryPoint may call.
     function validateUserOp(PackedUserOperation calldata userOp, bytes32 userOpHash, uint256 missingAccountFunds)

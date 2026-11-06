@@ -9,8 +9,13 @@ import {HederaExchangeRateAdapterLib} from "@lattice/oracles/hedera/HederaExchan
 /// @author Modified from hiero-ledger/hiero-contracts (https://github.com/hiero-ledger/hiero-contracts)
 /// @notice Diamond facet exposing Hedera's network USD/HBAR exchange rate (system contract 0x168).
 /// @dev Stateless delegator over HederaExchangeRateAdapterLib. Only meaningful on Hedera.
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source Hedera
+/// @custom:lattice-requires none;
+/// @custom:lattice-family none
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches none;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init HederaExchangeRateAdapterInit
 contract HederaExchangeRateAdapter is IHederaExchangeRateAdapter {
     /// @inheritdoc IHederaExchangeRateAdapter
     function tinycentsToTinybars(uint256 tinycents) external view virtual override returns (uint256 tinybars) {

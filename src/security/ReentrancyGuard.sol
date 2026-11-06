@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {IReentrancyGuard} from "@lattice/interfaces/security/IReentrancyGuard.sol";
 import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib.sol";
 
 /// @title ReentrancyGuard
@@ -15,7 +16,7 @@ import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib
 ///      see contract-level overrides). Stateless — adds no storage and no selectors, safe to mix
 ///      into any facet. All facets sharing one diamond share one lock, which is exactly the
 ///      cross-facet protection wanted.
-abstract contract ReentrancyGuard {
+abstract contract ReentrancyGuard is IReentrancyGuard {
     /// @dev Guards a function from reentrancy.
     modifier nonReentrant() virtual {
         ReentrancyGuardLib.entry();

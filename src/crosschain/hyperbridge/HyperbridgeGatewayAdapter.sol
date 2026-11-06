@@ -28,8 +28,14 @@ import {
 ///      {HyperbridgeUnsupportedHook} (the adapter dispatches neither GETs nor responses — silently accepting
 ///      them would be a spoofable no-op surface). EVM recipients only in v1; non-EVM (POLKADOT-/SUBSTRATE-)
 ///      state machines can be registered raw for inbound auth.
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source Hyperbridge
+/// @custom:lattice-requires AccessControl|AccessControlEnumerable|AccessControlTimed convention role-management-surface;
+/// @custom:lattice-family gateway
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches lattice.storage.HyperbridgeGatewayAdapter;
+/// @custom:lattice-touches slot:0x8000000000ab143c06;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init HyperbridgeGatewayAdapterInit
 contract HyperbridgeGatewayAdapter is IERC7786GatewaySource, IIsmpModule, IHyperbridgeGatewayAdapter {
     /// @inheritdoc IERC7786GatewaySource
     /// @dev `payable` is forced by the interface; the native-token fee path is DEFERRED — stray value reverts.

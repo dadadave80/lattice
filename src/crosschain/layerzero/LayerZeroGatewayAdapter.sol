@@ -18,8 +18,13 @@ import {ILayerZeroReceiver} from "@lattice/interfaces/external/layerzero/ILayerZ
 ///      `lzReceive` is the inbound analogue of CCIP's `ccipReceive` / Wormhole's `receiveWormholeMessages`.
 ///      Implements {ILayerZeroReceiver} (`lzReceive` / `allowInitializePath` / `nextNonce`) so the endpoint can
 ///      deliver messages and query the OApp's unordered-delivery / trusted-peer policy.
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source LayerZero
+/// @custom:lattice-requires AccessControl|AccessControlEnumerable|AccessControlTimed convention role-management-surface;
+/// @custom:lattice-family gateway
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches lattice.storage.LayerZeroGatewayAdapter;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init LayerZeroGatewayAdapterInit
 contract LayerZeroGatewayAdapter is IERC7786GatewaySource, ILayerZeroReceiver, ILayerZeroGatewayAdapter {
     /// @inheritdoc IERC7786GatewaySource
     function sendMessage(bytes calldata recipient, bytes calldata payload, bytes[] calldata attributes)

@@ -13,8 +13,14 @@ import {ERC1155URIStorageLib} from "@lattice/tokens/ERC1155/libraries/ERC1155URI
 ///      that would re-export the base surface and collide with the standalone {ERC1155} facet in a diamond. The
 ///      ERC-1155 base surface comes from a separately cut {ERC1155} facet, and {DeployERC1155URIStorage} composes
 ///      both with a mixed Add/Replace cut. The setters are gated on `DEFAULT_ADMIN_ROLE`. Pure delegator.
-/// @custom:lattice-version 0.5.0
 /// @custom:lattice-source OpenZeppelin v5.6.1
+/// @custom:lattice-requires AccessControl|AccessControlEnumerable|AccessControlTimed convention role-management-surface;
+/// @custom:lattice-requires ERC1155 convention complete-token-surface;
+/// @custom:lattice-family none
+/// @custom:lattice-owns uri(uint256);
+/// @custom:lattice-touches lattice.storage.ERC1155URIStorage;
+/// @custom:lattice-seam uri(uint256) when=ERC1155 anyOf=ERC1155URIStorage per-token-URI;
+/// @custom:lattice-init ERC1155URIStorageInit
 contract ERC1155URIStorage is IERC1155URIStorage {
     /// @notice Returns the URI for token type `tokenId`: the base URI followed by the per-token URI when one is
     ///         set, otherwise the ERC-1155 URI template.
