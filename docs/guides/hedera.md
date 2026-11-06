@@ -86,9 +86,9 @@ hold HBAR. That is why `Receive` is in the `DeployHTSAdapter` recipe.
 
 ## Build with the Hedera profile
 
-Hedera mainnet and testnet run **Cancun** (consensus node v0.76, `contracts.evm.version = v0.67`). Prague
-arrives with v0.77, planned for October 2026. Lattice explicitly pins Cancun for its default, CI and Hedera
-profiles; it does not inherit Solidity 0.8.36's newer default target.
+Lattice explicitly pins Cancun for its default, CI and Hedera profiles; it does not inherit Solidity
+0.8.36's newer default target. The node and EVM versions in the dated probe results below describe those
+measurements. A network protocol upgrade does not independently change the release compiler target.
 
 Earlier releases compiled the default profile for Osaka. Switching to Cancun changes compiler metadata
 and deterministic addresses, even where executable code is identical. Reproduce a historical deployment

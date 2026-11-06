@@ -38,8 +38,8 @@ build_info = true
 extra_output = ["storageLayout"]
 
 [profile.hedera]
-# Hedera mainnet/testnet run Cancun (consensus node v0.76, evm.version v0.67). Switch to "prague"
-# when v0.77 lands (planned Oct 2026). Pinning also makes HashScan/Sourcify verification reproducible.
+# Keep the canonical Cancun target for identical release bytecode across chains.
+# A chain's protocol upgrade does not change this compiler target without a release decision.
 evm_version = "cancun"
 
 # Named RPC aliases for `forge script --rpc-url <name>` / `vm.createSelectFork("<name>")`. Foundry does NOT

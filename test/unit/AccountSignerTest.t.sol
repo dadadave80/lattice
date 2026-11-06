@@ -135,8 +135,8 @@ contract AccountSignerTest is AccountBlueprintHelper {
         assertFalse(signer.rawValidate(keccak256("other digest"), abi.encodePacked(r, s)), "tampered accepted");
     }
 
+    /// forge-config: default.hardfork = "cancun"
     function test_P256_CancunWithoutVerifierFailsClosed() public {
-        vm.setEvmVersion("cancun");
         vm.etch(0x000000000000D01eA45F9eFD5c54f037Fa57Ea1a, hex""); // Solady's optional software verifier.
         (uint256 x, uint256 y) = vm.publicKeyP256(PASSKEY_PK);
         vm.prank(admin);
