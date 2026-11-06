@@ -402,6 +402,7 @@ import {IDIAAdapter} from "@lattice/interfaces/oracles/IDIAAdapter.sol";
 import {IGelatoAutomateAdapter} from "@lattice/interfaces/oracles/IGelatoAutomateAdapter.sol";
 import {IGelatoVRFAdapter} from "@lattice/interfaces/oracles/IGelatoVRFAdapter.sol";
 import {IHSSAdapter} from "@lattice/interfaces/oracles/IHSSAdapter.sol";
+import {IHSSAdapterRecovery} from "@lattice/interfaces/oracles/IHSSAdapterRecovery.sol";
 import {IHederaExchangeRateAdapter} from "@lattice/interfaces/oracles/IHederaExchangeRateAdapter.sol";
 import {IHederaPrngAdapter} from "@lattice/interfaces/oracles/IHederaPrngAdapter.sol";
 import {IOracleGuard} from "@lattice/interfaces/oracles/IOracleGuard.sol";
@@ -434,7 +435,11 @@ import {IHTSAdapter} from "@lattice/interfaces/tokens/IHTSAdapter.sol";
 import {IEIP712} from "@lattice/interfaces/utils/IEIP712.sol";
 import {INonces} from "@lattice/interfaces/utils/INonces.sol";
 import {IVestingWallet} from "@lattice/interfaces/utils/IVestingWallet.sol";
-import {ERC165_MAP_IHSSADAPTER_SLOT, HSS_ADAPTER_STORAGE_SLOT} from "@lattice/oracles/hedera/HSSAdapterLib.sol";
+import {
+    ERC165_MAP_IHSSADAPTERRECOVERY_SLOT,
+    ERC165_MAP_IHSSADAPTER_SLOT,
+    HSS_ADAPTER_STORAGE_SLOT
+} from "@lattice/oracles/hedera/HSSAdapterLib.sol";
 import {ERC165_MAP_IHEDERAEXCHANGERATEADAPTER_SLOT} from "@lattice/oracles/hedera/HederaExchangeRateAdapterLib.sol";
 import {ERC165_MAP_IHEDERAPRNGADAPTER_SLOT} from "@lattice/oracles/hedera/HederaPrngAdapterLib.sol";
 import {ERC165_MAP_IHTSADAPTER_SLOT, HTS_ADAPTER_STORAGE_SLOT} from "@lattice/tokens/hedera/HTSAdapterLib.sol";
@@ -1752,6 +1757,15 @@ contract StorageSlotVerificationTest is Test {
         );
     }
 
+    function test_Erc165MapIHSSAdapterRecoverySlot() public pure {
+        assertEq(type(IHSSAdapter).interfaceId, bytes4(0xd07095cf), "live HSS interface changed");
+        assertEq(type(IHSSAdapterRecovery).interfaceId, bytes4(0x4d10dd54));
+        assertEq(
+            ERC165_MAP_IHSSADAPTERRECOVERY_SLOT,
+            _erc165MapSlot(type(IHSSAdapterRecovery).interfaceId, ERC165_STORAGE_LOCATION)
+        );
+    }
+
     function test_Erc165MapIHSSAdapterSlot() public pure {
         assertEq(
             ERC165_MAP_IHSSADAPTER_SLOT,
@@ -2400,7 +2414,7 @@ contract StorageSlotVerificationTest is Test {
     }
 
     function _allErc165MapSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](107);
+        slots = new bytes32[](108);
         uint256 i;
         // access
         slots[i++] = ERC165_MAP_IACCESSCONTROL_SLOT;
@@ -2542,6 +2556,7 @@ contract StorageSlotVerificationTest is Test {
         // HederaPrngAdapter are stateless — one map slot each, no ERC-7201 row above)
         slots[i++] = ERC165_MAP_IHTSADAPTER_SLOT;
         slots[i++] = ERC165_MAP_IHSSADAPTER_SLOT;
+        slots[i++] = ERC165_MAP_IHSSADAPTERRECOVERY_SLOT;
         slots[i++] = ERC165_MAP_IHASSIGNATUREVERIFIER_SLOT;
         slots[i++] = ERC165_MAP_IHEDERAEXCHANGERATEADAPTER_SLOT;
         slots[i++] = ERC165_MAP_IHEDERAPRNGADAPTER_SLOT;

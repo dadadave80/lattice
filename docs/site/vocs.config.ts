@@ -28,6 +28,7 @@ const decisions: Item = {
     { text: '0011 No utility duplicates', link: '/adr/0011-no-stateless-utility-duplicates' },
     { text: '0012 Bash storage checker', link: '/adr/0012-storage-checker-bash-jq' },
     { text: '0013 Governor grace', link: '/adr/0013-colocated-timelock-enforces-governor-grace' },
+    { text: '0017 HSS generation recovery', link: '/adr/0017-hss-generation-recovery' },
   ],
 }
 

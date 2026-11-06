@@ -19,6 +19,7 @@ the linked issue or pull request; a record is the outcome, not a spec.
 | [0011](0011-no-stateless-utility-duplicates.md) | No new copies of stateless Solady or OpenZeppelin utilities | Accepted |
 | [0012](0012-storage-checker-bash-jq.md) | The storage-layout checker stays in Bash and jq | Accepted |
 | [0013](0013-colocated-timelock-enforces-governor-grace.md) | A timelock in the Governor's diamond enforces the proposal grace period | Accepted |
+| [0017](0017-hss-generation-recovery.md) | HSS job recovery invalidates generations before native deletion | Accepted locally; native sender unverified |
 
 ## When to write one
 
