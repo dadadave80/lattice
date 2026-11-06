@@ -12,13 +12,16 @@ pragma solidity >=0.8.4;
 ///         NO attestation committee.
 /// @dev Hyperbridge routes by BYTES state machine ids (e.g. `bytes("EVM-8453")`, `bytes("POLKADOT-3367")`).
 ///      For EVM destinations the id is DERIVED from the chainId (never caller-supplied — fail-closed);
-///      non-EVM ids go through {registerStateMachineRaw}. FEES are charged in the host's ERC-20
+///      non-EVM ids go through {registerStateMachineRaw}. FEES are denominated in the host's ERC-20
 ///      `feeToken()` (read LIVE at send time — the host can migrate it, so it is never cached):
 ///      `perByteFee(dest) * body.length` protocol fee plus an optional caller-funded relayer fee
 ///      ({sendMessageWithFee}; the plain `sendMessage` uses relayerFee 0 = unfunded/self-relay, valid in
-///      ISMP). The dispatch `payer` is ALWAYS the sending user — the host refunds timeout fees to the payer,
-///      and a diamond payer would strand them. A native-token fee path (host-side uniswap swap of msg.value)
-///      exists upstream but is DEFERRED — the adapter rejects stray value in v1 (tracked in #213).
+///      ISMP). Zero msg.value pulls fee tokens; positive msg.value selects the compatible legacy host's
+///      native exact-output swap, forwarding only the quote and refunding the unused native delta. The
+///      caller must accept a nonzero refund or the entire dispatch reverts. The host/router implementation
+///      must match this legacy per-byte-fee ABI, not newer fee-only hosts. The dispatch `payer` is ALWAYS
+///      the sending user: only the relayer fee is refunded in feeToken on timeout, never the protocol fee
+///      or native swap cost.
 interface IHyperbridgeGatewayAdapter {
     // -------------------------------------------------------------------------
     //                                  Events
@@ -40,8 +43,8 @@ interface IHyperbridgeGatewayAdapter {
     event HyperbridgeMessageDispatched(bytes32 indexed sendId, bytes32 indexed commitment, uint256 destChainId);
 
     /// @notice Emitted when the host notifies the adapter that a request WE dispatched timed out
-    ///         (`onPostRequestTimeout`). EMIT-ONLY in v1: the fee refund itself is HOST-SIDE to
-    ///         `DispatchPost.payer` (the original sending user); this event is the notification surface an
+    ///         (`onPostRequestTimeout`). EMIT-ONLY in v1: only the relayer fee is refunded in feeToken
+    ///         HOST-SIDE to `DispatchPost.payer` (the original sending user); this notification is a surface an
     ///         application layer can key compensating actions off (decided in #77, Q8).
     /// @param sendId  The original suite-level sendId (`keccak256(abi.encode(block.chainid, envelopeNonce))` —
     ///                a timeout fires on the SOURCE chain, so `block.chainid` here equals the send-time one).
@@ -72,9 +75,20 @@ interface IHyperbridgeGatewayAdapter {
     /// @notice The destination chain has no state machine id and/or no trusted remote module registered.
     error HyperbridgeUnknownDestinationChain(uint256 chainId);
 
-    /// @notice Native value was supplied — the native-token fee path (host-side uniswap swap) is DEFERRED;
-    ///         fees are charged in the host's ERC-20 `feeToken()` only in v1 (tracked in #213).
+    /// @notice Legacy native-value rejection error; retained in the ABI, no longer emitted by native sends.
     error HyperbridgeUnexpectedValue(uint256 value);
+
+    /// @notice The configured native quote router, path or returned amounts were invalid.
+    error HyperbridgeInvalidNativeQuote();
+
+    /// @notice The current call's native budget is below the router's quote.
+    error HyperbridgeInsufficientNativeFee(uint256 required, uint256 provided);
+
+    /// @notice Native quoting/dispatch changed the host's standing native balance, including retained surplus.
+    error HyperbridgeHostNativeBalanceChanged(uint256 beforeBalance, uint256 afterBalance);
+
+    /// @notice The caller rejected the current call's unused native balance delta.
+    error HyperbridgeNativeRefundFailed();
 
     /// @notice The inbound callback was not invoked by the configured IsmpHost.
     error HyperbridgeNotHost(address caller);
@@ -139,13 +153,15 @@ interface IHyperbridgeGatewayAdapter {
     // -------------------------------------------------------------------------
 
     /// @notice ERC-7786 send with an explicit ISMP relayer fee (charged in the host's `feeToken` on top of the
-    ///         per-byte protocol fee; both pulled from the caller). The relayer fee lives OUTSIDE the
+    ///         per-byte protocol fee). Zero msg.value pulls fee tokens from the caller; positive value is a
+    ///         bounded native swap budget, with unused delta refunded atomically. The relayer fee lives OUTSIDE the
     ///         `IERC7786GatewaySource` ABI — same pattern as the LZ/Hyperlane fee-outside-the-ABI precedent —
     ///         and the plain `sendMessage` delegates here with `relayerFee = 0` (unfunded/self-relay, valid in
     ///         ISMP).
     /// @return sendId The suite-level `keccak256(abi.encode(block.chainid, envelopeNonce))` id.
     function sendMessageWithFee(bytes calldata recipient, bytes calldata payload, uint256 relayerFee)
         external
+        payable
         returns (bytes32 sendId);
 
     // -------------------------------------------------------------------------

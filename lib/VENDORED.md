@@ -141,6 +141,7 @@ missing from this table.
 | `hedera/IHRC719.sol` | hiero-ledger/hiero-contracts `contracts/token-service/IHRC719.sol` @ `5ade6c8` | Apache-2.0 | subset (Lattice SPDX: Apache-2.0) |
 | `hedera/IPrngSystemContract.sol` | hiero-ledger/hiero-contracts `contracts/prng/IPrngSystemContract.sol` @ `5ade6c8` | Apache-2.0 | subset (Lattice SPDX: Apache-2.0) |
 | `hyperbridge/IIsmpDispatcher.sol` | polytope-labs/ismp-solidity `interfaces/IDispatcher.sol` | Apache-2.0 | subset (Lattice SPDX: Apache-2.0) |
+| `hyperbridge/IHyperbridgeNativeFeeRouter.sol` | polytope-labs/hyperbridge `evm/src/utils/uniswapv2/UniV3UniswapV2Wrapper.sol` | Apache-2.0 | native quote subset; stateful `getAmountsIn` (Lattice SPDX: Apache-2.0) |
 | `hyperbridge/IIsmpModule.sol` | polytope-labs/ismp-solidity `interfaces/IIsmpModule.sol` | Apache-2.0 | subset (Lattice SPDX: Apache-2.0) |
 | `hyperlane/IMailbox.sol` | hyperlane-xyz/hyperlane-monorepo `solidity/contracts/interfaces/IMailbox.sol` | MIT OR Apache-2.0 | subset |
 | `hyperlane/IMessageRecipient.sol` | hyperlane-xyz/hyperlane-monorepo `solidity/contracts/interfaces/IMessageRecipient.sol` | MIT OR Apache-2.0 | subset |

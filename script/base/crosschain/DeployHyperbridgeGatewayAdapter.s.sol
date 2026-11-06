@@ -31,8 +31,8 @@ import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondC
 ///         Hyperbridge adapter diamond is, shared by production (`run --broadcast`) and the facet tests (which
 ///         build on {buildCuts}). `AccessControl` is part of the base recipe because every state machine /
 ///         remote-module / timeout setter is `DEFAULT_ADMIN_ROLE`-gated. The Hyperbridge IsmpHost is wired at
-///         init time; fees are charged in the host's ERC-20 `feeToken()` read live at send time, so nothing
-///         fee-related is deployed here.
+///         init time; fees use its live ERC-20 `feeToken()` or a bounded native swap budget through the
+///         compatible legacy host/router. No fee infrastructure or Receive route is deployed here.
 contract DeployHyperbridgeGatewayAdapter is BaseDeploy {
     /// @notice Builds the Hyperbridge adapter diamond cuts + initializer (no broadcast, no proxy deploy).
     /// @param admin The address granted `DEFAULT_ADMIN_ROLE` (controls every adapter setter).
@@ -128,9 +128,11 @@ contract DeployHyperbridgeGatewayAdapter is BaseDeploy {
             "host",
             "only the configured host may invoke authenticated post and timeout callbacks"
         );
-        variant.conditions = new string[](1);
+        variant.conditions = new string[](2);
         variant.conditions[0] =
         "caller: configure state-machine equivalences, trusted remote gateways and destinations before messaging";
+        variant.conditions[1] =
+            "caller: authenticate the legacy per-byte-fee host and its live native quote/swap router; positive value is a bounded native budget, nonzero refunds must be accepted, and timeout refunds only the relayer fee in feeToken";
         result.variants[0] = variant;
         result.deploymentContexts[0] = RecipeSpecLib.deploymentContext(
             "DeployHyperbridgeGatewayAdapter", "run(address,address)", variant, "buildCuts(admin,host)"

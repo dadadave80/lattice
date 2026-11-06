@@ -19,12 +19,13 @@ import {
 /// @notice ERC-7786 cross-chain gateway facet over Hyperbridge's ISMP (proof-verified interop: consensus +
 ///         state proofs aggregated on a Polkadot-secured coprocessor, delivered by permissionless
 ///         proof-carrying relayers — NO attestation committee). `sendMessage` dispatches a POST request via
-///         the IsmpHost, paying the per-byte protocol fee + optional relayer fee in the host's ERC-20
-///         `feeToken()` (never `msg.value`); the host-invoked `IIsmpModule` hooks are the inbound surface.
+///         the compatible IsmpHost, paying the per-byte protocol fee + optional relayer fee in its live
+///         ERC-20 `feeToken()`, or swapping a positive native budget through its configured router.
+///         The host-invoked `IIsmpModule` hooks are the inbound surface.
 /// @dev Stateless delegator — logic/storage live in {HyperbridgeGatewayAdapterLib}. Implements ALL SIX
 ///      {IIsmpModule} hooks so the host can notify the module: `onAccept` (delivery) and
-///      `onPostRequestTimeout` (native timeout/refund notification — the fee refund itself is host-side to
-///      `DispatchPost.payer`, the sending user) are live; the four response/GET hooks revert
+///      `onPostRequestTimeout` (timeout notification — only the relayer fee is refunded host-side in
+///      `feeToken` to `DispatchPost.payer`, the sending user) are live; the four response/GET hooks revert
 ///      {HyperbridgeUnsupportedHook} (the adapter dispatches neither GETs nor responses — silently accepting
 ///      them would be a spoofable no-op surface). EVM recipients only in v1; non-EVM (POLKADOT-/SUBSTRATE-)
 ///      state machines can be registered raw for inbound auth.
@@ -38,7 +39,7 @@ import {
 /// @custom:lattice-init HyperbridgeGatewayAdapterInit
 contract HyperbridgeGatewayAdapter is IERC7786GatewaySource, IIsmpModule, IHyperbridgeGatewayAdapter {
     /// @inheritdoc IERC7786GatewaySource
-    /// @dev `payable` is forced by the interface; the native-token fee path is DEFERRED — stray value reverts.
+    /// @dev Positive native value is the current call's maximum fee budget; unused value is refunded.
     function sendMessage(bytes calldata recipient, bytes calldata payload, bytes[] calldata attributes)
         external
         payable
@@ -51,6 +52,7 @@ contract HyperbridgeGatewayAdapter is IERC7786GatewaySource, IIsmpModule, IHyper
     /// @inheritdoc IHyperbridgeGatewayAdapter
     function sendMessageWithFee(bytes calldata recipient, bytes calldata payload, uint256 relayerFee)
         external
+        payable
         virtual
         returns (bytes32)
     {

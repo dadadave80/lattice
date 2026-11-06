@@ -32,7 +32,7 @@ and re-derived from first principles by `test/unit/StorageSlotVerificationTest.t
 | L2ToL2 / L1ToL2 (OP) | OP protocol messengers | `keccak(chainid, nonce)` delivery ids (L2ToL2's sendId is the messenger msgHash); messenger self-dedup | none — both reject `msg.value` (`minGasLimit` is a stored relay tunable, L1↔L2) | n/a | `crossDomainMessageContext()` / counterpart + messenger |
 | ZetaChainGatewayAdapter | ZetaChain TSS/observers (hub) | `keccak(chainid, nonce)` ids; source-chain cross-check in `onCall`; registered app map | exact `msg.value` accepted by configured gateway (may be zero) | caller addresses by default; per-message explicit nonzero recovery addresses | `msg.sender == gateway` + registered app + fail-closed source check |
 | HyperlaneGatewayAdapter | Mailbox + ISM (default ISM v1) | envelope nonce `sendId` (no protocol id in `handle`); Mailbox `delivered()` protocol guard | `msg.value` (`quoteDispatch`), synthesized `StandardHookMetadata` | IGP refund to the **user** | dual-auth: mailbox + `trustedRemotes[domainToChainId[origin]]` |
-| HyperbridgeGatewayAdapter | **Consensus/state proofs** (ISMP coprocessor); permissionless relayers | protocol nonce dedup `keccak(source, nonce)`; envelope `sendId` | **ERC-20 `feeToken`** (`perByteFee × body + relayerFee`), live-read, pull/approve/reset/sweep | `DispatchPost.payer = user` (timeout refunds); `onPostRequestTimeout` notification | host + known source machine + trusted origin module; 4 unused hooks revert |
+| HyperbridgeGatewayAdapter | **Consensus/state proofs** (ISMP coprocessor); permissionless relayers | protocol nonce dedup `keccak(source, nonce)`; envelope `sendId` | Zero value: live **ERC-20 `feeToken`** pull/approve/reset/sweep; positive value: bounded native exact-output swap | Unused native delta to caller; `DispatchPost.payer = user` (timeout **relayer feeToken** refund only); `onPostRequestTimeout` notification | host + known source machine + trusted origin module; 4 unused hooks revert |
 | CCTPBridgeAdapter | Circle Iris attesters + denylist | Circle nonce (transmitter) | none at source (full amount burned; fee deducted at destination mint, `maxFee`-capped) | n/a (burn is final) | permissionless `relayMessage` → transmitter verifies attestation |
 | AcrossBridgeAdapter | Relayer fronts + UMA optimistic settlement | no receiveId (intent); refund-after-`fillDeadline` | relayer fee inside `outputAmount` delta | **`depositor = user`** (expired-deposit refunds) | inbound `handleV3AcrossMessage`: SpokePool only, **not** an authenticated message |
 | StargateBridgeAdapter | Stargate pools on LZ rails | LZ `guid` (outbound-only for Lattice) | `msg.value` LZ fee (`quoteSend`) | **`refundAddress = user`**; dust sweep (`amountSentLD` truncation) | n/a (pool is the LZ receiver) |
@@ -150,12 +150,42 @@ and the [pinned upstream validation](https://github.com/zeta-chain/protocol-cont
 - Across inbound consumers: `handleV3AcrossMessage` is emit-only; the event is **not** an
   authenticated message (any party can originate a deposit at the diamond) — consumers must verify
   provenance independently.
-- Hyperbridge **GET requests** (proof-verified cross-chain state reads — a new primitive), and the
-  **native-with-swap** fee path (Q13).
+- Hyperbridge **GET requests** (proof-verified cross-chain state reads — a new primitive).
 - ZetaChain universal-app hop standardization + a **suite-wide** revert/refund ERC-7786 attribute (Q8;
   the Zeta-specific per-message `RevertOptions` encoding above is available; Hyperbridge timeout
   semantics remain distinct).
 - NEAR native via Rainbow Bridge (GPL-3.0; separate connector).
+
+## Hyperbridge native fee compatibility
+
+Positive `msg.value` on `sendMessage` or `sendMessageWithFee` is the current call's native fee
+budget. Zero value keeps the ERC-20 path. `quoteDispatchFee` still returns the total in fee-token
+units, including the optional relayer fee. The adapter reads the compatible host's live fee token,
+per-byte rate and `uniswapV2Router()`, then calls that router's exact-output `getAmountsIn` through
+a normal call. A stateful quote wrapper is supported. Only the quoted native input is forwarded;
+insufficient budgets revert. Native dispatch never pulls the caller's fee tokens.
+
+This targets the [legacy host at commit 8dce6799](https://github.com/polytope-labs/hyperbridge/blob/8dce6799f1d376443ae40054b80e16d60ac447d1/evm/src/core/EvmHost.sol),
+whose charge is `perByteFee(dest) * max(body.length, 32) + relayerFee`. The adapter's ABI envelope
+always exceeds that floor. Newer host revisions with different fee/callback ABIs are outside this
+compatibility claim. The configured host/router and the quote's execution behavior must be
+authenticated for the target deployment; local mocks do not certify any public router or corridor.
+
+The legacy host retains router surplus. The adapter therefore requires the host's native balance
+to be unchanged across quoting and dispatch, reverting the whole send if surplus remains there.
+Native returned directly to the adapter joins the unused current-call delta and is refunded to
+the caller; pre-existing adapter balances stay untouched. A caller rejecting a nonzero refund
+causes an atomic revert, including the dispatch and nonce. The canonical recipe needs no Receive
+facet to forward a payable call's value; a nonstandard host returning bare native to the adapter
+would also require an explicitly composed Receive route. A zero total skips the router and refunds
+the whole budget. The native quote, dispatch and refund execute under the existing reentrancy guard.
+The zero-value ERC-20 send path keeps its previous guard boundary: it can still be called during
+these external interactions when the nested sender funds and approves its own fee tokens. Such a
+send receives a distinct nonce and cannot spend the native budget or standing native balance.
+
+`DispatchPost.payer` remains the caller. A timeout refunds only the relayer fee in the host's
+fee token to that payer; it does not refund the protocol fee or reverse the native swap. The
+adapter's timeout hook emits a notification. See [ADR 0029](docs/adr/0029-hyperbridge-native-fee-budgets.md).
 
 ## 7. Testing
 

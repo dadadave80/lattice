@@ -43,6 +43,7 @@ const decisions: Item = {
     { text: '0026 Recipe data and seams', link: '/adr/0026-checked-recipe-data-and-seams' },
     { text: '0027 Governor cut topology', link: '/adr/0027-governor-governed-cut-topology' },
     { text: '0028 ZetaChain recovery options', link: '/adr/0028-zetachain-message-recovery-options' },
+    { text: '0029 Hyperbridge native fees', link: '/adr/0029-hyperbridge-native-fee-budgets' },
   ],
 }
 
