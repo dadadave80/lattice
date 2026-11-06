@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {DeployRelease} from "@lattice-script/deploy/DeployRelease.s.sol";
-import {CreateXDeployer} from "@lattice-script/lib/CreateXDeployer.sol";
+import {ArachnidDeployer} from "@lattice-script/lib/ArachnidDeployer.sol";
 import {FacetInventory} from "@lattice-script/lib/FacetInventory.sol";
 import {ArachnidProxy} from "@lattice-test/helpers/ArachnidProxy.sol";
 import {MockCreateX} from "@lattice-test/helpers/MockCreateX.sol";
@@ -41,6 +41,38 @@ contract DeployReleaseTest is Test, DeployRelease {
         // resolves to live code under Foundry (no fork needed).
         MockCreateX impl = new MockCreateX();
         vm.etch(CANONICAL, address(impl).code);
+        vm.etch(ArachnidProxy.PROXY, ArachnidProxy.RUNTIME);
+    }
+
+    function test_Release_UsesArachnidWhenBothDeployersExist() public {
+        DeployRelease.ReleaseOutput memory out = this.release(VERSION, address(this));
+        bytes memory registryInitCode = abi.encodePacked(type(LatticeRegistry).creationCode, abi.encode(address(this)));
+        assertEq(out.registry, _proxyAddress(REGISTRY_SALT, keccak256(registryInitCode)), "release used CreateX");
+        bytes memory factoryInitCode =
+            abi.encodePacked(type(LatticeFactory).creationCode, abi.encode(out.registry, address(0), address(0)));
+        assertEq(out.factory, _proxyAddress(FACTORY_SALT, keccak256(factoryInitCode)), "factory used CreateX");
+        (string[] memory names, string[] memory paths) = FacetInventory.inventory();
+        for (uint256 i; i < names.length; ++i) {
+            assertEq(
+                out.facets[i],
+                _proxyAddress(facetSalt(names[i], VERSION), keccak256(vm.getCode(paths[i]))),
+                string.concat(names[i], ": facet used CreateX")
+            );
+        }
+    }
+
+    function test_Release_RequiresProxyEvenWhenCreateXExists() public {
+        vm.etch(ArachnidProxy.PROXY, "");
+        vm.expectRevert(
+            bytes(
+                "DeployRelease: install Arachnid proxy 0x4e59b44847b379578588920cA78FbF26c0B4956C; see REGISTRY_DEPLOYMENTS.md (local tests: etch test/helpers/ArachnidProxy.sol)"
+            )
+        );
+        this.release(VERSION, address(this));
+    }
+
+    function _proxyAddress(bytes32 salt, bytes32 initCodeHash) private pure returns (address) {
+        return address(uint160(uint256(keccak256(abi.encodePacked(hex"ff", ArachnidProxy.PROXY, salt, initCodeHash)))));
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -56,7 +88,7 @@ contract DeployReleaseTest is Test, DeployRelease {
         bytes memory registryInitCode = abi.encodePacked(type(LatticeRegistry).creationCode, abi.encode(address(this)));
         assertEq(
             out.registry,
-            CreateXDeployer.predictRaw(REGISTRY_SALT, keccak256(registryInitCode)),
+            ArachnidDeployer.predict(REGISTRY_SALT, keccak256(registryInitCode)),
             "registry not at its predicted raw-salt address"
         );
         ILatticeRegistry registry = ILatticeRegistry(out.registry);
@@ -67,7 +99,7 @@ contract DeployReleaseTest is Test, DeployRelease {
             abi.encodePacked(type(LatticeFactory).creationCode, abi.encode(out.registry, address(0), address(0)));
         assertEq(
             out.factory,
-            CreateXDeployer.predictRaw(FACTORY_SALT, keccak256(factoryInitCode)),
+            ArachnidDeployer.predict(FACTORY_SALT, keccak256(factoryInitCode)),
             "factory not at its predicted raw-salt address"
         );
         assertEq(address(LatticeFactory(out.factory).registry()), out.registry, "factory registry not wired");
@@ -107,6 +139,7 @@ contract DeployReleaseTest is Test, DeployRelease {
     ///         addresses, and never trips the registry's append-only RecordExists guard.
     function test_Release_IdempotentResume() public {
         DeployRelease.ReleaseOutput memory first = this.release(VERSION, address(this));
+        vm.mockCallRevert(ArachnidProxy.PROXY, bytes(""), bytes("resume must not deploy"));
         DeployRelease.ReleaseOutput memory second = this.release(VERSION, address(this));
 
         assertEq(second.registry, first.registry, "registry address changed on resume");
@@ -129,7 +162,7 @@ contract DeployReleaseTest is Test, DeployRelease {
         }
         assertTrue(erc20Index != type(uint256).max, "ERC20 missing from inventory");
         bytes memory initCode = vm.getCode(paths[erc20Index]);
-        address predeployed = CreateXDeployer.deployRaw(facetSalt("ERC20", VERSION), initCode);
+        address predeployed = ArachnidDeployer.deploy(facetSalt("ERC20", VERSION), initCode);
 
         DeployRelease.ReleaseOutput memory out = this.release(VERSION, address(this));
 
@@ -181,7 +214,7 @@ contract DeployReleaseTest is Test, DeployRelease {
     function test_Release_RevertsOnRegisteredRecordMismatch() public {
         // Stand the registry up at its canonical address (owner = this) without running a release.
         bytes memory registryInitCode = abi.encodePacked(type(LatticeRegistry).creationCode, abi.encode(address(this)));
-        address registry = CreateXDeployer.deployRaw(REGISTRY_SALT, registryInitCode);
+        address registry = ArachnidDeployer.deploy(REGISTRY_SALT, registryInitCode);
 
         // Register lattice.ERC20@0.1.0 pointing at a DIFFERENT (but valid ERC-8153) facet.
         (string[] memory names, string[] memory paths) = FacetInventory.inventory();
@@ -189,7 +222,7 @@ contract DeployReleaseTest is Test, DeployRelease {
         bytes32 nameHash = keccak256("lattice.ERC20");
         for (uint256 i; i < names.length; ++i) {
             if (keccak256(bytes(names[i])) == keccak256("AxelarGatewayAdapter")) {
-                wrongFacet = CreateXDeployer.deployRaw(keccak256("test.wrong-facet"), vm.getCode(paths[i]));
+                wrongFacet = ArachnidDeployer.deploy(keccak256("test.wrong-facet"), vm.getCode(paths[i]));
             }
         }
         ILatticeRegistry(registry).register(nameHash, PACKED, wrongFacet);
@@ -197,7 +230,7 @@ contract DeployReleaseTest is Test, DeployRelease {
         address expectedErc20;
         for (uint256 i; i < names.length; ++i) {
             if (keccak256(bytes(names[i])) == keccak256("ERC20")) {
-                expectedErc20 = CreateXDeployer.predictRaw(facetSalt("ERC20", VERSION), keccak256(vm.getCode(paths[i])));
+                expectedErc20 = ArachnidDeployer.predict(facetSalt("ERC20", VERSION), keccak256(vm.getCode(paths[i])));
             }
         }
 
@@ -228,10 +261,7 @@ contract DeployReleaseTest is Test, DeployRelease {
         ILatticeRegistry(out.registry).get(nameHash, PACKED);
     }
 
-    /// @notice The Hedera shape: no CreateX on the chain at all, but the Arachnid deterministic-deployment
-    ///         proxy is there. The whole release runs through the proxy at THAT chain's deterministic
-    ///         addresses — deployer-independent and initcode-committed exactly as on a CreateX chain, just
-    ///         not the same addresses (the proxy applies no salt guard).
+    /// @notice Removing CreateX does not change the release address derivation or registry behavior.
     function test_Release_RunsOnAnArachnidOnlyChain() public {
         vm.etch(CANONICAL, "");
         vm.etch(ArachnidProxy.PROXY, ArachnidProxy.RUNTIME);
@@ -241,7 +271,7 @@ contract DeployReleaseTest is Test, DeployRelease {
         bytes memory registryInitCode = abi.encodePacked(type(LatticeRegistry).creationCode, abi.encode(address(this)));
         assertEq(
             out.registry,
-            CreateXDeployer.predictRaw(REGISTRY_SALT, keccak256(registryInitCode)),
+            ArachnidDeployer.predict(REGISTRY_SALT, keccak256(registryInitCode)),
             "registry not at its predicted Arachnid address"
         );
         ILatticeRegistry registry = ILatticeRegistry(out.registry);
@@ -251,7 +281,7 @@ contract DeployReleaseTest is Test, DeployRelease {
         for (uint256 i; i < names.length; ++i) {
             assertEq(
                 out.facets[i],
-                CreateXDeployer.predictRaw(facetSalt(names[i], VERSION), keccak256(vm.getCode(paths[i]))),
+                ArachnidDeployer.predict(facetSalt(names[i], VERSION), keccak256(vm.getCode(paths[i]))),
                 string.concat(names[i], ": not at its predicted Arachnid address")
             );
             assertGt(out.facets[i].code.length, 0, string.concat(names[i], ": no code at released address"));
@@ -328,9 +358,7 @@ contract DeployReleaseTest is Test, DeployRelease {
     //                             SALT DERIVATION
     //////////////////////////////////////////////////////////////////////////*//
 
-    /// @notice Pins the exact salt strings and the raw-salt guard reproduction: the script's predictRaw math
-    ///         must equal CreateX's own `computeCreate2Address(keccak256(abi.encode(salt)), initCodeHash)`,
-    ///         and deployRaw must land there.
+    /// @notice Pins the salt strings and the proxy's unguarded EIP-1014 derivation.
     function test_SaltDerivationGoldens() public {
         assertEq(REGISTRY_SALT, keccak256("lattice.LatticeRegistry"), "registry salt formula drifted");
         assertEq(FACTORY_SALT, keccak256("lattice.LatticeFactory"), "factory salt formula drifted");
@@ -340,13 +368,9 @@ contract DeployReleaseTest is Test, DeployRelease {
 
         bytes memory initCode = vm.getCode("src/tokens/ERC20/ERC20.sol:ERC20");
         bytes32 initCodeHash = keccak256(initCode);
-        address predicted = CreateXDeployer.predictRaw(salt, initCodeHash);
-        assertEq(
-            predicted,
-            MockCreateX(CANONICAL).computeCreate2Address(keccak256(abi.encode(salt)), initCodeHash),
-            "predictRaw does not reproduce the raw-salt guard"
-        );
-        assertEq(CreateXDeployer.deployRaw(salt, initCode), predicted, "deployRaw != predictRaw");
+        address predicted = ArachnidDeployer.predict(salt, initCodeHash);
+        assertEq(predicted, _proxyAddress(salt, initCodeHash), "prediction does not use the unguarded proxy salt");
+        assertEq(ArachnidDeployer.deploy(salt, initCode), predicted, "deployed != predicted");
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -369,7 +393,8 @@ contract DeployReleaseTest is Test, DeployRelease {
         string memory json = vm.readFile(path);
         assertEq(vm.parseJsonString(json, ".version"), VERSION, "manifest version");
         assertEq(vm.parseJsonUint(json, ".chainid"), block.chainid, "manifest chainid");
-        assertEq(vm.parseJsonAddress(json, ".createx"), CANONICAL, "manifest createx");
+        assertEq(vm.parseJsonAddress(json, ".deployer.address"), ArachnidProxy.PROXY, "manifest deployer");
+        assertEq(vm.parseJsonString(json, ".deployer.kind"), "arachnid", "manifest deployer kind");
         assertEq(vm.parseJsonAddress(json, ".registry"), out.registry, "manifest registry");
         assertEq(vm.parseJsonAddress(json, ".factory"), out.factory, "manifest factory");
         assertEq(vm.parseJsonAddress(json, ".owner"), address(this), "manifest owner");
@@ -398,8 +423,8 @@ contract DeployReleaseTest is Test, DeployRelease {
     }
 }
 
-/// @notice release() on a chain with NEITHER deterministic deployer — no CreateX and no Arachnid proxy —
-///         must fail loudly and point local runs at the mock helper. Separate contract so no setUp etch runs.
+/// @notice A missing proxy must fail loudly and identify its installation/test helper.
+///         Separate contract so no setUp etch runs.
 contract DeployReleaseNoDeployerTest is Test, DeployRelease {
     /// @dev Foundry's test EVM PRE-DEPLOYS the Arachnid proxy (it is also Foundry's default CREATE2
     ///      deployer), so a genuinely deployer-less chain means etching that address empty first.
@@ -407,7 +432,7 @@ contract DeployReleaseNoDeployerTest is Test, DeployRelease {
         vm.etch(ArachnidProxy.PROXY, "");
         vm.expectRevert(
             bytes(
-                "DeployRelease: this chain has no deterministic deployer; neither CreateX at 0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed nor the Arachnid proxy at 0x4e59b44847b379578588920cA78FbF26c0B4956C has code. For local/test runs etch test/helpers/MockCreateX.sol at the CreateX address first"
+                "DeployRelease: install Arachnid proxy 0x4e59b44847b379578588920cA78FbF26c0B4956C; see REGISTRY_DEPLOYMENTS.md (local tests: etch test/helpers/ArachnidProxy.sol)"
             )
         );
         this.release("0.1.0", address(this));

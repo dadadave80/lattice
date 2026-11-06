@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {ERC6900_MODULE_MANAGER_STORAGE_SLOT} from "@lattice/accounts/erc6900/libraries/ERC6900ModuleManagerLib.sol";
 import {Test} from "forge-std/Test.sol";
 
 // ---------------------------------------------------------------------------
@@ -2273,6 +2274,19 @@ contract StorageSlotVerificationTest is Test {
 
     // ======================== Uniqueness Checks ========================
 
+    function test_ERC6900ModuleManagerIsIncludedInUniquenessCheck() public pure {
+        bytes32[] memory slots = _allStorageSlots();
+        bool found;
+        for (uint256 i; i < slots.length; ++i) {
+            if (slots[i] == ERC6900_MODULE_MANAGER_STORAGE_SLOT) found = true;
+        }
+        assertTrue(found, "ERC6900ModuleManager missing from storage uniqueness inventory");
+    }
+
+    function test_ERC6900ModuleManagerStorageSlot() public pure {
+        assertEq(ERC6900_MODULE_MANAGER_STORAGE_SLOT, _erc7201Slot("lattice.storage.ERC6900ModuleManager"));
+    }
+
     /// @notice Every module's ERC-7201 storage slot must be globally unique so modules can be
     ///         composed into one Diamond proxy without storage collisions.
     function test_AllErc7201SlotsAreUnique() public pure {
@@ -2298,7 +2312,7 @@ contract StorageSlotVerificationTest is Test {
     // ======================== Slot inventories ========================
 
     function _allStorageSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](96);
+        slots = new bytes32[](97);
         uint256 i;
         // access
         slots[i++] = ACCESS_CONTROL_STORAGE_SLOT;
@@ -2387,6 +2401,7 @@ contract StorageSlotVerificationTest is Test {
         slots[i++] = SESSION_KEY_STORAGE_SLOT;
         slots[i++] = ERC7579_MODULE_CONFIG_STORAGE_SLOT;
         slots[i++] = ERC6551_ACCOUNT_STORAGE_SLOT;
+        slots[i++] = ERC6900_MODULE_MANAGER_STORAGE_SLOT;
         // security
         slots[i++] = PAUSABLE_STORAGE_SLOT;
         slots[i++] = RATE_LIMITER_STORAGE_SLOT;
@@ -2411,6 +2426,7 @@ contract StorageSlotVerificationTest is Test {
         // HederaExchangeRateAdapter and HederaPrngAdapter are stateless)
         slots[i++] = HTS_ADAPTER_STORAGE_SLOT;
         slots[i++] = HSS_ADAPTER_STORAGE_SLOT;
+        assertEq(i, slots.length, "Storage uniqueness inventory has unfilled entries");
     }
 
     function _allErc165MapSlots() internal pure returns (bytes32[] memory slots) {

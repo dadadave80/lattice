@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {CreateXDeployer} from "@lattice-script/lib/CreateXDeployer.sol";
+import {ArachnidDeployer} from "@lattice-script/lib/ArachnidDeployer.sol";
 import {FacetInventory} from "@lattice-script/lib/FacetInventory.sol";
 import {LatticeFactory} from "@lattice/LatticeFactory.sol";
 import {LatticeRegistry} from "@lattice/LatticeRegistry.sol";
@@ -14,7 +14,7 @@ import {Script, console} from "forge-std/Script.sol";
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice THE canonical Lattice release script (issue #120): one run deterministically deploys the
 ///         {LatticeRegistry} singleton, the {LatticeFactory}, and every {FacetInventory} facet through
-///         CreateX CREATE2 at raw protocol salts, then registers each facet under
+///         Arachnid CREATE2 at raw protocol salts, then registers each facet under
 ///         `keccak256("lattice.<Name>")` at the semver-packed version and points `latest` at it, and
 ///         finally writes a per-chain JSON manifest.
 ///
@@ -23,14 +23,12 @@ import {Script, console} from "forge-std/Script.sol";
 ///     --sig "run(string,address)" 0.1.0 <OWNER> \
 ///     --rpc-url <chain> --account <name> --broadcast
 ///
-/// @dev DETERMINISTIC DEPLOYER: CreateX wherever it exists, otherwise the {CreateXDeployer.ARACHNID_PROXY}
-///      fallback on chains CreateX never reached (Hedera). A release is deterministic and permissionlessly
-///      completable on both, but the proxy guards no salt, so an Arachnid chain's release addresses differ
-///      from every CreateX chain's (see {CreateXDeployer.predictRaw} and REGISTRY_DEPLOYMENTS.md). A chain
-///      with NEITHER deployer is refused outright.
+/// @dev DETERMINISTIC DEPLOYER: the Arachnid proxy at {ArachnidDeployer.PROXY} on every chain,
+///      including chains that also carry CreateX. A release requires that proxy; salts are used as given,
+///      so the same build and constructor arguments derive one address family across chains.
 ///
 ///      Salt scheme — raw protocol salts, so every address is deployer- AND chain-independent and commits
-///      to the initcode (see {CreateXDeployer.deployRaw}):
+///      to the initcode (see {ArachnidDeployer.deploy}):
 ///        registry: `keccak256("lattice.LatticeRegistry")` (deploy-once singleton, versionless)
 ///        factory:  `keccak256("lattice.LatticeFactory")`  (versionless)
 ///        facet:    `keccak256("lattice.<Name>.<version>")` e.g. `keccak256("lattice.ERC20.0.1.0")`
@@ -39,7 +37,7 @@ import {Script, console} from "forge-std/Script.sol";
 ///      that already exist, so a run that died halfway (or a release someone else partially completed) is
 ///      finished by simply re-running the same command. The predict-then-skip guard executes during forge's
 ///      SIMULATION; if someone lands code at an address between simulation and inclusion, that broadcast tx
-///      reverts (CreateX refuses an occupied address) — harmless, re-run and it is skipped. `latest` only
+///      reverts (the proxy refuses an occupied address) — harmless, re-run and it is skipped. `latest` only
 ///      ever advances: re-running an older release never downgrades the pointer. PERMISSIONLESS COMPLETION:
 ///      because each CREATE2 address commits to `keccak256(initCode)`, ANYONE may deploy the missing pieces
 ///      — a squatter can only ever put the canonical bytecode at the canonical address.
@@ -149,8 +147,8 @@ contract DeployRelease is Script {
     /// @return out The released addresses (see {ReleaseOutput}).
     function release(string memory version, address owner) public returns (ReleaseOutput memory out) {
         require(
-            CreateXDeployer.hasRawDeployer(),
-            "DeployRelease: this chain has no deterministic deployer; neither CreateX at 0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed nor the Arachnid proxy at 0x4e59b44847b379578588920cA78FbF26c0B4956C has code. For local/test runs etch test/helpers/MockCreateX.sol at the CreateX address first"
+            ArachnidDeployer.PROXY.code.length != 0,
+            "DeployRelease: install Arachnid proxy 0x4e59b44847b379578588920cA78FbF26c0B4956C; see REGISTRY_DEPLOYMENTS.md (local tests: etch test/helpers/ArachnidProxy.sol)"
         );
 
         uint64 packed = packVersion(version);
@@ -239,7 +237,7 @@ contract DeployRelease is Script {
     /// @notice The raw CREATE2 salt of a released facet: `keccak256("lattice.<name>.<version>")`.
     /// @param name The facet contract name from {FacetInventory}, e.g. `"ERC20"`.
     /// @param version The release semver string, e.g. `"0.1.0"`.
-    /// @return salt The raw protocol salt to pass to {CreateXDeployer.deployRaw}/{predictRaw}.
+    /// @return salt The raw protocol salt to pass to {ArachnidDeployer.deploy}/{predict}.
     function facetSalt(string memory name, string memory version) public pure returns (bytes32 salt) {
         salt = keccak256(abi.encodePacked("lattice.", name, ".", version));
     }
@@ -284,7 +282,7 @@ contract DeployRelease is Script {
     //////////////////////////////////////////////////////////////////////////*//
 
     /// @dev Serializes the release to `<deploymentsRoot>/<chainid>/release-<version>.json`: top-level
-    ///      version / chainid / createx / registry / factory / owner (read live off the registry) /
+    ///      version / chainid / deployer / registry / factory / owner (read live off the registry) /
     ///      timestamp, plus one entry per facet with its name, address, codehash, live
     ///      `keccak256(exportSelectors())`, and salt. `run` passes `"deployments"`; the unit test passes an
     ///      isolated root so a real committed manifest is never touched. Internal (not private) so the unit
@@ -306,7 +304,9 @@ contract DeployRelease is Script {
         string memory root = "manifest";
         vm.serializeString(root, "version", version);
         vm.serializeUint(root, "chainid", block.chainid);
-        vm.serializeAddress(root, "createx", address(CreateXDeployer.CREATEX));
+        vm.serializeString("deployer", "kind", "arachnid");
+        string memory deployerJson = vm.serializeAddress("deployer", "address", ArachnidDeployer.PROXY);
+        vm.serializeString(root, "deployer", deployerJson);
         vm.serializeAddress(root, "registry", out.registry);
         vm.serializeAddress(root, "factory", out.factory);
         vm.serializeAddress(root, "owner", ILatticeRegistry(out.registry).owner());
@@ -330,9 +330,9 @@ contract DeployRelease is Script {
         private
         returns (address at, bool deployedNow)
     {
-        at = CreateXDeployer.predictRaw(salt, keccak256(initCode));
+        at = ArachnidDeployer.predict(salt, keccak256(initCode));
         if (at.code.length == 0) {
-            address deployed = CreateXDeployer.deployRaw(salt, initCode);
+            address deployed = ArachnidDeployer.deploy(salt, initCode);
             require(deployed == at, string.concat("DeployRelease: ", label, " deployed != predicted"));
             deployedNow = true;
         }

@@ -7,11 +7,13 @@ proxy without storage collisions. The contracts are unaudited; evaluate them wit
 
 ## Quickstart
 
-Install [Foundry](https://getfoundry.sh), then build and test from a clean checkout:
+Install [Foundry](https://getfoundry.sh), then build and test from a clean checkout with the shared pin:
 
 ```sh
 git clone --recurse-submodules https://github.com/dadadave80/lattice.git
 cd lattice
+foundryup --install v1.9.0
+make release-build-check
 forge build
 forge test --match-contract 'GovernedVault(Upgrade)?Test' -vv
 ```

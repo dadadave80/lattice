@@ -8,8 +8,8 @@ import {IFacet} from "@diamond/interfaces/IFacet.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
 import {DeployGovernedVault} from "@lattice-script/base/defi/DeployGovernedVault.s.sol";
 import {DeployRelease} from "@lattice-script/deploy/DeployRelease.s.sol";
+import {ArachnidProxy} from "@lattice-test/helpers/ArachnidProxy.sol";
 import {GetSelectors} from "@lattice-test/helpers/GetSelectors.sol";
-import {MockCreateX} from "@lattice-test/helpers/MockCreateX.sol";
 import {LatticeFactory} from "@lattice/LatticeFactory.sol";
 import {LatticeVersion} from "@lattice/LatticeVersion.sol";
 import {GovernedVaultParams} from "@lattice/defi/GovernedVaultInit.sol";
@@ -31,21 +31,18 @@ contract ReleaseErc20Init {
 /// @title ReleasePipelineTest
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice THE issue #120 story end-to-end: {DeployRelease.release} stands up the whole canonical release
-///         (registry + factory + every inventory facet, registered and flagged latest) against CreateX, then —
+///         (registry + factory + every inventory facet, registered and flagged latest) through Arachnid, then —
 ///         using ONLY the release outputs — the {LatticeFactory} resolves `latest("lattice.ERC20")` off the
 ///         registry and assembles a live ERC-20 diamond in one call. Proves: release → registry-resolved
 ///         latest → one-tx diamond → live token. Inherits {DeployRelease} and drives `this.release(...)` as
 ///         an external self-call so the broadcaster the registry sees is this contract (see
 ///         DeployReleaseTest for the sender-alignment rationale).
 contract ReleasePipelineTest is GetSelectors, DeployRelease {
-    address internal constant CANONICAL = 0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed;
-
     /// @dev Curated Tier-B name key for the base ERC-20 share facet.
     bytes32 internal constant ERC20_NAME = keccak256("lattice.ERC20");
 
     function setUp() public {
-        MockCreateX impl = new MockCreateX();
-        vm.etch(CANONICAL, address(impl).code);
+        vm.etch(ArachnidProxy.PROXY, ArachnidProxy.RUNTIME);
     }
 
     /// @notice release("0.1.0") -> factory.deploy(latest lattice.ERC20 + latest lattice.DiamondLoupeFacet
@@ -111,7 +108,7 @@ contract ReleasePipelineTest is GetSelectors, DeployRelease {
         assertTrue(IDiamondLoupe(diamond).facetAddress(bytes4(0x7a0ed627)) != address(0), "loupe self-routed");
     }
 
-    /// @notice On a CreateX chain the governed-vault recipe cuts the RELEASED facets instead of deploying its own.
+    /// @notice The governed-vault recipe cuts the RELEASED facets instead of deploying its own.
     function test_GovernedVaultRecipeReusesReleasedFacets() public {
         DeployRelease.ReleaseOutput memory out = this.release(LatticeVersion.VERSION, address(this));
         (FacetCut[] memory cuts,,) =

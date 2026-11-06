@@ -1,7 +1,10 @@
 [profile.default]
 solc = "0.8.36"
+evm_version = "cancun"
 src = "src"
 out = "out"
+# Recipe interface coverage derives ERC-165 IDs from compiler declarations.
+ast = true
 libs = ["lib"]
 # Selector extraction for non-ERC-8153 test fixtures uses `forge inspect` over FFI (the VENDORED
 # test/helpers/GetSelectors.sol — diamond-lib shipped it through v0.1.4 and deleted it in v0.2.0).
@@ -23,17 +26,22 @@ remappings = [
     '@lattice-script/=script/',
     '@lattice-test/=test/',
 ]
+optimizer = true
 optimizer_runs = 1_000_000
+via_ir = false
+bytecode_hash = "ipfs"
+cbor_metadata = true
 
 [profile.ci]
+evm_version = "cancun"
 optimizer_runs = 1_000_000
 via_ir = false
 build_info = true
 extra_output = ["storageLayout"]
 
 [profile.hedera]
-# Hedera mainnet/testnet run Cancun (consensus node v0.76, evm.version v0.67). Switch to "prague"
-# when v0.77 lands (planned Oct 2026). Pinning also makes HashScan/Sourcify verification reproducible.
+# Keep the canonical Cancun target for identical release bytecode across chains.
+# A chain's protocol upgrade does not change this compiler target without a release decision.
 evm_version = "cancun"
 
 # Named RPC aliases for `forge script --rpc-url <name>` / `vm.createSelectFork("<name>")`. Foundry does NOT

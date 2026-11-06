@@ -16,7 +16,8 @@ import {ICreateX} from "@lattice/interfaces/external/createx/ICreateX.sol";
 ///         canonical bytecode. Path (2) additionally falls back to the {ARACHNID_PROXY} on chains CreateX
 ///         never reached (Hedera is the motivating case): same permissionless, initcode-committed
 ///         determinism, at a different deterministic address (see {predictRaw}).
-/// @dev Stateless utility library (internal functions run in the caller script's context, so `msg.sender`
+/// @dev The raw CREATE2 helpers retain the legacy CreateX-first policy; canonical shared releases use
+///      ArachnidDeployer directly. Stateless utility library (functions run in the caller script, so `msg.sender`
 ///      inside CreateX is the script's broadcasting address). CREATE3 salts are sender-guarded + cross-chain
 ///      redeploy-protected; raw CREATE2 salts must have first 20 bytes that are neither the caller nor zero
 ///      (any keccak-derived protocol salt). `predict`/`predictRaw` reproduce CreateX's internal `_guard`

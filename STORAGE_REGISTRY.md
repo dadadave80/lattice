@@ -22,6 +22,15 @@ the module library, and proves that **all storage slots are mutually unique** an
 ERC-165 map slots are mutually unique**. When you add a module, add its slot constants there
 and a row here.
 
+The [JSON registry](script/upgrades/storage-registry.json) exports every namespace, slot and struct
+layout, including nested structs, from the existing source-checked layout baseline. It also exports
+source-declared interface IDs and map-slot constants with file provenance, deduplicating shared IDs.
+The 108 exported ID/slot pairs include the 107 Lattice registrations and the existing `IDiamondCut` alias.
+`make storage-check` checks the source layout, recomputes map slots with `cast`, and detects JSON drift
+and incorrect namespace or interface-ID/map-slot pairs in this table; `make storage-update`
+regenerates both the reviewed baseline and JSON. New releases attach both checked files from the exact
+release tag. Historical release layouts are not regenerated from a later source tree.
+
 > **CI:** the test suite `StorageSlotVerificationTest` MUST be run on every change
 > (`forge test --match-contract StorageSlotVerificationTest`). A failure means a slot constant
 > is wrong (would collide with another module) and is a release blocker.
@@ -235,6 +244,7 @@ and a row here.
 |---|---|---|---|---|---|
 | ERC20 | `lattice.storage.ERC20` | `0x948387732d07f6e6ec1c3bf1559c10e90e518c5a59f5d2be5a80edb6f2494300` | `IERC20` | `0x942e8b22` | `0xc99f0f757c400475fa5e27e7e237b05409e3b11dbfd9a8930fb35692da3f3a3d` |
 | ERC20Capped | `lattice.storage.ERC20Capped` | `0xf3126bfe4af748db9eb069fa2ed04557107fb53a164b5206750073586b2bc900` | `IERC20Capped` | `0x355274ea` | `0xb2089445722e0a36969fff4735cd037fb1b56a44be61c7f6c752270db855a1b7` |
+| ERC20Wrapper | `lattice.storage.ERC20Wrapper` | `0x9af643d743ece491f2a9cf5444d757c9d02a4957e91a8cb344a1642a3cb94400` | `IERC20Wrapper` | `0x60237459` | `0xbf9f024bc4077d1561e72f01e7eabc003cc7b8d081de85f0fd1662da93832e2b` |
 | ERC721 | `lattice.storage.ERC721` | `0xb57056eaff39f17dbb7656e3d0f4bee059cc8b05a6894f946db4b85f3b03e700` | `IERC721` (EIP-721) | `0x80ac58cd` | `0x741e8246930c2bfc93c4e7042569e8d7f42e535e31e366398006f597e42d38fb` |
 | ERC721 (metadata) | `lattice.storage.ERC721` | (shares ERC721 slot) | `IERC721Metadata` | `0x5b5e139f` | `0xdec0fb77ff71ebf00e30e78bd255149ae2525d6ff9925bff1ddd9a569813231d` |
 | ERC721URIStorage | `lattice.storage.ERC721URIStorage` | `0xcad0a180da252dc6d7fda719c706c048d7fcfbea8301125fec9b8527feaa7700` | ERC-4906 (MetadataUpdate) | `0x49064906` | `0xf6e2df7ae707ae7f293659ac6f748c7ba27a30d8639e53e763363aebc5fa8f65` |
@@ -328,7 +338,7 @@ and a row here.
 | L2ToL2CrossDomainMessengerGatewayAdapter | `lattice.storage.L2ToL2CrossDomainMessengerGatewayAdapter` | `0x7d097b8d74c3eca1712de7b01bb2e081ac18f7660e60d35d0a11a670a90beb00` | `IERC7786GatewaySource` | `0x11967553` | `0x3c75b8ea75c097979221eb9302e2f0f6009b4ffe0a7198db5dc29979e09ea0e3` |
 | L1ToL2CrossDomainMessengerGatewayAdapter | `lattice.storage.L1ToL2CrossDomainMessengerGatewayAdapter` | `0xba3de3e77bc32833730368f3190597d7121922af189304a06067265b4d53a500` | `IERC7786GatewaySource` | `0x11967553` | `0x3c75b8ea75c097979221eb9302e2f0f6009b4ffe0a7198db5dc29979e09ea0e3` |
 | ZetaChainGatewayAdapter | `lattice.storage.ZetaChainGatewayAdapter` | `0x7529f1b714a55f00ea95d180ad0c2a53651f18a834ecec0ff1f9af59ddf74000` | `IERC7786GatewaySource` | `0x11967553` | `0x3c75b8ea75c097979221eb9302e2f0f6009b4ffe0a7198db5dc29979e09ea0e3` |
-| CCTPBridgeAdapter | `lattice.storage.CCTPBridgeAdapter` | `0x94bcfd23a6ef7deebf3dfac9da6ba8c390ae8a620c8a163523fd263b20958b00` | `ICCTPBridgeAdapter` | `0x9868b584` | `0xc99af2d75b4d69e472159c90d5028834f8137d465c0aaebc7a1ffe39b3c97dee` |
+| CCTPBridgeAdapter | `lattice.storage.CCTPBridgeAdapter` | `0x94bcfd23a6ef7deebf3dfac9da6ba8c390ae8a620c8a163523fd263b20958b00` | `ICCTPBridgeAdapter` | `0xf5187bdc` | `0x04cddf593d633f3c8537926f8f726adaafc298a0f78a2bfd4848abb0191103e1` |
 | SuperchainETHBridgeAdapter | (stateless — no ERC-7201 storage) | — | `ISuperchainETHBridgeAdapter` | `0x832d7d61` | `0x3e08ed85f4544feff1f3f78c34d4e426159248bf51477cf7b08dde93bbe30744` |
 | AcrossBridgeAdapter | `lattice.storage.AcrossBridgeAdapter` | `0xd1f2b3a38609618605209c75d051e4ac61236c94f39400c851dd252f5fe1d000` | `IAcrossBridgeAdapter` | `0x4615a4f1` | `0xd64961c0a774526940a248ad01e6f5f33fadd297074bcba45861d774858b837c` |
 | StarknetGatewayAdapter | `lattice.storage.StarknetGatewayAdapter` | `0x3f9fd8bc99bc5c4e4ff64e899fbe5f73a1a0f6c02aaa904e7184494718213e00` | `IStarknetGatewayAdapter` | `0x7dfd78ca` | `0xbcf162df5dae478299124881124442c9a950f7c7a4c96c5d289b1c3a20b1dd53` |
@@ -354,6 +364,7 @@ and a row here.
 | SessionKey | `lattice.storage.SessionKey` | `0xd72f45b3818762a6cc49804ed52c577908badd7fff8bbd7849829b4fc764ae00` | — (admin/policy) | — | — |
 | ERC7579ModuleConfig | `lattice.storage.ERC7579ModuleConfig` | `0xf5855f8dc57bbb54955d6871575c862d7a11401119f5a873c91e7ac60628d800` | `IERC7579Execution` / `IERC7579AccountConfig` / `IERC7579ModuleConfig` | `0x3f3f9537` / `0xbe1d6cf6` / `0x232dbb4a` | `0x1adc25256844eecf70d1111a7d897d059d6c39bccc33e2fe1bcdd0aa07e45227` / `0xca27659497801bbd07af0889ead6ea5a1a9b8739438e7af51464f7082b08ae43` / `0x1c2e0d7514777ddafe41add8aefc1cb6319fbc463de0c6eb0b00433efbdbdd41` |
 | ERC6551Account | `lattice.storage.ERC6551Account` | `0x5d509296c8693d1a2071f7702ffb166090e7cdcee4fc11a42df61b6a19026100` | `IERC6551Account` / `IERC6551Executable` | `0x6faff5f1` / `0x51945447` | `0xe5e50471a231013bea8f6034ec0b978814d697120ebd88e3624ed42959ed0a66` / `0x7119a8e42d55700f1f34f34e17ffb769e414497fcab2ff2004aa97c610742b4b` |
+| ERC6900ModuleManager | `lattice.storage.ERC6900ModuleManager` | `0x498a44bfdab4c9c01e0c660bf3b7240261bf444dc4c542e64dac94a83f534500` | installed-module interfaces are reference-counted dynamically | — | — |
 | HASSignatureVerifier | — (stateless) | — | `IHASSignatureVerifier` | `0x96c247cb` | `0x6abd9841429d5258dad1bcd53196ecd11f06899bbc66ddc8c90a5bb0ca520e26` |
 
 ### Security
@@ -398,7 +409,7 @@ and a row here.
 
 ---
 
-**Counts:** 93 unique ERC-7201 slots and 104 ERC-165 interface map slots — the entry counts of
+**Counts:** 97 unique ERC-7201 slots and 107 ERC-165 interface map slots — the entry counts of
 `StorageSlotVerificationTest`'s `_allStorageSlots` and `_allErc165MapSlots`, which pin them. A module can hold
 more than one slot (VaultCore keeps its frozen `lattice.storage.VaultCore` namespace plus
 `lattice.storage.VaultCoreRecovery`, #305), so slots outnumber modules. (The privacy track adds the stateful `ERC6538Registry` — one ERC-7201 slot and one
@@ -446,7 +457,7 @@ excludes the inherited `ccipReceive`, so the V2 id is the `getCCVsAndFinalityCon
 lanes); `HyperlaneGatewayAdapter` and `HyperbridgeGatewayAdapter` each additionally mint their own
 protocol-surface id (`IHyperlaneGatewayAdapter` `0xb4f23f37`, `IHyperbridgeGatewayAdapter` `0x9c48e32e`) on
 top of the shared gateway slot; the token bridges and the non-EVM connector register their own ids only —
-`ICCTPBridgeAdapter` (`0x9868b584`), `IAcrossBridgeAdapter` (`0x4615a4f1`), `IStargateBridgeAdapter`
+`ICCTPBridgeAdapter` (`0xf5187bdc`), `IAcrossBridgeAdapter` (`0x4615a4f1`), `IStargateBridgeAdapter`
 (`0x199fc6b0`), `IStarknetGatewayAdapter` (`0x7dfd78ca`; NOT an ERC-7786 gateway — it does not register the
 shared `0x11967553` id) — and `ChainRegistry` mints `IChainRegistry` (`0x137e339e`) — so crosschain adds
 eighteen ERC-7201 slots and thirteen new ERC-165 map slots. The randomness/automation adapters — `PythEntropyAdapter`, `GelatoVRFAdapter`,

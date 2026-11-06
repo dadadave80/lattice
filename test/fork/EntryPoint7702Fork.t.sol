@@ -33,6 +33,7 @@ contract Target {
 ///
 /// Enabling: `export MAINNET_RPC_URL=<url>; forge test --match-path "test/fork/EntryPoint7702Fork.t.sol"`.
 /// Without MAINNET_RPC_URL set, all tests are skipped.
+/// forge-config: default.hardfork = "prague"
 contract EntryPoint7702Fork is AccountBlueprintHelper {
     /// @notice Pinned mainnet block (2026, after the v0.9 EntryPoint deployment on 2025-12-22).
     uint256 constant FORK_BLOCK = 25_000_000;
