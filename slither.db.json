@@ -1,5 +1,12 @@
 [
   {
+    "check": "arbitrary-send-erc20",
+    "impact": "High",
+    "id": "ddf7131dc39311b12b3a38a441ef664e404e2939dab96189ce24135ad511e0e8",
+    "description": "ERC3643.transferFrom(address,address,uint256) (src/tokens/ERC3643/ERC3643.sol#76-78) uses arbitrary from in transferFrom: ERC3643Lib.transferFrom(from,to,amount) (src/tokens/ERC3643/ERC3643.sol#77)\n",
+    "reason": "False positive: this is the ERC-3643 token's own ERC-20 transferFrom, not an external token pull. ERC3643Lib.transferFrom checks the token's policy, spends from's allowance for msg.sender through ERC20Lib._spendAllowance before moving balances, and holds the shared transient execution guard across callbacks. Routed ERC3643TokenTest covers allowance exhaustion and callback rollback; ERC3643TemporaryApprovalTest covers temporary-first allowance use."
+  },
+  {
     "check": "arbitrary-send-eth",
     "impact": "High",
     "id": "7760e8be31a580e1f6544f503f639d7d46bcede1d65e96864f2a2c97571e896a",

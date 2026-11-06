@@ -12,7 +12,14 @@ import {ERC721ConsecutiveLib} from "@lattice/tokens/ERC721/libraries/ERC721Conse
 ///         initialization, after the base {ERC721Init}; it must NOT open its own pre/postInitializer. Never
 ///         single-mint in that window: after this init the mint reverts `ERC721ForbiddenMint`, and before it a batch
 ///         covering the id counts the token twice. Mint after `initialize` returns (see {ERC721ConsecutiveLib}).
+/// @custom:lattice-kind step
 contract ERC721ConsecutiveInit {
+    /// @custom:lattice-initializes ERC721Consecutive;
+    /// @custom:lattice-after ERC721 convention collection-metadata;
+    /// @custom:lattice-same-call Initializable hard first-initialization-version-1;
+    /// @custom:lattice-param firstId;
+    /// @custom:lattice-param receivers rule=length-matches-amounts-nonzero-for-positive-batches;
+    /// @custom:lattice-param amounts rule=each-at-most-5000;
     function init(uint96 firstId, address[] calldata receivers, uint96[] calldata amounts) external {
         if (receivers.length != amounts.length) {
             revert IERC721Consecutive.ERC721ConsecutiveBatchLengthMismatch(receivers.length, amounts.length);

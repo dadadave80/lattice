@@ -24,8 +24,14 @@ import {ERC20VotesLib} from "@lattice/tokens/ERC20/libraries/ERC20VotesLib.sol";
 ///        `_validateTimepoint`; both revert {IVotes.ERC5805FutureLookup}.
 ///      - Registers {IVotes} for ERC-165 in its init ({VotesLib.__Votes_init}); OpenZeppelin's Votes has no
 ///        ERC-165.
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source OpenZeppelin v5.6.1
+/// @custom:lattice-requires ERC20 convention standalone-delegation-reads-ERC20-balances;
+/// @custom:lattice-family none
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches lattice.storage.Nonces;
+/// @custom:lattice-touches lattice.storage.Votes;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init VotesInit
 contract Votes is IVotes {
     /// @inheritdoc IVotes
     function getVotes(address account) public view virtual returns (uint256) {

@@ -1,11 +1,11 @@
 # 0007. `LatticeRegistry` is a standalone two-tier registry
 
-- **Status:** Proposed. The design is deployed in development and tested, but
-  [#176](https://github.com/dadadave80/lattice/issues/176) (open) still compares it with alternatives
-  before any canonical release relies on it. This record becomes Accepted, or is superseded, when #176
-  settles.
+- **Status:** Accepted. The comparison and current-toolchain evidence are tracked in
+  [#176](https://github.com/dadadave80/lattice/issues/176). This selects the architecture; it is not an
+  audit or a production-readiness assertion.
 - **Date:** built for [#118](https://github.com/dadadave80/lattice/issues/118) (2026-07-08); hardening
-  evidence from [#315](https://github.com/dadadave80/lattice/pull/315) (2026-10-09); recorded 2026-10-09
+  evidence from [#315](https://github.com/dadadave80/lattice/pull/315) (2026-10-09); recorded 2026-10-09;
+  decision confirmed with Cancun cold/warm measurements on 2026-11-06
 
 ## Context
 
@@ -18,14 +18,17 @@ longer describes a stability promise.
 
 ## Options considered
 
-#176 asks for this comparison; it is not finished.
-
 1. **Two tiers (current).** A permissionless codehash index plus an owner-curated catalog.
 2. **A curated catalog only.** Drops the permissionless index.
 3. **Pinned release manifests and no on-chain catalog.** Deployers pass custom cuts; the chain verifies
    nothing.
 
-## Decision (proposed)
+The comparison also evaluates stored selector arrays/blobs, caller-supplied selector proofs, fixed
+blueprint factories, recipe-committed addresses, per-call registries, proxies/clones and sorted-input
+validation. The issue and its implementation PR hold the decision matrices; their underlying comparison
+documents remain outside this repository.
+
+## Decision
 
 [`LatticeRegistry`](../../src/LatticeRegistry.sol) is a standalone, non-upgradeable contract: no
 diamond, no ERC-7201 storage, no proxy.
@@ -37,6 +40,18 @@ diamond, no ERC-7201 storage, no proxy.
   `latest(nameHash)` is a movable convenience pointer; security-critical consumers pin an exact version.
   A curated facet must implement ERC-8153 `exportSelectors()`; registration pins its codehash and the
   hash of its selector blob, and `getCut` re-checks both on every read.
+- **Selector source.** Retain bounded live exports, as selected by the maintainer on 2026-10-09. Code
+  blobs avoid exporter availability risk but add registration and cold-read cost. Their small warm-read
+  saving requires hundreds of reads to amortize setup in the measured workloads. Curated pure exporters
+  do not justify adding data-contract deployment and changing the registry for that workload.
+- **Factory.** Keep the standalone factory with its immutable registry, dynamic entries and custom cuts.
+  Fixed blueprints remain appropriate for account products rather than every arbitrary recipe.
+- **Address and reuse.** Keep sender/salt prediction, `deploy` for prechecked scripts and `deployStrict`
+  for user interfaces. The event commits to the materialized recipe; the address does not. Strict calls
+  reject occupied addresses and unpinned `latest` entries.
+- **Validation.** Keep duplicate/loupe checks. The measured pairwise registration scan is acceptable for
+  current exports; requiring sorted exports would change every export for a one-time saving. Generated
+  recipes can put the loupe first without removing validation.
 
 ## Consequences
 
@@ -51,12 +66,20 @@ diamond, no ERC-7201 storage, no proxy.
   `SelectorDrift` on a read.
 - No production script resolves registry entries today: `BaseDeploy._assemble` passes custom cuts, and
   `DeployRelease` only writes the registry.
+- A material change to these implementations requires fresh standalone deployments and updated consumer
+  references. Non-upgradeability does not freeze the pre-major project design or make existing development
+  addresses canonical. Upgradeable shared trust roots add an administrator and lifetime dispatch costs
+  without a demonstrated need here.
 
 ## Confirmation
 
 - `LatticeRegistryTest`, `LatticeRegistryFuzz`, `LatticeRegistryHostileExporterTest` and the registry
   invariant suite, mapped to each invariant in the
   [threat model](../security/registry-factory-threat-model.md).
+- `LatticeCoreGasTest` measures cold/warm reads, fresh deployments with distinct salts and idempotent
+  reuse. `LatticeCoreDesignBenchTest` compares complete read paths, registration resource bounds, duplicate
+  validation and loupe ordering under the shared toolchain. No production optimization is introduced by
+  the evidence update.
 
 ## References
 

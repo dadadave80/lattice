@@ -22,8 +22,13 @@ import {InvariantCheckerLib} from "@lattice/security/libraries/InvariantCheckerL
 ///      The check tracks live state — it is not a one-shot latch — so the gate re-opens once the
 ///      invariant holds again. See `test/unit/InvariantCheckerUsageTest.t.sol` for the canonical
 ///      worked example (a solvency invariant: registration, happy path, violation path, batch).
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source Lattice original
+/// @custom:lattice-requires AccessControl|AccessControlEnumerable|AccessControlTimed convention role-management-surface;
+/// @custom:lattice-family none
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches lattice.storage.InvariantChecker;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init InvariantCheckerInit
 contract InvariantChecker is IInvariantChecker {
     /// @inheritdoc IInvariantChecker
     function getInvariant(bytes32 key) public view virtual returns (address target, bytes4 selector) {

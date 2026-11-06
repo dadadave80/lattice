@@ -11,7 +11,9 @@ import {DeployGovernedSafeDiamondCut} from "@lattice-script/base/governance/Depl
 import {DeploySafeDiamondCut} from "@lattice-script/base/governance/DeploySafeDiamondCut.s.sol";
 import {MockSafe} from "@lattice-test/base/SafeDiamondCutTestBase.sol";
 import {RecipeGuards} from "@lattice-test/composability/RecipeGuards.sol";
+import {AccountFactory6900} from "@lattice/accounts/erc6900/AccountFactory6900.sol";
 import {AccountInit6900} from "@lattice/accounts/erc6900/AccountInit6900.sol";
+import {AccountFactory} from "@lattice/accounts/erc7579/AccountFactory.sol";
 import {AccountInit} from "@lattice/accounts/erc7579/AccountInit.sol";
 import {GovernedVaultENSParams} from "@lattice/defi/GovernedVaultENSInit.sol";
 import {GovernedVaultParams} from "@lattice/defi/GovernedVaultInit.sol";
@@ -43,14 +45,14 @@ contract RecipeUpgradeabilityCoreTest is RecipeGuards {
 
     function test_Introspectable_Account() public {
         (FacetCut[] memory cuts, AccountInit init) = new DeployAccount().buildCuts(entryPoint);
-        address d = _assemble(cuts, address(init), abi.encodeCall(AccountInit.init, (address(this))));
+        address d = new AccountFactory(cuts, address(init)).createAccount(address(this), bytes32(0));
         _assertIntrospectable(d, 9);
         _assertBareEth(d, true);
     }
 
     function test_Introspectable_Account6900() public {
         (FacetCut[] memory cuts, AccountInit6900 init) = new DeployAccount6900().buildCuts(entryPoint);
-        address d = _assemble(cuts, address(init), abi.encodeCall(AccountInit6900.init, (address(this))));
+        address d = new AccountFactory6900(cuts, address(init)).createAccount(address(this), bytes32(0));
         _assertIntrospectable(d, 10);
         _assertBareEth(d, true);
     }

@@ -12,8 +12,13 @@ import {IENSResolver} from "@lattice/interfaces/ens/IENSResolver.sol";
 ///         address via the configured ENS registry.
 /// @dev All logic lives in {ENSResolverLib}. The ENS registry is supplied at init and rotated per chain
 ///      via {setEnsRegistry} (gated on `ENS_MANAGER_ROLE`, managed through the diamond's AccessControl).
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source Lattice original
+/// @custom:lattice-requires AccessControl|AccessControlEnumerable|AccessControlTimed convention role-management-surface;
+/// @custom:lattice-family none
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches lattice.storage.ENSResolver;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init ENSResolverInit
 contract ENSResolver is IENSResolver {
     /// @inheritdoc IENSResolver
     function resolve(bytes32 node) external view virtual returns (address) {

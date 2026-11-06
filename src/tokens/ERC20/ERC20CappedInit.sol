@@ -9,7 +9,13 @@ import {ERC20CappedLib} from "@lattice/tokens/ERC20/libraries/ERC20CappedLib.sol
 ///         via ERC-165. Delegatecalled by {Diamond.initialize} (through {MultiInit}) inside the initializing window
 ///         opened by the diamond, alongside the base {ERC20Init}; it must NOT open its own pre/postInitializer.
 ///         Reverts with {IERC20Capped-ERC20InvalidCap} when `cap_` is zero.
+/// @custom:lattice-kind step
 contract ERC20CappedInit {
+    /// @custom:lattice-initializes ERC20Capped;
+    /// @custom:lattice-after none;
+    /// @custom:lattice-same-call Initializable hard enclosing-initializing-window;
+    /// @custom:lattice-param cap_ rule=positive-token-smallest-units;
+    /// @custom:lattice-registers-interfaces
     function init(uint256 cap_) external {
         ERC20CappedLib.__ERC20Capped_init(cap_);
     }

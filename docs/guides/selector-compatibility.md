@@ -122,6 +122,7 @@ The movement selectors are `transfer` (`0xa9059cbb`) and `transferFrom` (`0x23b8
 
 | Facet | Role | Selectors it replaces or moves balances through | Mutually exclusive with |
 | --- | --- | --- | --- |
+| ERC3643 | Closed immutable permissioned profile | Complete ERC20 surface, mint/burn/forced/recovery and standard batches | Every facet outside its canonical required suite; ERC7674 temporary approval is the sole optional facet. Actual host/facet code hashes and complete routes are checked by the final initializer; [guide](erc3643.md) |
 | ERC20Pausable | Movement-replacing | `transfer`, `transferFrom` | ERC20Votes, GovernedVault; every direct mover when the pause must also stop mints and burns |
 | ERC20Votes | Movement-replacing | `transfer`, `transferFrom` (and Votes' `delegate`, `delegateBySig`) | ERC20Pausable; GovernedVault, except as `DeployGovernedVault` composes them; every direct mover |
 | GovernedVault | Combined facet | `transfer`, `transferFrom`, `deposit`, `mint`, `withdraw`, `redeem` | ERC20Pausable, ERC20Capped; every direct mover below except the ERC4626 and VaultCore paths it wraps |
@@ -151,6 +152,34 @@ The vote-aware `ERC20VotesLib._mint` is a direct minter for ERC20Capped too: it 
 
 The matrix below classifies `transfer` as One per diamond and `transferFrom` as Incompatible (it is also the
 ERC-721 selector), each with a D25 note.
+
+### ERC-7674 temporary allowances
+
+`ERC20TemporaryApproval` adds only `temporaryApprove(address,uint256)` (`0x42232a4c`). Its stateless initializer
+registers ERC-165 discovery. The matching shared `ERC20Lib` reports the saturated
+sum of persistent and temporary allowances, and every spender consumes temporary allowance first. This covers
+base and votes `transferFrom`, `burnFrom`, flash-mint repayment and approved ERC-4626 withdrawals/redemptions.
+No balance-movement hook is added: the exclusions in the table above still apply.
+
+Use `DeployERC20TemporaryApproval` for a fresh token, or compose `ERC20TemporaryApprovalInit` in another
+recipe's initializing window. On an existing diamond, the admin must atomically upgrade **all** allowance
+readers/spenders, including custom facets compiled with older ERC20Lib code, add the temporary facet and run
+its init through the application's guarded reinitializer. Adding the new facet to old spender bytecode alone
+cannot change that old code's allowance policy. Existing ERC20 selectors/interfaceId and the storage prefix
+are unchanged. There is no persistent activation field: all matching ERC20Lib spenders read the transient
+allowance, which is zero unless a grant was set in that transaction.
+
+All matching allowance readers/spenders require EIP-1153, even without the temporary facet installed
+(the canonical Cancun minimum supports it). There is no chain-ID exception
+or persistent-storage fallback. A grant is useful only within one transaction containing both grant and spend;
+a later transaction sees only persistent approval. Ordinary `approve`/permit changes do not revoke a live
+temporary grant. Temporary grants/consumption emit no `Approval` event; `allowance` may saturate at uint256 max.
+
+The OpenZeppelin parity scope for [#235](https://github.com/dadadave80/lattice/issues/235) is the pinned 5.6.1
+release. The 5.7 extensions mentioned in [#234](https://github.com/dadadave80/lattice/issues/234)
+(ERC3009/TransferAuthorization and ERC721/ERC1155 Crosschain) remain deferred to separate review. The existing
+ERC1363/movement-family hazard is still an integrator exclusion rather than a generic cut-time rejection;
+temporary approval does not resolve that issue's separate pairing acceptance condition.
 
 ### ERC-721 and ERC-1155
 
@@ -194,10 +223,10 @@ ERC-721 Pausable, Enumerable and Votes and ERC-1155 Pausable and Supply follow t
 | --- | --- | --- | --- | --- |
 | `0x00f714ce` | `withdraw(uint256,address)` | AaveV3Adapter, CompoundV3Adapter, CurveStableSwapAdapter, ERC4626Adapter, LidoAdapter, UniswapV3Adapter | One per diamond | strategy adapters: one per diamond (each adapter is its own strategy diamond) |
 | `0x01e1d114` | `totalAssets()` | ERC4626, VaultCore | Override | VaultCore's strategy-aware NAV replaces ERC4626's idle balance |
-| `0x06fdde03` | `name()` | ERC20, ERC721, GovernedVault, Governor | Incompatible | ERC-20 vs ERC-721 metadata (standard); GovernedVault owns the ERC-20/Governor name |
+| `0x06fdde03` | `name()` | ERC20, ERC3643, ERC721, GovernedVault, Governor | Incompatible | ERC-20 vs ERC-721 metadata (standard); GovernedVault owns the ERC-20/Governor name; ERC3643 admits only its closed profile |
 | `0x0746a956` | `verifyInterfaceRegistered(bytes4)` | GovernedDiamondCut, GovernedSafeDiamondCut, SafeDiamondCut | Variant | cut-gate variants: cut one |
 | `0x084d4783` | `latestAnswer(bytes32)` | API3Adapter, BandAdapter, ChainlinkAdapter, ChronicleAdapter, DIAAdapter, PythAdapter, RedStoneAdapter, TellorAdapter | One per diamond | price adapters: one per diamond |
-| `0x095ea7b3` | `approve(address,uint256)` | ERC20, ERC721 | Incompatible | ERC-20 vs ERC-721 (standard) |
+| `0x095ea7b3` | `approve(address,uint256)` | ERC20, ERC3643, ERC721 | Incompatible | ERC-20 vs ERC-721 (standard); ERC3643 admits only its closed profile |
 | `0x0dfe1681` | `token0()` | ConstantProduct, UniswapV3Adapter | Incompatible | the AMM pair's token vs the Uniswap V3 position's token |
 | `0x0e89341c` | `uri(uint256)` | ERC1155, ERC1155URIStorage | Override | ERC1155URIStorage's per-token URI replaces ERC1155's template |
 | `0x116191b6` | `gateway()` | AxelarGatewayAdapter, ZetaChainGatewayAdapter | One per diamond | ERC-7786 gateways: one per diamond |
@@ -206,14 +235,14 @@ ERC-721 Pausable, Enumerable and Votes and ERC-1155 Pausable and Supply follow t
 | `0x1626ba7e` | `isValidSignature(bytes32,bytes)` | ERC1271Signature, ERC6900Signature | Variant | account flavours: cut one |
 | `0x16f0115b` | `pool()` | CurveStableSwapAdapter, UniswapV3Adapter | One per diamond | the Curve pool vs the Uniswap V3 pool each adapter deposits into; strategy adapters: one per diamond |
 | `0x17f33340` | `rewardRecipient()` | AaveV3Adapter, CompoundV3Adapter, CurveStableSwapAdapter, ERC4626Adapter, LidoAdapter, UniswapV3Adapter | One per diamond | strategy adapters: one per diamond (each adapter is its own strategy diamond) |
-| `0x18160ddd` | `totalSupply()` | ERC1155Supply, ERC20, ERC721Enumerable | Incompatible | ERC-20 supply vs ERC-721 enumeration vs ERC-1155 supply (standard) |
+| `0x18160ddd` | `totalSupply()` | ERC1155Supply, ERC20, ERC3643, ERC721Enumerable | Incompatible | ERC-20 supply vs ERC-721 enumeration vs ERC-1155 supply (standard); ERC3643 admits only its closed profile |
 | `0x186f0354` | `safe()` | GovernedSafeDiamondCut, SafeDiamondCut | Variant | cut-gate variants: cut one |
 | `0x19822f7c` | `validateUserOp((address,uint256,bytes,bytes,bytes32,uint256,bytes32,bytes,bytes),bytes32,uint256)` | ERC4337Validation, ERC6900Validation | Variant | account flavours: cut one |
 | `0x1a3ce4e6` | `setSlippageBps(uint256)` | CurveStableSwapAdapter, UniswapV3Adapter | One per diamond | strategy adapters: one per diamond (each adapter is its own strategy diamond) |
 | `0x1f931c1c` | `diamondCut((address,uint8,bytes4[])[],address,bytes)` | AccessControlDiamondCut, GovernedDiamondCut, SafeDiamondCut, DiamondCutFacet | Variant | cut-gate variants: cut one |
 | `0x22841f01` | `healthFactor()` | AaveV3Adapter, CompoundV3Adapter, CurveStableSwapAdapter, ERC4626Adapter, LidoAdapter, UniswapV3Adapter | One per diamond | strategy adapters: one per diamond (each adapter is its own strategy diamond) |
 | `0x22cabf70` | `frozenSelectors()` | GovernedDiamondCut, GovernedSafeDiamondCut, SafeDiamondCut | Variant | cut-gate variants: cut one |
-| `0x23b872dd` | `transferFrom(address,address,uint256)` | ERC20, ERC20Pausable, ERC20Votes, ERC721, ERC721Enumerable, ERC721Pausable, ERC721Votes, GovernedVault | Incompatible | ERC-20 vs ERC-721 (standard); one ERC-20 and one ERC-721 movement-replacing extension per diamond (D25) |
+| `0x23b872dd` | `transferFrom(address,address,uint256)` | ERC20, ERC20Pausable, ERC20Votes, ERC3643, ERC721, ERC721Enumerable, ERC721Pausable, ERC721Votes, GovernedVault | Incompatible | ERC-20 vs ERC-721 (standard); one ERC-20 and one ERC-721 movement-replacing extension per diamond (D25); ERC3643 admits only its closed profile |
 | `0x2432ef26` | `receiveMessage(bytes32,bytes,bytes)` | CrosschainLink, ERC7786OpenBridge | One per diamond | inbound ERC-7786 recipients: one per diamond |
 | `0x248a9ca3` | `getRoleAdmin(bytes32)` | AccessControl, AccessControlEnumerable, AccessControlTimed | Variant | AccessControl flavours: cut one |
 | `0x280aebcf` | `getFeed(bytes32)` | API3Adapter, BandAdapter, ChainlinkAdapter, ChronicleAdapter, DIAAdapter, PythAdapter, RedStoneAdapter, TellorAdapter | One per diamond | price adapters: one per diamond |
@@ -222,34 +251,38 @@ ERC-721 Pausable, Enumerable and Votes and ERC-1155 Pausable and Supply follow t
 | `0x2ab0f529` | `isOperationDone(bytes32)` | GovernedSafeDiamondCut, TimelockController | Incompatible | GovernedSafe cut views vs TimelockController (Lattice-chosen; 0xacb1aeb6) |
 | `0x2eb2c2d6` | `safeBatchTransferFrom(address,address,uint256[],uint256[],bytes)` | ERC1155, ERC1155Pausable | Override | ERC1155Pausable's pause-gated transfer replaces ERC1155's (D25) |
 | `0x2f2ff15d` | `grantRole(bytes32,address)` | AccessControl, AccessControlEnumerable, AccessControlTimed | Variant | AccessControl flavours: cut one |
-| `0x313ce567` | `decimals()` | ERC20, ERC20Wrapper, ERC4626 | Incompatible | ERC4626's share decimals and ERC20Wrapper's underlying decimals each replace ERC20's (Override); a share token and a wrapper never share a diamond |
+| `0x313ce567` | `decimals()` | ERC20, ERC20Wrapper, ERC3643, ERC4626 | Incompatible | ERC4626's share decimals and ERC20Wrapper's underlying decimals each replace ERC20's (Override); a share token and a wrapper never share a diamond; ERC3643 admits only its closed profile |
 | `0x35342750` | `previewCut((address,uint8,bytes4[])[])` | GovernedDiamondCut, GovernedSafeDiamondCut, SafeDiamondCut | Variant | cut-gate variants: cut one |
 | `0x3644e515` | `DOMAIN_SEPARATOR()` | ERC20Permit, ERC6538Registry | Identical | both return EIP712Lib.domainSeparatorV4(): cut one copy |
 | `0x36568abe` | `renounceRole(bytes32,address)` | AccessControl, AccessControlEnumerable, AccessControlTimed | Variant | AccessControl flavours: cut one |
 | `0x38d52e0f` | `asset()` | ERC4626, AaveV3Adapter, CompoundV3Adapter, CurveStableSwapAdapter, ERC4626Adapter, LidoAdapter, UniswapV3Adapter | Incompatible | the ERC-4626 vault's asset vs a strategy adapter's own asset; strategy adapters: one per diamond |
 | `0x3adda78e` | `getCutRecord(uint256)` | GovernedDiamondCut, GovernedSafeDiamondCut, SafeDiamondCut | Variant | cut-gate variants: cut one |
 | `0x3cb747bf` | `messenger()` | L1ToL2CrossDomainMessengerGatewayAdapter, L2ToL2CrossDomainMessengerGatewayAdapter | One per diamond | OP messenger gateways: one per diamond |
+| `0x3f4ba83a` | `unpause()` | ERC3643, Pausable | Incompatible | ERC3643 token-agent pause and generic Pausable use different storage and authority |
 | `0x402d267d` | `maxDeposit(address)` | ERC4626, VaultCore | Override | VaultCore's deposit-latch-aware cap replaces ERC4626's |
 | `0x42842e0e` | `safeTransferFrom(address,address,uint256)` | ERC721, ERC721Enumerable, ERC721Pausable, ERC721Votes | One per diamond | ERC721Enumerable, ERC721Pausable and ERC721Votes each replace ERC721's: one per diamond (D25) |
 | `0x42966c68` | `burn(uint256)` | ERC20Burnable, ERC721Burnable | Incompatible | ERC-20 vs ERC-721 (standard) |
 | `0x4487678f` | `freezeSelectors(bytes4[])` | GovernedDiamondCut, GovernedSafeDiamondCut, SafeDiamondCut | Variant | cut-gate variants: cut one |
 | `0x4641257d` | `harvest()` | AaveV3Adapter, CompoundV3Adapter, CurveStableSwapAdapter, ERC4626Adapter, LidoAdapter, StrategyManager, UniswapV3Adapter | Incompatible | StrategyManager harvests every strategy; an adapter harvests its own position (one per diamond) |
 | `0x4bf5d7e9` | `CLOCK_MODE()` | GovernedVault, Governor, Votes | Override | GovernedVault owns it; Governor's version reads its token's clock(), here the diamond itself |
+| `0x54fd4d50` | `version()` | ERC3643, Governor | Incompatible | ERC3643 reports Lattice source version; Governor reports its voting-domain version |
 | `0x570ca735` | `operator()` | AaveV3Adapter, CompoundV3Adapter, CurveStableSwapAdapter, ERC4626Adapter, LidoAdapter, UniswapV3Adapter | One per diamond | strategy adapters: one per diamond (each adapter is its own strategy diamond) |
 | `0x578c71d9` | `slippageBps()` | CurveStableSwapAdapter, UniswapV3Adapter | One per diamond | strategy adapters: one per diamond (each adapter is its own strategy diamond) |
 | `0x584b153e` | `isOperationPending(bytes32)` | GovernedSafeDiamondCut, TimelockController | Incompatible | GovernedSafe cut views vs TimelockController (Lattice-chosen; 0xacb1aeb6) |
 | `0x58d14c04` | `quoteFee(bytes,bytes)` | CCIPGatewayAdapter, HyperlaneGatewayAdapter, LayerZeroGatewayAdapter | One per diamond | ERC-7786 gateways: one per diamond |
 | `0x5c19a95c` | `delegate(address)` | ERC20Votes, ERC721Votes, Votes | Incompatible | ERC20Votes' and ERC721Votes' balance-aware delegation each replace Votes' (Override); ERC-20 vs ERC-721 units |
+| `0x5c975abb` | `paused()` | ERC3643, Pausable | Incompatible | ERC3643 token pause and generic Pausable read different storage |
 | `0x5db0cb94` | `setSafe(address)` | GovernedSafeDiamondCut, SafeDiamondCut | Variant | cut-gate variants: cut one |
 | `0x610683bc` | `receiveCrossChainMessage(bytes,bytes,bytes,uint256)` | L1ToL2CrossDomainMessengerGatewayAdapter, L2ToL2CrossDomainMessengerGatewayAdapter | One per diamond | OP messenger gateways: one per diamond |
 | `0x613c822b` | `totalAssetsManaged()` | AaveV3Adapter, CompoundV3Adapter, CurveStableSwapAdapter, ERC4626Adapter, LidoAdapter, UniswapV3Adapter | One per diamond | strategy adapters: one per diamond (each adapter is its own strategy diamond) |
 | `0x6b20c454` | `burnBatch(address,uint256[],uint256[])` | ERC1155Burnable, ERC1155Pausable, ERC1155Supply | One per diamond | plain, pause-gated and supply-tracking ERC-1155 burns: one per diamond (D25) |
 | `0x6e553f65` | `deposit(uint256,address)` | ERC4626, GovernedVault, VaultCore | Override | ERC4626 < VaultCore < GovernedVault checkpoint seam |
 | `0x6f307dc3` | `underlying()` | ERC20Wrapper, ERC721Wrapper | Incompatible | an ERC-20 wrapper and an ERC-721 wrapper never share a diamond |
-| `0x70a08231` | `balanceOf(address)` | ERC20, ERC721 | Incompatible | ERC-20 vs ERC-721 (standard) |
+| `0x70a08231` | `balanceOf(address)` | ERC20, ERC3643, ERC721 | Incompatible | ERC-20 vs ERC-721 (standard); ERC3643 admits only its closed profile |
 | `0x752bcf06` | `getRemoteGateway(uint256)` | CCIPGatewayAdapter, WormholeGatewayAdapter | One per diamond | ERC-7786 gateways: one per diamond |
 | `0x775c300c` | `deploy()` | AaveV3Adapter, CompoundV3Adapter, CurveStableSwapAdapter, ERC4626Adapter, LidoAdapter, UniswapV3Adapter | One per diamond | strategy adapters: one per diamond (each adapter is its own strategy diamond) |
 | `0x7ecebe00` | `nonces(address)` | ERC20Permit, Nonces | Identical | both read NoncesLib: cut one copy |
+| `0x8456cb59` | `pause()` | ERC3643, Pausable | Incompatible | ERC3643 token-agent pause and generic Pausable use different storage and authority |
 | `0x8da5cb5b` | `owner()` | AccountSigner, OwnableFacet | Incompatible | AccountSigner's signer vs ERC-173 diamond owner (separate storage) |
 | `0x8ff262e3` | `castVoteBySig(uint256,uint8,address,bytes)` | GovernedVault, Governor | Override | GovernedVault's ballot-nonce reconciliation replaces Governor's |
 | `0x902d5027` | `processMessage(bytes32,bytes,bytes)` | BridgeERC20, BridgeERC7802, CrosschainTimelockHandler, ERC20Crosschain | One per diamond | ERC-7786 handlers: one per link diamond |
@@ -257,12 +290,12 @@ ERC-721 Pausable, Enumerable and Votes and ERC-1155 Pausable and Supply follow t
 | `0x91d14854` | `hasRole(bytes32,address)` | AccessControl, AccessControlEnumerable, AccessControlTimed | Variant | AccessControl flavours: cut one |
 | `0x91ddadf4` | `clock()` | GovernedVault, Governor, Votes | Override | GovernedVault owns it; Governor's version reads its token's clock(), here the diamond itself |
 | `0x94bf804d` | `mint(uint256,address)` | ERC4626, GovernedVault, VaultCore | Override | ERC4626 < VaultCore < GovernedVault checkpoint seam |
-| `0x95d89b41` | `symbol()` | ERC20, ERC721 | Incompatible | ERC-20 vs ERC-721 metadata (standard) |
+| `0x95d89b41` | `symbol()` | ERC20, ERC3643, ERC721 | Incompatible | ERC-20 vs ERC-721 metadata (standard); ERC3643 admits only its closed profile |
 | `0x997ce1f0` | `registerRemoteGateway(uint256,address)` | CCIPGatewayAdapter, WormholeGatewayAdapter | One per diamond | ERC-7786 gateways: one per diamond |
 | `0x9cfd7cff` | `accountId()` | ERC6900ModuleManager, ERC7579ModuleConfig | Variant | account flavours (ERC-6900 vs ERC-7579): cut one |
 | `0xa0042526` | `getForwarder()` | ChainlinkAutomationAdapter, ChainlinkCREAdapter | Incompatible | Chainlink Automation vs CRE forwarder (Lattice-chosen) |
 | `0xa22cb465` | `setApprovalForAll(address,bool)` | ERC1155, ERC721 | Incompatible | ERC-721 vs ERC-1155 over separate storage (standard) |
-| `0xa9059cbb` | `transfer(address,uint256)` | ERC20, ERC20Pausable, ERC20Votes, GovernedVault | One per diamond | ERC20Pausable, ERC20Votes and GovernedVault each replace ERC20's: one per diamond (D25) |
+| `0xa9059cbb` | `transfer(address,uint256)` | ERC20, ERC20Pausable, ERC20Votes, ERC3643, GovernedVault | One per diamond | ERC20Pausable, ERC20Votes and GovernedVault each replace ERC20's: one per diamond (D25); ERC3643 admits only its closed profile |
 | `0xaa982c45` | `cutCount()` | GovernedDiamondCut, GovernedSafeDiamondCut, SafeDiamondCut | Variant | cut-gate variants: cut one |
 | `0xad0ddbee` | `latestAnswerRaw(bytes32)` | ChainlinkAdapter, PythAdapter | One per diamond | price adapters: one per diamond |
 | `0xb187bd26` | `isPaused()` | AaveV3Adapter, CompoundV3Adapter, CurveStableSwapAdapter, ERC4626Adapter, LidoAdapter, UniswapV3Adapter | One per diamond | strategy adapters: one per diamond (each adapter is its own strategy diamond) |
@@ -284,6 +317,7 @@ ERC-721 Pausable, Enumerable and Votes and ERC-1155 Pausable and Supply follow t
 | `0xdb2e21bc` | `emergencyWithdraw()` | AaveV3Adapter, CompoundV3Adapter, CurveStableSwapAdapter, ERC4626Adapter, LidoAdapter, UniswapV3Adapter | One per diamond | strategy adapters: one per diamond (each adapter is its own strategy diamond) |
 | `0xdc680a0f` | `supportsAttribute(bytes4)` | AxelarGatewayAdapter, CCIPGatewayAdapter, ERC7786OpenBridge, HyperbridgeGatewayAdapter, HyperlaneGatewayAdapter, L1ToL2CrossDomainMessengerGatewayAdapter, L2ToL2CrossDomainMessengerGatewayAdapter, LayerZeroGatewayAdapter, WormholeGatewayAdapter, ZetaChainGatewayAdapter | One per diamond | ERC-7786 gateways: one per diamond |
 | `0xdd1e2651` | `getUserKey(uint256)` | ChainlinkVRF, GelatoVRFAdapter | One per diamond | VRF providers: one per diamond |
+| `0xdd62ed3e` | `allowance(address,address)` | ERC20, ERC3643 | Identical | same combined allowance accounting; ERC3643 closed profile routes its copy |
 | `0xe1b4264c` | `minHealthFactor()` | AaveV3Adapter, CompoundV3Adapter, CurveStableSwapAdapter, ERC4626Adapter, LidoAdapter, UniswapV3Adapter | One per diamond | strategy adapters: one per diamond (each adapter is its own strategy diamond) |
 | `0xe521136f` | `setRewardRecipient(address)` | AaveV3Adapter, CompoundV3Adapter, CurveStableSwapAdapter, ERC4626Adapter, LidoAdapter, UniswapV3Adapter | One per diamond | strategy adapters: one per diamond (each adapter is its own strategy diamond) |
 | `0xe985e9c5` | `isApprovedForAll(address,address)` | ERC1155, ERC721 | Incompatible | ERC-721 vs ERC-1155 over separate storage (standard) |

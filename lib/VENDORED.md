@@ -111,6 +111,8 @@ missing from this table.
 | `curve/ICurveGauge.sol` | curvefi/curve-dao-contracts `contracts/gauges/LiquidityGaugeV5.vy` | MIT | subset (from Vyper) |
 | `curve/ICurveStableSwapPool.sol` | curvefi/curve-contract `contracts/pool-templates/base/SwapTemplateBase.vy` | none granted ("Copyright (c) Curve.Fi, 2020 - all rights reserved") | subset (from Vyper) |
 | `dia/IDIAOracleV2.sol` | diadata-org/diadata `DIAOracleV2.sol` | GPL-3.0 (repo) | subset |
+| `erc3643/IERC3643Identity.sol` | ERC-3643 CC0 identity ABI, ERCs 7dafd1125fffbd3832316edeb739608ad82bb4c4 | CC0-1.0 | fresh ABI-equivalent re-declaration |
+| `erc3643/IERC3643ClaimIssuer.sol` | ERC-3643 CC0 issuer ABI, ERCs 7dafd1125fffbd3832316edeb739608ad82bb4c4 | CC0-1.0 | fresh ABI-equivalent re-declaration |
 | `ens/IAddrResolver.sol` | ensdomains/ens-contracts `contracts/resolvers/profiles/IAddrResolver.sol` | MIT | subset |
 | `ens/IENS.sol` | ensdomains/ens-contracts `contracts/registry/ENS.sol` | MIT | subset |
 | `ens/IETHRegistrarController.sol` | ensdomains/ens-contracts `contracts/ethregistrar/IETHRegistrarController.sol` | MIT | subset |

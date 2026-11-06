@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# Executable transport fixture. Never performs network IO.
+set -euo pipefail
+[ -z "${ETHERSCAN_API_KEY+x}${VERIFIER_API_KEY+x}${ETH_RPC_JWT_SECRET+x}${ETH_RPC_HEADERS+x}" ] || exit 97
+method=GET response='' headers='' request='' url='' agent='' bounded=false
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        --request) method=$2; shift 2 ;;
+        --output) response=$2; shift 2 ;;
+        --dump-header) headers=$2; shift 2 ;;
+        --data-binary) request=${2#@}; shift 2 ;;
+        --user-agent) agent=$2; shift 2 ;;
+        --max-filesize) [ "$2" = 2097152 ]; bounded=true; shift 2 ;;
+        --connect-timeout|--max-time|--max-redirs|--proto|--write-out|-H) shift 2 ;;
+        -q|--silent|--show-error) shift ;;
+        https://*) url=$1; shift ;;
+        *) exit 96 ;;
+    esac
+done
+[ "$bounded" = true ] && [ -n "$agent" ] && [ -n "$url" ]
+count=$(cat "$VERIFY_MOCK/count" 2>/dev/null || printf 0)
+count=$((count + 1)); printf '%s\n' "$count" > "$VERIFY_MOCK/count"
+step=$VERIFY_MOCK/steps/$count
+[ -d "$step" ] || { echo 'unexpected HTTP request' >&2; exit 95; }
+[ "$(cat "$step/method")" = "$method" ]
+grep -Fq "$(cat "$step/url")" <<< "$url"
+printf '%s %s\n' "$method" "$url" >> "$VERIFY_MOCK/requests"
+if [ -n "$request" ]; then cp "$request" "$VERIFY_MOCK/submitted-$count.json"; fi
+cp "$step/body.json" "$response"
+cp "$step/headers" "$headers"
+cat "$step/status"
+exit "$(cat "$step/exit")"

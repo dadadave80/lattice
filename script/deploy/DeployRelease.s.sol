@@ -1,15 +1,20 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
+import {AccountDeployBase} from "@lattice-script/base/accounts/AccountDeployBase.s.sol";
+import {AccountReleaseInventory} from "@lattice-script/lib/AccountReleaseInventory.sol";
 import {ArachnidDeployer} from "@lattice-script/lib/ArachnidDeployer.sol";
 import {FacetInventory} from "@lattice-script/lib/FacetInventory.sol";
 import {InitInventory} from "@lattice-script/lib/InitInventory.sol";
+import {LibraryInventory} from "@lattice-script/lib/LibraryInventory.sol";
+import {ReleaseVersion} from "@lattice-script/lib/ReleaseVersion.sol";
+import {JsonRecordWriter} from "@lattice-script/release/JsonRecordWriter.sol";
 import {LatticeFactory} from "@lattice/LatticeFactory.sol";
 import {LatticeRegistry} from "@lattice/LatticeRegistry.sol";
 import {LatticeVersion} from "@lattice/LatticeVersion.sol";
 import {ILatticeRegistry} from "@lattice/interfaces/ILatticeRegistry.sol";
-import {IERC8153} from "@lattice/interfaces/external/ercs/IERC8153.sol";
-import {Script, console} from "forge-std/Script.sol";
+import {console} from "forge-std/Script.sol";
 
 /// @title DeployRelease
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
@@ -17,7 +22,7 @@ import {Script, console} from "forge-std/Script.sol";
 ///         {LatticeRegistry} singleton, the {LatticeFactory}, and every {FacetInventory} facet through
 ///         Arachnid CREATE2 at raw protocol salts, then registers each facet under
 ///         `keccak256("lattice.<Name>")` at the semver-packed version and points `latest` at it, and
-///         attests every stateless InitInventory initializer in Tier A, and writes a per-chain JSON manifest.
+///         attests every stateless InitInventory initializer in Tier A, and writes a per-chain simulation deployment plan.
 ///
 /// Usage (one release, one chain):
 ///   forge script script/deploy/DeployRelease.s.sol \
@@ -58,7 +63,7 @@ import {Script, console} from "forge-std/Script.sol";
 ///
 ///      {release} holds ALL on-chain logic and uses no broadcast/prank cheatcodes (only the read-only
 ///      `vm.getCode`), so tests drive it exactly as production runs it.
-contract DeployRelease is Script {
+contract DeployRelease is AccountDeployBase {
     //*//////////////////////////////////////////////////////////////////////////
     //                              TYPES / ERRORS
     //////////////////////////////////////////////////////////////////////////*//
@@ -73,6 +78,9 @@ contract DeployRelease is Script {
         address factory;
         address[] facets;
         address[] inits;
+        address[] libraries;
+        address[] accountInits;
+        address[] accountFactories;
     }
 
     /// @notice Thrown when `version` is not a well-formed "MAJOR.MINOR.PATCH" semver string (all-digit,
@@ -107,7 +115,7 @@ contract DeployRelease is Script {
     //                                ENTRY POINT
     //////////////////////////////////////////////////////////////////////////*//
 
-    /// @notice Broadcasts a full release and writes `deployments/<chainid>/release-<version>.json`.
+    /// @notice Broadcasts a full release and writes a simulation plan to `deployments/<chainid>/plan-<version>.json`.
     /// @param version The release semver string, e.g. `"0.1.0"`.
     /// @param owner The {LatticeRegistry} initial owner (multisig on mainnet). Part of the registry's
     ///        CREATE2 identity — pass the SAME owner on every chain and every resume (see the
@@ -116,7 +124,7 @@ contract DeployRelease is Script {
         vm.startBroadcast();
         ReleaseOutput memory out = release(version, owner);
         vm.stopBroadcast();
-        _writeManifest("deployments", version, out);
+        _writeDeploymentPlan("deployments", version, out);
     }
 
     /// @notice {run} pinned to the library's own {LatticeVersion.VERSION} — the Release-Please-bumped
@@ -127,7 +135,7 @@ contract DeployRelease is Script {
         vm.startBroadcast();
         ReleaseOutput memory out = release(owner);
         vm.stopBroadcast();
-        _writeManifest("deployments", LatticeVersion.VERSION, out);
+        _writeDeploymentPlan("deployments", LatticeVersion.VERSION, out);
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -155,6 +163,9 @@ contract DeployRelease is Script {
         );
 
         uint64 packed = packVersion(version);
+
+        // Native linking predeploys this dependency; also verify it from trusted artifact runtime before any core work.
+        out.libraries = _releaseLibraries();
 
         // --- Phase 1: core singletons -------------------------------------------------------------
         bool deployedNow;
@@ -200,7 +211,11 @@ contract DeployRelease is Script {
 
         // --- Phase 3: shared inits (permissionless Tier A attestation, no facet registration) -------
         ILatticeRegistry registry = ILatticeRegistry(out.registry);
+        for (uint256 i; i < out.libraries.length; ++i) {
+            registry.attest(out.libraries[i]);
+        }
         out.inits = _releaseInits(version, registry);
+        (out.accountInits, out.accountFactories) = _releaseAccounts(version, registry);
 
         // --- Phase 4: facet registration (broadcaster must own the registry) -----------------------
         if (registry.owner() != msg.sender) {
@@ -255,60 +270,28 @@ contract DeployRelease is Script {
     /// @param version The semver string; multi-digit components supported.
     /// @return packed The semver-packed `uint64` registry version key.
     function packVersion(string memory version) public pure returns (uint64 packed) {
-        bytes memory b = bytes(version);
-        uint256[3] memory parts;
-        uint256 component;
-        uint256 digits;
-        for (uint256 i; i < b.length; ++i) {
-            bytes1 c = b[i];
-            if (c == ".") {
-                if (digits == 0 || component == 2) revert DeployRelease__MalformedVersion(version);
-                ++component;
-                digits = 0;
-            } else if (c >= "0" && c <= "9") {
-                // Leading zeros are refused: "0.01.0" would pack identically to "0.1.0" while deriving
-                // DIFFERENT facet salts — a duplicate facet set the registry would never serve.
-                if (digits != 0 && parts[component] == 0) revert DeployRelease__MalformedVersion(version);
-                parts[component] = parts[component] * 10 + (uint8(c) - 48);
-                if (parts[component] > type(uint24).max) revert DeployRelease__MalformedVersion(version);
-                ++digits;
-            } else {
-                revert DeployRelease__MalformedVersion(version);
-            }
-        }
-        if (component != 2 || digits == 0 || parts[0] > type(uint16).max) {
-            revert DeployRelease__MalformedVersion(version);
-        }
-        packed = (uint64(parts[0]) << 48) | (uint64(parts[1]) << 24) | uint64(parts[2]);
-        if (packed == 0) revert DeployRelease__MalformedVersion(version);
+        return ReleaseVersion.packVersion(version);
     }
 
     //*//////////////////////////////////////////////////////////////////////////
     //                                 MANIFEST
     //////////////////////////////////////////////////////////////////////////*//
 
-    /// @dev Serializes the release to `<deploymentsRoot>/<chainid>/release-<version>.json`: top-level
+    /// @dev Serializes the simulation plan to `<deploymentsRoot>/<chainid>/plan-<version>.json`: top-level
     ///      version / chainid / deployer / registry / factory / owner (read live off the registry) /
     ///      timestamp, plus initializer name/address/salt/runtime and creation hashes, and one entry per facet
     ///      with its name, address, codehash, live
     ///      `keccak256(exportSelectors())`, and salt. `run` passes `"deployments"`; the unit test passes an
     ///      isolated root so a real committed manifest is never touched. Internal (not private) so the unit
     ///      test can drive it directly.
-    function _writeManifest(string memory deploymentsRoot, string memory version, ReleaseOutput memory out) internal {
-        (string[] memory names,) = FacetInventory.inventory();
-
-        string memory facetsJson;
-        for (uint256 i; i < names.length; ++i) {
-            string memory key = string.concat("facet:", names[i]);
-            vm.serializeString(key, "name", names[i]);
-            vm.serializeAddress(key, "address", out.facets[i]);
-            vm.serializeBytes32(key, "codehash", out.facets[i].codehash);
-            vm.serializeBytes32(key, "selectorsHash", _liveSelectorsHash(out.facets[i]));
-            string memory facetJson = vm.serializeBytes32(key, "salt", facetSalt(names[i], version));
-            facetsJson = vm.serializeString("facets", names[i], facetJson);
-        }
-
-        string memory initsJson = _serializeInits(version, out.inits);
+    function _writeDeploymentPlan(string memory deploymentsRoot, string memory version, ReleaseOutput memory out)
+        internal
+    {
+        // This helper is created after run() stops broadcasting: it is offline serialization only.
+        JsonRecordWriter writer = new JsonRecordWriter();
+        string memory facetsJson = _serializeFacets(version, out.facets, writer);
+        string memory initsJson = _serializeInits(version, out.inits, writer);
+        string memory librariesJson = _serializeLibraries(out.libraries, writer);
 
         string memory root = "manifest";
         vm.serializeString(root, "version", version);
@@ -321,11 +304,13 @@ contract DeployRelease is Script {
         vm.serializeAddress(root, "owner", ILatticeRegistry(out.registry).owner());
         vm.serializeUint(root, "timestamp", block.timestamp);
         vm.serializeString(root, "facets", facetsJson);
-        string memory json = vm.serializeString(root, "inits", initsJson);
+        vm.serializeString(root, "inits", initsJson);
+        vm.serializeString(root, "libraries", librariesJson);
+        string memory json = vm.serializeString(root, "accounts", _serializeAccounts(version, out, writer));
 
         string memory dir = string.concat(deploymentsRoot, "/", vm.toString(block.chainid));
         vm.createDir(dir, true);
-        string memory path = string.concat(dir, "/release-", version, ".json");
+        string memory path = string.concat(dir, "/plan-", version, ".json");
         vm.writeJson(json, path);
         console.log("Manifest written:", path);
     }
@@ -333,6 +318,21 @@ contract DeployRelease is Script {
     //*//////////////////////////////////////////////////////////////////////////
     //                             PRIVATE HELPERS
     //////////////////////////////////////////////////////////////////////////*//
+
+    function _releaseLibraries() private returns (address[] memory deployed) {
+        (string[] memory names, string[] memory artifacts, address[] memory linked) = LibraryInventory.inventory();
+        deployed = new address[](names.length);
+        for (uint256 i; i < names.length; ++i) {
+            bytes memory initCode = vm.getCode(artifacts[i]);
+            address predicted = ArachnidDeployer.predict(LibraryInventory.SALT, keccak256(initCode));
+            require(linked[i] == predicted, "release library: noncanonical native link address");
+            (deployed[i],) = _deployOrSkip(LibraryInventory.SALT, initCode, names[i]);
+            require(
+                deployed[i].codehash == LibraryInventory.runtimeHash(vm, artifacts[i], predicted),
+                "release library: runtime code mismatch"
+            );
+        }
+    }
 
     function _releaseInits(string memory version, ILatticeRegistry registry) private returns (address[] memory inits) {
         (string[] memory names, string[] memory paths) = InitInventory.inventory();
@@ -343,19 +343,78 @@ contract DeployRelease is Script {
         }
     }
 
-    function _serializeInits(string memory version, address[] memory inits) private returns (string memory initsJson) {
-        (string[] memory initNames, string[] memory initPaths) = InitInventory.inventory();
-        for (uint256 i; i < initNames.length; ++i) {
-            string memory key = string.concat("init:", initNames[i]);
-            vm.serializeString(key, "name", initNames[i]);
-            vm.serializeAddress(key, "address", inits[i]);
-            vm.serializeBytes32(key, "codehash", inits[i].codehash);
-            vm.serializeBytes32(key, "initCodeHash", keccak256(vm.getCode(initPaths[i])));
-            string memory initJson = vm.serializeBytes32(key, "salt", facetSalt(initNames[i], version));
-            initsJson = vm.serializeString("inits", initNames[i], initJson);
+    function _releaseAccounts(string memory version, ILatticeRegistry registry)
+        private
+        returns (address[] memory inits, address[] memory factories)
+    {
+        AccountReleaseInventory.Entry[] memory entries = AccountReleaseInventory.inventory();
+        inits = new address[](entries.length);
+        factories = new address[](entries.length);
+        FacetCut[][] memory blueprints = _accountBlueprints(version);
+        for (uint256 i; i < entries.length; ++i) {
+            (inits[i], factories[i]) = _accountContracts(entries[i], version, blueprints[entries[i].modular ? 1 : 0]);
+            registry.attest(inits[i]);
+            // Factories store their blueprint. Runtime codehash alone does not identify that state;
+            // select them by the manifest's constructor-bound address, never the Tier-A resolver.
         }
+    }
 
-        return initsJson;
+    function _serializeFacets(string memory version, address[] memory facets, JsonRecordWriter writer)
+        private
+        returns (string memory)
+    {
+        (string[] memory names,) = FacetInventory.inventory();
+        string[] memory records = new string[](names.length);
+        for (uint256 i; i < names.length; ++i) {
+            records[i] = writer.planFacet(names[i], facets[i], facetSalt(names[i], version));
+        }
+        return writer.joinObject(names, records);
+    }
+
+    function _serializeAccounts(string memory version, ReleaseOutput memory out, JsonRecordWriter writer)
+        private
+        returns (string memory)
+    {
+        AccountReleaseInventory.Entry[] memory entries = AccountReleaseInventory.inventory();
+        FacetCut[][] memory blueprints = _accountBlueprints(version);
+        string[] memory names = new string[](entries.length * 2);
+        string[] memory records = new string[](names.length);
+        for (uint256 i; i < entries.length; ++i) {
+            AccountReleaseInventory.Entry memory entry = entries[i];
+            names[2 * i] = entry.initializer;
+            names[2 * i + 1] = entry.factory;
+            records[2 * i] =
+                writer.accountPlan(entry, false, out.accountInits[i], version, abi.encode(entry.entryPoint));
+            records[2 * i + 1] = writer.accountPlan(
+                entry,
+                true,
+                out.accountFactories[i],
+                version,
+                abi.encode(blueprints[entry.modular ? 1 : 0], out.accountInits[i])
+            );
+        }
+        return writer.joinObject(names, records);
+    }
+
+    function _serializeLibraries(address[] memory deployed, JsonRecordWriter writer) private returns (string memory) {
+        (string[] memory names, string[] memory artifacts,) = LibraryInventory.inventory();
+        string[] memory records = new string[](names.length);
+        for (uint256 i; i < names.length; ++i) {
+            records[i] = writer.planArtifact(names[i], artifacts[i], deployed[i], LibraryInventory.SALT);
+        }
+        return writer.joinObject(names, records);
+    }
+
+    function _serializeInits(string memory version, address[] memory inits, JsonRecordWriter writer)
+        private
+        returns (string memory)
+    {
+        (string[] memory names, string[] memory paths) = InitInventory.inventory();
+        string[] memory records = new string[](names.length);
+        for (uint256 i; i < names.length; ++i) {
+            records[i] = writer.planArtifact(names[i], paths[i], inits[i], facetSalt(names[i], version));
+        }
+        return writer.joinObject(names, records);
     }
 
     /// @dev Predict the raw-salt CREATE2 address for `initCode`; deploy only if nothing lives there yet
@@ -370,13 +429,5 @@ contract DeployRelease is Script {
             require(deployed == at, string.concat("DeployRelease: ", label, " deployed != predicted"));
             deployedNow = true;
         }
-    }
-
-    /// @dev `keccak256` of the facet's LIVE ERC-8153 selector blob — the same pin {LatticeRegistry}
-    ///      records, so the manifest can be diffed straight against on-chain state.
-    function _liveSelectorsHash(address facet) private view returns (bytes32 selectorsHash) {
-        (bool ok, bytes memory ret) = facet.staticcall(abi.encodeCall(IERC8153.exportSelectors, ()));
-        require(ok && ret.length >= 64, "DeployRelease: exportSelectors() read failed");
-        selectorsHash = keccak256(abi.decode(ret, (bytes)));
     }
 }

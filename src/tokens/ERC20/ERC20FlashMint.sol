@@ -11,8 +11,14 @@ import {ERC20FlashMintLib} from "@lattice/tokens/ERC20/libraries/ERC20FlashMintL
 /// @notice Stateless Diamond facet — ERC-3156 flash loans at the token level (the token mints itself as the loan).
 /// @dev Pure delegator to {ERC20FlashMintLib}. Default fee is 0 (burned). A supply cap ({ERC20Capped}) is not
 ///      reflected by `maxFlashLoan` — pair with a cap-aware flash-mint library if that composition is needed.
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source OpenZeppelin v5.6.1
+/// @custom:lattice-requires ERC20 convention complete-token-surface;
+/// @custom:lattice-family none
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches lattice.storage.ERC20;
+/// @custom:lattice-touches transient:lattice.storage.ERC20TemporaryApproval;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init ERC20FlashMintInit
 contract ERC20FlashMint is IERC20FlashMint {
     /// @inheritdoc IERC3156FlashLender
     function maxFlashLoan(address token) public view virtual returns (uint256) {

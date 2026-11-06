@@ -20,8 +20,24 @@ import {ERC721VotesLib} from "@lattice/tokens/ERC721/libraries/ERC721VotesLib.so
 ///        authorization-free transfer facet for a votes diamond calls {ERC721VotesLib} instead, never {ERC721Lib}.
 ///      - Batch mints ({ERC721ConsecutiveInit}) move no voting units, so the supply checkpoint would miss them;
 ///        either init order reverts `ERC721VotesForbiddenBatchMint` (pinned by CompositionHazardsTest).
-/// @custom:lattice-version 0.5.0
 /// @custom:lattice-source OpenZeppelin v5.6.1
+/// @custom:lattice-requires ERC721 convention complete-token-surface;
+/// @custom:lattice-requires Votes convention checkpoint-and-clock-views;
+/// @custom:lattice-family erc721-transfer
+/// @custom:lattice-owns delegate(address);
+/// @custom:lattice-owns delegateBySig(address,uint256,uint256,uint8,bytes32,bytes32);
+/// @custom:lattice-owns transferFrom(address,address,uint256);
+/// @custom:lattice-owns safeTransferFrom(address,address,uint256);
+/// @custom:lattice-owns safeTransferFrom(address,address,uint256,bytes);
+/// @custom:lattice-touches lattice.storage.ERC721;
+/// @custom:lattice-touches lattice.storage.Nonces;
+/// @custom:lattice-touches lattice.storage.Votes;
+/// @custom:lattice-seam delegate(address) when=Votes anyOf=ERC721Votes read-correct-token-voting-units;
+/// @custom:lattice-seam delegateBySig(address,uint256,uint256,uint8,bytes32,bytes32) when=Votes anyOf=ERC721Votes read-correct-token-voting-units;
+/// @custom:lattice-seam transferFrom(address,address,uint256) when=ERC721 anyOf=ERC721Votes replace-base-movement;
+/// @custom:lattice-seam safeTransferFrom(address,address,uint256) when=ERC721 anyOf=ERC721Votes replace-base-movement;
+/// @custom:lattice-seam safeTransferFrom(address,address,uint256,bytes) when=ERC721 anyOf=ERC721Votes replace-base-movement;
+/// @custom:lattice-init ERC721VotesInit
 contract ERC721Votes {
     /// @notice Transfers `tokenId` from `from` to `to` and moves its voting unit (replaces the base `transferFrom`).
     function transferFrom(address from, address to, uint256 tokenId) public virtual {

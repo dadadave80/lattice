@@ -12,9 +12,14 @@ import {SemaphoreLib} from "@lattice/privacy/libraries/SemaphoreLib.sol";
 /// @dev All logic lives in {SemaphoreLib}. Membership uses the Poseidon incremental Merkle tree; proof
 ///      verification is delegated to the audited Semaphore v4 verifier (set via {setVerifier}); a
 ///      per-group scope nullifier prevents double-signaling.
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source Wraps the audited Semaphore v4 (PSE) Groth16 verifier; group / nullifier / root
 ///         logic over Lattice's own Poseidon Merkle + nullifier libraries.
+/// @custom:lattice-requires AccessControl|AccessControlEnumerable|AccessControlTimed convention role-management-surface;
+/// @custom:lattice-family none
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches lattice.storage.Semaphore;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init SemaphoreInit
 contract Semaphore is ISemaphore {
     /// @inheritdoc ISemaphore
     function createGroup() external virtual returns (uint256) {

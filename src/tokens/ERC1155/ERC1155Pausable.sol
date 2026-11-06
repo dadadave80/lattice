@@ -17,8 +17,18 @@ import {ERC1155PausableLib} from "@lattice/tokens/ERC1155/libraries/ERC1155Pausa
 ///      `burn`/`burnBatch` selectors. Reuses the shared {PausableLib} state (no new storage or ERC-165 id); the
 ///      diamond also cuts the {Pausable} facet for the admin-gated `pause()`/`unpause()`, as
 ///      {DeployERC1155Pausable} does. See {ERC1155PausableLib} for every difference from OpenZeppelin v5.6.1.
-/// @custom:lattice-version 0.5.0
 /// @custom:lattice-source OpenZeppelin v5.6.1
+/// @custom:lattice-requires ERC1155 convention complete-token-surface;
+/// @custom:lattice-requires Pausable convention pause-management-surface;
+/// @custom:lattice-family erc1155-burn
+/// @custom:lattice-owns safeTransferFrom(address,address,uint256,uint256,bytes);
+/// @custom:lattice-owns safeBatchTransferFrom(address,address,uint256[],uint256[],bytes);
+/// @custom:lattice-owns burn(address,uint256,uint256);
+/// @custom:lattice-owns burnBatch(address,uint256[],uint256[]);
+/// @custom:lattice-touches lattice.storage.ERC1155;
+/// @custom:lattice-seam safeTransferFrom(address,address,uint256,uint256,bytes) when=ERC1155 anyOf=ERC1155Pausable gate-base-movement;
+/// @custom:lattice-seam safeBatchTransferFrom(address,address,uint256[],uint256[],bytes) when=ERC1155 anyOf=ERC1155Pausable gate-base-movement;
+/// @custom:lattice-init ERC1155PausableInit
 contract ERC1155Pausable is IERC1155Burnable {
     /// @notice Transfers `value` of token `id` from `from` to `to`, reverting with {IPausable-EnforcedPause} while
     ///         paused (replaces the base `safeTransferFrom`).

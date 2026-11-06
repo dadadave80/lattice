@@ -7,7 +7,7 @@ import {IERC8153} from "@lattice/interfaces/external/ercs/IERC8153.sol";
 
 /// @title LatticeRegistry
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
-/// @notice Two-tier, immutable, deploy-once on-chain registry of canonical Lattice facets (issue #118). Tier A
+/// @notice Two-tier, non-upgradeable on-chain registry of canonical Lattice facets (issue #118). Tier A
 ///         is a permissionless, self-verifying codehash → first-attested-address index (code identity only,
 ///         never a selector source; see {ILatticeRegistry}); Tier B is a curated, append-only
 ///         `(name, version)` catalog governed by two-step ownership. Because Lattice facets are stateless (all
@@ -16,10 +16,11 @@ import {IERC8153} from "@lattice/interfaces/external/ercs/IERC8153.sol";
 ///         bytecode on every deployment.
 /// @dev DELIBERATELY NOT A DIAMOND. This is a minimal, standalone, NON-upgradeable plain contract: plain
 ///      storage (no ERC-7201 — there is no upgrade path by design), no facets, no proxy. It is the single
-///      thing every deployment depends on, so it carries the smallest possible trust surface and is meant to
-///      be deployed once per chain (via CreateX at a fixed salt → same address everywhere). Only the curated
-///      namespace is admin-governed; Tier A and all reads are trustless. Original Lattice work.
-/// @custom:lattice-version 0.1.0
+///      registry used by the factory. Shared release deployment uses the Arachnid proxy, fixed protocol salt and complete
+///      constructor initcode hash: identical code and owner yield the same address where that proxy exists. A code
+///      or owner change derives a new registry address; development registries may be replaced before 1.0.
+///      Tier A verifies code identity, not behavior or safety. Only the curated namespace is admin-governed.
+///      Original Lattice work.
 contract LatticeRegistry is ILatticeRegistry {
     //*//////////////////////////////////////////////////////////////////////////
     //                                 CONSTANTS

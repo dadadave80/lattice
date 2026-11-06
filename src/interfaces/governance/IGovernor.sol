@@ -129,6 +129,15 @@ interface IGovernor {
     /// @dev Thrown when a vote is cast with an unrecognized support value (> 2).
     error GovernorInvalidVoteType();
 
+    /// @dev An external timelock cannot use the declared self-executed governed-cut route.
+    error GovernorIncompatibleTimelock(address timelock, address governedCutFacet);
+
+    /// @dev Governed-cut policy initialization requires an installed diamondCut route.
+    error GovernorMissingGovernedCutRoute();
+
+    /// @dev Deliberately allowing an external governed-cut executor requires explicit acknowledgement.
+    error GovernorTimelockOptOutNotAcknowledged();
+
     //*//////////////////////////////////////////////////////////////////////////
     //                              VIEW FUNCTIONS
     //////////////////////////////////////////////////////////////////////////*//
@@ -281,6 +290,7 @@ interface IGovernor {
     /// @notice Update the quorum numerator. Must be called via governance (address(this)).
     function updateQuorumNumerator(uint256 newQuorumNumerator) external;
 
-    /// @notice Update the timelock address. Must be called via governance (address(this)).
+    /// @notice Update the timelock through governance. A declared governed-cut route requires zero/self
+    ///         unless its external-executor topology was explicitly acknowledged during initialization.
     function updateTimelock(address newTimelock) external;
 }

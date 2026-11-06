@@ -37,6 +37,7 @@ docs/guides/*
 !docs/guides/hedera.md
 !docs/guides/quickstart.md
 !docs/guides/selector-compatibility.md
+!docs/guides/erc3643.md
 !docs/guides/shielded-pool-circuit.md
 !docs/site/
 docs/site/*

@@ -25,8 +25,14 @@ import {ReentrancyGuardLib} from "@lattice/security/libraries/ReentrancyGuardLib
 ///
 ///      A force removal latches the vault's deposits closed until the admin calls `clearDepositLatch`
 ///      ({IStrategyManagerRecovery}, a separate interface so IStrategyManager's ERC-165 id is unchanged).
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source Yearn V3
+/// @custom:lattice-requires AccessControl|AccessControlEnumerable|AccessControlTimed convention role-management-surface;
+/// @custom:lattice-family none
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches lattice.storage.StrategyManager;
+/// @custom:lattice-touches slot:0x8000000000ab143c06;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init StrategyManagerInit
 contract StrategyManager is IStrategyManager, IStrategyManagerRecovery {
     //*//////////////////////////////////////////////////////////////////////////
     //                              VIEW FUNCTIONS

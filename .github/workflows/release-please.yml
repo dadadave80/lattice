@@ -41,7 +41,7 @@ jobs:
           token: ${{ steps.app-token.outputs.token }}
 
   storage-assets:
-    name: Publish release storage layouts
+    name: Publish release build and storage evidence
     needs: release-please
     if: needs.release-please.outputs.release_created == 'true'
     runs-on: ubuntu-latest
@@ -52,13 +52,41 @@ jobs:
         with:
           ref: ${{ needs.release-please.outputs.tag_name }}
           submodules: recursive
+          fetch-depth: 0
           persist-credentials: false
       - uses: ./.github/actions/foundry-setup
+      - name: Require and rebuild the frozen release manifest
+        env:
+          RELEASE_TAG: ${{ needs.release-please.outputs.tag_name }}
+        run: |
+          manifest="deployments/release-${RELEASE_TAG#v}.json"
+          test -f "$manifest" || { echo "Missing canonical release manifest; confirm the initial owner and freeze release evidence first" >&2; exit 1; }
+          jq -e --arg tag "$RELEASE_TAG" '.publication == "release" and .lattice.tag == $tag' "$manifest"
+          assets=$(mktemp -d "$RUNNER_TEMP/lattice-release-assets.XXXXXX")
+          RELEASE_ASSET_DIR="$assets" ./script/check-release-manifests.sh
+          cp "$manifest" "$assets/"
+          cp deployments/schema/*.json "$assets/"
+          archive="$RUNNER_TEMP/lattice-build-info-${RELEASE_TAG}.tar.gz"
+          tar -czf "$archive" -C "$assets" .
+          echo "LATTICE_RELEASE_BUILD_ARCHIVE=$archive" >> "$GITHUB_ENV"
       - name: Validate tagged source and storage registry
         run: make storage-check
+      - name: Generate the checked error and event catalog
+        run: make abi-catalog ABI_CATALOG_OUTPUT="$RUNNER_TEMP/errors.json"
+      - name: Append the canonical shared-contract comparison
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ needs.release-please.outputs.tag_name }}
+        run: |
+          ./script/check-release-notes.sh "$RUNNER_TEMP/shared-contract-changes.md" "$RELEASE_TAG"
+          gh release view "$RELEASE_TAG" --json body |
+            jq -r --rawfile notes "$RUNNER_TEMP/shared-contract-changes.md" \
+              -f script/release/append-notes.jq > "$RUNNER_TEMP/release-body.md"
+          gh release edit "$RELEASE_TAG" --notes-file "$RUNNER_TEMP/release-body.md"
       - name: Attach the checked layouts
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           RELEASE_TAG: ${{ needs.release-please.outputs.tag_name }}
-        run: gh release upload "$RELEASE_TAG" script/upgrades/storage-registry.json script/upgrades/storage-layout.baseline --clobber
+        run: gh release upload "$RELEASE_TAG" script/upgrades/storage-registry.json script/upgrades/storage-layout.baseline "$LATTICE_RELEASE_BUILD_ARCHIVE" "$RUNNER_TEMP/errors.json" "$RUNNER_TEMP/shared-contract-changes.md" --clobber

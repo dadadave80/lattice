@@ -12,7 +12,12 @@ import {IAccountSigner} from "@lattice/interfaces/accounts/IAccountSigner.sol";
 ///         set as the owner instead.
 /// @dev Stateless delegator — logic/storage live in {AccountSignerLib}. The ECDSA owner may be an EOA or an
 ///      ERC-1271 contract; passkey verification uses the vendored audited Solady P256/WebAuthn libs.
-/// @custom:lattice-version 0.2.0
+/// @custom:lattice-requires AccessControl|AccessControlEnumerable|AccessControlTimed convention role-management-surface;
+/// @custom:lattice-family none
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches lattice.storage.AccountSigner;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init AccountInit
 contract AccountSigner is IAccountSigner {
     /// @inheritdoc IAccountSigner
     function owner() external view virtual returns (address) {

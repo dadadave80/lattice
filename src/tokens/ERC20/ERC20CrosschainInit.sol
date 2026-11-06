@@ -15,12 +15,24 @@ import {ERC20Lib} from "@lattice/tokens/ERC20/libraries/ERC20Lib.sol";
 ///         initializing window (so it must NOT open its own pre/postInitializer; each `__*_init` guard passes
 ///         because the window is already open). Runs the exact `__*_init` sequence the legacy inheritance mock
 ///         performed, but on a REAL diamond. Companion to the {ERC20Init}/{ERC2981Init} patterns.
+/// @custom:lattice-kind bundle
 contract ERC20CrosschainInit {
     /// @notice Runs the access-control + reentrancy-guard + ERC-20 + crosschain-link + crosschain module
     ///         initializers. MUST be invoked via the diamond's `initialize` `_init` delegatecall.
     /// @param admin The address granted `DEFAULT_ADMIN_ROLE` (controls `setLink`/`setHandler`).
     /// @param name_ Token name.
     /// @param symbol_ Token symbol.
+    /// @custom:lattice-initializes AccessControl;
+    /// @custom:lattice-initializes ERC20;
+    /// @custom:lattice-initializes CrosschainLink;
+    /// @custom:lattice-initializes ERC20Crosschain;
+    /// @custom:lattice-after none;
+    /// @custom:lattice-same-call Initializable hard enclosing-initializing-window;
+    /// @custom:lattice-sequence AccessControl;ERC20;CrosschainLink;ERC20Crosschain;
+    /// @custom:lattice-param admin authority;
+    /// @custom:lattice-param name_;
+    /// @custom:lattice-param symbol_;
+    /// @custom:lattice-registers-interfaces
     function init(address admin, string memory name_, string memory symbol_) external {
         AccessControlLib.__AccessControl_init(admin);
         ERC20Lib.__ERC20_init(name_, symbol_);

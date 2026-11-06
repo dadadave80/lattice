@@ -263,6 +263,77 @@ The test also shows a later upgrade: the admin cuts `ERC20Burnable` in with `dia
 attempt reverts. For governed upgrades, cut GovernedDiamondCut and EmergencyStop instead of
 AccessControlDiamondCut, and wire Governor and the timelock as `GovernedVaultInit` does.
 
+### Initialize modules during an upgrade
+
+A released module init expects an open initialization window. Passing it directly to a later
+`diamondCut` reverts `NotInitializing()`. Use the released `ReinitMultiInit` as that cut's `_init`:
+
+```solidity
+address[] memory inits = new address[](1);
+bytes[] memory data = new bytes[](1);
+inits[0] = releasedPausableInit;
+data[0] = abi.encodeCall(PausableInit.init, (admin));
+bytes memory batch = abi.encodeCall(ReinitMultiInit.reinitMulti, (2, inits, data));
+IAccessControlDiamondCut(diamond).diamondCut(cuts, releasedReinitMultiInit, batch);
+```
+
+Here `cuts` adds the released Pausable facet, and both initializer addresses come from the checked
+release manifest. The caller must already hold the diamond's upgrade authority. For a governed cut,
+put the same `_init` and calldata in the governance proposal instead. `admin` must match the existing
+AccessControl bootstrap identity; on the self-governed vault that identity is the diamond itself.
+
+Choose a uint64 version strictly greater than the current value; skipped numbers are allowed.
+`ReinitMultiInit` opens and closes the window, runs steps in order and bubbles their revert data.
+Any failure rolls back the cut, earlier initialization effects and version together, so the same
+version can be retried after correction. Equal/lower versions and nested windows revert. Normal
+version-1 deployment still uses `MultiInit` inside `Lattice.initialize`.
+
+Like `MultiInit`, a zero target terminates the batch. Empty and zero-terminated successful batches
+still advance the version. `type(uint64).max` is terminal. Never install `reinitMulti` as a routed
+facet selector: the helper is initialization code and obtains its authority from the authorized cut.
+Calling its standalone address affects only that helper address's storage.
+
+Tools can read the current version without installing a getter:
+
+```sh
+cast storage "$DIAMOND" 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffbf601132 --rpc-url "$RPC_URL"
+```
+
+Decode the returned hex with the full-width [initialization-word encoding](../../STORAGE_REGISTRY.md#initialization-version-read).
+Use a consistent block for this read and the rest of the proposed upgrade's preflight.
+
+### Governor and governed-cut executors
+
+When `GovernedDiamondCut` serves `diamondCut`, its canonical initializer grants the diamond
+`UPGRADE_EXECUTOR_ROLE` and makes the role self-administered. Two topologies preserve that executor:
+
+| Governor timelock | Proposal execution | Caller seen by `diamondCut` |
+| --- | --- | --- |
+| `address(this)` | propose → vote → queue → delay → execute through the co-located timelock | The diamond |
+| `address(0)` | propose → vote → execute directly, with no timelock delay | The diamond |
+
+The trusted governed-cut initializer records the nonzero installed cut owner. Governor initialization
+and `updateTimelock` reject an external timelock while that owner still serves `diamondCut`, with
+`GovernorIncompatibleTimelock`. The cut initializer also checks an already-configured Governor, so
+either initialization order detects incompatible wiring. A missing cut route produces
+`GovernorMissingGovernedCutRoute`. These checks declare policy within the canonical guarded
+initialization flow; they do not classify runtime bytecode. Pair the initializer with its matching
+cut flavor. Standalone Governors and independent cut flavors retain external-timelock support.
+
+A deliberate external authority design can use `GovernorInit.initWithExternalTimelockOptOut` with
+`acknowledgeIncompatibleCutExecutor_ = true`. This persists an explicit validation exemption; it
+grants no executor role and does not make an external timelock able to cut the diamond. The integrator
+must separately design and test that authority path. A false acknowledgement reverts.
+
+Replacing the cut owner makes its old policy declaration inactive. When upgrading to a new
+`GovernedDiamondCut` address, re-register the policy in the same authorized initialization batch.
+For legacy unmarked deployments, upgrading Governor alone does not enable this protection. Use an
+authorized strictly increasing reinitializer batch (the `ReinitMultiInit` helper) to call
+`GovernorInit.registerGovernedCutTopology()`. That step preserves Governor configuration, roles and
+emergency state and rejects an incompatible existing timelock atomically. Repair incompatible
+configuration through an explicitly authorized recovery/migration before declaring its policy;
+this check cannot restore a governance path that was already unreachable.
+
 Do not grow an inheritance mega-facet past the deployment size limit. For an existing-state upgrade, preserve storage
 compatibility or implement and test an explicit migration before proposing the cut through Governor.
 Fresh pre-major deployments may use intentionally breaking layouts; document that deployment choice

@@ -9,7 +9,13 @@ import {ERC721WrapperLib} from "@lattice/tokens/ERC721/libraries/ERC721WrapperLi
 ///         IERC721Wrapper via ERC-165. Delegatecalled by {Diamond.initialize} (through {MultiInit}) inside the
 ///         initializing window opened by the diamond, alongside the base {ERC721Init}; it must NOT open its own
 ///         pre/postInitializer.
+/// @custom:lattice-kind step
 contract ERC721WrapperInit {
+    /// @custom:lattice-initializes ERC721Wrapper;
+    /// @custom:lattice-after none;
+    /// @custom:lattice-same-call Initializable hard enclosing-initializing-window;
+    /// @custom:lattice-param underlying_;
+    /// @custom:lattice-registers-interfaces
     function init(address underlying_) external {
         ERC721WrapperLib.__ERC721Wrapper_init(underlying_);
     }

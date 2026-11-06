@@ -17,8 +17,13 @@ import {ChainlinkAutomationAdapterLib} from "@lattice/oracles/chainlink/Chainlin
 ///      registration + LINK-funding surface is a separate concern and
 ///      intentionally left as a future follow-up — no registrar/registry
 ///      management is performed here.
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source Chainlink
+/// @custom:lattice-requires AccessControl|AccessControlEnumerable|AccessControlTimed convention role-management-surface;
+/// @custom:lattice-family none
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches lattice.storage.ChainlinkAutomationAdapter;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init ChainlinkAutomationAdapterInit
 contract ChainlinkAutomationAdapter is IChainlinkAutomationAdapter {
     /// @inheritdoc IChainlinkAutomationAdapter
     function getForwarder() external view virtual override returns (address) {

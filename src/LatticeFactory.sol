@@ -26,7 +26,6 @@ import {IERC8153} from "@lattice/interfaces/external/ercs/IERC8153.sol";
 ///      entries/cuts/init, while {deployStrict} reverts. {DiamondDeployed} carries the applied recipe's hash.
 ///      Registry reverts (drift, missing records, unset `latest`) bubble unchanged — the factory adds no drift
 ///      handling of its own. Not a Diamond facet — a standalone, stateless singleton.
-/// @custom:lattice-version 0.1.0
 contract LatticeFactory is ILatticeFactory {
     /// @inheritdoc ILatticeFactory
     ILatticeRegistry public immutable registry;

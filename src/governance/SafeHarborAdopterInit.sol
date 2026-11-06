@@ -13,12 +13,22 @@ import {SafeHarborAdopterLib} from "@lattice/governance/libraries/SafeHarborAdop
 ///         initializing window (so it must NOT open its own pre/postInitializer; each `__*_init` guard passes
 ///         because the window is already open). Companion to the {ERC2981Init} pattern —
 ///         a first-class production deploy artifact.
+/// @custom:lattice-kind bundle
 contract SafeHarborAdopterInit {
     /// @notice Runs the access-control + safe-harbor module initializers. MUST be invoked via the diamond's
     ///         `initialize` `_init` delegatecall.
     /// @param admin The address granted `DEFAULT_ADMIN_ROLE` (administers `SAFE_HARBOR_ADMIN_ROLE`).
     /// @param registry The SEAL SafeHarborRegistry for this chain (must be non-zero).
     /// @param factory The SEAL AgreementFactory for this chain (zero allowed; disables `createAndAdopt`).
+    /// @custom:lattice-initializes AccessControl;
+    /// @custom:lattice-initializes SafeHarborAdopter;
+    /// @custom:lattice-after none;
+    /// @custom:lattice-same-call Initializable hard enclosing-initializing-window;
+    /// @custom:lattice-sequence AccessControl;SafeHarborAdopter;
+    /// @custom:lattice-param admin authority;
+    /// @custom:lattice-param registry;
+    /// @custom:lattice-param factory;
+    /// @custom:lattice-registers-interfaces
     function init(address admin, address registry, address factory) external {
         AccessControlLib.__AccessControl_init(admin);
         SafeHarborAdopterLib.__SafeHarborAdopter_init(registry, factory);

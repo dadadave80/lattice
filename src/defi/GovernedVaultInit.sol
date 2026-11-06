@@ -41,7 +41,28 @@ struct GovernedVaultParams {
 ///         its 14-day grace period ends; after that the proposal is Expired and the timelock refuses it.
 /// @dev Delegatecalled inside the diamond's initializing window — each `__*_init` guard passes because the
 ///      window is already open; it must NOT open its own pre/postInitializer.
+/// @custom:lattice-kind bundle
 contract GovernedVaultInit {
+    /// @custom:lattice-initializes AccessControl;
+    /// @custom:lattice-initializes EmergencyStop;
+    /// @custom:lattice-initializes ERC165;
+    /// @custom:lattice-initializes Diamond;
+    /// @custom:lattice-initializes Governor with policy=governed-cut-route;
+    /// @custom:lattice-initializes GovernedDiamondCut;
+    /// @custom:lattice-initializes ERC20;
+    /// @custom:lattice-initializes ERC4626;
+    /// @custom:lattice-initializes EIP712 with version=1;
+    /// @custom:lattice-initializes Nonces;
+    /// @custom:lattice-initializes Votes;
+    /// @custom:lattice-initializes VaultCore;
+    /// @custom:lattice-initializes TimelockController;
+    /// @custom:lattice-initializes Governor;
+    /// @custom:lattice-initializes GovernedVault;
+    /// @custom:lattice-after none;
+    /// @custom:lattice-same-call Initializable hard enclosing-initializing-window;
+    /// @custom:lattice-sequence AccessControl;EmergencyStop;ERC165;Diamond;Governor with policy=governed-cut-route;GovernedDiamondCut;ERC20;ERC4626;EIP712;Nonces;Votes;VaultCore;TimelockController;Governor;GovernedVault;
+    /// @custom:lattice-param p rule=GovernedVaultParams-voting-times-in-seconds-quorum-0-to-100;
+    /// @custom:lattice-registers-interfaces
     function init(GovernedVaultParams calldata p) external {
         address self = address(this); // the diamond (delegatecall context)
 

@@ -10,8 +10,14 @@ import {HSSAdapterLib} from "@lattice/oracles/hedera/HSSAdapterLib.sol";
 /// @notice Diamond facet for Hedera Schedule Service automation: scheduled (self-)calls paid by the diamond,
 ///         plus contract-key signatures on native scheduled transactions.
 /// @dev Stateless delegator over HSSAdapterLib. Only meaningful on Hedera.
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source Hedera
+/// @custom:lattice-requires HSSAdapterRecovery hard executeSelfCall-and-cancelSelfCall-routes-checked;
+/// @custom:lattice-requires AccessControl|AccessControlEnumerable|AccessControlTimed convention role-management-surface;
+/// @custom:lattice-family none
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches lattice.storage.HSSAdapter;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init HSSAdapterInit
 contract HSSAdapter is IHSSAdapter {
     /// @inheritdoc IHSSAdapter
     function hasScheduleCapacity(uint256 expirySecond, uint256 gasLimit) external view virtual override returns (bool) {

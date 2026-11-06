@@ -1,60 +1,52 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {DiamondCutFacet} from "@diamond/facets/DiamondCutFacet.sol";
-import {DiamondLoupeFacet} from "@diamond/facets/DiamondLoupeFacet.sol";
-import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
-import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
-import {Receive} from "@lattice/Receive.sol";
-import {AccessControl} from "@lattice/access/AccessControl.sol";
-import {ERC1271Signature} from "@lattice/accounts/ERC1271Signature.sol";
-import {ERC4337Validation} from "@lattice/accounts/ERC4337Validation.sol";
+import {AccountDeployBase} from "@lattice-script/base/accounts/AccountDeployBase.s.sol";
+import {AccountReleaseInventory} from "@lattice-script/lib/AccountReleaseInventory.sol";
+import {LatticeVersion} from "@lattice/LatticeVersion.sol";
 import {AccountInit} from "@lattice/accounts/erc7579/AccountInit.sol";
-import {AccountSigner} from "@lattice/accounts/erc7579/AccountSigner.sol";
-import {ERC7821Executor} from "@lattice/accounts/erc7579/ERC7821Executor.sol";
+import {DEFAULT_ENTRY_POINT} from "@lattice/accounts/libraries/ERC4337ValidationLib.sol";
+import {IAccountFactory} from "@lattice/interfaces/accounts/IAccountFactory.sol";
 
 /// @title DeployAccount
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
-/// @notice Canonical single-owner ERC-4337/7579 account composition (9 facets + {AccountInit}) — the ONE
-///         source of truth for "which facets make an account", shared by production deploys (this script,
-///         or `new AccountFactory(buildCuts(...), init)`) and the account test blueprints. This mirrors
-///         diamond-lib's {DeployDiamond}/{DeployedDiamondState} split: {buildCuts} is the broadcast-free
-///         primitive tests reuse; {run} is the broadcasting deploy entrypoint. The Lattice account facets
-///         self-report their selectors via {BaseDeploy}'s ERC-8153 address cut (`exportSelectors()`, no FFI);
-///         the diamond-lib core facets keep the `forge inspect` string cut.
-/// @dev {AccountFactory} takes the blueprint as a constructor arg — it deliberately does NOT hardcode the
-///      facet set — so this script is where the account's canonical facet list actually lives. {Receive} is
-///      in the set because an account is funded with plain ETH sends (gas prefund, call value).
-contract DeployAccount is BaseDeploy {
-    /// @notice Builds the canonical account facet cuts + initializer. No broadcast, no proxy deploy — the
-    ///         reusable primitive both {run} and the test blueprint helper consume.
-    /// @param entryPoint_ The EntryPoint the account's {AccountInit} seeds.
-    /// @return cuts The 9 facet cuts (Add) wiring a complete single-owner account.
-    /// @return init The matching initializer (`init(address owner)` / `init7702()`).
+/// @notice Canonical single-owner ERC-4337/7579 account recipe. The shared release blueprint fixes its facet set;
+///         the EntryPoint-specific factory creates and initializes the specialized fallback proxy atomically.
+/// @dev Canonical EntryPoints reuse the release's constructor-bound init/factory identities. Other EntryPoints
+///      use an explicit custom identity whose initcode still binds the EntryPoint and ordered blueprint.
+contract DeployAccount is AccountDeployBase {
+    /// @notice Build released facet cuts and the constructor-bound initializer, without creating an account.
+    /// @param entryPoint_ Trusted ERC-4337 EntryPoint; chain availability is a deployment precondition.
     function buildCuts(address entryPoint_) public returns (FacetCut[] memory cuts, AccountInit init) {
-        cuts = new FacetCut[](9);
-        cuts[0] = _cut(address(new DiamondCutFacet()), "DiamondCutFacet");
-        cuts[1] = _cut(address(new DiamondLoupeFacet()), "DiamondLoupeFacet");
-        cuts[2] = _cut(address(new ERC165Facet()), "ERC165Facet");
-        cuts[3] = _cut(address(new AccessControl()));
-        cuts[4] = _cut(address(new AccountSigner()));
-        cuts[5] = _cut(address(new ERC4337Validation()));
-        cuts[6] = _cut(address(new ERC1271Signature()));
-        cuts[7] = _cut(address(new ERC7821Executor()));
-        cuts[8] = _cut(address(new Receive()));
-        init = new AccountInit(entryPoint_);
+        cuts = _accountCuts(false, LatticeVersion.VERSION);
+        init = AccountInit(_accountInit(AccountReleaseInventory.describe(false, entryPoint_), LatticeVersion.VERSION));
     }
 
-    /// @notice Deploys a complete single-owner account diamond and initializes it for `owner`.
-    /// @dev Broadcasting entrypoint for `forge script ... --broadcast`. Tests call {buildCuts} directly.
-    /// @param entryPoint_ The EntryPoint seeded into the account.
-    /// @param owner The account's initial owner.
-    /// @return account The deployed account diamond address.
+    /// @notice Resolve or deploy the specialized account factory for this exact EntryPoint and blueprint.
+    function buildFactory(address entryPoint_) public returns (IAccountFactory factory) {
+        (,, address at) = _accountRelease(AccountReleaseInventory.describe(false, entryPoint_), LatticeVersion.VERSION);
+        factory = IAccountFactory(at);
+    }
+
+    /// @notice Create an account, or return the existing account for the same owner and LATTICE_SALT.
     function run(address entryPoint_, address owner) external returns (address account) {
+        return _run(entryPoint_, owner, vm.envOr("LATTICE_SALT", bytes32(0)));
+    }
+
+    /// @notice Explicit-salt deployment, with the same idempotent semantics as the account factory.
+    function run(address entryPoint_, address owner, bytes32 salt) external returns (address account) {
+        return _run(entryPoint_, owner, salt);
+    }
+
+    /// @notice Use the repository's default EntryPoint (v0.9).
+    function run(address owner) external returns (address account) {
+        return _run(DEFAULT_ENTRY_POINT, owner, vm.envOr("LATTICE_SALT", bytes32(0)));
+    }
+
+    function _run(address entryPoint_, address owner, bytes32 salt) private returns (address account) {
         vm.startBroadcast();
-        (FacetCut[] memory cuts, AccountInit init) = buildCuts(entryPoint_);
-        account = _assemble(cuts, address(init), abi.encodeCall(AccountInit.init, (owner)));
+        account = buildFactory(entryPoint_).createAccount(owner, salt);
         vm.stopBroadcast();
     }
 }

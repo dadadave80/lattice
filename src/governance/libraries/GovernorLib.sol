@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {DiamondLib} from "@diamond/libraries/DiamondLib.sol";
 import {IGovernor} from "@lattice/interfaces/governance/IGovernor.sol";
 import {ITimelockController} from "@lattice/interfaces/governance/ITimelockController.sol";
 import {IVotes} from "@lattice/interfaces/governance/IVotes.sol";
@@ -86,6 +87,10 @@ struct GovernorStorage {
     ///      Lets {_onlyGovernance} accept admin setters relayed by the timelock, but only when
     ///      they were part of a proposal executed through this governor's {execute}.
     mapping(bytes32 callHash => uint256 count) _governanceCall;
+    /// @dev Trusted governed-cut initializer's declared diamondCut owner. Stale declarations are ignored.
+    address _governedCutFacet;
+    /// @dev Explicit acknowledgement of external-executor authority design; grants no roles.
+    bool _allowExternalTimelockWithGovernedCut;
 }
 
 /// @dev Minimal EIP-6372 interface used to delegate clock() and CLOCK_MODE() to the token.
@@ -160,11 +165,29 @@ library GovernorLib {
         uint256 proposalThreshold_,
         uint256 quorumNumerator_
     ) internal {
+        __Governor_init(
+            name_, token_, timelock_, votingDelay_, votingPeriod_, proposalThreshold_, quorumNumerator_, false
+        );
+    }
+
+    /// @dev Explicit configuration path for a deliberately acknowledged external governed-cut topology.
+    ///      The opt-out changes validation only and grants no executor authority.
+    function __Governor_init(
+        string memory name_,
+        address token_,
+        address timelock_,
+        uint48 votingDelay_,
+        uint32 votingPeriod_,
+        uint256 proposalThreshold_,
+        uint256 quorumNumerator_,
+        bool allowExternalTimelockWithGovernedCut_
+    ) internal {
         InitializableLib.checkInitializing(InitializableLib.initializableSlot());
         if (votingPeriod_ == 0) revert IGovernor.GovernorInvalidVotingPeriod(0);
         if (quorumNumerator_ > QUORUM_DENOMINATOR) {
             revert IGovernor.GovernorInvalidQuorumFraction(quorumNumerator_, QUORUM_DENOMINATOR);
         }
+        _checkTimelockTopology(timelock_, allowExternalTimelockWithGovernedCut_);
         GovernorStorage storage $ = governorStorage();
         $._name = name_;
         $._token = token_;
@@ -173,7 +196,30 @@ library GovernorLib {
         $._votingPeriod = votingPeriod_;
         $._proposalThreshold = proposalThreshold_;
         $._quorumNumerator = quorumNumerator_;
+        $._allowExternalTimelockWithGovernedCut = allowExternalTimelockWithGovernedCut_;
         registerInterface();
+    }
+
+    /// @notice Declares the current cut owner as using the canonical self-executed governed-cut policy.
+    /// @dev Called only by trusted governed-cut initialization, not runtime classification. The initializer
+    ///      must match the installed cut flavor. Re-register after a cut-facet upgrade; legacy unmarked
+    ///      deployments need an authorized initialization batch. Checks both module initialization orders.
+    function __registerGovernedCutTopology() internal {
+        InitializableLib.checkInitializing(InitializableLib.initializableSlot());
+        address facet = DiamondLib.diamondStorage().selectorToFacetAndPosition[bytes4(0x1f931c1c)].facetAddress;
+        if (facet == address(0)) revert IGovernor.GovernorMissingGovernedCutRoute();
+        GovernorStorage storage $ = governorStorage();
+        $._governedCutFacet = facet;
+        _checkTimelockTopology($._timelock, $._allowExternalTimelockWithGovernedCut);
+    }
+
+    function _checkTimelockTopology(address timelock_, bool allowExternal) private view {
+        if (allowExternal || timelock_ == address(0) || timelock_ == address(this)) return;
+        address declared = governorStorage()._governedCutFacet;
+        if (
+            declared != address(0)
+                && DiamondLib.diamondStorage().selectorToFacetAndPosition[bytes4(0x1f931c1c)].facetAddress == declared
+        ) revert IGovernor.GovernorIncompatibleTimelock(timelock_, declared);
     }
 
     //*//////////////////////////////////////////////////////////////////////////
@@ -697,6 +743,7 @@ library GovernorLib {
     /// @param newTimelock The new TimelockController address (or address(0) to disable).
     function updateTimelock(address newTimelock) internal {
         _onlyGovernance();
+        _checkTimelockTopology(newTimelock, governorStorage()._allowExternalTimelockWithGovernedCut);
         address old = governorStorage()._timelock;
         governorStorage()._timelock = newTimelock;
         emit IGovernor.TimelockChange(old, newTimelock);
