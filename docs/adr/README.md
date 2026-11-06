@@ -24,6 +24,8 @@ the linked issue or pull request; a record is the outcome, not a spec.
 | [0016](0016-shared-initialization-identity.md) | Shared bootstrap identity is consistent and interface claims follow routed selectors | Accepted |
 | [0017](0017-hss-generation-recovery.md) | HSS job recovery invalidates generations before native deletion | Accepted locally; native sender unverified |
 | [0019](0019-shared-temporary-allowances.md) | ERC-7674 allowances share the base allowance path | Accepted |
+| [0020](0020-source-anchored-release-manifests.md) | Release identities freeze an existing source commit; chain observations stay separate | Accepted |
+| [0022](0022-native-create2-release-libraries.md) | Shared external libraries use native CREATE2 linking and trusted runtime checks | Accepted |
 
 ## When to write one
 
