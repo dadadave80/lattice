@@ -17,8 +17,14 @@ import {ShieldedPoolLib} from "@lattice/privacy/libraries/ShieldedPoolLib.sol";
 ///      CUSTODY: deposits sit in the diamond's balance with no per-module ledger. A co-cut module that counts
 ///      the diamond's whole balance of the same token (ERC-4626 `totalAssets`, VestingWallet `release`)
 ///      treats the pool's escrow as its own. One custodian per asset per diamond (issue #240).
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source Lattice original (Tornado-style; consumer-supplied audited circuit)
+/// @custom:lattice-requires AccessControl|AccessControlEnumerable|AccessControlTimed convention role-management-surface;
+/// @custom:lattice-family none
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches lattice.storage.ShieldedPool;
+/// @custom:lattice-touches slot:0x8000000000ab143c06;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init ShieldedPoolInit
 contract ShieldedPool is IShieldedPool {
     /// @inheritdoc IShieldedPool
     function createPool(address token, uint256 denomination, address verifier) external virtual returns (uint256) {

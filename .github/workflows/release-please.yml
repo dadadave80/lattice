@@ -71,9 +71,11 @@ jobs:
           echo "LATTICE_RELEASE_BUILD_ARCHIVE=$archive" >> "$GITHUB_ENV"
       - name: Validate tagged source and storage registry
         run: make storage-check
+      - name: Generate the checked error and event catalog
+        run: make abi-catalog ABI_CATALOG_OUTPUT="$RUNNER_TEMP/errors.json"
       - name: Attach the checked layouts
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           RELEASE_TAG: ${{ needs.release-please.outputs.tag_name }}
-        run: gh release upload "$RELEASE_TAG" script/upgrades/storage-registry.json script/upgrades/storage-layout.baseline "$LATTICE_RELEASE_BUILD_ARCHIVE" --clobber
+        run: gh release upload "$RELEASE_TAG" script/upgrades/storage-registry.json script/upgrades/storage-layout.baseline "$LATTICE_RELEASE_BUILD_ARCHIVE" "$RUNNER_TEMP/errors.json" --clobber

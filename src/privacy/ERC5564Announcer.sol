@@ -11,8 +11,13 @@ import {ERC5564AnnouncerLib} from "@lattice/privacy/libraries/ERC5564AnnouncerLi
 /// @notice Stateless Diamond facet implementing the ERC-5564 stealth-address announcer.
 /// @dev All logic lives in {ERC5564AnnouncerLib}. Inherit this in your Diamond to let any account
 ///      broadcast stealth payments via {announce}. Permissionless by design — no access control.
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source Lattice original
+/// @custom:lattice-requires none;
+/// @custom:lattice-family none
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches none;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init ERC5564AnnouncerInit
 contract ERC5564Announcer is IERC5564Announcer {
     /// @inheritdoc IERC5564Announcer
     function announce(uint256 schemeId, address stealthAddress, bytes calldata ephemeralPubKey, bytes calldata metadata)

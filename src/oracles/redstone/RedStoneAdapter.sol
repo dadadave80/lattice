@@ -11,8 +11,13 @@ import {RedStoneAdapterLib} from "@lattice/oracles/redstone/RedStoneAdapterLib.s
 ///         per-feed staleness configuration and WAD-normalized answers.
 /// @dev Stateless delegator — all logic and storage live in {RedStoneAdapterLib}. Consumers inherit this
 ///      contract and add AccessControl + an initializer.
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source RedStone
+/// @custom:lattice-requires AccessControl|AccessControlEnumerable|AccessControlTimed convention role-management-surface;
+/// @custom:lattice-family price-source
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches lattice.storage.RedStoneAdapter;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init RedStoneAdapterInit
 contract RedStoneAdapter is IRedStoneAdapter {
     /// @inheritdoc IRedStoneAdapter
     function getFeed(bytes32 key)

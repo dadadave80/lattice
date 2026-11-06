@@ -12,8 +12,13 @@ import {ISuperchainETHBridgeAdapter} from "@lattice/interfaces/crosschain/ISuper
 ///         interop — NOT the removed `SuperchainERC20` token bridge, and NOT an `IERC7786GatewaySource`.
 /// @dev Stateless delegator — logic lives in {SuperchainETHBridgeAdapterLib}. The adapter holds no ETH/state and
 ///      has no admin surface (the predeploy address is a compile-time constant).
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source Optimism
+/// @custom:lattice-requires none;
+/// @custom:lattice-family none
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches none;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init SuperchainETHBridgeAdapterInit
 contract SuperchainETHBridgeAdapter is ISuperchainETHBridgeAdapter {
     /// @inheritdoc ISuperchainETHBridgeAdapter
     function sendETH(address to, uint256 chainId) external payable virtual returns (bytes32 msgHash) {

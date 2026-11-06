@@ -15,8 +15,13 @@ import {GelatoAutomateAdapterLib} from "@lattice/oracles/gelato/GelatoAutomateAd
 ///      created task through a task-creator-specific dedicated msg.sender; consumer
 ///      exec entrypoints must gate on it via the library's
 ///      `requireDedicatedMsgSender` guard.
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source Gelato
+/// @custom:lattice-requires AccessControl|AccessControlEnumerable|AccessControlTimed convention role-management-surface;
+/// @custom:lattice-family none
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches lattice.storage.GelatoAutomateAdapter;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init GelatoAutomateAdapterInit
 contract GelatoAutomateAdapter is IGelatoAutomateAdapter {
     /// @inheritdoc IGelatoAutomateAdapter
     function getConfig() external view virtual override returns (address automate, address dedicatedMsgSender) {

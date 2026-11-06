@@ -115,6 +115,7 @@ jobs:
           ./script/fork-lanes.sh check
           ./script/test-storage-layout.sh
           ./script/test-storage-registry.sh
+          ./script/test-error-event-catalog.sh
 
   # README catalog vs src/. Not gated on `changes`: a README-only PR (code=false) can drop or misspell a
   # catalog entry, so this job runs on every PR. The storage registry also uses the shared cast binary.
@@ -155,13 +156,14 @@ jobs:
       - uses: ./.github/actions/foundry-setup
       - name: Check canonical release build
         run: make release-build-check
+      # Expanded source domain: keep its one-unit AST cache separate from older src-only builds.
       - name: Cache forge build (src)
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             out
             cache
-          key: forge-build-${{ runner.os }}-${{ hashFiles('.github/actions/foundry-setup/action.yml', 'foundry.toml', 'foundry.lock', 'remappings.txt', 'src/**/*.sol', 'lib/**/*.sol') }}
+          key: forge-build-catalog-${{ runner.os }}-${{ hashFiles('.github/actions/foundry-setup/action.yml', 'foundry.toml', 'foundry.lock', 'remappings.txt', 'src/**/*.sol', 'lib/**/*.sol') }}
 
       # --sizes gates EIP-170 (24,576 B) on deployable contracts only. Test/script fixtures
       # (e.g. the SelfGovDiamond E2E harness that inherits every facet at once) legitimately
@@ -171,7 +173,9 @@ jobs:
       # --locked fails the build when a submodule gitlink drifts from foundry.lock; without it,
       # forge builds against the checked-out submodule and passes silently.
       - name: Build src (--sizes)
-        run: forge build --locked --sizes --skip test script
+        run: forge build src lib/diamond-lib/src --locked --sizes --skip test script
+      - name: Check error, event and assembly coverage
+        run: ./script/error-event-catalog.sh
 
   # IR-pipeline parity is a SEPARATE compiler configuration (via_ir), so it cannot reuse the
   # legacy build cache -- it runs standalone, in parallel, and does not block `test`.
@@ -335,7 +339,7 @@ jobs:
           path: |
             out
             cache
-          key: forge-build-${{ runner.os }}-${{ hashFiles('.github/actions/foundry-setup/action.yml', 'foundry.toml', 'foundry.lock', 'remappings.txt', 'src/**/*.sol', 'lib/**/*.sol') }}
+          key: forge-build-catalog-${{ runner.os }}-${{ hashFiles('.github/actions/foundry-setup/action.yml', 'foundry.toml', 'foundry.lock', 'remappings.txt', 'src/**/*.sol', 'lib/**/*.sol') }}
       - name: Test grant RPC runner
         run: make test-grant-runner
       - name: Run Anvil deployment checks

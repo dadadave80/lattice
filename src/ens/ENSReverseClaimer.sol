@@ -14,8 +14,13 @@ import {IENSReverseClaimer} from "@lattice/interfaces/ens/IENSReverseClaimer.sol
 /// @dev All logic lives in {ENSReverseClaimerLib}. Identity changes are gated on `ENS_MANAGER_ROLE`
 ///      (managed through the diamond's AccessControl module). The registrar is supplied at init and
 ///      can be rotated per chain via {setReverseRegistrar}.
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source Lattice original
+/// @custom:lattice-requires AccessControl|AccessControlEnumerable|AccessControlTimed convention role-management-surface;
+/// @custom:lattice-family none
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches lattice.storage.ENSReverseClaimer;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init ENSReverseClaimerInit
 contract ENSReverseClaimer is IENSReverseClaimer {
     /// @inheritdoc IENSReverseClaimer
     function setEnsName(string calldata name) external virtual {

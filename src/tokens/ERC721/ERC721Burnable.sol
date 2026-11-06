@@ -10,8 +10,14 @@ import {ERC721BurnableLib} from "@lattice/tokens/ERC721/libraries/ERC721Burnable
 /// @dev Additive: cut it next to the base {ERC721} facet. `burn(uint256)` is also the {ERC20Burnable} selector,
 ///      so the two cannot share a diamond. It burns through {ERC721Lib}, so it must not share a diamond with
 ///      {ERC721Enumerable} or {ERC721Votes}, and {ERC721Pausable} does not pause it (D25).
-/// @custom:lattice-version 0.5.0
 /// @custom:lattice-source OpenZeppelin v5.6.1
+/// @custom:lattice-requires ERC721 convention complete-token-surface;
+/// @custom:lattice-family none
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches lattice.storage.ERC721;
+/// @custom:lattice-touches lattice.storage.ERC721Consecutive;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init ERC721BurnableInit
 contract ERC721Burnable is IERC721Burnable {
     /// @inheritdoc IERC721Burnable
     function burn(uint256 tokenId) public virtual {

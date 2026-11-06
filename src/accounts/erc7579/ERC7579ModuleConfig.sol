@@ -14,8 +14,14 @@ import {IERC7579ModuleConfig} from "@lattice/interfaces/external/ercs/IERC7579.s
 /// @dev Stateless delegator — logic/storage live in {ERC7579ModuleConfigLib}. "Modules-as-facets": `diamondCut`
 ///      remains the selector authority; this registry tracks installed executor modules and gates
 ///      `executeFromExecutor`. Validator/hook/fallback consumption is a planned v2.
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source ERC-7579
+/// @custom:lattice-requires AccessControl|AccessControlEnumerable|AccessControlTimed convention role-management-surface;
+/// @custom:lattice-requires AccountSigner convention account-authority-configuration;
+/// @custom:lattice-family account-modules
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches lattice.storage.ERC7579ModuleConfig;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init AccountInit
 contract ERC7579ModuleConfig is IERC7579ModuleConfig {
     /// @inheritdoc IERC7579ModuleConfig
     function installModule(uint256 moduleTypeId, address module, bytes calldata initData) external virtual {

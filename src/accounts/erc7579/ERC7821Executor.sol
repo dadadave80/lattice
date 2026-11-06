@@ -13,8 +13,15 @@ import {IERC7821} from "@lattice/interfaces/external/ercs/IERC7821.sol";
 ///      is gated by authorization only (no reentrancy lock, which would block legitimate self-re-entrant
 ///      flows). An unauthorized caller may still execute a batch the owner signed off-chain via the opData
 ///      envelope (replay-protected by the account nonce).
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source ERC-7821
+/// @custom:lattice-requires AccessControl|AccessControlEnumerable|AccessControlTimed convention role-management-surface;
+/// @custom:lattice-requires AccountSigner convention account-authority-configuration;
+/// @custom:lattice-family none
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches lattice.storage.Nonces;
+/// @custom:lattice-touches lattice.storage.SessionKey;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init AccountInit
 contract ERC7821Executor is IERC7821 {
     /// @inheritdoc IERC7821
     function execute(bytes32 mode, bytes calldata executionData) external payable virtual {

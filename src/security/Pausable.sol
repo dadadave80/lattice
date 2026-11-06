@@ -11,8 +11,13 @@ import {PausableLib} from "@lattice/security/libraries/PausableLib.sol";
 /// library. Inherit this in a Diamond facet to add pausability, and guard functions with the
 /// `whenNotPaused`/`whenPaused` modifiers (facets that must not re-expose this facade's selectors
 /// call `PausableLib.checkNotPaused()`/`checkPaused()` directly instead).
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source OpenZeppelin v5.1.0
+/// @custom:lattice-requires AccessControl|AccessControlEnumerable|AccessControlTimed convention role-management-surface;
+/// @custom:lattice-family none
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches lattice.storage.Pausable;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init PausableInit
 contract Pausable is IPausable {
     /// @dev Guards a function so it can only run while NOT paused.
     modifier whenNotPaused() virtual {

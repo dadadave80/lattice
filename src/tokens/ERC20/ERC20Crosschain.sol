@@ -15,7 +15,14 @@ import {ERC20CrosschainLib} from "@lattice/tokens/ERC20/libraries/ERC20Crosschai
 /// @dev Stateless delegator — logic in {ERC20CrosschainLib}, balances reuse the ERC20 storage.
 ///      `processMessage` is callable only via the Diamond's own `receiveMessage` dispatch
 ///      (`msg.sender == address(this)`). Payload format matches {BridgeFungible} (interop-compatible).
-/// @custom:lattice-version 0.1.0
+/// @custom:lattice-requires ERC20 convention complete-token-surface;
+/// @custom:lattice-requires CrosschainLink convention authenticated-inbound-dispatch;
+/// @custom:lattice-family bridge-handler
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches lattice.storage.ERC20;
+/// @custom:lattice-touches slot:0x8000000000ab143c06;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init ERC20CrosschainInit
 contract ERC20Crosschain is IBridgeFungible, IERC7786MessageHandler {
     /// @inheritdoc IBridgeFungible
     function crosschainTransfer(bytes calldata to, uint256 amount) external virtual override returns (bytes32 sendId) {

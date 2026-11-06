@@ -3,8 +3,8 @@ pragma solidity ^0.8.30;
 
 /// @title LatticeVersion
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
-/// @notice Canonical, library-wide version of the Lattice contract modules. This is the single
-///         source of truth that every facet's lattice-version NatSpec tag mirrors.
+/// @notice Canonical library-wide release version, used by registry keys and release manifests.
+///         Module composition tags describe code facts; they deliberately carry no duplicate version.
 /// @dev INTENTIONALLY SELECTOR-FREE. Lattice modules are EIP-2535 Diamond facets, and any
 ///      public/external VERSION() getter would register selector 0xffa1ad74, which would
 ///      collide the instant two facets are mounted in the same Diamond. These values are therefore

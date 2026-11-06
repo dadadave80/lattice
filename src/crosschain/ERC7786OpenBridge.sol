@@ -14,8 +14,13 @@ import {IERC7786GatewaySource, IERC7786Recipient} from "@lattice/interfaces/exte
 ///         both an `IERC7786GatewaySource` (send) and an `IERC7786Recipient` (the gateways deliver to it).
 /// @dev Stateless delegator — logic/storage live in {ERC7786OpenBridgeLib}. OZ's `Ownable` → AccessControl
 ///      and `EnumerableSet`/state → ERC-7201 storage. (Pausable/sweep from upstream are omitted.)
-/// @custom:lattice-version 0.1.0
 /// @custom:lattice-source OpenZeppelin
+/// @custom:lattice-requires AccessControl|AccessControlEnumerable|AccessControlTimed convention role-management-surface;
+/// @custom:lattice-family gateway
+/// @custom:lattice-owns none;
+/// @custom:lattice-touches lattice.storage.ERC7786OpenBridge;
+/// @custom:lattice-seam none;
+/// @custom:lattice-init ERC7786OpenBridgeInit
 contract ERC7786OpenBridge is IERC7786GatewaySource, IERC7786Recipient, IERC7786OpenBridge {
     /// @inheritdoc IERC7786GatewaySource
     function sendMessage(bytes calldata recipient, bytes calldata payload, bytes[] calldata attributes)

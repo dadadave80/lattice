@@ -15,7 +15,7 @@ contract ConstructorBoundFixtureInit {
 
 contract InitInventoryParityTest is Test {
     function test_NewSharedInitializerArtifactsExist() public {
-        string[8] memory names = [
+        string[9] memory names = [
             "CircuitBreakerInit",
             "EmergencyStopInit",
             "InvariantCheckerInit",
@@ -23,7 +23,8 @@ contract InitInventoryParityTest is Test {
             "RateLimiterInit",
             "GovernorInit",
             "TimelockControllerInit",
-            "VotesInit"
+            "VotesInit",
+            "ReinitMultiInit"
         ];
         for (uint256 i; i < names.length; ++i) {
             assertGt(vm.getCode(string.concat(names[i], ".sol:", names[i])).length, 0, names[i]);
