@@ -109,6 +109,7 @@ add redundant `lattice-version` tags.
 | `make storage-check` / `make storage-update` | Verify / regenerate the storage-layout baseline (`BASE_REF=origin/dev` also checks append-only, as CI does against the PR base) |
 | `make doc` / `make doc-serve` | Build and link-check / serve the docs site (Node.js; not part of `make ci`) |
 | `make test-ci` | Full suite under `FOUNDRY_PROFILE=ci` |
+| `make test-solar` | Suite compiled by Solar, as CI runs it on pull requests into dev (skips the suites that need solc output) |
 | `make ci` | CI's Solidity gates in CI order (`fmt-check license-check scripts-check readme-check release-build-check sizes via-ir storage-check test-ci snapshot-check`); CI also runs a via-ir size gate, Slither (`make slither`) and Anvil deploy checks (`make check-atomic-deploy` needs `make anvil`) |
 | `make clean` | `forge clean`; run it before trusting gates after tools touched the tree |
 | `make help` | Every target, including deploy and demo targets |

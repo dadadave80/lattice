@@ -31,9 +31,14 @@ concurrency:
 env:
   FOUNDRY_PROFILE: ci
 
+# Pull requests into dev run the test suite compiled by Solar (`test-solar`) and keep the short solc gates:
+# the EIP-170 build, the storage guard and Slither. The three slow solc jobs (`test`, `via-ir`, `manifests`) run
+# on pushes, on manual runs and on pull requests into main, whose merge can publish a release before any push
+# run reports. A failure only those jobs can see therefore reaches dev before CI reports it, never a tag.
+# `gh workflow run CI --ref <branch>` runs them on a branch before its merge.
 jobs:
   # Decides whether a PR touches anything that needs the Solidity gates. The skip list mirrors the
-  # push-side paths-ignore above; keep the two in sync. Non-PR events always run everything.
+  # push-side paths-ignore above; keep the two in sync. Non-PR events always report code=true.
   changes:
     name: Detect changes
     runs-on: ubuntu-latest
@@ -64,9 +69,11 @@ jobs:
           echo "code=$code" >> "$GITHUB_OUTPUT"
           echo "code=$code"; echo "$files"
 
-  # Clean-build reproducibility and any published goldens run for deployment-only PRs too.
+  # Clean-build reproducibility and any published goldens. Not gated on `changes`, so a deployment-only pull
+  # request into main still runs it.
   manifests:
     name: Release manifests
+    if: (github.event_name != 'pull_request' || github.base_ref == 'main')
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -191,7 +198,7 @@ jobs:
       # --sizes gates EIP-170 (24,576 B) on deployable contracts only. Test/script fixtures
       # (e.g. the SelfGovDiamond E2E harness that inherits every facet at once) legitimately
       # exceed the limit and are never deployed; `--skip test script` excludes them. Tests are
-      # still compiled by the `test` job, so compile errors there remain caught. On a cache hit
+      # compiled by `test-solar` (Solar) on pull requests into dev, and by `test` (solc) otherwise. On a cache hit
       # this is a near-instant no-op compile that still runs the size gate.
       # --locked fails the build when a submodule gitlink drifts from foundry.lock; without it,
       # forge builds against the checked-out submodule and passes silently.
@@ -207,7 +214,7 @@ jobs:
   via-ir:
     name: Build via_ir (IR parity)
     needs: changes
-    if: needs.changes.outputs.code == 'true'
+    if: needs.changes.outputs.code == 'true' && (github.event_name != 'pull_request' || github.base_ref == 'main')
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -344,12 +351,32 @@ jobs:
           fi
           echo "The storage Action rejected the reordered struct, as expected."
 
-  # Restores the `build` cache, so only test/ files are compiled here, not src/.
+  # The suite compiled by Solar, the compiler bundled with the pinned Foundry. `make test-solar` names the
+  # suites it skips because they assert solc output; `test` runs them on the push after the merge.
+  test-solar:
+    name: Test (Solar)
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.code == 'true' && github.event_name == 'pull_request' && github.base_ref != 'main'
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - uses: ./.github/actions/foundry-setup
+      - name: Test grant RPC runner
+        run: make test-grant-runner
+      - name: Run Forge tests under Solar
+        run: make test-solar ARGS=-vvv
+
+  # The canonical solc suite. Restores the `build` cache, so only test/ files are compiled here, not src/.
   test:
     name: Test
     runs-on: ubuntu-latest
     needs: [changes, build]
-    if: needs.changes.outputs.code == 'true'
+    if: needs.changes.outputs.code == 'true' && (github.event_name != 'pull_request' || github.base_ref == 'main')
     permissions:
       contents: read
     steps:
@@ -399,30 +426,38 @@ jobs:
 
   # The single required check. Runs even when earlier jobs fail or are cancelled (a skipped required
   # check would otherwise report success). Fails on any failure/cancellation; when code changed, every
-  # gated job must have succeeded.
+  # job this event runs must have succeeded. A pull request into dev leaves `manifests`, `via-ir` and `test` to
+  # the push; every other event leaves out `test-solar`.
   ci-ok:
     name: CI OK
     runs-on: ubuntu-latest
-    needs: [changes, manifests, fmt, readme, build, via-ir, storage-layout, storage-action, test, slither]
+    needs: [changes, manifests, fmt, readme, build, via-ir, storage-layout, storage-action, test-solar, test, slither]
     if: always()
     permissions: {}
     steps:
       - env:
           NEEDS: ${{ toJSON(needs) }}
           CODE: ${{ needs.changes.outputs.code }}
+          EVENT: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
         run: |
           set -euo pipefail
           echo "$NEEDS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
           if echo "$NEEDS" | jq -e 'any(.[]; .result == "failure" or .result == "cancelled")' > /dev/null; then
             echo "::error::A required job failed or was cancelled."; exit 1
           fi
-          if echo "$NEEDS" | jq -e '.changes.result != "success" or .manifests.result != "success"' > /dev/null; then
+          if [ "$EVENT" = "pull_request" ] && [ "$BASE_REF" != "main" ]; then
+            gated=$(echo "$NEEDS" | jq 'del(.manifests, ."via-ir", .test)')
+          else
+            gated=$(echo "$NEEDS" | jq 'del(."test-solar")')
+          fi
+          if echo "$gated" | jq -e '.changes.result != "success" or (has("manifests") and .manifests.result != "success")' > /dev/null; then
             echo "::error::Change detection or release manifests did not succeed."; exit 1
           fi
-          if [ "$CODE" = "true" ] && echo "$NEEDS" | jq -e 'any(.[]; .result != "success")' > /dev/null; then
+          if [ "$CODE" = "true" ] && echo "$gated" | jq -e 'any(.[]; .result != "success")' > /dev/null; then
             echo "::error::Code changed but not every gated job succeeded."; exit 1
           fi
-          echo "CI OK (code=$CODE)"
+          echo "CI OK (code=$CODE, event=$EVENT, base=${BASE_REF:-none})"
 
   slither:
     name: Slither

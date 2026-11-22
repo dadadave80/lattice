@@ -2,7 +2,7 @@
 #
 # Every target mirrors a real workflow (the CI gates in .github/workflows/test.yml, the
 # storage-layout guard, the fork suites, the demo loops) — `make ci` locally is the same
-# sequence CI runs. This Makefile deliberately does NOT source .env: forge/cast auto-load
+# sequence CI runs on a push; a pull request into dev runs `make test-solar` in place of the slow solc jobs. This Makefile deliberately does NOT source .env: forge/cast auto-load
 # it themselves, and its secrets (API keys, keyed RPC URLs) must not leak into recipe
 # environments.
 #
@@ -194,8 +194,45 @@ storage-update: ## Regenerate the storage-layout baseline (review the diff: appe
 test-ci: ## Full test suite under the CI profile (snapshots/ is left to snapshot-check, as in CI)
 	FOUNDRY_PROFILE=ci FORGE_SNAPSHOT_EMIT=false forge test
 
+# Suites that assert solc 0.8.36 output and cannot pass under another compiler: release bytecode and
+# linked-library identity, the solc AST (interface-routing catalog) and the closed ERC-3643 host fingerprints.
+# The one skipped test pins solc's devdoc folding. All of them run under solc in `make test-ci` and in CI
+# on pushes and on pull requests into main. A new test that needs solc output fails the pull-request lane until it is listed here.
+SOLAR_SKIP := \
+	composability/RecipeConsistencyMutationTest \
+	composability/RecipeInterfaceRoutingTest \
+	composability/RecipeSeamCorrelationTest \
+	composability/RecipeSeamOracleTest \
+	composability/RecipeUpgradeabilityCoreTest \
+	composability/RecipeUpgradeabilityCrosschainTest \
+	composability/RecipeUpgradeabilityModulesTest \
+	composability/RecipeUpgradeabilityOraclesTest \
+	composability/RecipeUpgradeabilityTokensTest \
+	composability/ReleasedRecipeGuardsTest \
+	gas/ERC3643GasTest \
+	integration/ReleasePipelineTest \
+	invariant/ERC3643AccountingInvariant \
+	unit/AccountReleaseTest \
+	unit/DeployReleaseTest \
+	unit/ERC3643ProfileTest \
+	unit/ERC3643RecoveryTest \
+	unit/ERC3643TemporaryApprovalTest \
+	unit/ERC3643TokenBoundsTest \
+	unit/ERC3643TokenEventsTest \
+	unit/ERC3643TokenTest \
+	unit/ReleaseManifestTest
+SOLAR_SKIP_TEST := test_BareMarkerConsumesFollowingTagUnlessLast
+comma := ,
+space := $(subst ,, )
+
+.PHONY: test-solar
+test-solar: ## Test suite compiled by Solar from a clean out/, as CI runs it on pull requests into dev (skips the suites that need solc output; ARGS=-vvv)
+	FOUNDRY_PROFILE=ci FOUNDRY_SOLC=solar FORGE_SNAPSHOT_EMIT=false forge test --force \
+		--no-match-path 'test/{$(subst $(space),$(comma),$(strip $(SOLAR_SKIP)))}.t.sol' \
+		--no-match-test '$(SOLAR_SKIP_TEST)' $(ARGS)
+
 .PHONY: ci
-ci: fmt-check license-check scripts-check readme-check release-build-check sizes erc3643-profile-check via-ir storage-check test-ci snapshot-check abi-catalog recipes ## All CI gates, locally, in CI order
+ci: fmt-check license-check scripts-check readme-check release-build-check sizes erc3643-profile-check via-ir storage-check test-ci snapshot-check abi-catalog recipes ## CI's push gates, locally, in CI order (a pull request into dev tests with test-solar instead)
 
 .PHONY: slither
 slither: ## Static analysis gate, as CI runs it (slither.config.json + triaged slither.db.json; fails on High)

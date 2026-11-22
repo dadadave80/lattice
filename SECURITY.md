@@ -327,12 +327,16 @@ automated checking; it is not a substitute for an audit.
   [`StorageSlotVerificationTest`](test/unit/StorageSlotVerificationTest.t.sol).
   [`STORAGE_REGISTRY.md`](STORAGE_REGISTRY.md) lists the namespaces and
   ERC-165 interface IDs.
-- **CI gates.** [`test.yml`](.github/workflows/test.yml) runs formatting,
-  licence notices, EIP-170 sizes, the via-IR build, the storage guard, the test
-  suite, the gas snapshots in [`snapshots/`](snapshots/) and Slither, all
-  required through one `CI OK` check on `dev` and `main`.
-  [`scheduled.yml`](.github/workflows/scheduled.yml) runs the fork suites and
-  coverage weekly.
+- **CI gates.** One `CI OK` check from [`test.yml`](.github/workflows/test.yml)
+  is required to merge into `dev` and `main`. On a pull request into `main`,
+  and on every push, it covers formatting, licence notices, EIP-170 sizes, the
+  via-IR build, the storage guard, the solc test suite, the gas snapshots in
+  [`snapshots/`](snapshots/), the release manifests and Slither. On a pull
+  request into `dev` it covers the same short gates and the test suite
+  compiled by Solar, without the release, recipe and closed ERC-3643 suites
+  that assert solc output; the rest runs on the push after the merge and does
+  not block it. [`scheduled.yml`](.github/workflows/scheduled.yml) runs the
+  fork suites and coverage weekly.
 - **Provenance.** [`lib/VENDORED.md`](lib/VENDORED.md) lists vendored, ported
   and adapted code with its upstream source and licence.
 

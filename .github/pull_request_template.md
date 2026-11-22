@@ -24,7 +24,7 @@ The full gate list is in
 These are the steps most often missed.
 
 - [ ] The PR targets `dev`, the title is a Conventional Commit, and every commit is signed.
-- [ ] `make ci` and `make slither` pass. A gas change commits the `make snapshot` diff.
+- [ ] `make ci`, `make test-solar` and `make slither` pass. A gas change commits the `make snapshot` diff.
 - [ ] A behavior change has regression tests through a diamond built from the module's recipe, and the
       Validation section separates offline coverage from fork coverage.
 - [ ] A new or changed ERC-7201 struct is imported into `script/upgrades/StorageLayoutProbe.sol`, its
