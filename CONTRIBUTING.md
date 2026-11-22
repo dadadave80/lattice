@@ -105,6 +105,18 @@ Run `make ci`. It runs CI's Solidity gates, in CI's order:
 | `make snapshot-check` | gas snapshots in `snapshots/` match the committed files (`make snapshot` regenerates them) |
 | `make abi-catalog` | clean canonical build; error/event ABI coverage, assembly selectors and collision checks (`out/errors.json`) |
 
+Run `make test-solar` too. CI on a pull request into `dev` does not run `make ci`'s solc tests: it compiles
+and runs the suite with Solar (`make test-solar`) and keeps the short solc gates (formatting and licences,
+the EIP-170 build, the storage guard and Slither). A test can pass under solc and fail under Solar. If a new
+test fails there because it asserts solc output, add it to `SOLAR_SKIP` (or one test to `SOLAR_SKIP_TEST`) in
+the `Makefile`.
+
+The solc test suite with its gas snapshots and Anvil deploy checks, the via-ir build and the release
+manifests run on the push to `dev` that follows the merge, and on pull requests into `main`. Before the
+merge, `make ci` covers the solc suite, the gas snapshots and the via-ir compile; the other deferred checks
+are in the list below. `gh workflow run CI --ref <branch>` runs every deferred job on your branch. A pull
+request retargeted from `dev` to `main` needs a new push to get them.
+
 CI also runs checks that `make ci` leaves out:
 
 - a size gate under via-ir (`make via-ir` only compiles);
@@ -116,7 +128,9 @@ CI also runs checks that `make ci` leaves out:
   `slither.db.json` entry a one-line `reason`;
 - Anvil deploy checks: `make test-grant-runner`, `make example-ens-grant-m2 LOCAL=1` and
   `make check-atomic-deploy`. The last one fails if any file in `script/` calls `new Lattice` or a
-  separate `initialize`. To run them, start `make anvil` in one shell, then run them in another.
+  separate `initialize`. To run them, start `make anvil` in one shell, then run them in another;
+- the release-manifest job: `make release-manifests` (two clean builds and any published goldens) and
+  `./script/test-release-script-simulation.sh`.
 
 Fork suites (`test/fork/`) need RPC URLs and skip their lanes cleanly without them. They pin historical
 blocks, so use archive endpoints (see `.env.example`); the `Scheduled` workflow runs them weekly against
@@ -202,7 +216,7 @@ fail silently when missed, so do every one.
       only this list catches a missing one.
 - [ ] **Docs**: add the module to the README Modules table, backticked (`make readme-check` fails without
       it), and the `src/` layout comment.
-- [ ] **Gates**: `make fmt` (it also sorts imports), then `make ci`.
+- [ ] **Gates**: `make fmt` (it also sorts imports), then `make ci` and `make test-solar`.
 
 Stateless `*Init.sol` production contracts also belong in `script/lib/InitInventory.sol`. The parity test
 checks the source tree and rejects missing entries and constructor arguments. Constructor-bound account
