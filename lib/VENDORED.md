@@ -161,6 +161,9 @@ missing from this table.
 | `ercs/IERC7821.sol` | Vectorized/solady `src/accounts/ERC7821.sol` | MIT | re-authored to the ERC-7821 ABI |
 | `ercs/IERC8153.sol` | ERC-8153 draft (`https://eips.ethereum.org/EIPS/eip-8153`) | CC0-1.0 (EIP text) | subset |
 | `fhevm/EncryptedTypes.sol` | confidential-token-association/encrypted-types `EncryptedTypes.sol` @ npm 0.0.4 | MIT | subset (types verbatim) |
+| `fhevm/IACL.sol` | zama-ai/fhevm `host-contracts/contracts/ACL.sol` @ `v0.13.9` | BSD-3-Clause-Clear | subset |
+| `fhevm/IFHEVMExecutor.sol` | zama-ai/fhevm `host-contracts/contracts/FHEVMExecutor.sol` @ `v0.13.9` | BSD-3-Clause-Clear | subset |
+| `fhevm/IKMSVerifier.sol` | zama-ai/fhevm `host-contracts/contracts/KMSVerifier.sol` @ `v0.13.9` | BSD-3-Clause-Clear | subset |
 | `gelato/IGelatoAutomate.sol` | gelatodigital/automate `contracts/interfaces/IAutomate.sol` | MIT | subset |
 | `gelato/IGelatoVRFConsumer.sol` | gelatodigital/vrf-contracts `contracts/IGelatoVRFConsumer.sol` | unknown (repository not publicly reachable) | subset |
 | `hedera/HederaResponseCodes.sol` | hiero-ledger/hiero-contracts `contracts/common/HederaResponseCodes.sol` @ `5ade6c8` | Apache-2.0 | subset (Lattice SPDX: Apache-2.0) |
@@ -222,6 +225,8 @@ way as above.
 | `Lattice.sol`, `utils/Initializable.sol`, `utils/libraries/InitializableLib.sol` | dadadave80/diamond-lib (first-party) | MIT |
 | `privacy/Groth16Verifier*`, `privacy/PlonkVerifier*` and their interfaces | iden3/snarkjs `templates/verifier_{groth16,plonk}.sol.ejs` | GPL-3.0 |
 | `privacy/Semaphore*` | semaphore-protocol/semaphore `packages/contracts/contracts/Semaphore.sol` | MIT |
+| `privacy/libraries/FHEVMLib.sol` | zama-ai/fhevm `library-solidity` (npm `@fhevm/solidity` 0.13.4) | BSD-3-Clause-Clear |
+| `privacy/libraries/FHEVMLib.sol` (`tryIncrease`, `tryDecrease`) | OpenZeppelin/openzeppelin-confidential-contracts v0.5.3 `contracts/utils/FHESafeMath.sol` | MIT |
 | `privacy/libraries/IncrementalMerkleTreeLib.sol` | privacy-scaling-explorations/zk-kit.solidity `packages/lean-imt` | MIT |
 | `privacy/ERC5564Announcer*`, `privacy/ERC6538Registry*` | ScopeLift/stealth-address-erc-contracts `src/ERC5564Announcer.sol`, `src/ERC6538Registry.sol` | CC0-1.0 |
 | `amm/ConstantProduct*` | Uniswap/v2-core `contracts/UniswapV2Pair.sol` | GPL-3.0 (repo) |
