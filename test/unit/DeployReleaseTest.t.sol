@@ -421,7 +421,7 @@ contract DeployReleaseTest is Test, DeployRelease {
     //                              INVENTORY
     //////////////////////////////////////////////////////////////////////////*//
 
-    /// @notice Pins the inventory's internal consistency: exactly 138 entries, every path ends with
+    /// @notice Pins the inventory's internal consistency: exactly 140 entries, every path ends with
     ///         `<name>.sol:<name>` (dir-qualified for src/ facets, bare-basename for the diamond-lib core
     ///         facets — a swapped or drifted name<->path pairing fails loudly either way), and no
     ///         duplicate names (duplicate names would collide on nameHash + salt).

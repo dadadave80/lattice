@@ -2419,6 +2419,7 @@ contract StorageSlotVerificationTest is Test {
         slots[i++] = ERC1155URISTORAGE_STORAGE_SLOT;
         slots[i++] = ERC2981_STORAGE_SLOT;
         slots[i++] = ERC4626_STORAGE_SLOT;
+        slots[i++] = ERC7984_STORAGE_SLOT;
         // governance
         slots[i++] = VOTES_STORAGE_SLOT;
         slots[i++] = GOVERNOR_STORAGE_SLOT;
@@ -2461,7 +2462,6 @@ contract StorageSlotVerificationTest is Test {
         slots[i++] = CROSSCHAIN_LINK_STORAGE_SLOT;
         slots[i++] = BRIDGE_ERC20_STORAGE_SLOT;
         slots[i++] = BRIDGE_ERC7802_STORAGE_SLOT;
-        slots[i++] = ERC7984_STORAGE_SLOT;
         slots[i++] = AXELAR_GATEWAY_ADAPTER_STORAGE_SLOT;
         slots[i++] = WORMHOLE_GATEWAY_ADAPTER_STORAGE_SLOT;
         slots[i++] = ERC7786_OPEN_BRIDGE_STORAGE_SLOT;

@@ -38,10 +38,10 @@ regenerates both the reviewed baseline and JSON. New releases attach both checke
 release tag. Historical release layouts are not regenerated from a later source tree.
 
 **Foreign namespaces.** `confidential.storage.config` at
-`0x9e7b61f58c47dc699ac88507c4f5bb9f121c03808c5676a8078fe583e4649700` is Zama's coprocessor configuration
-(acl, executor, kmsVerifier). `FHEVMLib.setCoprocessorForChain` writes it once from
+`0x9e7b61f58c47dc699ac88507c4f5bb9f121c03808c5676a8078fe583e4649700` is the coprocessor configuration of Zama's FHEVM (fully homomorphic encryption virtual machine)
+(acl, the access control list contract; executor; kmsVerifier, the key management service verifier). `FHEVMLib.setCoprocessorForChain` writes it once from
 `ERC7984Lib.__ERC7984_init`. Its layout is Zama's and is pinned to upstream by
-`FHEVMLibConfigTest.test_ConfigLayoutMatchesUpstream`, not by the layout guard. Any `FHE.sol` facet in the
+`FHEVMLibConfigTest.test_ConfigLayoutMatchesUpstream`, not by the layout guard. Any `FHE.sol` (fully homomorphic encryption library) facet in the
 same diamond shares it, so a configured slot does not prove `ERC7984Init` ran.
 
 > **CI:** the test suite `StorageSlotVerificationTest` MUST be run on every change
