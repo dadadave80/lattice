@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {ebool, euint64, externalEuint64} from "@lattice/interfaces/external/fhevm/EncryptedTypes.sol";
+import {IACL} from "@lattice/interfaces/external/fhevm/IACL.sol";
+import {IFHEVMExecutor} from "@lattice/interfaces/external/fhevm/IFHEVMExecutor.sol";
+import {IKMSVerifier} from "@lattice/interfaces/external/fhevm/IKMSVerifier.sol";
+
 /// @notice Addresses of the three host contracts of a Fully Homomorphic Encryption Virtual Machine (FHEVM)
 ///         coprocessor deployment, in the field order of Zama's own configuration struct.
 /// @dev Carries no storage-location annotation: it is only the layout of the shared coprocessor slot,
@@ -13,9 +18,13 @@ struct CoprocessorConfig {
 
 /// @title FHEVMLib
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
-/// @author Modified from Zama FHEVM (https://github.com/zama-ai/fhevm)
-/// @notice Thin host library for confidential (FHEVM) tokens. This section pins the coprocessor addresses
-///         per supported chain and writes them into the shared configuration slot.
+/// @author Modified from Zama FHEVM (https://github.com/zama-ai/fhevm) and OpenZeppelin Confidential Contracts FHESafeMath (https://github.com/OpenZeppelin/openzeppelin-confidential-contracts)
+/// @notice Thin host library for confidential (FHEVM) tokens: the coprocessor configuration, the host members
+///         a token needs, with the names and host calldata of Zama's `FHE` library 0.13.4, and the two
+///         `FHESafeMath` helpers of OpenZeppelin Confidential Contracts 0.5.3.
+/// @dev An uninitialized (zero) handle passed as an operand or as a granted value is replaced by a trivially
+///      encrypted zero of its type, as in `FHE`; {isAllowed} passes it through unchanged. An initialized
+///      handle is type-checked by the executor wherever `FHE` checks it.
 library FHEVMLib {
     //*//////////////////////////////////////////////////////////////////////////
     //                                 CONFIGURATION
@@ -80,5 +89,196 @@ library FHEVMLib {
         } else if (acl != pinned.acl || executor != pinned.executor || kmsVerifier != pinned.kmsVerifier) {
             revert FHEVMConflictingCoprocessor(acl, executor, kmsVerifier);
         }
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                                  HOST MEMBERS
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @dev Executor type ordinal of an encrypted boolean (`FheType.Bool`).
+    uint8 internal constant TYPE_BOOL = 0;
+
+    /// @dev Executor type ordinal of an encrypted 64-bit unsigned integer (`FheType.Uint64`).
+    uint8 internal constant TYPE_UINT64 = 5;
+
+    /// @notice An empty-proof external handle is not allowed to the caller.
+    error SenderNotAllowedToUseHandle(bytes32 handle, address sender);
+
+    /// @notice The Key Management Service (KMS) verifier rejected a public decryption proof.
+    error InvalidKMSSignatures();
+
+    /// @notice A public decryption of `handlesList` to `abiEncodedCleartexts` passed {checkSignatures}.
+    event PublicDecryptionVerified(bytes32[] handlesList, bytes abiEncodedCleartexts);
+
+    /// @notice Whether `v` is a non-zero handle.
+    function isInitialized(euint64 v) internal pure returns (bool) {
+        return euint64.unwrap(v) != 0;
+    }
+
+    /// @notice Whether `v` is a non-zero handle.
+    function isInitialized(ebool v) internal pure returns (bool) {
+        return ebool.unwrap(v) != 0;
+    }
+
+    /// @notice Trivially encrypts `value` as an `euint64`.
+    function asEuint64(uint64 value) internal returns (euint64) {
+        return euint64.wrap(IFHEVMExecutor(config().executor).trivialEncrypt(uint256(value), TYPE_UINT64));
+    }
+
+    /// @notice Trivially encrypts `value` as an `ebool`.
+    function asEbool(bool value) internal returns (ebool) {
+        return ebool.wrap(IFHEVMExecutor(config().executor).trivialEncrypt(value ? 1 : 0, TYPE_BOOL));
+    }
+
+    /// @notice Converts an external handle to an `euint64`.
+    /// @dev With a proof, the executor verifies it for `msg.sender` and the result is transiently allowed to
+    ///      `msg.sender`. With an empty proof, a zero handle becomes an encrypted zero and any other handle must
+    ///      already be allowed to `msg.sender`, else {SenderNotAllowedToUseHandle}, and be an `euint64`.
+    function fromExternal(externalEuint64 inputHandle, bytes memory inputProof) internal returns (euint64) {
+        bytes32 handle = externalEuint64.unwrap(inputHandle);
+        if (inputProof.length != 0) {
+            CoprocessorConfig storage $ = config();
+            bytes32 result = IFHEVMExecutor($.executor).verifyInput(handle, msg.sender, inputProof, TYPE_UINT64);
+            IACL($.acl).allowTransient(result, msg.sender);
+            return euint64.wrap(result);
+        }
+        if (handle == 0) {
+            return asEuint64(0);
+        }
+        if (!IACL(config().acl).isAllowed(handle, msg.sender)) revert SenderNotAllowedToUseHandle(handle, msg.sender);
+        IFHEVMExecutor(config().executor).checkHandleType(handle, TYPE_UINT64);
+        return euint64.wrap(handle);
+    }
+
+    /// @notice Encrypted `a + b`, wrapping on overflow.
+    function add(euint64 a, euint64 b) internal returns (euint64) {
+        a = _validated(a);
+        if (!isInitialized(b)) b = asEuint64(0);
+        return euint64.wrap(IFHEVMExecutor(config().executor).fheAdd(euint64.unwrap(a), euint64.unwrap(b), 0x00));
+    }
+
+    /// @notice Encrypted `a - b`, wrapping on underflow.
+    function sub(euint64 a, euint64 b) internal returns (euint64) {
+        a = _validated(a);
+        if (!isInitialized(b)) b = asEuint64(0);
+        return euint64.wrap(IFHEVMExecutor(config().executor).fheSub(euint64.unwrap(a), euint64.unwrap(b), 0x00));
+    }
+
+    /// @notice Encrypted `a >= b`.
+    function ge(euint64 a, euint64 b) internal returns (ebool) {
+        a = _validated(a);
+        if (!isInitialized(b)) b = asEuint64(0);
+        return ebool.wrap(IFHEVMExecutor(config().executor).fheGe(euint64.unwrap(a), euint64.unwrap(b), 0x00));
+    }
+
+    /// @notice Encrypted `a == b` against the plaintext `b`.
+    function eq(euint64 a, uint64 b) internal returns (ebool) {
+        a = _validated(a);
+        return ebool.wrap(IFHEVMExecutor(config().executor).fheEq(euint64.unwrap(a), bytes32(uint256(b)), 0x01));
+    }
+
+    /// @notice Encrypted `control ? a : b`. An uninitialized `control` is an encrypted `false`.
+    function select(ebool control, euint64 a, euint64 b) internal returns (euint64) {
+        if (!isInitialized(control)) control = asEbool(false);
+        a = _validated(a);
+        if (!isInitialized(b)) b = asEuint64(0);
+        return euint64.wrap(
+            IFHEVMExecutor(config().executor).fheIfThenElse(ebool.unwrap(control), euint64.unwrap(a), euint64.unwrap(b))
+        );
+    }
+
+    /// @notice Whether `account` may use `value`. An initialized `value` must be an `euint64`.
+    function isAllowed(euint64 value, address account) internal view returns (bool) {
+        bytes32 handle = euint64.unwrap(value);
+        if (handle != 0) IFHEVMExecutor(config().executor).checkHandleType(handle, TYPE_UINT64);
+        return IACL(config().acl).isAllowed(handle, account);
+    }
+
+    /// @notice Whether `account` may use `value`. An initialized `value` must be an `ebool`.
+    function isAllowed(ebool value, address account) internal view returns (bool) {
+        bytes32 handle = ebool.unwrap(value);
+        if (handle != 0) IFHEVMExecutor(config().executor).checkHandleType(handle, TYPE_BOOL);
+        return IACL(config().acl).isAllowed(handle, account);
+    }
+
+    /// @notice Persistently allows `account` to use `value`; returns the granted handle.
+    function allow(euint64 value, address account) internal returns (euint64) {
+        value = _validated(value);
+        IACL(config().acl).allow(euint64.unwrap(value), account);
+        return value;
+    }
+
+    /// @notice Persistently allows this contract to use `value`; returns the granted handle.
+    function allowThis(euint64 value) internal returns (euint64) {
+        value = _validated(value);
+        IACL(config().acl).allow(euint64.unwrap(value), address(this));
+        return value;
+    }
+
+    /// @notice Allows `account` to use `value` for this transaction; returns the granted handle.
+    function allowTransient(euint64 value, address account) internal returns (euint64) {
+        value = _validated(value);
+        IACL(config().acl).allowTransient(euint64.unwrap(value), account);
+        return value;
+    }
+
+    /// @notice Marks `value` as publicly decryptable; returns the marked handle.
+    function makePubliclyDecryptable(euint64 value) internal returns (euint64) {
+        value = _validated(value);
+        bytes32[] memory handles = new bytes32[](1);
+        handles[0] = euint64.unwrap(value);
+        IACL(config().acl).allowForDecryption(handles);
+        return value;
+    }
+
+    /// @notice Verifies a KMS public decryption proof of `handlesList` to `abiEncodedCleartexts`.
+    /// @dev Reverts {InvalidKMSSignatures} when the verifier returns `false`; a proof signed for another digest
+    ///      reverts in the verifier with `KMSInvalidSigner(address)`, bubbled unchanged.
+    function checkSignatures(
+        bytes32[] memory handlesList,
+        bytes memory abiEncodedCleartexts,
+        bytes memory decryptionProof
+    ) internal {
+        bool isVerified = IKMSVerifier(config().kmsVerifier)
+            .verifyDecryptionEIP712KMSSignatures(handlesList, abiEncodedCleartexts, decryptionProof);
+        if (!isVerified) revert InvalidKMSSignatures();
+        emit PublicDecryptionVerified(handlesList, abiEncodedCleartexts);
+    }
+
+    //*//////////////////////////////////////////////////////////////////////////
+    //                                   SAFE MATH
+    //////////////////////////////////////////////////////////////////////////*//
+
+    /// @notice Tries `oldValue + delta`: `success` is whether it did not overflow, and `updated` is the sum on
+    ///         success or `oldValue` otherwise. An uninitialized `oldValue` returns `(true, delta)`.
+    function tryIncrease(euint64 oldValue, euint64 delta) internal returns (ebool success, euint64 updated) {
+        if (!isInitialized(oldValue)) {
+            return (asEbool(true), delta);
+        }
+        euint64 newValue = add(oldValue, delta);
+        success = ge(newValue, oldValue);
+        updated = select(success, newValue, oldValue);
+    }
+
+    /// @notice Tries `oldValue - delta`: `success` is whether it did not underflow, and `updated` is the
+    ///         difference on success or `oldValue` otherwise. An uninitialized `oldValue` returns
+    ///         `(true, oldValue)` when `delta` is uninitialized too, else `(delta == 0, asEuint64(0))`.
+    function tryDecrease(euint64 oldValue, euint64 delta) internal returns (ebool success, euint64 updated) {
+        if (!isInitialized(oldValue)) {
+            if (!isInitialized(delta)) {
+                return (asEbool(true), oldValue);
+            }
+            return (eq(delta, 0), asEuint64(0));
+        }
+        success = ge(oldValue, delta);
+        updated = select(success, sub(oldValue, delta), oldValue);
+    }
+
+    /// @dev `value` itself after the executor type-checks it as an `euint64`, or an encrypted zero if it is
+    ///      uninitialized.
+    function _validated(euint64 value) private returns (euint64) {
+        if (!isInitialized(value)) return asEuint64(0);
+        IFHEVMExecutor(config().executor).checkHandleType(euint64.unwrap(value), TYPE_UINT64);
+        return value;
     }
 }
