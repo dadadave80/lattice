@@ -16,7 +16,7 @@ the linked issue or pull request; a record is the outcome, not a spec.
 | [0008](0008-freeze-once-live.md) | A live module's namespace and interfaceId are frozen | Accepted |
 | [0009](0009-token-extension-hook-model.md) | Token extensions replace base selectors; base libraries run no hooks | Accepted |
 | [0010](0010-groth16-bn254.md) | Zero-knowledge modules standardize on Groth16 over BN254 | Accepted |
-| [0011](0011-no-stateless-utility-duplicates.md) | No new copies of stateless Solady or OpenZeppelin utilities | Accepted |
+| [0011](0011-no-stateless-utility-duplicates.md) | No new copies of stateless Solady or OpenZeppelin utilities | Accepted; FHEVM host access scoped by [0032](0032-thin-fhevm-host-library.md) |
 | [0012](0012-storage-checker-bash-jq.md) | The storage-layout checker stays in Bash and jq | Accepted |
 | [0013](0013-colocated-timelock-enforces-governor-grace.md) | A timelock in the Governor's diamond enforces the proposal grace period | Accepted |
 | [0014](0014-arachnid-shared-release-deployer.md) | Shared releases use only the Arachnid deterministic-deployment proxy | Accepted |
@@ -37,6 +37,7 @@ the linked issue or pull request; a record is the outcome, not a spec.
 | [0029](0029-hyperbridge-native-fee-budgets.md) | Hyperbridge native fees use bounded exact-output budgets | Accepted |
 | [0030](0030-stargate-bus-companion.md) | Stargate bus enqueue is an optional companion with an exact native fare | Accepted |
 | [0031](0031-indexed-initializer-batch-failures.md) | Initializer batches reject zero entries and retain indexed failures | Accepted |
+| [0032](0032-thin-fhevm-host-library.md) | Confidential modules call Zama hosts through a thin Lattice library | Accepted |
 
 ## When to write one
 

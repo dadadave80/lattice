@@ -1,6 +1,6 @@
 # 0011. No new copies of stateless Solady or OpenZeppelin utilities
 
-- **Status:** Accepted
+- **Status:** Accepted; FHEVM host access scoped by [0032](0032-thin-fhevm-host-library.md)
 - **Date:** a standing maintainer rule with no PR of its own; recorded 2026-10-09
 
 ## Context

@@ -410,3 +410,8 @@ Contracts).
 
 [`lib/VENDORED.md`](lib/VENDORED.md) lists every vendored file, re-declared interface and ported
 module with its upstream and upstream license.
+
+**FHEVM (fully homomorphic encryption virtual machine) patent notice.** Zama's code is licensed
+BSD-3-Clause-Clear, which grants no patent rights, and Zama's README states that commercial use of its
+technology needs Zama's patent licence. Lattice's `FHEVMLib` calls Zama's deployed contracts but does not
+grant or obtain that licence; assess it before any commercial use of a confidential module.
