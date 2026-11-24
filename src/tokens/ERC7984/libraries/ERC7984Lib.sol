@@ -60,9 +60,10 @@ struct ERC7984Storage {
 ///        encode as `bytes32`, so the selector is unchanged.
 ///      - Host calls go through the thin {FHEVMLib}, whose `tryIncrease`/`tryDecrease` are OpenZeppelin's
 ///        `FHESafeMath`.
-///      Kept as in OpenZeppelin 0.5.3: zero-value transfers by anyone (the ERC requires their events), operators
-///      receive transient access to the amounts they move, disclosure is not tied to a request and can be
-///      replayed, `setOperator(self)` and `setOperator(address(0))` are inert, and there is no reentrancy guard.
+///      Kept as in OpenZeppelin 0.5.3, as accepted hazard rows: zero-value transfers by anyone (M-01; the ERC
+///      requires their events), operator disclosure (M-05: an operator receives transient access to the amounts it
+///      moves), disclosure is not tied to a request and can be replayed, `setOperator(self)` and
+///      `setOperator(address(0))` are inert, and there is no reentrancy guard.
 library ERC7984Lib {
     /// @dev The 15 deny-list selectors, packed: functions through which the diamond calls a target its caller
     ///      chooses, or validates an ERC-1271 signature as itself. In order, by facet: AccessManager (1),

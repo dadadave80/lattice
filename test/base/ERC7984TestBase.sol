@@ -108,7 +108,7 @@ abstract contract ERC7984TestBase is FhevmTestBase {
         cuts[4] = _cut(multicallFacet);
     }
 
-    function _cut(address facet) private view returns (FacetCut memory) {
+    function _cut(address facet) private pure returns (FacetCut memory) {
         bytes memory packed = IFacet(facet).exportSelectors();
         bytes4[] memory selectors = new bytes4[](packed.length / 4);
         for (uint256 i; i < selectors.length; ++i) {

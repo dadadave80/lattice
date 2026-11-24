@@ -24,14 +24,26 @@ import {IERC7984, IERC7984Disclosure} from "@lattice/interfaces/tokens/IERC7984.
 import {IMulticall} from "@lattice/interfaces/utils/IMulticall.sol";
 import {ERC7984} from "@lattice/tokens/ERC7984/ERC7984.sol";
 
-/// @dev Calls `confidentialTransferAndCall` and reads its own access to the result within the same call.
+/// @dev Moves tokens through the diamond and reads access to the result within the same call, since the host
+///      clears transient grants between top-level test calls.
 contract TransientGrantProbe {
+    /// @dev `confidentialTransferAndCall` to `to`; whether this probe and `to` may use the returned handle.
     function sendAndCall(IERC7984 token, address to, externalEuint64 x, bytes calldata p)
         external
-        returns (bytes32 t, bool allowed)
+        returns (bytes32 t, bool allowedSelf, bool allowedTo)
     {
         t = euint64.unwrap(token.confidentialTransferAndCall(to, x, p, ""));
-        allowed = IACL(aclAdd).isAllowed(t, address(this));
+        allowedSelf = IACL(aclAdd).isAllowed(t, address(this));
+        allowedTo = IACL(aclAdd).isAllowed(t, to);
+    }
+
+    /// @dev Operator `confidentialTransferFrom` of `from`'s tokens to `to`; whether this probe may use the result.
+    function transferFrom(IERC7984 token, address from, address to, externalEuint64 x, bytes calldata p)
+        external
+        returns (bytes32 t, bool allowedSelf)
+    {
+        t = euint64.unwrap(token.confidentialTransferFrom(from, to, x, p));
+        allowedSelf = IACL(aclAdd).isAllowed(t, address(this));
     }
 }
 
@@ -229,8 +241,9 @@ contract ERC7984Test is ERC7984TestBase {
         TransientGrantProbe probe = new TransientGrantProbe();
         ERC7984TestFacet(diamond).mint(address(probe), 10);
         (externalEuint64 x, bytes memory p) = _input(address(probe), 10);
-        (bytes32 t, bool allowed) = probe.sendAndCall(token, address(accept), x, p);
-        assertTrue(allowed);
+        (bytes32 t, bool allowedSelf, bool allowedTo) = probe.sendAndCall(token, address(accept), x, p);
+        assertTrue(allowedSelf);
+        assertFalse(allowedTo);
         assertFalse(_acl.persistAllowed(t, address(probe)));
         assertFalse(_acl.persistAllowed(t, address(accept)));
         assertEq(decrypt(t), 10);
@@ -382,6 +395,53 @@ contract ERC7984Test is ERC7984TestBase {
         vm.prank(mallory);
         vm.expectRevert(abi.encodeWithSelector(IERC7984.ERC7984UnauthorizedSpender.selector, holder, mallory));
         token.confidentialTransferFrom(holder, mallory, x, p);
+    }
+
+    /// @dev H-11: each of the four `transferFrom` variants (proof or handle, plain or AndCall) rejects a caller
+    ///      that is not the holder's operator. The handle is allowed to the caller, so only the operator check fails.
+    function testFuzz_TransferFrom_RevertWhen_NotOperator(uint8 i) public {
+        uint256 v = bound(i, 0, 3);
+        (externalEuint64 x, bytes memory p) = _input(mallory, 1);
+        euint64 h = euint64.wrap(maker.make(1, uint8(FheType.Uint64), _one(mallory)));
+        vm.prank(mallory);
+        vm.expectRevert(abi.encodeWithSelector(IERC7984.ERC7984UnauthorizedSpender.selector, holder, mallory));
+        if (v == 0) token.confidentialTransferFrom(holder, mallory, x, p);
+        else if (v == 1) token.confidentialTransferFrom(holder, mallory, h);
+        else if (v == 2) token.confidentialTransferFromAndCall(holder, mallory, x, p, "");
+        else token.confidentialTransferFromAndCall(holder, mallory, h, "");
+    }
+
+    /// @dev Security requirement 1 (SR-01): each of the four handle variants rejects a handle the caller may not
+    ///      use, even when the caller is the holder's operator.
+    function testFuzz_HandleVariants_RevertWhen_AmountNotAllowedToSender(uint8 i) public {
+        uint256 v = bound(i, 0, 3);
+        uint48 until = uint48(vm.getBlockTimestamp() + 100);
+        vm.prank(holder);
+        token.setOperator(mallory, until);
+        euint64 victim = token.confidentialBalanceOf(holder);
+        vm.prank(mallory);
+        vm.expectRevert(
+            abi.encodeWithSelector(IERC7984.ERC7984UnauthorizedUseOfEncryptedAmount.selector, victim, mallory)
+        );
+        if (v == 0) token.confidentialTransfer(alice, victim);
+        else if (v == 1) token.confidentialTransferFrom(holder, alice, victim);
+        else if (v == 2) token.confidentialTransferAndCall(alice, victim, "");
+        else token.confidentialTransferFromAndCall(holder, alice, victim, "");
+    }
+
+    /// @dev An operator moves the holder's tokens and gets transient access to the transferred handle (M-05).
+    function test_ConfidentialTransferFrom_ByOperatorMovesAndGrantsTransient() public {
+        TransientGrantProbe probe = new TransientGrantProbe();
+        uint48 until = uint48(vm.getBlockTimestamp() + 100);
+        vm.prank(holder);
+        token.setOperator(address(probe), until);
+        (externalEuint64 x, bytes memory p) = _input(address(probe), 10);
+        (bytes32 t, bool allowedSelf) = probe.transferFrom(token, holder, alice, x, p);
+        assertTrue(allowedSelf);
+        assertFalse(_acl.persistAllowed(t, address(probe)));
+        assertEq(decrypt(t), 10);
+        assertEq(decrypt(token.confidentialBalanceOf(holder)), 999_990);
+        assertEq(decrypt(token.confidentialBalanceOf(alice)), 10);
     }
 
     function test_IsOperator_ExpiresAfterUntil() public {
