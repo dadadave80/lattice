@@ -386,10 +386,11 @@ clash reverts at cut time. The ERC-7984 (confidential fungible token) co-cut exe
 signature validation) rows are refused when the token initializes. The other authority, override and custody rows
 do not revert: the diamond deploys, then misbehaves. Each row's core case is pinned by a test that fails if the
 behaviour changes ([#240](https://github.com/dadadave80/lattice/issues/240)). The guardian row is pinned by
-`GovernedVaultUpgradeTest`. The five ERC-7984 rows are pinned by
+`GovernedVaultUpgradeTest`. The ERC-7984 rows are pinned by
 [`ERC7984CompositionHazardsTest`](../../test/composability/ERC7984CompositionHazardsTest.t.sol): the later-cut
 timelock and admin cut initializer grants, the refused self-call relay, the non-standard executor the deny-list
-misses, the user-decryption precondition and the no-cut mintable layout. The remaining rows are pinned by
+misses, the refused standard executor, the user-decryption precondition and the no-cut mintable layout. The
+EIP-7702 half of the account-proxy row is pinned by `test_Init_RevertWhen_HostIsDelegatedEoa` in `ERC7984InitTest`. The remaining rows are pinned by
 [`CompositionHazardsTest`](../../test/composability/CompositionHazardsTest.t.sol), with every shared selector also
 covered by `SelectorCompatibilityTest`. The ERC20Wrapper and ShieldedPool custody effects are documented, not
 tested: the base wrapper facet does not expose `recover`.

@@ -185,6 +185,12 @@ Consequences:
 - A facet added after the deny-list was frozen is not in it. The inventory pin in `ERC7984RecipeExclusionTest`
   hashes every facet's name and exported selectors, so a new facet or selector fails it and forces a decision.
 - Every guarded call pays one extra storage read for the init marker.
+- The init marker is an ERC-165 bit, and `ERC6900ModuleManager` writes ERC-165 bits for every interface id in an
+  installed module's manifest, gated by the diamond's admin role or the diamond itself. On a hand-built diamond
+  that also installs it, the admin can set the marker without `__ERC7984_init` (skipping the deny-list and the
+  EIP-7702 host check), or clear it by uninstalling a module installed before initialization, which makes every
+  guarded entrypoint revert `ERC7984NotInitialized`. No shipped recipe installs it, and the module guide's
+  integrator rule 5 forbids it.
 - The admin of `DeployERC7984Mintable` and its minters are trusted with supply and can learn the total supply;
   the recipe conditions and the [module guide](../guides/erc7984.md) state this.
 
