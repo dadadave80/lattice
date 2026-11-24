@@ -47,6 +47,7 @@ const decisions: Item = {
     { text: '0030 Stargate bus companion', link: '/adr/0030-stargate-bus-companion' },
     { text: '0031 Indexed initializer failures', link: '/adr/0031-indexed-initializer-batch-failures' },
     { text: '0032 Thin FHEVM host library', link: '/adr/0032-thin-fhevm-host-library' },
+    { text: '0033 ERC-7984 excludes diamond callers', link: '/adr/0033-erc7984-excludes-diamond-callers' },
   ],
 }
 
@@ -59,6 +60,7 @@ const guides: Item = {
     { text: 'Compose your own Diamond', link: '/guides/compose-your-own-diamond' },
     { text: 'Selector compatibility', link: '/guides/selector-compatibility' },
     { text: 'ERC-3643 permissioned token', link: '/guides/erc3643' },
+    { text: 'ERC-7984 confidential token', link: '/guides/erc7984' },
     { text: 'ShieldedPool circuit requirements', link: '/guides/shielded-pool-circuit' },
     { text: 'Storage-safety Action', link: '/guides/storage-action' },
     { text: 'Hedera', link: '/guides/hedera' },

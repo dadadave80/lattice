@@ -107,7 +107,10 @@ before adopting.
 
 Confidential modules (the FHEVM, fully homomorphic encryption virtual machine, host library
 `src/privacy/libraries/FHEVMLib.sol` and the tokens built on it) run on Zama's protocol, so they inherit
-its trust assumptions. `FHEVMLib` is in scope for reports. Lattice does not control any of the following.
+its trust assumptions. `FHEVMLib` and the ERC-7984 (confidential fungible token) module in
+`src/tokens/ERC7984/` are in scope for reports; the [module guide](docs/guides/erc7984.md) lists the token's
+accepted hazards, its integrator rules and what its minters and admin can learn. Lattice does not control any
+of the following.
 
 - **Decryption.** The key management service (KMS) is a 13-node network whose signature threshold is 7.
   Seven colluding or compromised nodes could decrypt ciphertexts.

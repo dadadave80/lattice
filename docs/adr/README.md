@@ -38,6 +38,7 @@ the linked issue or pull request; a record is the outcome, not a spec.
 | [0030](0030-stargate-bus-companion.md) | Stargate bus enqueue is an optional companion with an exact native fare | Accepted |
 | [0031](0031-indexed-initializer-batch-failures.md) | Initializer batches reject zero entries and retain indexed failures | Accepted |
 | [0032](0032-thin-fhevm-host-library.md) | Confidential modules call Zama hosts through a thin Lattice library | Accepted |
+| [0033](0033-erc7984-excludes-diamond-callers.md) | ERC-7984 diamonds exclude diamond callers | Accepted |
 
 ## When to write one
 
