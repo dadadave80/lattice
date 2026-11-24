@@ -110,18 +110,18 @@ Confidential modules (the FHEVM, fully homomorphic encryption virtual machine, h
 its trust assumptions. `FHEVMLib` is in scope for reports. Lattice does not control any of the following.
 
 - **Decryption.** The key management service (KMS) is a 13-node network whose signature threshold is 7.
-  Seven colluding or compromised nodes could produce decryptions of any ciphertext.
+  Seven colluding or compromised nodes could decrypt ciphertexts.
 - **Coprocessors.** Off-chain coprocessors compute the ciphertext operations; the chain records only
   handles (opaque 32-byte references to ciphertexts).
-- **Upgradeable hosts.** The host contracts are proxies that an Aragon DAO (decentralized autonomous
-  organization) proxy can upgrade instantly.
+- **Upgradeable hosts.** The ACL owner is an Aragon DAO (decentralized autonomous
+  organization) proxy with no timelock, so it can upgrade the ACL proxy instantly.
 - **Pausing.** A single pauser can halt the access control list (ACL), which stops every confidential
   operation. This happened once, for 84 minutes on 2026-01-06.
 - **ACL deny-list.** The ACL can deny an address, after which that address cannot use ciphertexts.
 - **Computation allowlist.** The homomorphic complexity unit (HCU) limit contract has an allowlist of
   callers. `isAllowlistActivated()` is false on Sepolia (`0xa10998783c8CF88D886Bc30307e631D6686F0A22`,
   checked at block 12186333), and the v0.13 line on Ethereum mainnet has no allowlist. Once Zama activates
-  it, a diamond that Zama has not admitted reverts every FHE operation with
+  it, a diamond that Zama has not admitted reverts every FHE (fully homomorphic encryption) operation with
   `CallerNotAllowlisted(address)`.
 - **Chain id 31337 is for local tests only.** `FHEVMLib` maps chain id 31337 to the addresses a CREATE
   deployment by Zama's published example deployer key produces. Anyone holding that key can deploy

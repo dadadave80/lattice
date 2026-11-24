@@ -10,11 +10,10 @@ homomorphic encryption virtual machine) host contracts: arithmetic, comparison a
 (ACL) grants on encrypted values. Zama's own `FHE.sol` library wraps those calls. Its import closure is
 9,818 to 11,068 lines of Solidity; the part Lattice needs is about 300.
 
-[ADR 0011](0011-no-stateless-utility-duplicates.md) forbids new copies of stateless libraries that a
+[ADR (architecture decision record) 0011](0011-no-stateless-utility-duplicates.md) forbids new copies of stateless libraries that a
 consumer can install from Solady or OpenZeppelin. `FHE.sol` is such a library, so a Lattice-authored
-replacement departs from that rule, and this record scopes the departure. Zama's library is not
-audited-and-published in the Solady or OpenZeppelin sense, and importing it would put a large foreign
-tree into every production contract.
+replacement departs from that rule, and this record scopes the departure. Importing Zama's library would put a large
+foreign tree into every production contract.
 
 ## Decision
 
@@ -35,10 +34,10 @@ flip, so the choice is fixed. Moving to the later generation is a separate revie
 
 **Chain table.** `hostsFor(chainId)` is a constant table with three rows: Ethereum mainnet (1),
 Sepolia (11155111) and chain id 31337. Any other chain reverts `FHEVMUnsupportedChain(uint256)`.
-The 31337 row exists for local tests only. Its addresses are CREATE addresses derived from the
+The 31337 row exists for local tests only. Its addresses are CREATE (contract-creation opcode) addresses derived from the
 deployer key in Zama's published example deployment, so anyone with that key can place code at them on
-any network that reuses chain id 31337. Deployment recipes omit 31337 from their supported chains, and
-the security policy states the limit.
+any network that reuses chain id 31337. The ERC-7984 deployment recipes planned for a later pull request will omit 31337 from their
+supported chains, and `SECURITY.md` states the limit now.
 
 **Foreign storage namespace.** The library stores the host addresses in Zama's own coprocessor
 configuration slot, the ERC-7201 (namespaced storage) location of `confidential.storage.config`, with
@@ -55,8 +54,8 @@ is added and no compiled artifact changes.
 
 **Differential gate.** `FHEVMLibDifferentialFuzz` runs every member of `FHEVMLib` against
 `FHE.sol` 0.13.4 for every operand class (uninitialized, well-typed and allowed, wrong-typed, and
-others the test documents) and requires identical results and reverts, and it fuzzes arbitrary handles. A change that makes the library diverge from
-the oracle fails the gate.
+others the test documents) and requires identical results and reverts, and it fuzzes arbitrary
+handles. A change that makes the library diverge from the oracle fails the gate.
 
 **Ported helpers.** `FHEVMLib` includes `tryIncrease` and `tryDecrease`, ported from OpenZeppelin
 Confidential Contracts 0.5.3 `FHESafeMath`. That package imports `FHE.sol`, so installing it would pull
@@ -64,15 +63,15 @@ in the closure this decision avoids.
 
 **Patent position.** Zama's code is licensed BSD-3-Clause-Clear, which grants no patent rights, and
 Zama's README states that commercial use of its technology needs Zama's patent licence. The maintainer
-decided to proceed and to document the position in the README, `SECURITY.md` and the module guide. It
-is not a release blocker.
+decided to proceed and to document the position in the README and `SECURITY.md`, and later in the
+module guide. It is not a release blocker.
 
 ## Alternatives and consequences
 
 An `@fhevm/solidity` git submodule under `lib/` is rejected: Foundry derives a remapping for each
 directory under `lib/`, solc records remappings in every contract's metadata, and so one new directory
-rotates every artifact's codehash, every deterministic release address and the ERC-3643 profile (the
-repository's record of that token standard's identity). A vendored `FHE.sol` copy under `src/` is
+rotates every artifact's codehash, every deterministic release address and the ERC-3643 (permissioned token standard) profile (the
+repository's record of that standard's identity). A vendored `FHE.sol` copy under `src/` is
 rejected because it adds the roughly 10,000-line closure to production and would be edited.
 
 Consequences:
