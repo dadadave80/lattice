@@ -131,6 +131,7 @@ missing from this table.
 | `ercs/IERC7802.sol` | OpenZeppelin/openzeppelin-contracts `contracts/interfaces/draft-IERC7802.sol` @ `5fd1781` | MIT | subset |
 | `ercs/IERC7821.sol` | Vectorized/solady `src/accounts/ERC7821.sol` | MIT | re-authored to the ERC-7821 ABI |
 | `ercs/IERC8153.sol` | ERC-8153 draft (`https://eips.ethereum.org/EIPS/eip-8153`) | CC0-1.0 (EIP text) | subset |
+| `fhevm/EncryptedTypes.sol` | confidential-token-association/encrypted-types `EncryptedTypes.sol` @ npm 0.0.4 | MIT | subset (types verbatim) |
 | `gelato/IGelatoAutomate.sol` | gelatodigital/automate `contracts/interfaces/IAutomate.sol` | MIT | subset |
 | `gelato/IGelatoVRFConsumer.sol` | gelatodigital/vrf-contracts `contracts/IGelatoVRFConsumer.sol` | unknown (repository not publicly reachable) | subset |
 | `hedera/HederaResponseCodes.sol` | hiero-ledger/hiero-contracts `contracts/common/HederaResponseCodes.sol` @ `5ade6c8` | Apache-2.0 | subset (Lattice SPDX: Apache-2.0) |
