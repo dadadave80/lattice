@@ -380,13 +380,21 @@ constraints and the alternatives considered.
 ## Composition hazards
 
 Every facet in a diamond runs as one contract at one address, with one balance. Modules ported from standalone
-OpenZeppelin contracts assume they are alone there. These hazards follow from that. No shipped recipe hits one,
-and a selector clash reverts at cut time. The authority, override and custody rows do not revert: the diamond
-deploys, then misbehaves. Each row's core case is pinned by a test that fails if the behaviour changes
-([#240](https://github.com/dadadave80/lattice/issues/240)): the guardian row by `GovernedVaultUpgradeTest`, the
-others by [`CompositionHazardsTest`](../../test/composability/CompositionHazardsTest.t.sol), with every shared
-selector also covered by `SelectorCompatibilityTest`. The ERC20Wrapper and ShieldedPool custody effects are
-documented, not tested: the base wrapper facet does not expose `recover`.
+OpenZeppelin contracts assume they are alone there. These hazards follow from that. Apart from the
+`DeployERC7984` admin variant, which accepts the upgrade-authority row, no shipped recipe hits one, and a selector
+clash reverts at cut time. The ERC-7984 (confidential fungible token) co-cut executor and ERC-1271 (contract
+signature validation) rows are refused when the token initializes. The other authority, override and custody rows
+do not revert: the diamond deploys, then misbehaves. Each row's core case is pinned by a test that fails if the
+behaviour changes ([#240](https://github.com/dadadave80/lattice/issues/240)). The guardian row is pinned by
+`GovernedVaultUpgradeTest`. The ERC-7984 rows are pinned by
+[`ERC7984CompositionHazardsTest`](../../test/composability/ERC7984CompositionHazardsTest.t.sol): the later-cut
+timelock and admin cut initializer grants, the refused self-call relay, the non-standard executor the deny-list
+misses, the refused standard executor, the user-decryption precondition and the no-cut mintable layout. The
+EIP-7702 half of the account-proxy row is pinned by `test_Init_RevertWhen_HostIsDelegatedEoa` in `ERC7984InitTest`.
+The remaining rows are pinned by
+[`CompositionHazardsTest`](../../test/composability/CompositionHazardsTest.t.sol), with every shared selector also
+covered by `SelectorCompatibilityTest`. The ERC20Wrapper and ShieldedPool custody effects are documented, not
+tested: the base wrapper facet does not expose `recover`.
 
 | Hazard | Modules | Effect | Recommended layout |
 | --- | --- | --- | --- |
@@ -405,6 +413,11 @@ documented, not tested: the base wrapper facet does not expose `recover`.
 | A co-cut AccessManager is root | AccessManager next to anything that trusts `address(this)`: GovernedDiamondCut, TimelockController, Governor, the ERC-7786 handlers | `execute(address(this), data)` calls the diamond as the diamond. Selectors default to ADMIN_ROLE, so its holder can `diamondCut` with no vote or delay, or call `processMessage` directly | Keep AccessManager in its own authority diamond, as `DeployAccessManager` does. To govern it, make the governed diamond that authority's initial admin. A co-cut manager whose admin is its own diamond can never be configured |
 | One custodian per asset | VestingWallet, ERC4626 (and VaultCore), ERC20Wrapper, BridgeERC20, ShieldedPool | Each counts or holds the diamond's whole `balanceOf(address(this))`. VestingWallet next to an ERC-4626 vault pays the depositors' assets to its beneficiary through its open `release`. A vault next to bridge or pool escrow prices the escrow into its shares | At most one module that holds a given asset per diamond |
 | Guardian is trusted for liveness (D10) | GovernedDiamondCut, EmergencyStop, Governor, TimelockController | Until governance freezes the proposal path, a guardian can remove a Governor or Timelock selector and leave `diamondCut` unreachable | Freeze `DeployGovernedVault.recommendedFreezeSelectors()` in the first proposal (see [Understand authority](#understand-authority)) |
+| A co-cut executor is decryption authority | ERC7984 next to the 10 Class A facets, which make the diamond call a target the caller chooses: AccessManager, TimelockController, Governor, ERC7821Executor, ERC7579ModuleConfig, ERC6551Account, ERC6900Executor, AggregatorExecAdapter, HSSAdapter, HSSAdapterRecovery | The diamond is allowed on every balance handle in the Zama ACL (access control list), so an executor that calls the ACL as the diamond can `allow` any balance to anyone or `allowForDecryption` it to the world | Refused by `validateEarly` and by `ERC7984Lib.__ERC7984_init`. The deny-list binds only at initialization: a Class A facet cut in a later upgrade, or one with a non-standard entry point, is not caught |
+| A self-call relay discloses any balance | ERC7984 next to any facet that makes the diamond call itself | A call from `address(this)` passes every ACL check the diamond holds, so it could request disclosure of, or move, any holder's balance | ERC7984 rejects `msg.sender == address(this)` on its 10 guarded entrypoints (every mover, `setOperator` and `requestDiscloseEncryptedAmount`); `discloseEncryptedAmount` stays open because it needs a valid KMS (Key Management Service) proof |
+| The token never lives in an account proxy | ERC7984 in AccountDiamond, Account7702Diamond, ModularAccount6900 or any externally owned account (EOA) delegated under EIP-7702 (Ethereum Improvement Proposal 7702, EOA code delegation) | The account forwards unclaimed selectors to its modules, and a delegated EOA's key acts as the token without any facet, so either can call the ACL as the diamond | Deploy the token as its own diamond. `__ERC7984_init` refuses the EIP-7702-delegated EOA host in code (`ERC7984DelegatedHost`) |
+| An ERC-1271 validator signs decryptions as the diamond | ERC7984 next to `ERC1271Signature` or `ERC6900Signature` | The diamond would answer ERC-1271 `isValidSignature`, so a user decryption with user = diamond and contract = holder meets every KMS rule | Refused by `validateEarly` and by `__ERC7984_init` (`0x1626ba7e`) |
+| Upgrade authority is decryption authority | ERC7984 next to a cut facet (the `DeployERC7984` admin variant's AccessControlDiamondCut, or any other) | Any cut initializer runs as the diamond, which the ACL allows on every balance; grants are irrevocable | The immutable `DeployERC7984` variant, which has no supply; for supply, the `DeployERC7984Mintable` recipe (`ERC7984`, `AccessControl` and `ERC7984Mintable`, no cut facet); or an admin held outside the diamond (a Safe or an external governor), cut away once supply is minted |
 
 `DiamondValidationLib.assertNamespacesDisjoint` catches two modules that declare the same storage namespace. It
 does not catch two modules that share an asset or a trust assumption.

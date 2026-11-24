@@ -6,7 +6,7 @@ pragma solidity ^0.8.30;
 /// @notice Stateless initializer artifacts released and attested by codehash, separate from facet registration.
 library InitInventory {
     function inventory() internal pure returns (string[] memory names, string[] memory paths) {
-        string[110] memory n = [
+        string[112] memory n = [
             "API3AdapterInit",
             "API3QRNGAdapterInit",
             "AccessControlEnumerableInit",
@@ -69,6 +69,8 @@ library InitInventory {
             "ERC721WrapperInit",
             "ERC7786OpenBridgeInit",
             "ERC7802Init",
+            "ERC7984Init",
+            "ERC7984MintableInit",
             "EmergencyStopInit",
             "GelatoAutomateAdapterInit",
             "GelatoVRFAdapterInit",
@@ -118,7 +120,7 @@ library InitInventory {
             "WormholeGatewayAdapterInit",
             "ZetaChainGatewayAdapterInit"
         ];
-        string[110] memory p = [
+        string[112] memory p = [
             "src/oracles/api3/API3AdapterInit.sol:API3AdapterInit",
             "src/oracles/api3/API3QRNGAdapterInit.sol:API3QRNGAdapterInit",
             "src/access/AccessControlEnumerableInit.sol:AccessControlEnumerableInit",
@@ -181,6 +183,8 @@ library InitInventory {
             "src/tokens/ERC721/ERC721WrapperInit.sol:ERC721WrapperInit",
             "src/crosschain/ERC7786OpenBridgeInit.sol:ERC7786OpenBridgeInit",
             "src/tokens/ERC7802/ERC7802Init.sol:ERC7802Init",
+            "src/tokens/ERC7984/ERC7984Init.sol:ERC7984Init",
+            "src/tokens/ERC7984/ERC7984MintableInit.sol:ERC7984MintableInit",
             "src/security/EmergencyStopInit.sol:EmergencyStopInit",
             "src/oracles/gelato/GelatoAutomateAdapterInit.sol:GelatoAutomateAdapterInit",
             "src/oracles/gelato/GelatoVRFAdapterInit.sol:GelatoVRFAdapterInit",

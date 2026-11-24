@@ -318,6 +318,14 @@
 5	0	_trackers	t_mapping(t_bytes32,t_struct(OpenBridgeTracker)_storage)
 6	0	_minDirectCoverage	t_uint8
 
+### ERC7984Storage @ erc7201:lattice.storage.ERC7984 (slot 0x42be1389dbc49dc1fd4c53bd478bd0e15a7bcc0e33c6883a051e5e4ca46dae00)
+0	0	_balances	t_mapping(t_address,t_userDefinedValueType(euint64))
+1	0	_operators	t_mapping(t_address,t_mapping(t_address,t_uint48))
+2	0	_totalSupply	t_userDefinedValueType(euint64)
+3	0	_name	t_string_storage
+4	0	_symbol	t_string_storage
+5	0	_contractURI	t_string_storage
+
 ### EmergencyStopStorage @ erc7201:lattice.storage.EmergencyStop (slot 0x06261d2148a76026572818ff69ded6332eb2830e669ce15f15f286b1d91c5800)
 0	0	_stopped	t_bool
 1	0	_reason	t_string_storage

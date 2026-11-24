@@ -226,7 +226,7 @@ way as above.
 | `privacy/Groth16Verifier*`, `privacy/PlonkVerifier*` and their interfaces | iden3/snarkjs `templates/verifier_{groth16,plonk}.sol.ejs` | GPL-3.0 |
 | `privacy/Semaphore*` | semaphore-protocol/semaphore `packages/contracts/contracts/Semaphore.sol` | MIT |
 | `privacy/libraries/FHEVMLib.sol` | zama-ai/fhevm `library-solidity` (npm `@fhevm/solidity` 0.13.4) | BSD-3-Clause-Clear |
-| `privacy/libraries/FHEVMLib.sol` (`tryIncrease`, `tryDecrease`) | OpenZeppelin/openzeppelin-confidential-contracts v0.5.3 `contracts/utils/FHESafeMath.sol` | MIT |
+| `privacy/libraries/FHEVMLib.sol` (`tryIncrease`, `tryDecrease`), `tokens/ERC7984/`, `interfaces/tokens/IERC7984.sol` and `interfaces/tokens/IERC7984Mintable.sol` | OpenZeppelin/openzeppelin-confidential-contracts v0.5.3 | MIT |
 | `privacy/libraries/IncrementalMerkleTreeLib.sol` | privacy-scaling-explorations/zk-kit.solidity `packages/lean-imt` | MIT |
 | `privacy/ERC5564Announcer*`, `privacy/ERC6538Registry*` | ScopeLift/stealth-address-erc-contracts `src/ERC5564Announcer.sol`, `src/ERC6538Registry.sol` | CC0-1.0 |
 | `amm/ConstantProduct*` | Uniswap/v2-core `contracts/UniswapV2Pair.sol` | GPL-3.0 (repo) |

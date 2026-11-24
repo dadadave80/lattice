@@ -106,6 +106,7 @@ import {ERC721EnumerableStorage} from "@lattice/tokens/ERC721/libraries/ERC721En
 import {ERC721Storage} from "@lattice/tokens/ERC721/libraries/ERC721Lib.sol";
 import {ERC721URIStorageStorage} from "@lattice/tokens/ERC721/libraries/ERC721URIStorageLib.sol";
 import {ERC721WrapperStorage} from "@lattice/tokens/ERC721/libraries/ERC721WrapperLib.sol";
+import {ERC7984Storage} from "@lattice/tokens/ERC7984/libraries/ERC7984Lib.sol";
 import {HTSAdapterStorage} from "@lattice/tokens/hedera/HTSAdapterLib.sol";
 import {MarketplaceZoneStorage} from "@lattice/tokens/libraries/MarketplaceZoneLib.sol";
 import {EIP712Storage} from "@lattice/utils/libraries/EIP712Lib.sol";
@@ -186,6 +187,7 @@ contract StorageLayoutProbe {
     ERC721WrapperStorage internal _eRC721WrapperStorage;
     ERC7579ModuleConfigStorage internal _eRC7579ModuleConfigStorage;
     ERC7786OpenBridgeStorage internal _eRC7786OpenBridgeStorage;
+    ERC7984Storage internal _eRC7984Storage;
     EmergencyStopStorage internal _emergencyStopStorage;
     GelatoAutomateAdapterStorage internal _gelatoAutomateAdapterStorage;
     GelatoVRFAdapterStorage internal _gelatoVRFAdapterStorage;
