@@ -88,7 +88,9 @@ library RecipePlanLib {
 
     /// @dev Run before resolving even one released facet or initializer. This is a checked-script policy,
     ///      not a restriction on arbitrary diamondCut calldata. ERC1363 directly moves through ERC20Lib;
-    ///      these other movers require mutually exclusive movement paths under ADR0009.
+    ///      these other movers require mutually exclusive movement paths under ADR0009. ERC7984 is refused beside every
+    ///      facet that can call or sign as the diamond itself (the 14 names below), because the confidential token
+    ///      treats the diamond as an untrusted caller and would otherwise be driven through its own address.
     function validateEarly(RecipeFacet[] memory facets, RecipeSeam[] memory seams) internal pure {
         (string[] memory names,) = FacetInventory.inventory();
         for (uint256 i; i < facets.length; ++i) {
@@ -106,6 +108,34 @@ library RecipePlanLib {
             for (uint256 j; j < seam.allowedOwners.length; ++j) {
                 if (!_containsName(names, seam.allowedOwners[j])) revert UnknownRecipeFacet(seam.allowedOwners[j]);
             }
+        }
+        if (contains(facets, "ERC7984")) {
+            if (contains(facets, "AccessManager")) revert IncompatibleRecipeFacets("ERC7984", "AccessManager");
+            if (contains(facets, "TimelockController")) {
+                revert IncompatibleRecipeFacets("ERC7984", "TimelockController");
+            }
+            if (contains(facets, "Governor")) revert IncompatibleRecipeFacets("ERC7984", "Governor");
+            if (contains(facets, "ERC7821Executor")) revert IncompatibleRecipeFacets("ERC7984", "ERC7821Executor");
+            if (contains(facets, "ERC7579ModuleConfig")) {
+                revert IncompatibleRecipeFacets("ERC7984", "ERC7579ModuleConfig");
+            }
+            if (contains(facets, "ERC6551Account")) revert IncompatibleRecipeFacets("ERC7984", "ERC6551Account");
+            if (contains(facets, "ERC6900Executor")) revert IncompatibleRecipeFacets("ERC7984", "ERC6900Executor");
+            if (contains(facets, "AggregatorExecAdapter")) {
+                revert IncompatibleRecipeFacets("ERC7984", "AggregatorExecAdapter");
+            }
+            if (contains(facets, "HSSAdapter")) revert IncompatibleRecipeFacets("ERC7984", "HSSAdapter");
+            if (contains(facets, "HSSAdapterRecovery")) {
+                revert IncompatibleRecipeFacets("ERC7984", "HSSAdapterRecovery");
+            }
+            if (contains(facets, "GovernedDiamondCut")) {
+                revert IncompatibleRecipeFacets("ERC7984", "GovernedDiamondCut");
+            }
+            if (contains(facets, "CrosschainTimelockHandler")) {
+                revert IncompatibleRecipeFacets("ERC7984", "CrosschainTimelockHandler");
+            }
+            if (contains(facets, "ERC1271Signature")) revert IncompatibleRecipeFacets("ERC7984", "ERC1271Signature");
+            if (contains(facets, "ERC6900Signature")) revert IncompatibleRecipeFacets("ERC7984", "ERC6900Signature");
         }
         if (!contains(facets, "ERC1363")) return;
         // The reconciler is a distinct incompatibility even though its canonical recipe also installs Votes.

@@ -6,7 +6,7 @@ import {RecipeFacet} from "@lattice-script/lib/RecipeSpec.sol";
 
 /// @title TokenRecipePlans
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
-/// @notice The three canonical token-base cut plans, reused by their recipes and additive extensions.
+/// @notice The four canonical token-base cut plans, reused by their recipes and additive extensions.
 library TokenRecipePlans {
     function erc20(bool admin) internal pure returns (RecipeFacet[] memory) {
         return _base("ERC20", admin);
@@ -18,6 +18,10 @@ library TokenRecipePlans {
 
     function erc1155(bool admin) internal pure returns (RecipeFacet[] memory) {
         return _base("ERC1155", admin);
+    }
+
+    function erc7984(bool admin) internal pure returns (RecipeFacet[] memory) {
+        return _base("ERC7984", admin);
     }
 
     function _base(string memory module, bool admin) private pure returns (RecipeFacet[] memory facets) {

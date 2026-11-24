@@ -33,6 +33,7 @@ import {DeployERC721URIStorage} from "@lattice-script/base/tokens/DeployERC721UR
 import {DeployERC721Votes} from "@lattice-script/base/tokens/DeployERC721Votes.s.sol";
 import {DeployERC721Wrapper} from "@lattice-script/base/tokens/DeployERC721Wrapper.s.sol";
 import {DeployERC7802} from "@lattice-script/base/tokens/DeployERC7802.s.sol";
+import {DeployERC7984} from "@lattice-script/base/tokens/DeployERC7984.s.sol";
 import {DeployHTSAdapter} from "@lattice-script/base/tokens/DeployHTSAdapter.s.sol";
 import {DeployMarketplaceZone} from "@lattice-script/base/tokens/DeployMarketplaceZone.s.sol";
 import {RecipeConsistencyGuards} from "@lattice-test/composability/RecipeConsistencyGuards.sol";
@@ -62,6 +63,25 @@ contract RecipeUpgradeabilityTokensTest is RecipeConsistencyGuards {
         _assertIntrospectable(d, 3);
         _assertBareEth(d, false);
         _assertImmutableByDesign(d);
+    }
+
+    function test_Immutable_ERC7984() public {
+        _expectRecipe(new DeployERC7984().recipeSpec(), 0, "DeployERC7984");
+        (FacetCut[] memory cuts, address init, bytes memory cd) =
+            new DeployERC7984().buildCuts("Tok", "TOK", "ipfs://t");
+        address d = _assemble(cuts, init, cd);
+        _assertIntrospectable(d, 3);
+        _assertBareEth(d, false);
+        _assertImmutableByDesign(d);
+    }
+
+    function test_Upgradeable_ERC7984() public {
+        _expectRecipe(new DeployERC7984().recipeSpec(), 1, "DeployERC7984");
+        (FacetCut[] memory cuts, address init, bytes memory cd) =
+            new DeployERC7984().buildCuts("Tok", "TOK", "ipfs://t", ADMIN);
+        address d = _assemble(cuts, init, cd);
+        _assertIntrospectable(d, 5);
+        _assertAdminCanCut(d, ADMIN);
     }
 
     function test_Immutable_ERC3643() public {
