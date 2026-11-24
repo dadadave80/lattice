@@ -4495,6 +4495,16 @@
       ]
     },
     {
+      "interfaceId": "0x1b4d3d0d",
+      "slot": "0x61d79fd359ce91f5258997bc3b46cd751395217defe06fb10974f8bdf41dd3b9",
+      "sources": [
+        {
+          "source": "src/tokens/ERC7984/libraries/ERC7984MintableLib.sol",
+          "constant": "ERC165_MAP_IERC7984MINTABLE_SLOT"
+        }
+      ]
+    },
+    {
       "interfaceId": "0x1bfc84d0",
       "slot": "0x9baecadb3e37f7ef6c6624a337da384f68e7fa9684795d0ccbd7f9f089dee070",
       "sources": [

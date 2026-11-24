@@ -34,9 +34,11 @@ import {DeployERC721Votes} from "@lattice-script/base/tokens/DeployERC721Votes.s
 import {DeployERC721Wrapper} from "@lattice-script/base/tokens/DeployERC721Wrapper.s.sol";
 import {DeployERC7802} from "@lattice-script/base/tokens/DeployERC7802.s.sol";
 import {DeployERC7984} from "@lattice-script/base/tokens/DeployERC7984.s.sol";
+import {DeployERC7984Mintable} from "@lattice-script/base/tokens/DeployERC7984Mintable.s.sol";
 import {DeployHTSAdapter} from "@lattice-script/base/tokens/DeployHTSAdapter.s.sol";
 import {DeployMarketplaceZone} from "@lattice-script/base/tokens/DeployMarketplaceZone.s.sol";
 import {RecipeConsistencyGuards} from "@lattice-test/composability/RecipeConsistencyGuards.sol";
+import {IAccessControl} from "@lattice/interfaces/access/IAccessControl.sol";
 import {IERC20} from "@lattice/interfaces/tokens/IERC20.sol";
 import {ERC1155} from "@lattice/tokens/ERC1155/ERC1155.sol";
 import {ERC20Wrapper} from "@lattice/tokens/ERC20/ERC20Wrapper.sol";
@@ -44,6 +46,7 @@ import {ERC3643Params} from "@lattice/tokens/ERC3643/ERC3643Params.sol";
 import {ERC4626} from "@lattice/tokens/ERC4626/ERC4626.sol";
 import {ERC721} from "@lattice/tokens/ERC721/ERC721.sol";
 import {ERC721Wrapper} from "@lattice/tokens/ERC721/ERC721Wrapper.sol";
+import {ERC7984_MINTER_ROLE} from "@lattice/tokens/ERC7984/libraries/ERC7984MintableLib.sol";
 
 /// @title RecipeUpgradeabilityTokensTest
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
@@ -73,6 +76,21 @@ contract RecipeUpgradeabilityTokensTest is RecipeConsistencyGuards {
         _assertIntrospectable(d, 3);
         _assertBareEth(d, false);
         _assertImmutableByDesign(d);
+    }
+
+    function test_Immutable_ERC7984Mintable() public {
+        _expectRecipe(new DeployERC7984Mintable().recipeSpec(), 0, "DeployERC7984Mintable");
+        (FacetCut[] memory cuts, address init, bytes memory cd) =
+            new DeployERC7984Mintable().buildCuts(ADMIN, address(this), "Tok", "TOK", "ipfs://t");
+        // __ERC7984_init refuses a routed deny-list selector, so success proves none is routed
+        address d = _assemble(cuts, init, cd);
+        // also runs _assertInterfacesRouted over IERC7984, IAccessControl and IERC7984Mintable
+        _assertIntrospectable(d, 5);
+        _assertBareEth(d, false);
+        // 0x1f931c1c is not routed and the IDiamondCut flag is false
+        _assertImmutableByDesign(d);
+        assertTrue(IAccessControl(d).hasRole(bytes32(0), ADMIN));
+        assertTrue(IAccessControl(d).hasRole(ERC7984_MINTER_ROLE, address(this)));
     }
 
     function test_Upgradeable_ERC7984() public {

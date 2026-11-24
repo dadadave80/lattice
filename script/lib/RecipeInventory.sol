@@ -108,6 +108,7 @@ import {DeployERC721Votes} from "@lattice-script/base/tokens/DeployERC721Votes.s
 import {DeployERC721Wrapper} from "@lattice-script/base/tokens/DeployERC721Wrapper.s.sol";
 import {DeployERC7802} from "@lattice-script/base/tokens/DeployERC7802.s.sol";
 import {DeployERC7984} from "@lattice-script/base/tokens/DeployERC7984.s.sol";
+import {DeployERC7984Mintable} from "@lattice-script/base/tokens/DeployERC7984Mintable.s.sol";
 import {DeployHTSAdapter} from "@lattice-script/base/tokens/DeployHTSAdapter.s.sol";
 import {DeployMarketplaceZone} from "@lattice-script/base/tokens/DeployMarketplaceZone.s.sol";
 import {DeployMulticall} from "@lattice-script/base/utils/DeployMulticall.s.sol";
@@ -118,7 +119,7 @@ import {DeployMulticall} from "@lattice-script/base/utils/DeployMulticall.s.sol"
 /// @dev The compiler/source census rejects omitted recipes or builder signatures. Demonstration contexts are separate.
 library RecipeInventory {
     function inventory() internal pure returns (string[] memory names, string[] memory artifacts) {
-        string[105] memory n = [
+        string[106] memory n = [
             "DeployAccessControl",
             "DeployAccessControlEnumerable",
             "DeployAccessControlTimed",
@@ -221,11 +222,12 @@ library RecipeInventory {
             "DeployERC721Wrapper",
             "DeployERC7802",
             "DeployERC7984",
+            "DeployERC7984Mintable",
             "DeployHTSAdapter",
             "DeployMarketplaceZone",
             "DeployMulticall"
         ];
-        string[105] memory p = [
+        string[106] memory p = [
             "script/base/access/DeployAccessControl.s.sol:DeployAccessControl",
             "script/base/access/DeployAccessControlEnumerable.s.sol:DeployAccessControlEnumerable",
             "script/base/access/DeployAccessControlTimed.s.sol:DeployAccessControlTimed",
@@ -328,6 +330,7 @@ library RecipeInventory {
             "script/base/tokens/DeployERC721Wrapper.s.sol:DeployERC721Wrapper",
             "script/base/tokens/DeployERC7802.s.sol:DeployERC7802",
             "script/base/tokens/DeployERC7984.s.sol:DeployERC7984",
+            "script/base/tokens/DeployERC7984Mintable.s.sol:DeployERC7984Mintable",
             "script/base/tokens/DeployHTSAdapter.s.sol:DeployHTSAdapter",
             "script/base/tokens/DeployMarketplaceZone.s.sol:DeployMarketplaceZone",
             "script/base/utils/DeployMulticall.s.sol:DeployMulticall"
