@@ -42,9 +42,9 @@ suites() {
                 "CCTPBridgeAdapterFork ChainlinkAdapterFork ChainlinkAutomationAdapterFork ChainlinkCREAdapterFork" \
                 "ChronicleAdapterFork ConstantProductFork DIAAdapterFork EntryPoint7702Fork EntryPointFork" \
                 "GelatoAutomateAdapterFork GelatoVRFAdapterFork LayerZeroGatewayAdapterFork PythAdapterFork" \
-                "RedStoneAdapterFork StarknetGatewayAdapterFork TellorAdapterFork TWAPOracleFork"
+                "RedStoneAdapterFork StarknetGatewayAdapterFork TellorAdapterFork TWAPOracleFork ERC7984MainnetFork"
             ;;
-        sepolia) echo "GovernanceDemoFork GovernedVaultENSFork LatticeFactoryENSFork" ;;
+        sepolia) echo "GovernanceDemoFork GovernedVaultENSFork LatticeFactoryENSFork ERC7984SepoliaFork" ;;
         base-sepolia) echo "CCTPHookDemoFork CCTPHookReceiptDemoFork PythEntropyAdapterFork" ;;
         cctp-testnet) echo "CCTPBridgeAdapterTestnetFork CCTPUSDCDemoFork" ;;
         *) echo "unknown lane: $1 (lanes: $LANES)" >&2; return 1 ;;
