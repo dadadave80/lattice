@@ -401,8 +401,12 @@ Planned work is grouped on the [milestones page](https://github.com/dadadave80/l
 
 MIT ([`LICENSE`](LICENSE)), except files whose SPDX header says otherwise. Some re-declared
 third-party interfaces under `src/interfaces/external/` are Apache-2.0; that text is in
-[`LICENSES/Apache-2.0.txt`](LICENSES/Apache-2.0.txt). The test-only files in `test/helpers/fhevm/` are BSD-3-Clause-Clear
+[`LICENSES/Apache-2.0.txt`](LICENSES/Apache-2.0.txt). The test-only files in
+`test/helpers/fhevm/` are BSD-3-Clause-Clear
 ([`LICENSES/BSD-3-Clause-Clear.txt`](LICENSES/BSD-3-Clause-Clear.txt)), except
 `test/helpers/fhevm/utils/SafeERC20.sol` and
-`test/helpers/fhevm/solidity/lib/cryptography/FhevmECDSA.sol` (MIT, derived from OpenZeppelin Contracts). [`lib/VENDORED.md`](lib/VENDORED.md) lists every
-vendored file, re-declared interface and ported module with its upstream and upstream license.
+`test/helpers/fhevm/solidity/lib/cryptography/FhevmECDSA.sol` (MIT, derived from OpenZeppelin
+Contracts).
+
+[`lib/VENDORED.md`](lib/VENDORED.md) lists every vendored file, re-declared interface and ported
+module with its upstream and upstream license.

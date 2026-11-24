@@ -14,7 +14,7 @@ Structured per the **Testing** and **Deployment** sections of the Cyfrin Solidit
 | `test/fork/` | Mainnet/testnet fork tests (RPC-gated; skip without an RPC). |
 | `test/gas/` | Gas snapshots, committed under `snapshots/`. Record snapshots only here. CI fails when a run changes them; regenerate with `make snapshot`. |
 | `test/composability/` | Selector-surface and real-proxy composition guards; every canonical recipe spec vs actual cuts/init trees, independent seam oracles and mutation controls. |
-| `test/helpers/` | Test mixins — the blueprint helpers delegate to `script/base/` so setup never diverges from the deploy path. and the vendored FHEVM harness and oracle (`test/helpers/fhevm/`). |
+| `test/helpers/` | Test mixins — the blueprint helpers delegate to `script/base/` so setup never diverges from the deploy path, and the vendored FHEVM harness and oracle (`test/helpers/fhevm/`). |
 | `test/fixtures/` | ZK proving-system fixtures (groth16 / plonk / semaphore / …). |
 
 ## Naming
