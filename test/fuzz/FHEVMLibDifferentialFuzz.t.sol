@@ -44,54 +44,19 @@ contract FHEVMLibDifferentialFuzz is FhevmTestBase, FHEVMLibDiff {
         assertGt(pureAccesses, 0, "pure baseline");
     }
 
-    function test_EveryMemberEveryOperandClassMatchesFHE() public {
-        uint64[3] memory ss = [uint64(0), 1, type(uint64).max];
-        for (uint8 id; id <= 18; ++id) {
-            if (id == 2 || id == 3 || id == 8) {
-                for (uint256 k; k < 3; ++k) {
-                    for (uint256 i; i < (id == 8 ? 4 : 1); ++i) {
-                        _check(id, cls[i], 0, 0, ss[k], "", id != 8 || i == 1);
-                    }
-                }
-            } else if (id == 4) {
-                for (uint256 k; k < 3; ++k) {
-                    (externalEuint64 x, bytes memory p) = encryptUint64(ss[k], USER, PROBE_AT);
-                    _check(id, externalEuint64.unwrap(x), 0, 0, 0, p, true);
-                }
-                for (uint256 i; i < 4; ++i) {
-                    _check(id, cls[i], 0, 0, 0, "", i == 1);
-                }
-            } else if (id == 9) {
-                for (uint256 i; i < 4; ++i) {
-                    for (uint256 j; j < 4; ++j) {
-                        for (uint256 k; k < 4; ++k) {
-                            _check(id, cls[i], cls[j], cls[k], 0, "", i == 2 && j == 1 && k == 1);
-                        }
-                    }
-                }
-            } else if (id == 5 || id == 6 || id == 7) {
-                for (uint256 i; i < 4; ++i) {
-                    for (uint256 j; j < 4; ++j) {
-                        _check(id, cls[i], cls[j], 0, 0, "", i == 1 && j == 1);
-                    }
-                }
-            } else if (id == 16) {
-                _check(id, h, 0, 0, 7, proofOk, true);
-                (bool ok, bytes memory ret,) = _diff(USER, abi.encodeCall(IFHEVMProbe.op, (id, h, 0, 0, 8, proofOk)));
-                assertFalse(ok);
-                assertEq(bytes4(ret), IKMSVerifier.KMSInvalidSigner.selector);
-            } else if (id == 17 || id == 18) {
-                uint256[3] memory c3 = [uint256(0), 1, 3];
-                for (uint256 i; i < 3; ++i) {
-                    for (uint256 j; j < 3; ++j) {
-                        _check(id, cls[c3[i]], cls[c3[j]], 0, 0, "", i == 1 && j == 1);
-                    }
-                }
-            } else {
-                for (uint256 i; i < 4; ++i) {
-                    _check(id, cls[i], 0, 0, 0, "", i == (id == 11 ? 2 : 1));
-                }
-            }
+    function test_EveryMemberEveryOperandClassMatchesFHE_Ids0To8() public {
+        for (uint8 id; id <= 8; ++id) {
+            _everyOperandClass(id);
+        }
+    }
+
+    function test_EveryMemberEveryOperandClassMatchesFHE_Id9() public {
+        _everyOperandClass(9);
+    }
+
+    function test_EveryMemberEveryOperandClassMatchesFHE_Ids10To18() public {
+        for (uint8 id = 10; id <= 18; ++id) {
+            _everyOperandClass(id);
         }
     }
 
@@ -133,6 +98,57 @@ contract FHEVMLibDifferentialFuzz is FhevmTestBase, FHEVMLibDiff {
             _diff(USER, abi.encodeCall(IFHEVMProbe.op, (16, hv, 0, 0, corrupt ? value ^ 1 : value, proof)));
         assertEq(ok, !corrupt, "success path");
         if (corrupt) assertEq(bytes4(ret), IKMSVerifier.KMSInvalidSigner.selector);
+    }
+
+    /// @dev Every operand class of every operand position member `id` reads, for `s` in {0, 1, max} where `id`
+    ///      reads `s`. Split across tests by id group to keep each test far below the block gas limit.
+    function _everyOperandClass(uint8 id) internal {
+        uint64[3] memory ss = [uint64(0), 1, type(uint64).max];
+        if (id == 2 || id == 3 || id == 8) {
+            for (uint256 k; k < 3; ++k) {
+                for (uint256 i; i < (id == 8 ? 4 : 1); ++i) {
+                    _check(id, cls[i], 0, 0, ss[k], "", id != 8 || i == 1);
+                }
+            }
+        } else if (id == 4) {
+            for (uint256 k; k < 3; ++k) {
+                (externalEuint64 x, bytes memory p) = encryptUint64(ss[k], USER, PROBE_AT);
+                _check(id, externalEuint64.unwrap(x), 0, 0, 0, p, true);
+            }
+            for (uint256 i; i < 4; ++i) {
+                _check(id, cls[i], 0, 0, 0, "", i == 1);
+            }
+        } else if (id == 9) {
+            for (uint256 i; i < 4; ++i) {
+                for (uint256 j; j < 4; ++j) {
+                    for (uint256 k; k < 4; ++k) {
+                        _check(id, cls[i], cls[j], cls[k], 0, "", i == 2 && j == 1 && k == 1);
+                    }
+                }
+            }
+        } else if (id == 5 || id == 6 || id == 7) {
+            for (uint256 i; i < 4; ++i) {
+                for (uint256 j; j < 4; ++j) {
+                    _check(id, cls[i], cls[j], 0, 0, "", i == 1 && j == 1);
+                }
+            }
+        } else if (id == 16) {
+            _check(id, h, 0, 0, 7, proofOk, true);
+            (bool ok, bytes memory ret,) = _diff(USER, abi.encodeCall(IFHEVMProbe.op, (id, h, 0, 0, 8, proofOk)));
+            assertFalse(ok);
+            assertEq(bytes4(ret), IKMSVerifier.KMSInvalidSigner.selector);
+        } else if (id == 17 || id == 18) {
+            uint256[3] memory c3 = [uint256(0), 1, 3];
+            for (uint256 i; i < 3; ++i) {
+                for (uint256 j; j < 3; ++j) {
+                    _check(id, cls[c3[i]], cls[c3[j]], 0, 0, "", i == 1 && j == 1);
+                }
+            }
+        } else {
+            for (uint256 i; i < 4; ++i) {
+                _check(id, cls[i], 0, 0, 0, "", i == (id == 11 ? 2 : 1));
+            }
+        }
     }
 
     /// @dev Runs one differential case. The pure ids 0 and 1 record exactly {pureAccesses} accesses; every
