@@ -155,14 +155,14 @@ contract ERC7984Handler is ERC7984TestBase {
         Input storage input = _inputs[from][k];
         vm.prank(from);
         try token.confidentialTransfer(diamond, input.handle, input.proof) returns (euint64) {
-            assertTrue(false, "transfer credited the diamond");
+            fail("transfer credited the diamond");
         } catch (bytes memory reason) {
             assertEq(reason, expected, "transfer to the diamond: wrong revert");
         }
 
         Input storage mintInput = _mintInputs[k];
         try IERC7984Mintable(diamond).confidentialMint(diamond, mintInput.handle, mintInput.proof) returns (euint64) {
-            assertTrue(false, "mint credited the diamond");
+            fail("mint credited the diamond");
         } catch (bytes memory reason) {
             assertEq(reason, expected, "mint to the diamond: wrong revert");
         }

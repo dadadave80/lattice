@@ -56,8 +56,9 @@ Structured per the **Testing** and **Deployment** sections of the Cyfrin Solidit
    each message executes at most once and only with `threshold` distinct member attestations (the recipient snapshots
    B's threshold and attestation count during each delivery, and B's tracker, read from its storage, matches a ghost
    of who attested what), a failed execution is retried, never doubled, and A's stored nonce rises by one per send.
-   `ERC7984Invariant` checks supply conservation under confidential mints, the exact balance- and supply-handle
-   access control list (ACL) sets, and that the diamond never holds tokens, under reentrant receivers.
+   `ERC7984Invariant` checks, under confidential mints and reentrant receivers, supply conservation, that balance and
+   supply handles are allowed in the access control list (ACL) only to their holder and the diamond, never to another
+   actor or the honest minter, and that the diamond never holds tokens.
    They run 64 runs under `FOUNDRY_PROFILE=ci` (a contract-level
    `/// forge-config: ci.invariant.runs = 64` key, since a function-level key does not reach invariants
    inherited from a base) and the full 256 locally. `LatticeRegistryInvariant`, `LatticeRegistryCodeDriftInvariant`
