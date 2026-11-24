@@ -125,9 +125,9 @@ contract SelectorCompatibilityTest is Test {
         );
         r[2] = _row(
             "name()",
-            "ERC20, ERC3643, ERC721, GovernedVault, Governor",
+            "ERC20, ERC3643, ERC721, ERC7984, GovernedVault, Governor",
             Class.Incompatible,
-            "ERC-20 vs ERC-721 metadata (standard); GovernedVault owns the ERC-20/Governor name; ERC3643 admits only its closed profile",
+            "ERC-20 vs ERC-721 vs ERC-7984 metadata (standard); GovernedVault owns the ERC-20/Governor name; ERC3643 admits only its closed profile",
             0x06fdde03
         );
         r[3] = _row(
@@ -317,9 +317,9 @@ contract SelectorCompatibilityTest is Test {
         );
         r[30] = _row(
             "decimals()",
-            "ERC20, ERC20Wrapper, ERC3643, ERC4626",
+            "ERC20, ERC20Wrapper, ERC3643, ERC4626, ERC7984",
             Class.Incompatible,
-            "ERC4626's share decimals and ERC20Wrapper's underlying decimals each replace ERC20's (Override); a share token and a wrapper never share a diamond; ERC3643 admits only its closed profile",
+            "ERC4626's share decimals and ERC20Wrapper's underlying decimals each replace ERC20's (Override); a share token and a wrapper never share a diamond; ERC3643 admits only its closed profile; ERC7984 is a separate token standard with 6 decimals",
             0x313ce567
         );
         r[31] = _row(
@@ -586,9 +586,9 @@ contract SelectorCompatibilityTest is Test {
         );
         r[69] = _row(
             "symbol()",
-            "ERC20, ERC3643, ERC721",
+            "ERC20, ERC3643, ERC721, ERC7984",
             Class.Incompatible,
-            "ERC-20 vs ERC-721 metadata (standard); ERC3643 admits only its closed profile",
+            "ERC-20 vs ERC-721 vs ERC-7984 metadata (standard); ERC3643 admits only its closed profile",
             0x95d89b41
         );
         r[70] = _row(

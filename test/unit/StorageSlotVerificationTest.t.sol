@@ -475,6 +475,7 @@ import {IERC721} from "@lattice/interfaces/tokens/IERC721.sol";
 import {IERC721Burnable} from "@lattice/interfaces/tokens/IERC721Burnable.sol";
 import {ERC165_MAP_IERC721BURNABLE_SLOT} from "@lattice/tokens/ERC721/libraries/ERC721BurnableLib.sol";
 import {ERC165_MAP_IERC7802_SLOT} from "@lattice/tokens/ERC7802/libraries/ERC7802Lib.sol";
+import {ERC165_MAP_IERC7984_SLOT, ERC7984_STORAGE_SLOT} from "@lattice/tokens/ERC7984/libraries/ERC7984Lib.sol";
 
 /// @title StorageSlotVerificationTest
 /// @notice Re-derives every ERC-7201 storage slot and ERC-165 map slot from first principles
@@ -1413,6 +1414,18 @@ contract StorageSlotVerificationTest is Test {
             ERC165_MAP_IERC7802_SLOT,
             _erc165MapSlot(interfaceId, ERC165_STORAGE_LOCATION),
             "ERC165 IERC7802 map slot mismatch"
+        );
+    }
+
+    function test_ERC7984StorageSlot() public pure {
+        assertEq(ERC7984_STORAGE_SLOT, _erc7201Slot("lattice.storage.ERC7984"), "ERC7984 storage slot mismatch");
+    }
+
+    function test_Erc165MapIERC7984Slot() public pure {
+        assertEq(
+            ERC165_MAP_IERC7984_SLOT,
+            keccak256(abi.encode(bytes4(0x4958f2a4), ERC165_STORAGE_LOCATION)),
+            "ERC165 IERC7984 map slot mismatch"
         );
     }
 
@@ -2378,7 +2391,7 @@ contract StorageSlotVerificationTest is Test {
     // ======================== Slot inventories ========================
 
     function _allStorageSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](103);
+        slots = new bytes32[](104);
         uint256 i;
         // access
         slots[i++] = ACCESS_CONTROL_STORAGE_SLOT;
@@ -2448,6 +2461,7 @@ contract StorageSlotVerificationTest is Test {
         slots[i++] = CROSSCHAIN_LINK_STORAGE_SLOT;
         slots[i++] = BRIDGE_ERC20_STORAGE_SLOT;
         slots[i++] = BRIDGE_ERC7802_STORAGE_SLOT;
+        slots[i++] = ERC7984_STORAGE_SLOT;
         slots[i++] = AXELAR_GATEWAY_ADAPTER_STORAGE_SLOT;
         slots[i++] = WORMHOLE_GATEWAY_ADAPTER_STORAGE_SLOT;
         slots[i++] = ERC7786_OPEN_BRIDGE_STORAGE_SLOT;
@@ -2502,7 +2516,7 @@ contract StorageSlotVerificationTest is Test {
     }
 
     function _allErc165MapSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](117);
+        slots = new bytes32[](118);
         uint256 i;
         // access
         slots[i++] = ERC165_MAP_IACCESSCONTROL_SLOT;
@@ -2540,6 +2554,7 @@ contract StorageSlotVerificationTest is Test {
         slots[i++] = ERC165_MAP_IERC20BURNABLE_SLOT;
         slots[i++] = ERC165_MAP_IERC20PERMIT_SLOT;
         slots[i++] = ERC165_MAP_IERC7802_SLOT;
+        slots[i++] = ERC165_MAP_IERC7984_SLOT;
         // governance
         slots[i++] = ERC165_MAP_IVOTES_SLOT;
         slots[i++] = ERC165_MAP_IGOVERNOR_SLOT;
@@ -2657,5 +2672,6 @@ contract StorageSlotVerificationTest is Test {
         slots[i++] = ERC165_MAP_IHASSIGNATUREVERIFIER_SLOT;
         slots[i++] = ERC165_MAP_IHEDERAEXCHANGERATEADAPTER_SLOT;
         slots[i++] = ERC165_MAP_IHEDERAPRNGADAPTER_SLOT;
+        assertEq(i, slots.length, "ERC-165 map inventory has unfilled entries");
     }
 }

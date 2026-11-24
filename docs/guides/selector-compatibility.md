@@ -226,7 +226,7 @@ ERC-721 Pausable, Enumerable and Votes and ERC-1155 Pausable and Supply follow t
 | --- | --- | --- | --- | --- |
 | `0x00f714ce` | `withdraw(uint256,address)` | AaveV3Adapter, CompoundV3Adapter, CurveStableSwapAdapter, ERC4626Adapter, LidoAdapter, UniswapV3Adapter | One per diamond | strategy adapters: one per diamond (each adapter is its own strategy diamond) |
 | `0x01e1d114` | `totalAssets()` | ERC4626, VaultCore | Override | VaultCore's strategy-aware NAV replaces ERC4626's idle balance |
-| `0x06fdde03` | `name()` | ERC20, ERC3643, ERC721, GovernedVault, Governor | Incompatible | ERC-20 vs ERC-721 metadata (standard); GovernedVault owns the ERC-20/Governor name; ERC3643 admits only its closed profile |
+| `0x06fdde03` | `name()` | ERC20, ERC3643, ERC721, ERC7984, GovernedVault, Governor | Incompatible | ERC-20 vs ERC-721 vs ERC-7984 metadata (standard); GovernedVault owns the ERC-20/Governor name; ERC3643 admits only its closed profile |
 | `0x0746a956` | `verifyInterfaceRegistered(bytes4)` | GovernedDiamondCut, GovernedSafeDiamondCut, SafeDiamondCut | Variant | cut-gate variants: cut one |
 | `0x084d4783` | `latestAnswer(bytes32)` | API3Adapter, BandAdapter, ChainlinkAdapter, ChronicleAdapter, DIAAdapter, PythAdapter, RedStoneAdapter, TellorAdapter | One per diamond | price adapters: one per diamond |
 | `0x095ea7b3` | `approve(address,uint256)` | ERC20, ERC3643, ERC721 | Incompatible | ERC-20 vs ERC-721 (standard); ERC3643 admits only its closed profile |
@@ -254,7 +254,7 @@ ERC-721 Pausable, Enumerable and Votes and ERC-1155 Pausable and Supply follow t
 | `0x2ab0f529` | `isOperationDone(bytes32)` | GovernedSafeDiamondCut, TimelockController | Incompatible | GovernedSafe cut views vs TimelockController (Lattice-chosen; 0xacb1aeb6) |
 | `0x2eb2c2d6` | `safeBatchTransferFrom(address,address,uint256[],uint256[],bytes)` | ERC1155, ERC1155Pausable | Override | ERC1155Pausable's pause-gated transfer replaces ERC1155's (D25) |
 | `0x2f2ff15d` | `grantRole(bytes32,address)` | AccessControl, AccessControlEnumerable, AccessControlTimed | Variant | AccessControl flavours: cut one |
-| `0x313ce567` | `decimals()` | ERC20, ERC20Wrapper, ERC3643, ERC4626 | Incompatible | ERC4626's share decimals and ERC20Wrapper's underlying decimals each replace ERC20's (Override); a share token and a wrapper never share a diamond; ERC3643 admits only its closed profile |
+| `0x313ce567` | `decimals()` | ERC20, ERC20Wrapper, ERC3643, ERC4626, ERC7984 | Incompatible | ERC4626's share decimals and ERC20Wrapper's underlying decimals each replace ERC20's (Override); a share token and a wrapper never share a diamond; ERC3643 admits only its closed profile; ERC7984 is a separate token standard with 6 decimals |
 | `0x35342750` | `previewCut((address,uint8,bytes4[])[])` | GovernedDiamondCut, GovernedSafeDiamondCut, SafeDiamondCut | Variant | cut-gate variants: cut one |
 | `0x3644e515` | `DOMAIN_SEPARATOR()` | ERC20Permit, ERC6538Registry | Identical | both return EIP712Lib.domainSeparatorV4(): cut one copy |
 | `0x36568abe` | `renounceRole(bytes32,address)` | AccessControl, AccessControlEnumerable, AccessControlTimed | Variant | AccessControl flavours: cut one |
@@ -293,7 +293,7 @@ ERC-721 Pausable, Enumerable and Votes and ERC-1155 Pausable and Supply follow t
 | `0x91d14854` | `hasRole(bytes32,address)` | AccessControl, AccessControlEnumerable, AccessControlTimed | Variant | AccessControl flavours: cut one |
 | `0x91ddadf4` | `clock()` | GovernedVault, Governor, Votes | Override | GovernedVault owns it; Governor's version reads its token's clock(), here the diamond itself |
 | `0x94bf804d` | `mint(uint256,address)` | ERC4626, GovernedVault, VaultCore | Override | ERC4626 < VaultCore < GovernedVault checkpoint seam |
-| `0x95d89b41` | `symbol()` | ERC20, ERC3643, ERC721 | Incompatible | ERC-20 vs ERC-721 metadata (standard); ERC3643 admits only its closed profile |
+| `0x95d89b41` | `symbol()` | ERC20, ERC3643, ERC721, ERC7984 | Incompatible | ERC-20 vs ERC-721 vs ERC-7984 metadata (standard); ERC3643 admits only its closed profile |
 | `0x997ce1f0` | `registerRemoteGateway(uint256,address)` | CCIPGatewayAdapter, WormholeGatewayAdapter | One per diamond | ERC-7786 gateways: one per diamond |
 | `0x9cfd7cff` | `accountId()` | ERC6900ModuleManager, ERC7579ModuleConfig | Variant | account flavours (ERC-6900 vs ERC-7579): cut one |
 | `0xa0042526` | `getForwarder()` | ChainlinkAutomationAdapter, ChainlinkCREAdapter | Incompatible | Chainlink Automation vs CRE forwarder (Lattice-chosen) |

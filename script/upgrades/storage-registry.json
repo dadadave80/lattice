@@ -1622,6 +1622,49 @@
       ]
     },
     {
+      "struct": "ERC7984Storage",
+      "namespace": "lattice.storage.ERC7984",
+      "slot": "0x42be1389dbc49dc1fd4c53bd478bd0e15a7bcc0e33c6883a051e5e4ca46dae00",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_balances",
+          "type": "t_mapping(t_address,t_userDefinedValueType(euint64))"
+        },
+        {
+          "slot": "1",
+          "offset": 0,
+          "name": "_operators",
+          "type": "t_mapping(t_address,t_mapping(t_address,t_uint48))"
+        },
+        {
+          "slot": "2",
+          "offset": 0,
+          "name": "_totalSupply",
+          "type": "t_userDefinedValueType(euint64)"
+        },
+        {
+          "slot": "3",
+          "offset": 0,
+          "name": "_name",
+          "type": "t_string_storage"
+        },
+        {
+          "slot": "4",
+          "offset": 0,
+          "name": "_symbol",
+          "type": "t_string_storage"
+        },
+        {
+          "slot": "5",
+          "offset": 0,
+          "name": "_contractURI",
+          "type": "t_string_storage"
+        }
+      ]
+    },
+    {
       "struct": "EmergencyStopStorage",
       "namespace": "lattice.storage.EmergencyStop",
       "slot": "0x06261d2148a76026572818ff69ded6332eb2830e669ce15f15f286b1d91c5800",
@@ -4716,6 +4759,16 @@
         {
           "source": "src/tokens/ERC721/libraries/ERC721URIStorageLib.sol",
           "constant": "ERC165_MAP_ERC4906_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x4958f2a4",
+      "slot": "0x05394c17de469f9a9f592c618d1e81bb7ac4870bb830dcd0e2bf9bb49b66747a",
+      "sources": [
+        {
+          "source": "src/tokens/ERC7984/libraries/ERC7984Lib.sol",
+          "constant": "ERC165_MAP_IERC7984_SLOT"
         }
       ]
     },

@@ -20,11 +20,11 @@ import {OwnableFacet} from "@diamond/facets/OwnableFacet.sol";
 ///      artifact contract names exactly: the registry key is `keccak256("lattice.<name>")` and the facet
 ///      deploy salt is `keccak256("lattice.<name>.<version>")`, so renaming an entry re-derives BOTH.
 library FacetInventory {
-    /// @notice The 139 release facets (135 Lattice + 4 diamond-lib core) as (contract name, `"<file>:<Name>"` deploy path) pairs.
+    /// @notice The 140 release facets (136 Lattice + 4 diamond-lib core) as (contract name, `"<file>:<Name>"` deploy path) pairs.
     /// @return names The facet contract names (registry name = `"lattice." ++ name`).
     /// @return paths The matching `vm.getCode`/`deployCode` artifact paths, index-aligned with `names`.
     function inventory() internal pure returns (string[] memory names, string[] memory paths) {
-        string[139] memory n = [
+        string[140] memory n = [
             "AcrossBridgeAdapter",
             "AxelarGatewayAdapter",
             "BridgeERC20",
@@ -100,6 +100,7 @@ library FacetInventory {
             "ERC721Votes",
             "ERC721Wrapper",
             "ERC7802",
+            "ERC7984",
             "HTSAdapter",
             "MarketplaceZone",
             "AccountSigner",
@@ -168,7 +169,7 @@ library FacetInventory {
             "ERC165Facet",
             "OwnableFacet"
         ];
-        string[139] memory p = [
+        string[140] memory p = [
             "src/crosschain/across/AcrossBridgeAdapter.sol:AcrossBridgeAdapter",
             "src/crosschain/axelar/AxelarGatewayAdapter.sol:AxelarGatewayAdapter",
             "src/crosschain/BridgeERC20.sol:BridgeERC20",
@@ -244,6 +245,7 @@ library FacetInventory {
             "src/tokens/ERC721/ERC721Votes.sol:ERC721Votes",
             "src/tokens/ERC721/ERC721Wrapper.sol:ERC721Wrapper",
             "src/tokens/ERC7802/ERC7802.sol:ERC7802",
+            "src/tokens/ERC7984/ERC7984.sol:ERC7984",
             "src/tokens/hedera/HTSAdapter.sol:HTSAdapter",
             "src/tokens/MarketplaceZone.sol:MarketplaceZone",
             "src/accounts/erc7579/AccountSigner.sol:AccountSigner",
