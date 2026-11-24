@@ -62,6 +62,35 @@ commit rather than patching here. P256 verification uses the RIP-7212 precompile
 a chain lacking both, passkey verification returns `false`, so gate passkey
 enablement per target chain.
 
+## FHEVM test harness and oracle (`test/helpers/fhevm/`)
+
+Test-only copies of the Zama FHEVM (fully homomorphic encryption virtual machine)
+test harness and the `FHE.sol` oracle. Like the passkey crypto above, they are edited
+copies kept beside their user, not byte-identical `lib/` vendors:
+
+| Path | Upstream | Version / commit | License |
+|------|----------|------------------|---------|
+| `test/helpers/fhevm/` (23 files) | zama-ai/forge-fhevm; host contracts from zama-ai/fhevm | forge-fhevm `062a5f03`; fhevm `v0.13.9` (`86442e49`) | BSD-3-Clause-Clear; `utils/SafeERC20.sol` MIT (OpenZeppelin Contracts v5.7.0 partial export) |
+| `test/helpers/fhevm/solidity/` (5 files) | npm `@fhevm/solidity` | 0.13.4 (tarball sha256 `06cae11f3a704150b71663fa66cde507ca5c16885a167ca37568eecc2bc2192c`) | BSD-3-Clause-Clear; `lib/cryptography/FhevmECDSA.sol` MIT |
+
+Two imports are rewritten, `FhevmTest.sol:62` and `solidity/lib/FHE.sol:8`, both to
+`@lattice/interfaces/external/fhevm/EncryptedTypes.sol`. The `[fmt] ignore` entry in
+`foundry.toml` keeps the files diffable against upstream.
+
+`lib/` holds only byte-identical upstream copies. These files are edited (rebuilt on host
+v0.13.9, plus the two import rewrites), so, like the Solady copies above, they sit beside
+their user and are excluded from `forge fmt`. A directory under `lib/` would also add an
+auto-detected remapping to every contract's metadata and move every CREATE2 address.
+
+### Rebuilding the harness
+
+1. Sparse-clone fhevm `v0.13.9` `host-contracts/contracts` into forge-fhevm `062a5f03`.
+2. Apply the 7-file delta committed beside the harness: in the forge-fhevm checkout, run
+   `git apply <path to Lattice>/test/helpers/fhevm/REBUILD.diff` (sha256
+   `92c1d0f516aae532c27b18bd817113babca50a6dab69c9eed192df7fff5126b5`).
+3. Regenerate the blobs with solc 0.8.27, Cancun, 100 runs, no metadata, OpenZeppelin 5.1.0.
+4. Confirm `test_HostBlobsPinned` passes unchanged.
+
 ## Third-party interfaces (`src/interfaces/external/`)
 
 Every file under `src/interfaces/external/` re-declares part of an external project's ABI so Lattice

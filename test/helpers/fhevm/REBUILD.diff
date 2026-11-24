@@ -1,0 +1,271 @@
+diff --git a/script/DeployFHEVMHost.s.sol b/script/DeployFHEVMHost.s.sol
+index 4ee6be1..790ce73 100644
+--- a/script/DeployFHEVMHost.s.sol
++++ b/script/DeployFHEVMHost.s.sol
+@@ -177,7 +177,7 @@ contract DeployFHEVMHost is Script {
+                     address(kmsImpl2),
+                     abi.encodeCall(
+                         KMSVerifier.initializeFromEmptyProxy,
+-                        (decryptionAddress, chainIdGateway, kmsSigners, kmsThreshold)
++                        (decryptionAddress, chainIdGateway)
+                     )
+                 );
+             console.log("KMSVerifier upgraded:      ", kmsVerifierAdd);
+diff --git a/script/gen/generate.py b/script/gen/generate.py
+index 403a5f4..ba4f604 100644
+--- a/script/gen/generate.py
++++ b/script/gen/generate.py
+@@ -37,6 +37,7 @@ CREATION = [
+     ("FHEVMExecutor", "FHEVMExecutor.sol"),
+     ("InputVerifier", "InputVerifier.sol"),
+     ("KMSVerifier", "KMSVerifier.sol"),
++    ("ProtocolConfig", "ProtocolConfig.sol"),
+     ("EmptyUUPSProxy", "EmptyUUPSProxy.sol"),
+     ("EmptyUUPSProxyACL", "EmptyUUPSProxyACL.sol"),
+     ("HCULimitNoDepthCap", "HCULimitNoDepthCap.sol"),
+@@ -55,6 +56,7 @@ INTERFACES = [
+     ("IHCULimit", "HCULimit", "HCULimit.sol"),
+     ("IInputVerifier", "InputVerifier", "InputVerifier.sol"),
+     ("IKMSVerifier", "KMSVerifier", "KMSVerifier.sol"),
++    ("IProtocolConfigHost", "ProtocolConfig", "ProtocolConfig.sol"),
+     ("IEmptyUUPSProxy", "EmptyUUPSProxy", "EmptyUUPSProxy.sol"),
+     ("IEmptyUUPSProxyACL", "EmptyUUPSProxyACL", "EmptyUUPSProxyACL.sol"),
+ ]
+diff --git a/src/FhevmTest.sol b/src/FhevmTest.sol
+index d8c597f..9940d80 100644
+--- a/src/FhevmTest.sol
++++ b/src/FhevmTest.sol
+@@ -9,6 +9,7 @@ import {IFHEVMExecutor} from "./generated/interfaces/IFHEVMExecutor.sol";
+ import {IHCULimit} from "./generated/interfaces/IHCULimit.sol";
+ import {IInputVerifier} from "./generated/interfaces/IInputVerifier.sol";
+ import {IKMSVerifier} from "./generated/interfaces/IKMSVerifier.sol";
++import {IProtocolConfig, IProtocolConfigHost} from "./generated/interfaces/IProtocolConfigHost.sol";
+ import {IEmptyUUPSProxy} from "./generated/interfaces/IEmptyUUPSProxy.sol";
+ import {IEmptyUUPSProxyACL} from "./generated/interfaces/IEmptyUUPSProxyACL.sol";
+ import {
+@@ -17,6 +18,7 @@ import {
+     FHEVM_EXECUTOR_CREATION_CODE,
+     INPUT_VERIFIER_CREATION_CODE,
+     KMS_VERIFIER_CREATION_CODE,
++    PROTOCOL_CONFIG_CREATION_CODE,
+     EMPTY_UUPS_PROXY_CREATION_CODE,
+     EMPTY_UUPS_PROXY_ACL_CREATION_CODE,
+     HCU_LIMIT_NO_DEPTH_CAP_CREATION_CODE,
+@@ -29,7 +31,8 @@ import {
+     hcuLimitAdd,
+     inputVerifierAdd,
+     kmsVerifierAdd,
+-    pauserSetAdd
++    pauserSetAdd,
++    protocolConfigAdd
+ } from "./fhevm-host/addresses/FHEVMHostAddresses.sol";
+ import {FheType} from "./fhevm-host/contracts/shared/FheType.sol";
+ import {PlaintextDBMixin} from "./PlaintextDBMixin.sol";
+@@ -509,6 +512,7 @@ abstract contract FhevmTest is PlaintextDBMixin {
+         _deployHCULimit();
+         _deployRealExecutor();
+         _deployInputVerifier();
++        _deployProtocolConfig();
+         _deployKMSVerifier();
+ 
+         _executor = IFHEVMExecutor(fhevmExecutorAdd);
+@@ -592,20 +596,34 @@ abstract contract FhevmTest is PlaintextDBMixin {
+             );
+     }
+ 
++    function _deployProtocolConfig() internal {
++        _installEmptyProxy(protocolConfigAdd);
++
++        address protocolConfigImpl = _deployBlob(PROTOCOL_CONFIG_CREATION_CODE);
++        IProtocolConfigHost.KmsNode[] memory nodes = new IProtocolConfigHost.KmsNode[](1);
++        nodes[0] = IProtocolConfigHost.KmsNode({
++            txSenderAddress: mockKmsSigner, signerAddress: mockKmsSigner, ipAddress: "127.0.0.1", storageUrl: ""
++        });
++        IProtocolConfig.KmsThresholds memory thresholds =
++            IProtocolConfig.KmsThresholds({publicDecryption: 1, userDecryption: 1, kmsGen: 1, mpc: 1});
++
++        vm.prank(PROXY_OWNER);
++        IEmptyUUPSProxy(protocolConfigAdd)
++            .upgradeToAndCall(
++                protocolConfigImpl, abi.encodeCall(IProtocolConfigHost.initializeFromEmptyProxy, (nodes, thresholds))
++            );
++    }
++
+     function _deployKMSVerifier() internal {
+         _installEmptyProxy(kmsVerifierAdd);
+ 
+         address kmsVerifierImpl = _deployBlob(KMS_VERIFIER_CREATION_CODE);
+-        address[] memory signers = new address[](1);
+-        signers[0] = mockKmsSigner;
+ 
+         vm.prank(PROXY_OWNER);
+         IEmptyUUPSProxy(kmsVerifierAdd)
+             .upgradeToAndCall(
+                 kmsVerifierImpl,
+-                abi.encodeCall(
+-                    IKMSVerifier.initializeFromEmptyProxy, (kmsVerifierAdd, uint64(block.chainid), signers, 1)
+-                )
++                abi.encodeCall(IKMSVerifier.initializeFromEmptyProxy, (kmsVerifierAdd, uint64(block.chainid)))
+             );
+     }
+ 
+diff --git a/src/PlaintextDBMixin.sol b/src/PlaintextDBMixin.sol
+index 2f6324f..34ffca5 100644
+--- a/src/PlaintextDBMixin.sol
++++ b/src/PlaintextDBMixin.sol
+@@ -85,6 +85,10 @@ abstract contract PlaintextDBMixin is Test, FHEEvents {
+             _handleRandBounded(logEntry.data);
+         } else if (selector == VerifyInput.selector) {
+             _handleVerifyInput(logEntry.data);
++        } else if (selector == FheSum.selector) {
++            _handleSum(logEntry.data);
++        } else if (selector == FheIsIn.selector) {
++            _handleIsIn(logEntry.data);
+         }
+     }
+ 
+@@ -140,6 +144,28 @@ abstract contract PlaintextDBMixin is Test, FHEEvents {
+         assert(inputHandle == result);
+     }
+ 
++    function _handleSum(bytes memory data) private {
++        (bytes32[] memory values, bytes32 result) = abi.decode(data, (bytes32[], bytes32));
++        uint8 resultType = uint8(_typeOf(result));
++        uint256 acc;
++        for (uint256 i = 0; i < values.length; i++) {
++            acc = CleartextArithmetic.fheAdd(acc, _plaintexts[values[i]], resultType, 0x00);
++        }
++        _plaintexts[result] = acc;
++    }
++
++    function _handleIsIn(bytes memory data) private {
++        (bytes32 value, bytes32[] memory values, bytes32 result) = abi.decode(data, (bytes32, bytes32[], bytes32));
++        uint256 found;
++        for (uint256 i = 0; i < values.length; i++) {
++            if (_plaintexts[values[i]] == _plaintexts[value]) {
++                found = 1;
++                break;
++            }
++        }
++        _plaintexts[result] = found;
++    }
++
+     // --- Shared helpers ---
+ 
+     function _typeOf(bytes32 handle) internal pure returns (FheType) {
+diff --git a/src/fhevm-host/addresses/FHEVMHostAddresses.sol b/src/fhevm-host/addresses/FHEVMHostAddresses.sol
+index 63688f7..beb6db8 100644
+--- a/src/fhevm-host/addresses/FHEVMHostAddresses.sol
++++ b/src/fhevm-host/addresses/FHEVMHostAddresses.sol
+@@ -18,3 +18,7 @@ address constant inputVerifierAdd = address(0x36772142b74871f255CbD7A3e89B401d3e
+ address constant hcuLimitAdd = address(0x5f3f1dBD7B74C6B46e8c44f98792A1dAf8d69154);
+ 
+ address constant pauserSetAdd = address(0xb7278A61aa25c888815aFC32Ad3cC52fF24fE575);
++
++address constant protocolConfigAdd = address(0x00000000000000000000000000000000fe4C0F16);
++
++address constant kmsGenerationAdd = address(0x00000000000000000000000000000000fE4C6E4e);
+diff --git a/test/KMSVerifier.t.sol b/test/KMSVerifier.t.sol
+index 8b3a07c..b630910 100644
+--- a/test/KMSVerifier.t.sol
++++ b/test/KMSVerifier.t.sol
+@@ -37,7 +37,7 @@ contract KMSVerifierTest is KMSDecryptionProofTestHelper {
+     }
+ 
+     function test_deployment_version() public view {
+-        assertEq(kmsVerifierContract.getVersion(), "KMSVerifier v0.2.0");
++        assertEq(kmsVerifierContract.getVersion(), "KMSVerifier v0.3.0");
+     }
+ 
+     function test_verify_happyPath_singleHandle() public {
+@@ -153,7 +153,7 @@ contract KMSVerifierTest is KMSDecryptionProofTestHelper {
+         signers[1] = vm.addr(WRONG_SIGNER_PK);
+ 
+         vm.prank(OWNER);
+-        kmsVerifierContract.defineNewContext(signers, 2);
++        protocolConfigContract.defineNewKmsContext(_kmsNodes(signers), _kmsThresholds(2));
+ 
+         bytes32[] memory handles = new bytes32[](1);
+         handles[0] = bytes32(uint256(11));
+diff --git a/test/helpers/KMSVerifierDeployer.sol b/test/helpers/KMSVerifierDeployer.sol
+index a448e69..a81859c 100644
+--- a/test/helpers/KMSVerifierDeployer.sol
++++ b/test/helpers/KMSVerifierDeployer.sol
+@@ -3,12 +3,16 @@ pragma solidity ^0.8.27;
+ 
+ import {EmptyUUPSProxy} from "@fhevm/host-contracts/contracts/emptyProxy/EmptyUUPSProxy.sol";
+ import {KMSVerifier} from "@fhevm/host-contracts/contracts/KMSVerifier.sol";
+-import {kmsVerifierAdd} from "@fhevm/host-contracts/addresses/FHEVMHostAddresses.sol";
++import {ProtocolConfig} from "@fhevm/host-contracts/contracts/ProtocolConfig.sol";
++import {IProtocolConfig} from "@fhevm/host-contracts/contracts/interfaces/IProtocolConfig.sol";
++import {KmsNode} from "@fhevm/host-contracts/contracts/shared/Structs.sol";
++import {kmsVerifierAdd, protocolConfigAdd} from "@fhevm/host-contracts/addresses/FHEVMHostAddresses.sol";
+ import {InputVerifierDeployer} from "./InputVerifierDeployer.sol";
+ 
+ /// @notice Test deployer for real KMSVerifier wiring with deterministic mock signer configuration.
+ abstract contract KMSVerifierDeployer is InputVerifierDeployer {
+     KMSVerifier internal kmsVerifierContract;
++    ProtocolConfig internal protocolConfigContract;
+ 
+     uint256 internal constant MOCK_KMS_SIGNER_PK = 0x388b7680e4e1afa06efbfd45cdd1fe39f3c6af381df6555a19661f283b97de91;
+     address internal mockKmsSigner;
+@@ -21,6 +25,24 @@ abstract contract KMSVerifierDeployer is InputVerifierDeployer {
+         mockKmsSigner = vm.addr(MOCK_KMS_SIGNER_PK);
+ 
+         address emptyProxyImpl = address(new EmptyUUPSProxy());
++        deployCodeTo(
++            "test/helpers/ExecutorDeployer.sol:DeployableERC1967Proxy",
++            abi.encode(emptyProxyImpl, abi.encodeCall(EmptyUUPSProxy.initialize, ())),
++            protocolConfigAdd
++        );
++        address protocolConfigImpl = address(new ProtocolConfig());
++        address[] memory initialSigners = new address[](1);
++        initialSigners[0] = mockKmsSigner;
++        vm.prank(OWNER);
++        EmptyUUPSProxy(protocolConfigAdd)
++            .upgradeToAndCall(
++                protocolConfigImpl,
++                abi.encodeCall(
++                    ProtocolConfig.initializeFromEmptyProxy, (_kmsNodes(initialSigners), _kmsThresholds(1))
++                )
++            );
++        protocolConfigContract = ProtocolConfig(protocolConfigAdd);
++
+         deployCodeTo(
+             "test/helpers/ExecutorDeployer.sol:DeployableERC1967Proxy",
+             abi.encode(emptyProxyImpl, abi.encodeCall(EmptyUUPSProxy.initialize, ())),
+@@ -31,18 +53,28 @@ abstract contract KMSVerifierDeployer is InputVerifierDeployer {
+         address kmsVerifierImpl = address(new KMSVerifier());
+         vm.label(kmsVerifierImpl, "KMSVerifier Implementation");
+ 
+-        address[] memory signers = new address[](1);
+-        signers[0] = mockKmsSigner;
+-
+         vm.prank(OWNER);
+         EmptyUUPSProxy(kmsVerifierAdd)
+             .upgradeToAndCall(
+                 kmsVerifierImpl,
+-                abi.encodeCall(
+-                    KMSVerifier.initializeFromEmptyProxy, (kmsVerifierAdd, uint64(block.chainid), signers, 1)
+-                )
++                abi.encodeCall(KMSVerifier.initializeFromEmptyProxy, (kmsVerifierAdd, uint64(block.chainid)))
+             );
+ 
+         kmsVerifierContract = KMSVerifier(kmsVerifierAdd);
+     }
++
++    function _kmsNodes(address[] memory signers) internal pure returns (KmsNode[] memory nodes) {
++        nodes = new KmsNode[](signers.length);
++        for (uint256 i = 0; i < signers.length; i++) {
++            nodes[i] = KmsNode({
++                txSenderAddress: signers[i], signerAddress: signers[i], ipAddress: "127.0.0.1", storageUrl: ""
++            });
++        }
++    }
++
++    function _kmsThresholds(uint256 threshold) internal pure returns (IProtocolConfig.KmsThresholds memory) {
++        return IProtocolConfig.KmsThresholds({
++            publicDecryption: threshold, userDecryption: threshold, kmsGen: threshold, mpc: threshold
++        });
++    }
+ }
