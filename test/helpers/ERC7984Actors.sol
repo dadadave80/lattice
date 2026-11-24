@@ -10,6 +10,9 @@ import {IERC7984, IERC7984Receiver} from "@lattice/interfaces/tokens/IERC7984.so
 /// @dev Executor type ordinal of an encrypted boolean.
 uint8 constant TYPE_BOOL = 0;
 
+/// @dev An empty contract, so a cut can route a selector to an address that has code.
+contract SelectorStub {}
+
 /// @title HandleMaker
 /// @notice Test-only: makes a trivially encrypted handle of any type and persistently allows it to a chosen set of
 ///         accounts, in one call.

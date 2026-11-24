@@ -6,6 +6,7 @@ import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
 import {MultiInit, MultiInit__StepFailed} from "@diamond/initializers/MultiInit.sol";
 import {IFacet} from "@diamond/interfaces/IFacet.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
+import {SelectorStub} from "@lattice-test/helpers/ERC7984Actors.sol";
 import {Lattice} from "@lattice/Lattice.sol";
 import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
 import {IERC7984, IERC7984Disclosure} from "@lattice/interfaces/tokens/IERC7984.sol";
@@ -15,9 +16,6 @@ import {ERC7984Lib} from "@lattice/tokens/ERC7984/libraries/ERC7984Lib.sol";
 import {Multicall} from "@lattice/utils/Multicall.sol";
 import {Test} from "forge-std/Test.sol";
 import {IERC165} from "forge-std/interfaces/IERC165.sol";
-
-/// @dev An empty contract, so a cut can route a selector to an address that has code.
-contract SelectorStub {}
 
 /// @dev Writes `value` at `slot` of the diamond, to seed state before another init step.
 contract StoreInit {

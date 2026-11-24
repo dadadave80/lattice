@@ -9,11 +9,14 @@ import {FhevmTestBase} from "@lattice-test/base/FhevmTestBase.sol";
 import {HandleMaker} from "@lattice-test/helpers/ERC7984Actors.sol";
 import {ERC7984TestFacet} from "@lattice-test/helpers/ERC7984TestFacet.sol";
 import {Lattice} from "@lattice/Lattice.sol";
+import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {externalEuint64} from "@lattice/interfaces/external/fhevm/EncryptedTypes.sol";
 import {IERC7984} from "@lattice/interfaces/tokens/IERC7984.sol";
 import {CoprocessorConfig, FHEVMLib} from "@lattice/privacy/libraries/FHEVMLib.sol";
 import {ERC7984} from "@lattice/tokens/ERC7984/ERC7984.sol";
 import {ERC7984Init} from "@lattice/tokens/ERC7984/ERC7984Init.sol";
+import {ERC7984Mintable} from "@lattice/tokens/ERC7984/ERC7984Mintable.sol";
+import {ERC7984MintableInit} from "@lattice/tokens/ERC7984/ERC7984MintableInit.sol";
 import {Multicall} from "@lattice/utils/Multicall.sol";
 
 /// @dev Writes the chain's three coprocessor host addresses at {FHEVMLib.CONFIG_SLOT}, as another `FHE.sol`
@@ -106,6 +109,26 @@ abstract contract ERC7984TestBase is FhevmTestBase {
         cuts[2] = _cut(erc7984Facet);
         cuts[3] = _cut(testFacet);
         cuts[4] = _cut(multicallFacet);
+    }
+
+    /// @notice A fresh mintable token diamond: `admin` holds `DEFAULT_ADMIN_ROLE`, `minter` the minter role.
+    function _deployMintable(address admin, address minter) internal returns (address) {
+        Lattice d = new Lattice();
+        d.initialize(
+            _mintableCuts(),
+            address(new ERC7984MintableInit()),
+            abi.encodeCall(ERC7984MintableInit.init, (admin, minter, "Confidential Token", "cTKN", "ipfs://contract"))
+        );
+        return address(d);
+    }
+
+    function _mintableCuts() internal returns (FacetCut[] memory cuts) {
+        cuts = new FacetCut[](5);
+        cuts[0] = _cut(erc165Facet);
+        cuts[1] = _cut(loupeFacet);
+        cuts[2] = _cut(erc7984Facet);
+        cuts[3] = _cut(address(new AccessControl()));
+        cuts[4] = _cut(address(new ERC7984Mintable()));
     }
 
     function _cut(address facet) private pure returns (FacetCut memory) {
