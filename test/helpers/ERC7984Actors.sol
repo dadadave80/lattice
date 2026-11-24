@@ -2,10 +2,13 @@
 pragma solidity ^0.8.30;
 
 import {aclAdd, fhevmExecutorAdd} from "@lattice-test/helpers/fhevm/fhevm-host/addresses/FHEVMHostAddresses.sol";
-import {ebool, euint64} from "@lattice/interfaces/external/fhevm/EncryptedTypes.sol";
+import {IACL as IHostACL} from "@lattice-test/helpers/fhevm/generated/interfaces/IACL.sol";
+import {ebool, euint64, externalEuint64} from "@lattice/interfaces/external/fhevm/EncryptedTypes.sol";
 import {IACL} from "@lattice/interfaces/external/fhevm/IACL.sol";
 import {IFHEVMExecutor} from "@lattice/interfaces/external/fhevm/IFHEVMExecutor.sol";
-import {IERC7984, IERC7984Receiver} from "@lattice/interfaces/tokens/IERC7984.sol";
+import {IERC7984, IERC7984Disclosure, IERC7984Receiver} from "@lattice/interfaces/tokens/IERC7984.sol";
+import {IERC7984Mintable} from "@lattice/interfaces/tokens/IERC7984Mintable.sol";
+import {FHEVMLib} from "@lattice/privacy/libraries/FHEVMLib.sol";
 
 /// @dev Executor type ordinal of an encrypted boolean.
 uint8 constant TYPE_BOOL = 0;
@@ -127,5 +130,105 @@ contract OperatorRecordingReceiver is BoolReceiver {
     {
         lastOperator = operator;
         return _reply(true);
+    }
+}
+
+/// @notice An operator that pulls a proven amount from `holder` and requests its disclosure in one call, using the
+///         transient grant on `transferred` (spec E9: the proof-free overload needs a handle allowed to the operator).
+contract OperatorDiscloser {
+    function pullAndDisclose(IERC7984 token, address holder, address to, externalEuint64 amount, bytes calldata proof)
+        external
+        returns (bytes32)
+    {
+        euint64 transferred = token.confidentialTransferFrom(holder, to, amount, proof);
+        IERC7984Disclosure(address(token)).requestDiscloseEncryptedAmount(transferred);
+        return euint64.unwrap(transferred);
+    }
+}
+
+/// @notice Makes the received `sent` handle publicly decryptable during the callback, records it, then accepts.
+contract PublishSentReceiver is BoolReceiver {
+    bytes32 public lastSent;
+
+    function onConfidentialTransferReceived(address, address, euint64 amount, bytes calldata) external returns (ebool) {
+        lastSent = euint64.unwrap(amount);
+        bytes32[] memory handles = new bytes32[](1);
+        handles[0] = lastSent;
+        IACL(aclAdd).allowForDecryption(handles);
+        return _reply(true);
+    }
+}
+
+/// @notice Wipes every transient grant of the transaction, then accepts with a freshly allowed encrypted true.
+contract CleanTransientReceiver is BoolReceiver {
+    function onConfidentialTransferReceived(address, address, euint64, bytes calldata) external returns (ebool) {
+        IHostACL(aclAdd).cleanTransientStorage();
+        return _reply(true);
+    }
+}
+
+/// @notice Re-enters the token with the received amount, sending it to `to`, then accepts. Mode 0 re-enters
+///         `confidentialTransfer`; mode 1 re-enters `confidentialTransferAndCall`.
+contract ReentrantReceiver is BoolReceiver {
+    IERC7984 internal immutable token;
+    address internal immutable to;
+    uint8 internal immutable mode;
+
+    constructor(IERC7984 token_, address to_, uint8 mode_) {
+        token = token_;
+        to = to_;
+        mode = mode_;
+    }
+
+    function onConfidentialTransferReceived(address, address, euint64 amount, bytes calldata) external returns (ebool) {
+        if (mode == 0) token.confidentialTransfer(to, amount);
+        else token.confidentialTransferAndCall(to, amount, "");
+        return _reply(true);
+    }
+}
+
+/// @notice A minter contract that recomputes the token's deterministic handles in the same transaction as its own
+///         mint and persists grants on them: the first-mint supply, each later supply its own mints produce, and a
+///         never-credited recipient's first balance (spec H-34, E12).
+contract RecomputingMinter {
+    euint64 public trackedSupply;
+
+    constructor() {
+        FHEVMLib.setCoprocessorForChain();
+    }
+
+    function firstMintAndTrack(IERC7984Mintable t, address to, externalEuint64 x, bytes calldata p)
+        external
+        returns (bytes32)
+    {
+        t.confidentialMint(to, x, p);
+        euint64 s = FHEVMLib.add(FHEVMLib.asEuint64(0), euint64.wrap(externalEuint64.unwrap(x)));
+        FHEVMLib.allow(s, address(this));
+        trackedSupply = s;
+        return euint64.unwrap(s);
+    }
+
+    function nextMintAndTrack(IERC7984Mintable t, address to, externalEuint64 x, bytes calldata p)
+        external
+        returns (bytes32)
+    {
+        t.confidentialMint(to, x, p);
+        (, euint64 s) = FHEVMLib.tryIncrease(trackedSupply, euint64.wrap(externalEuint64.unwrap(x)));
+        FHEVMLib.allow(s, address(this));
+        trackedSupply = s;
+        return euint64.unwrap(s);
+    }
+
+    function mintAndGrabFreshBalance(IERC7984Mintable t, address to, externalEuint64 x, bytes calldata p)
+        external
+        returns (bytes32)
+    {
+        euint64 b = FHEVMLib.add(FHEVMLib.asEuint64(0), t.confidentialMint(to, x, p));
+        FHEVMLib.allow(b, address(this));
+        return euint64.unwrap(b);
+    }
+
+    function disclose(IERC7984Disclosure t, bytes32 h) external {
+        t.requestDiscloseEncryptedAmount(euint64.wrap(h));
     }
 }
