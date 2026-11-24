@@ -39,7 +39,8 @@ bytes32 constant ERC7984_MINTER_ROLE = keccak256("ERC7984_MINTER_ROLE");
 ///      produce while it is the only supply writer, and a never-credited recipient's first balance) and publish
 ///      them. It cannot recompute a handle with an operand it is not allowed on. Separately, the minter is allowed
 ///      on `minted` and an overflowing mint mints zero, so each mint of a chosen amount `a` reveals whether the
-///      total supply exceeds `2^64-1-a`; at most 64 mints recover the supply.
+///      total supply exceeds `2^64-1-a`. An overflowing mint changes no balance or supply value (the
+///      supply handle rotates; its value does not), so at most 64 mints recover the supply.
 library ERC7984MintableLib {
     /// @notice Registers the IERC7984Mintable ERC-165 interface. Must be called inside a pre/postInitializer
     ///         block.

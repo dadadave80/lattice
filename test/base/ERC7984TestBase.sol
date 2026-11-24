@@ -59,6 +59,8 @@ abstract contract ERC7984TestBase is FhevmTestBase {
     address private erc7984Facet;
     address private testFacet;
     address private multicallFacet;
+    address private accessControlFacet;
+    address private mintableFacet;
     address private erc7984Init;
 
     function setUp() public virtual override {
@@ -68,6 +70,8 @@ abstract contract ERC7984TestBase is FhevmTestBase {
         erc7984Facet = address(new ERC7984());
         testFacet = address(new ERC7984TestFacet());
         multicallFacet = address(new Multicall());
+        accessControlFacet = address(new AccessControl());
+        mintableFacet = address(new ERC7984Mintable());
         erc7984Init = address(new ERC7984Init());
         maker = new HandleMaker();
 
@@ -122,13 +126,13 @@ abstract contract ERC7984TestBase is FhevmTestBase {
         return address(d);
     }
 
-    function _mintableCuts() internal returns (FacetCut[] memory cuts) {
+    function _mintableCuts() internal view returns (FacetCut[] memory cuts) {
         cuts = new FacetCut[](5);
         cuts[0] = _cut(erc165Facet);
         cuts[1] = _cut(loupeFacet);
         cuts[2] = _cut(erc7984Facet);
-        cuts[3] = _cut(address(new AccessControl()));
-        cuts[4] = _cut(address(new ERC7984Mintable()));
+        cuts[3] = _cut(accessControlFacet);
+        cuts[4] = _cut(mintableFacet);
     }
 
     function _cut(address facet) private pure returns (FacetCut memory) {

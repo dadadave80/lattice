@@ -17,6 +17,9 @@ interface IERC7984Mintable {
     ///      - {IERC7984.ERC7984UnauthorizedCaller} with `address(this)` when the diamond calls itself;
     ///      - {IERC7984.ERC7984NotInitialized} when the token was never initialized;
     ///      - `AccessControlUnauthorizedAccount(msg.sender, ERC7984_MINTER_ROLE)` when the caller lacks the role;
+    ///      - the input verification errors: with a proof, the host input verifier's errors for a proof that does not
+    ///        verify for the caller; with an empty proof, `SenderNotAllowedToUseHandle(handle, msg.sender)` when the
+    ///        handle is not allowed to the caller, and the executor's `InvalidType()` when it is not an `euint64`;
     ///      - {IERC7984.ERC7984InvalidReceiver} with `to` when `to` is the zero address or the diamond.
     /// @return minted The minted encrypted amount handle, allowed to the caller, `to` and the diamond.
     function confidentialMint(address to, externalEuint64 encryptedAmount, bytes calldata inputProof)
