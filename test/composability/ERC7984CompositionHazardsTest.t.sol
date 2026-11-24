@@ -131,10 +131,16 @@ contract ERC7984CompositionHazardsTest is ERC7984TestBase {
         assertTrue(_acl.persistAllowed(holderBalance, attacker));
     }
 
-    /// @notice R3: an executor cut before init with a non-standard entry point passes {ERC7984Init}.
+    /// @notice R3: an executor cut before init with a non-standard entry point passes {ERC7984Init}, then calls
+    ///         the ACL as the diamond.
     function test_GuardMissesNonStandardExecutor() public {
         address d = _deployWithExtraFacet(address(new OddExecutor()), OddExecutor.run.selector);
         assertTrue(IERC165(d).supportsInterface(0x4958f2a4));
+        ERC7984TestFacet(d).mint(holder, 1_000_000);
+        bytes32 hb = euint64.unwrap(IERC7984(d).confidentialBalanceOf(holder));
+        assertFalse(_acl.persistAllowed(hb, attacker));
+        OddExecutor(d).run(aclAdd, abi.encodeWithSignature("allow(bytes32,address)", hb, attacker));
+        assertTrue(_acl.persistAllowed(hb, attacker));
     }
 
     /// @notice P13, H-32: why `0x1626ba7e` is denied.
@@ -177,21 +183,24 @@ contract ERC7984CompositionHazardsTest is ERC7984TestBase {
         assertFalse(_acl.persistAllowed(euint64.unwrap(IERC7984(d).confidentialTotalSupply()), ADMIN));
     }
 
-    /// @notice A fresh diamond, the immutable {DeployERC7984} cuts plus one cut routing `sel` to `f`, and the
-    ///         {ERC7984Init.init} calldata.
+    /// @notice A fresh diamond, the immutable {DeployERC7984} cuts plus the test facet's `mint` and one cut routing
+    ///         `sel` to `f`, and the {ERC7984Init.init} calldata.
     function _prepareWithExtraFacet(address f, bytes4 sel)
         internal
         returns (Lattice d, FacetCut[] memory cuts, bytes memory data)
     {
         d = new Lattice();
         (FacetCut[] memory base,,) = new DeployERC7984().buildCuts("Tok", "TOK", "ipfs://t");
-        cuts = new FacetCut[](base.length + 1);
+        cuts = new FacetCut[](base.length + 2);
         for (uint256 i; i < base.length; ++i) {
             cuts[i] = base[i];
         }
+        bytes4[] memory mintSelector = new bytes4[](1);
+        mintSelector[0] = ERC7984TestFacet.mint.selector;
+        cuts[base.length] = FacetCut(address(new ERC7984TestFacet()), FacetCutAction.Add, mintSelector);
         bytes4[] memory selectors = new bytes4[](1);
         selectors[0] = sel;
-        cuts[base.length] = FacetCut(f, FacetCutAction.Add, selectors);
+        cuts[base.length + 1] = FacetCut(f, FacetCutAction.Add, selectors);
         data = abi.encodeCall(ERC7984Init.init, ("Tok", "TOK", "ipfs://t"));
     }
 
