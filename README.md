@@ -290,6 +290,14 @@ every other chain. Reproduce it with `make example-ens-grant-m2 RPC=fuji KEYSTOR
 [Avalanche evidence](PROGRESS.md#team1-builder-grants-avalanche--mini-grant-application-evidence) lists
 every contract and transaction.
 
+**Confidential token on Sepolia.** Lattice Confidential Demo (`cLATD`) is an Ethereum Request for Comments 7984
+(ERC-7984) reference deployment at
+[`0xF2cc98cFfB6F003d22A7BFAaBFe94F47D2E3080F`](https://sepolia.etherscan.io/address/0xF2cc98cFfB6F003d22A7BFAaBFe94F47D2E3080F#code).
+The run minted 1000 confidential units, transferred and publicly disclosed 400, and decrypted the holder's remaining
+600 units. All 11 contracts, including the diamond, were source-verified on Etherscan and Sourcify. The
+[verification status](docs/guides/erc7984.md#verification-status) lists every contract and transaction alongside the
+[broadcast log](broadcast/DeployERC7984Mintable.s.sol/11155111/run-latest.json).
+
 **Cross-chain USDC (Circle CCTP v2, Arc testnet as the source chain).** Lattice diamonds on Arc burn USDC
 toward Ethereum Sepolia and Base Sepolia; Arc's sub-second finality means Iris attests in seconds. The
 hook and round-trip demos run against the live contracts by default, so all you need is a funded signer:

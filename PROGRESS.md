@@ -151,3 +151,25 @@ All 20 contracts in the broadcast are verified on Sourcify, Snowscan (Etherscan 
 (Routescan). On Sourcify, 18 are exact matches. `ERC165Facet` and `DiamondLoupeFacet` from diamond-lib are
 full matches, because Sourcify had already verified the same bytecode from another source tree. Snowtrace
 lists the vault as `LatticeDiamond`, an earlier verified contract with identical bytecode.
+
+# Sepolia confidential token — reference deployment
+
+On 2026-11-24, `dave1` deployed Lattice Confidential Demo (`cLATD`), an Ethereum Request for Comments 7984
+(ERC-7984) confidential token. The signer served as admin and minter. The run used the `zama-ai/fhevm` tooling
+at commit `4322b501` (tag `v0.14.7`). The holder received 1000 units, transferred 400 back to `dave1`,
+decrypted the remaining 600 and publicly disclosed the transferred amount.
+
+| Evidence | Link |
+|---|---|
+| Token diamond | [`0xF2cc98cFfB6F003d22A7BFAaBFe94F47D2E3080F`](https://sepolia.etherscan.io/address/0xF2cc98cFfB6F003d22A7BFAaBFe94F47D2E3080F#code) · [Sourcify](https://repo.sourcify.dev/11155111/0xF2cc98cFfB6F003d22A7BFAaBFe94F47D2E3080F) |
+| Diamond creation through `LatticeFactory` | [`0xaae8bd02501249f723a3a5d138d573c48ff252a1e1e2481fa4215cb61de62aaf`](https://sepolia.etherscan.io/tx/0xaae8bd02501249f723a3a5d138d573c48ff252a1e1e2481fa4215cb61de62aaf) |
+| Mint 1000 | [`0xef4b96f652fede10492b95f52f1074cdfff44d733b0018caf4214f65d965aab7`](https://sepolia.etherscan.io/tx/0xef4b96f652fede10492b95f52f1074cdfff44d733b0018caf4214f65d965aab7) |
+| Fund the holder with 0.0001 Sepolia ether | [`0xe9a5ac40a5d233abc34a0b3105962a0bd794042e2081687651ccd22b656f72d6`](https://sepolia.etherscan.io/tx/0xe9a5ac40a5d233abc34a0b3105962a0bd794042e2081687651ccd22b656f72d6) |
+| Transfer 400 | [`0x046279d612dfb077cf0b2f2f754b71eeee5a653c90b52ed61b0abf3ea53e6c11`](https://sepolia.etherscan.io/tx/0x046279d612dfb077cf0b2f2f754b71eeee5a653c90b52ed61b0abf3ea53e6c11) |
+| Request disclosure | [`0x0e054afc1dd501642eaab587bd966aabc54763a15dd1a4c153c14f91fc0fdab8`](https://sepolia.etherscan.io/tx/0x0e054afc1dd501642eaab587bd966aabc54763a15dd1a4c153c14f91fc0fdab8) |
+| Disclose 400 (`AmountDisclosed`) | [`0x2644b5876626e12aa9d51a880f5337589c8a740a5386d5a68614c02e5561f916`](https://sepolia.etherscan.io/tx/0x2644b5876626e12aa9d51a880f5337589c8a740a5386d5a68614c02e5561f916) |
+| Broadcast log | [`broadcast/DeployERC7984Mintable.s.sol/11155111/run-latest.json`](broadcast/DeployERC7984Mintable.s.sol/11155111/run-latest.json) |
+| Runbook | [Live Sepolia check](docs/guides/erc7984.md#live-sepolia-check) |
+
+All 11 deployed contracts, including the diamond, were verified on Etherscan and Sourcify. The
+[verification status](docs/guides/erc7984.md#verification-status) lists the contracts and their deployment transactions.
