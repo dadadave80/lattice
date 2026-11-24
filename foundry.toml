@@ -207,4 +207,6 @@ ignore = [
     "src/utils/libraries/P256.sol",
     "src/utils/libraries/Base64.sol",
     "src/utils/libraries/WebAuthn.sol",
+    # Vendored Zama FHEVM test harness and FHE.sol 0.13.4 oracle (BSD-3-Clause-Clear): re-sync, do not reformat.
+    "test/helpers/fhevm/**/*.sol",
 ]

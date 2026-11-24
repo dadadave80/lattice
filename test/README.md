@@ -14,7 +14,7 @@ Structured per the **Testing** and **Deployment** sections of the Cyfrin Solidit
 | `test/fork/` | Mainnet/testnet fork tests (RPC-gated; skip without an RPC). |
 | `test/gas/` | Gas snapshots, committed under `snapshots/`. Record snapshots only here. CI fails when a run changes them; regenerate with `make snapshot`. |
 | `test/composability/` | Selector-surface and real-proxy composition guards; every canonical recipe spec vs actual cuts/init trees, independent seam oracles and mutation controls. |
-| `test/helpers/` | Test mixins — the blueprint helpers delegate to `script/base/` so setup never diverges from the deploy path. |
+| `test/helpers/` | Test mixins — the blueprint helpers delegate to `script/base/` so setup never diverges from the deploy path, and the vendored FHEVM harness and oracle (`test/helpers/fhevm/`). |
 | `test/fixtures/` | ZK proving-system fixtures (groth16 / plonk / semaphore / …). |
 
 ## Naming
@@ -89,6 +89,15 @@ Production deploy logic lives in `script/`:
 
 Tests must build the system through this shared code (via `Base.t.sol` or the blueprint helpers), never a
 divergent test-only assembly.
+
+## FHEVM tests
+
+Tests that use the vendored FHEVM harness follow four rules:
+
+- Assert access-control-list (ACL) state with `persistAllowed`, `isAllowed` or `isAllowedForDecryption`, never `decrypt()`.
+- Never call `vm.getRecordedLogs()` in a test that later decrypts.
+- Take handles from return values, not from logs.
+- Handles are deterministic per block and not bound to the caller: derive operands that must be distinct from input proofs, or `vm.roll(block.number + 1)` between actions.
 
 ## Mutation testing (local pilot)
 
