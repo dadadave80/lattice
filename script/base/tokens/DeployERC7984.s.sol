@@ -28,7 +28,10 @@ import {ERC7984Init} from "@lattice/tokens/ERC7984/ERC7984Init.sol";
 /// @notice Ready-to-deploy recipe for a base ERC-7984 token diamond: `ERC165Facet` + `ERC7984` + {ERC7984Init}. The
 ///         ONE source of truth for what a base ERC-7984 diamond is, shared by production (`run --broadcast`) and
 ///         the facet tests (which build on {buildCuts}, appending test-only helper facets).
-/// @dev Initialization needs a Zama host stack (chains 1 and 11155111; 31337 for local tests). DEFAULT overload: Immutable by design — no cut facet is cut; deploy a new diamond to change
+/// @dev Initialization makes no host call and only records the chain's Zama coprocessor addresses; token
+///      operations need the Zama host contracts deployed on that chain (1 and 11155111; 31337 is for local
+///      tests only).
+///      DEFAULT overload: Immutable by design — no cut facet is cut; deploy a new diamond to change
 ///      behavior. Use the ADMIN overload (`buildCuts(..., admin)` / `run(..., admin)`) for an upgradeable
 ///      deployment gated on `DEFAULT_ADMIN_ROLE`.
 contract DeployERC7984 is TokenDeployBase {
