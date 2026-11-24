@@ -12,14 +12,26 @@ import {IACL} from "@lattice/interfaces/external/fhevm/IACL.sol";
 import {IERC7984} from "@lattice/interfaces/tokens/IERC7984.sol";
 import {CoprocessorConfig, FHEVMLib} from "@lattice/privacy/libraries/FHEVMLib.sol";
 
+/// @title IVersioned
+/// @author ABI-equivalent interface authored fresh from Zama FHEVM's public ABI (https://github.com/zama-ai/fhevm).
+///         Upstream license: BSD-3-Clause-Clear.
+/// @notice The version getter every Zama FHEVM (fully homomorphic encryption virtual machine) host contract exposes.
 interface IVersioned {
     function getVersion() external view returns (string memory);
 }
 
+/// @title IFHEVMExecutorHcu
+/// @author ABI-equivalent interface authored fresh from Zama FHEVM's public ABI (https://github.com/zama-ai/fhevm).
+///         Upstream license: BSD-3-Clause-Clear.
+/// @notice The executor's getter for its HCU (homomorphic complexity unit) limit contract.
 interface IFHEVMExecutorHcu {
     function getHCULimitAddress() external view returns (address);
 }
 
+/// @title IHCUAllowlist
+/// @author ABI-equivalent interface authored fresh from Zama FHEVM's public ABI (https://github.com/zama-ai/fhevm).
+///         Upstream license: BSD-3-Clause-Clear.
+/// @notice The HCU limit contract's allowlist switch.
 interface IHCUAllowlist {
     function isAllowlistActivated() external view returns (bool);
 }
