@@ -165,8 +165,8 @@ calls as the diamond.
 authority and OpenZeppelin's `ERC7984Rwa` has the same overflow bit.
 
 **Polygon deferred.** The chain table in `FHEVMLib` has rows for Ethereum mainnet (1), Sepolia (11155111) and
-chain id 31337, which is for local tests only and absent from the recipe conditions
-([ADR 0032](0032-thin-fhevm-host-library.md)). Polygon (137) and Amoy (80002) are added only with a fork test
+chain id 31337, which is for local tests only: the recipes omit 31337 from their supported chains and their
+conditions name it as local tests only ([ADR 0032](0032-thin-fhevm-host-library.md)). Polygon (137) and Amoy (80002) are added only with a fork test
 lane for them.
 
 ## Alternatives and consequences
