@@ -194,15 +194,15 @@ contract RecomputingMinter {
     euint64 public trackedSupply;
 
     constructor() {
-        FHEVMLib.setCoprocessorForChain();
+        FHEVMLib.setCoprocessorForChain(); // constructed after FhevmTest.setUp, so on chain 31337
     }
 
     function firstMintAndTrack(IERC7984Mintable t, address to, externalEuint64 x, bytes calldata p)
         external
         returns (bytes32)
     {
-        t.confidentialMint(to, x, p);
-        euint64 s = FHEVMLib.add(FHEVMLib.asEuint64(0), euint64.wrap(externalEuint64.unwrap(x)));
+        t.confidentialMint(to, x, p); // the G2 glue left this contract a transient grant on x's handle
+        euint64 s = FHEVMLib.add(FHEVMLib.asEuint64(0), euint64.wrap(externalEuint64.unwrap(x))); // the first-mint re-derivation
         FHEVMLib.allow(s, address(this));
         trackedSupply = s;
         return euint64.unwrap(s);
@@ -223,7 +223,7 @@ contract RecomputingMinter {
         external
         returns (bytes32)
     {
-        euint64 b = FHEVMLib.add(FHEVMLib.asEuint64(0), t.confidentialMint(to, x, p));
+        euint64 b = FHEVMLib.add(FHEVMLib.asEuint64(0), t.confidentialMint(to, x, p)); // a never-credited recipient's first balance
         FHEVMLib.allow(b, address(this));
         return euint64.unwrap(b);
     }

@@ -5,6 +5,7 @@ import {ERC7984TestBase} from "@lattice-test/base/ERC7984TestBase.sol";
 import {
     CleanTransientReceiver,
     OperatorDiscloser,
+    OperatorRecordingReceiver,
     PublishSentReceiver,
     RecomputingMinter,
     ReentrantReceiver
@@ -29,6 +30,7 @@ contract ERC7984AcceptedHazardsTest is ERC7984TestBase {
     ReentrantReceiver internal reenterTransfer;
     ReentrantReceiver internal reenterAndCall;
     RecomputingMinter internal recomputer;
+    OperatorRecordingReceiver internal recorder;
 
     function setUp() public override {
         super.setUp();
@@ -38,6 +40,7 @@ contract ERC7984AcceptedHazardsTest is ERC7984TestBase {
         reenterTransfer = new ReentrantReceiver(token, bob, 0);
         reenterAndCall = new ReentrantReceiver(token, bob, 1);
         recomputer = new RecomputingMinter();
+        recorder = new OperatorRecordingReceiver();
     }
 
     /// @dev The decrypted balances of every account a test in this file can credit.
@@ -60,6 +63,26 @@ contract ERC7984AcceptedHazardsTest is ERC7984TestBase {
         assertTrue(euint64.unwrap(token.confidentialBalanceOf(holder)) != before);
         assertEq(decrypt(token.confidentialBalanceOf(holder)), 1_000_000);
         assertEq(decrypt(t), 0);
+    }
+
+    /// @dev M-01, H-14: a stranger's zero-handle, empty-proof transfer-and-call fires the recipient's callback.
+    function test_ZeroHandleEmptyProofTransferAndCall_ByStrangerFiresCallback() public {
+        vm.prank(mallory);
+        euint64 t = token.confidentialTransferAndCall(address(recorder), externalEuint64.wrap(0), "", "");
+        assertEq(recorder.lastOperator(), mallory);
+        assertEq(decrypt(t), 0);
+    }
+
+    /// @dev H-08: an operator request above the balance moves zero and leaves both balances unchanged.
+    function test_ConfidentialTransferFrom_ByOperatorAboveBalanceMovesZero() public {
+        vm.prank(holder);
+        token.setOperator(op, uint48(block.timestamp + 1));
+        (externalEuint64 x, bytes memory p) = encryptUint64(1_000_001, op, diamond);
+        vm.prank(op);
+        euint64 t = token.confidentialTransferFrom(holder, alice, x, p);
+        assertEq(decrypt(t), 0);
+        assertEq(decrypt(token.confidentialBalanceOf(holder)), 1_000_000);
+        assertEq(decrypt(token.confidentialBalanceOf(alice)), 0);
     }
 
     /// @dev M-05, H-08: an operator publishes what it moved, through its transient grant on `transferred`.
@@ -123,7 +146,8 @@ contract ERC7984AcceptedHazardsTest is ERC7984TestBase {
         vm.expectEmit(true, false, false, true, diamond);
         emit IERC7984.AmountDisclosed(h, 1_000_000);
         IERC7984Disclosure(diamond).discloseEncryptedAmount(h, 1_000_000, proof);
-        (, bytes32[] memory writes) = vm.accesses(diamond);
+        (bytes32[] memory reads, bytes32[] memory writes) = vm.accesses(diamond);
+        assertGt(reads.length, 0);
         assertEq(writes.length, 0);
     }
 
