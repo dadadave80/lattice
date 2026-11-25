@@ -64,6 +64,11 @@ contract ERC7984RecipeExclusionTest is Test {
         }
     }
 
+    function test_AcceptsENSV2Adapters() public view {
+        this.validate(_plan("ERC7984", "ENSResolverV2"));
+        this.validate(_plan("ERC7984", "ENSSubnameIssuerV2"));
+    }
+
     function test_AcceptsMintableLayout() public view {
         // neither facet calls or signs as the diamond
         this.validate(_plan("ERC7984", "ERC7984Mintable"));
@@ -77,15 +82,15 @@ contract ERC7984RecipeExclusionTest is Test {
     /// @dev Names and exported selectors: a new facet or a new selector trips it.
     function test_InventoryPinnedForDiamondCallerReview() public {
         (string[] memory names, string[] memory paths) = FacetInventory.inventory();
-        assertEq(names.length, 141);
+        assertEq(names.length, 143);
         bytes[] memory sels = new bytes[](names.length);
         for (uint256 i; i < names.length; ++i) {
             sels[i] = IERC8153(deployCode(paths[i])).exportSelectors();
         }
-        assertEq(keccak256(abi.encode(names)), 0x9c1b52baa24679744eb450c61245a1e96b6bcdd2822c79d9413e9936e9915b00);
+        assertEq(keccak256(abi.encode(names)), 0x70af2da579b2a7d680e8fba0526a60aaefcc626fb801b19320862a5916db87aa);
         assertEq(
             keccak256(abi.encode(names, sels)),
-            0x16c93afad8c0cf8a313773fc65a657ecd45d04c815138d7bd9d5af08fcd77d8f,
+            0x4aaf3e9d2ec33995d09de6a4414bccc04383c47aa90a131bef626a8faebc8572,
             "facet or selector change: decide whether it calls or signs as the diamond, then update the ERC7984 rule, the deny-list review and this pin"
         );
     }

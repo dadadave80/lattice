@@ -455,7 +455,9 @@ and [ADR0024](docs/adr/0024-upgrade-initializer-batches.md).
 |---|---|---|---|---|---|
 | ENSReverseClaimer | `lattice.storage.ENSReverseClaimer` | `0x4490f19c91eeff7574cc9707696b972040b89f54488ef7fa354afe94a194c100` | `IENSReverseClaimer` | `0x84019dd8` | `0x3c859ae3ba58f26576821324787594a5249343bb61f3f7c4054b439dbc4eff8c` |
 | ENSResolver | `lattice.storage.ENSResolver` | `0x33f26d8db6499021a25127a427a9f060956987880daa3f7db97807f377225300` | `IENSResolver` | `0x566ec67d` | `0x79535b2b28365a4b28deff1d36dfc239871172c80dcc5e494674d846366975cb` |
+| ENSResolverV2 | `lattice.storage.ENSResolverV2` | `0x3a5b7e307d83c2daef1d3b1c4c22c645e6742b4a2029b8052436497b174f5700` | `IENSResolverV2` | `0x0e382cd1` | `0xaf6f0ce5096406f85a101dad50e1d789075890847130f2e2e506960103b3532a` |
 | ENSSubnameIssuer | `lattice.storage.ENSSubnameIssuer` | `0xecd97908615d460a8806be2f460463395b75373d406444064e9704ed5d892e00` | `IENSSubnameIssuer` | `0x6ead39e3` | `0x19f98b1c052723a0f45e31ccce192390fdd3867a76366f19df750eb883381f60` |
+| ENSSubnameIssuerV2 | `lattice.storage.ENSSubnameIssuerV2` | `0xa5e628eceea1fa97930014ad2ebe76d14de43931d5fc9f39670cc538ee248300` | `IENSSubnameIssuerV2` | `0x5db4438d` | `0xef9b23848a1b8d4d0e2cb08ecee08f1ca838aea62594c97b7b39cddbcd831dd6` |
 
 ---
 

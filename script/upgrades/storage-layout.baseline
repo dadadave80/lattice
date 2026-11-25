@@ -180,12 +180,18 @@
 ### ENSResolverStorage @ erc7201:lattice.storage.ENSResolver (slot 0x33f26d8db6499021a25127a427a9f060956987880daa3f7db97807f377225300)
 0	0	_ensRegistry	t_address
 
+### ENSResolverV2Storage @ erc7201:lattice.storage.ENSResolverV2 (slot 0x3a5b7e307d83c2daef1d3b1c4c22c645e6742b4a2029b8052436497b174f5700)
+0	0	_universalResolver	t_address
+
 ### ENSReverseClaimerStorage @ erc7201:lattice.storage.ENSReverseClaimer (slot 0x4490f19c91eeff7574cc9707696b972040b89f54488ef7fa354afe94a194c100)
 0	0	_reverseRegistrar	t_address
 1	0	_ensName	t_string_storage
 
 ### ENSSubnameIssuerStorage @ erc7201:lattice.storage.ENSSubnameIssuer (slot 0xecd97908615d460a8806be2f460463395b75373d406444064e9704ed5d892e00)
 0	0	_nameWrapper	t_address
+
+### ENSSubnameIssuerV2Storage @ erc7201:lattice.storage.ENSSubnameIssuerV2 (slot 0xa5e628eceea1fa97930014ad2ebe76d14de43931d5fc9f39670cc538ee248300)
+0	0	_ensUniversalHelper	t_address
 
 ### ERC1155Storage @ erc7201:lattice.storage.ERC1155 (slot 0xe39704fe713bf9d011ae08177a1e99cc7df74d40063bba4426aeb9d10e274c00)
 0	0	_balances	t_mapping(t_uint256,t_mapping(t_address,t_uint256))

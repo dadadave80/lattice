@@ -146,6 +146,11 @@ missing from this table.
 | `ens/IENS.sol` | ensdomains/ens-contracts `contracts/registry/ENS.sol` | MIT | subset |
 | `ens/IETHRegistrarController.sol` | ensdomains/ens-contracts `contracts/ethregistrar/IETHRegistrarController.sol` | MIT | subset |
 | `ens/INameWrapper.sol` | ensdomains/ens-contracts `contracts/wrapper/INameWrapper.sol` | MIT | subset |
+| `ens/IPermissionedRegistry.sol` | ensdomains/contracts-v2 `contracts/src/registry/interfaces/IStandardRegistry.sol` (inherited by `IPermissionedRegistry`) | MIT | subset |
+| `ens/IUniversalHelper.sol` | ensdomains/contracts-v2 `contracts/src/universalResolver/UniversalHelper.sol` | MIT | subset |
+| `ens/IETHRegistrar.sol` | [ENSv2 IETHRegistrar](https://github.com/ensdomains/contracts-v2/tree/07e55a056f5b6a9c90119f501bdd05714e67dddd/contracts) | MIT | subset |
+| `ens/IPermissionedResolver.sol` | [ENSv2 IPermissionedResolver](https://github.com/ensdomains/contracts-v2/tree/07e55a056f5b6a9c90119f501bdd05714e67dddd/contracts) | MIT | subset |
+| `ens/IUniversalResolverV2.sol` | [ENSv2 IUniversalResolverV2](https://github.com/ensdomains/contracts-v2/tree/07e55a056f5b6a9c90119f501bdd05714e67dddd/contracts) | MIT | subset |
 | `ens/IReverseRegistrar.sol` | ensdomains/ens-contracts `contracts/reverseRegistrar/{ReverseRegistrar,L2ReverseRegistrar}.sol` | MIT (repo for `ReverseRegistrar`; `L2ReverseRegistrar` is MIT) | subset |
 | `ercs/IAccount.sol` | OpenZeppelin/openzeppelin-contracts `contracts/interfaces/draft-IERC4337.sol`; eth-infinitism/account-abstraction `contracts/interfaces/IAccount.sol` | MIT | re-authored to the ERC-4337 ABI |
 | `ercs/IEntryPoint.sol` | eth-infinitism/account-abstraction `contracts/interfaces/IEntryPoint.sol` | MIT | re-authored subset |

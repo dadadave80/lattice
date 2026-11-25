@@ -15,8 +15,10 @@ import {TestnetAsset} from "@lattice-script/base/defi/DeployGovernedVaultENS.s.s
 import {DeployStrategyManager} from "@lattice-script/base/defi/DeployStrategyManager.s.sol";
 import {DeployVaultCore} from "@lattice-script/base/defi/DeployVaultCore.s.sol";
 import {DeployENSResolver} from "@lattice-script/base/ens/DeployENSResolver.s.sol";
+import {DeployENSResolverV2} from "@lattice-script/base/ens/DeployENSResolverV2.s.sol";
 import {DeployENSReverseClaimer} from "@lattice-script/base/ens/DeployENSReverseClaimer.s.sol";
 import {DeployENSSubnameIssuer} from "@lattice-script/base/ens/DeployENSSubnameIssuer.s.sol";
+import {DeployENSSubnameIssuerV2} from "@lattice-script/base/ens/DeployENSSubnameIssuerV2.s.sol";
 import {DeploySafeHarborAdopter} from "@lattice-script/base/governance/DeploySafeHarborAdopter.s.sol";
 import {DeployCommitReveal} from "@lattice-script/base/privacy/DeployCommitReveal.s.sol";
 import {DeployERC5564Announcer} from "@lattice-script/base/privacy/DeployERC5564Announcer.s.sol";
@@ -163,10 +165,28 @@ contract RecipeUpgradeabilityModulesTest is RecipeConsistencyGuards {
         _assertAdminCanCut(d, ADMIN);
     }
 
+    function isENSv2() external pure returns (bool) {
+        return true;
+    }
+
+    function ROOT_REGISTRY() external view returns (address) {
+        return address(this);
+    }
+
     function test_Upgradeable_ENSResolver() public {
         _expectRecipe(new DeployENSResolver().recipeSpec(), 0, "DeployENSResolver");
         (FacetCut[] memory cuts, address init, bytes memory cd) =
             new DeployENSResolver().buildCuts(ADMIN, address(this));
+        address d = _assemble(cuts, init, cd);
+        _assertIntrospectable(d, 5);
+        _assertBareEth(d, false);
+        _assertAdminCanCut(d, ADMIN);
+    }
+
+    function test_Upgradeable_ENSResolverV2() public {
+        _expectRecipe(new DeployENSResolverV2().recipeSpec(), 0, "DeployENSResolverV2");
+        (FacetCut[] memory cuts, address init, bytes memory cd) =
+            new DeployENSResolverV2().buildCuts(ADMIN, address(this));
         address d = _assemble(cuts, init, cd);
         _assertIntrospectable(d, 5);
         _assertBareEth(d, false);
@@ -187,6 +207,16 @@ contract RecipeUpgradeabilityModulesTest is RecipeConsistencyGuards {
         _expectRecipe(new DeployENSSubnameIssuer().recipeSpec(), 0, "DeployENSSubnameIssuer");
         (FacetCut[] memory cuts, address init, bytes memory cd) =
             new DeployENSSubnameIssuer().buildCuts(ADMIN, address(this));
+        address d = _assemble(cuts, init, cd);
+        _assertIntrospectable(d, 5);
+        _assertBareEth(d, false);
+        _assertAdminCanCut(d, ADMIN);
+    }
+
+    function test_Upgradeable_ENSSubnameIssuerV2() public {
+        _expectRecipe(new DeployENSSubnameIssuerV2().recipeSpec(), 0, "DeployENSSubnameIssuerV2");
+        (FacetCut[] memory cuts, address init, bytes memory cd) =
+            new DeployENSSubnameIssuerV2().buildCuts(ADMIN, address(this));
         address d = _assemble(cuts, init, cd);
         _assertIntrospectable(d, 5);
         _assertBareEth(d, false);

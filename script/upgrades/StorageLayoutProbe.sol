@@ -46,8 +46,10 @@ import {StrategyManagerStorage} from "@lattice/defi/libraries/StrategyManagerLib
 import {UniswapV3AdapterStorage} from "@lattice/defi/libraries/UniswapV3AdapterLib.sol";
 import {VaultCoreRecoveryStorage, VaultCoreStorage} from "@lattice/defi/libraries/VaultCoreLib.sol";
 import {ENSResolverStorage} from "@lattice/ens/libraries/ENSResolverLib.sol";
+import {ENSResolverV2Storage} from "@lattice/ens/libraries/ENSResolverV2Lib.sol";
 import {ENSReverseClaimerStorage} from "@lattice/ens/libraries/ENSReverseClaimerLib.sol";
 import {ENSSubnameIssuerStorage} from "@lattice/ens/libraries/ENSSubnameIssuerLib.sol";
+import {ENSSubnameIssuerV2Storage} from "@lattice/ens/libraries/ENSSubnameIssuerV2Lib.sol";
 import {GovernedDiamondCutStorage} from "@lattice/governance/libraries/GovernedDiamondCutLib.sol";
 import {GovernedSafeDiamondCutStorage} from "@lattice/governance/libraries/GovernedSafeDiamondCutLib.sol";
 import {GovernorStorage} from "@lattice/governance/libraries/GovernorLib.sol";
@@ -159,8 +161,10 @@ contract StorageLayoutProbe {
     DIAAdapterStorage internal _dIAAdapterStorage;
     EIP712Storage internal _eIP712Storage;
     ENSResolverStorage internal _eNSResolverStorage;
+    ENSResolverV2Storage internal _eNSResolverV2Storage;
     ENSReverseClaimerStorage internal _eNSReverseClaimerStorage;
     ENSSubnameIssuerStorage internal _eNSSubnameIssuerStorage;
+    ENSSubnameIssuerV2Storage internal _eNSSubnameIssuerV2Storage;
     ERC1155Storage internal _eRC1155Storage;
     ERC1155SupplyStorage internal _eRC1155SupplyStorage;
     ERC1155URIStorageStorage internal _eRC1155URIStorageStorage;

@@ -48,6 +48,7 @@ const decisions: Item = {
     { text: '0031 Indexed initializer failures', link: '/adr/0031-indexed-initializer-batch-failures' },
     { text: '0032 Thin FHEVM host library', link: '/adr/0032-thin-fhevm-host-library' },
     { text: '0033 ERC-7984 excludes diamond callers', link: '/adr/0033-erc7984-excludes-diamond-callers' },
+    { text: '0034 ENSv2 integration', link: '/adr/0034-ensv2-integration' },
   ],
 }
 
@@ -61,6 +62,7 @@ const guides: Item = {
     { text: 'Selector compatibility', link: '/guides/selector-compatibility' },
     { text: 'ERC-3643 permissioned token', link: '/guides/erc3643' },
     { text: 'ERC-7984 confidential token', link: '/guides/erc7984' },
+    { text: 'ENSv2 integration', link: '/guides/ensv2' },
     { text: 'ShieldedPool circuit requirements', link: '/guides/shielded-pool-circuit' },
     { text: 'Storage-safety Action', link: '/guides/storage-action' },
     { text: 'Hedera', link: '/guides/hedera' },
