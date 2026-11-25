@@ -6,7 +6,7 @@ pragma solidity ^0.8.30;
 /// @notice Stateless initializer artifacts released and attested by codehash, separate from facet registration.
 library InitInventory {
     function inventory() internal pure returns (string[] memory names, string[] memory paths) {
-        string[112] memory n = [
+        string[114] memory n = [
             "API3AdapterInit",
             "API3QRNGAdapterInit",
             "AccessControlEnumerableInit",
@@ -36,8 +36,10 @@ library InitInventory {
             "DIAAdapterInit",
             "DiamondIntrospectionInit",
             "ENSResolverInit",
+            "ENSResolverV2Init",
             "ENSReverseClaimerInit",
             "ENSSubnameIssuerInit",
+            "ENSSubnameIssuerV2Init",
             "ERC1155BurnableInit",
             "ERC1155Init",
             "ERC1155PausableInit",
@@ -120,7 +122,7 @@ library InitInventory {
             "WormholeGatewayAdapterInit",
             "ZetaChainGatewayAdapterInit"
         ];
-        string[112] memory p = [
+        string[114] memory p = [
             "src/oracles/api3/API3AdapterInit.sol:API3AdapterInit",
             "src/oracles/api3/API3QRNGAdapterInit.sol:API3QRNGAdapterInit",
             "src/access/AccessControlEnumerableInit.sol:AccessControlEnumerableInit",
@@ -150,8 +152,10 @@ library InitInventory {
             "src/oracles/dia/DIAAdapterInit.sol:DIAAdapterInit",
             "src/utils/DiamondIntrospectionInit.sol:DiamondIntrospectionInit",
             "src/ens/ENSResolverInit.sol:ENSResolverInit",
+            "src/ens/ENSResolverV2Init.sol:ENSResolverV2Init",
             "src/ens/ENSReverseClaimerInit.sol:ENSReverseClaimerInit",
             "src/ens/ENSSubnameIssuerInit.sol:ENSSubnameIssuerInit",
+            "src/ens/ENSSubnameIssuerV2Init.sol:ENSSubnameIssuerV2Init",
             "src/tokens/ERC1155/ERC1155BurnableInit.sol:ERC1155BurnableInit",
             "src/tokens/ERC1155/ERC1155Init.sol:ERC1155Init",
             "src/tokens/ERC1155/ERC1155PausableInit.sol:ERC1155PausableInit",

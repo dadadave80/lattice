@@ -183,7 +183,7 @@ initialization replay, and execution replay. The factory unit suite covers faile
 ## Optional public testnet / ENS reference
 
 ENS ties the milestones together. The Milestone 1 vault is ENS-named, and so is the shared Sepolia
-`LatticeFactory` (`factory.lattice.studio.eth`), both through the ENSReverseClaimer facet. The ENS variant
+`LatticeFactory` (`factory.lattice.studio.eth`), through different mechanisms. The vault uses the ENSReverseClaimer facet. The standalone factory claims its reverse node in its constructor and the designated record owner sets the name. See the [ENSv2 guide](ensv2.md) for forward records and the fork rehearsal. The ENS variant
 of this example is the same composition plus that one facet: `DeployGovernedVaultENS.buildCutsWithENS`
 adds ENSReverseClaimer and a combined initializer that replays the base init sequence. Send those cuts
 through `LatticeFactory.deploy` for atomic creation. `PROGRESS.md` records the verified Milestone 1 vault

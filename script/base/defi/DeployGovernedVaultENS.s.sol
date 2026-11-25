@@ -125,8 +125,8 @@ contract TestnetAsset is IERC20 {
 ///      `reverseRegistrar` on Sepolia is the ENS `ReverseRegistrar`
 ///      `0xA0a1AbcDAe1a2a4A2EF8e9113Ff0e02DD81DC0C6` (ensdomains/ens-contracts deployments/sepolia).
 ///
-///      RUNBOOK — step 1 deploy (`run`), steps 2-4 wire the ENS forward record as the name owner (see
-///      {RegisterEnsName}); step 5 cranks the governance demo — ONE command, re-run until it logs Executed:
+///      Deploy with `run`, then have the authorized resolver writer set the ENSv2 ETH address record.
+///      Run the governance demo until it logs Executed:
 ///
 ///        forge script script/base/defi/DeployGovernedVaultENS.s.sol --rpc-url sepolia --account <name> \
 ///          --broadcast --sig "governanceDemo(address,string)" <vault> "<ens-name>"
@@ -311,9 +311,10 @@ contract DeployGovernedVaultENS is DeployGovernedVault {
         console.log("NEXT STEPS:");
         console.log(" 1. The vault's REVERSE record (vault -> name) is already claimed. For the name to show as");
         console.log("    the vault's primary name, point the FORWARD record (name -> vault) at the diamond:");
-        console.log("    set the name's addr record to the diamond via https://sepolia.app.ens.domains, or:");
-        console.log("    cast send <PublicResolver> 'setAddr(bytes32,address)' <namehash(name)> <diamond>");
-        console.log("    (Sepolia PublicResolver: 0xE99638b40E4Fff0129D56f03b55b6bbC4BBE49b5)");
+        console.log("    Discover the resolver through the canonical Sepolia Universal Resolver.");
+        console.log("    On an ENSv2 PermissionedResolver, inspect the name's record ID and any shared links.");
+        console.log("    As its authorized writer, setAddress(DNS-encoded name, 60, packed 20-byte vault address).");
+        console.log("    Verify both forward resolution and the vault's primary name through the Universal Resolver.");
         console.log(" 2. Dogfood: mint TestnetAsset, approve the vault, deposit, delegate, propose.");
         console.log(" 3. Rename later via governance: propose setEnsName(newName) targeting the diamond.");
     }

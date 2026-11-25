@@ -20,11 +20,11 @@ import {OwnableFacet} from "@diamond/facets/OwnableFacet.sol";
 ///      artifact contract names exactly: the registry key is `keccak256("lattice.<name>")` and the facet
 ///      deploy salt is `keccak256("lattice.<name>.<version>")`, so renaming an entry re-derives BOTH.
 library FacetInventory {
-    /// @notice The 141 release facets (137 Lattice + 4 diamond-lib core) as (contract name, `"<file>:<Name>"` deploy path) pairs.
+    /// @notice The 143 release facets (139 Lattice + 4 diamond-lib core) as (contract name, `"<file>:<Name>"` deploy path) pairs.
     /// @return names The facet contract names (registry name = `"lattice." ++ name`).
     /// @return paths The matching `vm.getCode`/`deployCode` artifact paths, index-aligned with `names`.
     function inventory() internal pure returns (string[] memory names, string[] memory paths) {
-        string[141] memory n = [
+        string[143] memory n = [
             "AcrossBridgeAdapter",
             "AxelarGatewayAdapter",
             "BridgeERC20",
@@ -155,8 +155,10 @@ library FacetInventory {
             "AccessManaged",
             "AccessManager",
             "ENSResolver",
+            "ENSResolverV2",
             "ENSReverseClaimer",
             "ENSSubnameIssuer",
+            "ENSSubnameIssuerV2",
             "EIP712",
             "Multicall",
             "Nonces",
@@ -170,7 +172,7 @@ library FacetInventory {
             "ERC165Facet",
             "OwnableFacet"
         ];
-        string[141] memory p = [
+        string[143] memory p = [
             "src/crosschain/across/AcrossBridgeAdapter.sol:AcrossBridgeAdapter",
             "src/crosschain/axelar/AxelarGatewayAdapter.sol:AxelarGatewayAdapter",
             "src/crosschain/BridgeERC20.sol:BridgeERC20",
@@ -301,8 +303,10 @@ library FacetInventory {
             "src/access/AccessManaged.sol:AccessManaged",
             "src/access/AccessManager.sol:AccessManager",
             "src/ens/ENSResolver.sol:ENSResolver",
+            "src/ens/ENSResolverV2.sol:ENSResolverV2",
             "src/ens/ENSReverseClaimer.sol:ENSReverseClaimer",
             "src/ens/ENSSubnameIssuer.sol:ENSSubnameIssuer",
+            "src/ens/ENSSubnameIssuerV2.sol:ENSSubnameIssuerV2",
             "src/utils/EIP712.sol:EIP712",
             "src/utils/Multicall.sol:Multicall",
             "src/utils/Nonces.sol:Nonces",

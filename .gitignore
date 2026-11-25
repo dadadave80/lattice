@@ -41,6 +41,7 @@ docs/guides/*
 !docs/guides/selector-compatibility.md
 !docs/guides/erc3643.md
 !docs/guides/erc7984.md
+!docs/guides/ensv2.md
 !docs/guides/shielded-pool-circuit.md
 !docs/site/
 docs/site/*

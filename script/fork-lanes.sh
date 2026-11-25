@@ -38,13 +38,13 @@ UNSCHEDULED="HASSignatureVerifierFork HTSAdapterFork"
 suites() {
     case "$1" in
         mainnet)
-            echo "AaveV3AdapterFork AcrossBridgeAdapterFork API3AdapterFork API3QRNGAdapterFork BandAdapterFork" \
+            echo "ENSV2MainnetFork AaveV3AdapterFork AcrossBridgeAdapterFork API3AdapterFork API3QRNGAdapterFork BandAdapterFork" \
                 "CCTPBridgeAdapterFork ChainlinkAdapterFork ChainlinkAutomationAdapterFork ChainlinkCREAdapterFork" \
                 "ChronicleAdapterFork ConstantProductFork DIAAdapterFork EntryPoint7702Fork EntryPointFork" \
                 "GelatoAutomateAdapterFork GelatoVRFAdapterFork LayerZeroGatewayAdapterFork PythAdapterFork" \
                 "RedStoneAdapterFork StarknetGatewayAdapterFork TellorAdapterFork TWAPOracleFork ERC7984MainnetFork"
             ;;
-        sepolia) echo "GovernanceDemoFork GovernedVaultENSFork LatticeFactoryENSFork ERC7984SepoliaFork" ;;
+        sepolia) echo "GovernanceDemoFork GovernedVaultENSFork LatticeFactoryENSFork ENSV2StudioMigrationFork ENSV2RegistrationFork ERC7984SepoliaFork" ;;
         base-sepolia) echo "CCTPHookDemoFork CCTPHookReceiptDemoFork PythEntropyAdapterFork" ;;
         cctp-testnet) echo "CCTPBridgeAdapterTestnetFork CCTPUSDCDemoFork" ;;
         *) echo "unknown lane: $1 (lanes: $LANES)" >&2; return 1 ;;

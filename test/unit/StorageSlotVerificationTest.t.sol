@@ -2,6 +2,16 @@
 pragma solidity ^0.8.30;
 
 import {ERC6900_MODULE_MANAGER_STORAGE_SLOT} from "@lattice/accounts/erc6900/libraries/ERC6900ModuleManagerLib.sol";
+import {
+    ENS_RESOLVER_V2_STORAGE_SLOT,
+    ERC165_MAP_IENSRESOLVERV2_SLOT
+} from "@lattice/ens/libraries/ENSResolverV2Lib.sol";
+import {
+    ENS_SUBNAME_ISSUER_V2_STORAGE_SLOT,
+    ERC165_MAP_IENSSUBNAMEISSUERV2_SLOT
+} from "@lattice/ens/libraries/ENSSubnameIssuerV2Lib.sol";
+import {IENSResolverV2} from "@lattice/interfaces/ens/IENSResolverV2.sol";
+import {IENSSubnameIssuerV2} from "@lattice/interfaces/ens/IENSSubnameIssuerV2.sol";
 import {Test} from "forge-std/Test.sol";
 
 // ---------------------------------------------------------------------------
@@ -1218,6 +1228,23 @@ contract StorageSlotVerificationTest is Test {
 
     // ---- ens ----
 
+    function test_ENSResolverV2Slots() public pure {
+        assertEq(ENS_RESOLVER_V2_STORAGE_SLOT, _erc7201Slot("lattice.storage.ENSResolverV2"));
+        assertEq(type(IENSResolverV2).interfaceId, bytes4(0x0e382cd1));
+        assertEq(
+            ERC165_MAP_IENSRESOLVERV2_SLOT, _erc165MapSlot(type(IENSResolverV2).interfaceId, ERC165_STORAGE_LOCATION)
+        );
+    }
+
+    function test_ENSSubnameIssuerV2Slots() public pure {
+        assertEq(ENS_SUBNAME_ISSUER_V2_STORAGE_SLOT, _erc7201Slot("lattice.storage.ENSSubnameIssuerV2"));
+        assertEq(type(IENSSubnameIssuerV2).interfaceId, bytes4(0x5db4438d));
+        assertEq(
+            ERC165_MAP_IENSSUBNAMEISSUERV2_SLOT,
+            _erc165MapSlot(type(IENSSubnameIssuerV2).interfaceId, ERC165_STORAGE_LOCATION)
+        );
+    }
+
     function test_ENSResolverStorageSlot() public pure {
         assertEq(
             ENS_RESOLVER_STORAGE_SLOT, _erc7201Slot("lattice.storage.ENSResolver"), "ENSResolver storage slot mismatch"
@@ -2403,7 +2430,7 @@ contract StorageSlotVerificationTest is Test {
     // ======================== Slot inventories ========================
 
     function _allStorageSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](104);
+        slots = new bytes32[](106);
         uint256 i;
         // access
         slots[i++] = ACCESS_CONTROL_STORAGE_SLOT;
@@ -2519,7 +2546,9 @@ contract StorageSlotVerificationTest is Test {
         // ens
         slots[i++] = ENS_REVERSE_CLAIMER_STORAGE_SLOT;
         slots[i++] = ENS_RESOLVER_STORAGE_SLOT;
+        slots[i++] = ENS_RESOLVER_V2_STORAGE_SLOT;
         slots[i++] = ENS_SUBNAME_ISSUER_STORAGE_SLOT;
+        slots[i++] = ENS_SUBNAME_ISSUER_V2_STORAGE_SLOT;
         // hedera system-contract modules (only these two are storage-bearing; HASSignatureVerifier,
         // HederaExchangeRateAdapter and HederaPrngAdapter are stateless)
         slots[i++] = HTS_ADAPTER_STORAGE_SLOT;
@@ -2528,7 +2557,7 @@ contract StorageSlotVerificationTest is Test {
     }
 
     function _allErc165MapSlots() internal pure returns (bytes32[] memory slots) {
-        slots = new bytes32[](119);
+        slots = new bytes32[](121);
         uint256 i;
         // access
         slots[i++] = ERC165_MAP_IACCESSCONTROL_SLOT;
@@ -2676,7 +2705,9 @@ contract StorageSlotVerificationTest is Test {
         // ens
         slots[i++] = ERC165_MAP_IENSREVERSECLAIMER_SLOT;
         slots[i++] = ERC165_MAP_IENSRESOLVER_SLOT;
+        slots[i++] = ERC165_MAP_IENSRESOLVERV2_SLOT;
         slots[i++] = ERC165_MAP_IENSSUBNAMEISSUER_SLOT;
+        slots[i++] = ERC165_MAP_IENSSUBNAMEISSUERV2_SLOT;
         // hedera system-contract modules (HASSignatureVerifier, HederaExchangeRateAdapter and
         // HederaPrngAdapter are stateless — one map slot each, no ERC-7201 row above)
         slots[i++] = ERC165_MAP_IHTSADAPTER_SLOT;

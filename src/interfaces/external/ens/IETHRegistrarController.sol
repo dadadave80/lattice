@@ -4,10 +4,10 @@ pragma solidity >=0.8.4;
 /// @title IETHRegistrarController
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @author Vendored minimal subset of ENS's `ETHRegistrarController` / `IETHRegistrarController` (https://github.com/ensdomains/ens-contracts). Upstream license: MIT.
-/// @notice Minimal vendored interface for the LIVE ENS .eth registrar controller generation (the
-///         Namechain-era "premigration" controller, live-authorized on the Sepolia BaseRegistrar at
+/// @notice Minimal vendored interface for the historical ENS .eth registrar controller generation (the
+///         Namechain-era "premigration" controller, authorized at the pinned historical Sepolia block at
 ///         `0xdf60C561Ca35AD3C89D24BbA854654b1c3477078` — verified from its on-chain verified ABI and a
-///         successful mainnet-flow registration tx). This generation registers in ONE payable call: there is
+///         successful Sepolia registration transaction). This generation registers in ONE payable call: there is
 ///         NO commit/reveal (`makeCommitment`/`commit`/`minCommitmentAge` were removed) and NO `rentPrice`
 ///         view — the controller prices internally and refunds any excess `msg.value` (it reverts
 ///         `RefundFailed` when the refund cannot be delivered).

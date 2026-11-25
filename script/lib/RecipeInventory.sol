@@ -41,8 +41,10 @@ import {DeployGovernedVaultENS} from "@lattice-script/base/defi/DeployGovernedVa
 import {DeployStrategyManager} from "@lattice-script/base/defi/DeployStrategyManager.s.sol";
 import {DeployVaultCore} from "@lattice-script/base/defi/DeployVaultCore.s.sol";
 import {DeployENSResolver} from "@lattice-script/base/ens/DeployENSResolver.s.sol";
+import {DeployENSResolverV2} from "@lattice-script/base/ens/DeployENSResolverV2.s.sol";
 import {DeployENSReverseClaimer} from "@lattice-script/base/ens/DeployENSReverseClaimer.s.sol";
 import {DeployENSSubnameIssuer} from "@lattice-script/base/ens/DeployENSSubnameIssuer.s.sol";
+import {DeployENSSubnameIssuerV2} from "@lattice-script/base/ens/DeployENSSubnameIssuerV2.s.sol";
 import {DeployGovernedDiamondCut} from "@lattice-script/base/governance/DeployGovernedDiamondCut.s.sol";
 import {DeployGovernedSafeDiamondCut} from "@lattice-script/base/governance/DeployGovernedSafeDiamondCut.s.sol";
 import {DeploySafeDiamondCut} from "@lattice-script/base/governance/DeploySafeDiamondCut.s.sol";
@@ -119,7 +121,7 @@ import {DeployMulticall} from "@lattice-script/base/utils/DeployMulticall.s.sol"
 /// @dev The compiler/source census rejects omitted recipes or builder signatures. Demonstration contexts are separate.
 library RecipeInventory {
     function inventory() internal pure returns (string[] memory names, string[] memory artifacts) {
-        string[106] memory n = [
+        string[108] memory n = [
             "DeployAccessControl",
             "DeployAccessControlEnumerable",
             "DeployAccessControlTimed",
@@ -155,8 +157,10 @@ library RecipeInventory {
             "DeployStrategyManager",
             "DeployVaultCore",
             "DeployENSResolver",
+            "DeployENSResolverV2",
             "DeployENSReverseClaimer",
             "DeployENSSubnameIssuer",
+            "DeployENSSubnameIssuerV2",
             "DeployGovernedDiamondCut",
             "DeployGovernedSafeDiamondCut",
             "DeploySafeDiamondCut",
@@ -227,7 +231,7 @@ library RecipeInventory {
             "DeployMarketplaceZone",
             "DeployMulticall"
         ];
-        string[106] memory p = [
+        string[108] memory p = [
             "script/base/access/DeployAccessControl.s.sol:DeployAccessControl",
             "script/base/access/DeployAccessControlEnumerable.s.sol:DeployAccessControlEnumerable",
             "script/base/access/DeployAccessControlTimed.s.sol:DeployAccessControlTimed",
@@ -263,8 +267,10 @@ library RecipeInventory {
             "script/base/defi/DeployStrategyManager.s.sol:DeployStrategyManager",
             "script/base/defi/DeployVaultCore.s.sol:DeployVaultCore",
             "script/base/ens/DeployENSResolver.s.sol:DeployENSResolver",
+            "script/base/ens/DeployENSResolverV2.s.sol:DeployENSResolverV2",
             "script/base/ens/DeployENSReverseClaimer.s.sol:DeployENSReverseClaimer",
             "script/base/ens/DeployENSSubnameIssuer.s.sol:DeployENSSubnameIssuer",
+            "script/base/ens/DeployENSSubnameIssuerV2.s.sol:DeployENSSubnameIssuerV2",
             "script/base/governance/DeployGovernedDiamondCut.s.sol:DeployGovernedDiamondCut",
             "script/base/governance/DeployGovernedSafeDiamondCut.s.sol:DeployGovernedSafeDiamondCut",
             "script/base/governance/DeploySafeDiamondCut.s.sol:DeploySafeDiamondCut",

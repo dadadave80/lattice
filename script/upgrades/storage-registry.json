@@ -934,6 +934,19 @@
       ]
     },
     {
+      "struct": "ENSResolverV2Storage",
+      "namespace": "lattice.storage.ENSResolverV2",
+      "slot": "0x3a5b7e307d83c2daef1d3b1c4c22c645e6742b4a2029b8052436497b174f5700",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_universalResolver",
+          "type": "t_address"
+        }
+      ]
+    },
+    {
       "struct": "ENSReverseClaimerStorage",
       "namespace": "lattice.storage.ENSReverseClaimer",
       "slot": "0x4490f19c91eeff7574cc9707696b972040b89f54488ef7fa354afe94a194c100",
@@ -961,6 +974,19 @@
           "slot": "0",
           "offset": 0,
           "name": "_nameWrapper",
+          "type": "t_address"
+        }
+      ]
+    },
+    {
+      "struct": "ENSSubnameIssuerV2Storage",
+      "namespace": "lattice.storage.ENSSubnameIssuerV2",
+      "slot": "0xa5e628eceea1fa97930014ad2ebe76d14de43931d5fc9f39670cc538ee248300",
+      "fields": [
+        {
+          "slot": "0",
+          "offset": 0,
+          "name": "_ensUniversalHelper",
           "type": "t_address"
         }
       ]
@@ -4399,6 +4425,16 @@
       ]
     },
     {
+      "interfaceId": "0x0e382cd1",
+      "slot": "0xaf6f0ce5096406f85a101dad50e1d789075890847130f2e2e506960103b3532a",
+      "sources": [
+        {
+          "source": "src/ens/libraries/ENSResolverV2Lib.sol",
+          "constant": "ERC165_MAP_IENSRESOLVERV2_SLOT"
+        }
+      ]
+    },
+    {
       "interfaceId": "0x0e89341c",
       "slot": "0x16223e323116e54e339612437d2478d553a51948c039066bf3354fac71c5ef6c",
       "sources": [
@@ -4879,6 +4915,16 @@
         {
           "source": "src/privacy/libraries/PlonkVerifierLib.sol",
           "constant": "ERC165_MAP_IPLONKVERIFIER_SLOT"
+        }
+      ]
+    },
+    {
+      "interfaceId": "0x5db4438d",
+      "slot": "0xef9b23848a1b8d4d0e2cb08ecee08f1ca838aea62594c97b7b39cddbcd831dd6",
+      "sources": [
+        {
+          "source": "src/ens/libraries/ENSSubnameIssuerV2Lib.sol",
+          "constant": "ERC165_MAP_IENSSUBNAMEISSUERV2_SLOT"
         }
       ]
     },

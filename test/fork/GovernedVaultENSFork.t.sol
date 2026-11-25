@@ -3,7 +3,6 @@ pragma solidity ^0.8.30;
 
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
 import {DeployGovernedVaultENS, TestnetAsset} from "@lattice-script/base/defi/DeployGovernedVaultENS.s.sol";
-import {RegisterEnsName} from "@lattice-script/config/RegisterEnsName.s.sol";
 import {Lattice} from "@lattice/Lattice.sol";
 import {GovernedVault} from "@lattice/defi/GovernedVault.sol";
 import {GovernedVaultENSParams} from "@lattice/defi/GovernedVaultENSInit.sol";
@@ -40,18 +39,6 @@ interface IENSSetResolver {
     function setResolver(bytes32 node, address resolver) external;
 }
 
-/// @notice Exposes {RegisterEnsName}'s internal Registration builder so the fork test drives the LIVE
-///         controller with the SCRIPT'S OWN struct — pinning the vendored ABI byte-match end-to-end.
-contract RegisterEnsNameProbe is RegisterEnsName {
-    function registration(string calldata label, address owner)
-        external
-        pure
-        returns (IETHRegistrarController.Registration memory)
-    {
-        return _registration(label, owner);
-    }
-}
-
 /// @title GovernedVaultENSFork
 /// @author David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)
 /// @notice Sepolia fork proof of the {DeployGovernedVaultENS} recipe against the REAL ENS deployment: the
@@ -76,9 +63,7 @@ contract GovernedVaultENSFork is Test {
     /// @notice ENS reverse registrar (deployments/sepolia/ReverseRegistrar.json).
     address internal constant SEPOLIA_REVERSE_REGISTRAR = 0xA0a1AbcDAe1a2a4A2EF8e9113Ff0e02DD81DC0C6;
 
-    /// @notice ENS .eth registrar controller — the LIVE controller authorized on the Sepolia BaseRegistrar
-    ///         (see the provenance note in {RegisterEnsName}; the ens-contracts deployment artifact address
-    ///         is deployed but NOT authorized, and registering through it reverts).
+    /// @notice Historical pre-migration ETH registrar controller, authorized at the pinned block.
     address internal constant SEPOLIA_ETH_REGISTRAR_CONTROLLER = 0xdf60C561Ca35AD3C89D24BbA854654b1c3477078;
 
     /// @notice ENS public resolver (deployments/sepolia/PublicResolver.json).
@@ -217,26 +202,25 @@ contract GovernedVaultENSFork is Test {
     //                    .ETH REGISTRATION (LIVE CONTROLLER)
     //////////////////////////////////////////////////////////////////////////*//
 
-    /// @notice The COMPLETE documented naming flow against the LIVE Sepolia ENS deployment: register the
-    ///         bare name through {RegisterEnsName}'s exact Registration struct (this controller generation
-    ///         has no commit/reveal and refuses in-registration record writes — rent priced internally,
-    ///         excess refunded), then, as the owner, wire the forward record to the DIAMOND (the runbook's
-    ///         two post-deploy calls) and resolve it back through the real registry.
+    /// @notice Replays the legacy ENSv1 flow at the archived Sepolia block.
     function test_Fork_RegisterEnsNameFlowAgainstLiveController() public {
-        RegisterEnsNameProbe probe = new RegisterEnsNameProbe();
         IETHRegistrarController controller = IETHRegistrarController(SEPOLIA_ETH_REGISTRAR_CONTROLLER);
 
         // A label long/random enough to be unregistered at the pinned block.
         string memory label = "lattice-governed-vault-fork-probe";
         address owner = alice;
 
-        // Step 1 — register bare (the script's exact struct). The controller prices internally and refunds
+        // Step 1 — register bare (the pre-migration payload). The controller prices internally and refunds
         // the excess (at the pinned block Sepolia rent prices to ZERO, so the full send comes back — the
         // refund path is exercised either way; never assert a live price, only that we cannot overpay).
-        uint256 value = 0.01 ether; // the script's fixed send
+        uint256 value = 0.01 ether; // the historical script's fixed send
         vm.deal(address(this), value);
         uint256 balanceBefore = address(this).balance;
-        controller.register{value: value}(probe.registration(label, owner));
+        controller.register{value: value}(
+            IETHRegistrarController.Registration(
+                label, owner, 365 days, bytes32(0), address(0), new bytes[](0), 0, bytes32(0)
+            )
+        );
         assertLe(balanceBefore - address(this).balance, value, "never spends more than the send");
 
         // The registry hands the fresh node to the owner, with no resolver yet (bare registration).
